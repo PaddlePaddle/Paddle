@@ -341,7 +341,8 @@ All parameter, weight, gradient are variables in Paddle.
                                return make_ddim(shape);
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims);
+              holder->InitOnce(capacity, dims,
+                               FLAGS_reader_queue_speed_test_mode);
               return holder->GetQueue();
             },
         py::return_value_policy::copy);
