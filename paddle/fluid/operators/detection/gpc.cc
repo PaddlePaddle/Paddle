@@ -141,7 +141,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
 
   if (!*lmt) {
     /* Add node onto the tail end of the LMT */
-    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node), (char *)"LMT insertion");
+    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node),
+                         const_cast<char *>("LMT insertion"));
     (*lmt)->y = y;
     (*lmt)->first_bound = NULL;
     (*lmt)->next = NULL;
@@ -149,7 +150,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
   } else if (y < (*lmt)->y) {
     /* Insert a new LMT node before the current node */
     existing_node = *lmt;
-    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node), (char *)"LMT insertion");
+    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node),
+                         const_cast<char *>("LMT insertion"));
     (*lmt)->y = y;
     (*lmt)->first_bound = NULL;
     (*lmt)->next = existing_node;
@@ -169,7 +171,7 @@ static void add_to_sbtree(int *entries, sb_tree **sbtree, double y) {
   if (!*sbtree) {
     /* Add a new tree node here */
     gpc_malloc<sb_tree>(*sbtree, sizeof(sb_tree),
-                        (char *)"scanbeam tree insertion");
+                        const_cast<char *>("scanbeam tree insertion"));
     (*sbtree)->y = y;
     (*sbtree)->less = NULL;
     (*sbtree)->more = NULL;
@@ -242,7 +244,7 @@ static edge_node *build_lmt(lmt_node **lmt, sb_tree **sbtree, int *sbt_entries,
 
   /* Create the entire input polygon edge table in one go */
   gpc_malloc<edge_node>(edge_table, total_vertices * sizeof(edge_node),
-                        (char *)"edge table creation");
+                        const_cast<char *>("edge table creation"));
 
   for (c = 0; c < p->num_contours; c++) {
     if (p->contour[c].num_vertices < 0) {
@@ -357,7 +359,7 @@ static edge_node *build_lmt(lmt_node **lmt, sb_tree **sbtree, int *sbt_entries,
     }
   }
   return edge_table;
-} // NOLINT
+}  // NOLINT
 
 static void add_edge_to_aet(edge_node **aet, edge_node *edge, edge_node *prev) {
   if (!*aet) {
@@ -400,7 +402,8 @@ static void add_intersection(it_node **it, edge_node *edge0, edge_node *edge1,
 
   if (!*it) {
     /* Append a new node to the tail of the list */
-    gpc_malloc<it_node>(*it, sizeof(it_node), (char *)"IT insertion");
+    gpc_malloc<it_node>(*it, sizeof(it_node),
+                        const_cast<char *>("IT insertion"));
     (*it)->ie[0] = edge0;
     (*it)->ie[1] = edge1;
     (*it)->point.x = x;
@@ -410,7 +413,8 @@ static void add_intersection(it_node **it, edge_node *edge0, edge_node *edge1,
     if ((*it)->point.y > y) {
       /* Insert a new node mid-list */
       existing_node = *it;
-      gpc_malloc<it_node>(*it, sizeof(it_node), (char *)"IT insertion");
+      gpc_malloc<it_node>(*it, sizeof(it_node),
+                          const_cast<char *>("IT insertion"));
       (*it)->ie[0] = edge0;
       (*it)->ie[1] = edge1;
       (*it)->point.x = x;
@@ -433,7 +437,8 @@ static void add_st_edge(st_node **st, it_node **it, edge_node *edge,
 
   if (!*st) {
     /* Append edge onto the tail end of the ST */
-    gpc_malloc<st_node>(*st, sizeof(st_node), (char *)"ST insertion");
+    gpc_malloc<st_node>(*st, sizeof(st_node),
+                        const_cast<char *>("ST insertion"));
     (*st)->edge = edge;
     (*st)->xb = edge->xb;
     (*st)->xt = edge->xt;
@@ -447,7 +452,8 @@ static void add_st_edge(st_node **st, it_node **it, edge_node *edge,
         (fabs(den) <= DBL_EPSILON)) {
       /* No intersection - insert edge here (before the ST edge) */
       existing_node = *st;
-      gpc_malloc<st_node>(*st, sizeof(st_node), (char *)"ST insertion");
+      gpc_malloc<st_node>(*st, sizeof(st_node),
+                          const_cast<char *>("ST insertion"));
       (*st)->edge = edge;
       (*st)->xb = edge->xb;
       (*st)->xt = edge->xt;
@@ -529,7 +535,7 @@ static void add_left(polygon_node *p, double x, double y) {
 
   /* Create a new vertex node and set its fields */
   gpc_malloc<vertex_node>(nv, sizeof(vertex_node),
-                          (char *)"vertex node creation");
+                          const_cast<char *>("vertex node creation"));
   nv->x = x;
   nv->y = y;
 
@@ -567,7 +573,7 @@ static void add_right(polygon_node *p, double x, double y) {
 
   /* Create a new vertex node and set its fields */
   gpc_malloc<vertex_node>(nv, sizeof(vertex_node),
-                          (char *)"vertex node creation");
+                          const_cast<char *>("vertex node creation"));
   nv->x = x;
   nv->y = y;
   nv->next = NULL;
@@ -608,11 +614,11 @@ static void add_local_min(polygon_node **p, edge_node *edge, double x,
   existing_min = *p;
 
   gpc_malloc<polygon_node>(*p, sizeof(polygon_node),
-                           (char *)"polygon node creation");
+                           const_cast<char *>("polygon node creation"));
 
   /* Create a new vertex node and set its fields */
   gpc_malloc<vertex_node>(nv, sizeof(vertex_node),
-                          (char *)"vertex node creation");
+                          const_cast<char *>("vertex node creation"));
   nv->x = x;
   nv->y = y;
   nv->next = NULL;
@@ -644,7 +650,7 @@ static int count_tristrips(polygon_node *tn) {
 void add_vertex(vertex_node **t, double x, double y) {
   if (!(*t)) {
     gpc_malloc<vertex_node>(*t, sizeof(vertex_node),
-                            (char *)"tristrip vertex creation");
+                            const_cast<char *>("tristrip vertex creation"));
     (*t)->x = x;
     (*t)->y = y;
     (*t)->next = NULL;
@@ -663,7 +669,7 @@ static void new_tristrip(polygon_node **tn, edge_node *edge, double x,
                          double y) {
   if (!(*tn)) {
     gpc_malloc<polygon_node>(*tn, sizeof(polygon_node),
-                             (char *)"tristrip node creation");
+                             const_cast<char *>("tristrip node creation"));
     (*tn)->next = NULL;
     (*tn)->v[LEFT] = NULL;
     (*tn)->v[RIGHT] = NULL;
@@ -682,7 +688,7 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
   int v = 0;
 
   gpc_malloc<bbox>(box, p->num_contours * sizeof(bbox),
-                   (char *)"Bounding box creation");
+                   const_cast<char *>("Bounding box creation"));
 
   /* Construct contour bounding boxes */
   for (c = 0; c < p->num_contours; c++) {
@@ -724,7 +730,7 @@ static void minimax_test(gpc_polygon *subj, gpc_polygon *clip, gpc_op op) {
 
   gpc_malloc<int>(o_table,
                   subj->num_contours * clip->num_contours * sizeof(int),
-                  (char *)"overlap table creation");
+                  const_cast<char *>("overlap table creation"));
 
   /* Check all subject contour bounding boxes against clip boxes */
   for (s = 0; s < subj->num_contours; s++) {
@@ -845,12 +851,12 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
 
   /* Create an extended hole array */
   gpc_malloc<int>(extended_hole, (p->num_contours + 1) * sizeof(int),
-                  (char *)"contour hole addition");
+                  const_cast<char *>(("contour hole addition"));
 
   /* Create an extended contour array */
   gpc_malloc<gpc_vertex_list>(extended_contour,
                               (p->num_contours + 1) * sizeof(gpc_vertex_list),
-                              (char *)"contour addition");
+                              const_cast<char *>("contour addition"));
 
   /* Copy the old contour and hole data into the extended arrays */
   for (c = 0; c < p->num_contours; c++) {
@@ -864,7 +870,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   extended_contour[c].num_vertices = new_contour->num_vertices;
   gpc_malloc<gpc_vertex>(extended_contour[c].vertex,
                          new_contour->num_vertices * sizeof(gpc_vertex),
-                         (char *)"contour addition");
+                         const_cast<char *>("contour addition"));
   for (v = 0; v < new_contour->num_vertices; v++) {
     extended_contour[c].vertex[v] = new_contour->vertex[v];
   }
@@ -961,7 +967,8 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   }
 
   /* Build scanbeam table from scanbeam tree */
-  gpc_malloc<double>(sbt, sbt_entries * sizeof(double), (char *)"sbt creation");
+  gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
+                     const_cast<char *>("sbt creation"));
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
   free_sbtree(&sbtree);
@@ -1450,10 +1457,10 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   result->num_contours = count_contours(out_poly);
   if (result->num_contours > 0) {
     gpc_malloc<int>(result->hole, result->num_contours * sizeof(int),
-                    (char *)"hole flag table creation");
+                    const_cast<char *>("hole flag table creation"));
     gpc_malloc<gpc_vertex_list>(result->contour,
                                 result->num_contours * sizeof(gpc_vertex_list),
-                                (char *)"contour creation");
+                                const_cast<char *>("contour creation"));
 
     c = 0;
     for (poly = out_poly; poly; poly = npoly) {
@@ -1464,7 +1471,7 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
         gpc_malloc<gpc_vertex>(
             result->contour[c].vertex,
             result->contour[c].num_vertices * sizeof(gpc_vertex),
-            (char *)"vertex creation");
+            const_cast<char *>("vertex creation"));
 
         v = result->contour[c].num_vertices - 1;
         for (vtx = poly->proxy->v[LEFT]; vtx; vtx = nv) {
@@ -1491,7 +1498,7 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   gpc_free<edge_node>(c_heap);
   gpc_free<edge_node>(s_heap);
   gpc_free<double>(sbt);
-} // NOLINT
+}  // NOLINT
 
 void gpc_free_tristrip(gpc_tristrip *t) {
   int s = 0;
@@ -1595,7 +1602,8 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   }
 
   /* Build scanbeam table from scanbeam tree */
-  gpc_malloc<double>(sbt, sbt_entries * sizeof(double), (char *)"sbt creation");
+  gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
+                     const_cast<char *>("sbt creation"));
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
   free_sbtree(&sbtree);
@@ -2128,7 +2136,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   if (result->num_strips > 0) {
     gpc_malloc<gpc_vertex_list>(result->strip,
                                 result->num_strips * sizeof(gpc_vertex_list),
-                                (char *)"tristrip list creation");
+                                const_cast<char *>("tristrip list creation"));
 
     s = 0;
     for (tn = tlist; tn; tn = tnn) {
@@ -2138,7 +2146,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
         result->strip[s].num_vertices = tn->active;
         gpc_malloc<gpc_vertex>(result->strip[s].vertex,
                                tn->active * sizeof(gpc_vertex),
-                               (char *)"tristrip creation");
+                               const_cast<char *>("tristrip creation"));
         v = 0;
         if (0) {
           lt = tn->v[RIGHT];
@@ -2186,7 +2194,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   gpc_free<edge_node>(c_heap);
   gpc_free<edge_node>(s_heap);
   gpc_free<double>(sbt);
-} // NOLINT
+}  // NOLINT
 
 }  // namespace gpc
 
