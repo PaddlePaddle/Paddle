@@ -228,8 +228,25 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 // add or mul.
 namespace scatter {
 
-static size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
-  return std::find(rows.begin(), rows.end(), value) - rows.begin();
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_add(const DeviceContext& ctx, size_t data_len, const T* in,
+                T* out) {
+  auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  blas.AXPY(data_len, 1., in, out);
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    !std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_add(const DeviceContext& ctx, size_t data_len, const T* in,
+                T* out) {
+  for (int64_t i = 0; i < data_len; i++) {
+    out[i] += in[i];
+  }
 }
 
 template <typename T>
@@ -290,9 +307,9 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
       for (size_t i = 0; i < input_rows.size(); i++) {
         size_t out_i = rows_to_id[input_rows[i]];
-        for (int64_t j = 0; j < input_width; j++) {
-          out_data[out_i * input_width + j] += input_data[i * input_width + j];
-        }
+        elementwise_add<platform::CPUDeviceContext, T>(
+            context, static_cast<size_t>(input_width),
+            &input_data[i * input_width], &out_data[out_i * input_width]);
       }
     }
   }
@@ -300,6 +317,8 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
 template struct MergeAdd<platform::CPUDeviceContext, int>;
 template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
+template struct MergeAdd<platform::CPUDeviceContext, float>;
+template struct MergeAdd<platform::CPUDeviceContext, double>;
 
 template <typename T>
 struct UpdateToTensor<platform::CPUDeviceContext, T> {
