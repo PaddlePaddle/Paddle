@@ -77,19 +77,6 @@ class ParallelExecutor {
 
   std::unique_ptr<ParallelExecutorPrivate> member_;
 
-  // FIXME(zjl): HOT-FIX
-  // A flag to indicate whether ParallelExecutor is destructed.
-  // In Python side, when users interrupt the process manually, such as
-  // keyboard interrupt, ParallelExecutor may be destructed before Run() ends.
-  // Thus, disturbing exception messages would occur when interrupted.
-  // If is_alive_ is false, we would discard the last exception thrown by Run().
-  // Since std::atomic_flag is always lock-free and faster than
-  // std::atomic<bool>, we choose std::atomic_flag to be the flag here.
-  std::atomic_flag is_alive_ = ATOMIC_FLAG_INIT;
-
-  // A flag to indicate whether ParallelExecutor is running.
-  std::atomic_flag is_running_ = ATOMIC_FLAG_INIT;
-
 #ifdef PADDLE_WITH_CUDA
   // ref_cnts_ is only initialized when ParallelExecutor constructs, and then
   // keeps unchanged
