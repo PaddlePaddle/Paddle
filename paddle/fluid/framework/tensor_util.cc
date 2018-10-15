@@ -36,6 +36,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   auto size = src.numel() * SizeOfType(src.type());
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -71,6 +76,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
+      if (src_ptr == dst_ptr) {
+        VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+                << dst_place;
+        return;
+      }
       memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
                    stream);
     } else {
@@ -115,7 +125,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto size = src.numel() * SizeOfType(src.type());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data from " << src.place() << " to "
+      VLOG(3) << "Skip copy the same data from " << src_place << " to "
               << dst_place;
       return;
     }
@@ -135,14 +145,13 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
-    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
-    if (src_ptr == dst_ptr &&
-        src_gpu_place.GetDeviceId() == dst_gpu_place.GetDeviceId()) {
-      VLOG(3) << "Skip copy the same data from " << src.place() << " to "
+    if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
+      VLOG(3) << "Skip copy the same data from " << src_place << " to "
               << dst_place;
       return;
     }
+    auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   }
 #endif
