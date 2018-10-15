@@ -323,7 +323,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), 0.0);
 
     auto* out_data = out.mutable_value()->data<T>();
