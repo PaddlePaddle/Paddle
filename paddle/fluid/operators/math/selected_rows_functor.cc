@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <map>
 #include <set>
+#include <unordered_map>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -229,7 +229,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     }
     std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                     merged_row_set.end());
-    std::map<int64_t, size_t> rows_to_id;
+    std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
       rows_to_id[merge_rows[i]] = i;
     }
