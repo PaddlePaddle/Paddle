@@ -28,6 +28,8 @@ cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 # Create static library
 if (WIN32)
 cc_library(paddle_fluid DEPS ${fluid_modules} ${fluid_third_partys} paddle_fluid_api paddle_inference_api)
+else(WIND32)
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
 endif(WIN32)
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.

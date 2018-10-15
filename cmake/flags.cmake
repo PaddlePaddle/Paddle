@@ -26,6 +26,7 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # safe_set_flag
 #
@@ -116,10 +117,8 @@ if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
-    -Werror
     -Wall
     -Wextra
-    -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
@@ -144,6 +143,12 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
+set(COMMON_FLAGS 
+    -fPIC
+    -fno-omit-frame-pointer)
+set(GPU_COMMON_FLAGS
+    -fPIC
+    -fno-omit-frame-pointer)
 
 else(NOT WIN32)
 set(COMMON_FLAGS
@@ -165,7 +170,6 @@ if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
         -Wextra
-        -Werror
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
 
