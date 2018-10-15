@@ -250,6 +250,13 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {
     ResetReferenceCount();
+    for (auto &pair : cur_ref_cnts_) {
+      auto &name_map = *(pair.second);
+      for (auto &fetch_name : fetch_tensors) {
+        name_map.erase(fetch_name);
+      }
+      name_map.erase(fetched_var_name);
+    }
   }
 #endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);
