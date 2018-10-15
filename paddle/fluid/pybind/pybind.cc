@@ -157,7 +157,50 @@ PYBIND11_PLUGIN(core) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
-  py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
+    LoDTensor is a Tensor with optional LoD information.
+
+    np.array(lod_tensor) can convert LoDTensor to numpy array.
+    lod_tensor.lod() can retrieve the LoD information.
+
+    LoD is short for Level of Details and is usually used for varied sequence
+    length. You can skip the following comment if you don't need optional LoD.
+
+  For example:
+     A LoDTensor X can look like the example below. It contains 2 sequences.
+     The first has length 2 and the second has length 3, as described by x.lod.
+
+     The first tensor dimension 6=2+3 is calculated from LoD if it's available.
+     It means the total number of sequence element. In X, each element has 2
+     columns, hence [6, 2].
+
+      x.lod  = [[2, 3]]
+      x.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8], [9, 10], [11, 12]]
+      x.shape = [6, 2]
+
+      LoD can have multiple levels (for example, a paragraph can have multiple
+      sentences and a sentence can have multiple words). In the following
+      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+      first sequence length is 2 (has 2 sub-sequences), the second one's
+      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+      respectively. And the second sequence's 1 sub-sequence has length 3.
+
+      y.lod = [[2 1], [2 2 3]]
+      y.shape = [2+2+3, ...]
+
+  Note:
+      In above description, LoD is length-based. In Paddle internal
+      implementation, lod is offset-based. Hence, internally,
+      y.lod is represented as [[0, 2, 3], [0, 2, 4, 7]] (length-based
+      equivlent would be [[2-0, 3-2], [2-0, 4-2, 7-4]]).
+
+      Sometimes LoD is called recursive_sequence_length to be more
+      self-explanatory. In this case, it must be length-based. Due to history
+      reasons. when LoD is called lod in public API, it might be offset-based.
+      Users should be careful about it.
+
+        )DOC")
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def("__init__",
@@ -620,7 +663,23 @@ All parameter, weight, gradient are variables in Paddle.
 
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy");
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
+    ExecutionStrategy allows the user to more preciously control how to run
+    the program in ParallelExecutor by setting the property.
+
+    The available properties include:
+        use_cuda (bool): Whether to use CUDA or not. Default True.
+        num_threads (int): The number of threads that used to run the
+            operators in ParallelExecutor. If it is not set, it will be
+            set in ParallelExecutor according to the device count.
+            Default 0.
+        allow_op_delay (bool): Whether to delay the communication operators
+            to run. Default False.
+        num_iteration_per_drop_scope (int): how many iterations between
+            the two dropping local scopes. Default 100.
+
+        )DOC");
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -658,7 +717,25 @@ All parameter, weight, gradient are variables in Paddle.
                                   : ExecutionStrategy::kDefault;
       });
 
-  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
+  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
+    BuildStrategy allows the user to more preciously control how to
+    build the SSA Graph in ParallelExecutor by setting the property.
+
+    The available properties include:
+        reduce_strategy (str): There are two reduce strategies, 'AllReduce'
+            and 'Reduce'. If you want that all parameters will be optimized
+            on all devices, you can choose 'AllReduce'; if you choose
+            'Reduce', all parameters will be evenly allocated to different
+            devices for optimization, and then broadcast the optimized
+            parameter to other devices. Default 'AllReduce'.
+        gradient_scale_strategy (str): There are two ways of defining loss@grad,
+            'CoeffNumDevice' and 'Customized'. By default, ParallelExecutor
+            sets the loss@grad according to the number of devices. If you want
+            to customize loss@grad, you can choose 'Customized'.
+            Default 'CoeffNumDevice'.
+        debug_graphviz_path (str): Whether to write the SSA Graph to file in the
+            form of graphviz. It is useful for debugging. Default "".
+)DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
