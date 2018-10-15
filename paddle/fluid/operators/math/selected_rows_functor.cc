@@ -234,7 +234,6 @@ typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
                 size_t data_len, const T* in, T* out) {
-  //  auto blas = math::GetBlas<DeviceContext, T>(ctx);
   blas->AXPY(data_len, 1., in, out);
 }
 
