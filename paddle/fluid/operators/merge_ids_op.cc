@@ -82,15 +82,19 @@ class MergeIdsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Ids"), "MergeIdsOp must has input Ids.");
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must has input X.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "MergeIdsOp must has output Out.");
+    PADDLE_ENFORCE(ctx->HasInputs("Ids"),
+                   "MergeIdsOp must has multi input Ids.");
+    PADDLE_ENFORCE(ctx->HasInputs("Rows"),
+                   "MergeIdsOp must has multi input Rows.");
+    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must has multi input X.");
+    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
+                   "MergeIdsOp must has multi output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
-    auto ids_dims = ctx->GetInputDim("Ids");
+    auto ids_dims = ctx->GetInputsDim("Ids");
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
-      PADDLE_ENFORCE_EQ(ids_dims[1], 1);
+      PADDLE_ENFORCE_EQ(ids_dims[0].size(), 2);
+      PADDLE_ENFORCE_EQ(ids_dims[0][1], 1);
     }
     auto x_var_type = ctx->GetInputsVarType("X");
     for (auto &var_type : x_var_type) {

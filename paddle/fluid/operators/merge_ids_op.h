@@ -70,7 +70,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
       const auto *row_id = row_ids[i];
 
       for (int j = 0; j < row_id->numel(); ++j) {
-        int64_t key = row_id->data<T>()[j];
+        int64_t key = row_id->data<int64_t>()[j];
         std::tuple<int64_t, int64_t> val = std::make_tuple(i, j);
         selected_rows_idx_map.insert(std::make_pair(key, val));
       }
@@ -85,7 +85,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
       auto *out_data = out->mutable_data<T>(
           framework::make_ddim({nums, embedding_size}), place);
       for (int j = 0; j < nums; ++j) {
-        int id = out_ids->data<T>()[j];
+        int id = out_ids->data<int64_t>()[j];
         auto row_tuple = selected_rows_idx_map[id];
         int64_t row_idx = std::get<1>(row_tuple);
         const auto *x_tensor = x_tensors[std::get<0>(row_tuple)];

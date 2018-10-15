@@ -34,9 +34,9 @@ class TestMergeIdsOp(OpTest):
         x2 = np.array([[0.5, 0.6]]).astype('float32')
 
         out1 = np.array(
-            [[0.1, 0.2], [0.4, 0.5], [0.4, 0.5], [0.2, 0.3]]).astype('float32')
+            [[0.1, 0.2], [0.2, 0.3], [0.4, 0.5], [0.5, 0.6]]).astype('float32')
         out2 = np.array(
-            [[0.1, 0.2], [0.4, 0.5], [0.4, 0.5], [0.2, 0.3]]).astype('float32')
+            [[0.1, 0.2], [0.2, 0.3], [0.2, 0.3], [0.3, 0.4]]).astype('float32')
 
         self.inputs = {
             'Ids': [('ids1', ids1), ('ids2', ids2)],
