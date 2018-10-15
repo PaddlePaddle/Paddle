@@ -29,7 +29,6 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(profile);
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 
@@ -50,7 +49,7 @@ bool AnalysisPredictor::Init(
 #endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+  paddle::platform::SetNumThreads(config_.num_threads);
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);

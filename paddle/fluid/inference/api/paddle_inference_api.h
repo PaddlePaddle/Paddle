@@ -124,7 +124,7 @@ class ZeroCopyTensor {
   std::vector<std::vector<size_t>> lod() const;
 
  protected:
-  ZeroCopyTensor(void* scope) : scope_{scope} {}
+  explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
   void SetName(const std::string& name) { name_ = name; }
   void* FindTensor() const;
 
@@ -185,6 +185,7 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Change to a float in (0,1] if needed.
+  int num_threads{1};                  // number of threads for each instance
 
   // Specify the exact path of program and parameter files.
   std::string prog_file;
