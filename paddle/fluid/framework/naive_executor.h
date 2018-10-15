@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -45,6 +47,8 @@ class NaiveExecutor {
   Scope* scope() { return scope_; }
 
   void CleanFeedFetchOps();
+
+  void EnableMKLDNN(const ProgramDesc& program);
 
  protected:
   void CreateVariables(const ProgramDesc& desc, Scope* scope, int block_id);
