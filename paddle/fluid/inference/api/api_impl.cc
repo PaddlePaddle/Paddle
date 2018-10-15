@@ -88,12 +88,16 @@ bool NativePaddlePredictor::Init(
     VLOG(3) << config_.model_dir;
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
-    VLOG(3) << "load model Finish";
+    VLOG(3) << "load model finish";
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
-    VLOG(3) << "load program";
+    VLOG(3) << "load program before";
+    auto exe = executor_.get();
+    VLOG(3) << "executor_";
+    auto sc = scope_.get();
+    VLOG(3) << "scope_";
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
     VLOG(3) << "load program finish";
@@ -101,13 +105,18 @@ bool NativePaddlePredictor::Init(
     LOG(ERROR) << "fail to load inference model.";
     return false;
   }
-  VLOG(3) << "prepare";
+  VLOG(3) << "pointer" << inference_program_.get();
+
+  VLOG(3) << "prepare before";
   ctx_ = executor_->Prepare(*inference_program_, 0);
+  VLOG(3) << "prepare finished";
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
+  VLOG(3) << "create variables";
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
+  VLOG(3) << "feed fetch";
   return true;
 }
 

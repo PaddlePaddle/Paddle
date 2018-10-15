@@ -293,26 +293,41 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id) {
+  VLOG(3) << "before create prepare" << block_id << " " << program.Size();
   std::unique_ptr<ExecutorPrepareContext> ctx(
       new ExecutorPrepareContext(program, block_id));
-  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
+  VLOG(3) << "after create prepare";
+ // PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
+  VLOG(3) << "before create op_desc";
   auto& block = program.Block(block_id);
+  VLOG(3) << "create before" << ctx->ops_.size() << " " << block.AllOps().size();
+  int counter = 0;
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
+      VLOG(3) << "create op " << "index " << ++counter << " type " << op_desc->Type();
   }
+  VLOG(3) << "create finished" << ctx->ops_.size() << " " << block.AllOps().size();
   return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     const ProgramDesc& program, const std::vector<int>& block_ids) {
+  VLOG(3) << "inside prepare";
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
+  VLOG(3) << "before go through block_ids";
   for (auto& bid : block_ids) {
+    VLOG(3) << "block id" << bid;
     auto* ctx = new ExecutorPrepareContext(program, bid);
-    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
+    //PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
     auto& block = program.Block(bid);
+    int counter = 0;
+    VLOG(3) << "create before" << ctx->ops_.size() << " " << block.AllOps().size();
     for (auto& op_desc : block.AllOps()) {
+
       ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
+      VLOG(3) << "create op " << "index " << ++counter << " type " << op_desc->Type();
     }
+    VLOG(3) << "create finished" << ctx->ops_.size() << " " << block.AllOps().size();
     result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
   }
   return result;
