@@ -72,7 +72,7 @@ void Poly2PointVec(const gpc::gpc_vertex_list& contour,
                    std::vector<Point_<T>>& vec) {
   int pts_num = contour.num_vertices;
   vec.resize(pts_num);
-  for (size_t i = 0; i < pts_num; i++) {
+  for (int i = 0; i < pts_num; i++) {
     vec.at(i).x = contour.vertex[i].x;
     vec.at(i).y = contour.vertex[i].y;
   }
@@ -80,7 +80,7 @@ void Poly2PointVec(const gpc::gpc_vertex_list& contour,
 
 template <class T>
 T GetContourArea(std::vector<Point_<T>>& vec) {
-  int pts_num = vec.size();
+  size_t pts_num = vec.size();
   if (pts_num < 3) return T(0.);
   T area = T(0.);
   for (size_t i = 0; i < pts_num; ++i) {
