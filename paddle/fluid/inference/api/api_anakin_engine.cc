@@ -228,12 +228,6 @@ CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
   }
 }
 
-template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnakinConfig>(
-    const contrib::AnakinConfig &config) {
-  return CreatePaddlePredictor(config);
-};
-
 #ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER
 template <typename Target>
 using executor_t =
