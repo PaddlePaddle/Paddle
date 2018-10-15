@@ -348,9 +348,6 @@ class MomentumOptimizer(Optimizer):
 
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(cost)
-
-    Notes:
-       Currently, MomentumOptimizer doesn't support sparse parameter optimization.
     """
     _velocity_acc_str = "velocity"
 
@@ -1003,9 +1000,6 @@ class RMSPropOptimizer(Optimizer):
 
               optimizer = fluid.optimizer.RMSProp(0.0001)
               _, params_grads = optimizer.minimize(cost)
-
-    Notes:
-       Currently, RMSPropOptimizer doesn't support sparse parameter optimization.
     """
 
     _momentum_acc_str = "momentum"

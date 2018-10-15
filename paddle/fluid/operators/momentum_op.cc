@@ -38,11 +38,6 @@ class MomentumOp : public framework::OperatorWithKernel {
             framework::proto::VarType::LOD_TENSOR,
         "The input var's type should be LoDTensor, but the received is %s",
         ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Grad").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of Momentum should not be null.");
