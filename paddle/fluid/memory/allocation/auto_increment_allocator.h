@@ -40,13 +40,18 @@ namespace allocation {
 // allocator. The allocation requests from many threads may be dispatched
 // to the same underlying allocator. So the underlying allocator must be
 // thread safe.
+//
+// NOTE(zjl): Add capacity parameters to constructor. A high-performance
+// thread-safe std::vector with varying size is hard to implement.
+// Fortunately, we can get the total GPU memory and each chunk size.
+// Therefore, we can get the suitable capacity of AutoIncrementAllocator.
 class AutoIncrementAllocator : public ManagedAllocator {
  public:
   // Creator is the method to create ManagedAllocator
   using AllocatorCreator = std::function<std::shared_ptr<ManagedAllocator>()>;
 
-  explicit AutoIncrementAllocator(AllocatorCreator&& creator)
-      : creator_(std::move(creator)), prev_success_allocator_{0} {}
+  explicit AutoIncrementAllocator(AllocatorCreator&& creator, size_t capacity)
+      : creator_(std::move(creator)), underlying_allocators_(capacity) {}
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
   std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
   bool IsAllocThreadSafe() const override;
@@ -56,15 +61,13 @@ class AutoIncrementAllocator : public ManagedAllocator {
   template <typename Callback>
   inline typename std::result_of<Callback(ManagedAllocator&)>::type
   InvokeOrCreateUnderlyingAllocator(Callback callback) {
-    std::shared_ptr<std::vector<AllocatorCreator::result_type>>
-        underlying_allocators = underlying_allocators_;
-    size_t retry_count = underlying_allocators->size();
-    size_t allocator_num = retry_count;
     auto cur = prev_success_allocator_.load();
+    size_t retry_count = allocator_num_.load();
+    size_t allocator_num = retry_count;
     while (retry_count-- > 0) {  // until there retry count is zero
       try {
-        auto res = callback(*((*underlying_allocators)[cur]));
-        prev_success_allocator_.store(cur);
+        auto res = callback(*underlying_allocators_[cur]);
+        prev_success_allocator_ = cur;
         return std::move(res);
       } catch (BadAlloc&) {
         if (++cur >= allocator_num) {
@@ -77,20 +80,34 @@ class AutoIncrementAllocator : public ManagedAllocator {
     }
     // No suitable allocator
 
+    // This happens when the first allocator is exhausted and
+    // there are more than 1 allocation requests
+    // In this situation, the first allocation request would success
+    // and the second allocation request would fail if we do not use
+    // the newly created allocator by the first allocation request.
+    for (size_t new_allocator_num = allocator_num_.load();
+         allocator_num < new_allocator_num; ++allocator_num) {
+      try {
+        auto ret = callback(*underlying_allocators_[allocator_num]);
+        prev_success_allocator_ = allocator_num;
+        return std::move(ret);
+      } catch (BadAlloc&) {
+      } catch (...) {
+        std::rethrow_exception(std::current_exception());
+      }
+    }
+
     ManagedAllocator* new_allocator;
     {
       std::lock_guard<std::mutex> guard(mtx_);
-      auto old_size = underlying_allocators_->size();
-      decltype(underlying_allocators_) new_allocators(
-          new std::vector<AllocatorCreator::result_type>(old_size + 1));
-      for (size_t i = 0; i < old_size; ++i) {
-        (*new_allocators)[i] = (*underlying_allocators_)[i];
-      }
-
-      (*new_allocators)[old_size] = creator_();
-      new_allocator = (*new_allocators)[old_size].get();
-      underlying_allocators_ = new_allocators;
-      prev_success_allocator_.store(old_size);
+      auto old_size = allocator_num_.load();
+      PADDLE_ENFORCE_LT(old_size, underlying_allocators_.size(),
+                        "Allocator number exceeds capacity %d",
+                        underlying_allocators_.size());
+      underlying_allocators_[old_size] = creator_();
+      new_allocator = underlying_allocators_[old_size].get();
+      prev_success_allocator_ = old_size;
+      allocator_num_.fetch_add(1);
     }
 
     PADDLE_ENFORCE(
@@ -102,9 +119,8 @@ class AutoIncrementAllocator : public ManagedAllocator {
 
   AllocatorCreator creator_;
 
-  // Use std::shared_ptr to ensure thread-safety
-  std::shared_ptr<std::vector<AllocatorCreator::result_type>>
-      underlying_allocators_;
+  std::vector<AllocatorCreator::result_type> underlying_allocators_;
+  std::atomic<size_t> allocator_num_{0};
 
   // Use std::atomic rather than std::mutex, since std::atomic is usually
   // lock-free
