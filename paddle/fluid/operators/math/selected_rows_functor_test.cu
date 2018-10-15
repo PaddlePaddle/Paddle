@@ -242,7 +242,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(tensor1_cpu_data[9 * row_numel + 6], 5.0);
 }
 
-TEST(selected_rows_functor, cpu_merge_add) {
+TEST(selected_rows_functor, gpu_merge_add) {
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDADeviceContext& ctx =
@@ -250,7 +250,7 @@ TEST(selected_rows_functor, cpu_merge_add) {
           paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
   paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
                                        float>
-      functor;
+      set_const;
 
   int64_t height = 10;
   int64_t row_numel = 8;
@@ -262,7 +262,7 @@ TEST(selected_rows_functor, cpu_merge_add) {
   in1_value->mutable_data<float>(
       paddle::framework::make_ddim(
           {static_cast<int64_t>(rows1.size()), row_numel}),
-      cpu_place);
+      gpu_place);
   set_const(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{2, 5, 3, 5, 3};
@@ -272,7 +272,7 @@ TEST(selected_rows_functor, cpu_merge_add) {
   in2_value->mutable_data<float>(
       paddle::framework::make_ddim(
           {static_cast<int64_t>(rows2.size()), row_numel}),
-      cpu_place);
+      gpu_place);
   set_const(ctx, in2_value, 1.0);
 
   std::unique_ptr<paddle::framework::SelectedRows> output{
@@ -288,7 +288,7 @@ TEST(selected_rows_functor, cpu_merge_add) {
   merge_add_functor(ctx, inputs, output.get());
 
   paddle::framework::Tensor output_cpu;
-  paddle::framework::TensorCopy(*output, cpu_place, ctx, &output_cpu);
+  paddle::framework::TensorCopy(output.value(), cpu_place, ctx, &output_cpu);
   ctx.Wait();
 
   EXPECT_EQ(output->height(), height);
