@@ -26,8 +26,13 @@ detection_library(anchor_generator_op SRCS anchor_generator_op.cc
 anchor_generator_op.cu)
 detection_library(target_assign_op SRCS target_assign_op.cc
 target_assign_op.cu)
-detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
-polygon_box_transform_op.cu)
+
+if(WITH_GPU)
+  detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)
+else()
+  detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
+endif()
+
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 detection_library(generate_proposal_labels_op SRCS generate_proposal_labels_op.cc)
 detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
