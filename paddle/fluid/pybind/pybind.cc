@@ -169,14 +169,14 @@ PYBIND11_PLUGIN(core) {
      A LoDTensor X can look like the example below. It contains 2 sequences.
      The first has length 2 and the second has length 3, as described by x.lod.
 
-     The first tensor dimension 6=2+3 is calculated from LoD if it's available.
+     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
      It means the total number of sequence element. In X, each element has 2
-     columns, hence [6, 2].
+     columns, hence [5, 2].
 
       x.lod  = [[2, 3]]
       x.data = [[1, 2], [3, 4],
-                [5, 6], [7, 8], [9, 10], [11, 12]]
-      x.shape = [6, 2]
+                [5, 6], [7, 8], [9, 10]]
+      x.shape = [5, 2]
 
       LoD can have multiple levels (for example, a paragraph can have multiple
       sentences and a sentence can have multiple words). In the following
