@@ -3,8 +3,8 @@ add_subdirectory(detail)
 endif(NOT WIN32)
 
 function(math_library TARGET)
-    # math_library is a function to create math library. 
-    # The interface is the same as cc_library. 
+    # math_library is a function to create math library.
+    # The interface is the same as cc_library.
     # But it handle split GPU/CPU code and link some common library.
     set(cc_srcs)
     set(cu_srcs)
@@ -53,7 +53,7 @@ cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
 math_library(math_function DEPS blas)
 math_library(maxouting)
 math_library(pooling)
-math_library(selected_rows_functor DEPS selected_rows math_function)
+math_library(selected_rows_functor DEPS selected_rows math_function blas)
 math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function)

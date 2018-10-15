@@ -88,7 +88,7 @@ class TestBase(unittest.TestCase):
 
         self.epsilon = epsilon
         self.decay = 0.9
-        self.momentum = 0.0
+        self.momentum = 0.1
         self.centered = centered
 
         self.ms_out = self.decay * self.mean_square + (1 - self.decay
@@ -170,8 +170,11 @@ class TestRmspropOp(TestBase):
         rmsprop_op.run(self.scope, self.place)
 
         self.check(
-            np.array(self.mean_square_tensor), self.ms_out, self.place,
-            self.mean_square_name)
+            np.array(self.mean_square_tensor),
+            self.ms_out,
+            self.place,
+            self.mean_square_name,
+            atol=atol)
         self.check(
             np.array(self.moment_tensor),
             self.moment_out,
