@@ -288,7 +288,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
   merge_add_functor(ctx, inputs, output.get());
 
   paddle::framework::Tensor output_cpu;
-  paddle::framework::TensorCopy(output.value(), cpu_place, ctx, &output_cpu);
+  paddle::framework::TensorCopy(output->value(), cpu_place, ctx, &output_cpu);
   ctx.Wait();
 
   EXPECT_EQ(output->height(), height);
