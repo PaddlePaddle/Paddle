@@ -79,6 +79,10 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
+  void CreateFusedBroadcastOp(
+      ir::Graph *result,
+      const std::vector<std::unordered_set<std::string>> &bcast_varnames) const;
+
   bool IsSparseGradient(const std::string &og) const;
 
   size_t GetAppropriateDeviceID(
