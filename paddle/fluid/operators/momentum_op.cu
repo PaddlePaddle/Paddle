@@ -46,6 +46,17 @@ template <typename T>
 class MomentumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const auto* param_var = ctx.InputVar("Param");
+    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Param").front(), param_var->Type().name());
+    const auto* grad_var = ctx.InputVar("Grad");
+    PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Grad").front(), grad_var->Type().name());
+
     auto param_out = ctx.Output<framework::Tensor>("ParamOut");
     auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
     auto param = ctx.Input<framework::Tensor>("Param");

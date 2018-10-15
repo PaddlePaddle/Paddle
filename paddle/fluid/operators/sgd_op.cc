@@ -21,7 +21,7 @@ class SGDOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
                    "Input(Param) of SGDOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
@@ -42,7 +42,7 @@ class SGDOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
@@ -50,17 +50,20 @@ class SGDOp : public framework::OperatorWithKernel {
 
 class SGDOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto input_var = op_desc.Input("Param")[0];
-    for (auto& out_var : op_desc.Output("ParamOut")) {
-      if (block->FindRecursiveOrCreateVar(input_var).GetType() ==
-          framework::proto::VarType::SELECTED_ROWS) {
-        block->FindRecursiveOrCreateVar(out_var).SetType(
-            framework::proto::VarType::SELECTED_ROWS);
-      } else {
-        block->FindRecursiveOrCreateVar(out_var).SetType(
-            framework::proto::VarType::LOD_TENSOR);
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto input_var_n = op_desc.Input("Param")[0];
+    auto in_var_type = block->FindRecursiveOrCreateVar(input_var_n).GetType();
+    PADDLE_ENFORCE(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
+                       in_var_type == framework::proto::VarType::LOD_TENSOR,
+                   "The input Var's type should be LoDtensor or SelectedRows,"
+                   " but the received var(%s)'s type is %s",
+                   input_var_n, in_var_type);
+
+    for (auto &out_var_n : op_desc.Output("ParamOut")) {
+      auto &out_var = block->FindRecursiveOrCreateVar(out_var_n);
+      if (out_var.GetType() != in_var_type) {
+        out_var.SetType(in_var_type);
       }
     }
   }
