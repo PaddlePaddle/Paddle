@@ -81,6 +81,9 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < outs.size(); ++i) {
       auto *out_ids = ids[i];
       auto *out = outs[i];
+
+      out->set_lod(out_ids->lod());
+
       int nums = static_cast<int>(out_ids->dims()[0]);
       auto *out_data = out->mutable_data<T>(
           framework::make_ddim({nums, embedding_size}), place);
