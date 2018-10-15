@@ -43,6 +43,9 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       const auto ids_tensors = ctx.MultiInput<framework::LoDTensor>("Ids");
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
         batch_size += ids_tensors[i]->dims()[0];
+
+        const auto *ids = ids_tensors[i];
+        const T *sa = ids->data<T>();
       }
       VLOG(4) << "Get Total BatchSize is: " << batch_size;
 
@@ -51,7 +54,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
         const auto *ids = ids_tensors[i];
         std::memcpy(all_ids.data() + offset, ids->data<T>(),
-                    static_cast<size_t>(ids->numel()));
+                    ids->numel() * sizeof(T));
         offset += ids->numel();
       }
 
