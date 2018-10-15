@@ -49,7 +49,8 @@ namespace analysis {
 class Analyzer : public OrderedRegistry<PassManager> {
  public:
   // Register all the pass-managers.
-  explicit Analyzer(const std::vector<std::string>& ir_passes);
+  explicit Analyzer(
+      const std::vector<std::string>& ir_passes = std::vector<std::string>({}));
 
   void Run(Argument* argument);
 
