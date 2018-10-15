@@ -32,6 +32,9 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
   virtual ~LockFreeOptimizeEmbeddingPass() {}
 
  protected:
+  ir::Node* CreateNewOptimizerNode(std::unique_ptr<ir::Graph> graph,
+                                   ir::Node* sum_node);
+
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 };
 
