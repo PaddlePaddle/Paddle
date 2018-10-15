@@ -11,6 +11,8 @@
 #WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #See the License for the specific language governing permissions and
 #limitations under the License.
+
+from __future__ import print_function
 import unittest
 import numpy as np
 import copy
@@ -112,7 +114,7 @@ def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
 
     if keep_top_k > -1 and num_det > keep_top_k:
         score_index = []
-        for c, indices in selected_indices.iteritems():
+        for c, indices in selected_indices.items():
             for idx in indices:
                 score_index.append((scores[c][idx], c, idx))
 
@@ -135,15 +137,15 @@ def batched_multiclass_nms(boxes, scores, background, score_threshold,
     batch_size = scores.shape[0]
 
     det_outs = []
-    lod = [0]
+    lod = []
     for n in range(batch_size):
         nmsed_outs, nmsed_num = multiclass_nms(boxes[n], scores[n], background,
                                                score_threshold, nms_threshold,
                                                nms_top_k, keep_top_k)
-        lod.append(lod[-1] + nmsed_num)
+        lod.append(nmsed_num)
         if nmsed_num == 0: continue
 
-        for c, indices in nmsed_outs.iteritems():
+        for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = boxes[n][idx][:]
                 det_outs.append([c, scores[n][c][idx], xmin, ymin, xmax, ymax])

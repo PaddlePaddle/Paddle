@@ -37,6 +37,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
+
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
@@ -57,7 +58,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
                     "The number of input channels should be equal to filter "
                     "channels * groups.");
-
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
       "The number of output channels should be divided by groups.");
@@ -75,6 +75,10 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library{framework::LibraryType::kPlain};
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library = framework::LibraryType::kCUDNN;
@@ -84,6 +88,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   if (library == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
   }
 #endif
 
@@ -99,14 +104,12 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                       "float16 can only be used when CUDNN is used");
   }
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::DataLayout layout = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                  library);
 }
 
 void Conv2DOpMaker::Make() {
+  AddAttr<bool>("is_test", "").SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -120,9 +123,15 @@ void Conv2DOpMaker::Make() {
            "H is the height of the filter, and W is the width of the filter. "
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
+  AddInput("Bias",
+           "(Tensor) Bias to be added to each output of filter application."
+           "The format of output tensor is X (one-dimensional) of size equal"
+           "to the number of output channels. Only used with MKL-DNN.")
+      .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.");
+            "The format of output tensor is also NCHW.")
+      .Reuse("Input");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -152,6 +161,13 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_eltwise",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever convolution output is connected via skip connection "
+                "to a previous layer.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -217,7 +233,8 @@ void Conv3DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.");
+            "The format of output tensor is also NCDHW.")
+      .Reuse("Input");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "
@@ -309,6 +326,10 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
@@ -318,12 +339,10 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
       layout_, library_);

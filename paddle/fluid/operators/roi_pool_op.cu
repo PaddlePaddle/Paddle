@@ -31,19 +31,19 @@ static inline int NumBlocks(const int N) {
 
 template <typename T>
 __global__ void GPUROIPoolForward(
-    const int nthreads, const T* input_data, const int64_t* input_rois,
+    const int nthreads, const T* input_data, const T* input_rois,
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     int* roi_batch_id_data, T* output_data, int64_t* argmax_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (size_t i = index; i < nthreads; i += offset) {
-    int pw = index % pooled_width;
-    int ph = (index / pooled_width) % pooled_height;
-    int c = (index / pooled_width / pooled_height) % channels;
-    int n = index / pooled_width / pooled_height / channels;
+    int pw = i % pooled_width;
+    int ph = (i / pooled_width) % pooled_height;
+    int c = (i / pooled_width / pooled_height) % channels;
+    int n = i / pooled_width / pooled_height / channels;
 
-    const int64_t* offset_input_rois = input_rois + n * kROISize;
+    const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
     int roi_start_w = round(offset_input_rois[0] * spatial_scale);
     int roi_start_h = round(offset_input_rois[1] * spatial_scale);
@@ -52,14 +52,19 @@ __global__ void GPUROIPoolForward(
 
     int roi_width = max(roi_end_w - roi_start_w + 1, 1);
     int roi_height = max(roi_end_h - roi_start_h + 1, 1);
-    T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
-    T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
-    int hstart = static_cast<int>(floor(static_cast<T>(ph) * bin_size_h));
-    int wstart = static_cast<int>(floor(static_cast<T>(pw) * bin_size_w));
-    int hend = static_cast<int>(ceil(static_cast<T>(ph + 1) * bin_size_h));
-    int wend = static_cast<int>(ceil(static_cast<T>(pw + 1) * bin_size_w));
-
+    int hstart = static_cast<int>(floor(static_cast<double>(ph) *
+                                        static_cast<double>(roi_height) /
+                                        static_cast<double>(pooled_height)));
+    int wstart = static_cast<int>(floor(static_cast<double>(pw) *
+                                        static_cast<double>(roi_width) /
+                                        static_cast<double>(pooled_width)));
+    int hend = static_cast<int>(ceil(static_cast<double>(ph + 1) *
+                                     static_cast<double>(roi_height) /
+                                     static_cast<double>(pooled_height)));
+    int wend = static_cast<int>(ceil(static_cast<double>(pw + 1) *
+                                     static_cast<double>(roi_width) /
+                                     static_cast<double>(pooled_width)));
     hstart = min(max(hstart + roi_start_h, 0), height);
     hend = min(max(hend + roi_start_h, 0), height);
     wstart = min(max(wstart + roi_start_w, 0), width);
@@ -79,16 +84,16 @@ __global__ void GPUROIPoolForward(
         }
       }
     }
-    output_data[index] = maxval;
+    output_data[i] = maxval;
     if (argmax_data) {
-      argmax_data[index] = maxidx;
+      argmax_data[i] = maxidx;
     }
   }
 }
 
 template <typename T>
 __global__ void GPUROIPoolBackward(
-    const int nthreads, const int64_t* input_rois, const T* output_grad,
+    const int nthreads, const T* input_rois, const T* output_grad,
     const int64_t* argmax_data, const int num_rois, const float spatial_scale,
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, int* roi_batch_id_data,
@@ -96,10 +101,10 @@ __global__ void GPUROIPoolBackward(
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (int i = index; i < nthreads; i += offset) {
-    int pw = index % pooled_width;
-    int ph = (index / pooled_width) % pooled_height;
-    int c = (index / pooled_width / pooled_height) % channels;
-    int n = index / pooled_width / pooled_height / channels;
+    int pw = i % pooled_width;
+    int ph = (i / pooled_width) % pooled_height;
+    int c = (i / pooled_width / pooled_height) % channels;
+    int n = i / pooled_width / pooled_height / channels;
 
     int roi_batch_ind = roi_batch_id_data[n];
     int input_offset = (roi_batch_ind * channels + c) * height * width;
@@ -138,6 +143,7 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
 
     int rois_num = rois->dims()[0];
+
     if (rois_num == 0) return;
 
     int output_size = out->numel();
@@ -168,8 +174,8 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
 
     GPUROIPoolForward<
         T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        output_size, in->data<T>(), rois->data<int64_t>(), spatial_scale,
-        channels, height, width, pooled_height, pooled_width,
+        output_size, in->data<T>(), rois->data<T>(), spatial_scale, channels,
+        height, width, pooled_height, pooled_width,
         roi_batch_id_list_gpu.data<int>(), out->mutable_data<T>(ctx.GetPlace()),
         argmax->mutable_data<int64_t>(ctx.GetPlace()));
   }
@@ -222,7 +228,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       if (output_grad_size > 0) {
         GPUROIPoolBackward<
             T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-            output_grad_size, rois->data<int64_t>(), out_grad->data<T>(),
+            output_grad_size, rois->data<T>(), out_grad->data<T>(),
             argmax->data<int64_t>(), rois_num, spatial_scale, channels, height,
             width, pooled_height, pooled_width,
             roi_batch_id_list_gpu.data<int>(),

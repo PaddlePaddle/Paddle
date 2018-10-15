@@ -33,14 +33,11 @@ class OpDesc {
   OpDesc(const std::string &type, const VariableNameMap &inputs,
          const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block);
+  OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
-  OpDesc(const OpDesc &other, BlockDesc *block) {
-    *this = other;
-    block_ = block;
-  }
+  OpDesc(const OpDesc &other, BlockDesc *block);
 
   void CopyFrom(const OpDesc &op_desc);
 
@@ -76,9 +73,17 @@ class OpDesc {
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
 
+  void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
+
   Attribute GetAttr(const std::string &name) const;
 
-  int GetBlockAttr(const std::string &name) const;
+  const proto::OpProto::Attr &GetProtoAttr(const std::string &name) const;
+
+  Attribute GetNullableAttr(const std::string &name) const;
+
+  int GetBlockAttrId(const std::string &name) const;
+
+  std::vector<int> GetBlocksAttrIds(const std::string &name) const;
 
   void Rename(const std::string &old_name, const std::string &new_name);
 

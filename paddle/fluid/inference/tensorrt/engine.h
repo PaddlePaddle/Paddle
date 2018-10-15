@@ -19,8 +19,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
@@ -37,23 +39,30 @@ class TensorRTEngine : public EngineBase {
   // Weight is model parameter.
   class Weight {
    public:
-    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
+    Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
       w_.count = num_elem;
     }
     const nvinfer1::Weights& get() { return w_; }
 
+    std::vector<int64_t> dims;
+
    private:
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream,
+  TensorRTEngine(int max_batch, int max_workspace,
+                 cudaStream_t* stream = nullptr, int device = 0,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        stream_(stream),
-        logger_(logger) {}
+        stream_(stream ? stream : &default_stream_),
+        logger_(logger),
+        device_(device) {
+    freshDeviceId();
+    cudaStreamCreate(stream_);
+  }
 
   virtual ~TensorRTEngine();
 
@@ -92,13 +101,15 @@ class TensorRTEngine : public EngineBase {
   cudaStream_t* stream() { return stream_; }
 
   // Fill an input from CPU memory with name and size.
-  void SetInputFromCPU(const std::string& name, void* data, size_t size);
+  void SetInputFromCPU(const std::string& name, const void* data, size_t size);
   // TODO(Superjomn) is this method necessary given that buffer(xxx) can be
   // accessed directly. Fill an input from GPU memory with name and size.
-  void SetInputFromGPU(const std::string& name, void* data, size_t size);
+  void SetInputFromGPU(const std::string& name, const void* data, size_t size);
   // Get an output called name, the output of tensorrt is in GPU, so this method
-  // will just return the output's GPU memory address.
+  // Return the output's GPU memory address without copy.
   void* GetOutputInGPU(const std::string& name);
+  // Copy data into dst inside the GPU device.
+  void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.
   void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
@@ -109,13 +120,31 @@ class TensorRTEngine : public EngineBase {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
+  void SetRuntimeBatch(size_t batch_size);
+  int GetRuntimeBatch();
+  int GetDevice() { return device_; }
+
+  // A pointer to CPU memory is needed of the TRT weight.
+  // Before TRT runs, fluid loads weight into GPU storage.
+  // so we need to copy the weights from GPU to CPU in our op converter.
+  // We use a map to store these weights for the weight memory is not released
+  // in advance, which affecting the construction of TRT Op.
+  std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
+      weight_map;
 
  private:
   // the max batch size
   int max_batch_;
+  // the runtime batch size
+  static int runtime_batch_;
   // the max memory size the engine uses
   int max_workspace_;
+
+  // batch size of the current data, will be updated each Executation.
+  int batch_size_{-1};
   cudaStream_t* stream_;
+  // If stream_ is not set from outside, hold its own stream.
+  cudaStream_t default_stream_;
   nvinfer1::ILogger& logger_;
 
   std::vector<Buffer> buffers_;
@@ -123,11 +152,17 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
+  // The specific GPU id that the TensorRTEngine bounded to.
+  int device_;
 
   // TensorRT related internal members
   template <typename T>
   struct Destroyer {
-    void operator()(T* x) { x->destroy(); }
+    void operator()(T* x) {
+      if (x) {
+        x->destroy();
+      }
+    }
   };
   template <typename T>
   using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
@@ -135,6 +170,10 @@ class TensorRTEngine : public EngineBase {
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
+  // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
+  // ensure that the thread is associated with the correct device by calling
+  // freshDeviceId().
+  void freshDeviceId();
 };  // class TensorRTEngine
 
 // Add an layer__ into engine__ with args ARGS.
@@ -150,6 +189,38 @@ class TensorRTEngine : public EngineBase {
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
+
+/*
+ * Helper to control the TensorRT engine's creation and deletion.
+ */
+class TRT_EngineManager {
+ public:
+  bool HasEngine(const std::string& name) const {
+    return engines_.count(name) != 0;
+  }
+
+  // Get an engine called `name`.
+  TensorRTEngine* Get(const std::string& name) const {
+    return engines_.at(name).get();
+  }
+
+  // Create or get an engine called `name`
+  TensorRTEngine* Create(int max_batch, int max_workspace, cudaStream_t* stream,
+                         const std::string& name, int gpu_device = 0) {
+    auto* p = new TensorRTEngine(max_batch, max_workspace, stream, gpu_device);
+    engines_[name].reset(p);
+    return p;
+  }
+
+  void DeleteALl() {
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+};
 
 }  // namespace tensorrt
 }  // namespace inference

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -27,13 +28,58 @@ namespace paddle {
 namespace framework {
 extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 
+template <typename T>
+std::unordered_map<std::string, T> GetNonPersistableReferenceCount(
+    const ProgramDesc& prog, size_t block_id) {
+  auto& block = prog.Block(block_id);
+  std::unordered_set<std::string> ignored_vars;
+  std::unordered_map<std::string, T> ref_cnts;
+
+  for (auto var_desc : block.AllVars()) {
+    auto type = var_desc->Proto()->type().type();
+    if (type != proto::VarType::LOD_TENSOR || var_desc->Persistable()) {
+      ignored_vars.insert(var_desc->Name());  // ignore persistable vars
+    }
+  }
+
+  for (auto op_desc : block.AllOps()) {
+    for (auto& input : op_desc->Inputs()) {
+      for (auto& input_name : input.second) {
+        if (!ignored_vars.count(input_name)) {
+          if (ref_cnts.count(input_name))
+            ++ref_cnts[input_name];
+          else
+            ref_cnts[input_name] = 1;
+        }
+      }
+    }
+
+    for (auto& output : op_desc->Outputs()) {
+      for (auto output_name : output.second) {
+        if (!ignored_vars.count(output_name)) {
+          if (ref_cnts.count(output_name))
+            ++ref_cnts[output_name];
+          else
+            ref_cnts[output_name] = 1;
+        }
+      }
+    }
+  }
+  return ref_cnts;
+}
+
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
   ~ExecutorPrepareContext();
 
+  void ResetReferenceCount() { cur_ref_cnts_ = ref_cnts_; }
+
   const framework::ProgramDesc& prog_;
   size_t block_id_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+
+  std::unordered_map<std::string, int> ref_cnts_;
+  std::unordered_map<std::string, int> cur_ref_cnts_;
 };
 
 class Executor {
@@ -43,6 +89,12 @@ class Executor {
       : Executor(device.GetPlace()) {}
 
   explicit Executor(const platform::Place& place);
+
+  /*
+   * Close this Executor.
+   * Calling this method will send complete messages to all pserver instances.
+   */
+  void Close();
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -54,10 +106,11 @@ class Executor {
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true);
 
+  // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, const LoDTensor*>* feed_targets,
            std::map<std::string, LoDTensor*>* fetch_targets,
-           bool create_vars = true,
+           bool create_local_scope = true, bool create_vars = true,
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
 
@@ -71,14 +124,18 @@ class Executor {
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
-                          bool create_vars = true);
+                          bool create_vars = true, bool keep_kids = false);
 
+  // This API is very slow.
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
                           std::map<std::string, LoDTensor*>* fetch_targets,
+                          bool create_local_scope = true,
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
+
+  void EnableMKLDNN(const ProgramDesc& program);
 
  private:
   const platform::Place place_;

@@ -20,57 +20,63 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/string/printf.h"
 
+#ifdef PADDLE_WITH_GRPC
+#include "paddle/fluid/operators/send_recv_util.h"
+#endif
+
 USE_NO_KERNEL_OP(listen_and_serv);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
-namespace detail = paddle::operators::detail;
+namespace distributed = paddle::operators::distributed;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::AsyncGRPCServer> rpc_service;
+std::unique_ptr<distributed::RPCServer> g_rpc_service;
+std::unique_ptr<distributed::RequestHandler> g_req_handler;
 
-void StartServer(std::atomic<bool>* initialized) {
+void StartServer() {
   f::Scope scope;
   p::CPUPlace place;
   scope.Var(NCCL_ID_VARNAME);
   p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
-  rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", true));
-
   f::ProgramDesc empty_program;
   f::Executor executor(dev_ctx.GetPlace());
-  rpc_service->SetScope(&scope);
-  rpc_service->SetDevCtx(&dev_ctx);
-  rpc_service->SetProgram(&empty_program);
-  rpc_service->SetExecutor(&executor);
+  g_req_handler->SetScope(&scope);
+  g_req_handler->SetDevCtx(&dev_ctx);
+  g_req_handler->SetProgram(&empty_program);
+  g_req_handler->SetExecutor(&executor);
+
+  g_rpc_service->RegisterRPC(distributed::kRequestSend, g_req_handler.get());
+  g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service.get()));
-  *initialized = true;
-  rpc_service->SetCond(0);
-  auto recv = rpc_service->Get();
+      std::bind(&distributed::RPCServer::StartServer, g_rpc_service.get()));
+
+  g_rpc_service->SetCond(distributed::kRequestSend);
+  g_rpc_service->WaitBarrier(distributed::kRequestSend);
+
   LOG(INFO) << "got nccl id and stop server...";
-  rpc_service->ShutDown();
+  g_rpc_service->ShutDown();
   server_thread.join();
 }
 
-TEST(SendNcclId, Normal) {
-  std::atomic<bool> initialized{false};
-  std::thread server_thread(StartServer, &initialized);
-  while (!initialized) {
-  }
-  // wait server to start
-  // sleep(2);
-  rpc_service->WaitServerReady();
+TEST(SendNcclId, RPCServer) {
+  g_req_handler.reset(new distributed::RequestSendHandler(true));
+  g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
+
+  std::thread server_thread(StartServer);
+  g_rpc_service->WaitServerReady();
 
   f::Scope scope;
   p::CPUPlace place;
@@ -78,17 +84,23 @@ TEST(SendNcclId, Normal) {
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
   auto var = scope.Var(NCCL_ID_VARNAME);
-  // var->SetType(f::proto::VarType_Type_RAW);
   auto id = var->GetMutable<ncclUniqueId>();
   p::dynload::ncclGetUniqueId(id);
 
-  int port = rpc_service->GetSelectedPort();
-  std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient client;
+  int port = g_rpc_service->GetSelectedPort();
 
-  client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
-  client.Wait();
+  std::string ep = string::Sprintf("127.0.0.1:%d", port);
+
+  distributed::RPCClient* client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+
+  LOG(INFO) << "connect to server" << ep;
+  client->AsyncSendVar(ep, dev_ctx, scope, NCCL_ID_VARNAME);
+  client->Wait();
+  client->AsyncSendBatchBarrier(ep);
+  client->Wait();
+
   server_thread.join();
-  auto* ptr = rpc_service.release();
-  delete ptr;
+  g_rpc_service.reset(nullptr);
+  g_req_handler.reset(nullptr);
 }

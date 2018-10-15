@@ -128,8 +128,10 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                               "user should avoid setting this attribute.")
         .SetDefault({});
     AddComment(R"DOC(
-Compute and return the noise-contrastive estimation training loss.
-See [Noise-contrastive estimation: A new estimation principle for unnormalized statistical models](http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf).
+Compute and return the noise-contrastive estimation training loss. See 
+`Noise-contrastive estimation: A new estimation principle for unnormalized 
+statistical models 
+ <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
 By default this operator uses a uniform distribution for sampling.
 )DOC");
   }

@@ -139,7 +139,20 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The pooled output width.")
         .SetDefault(1);
     AddComment(R"DOC(
-ROIPool operator
+**ROIPool Operator**
+
+Region of interest pooling (also known as RoI pooling) is to perform
+is to perform max pooling on inputs of nonuniform sizes to obtain
+fixed-size feature maps (e.g. 7*7).
+
+The operator has three steps:
+
+1. Dividing each region proposal into equal-sized sections with
+   the pooled_width and pooled_height
+
+2. Finding the largest value in each section
+
+3. Copying these max values to the output buffer
 
 ROI Pooling for Faster-RCNN. The link below is a further introduction: 
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn

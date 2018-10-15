@@ -14,6 +14,7 @@
 
 import time
 import unittest
+import functools
 
 import paddle.reader
 
@@ -136,7 +137,7 @@ class TestXmap(unittest.TestCase):
                     reader = paddle.reader.xmap_readers(mapper,
                                                         reader_creator_10(0),
                                                         tNum, size, order)
-                    for n in xrange(3):
+                    for n in range(3):
                         result = []
                         for i in reader():
                             result.append(i)
@@ -156,7 +157,7 @@ class TestPipeReader(unittest.TestCase):
 
         import tempfile
 
-        records = [str(i) for i in xrange(5)]
+        records = [str(i) for i in range(5)]
         temp = tempfile.NamedTemporaryFile()
         try:
             with open(temp.name, 'w') as f:
@@ -172,6 +173,50 @@ class TestPipeReader(unittest.TestCase):
         finally:
             # delete the temporary file
             temp.close()
+
+
+class TestMultiProcessReader(unittest.TestCase):
+    def setup(self):
+        self.samples = []
+        for i in range(1000):
+            self.samples.append([[i], [i + 1, i + 2], i + 3])
+
+        def reader(index):
+            for i in range(len(self.samples)):
+                if i % 3 == index:
+                    yield self.samples[i]
+
+        self.reader0 = functools.partial(reader, 0)
+        self.reader1 = functools.partial(reader, 1)
+        self.reader2 = functools.partial(reader, 2)
+
+    def reader_test(self, use_pipe):
+        self.setup()
+        results = []
+        for data in paddle.reader.multiprocess_reader(
+            [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
+            results.append(data)
+        self.assertEqual(sorted(self.samples), sorted(results))
+
+    def test_multi_process_reader(self):
+        self.reader_test(use_pipe=False)
+        self.reader_test(use_pipe=True)
+
+
+class TestFakeReader(unittest.TestCase):
+    def test_fake_reader(self):
+        def reader():
+            for i in range(10):
+                yield i
+
+        data_num = 100
+        fake_reader = paddle.reader.Fake()(reader, data_num)
+        for _ in range(10):
+            i = 0
+            for data in fake_reader():
+                self.assertEqual(data, 0)
+                i += 1
+            self.assertEqual(i, data_num)
 
 
 if __name__ == '__main__':

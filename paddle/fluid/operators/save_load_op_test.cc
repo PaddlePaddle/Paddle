@@ -139,6 +139,7 @@ TEST(LoadFP16Op, CPU) {
   save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
+  load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);

@@ -72,12 +72,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto* out_false_pos = ctx.Output<framework::LoDTensor>("AccumFalsePos");
 
     float overlap_threshold = ctx.Attr<float>("overlap_threshold");
-    float evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
+    bool evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
     auto ap_type = GetAPType(ctx.Attr<std::string>("ap_type"));
     int class_num = ctx.Attr<int>("class_num");
 
-    auto label_lod = in_label->lod();
-    auto detect_lod = in_detect->lod();
+    auto& label_lod = in_label->lod();
+    auto& detect_lod = in_detect->lod();
     PADDLE_ENFORCE_EQ(label_lod.size(), 1UL,
                       "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(label_lod[0].size(), detect_lod[0].size(),
@@ -166,23 +166,29 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto labels = framework::EigenTensor<T, 2>::From(input_label);
     auto detect = framework::EigenTensor<T, 2>::From(input_detect);
 
-    auto label_lod = input_label.lod();
-    auto detect_lod = input_detect.lod();
+    auto& label_lod = input_label.lod();
+    auto& detect_lod = input_detect.lod();
 
     int batch_size = label_lod[0].size() - 1;
-    auto label_index = label_lod[0];
+    auto& label_index = label_lod[0];
 
     for (int n = 0; n < batch_size; ++n) {
       std::map<int, std::vector<Box>> boxes;
       for (size_t i = label_index[n]; i < label_index[n + 1]; ++i) {
-        Box box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
         int label = labels(i, 0);
-        auto is_difficult = labels(i, 1);
-        if (std::abs(is_difficult - 0.0) < 1e-6)
-          box.is_difficult = false;
-        else
-          box.is_difficult = true;
-        boxes[label].push_back(box);
+        if (input_label.dims()[1] == 6) {
+          Box box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
+          auto is_difficult = labels(i, 1);
+          if (std::abs(is_difficult - 0.0) < 1e-6)
+            box.is_difficult = false;
+          else
+            box.is_difficult = true;
+          boxes[label].push_back(box);
+        } else {
+          PADDLE_ENFORCE_EQ(input_label.dims()[1], 5);
+          Box box(labels(i, 1), labels(i, 2), labels(i, 3), labels(i, 4));
+          boxes[label].push_back(box);
+        }
       }
       gt_boxes->push_back(boxes);
     }
@@ -268,7 +274,6 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
 
     output_true_pos->set_lod(true_pos_lod);
     output_false_pos->set_lod(false_pos_lod);
-    return;
   }
 
   void GetInputPos(const framework::Tensor& input_pos_count,
@@ -286,7 +291,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto SetData = [](const framework::LoDTensor& pos_tensor,
                       std::map<int, std::vector<std::pair<T, int>>>& pos) {
       const T* pos_data = pos_tensor.data<T>();
-      auto pos_data_lod = pos_tensor.lod()[0];
+      auto& pos_data_lod = pos_tensor.lod()[0];
       for (size_t i = 0; i < pos_data_lod.size() - 1; ++i) {
         for (size_t j = pos_data_lod[i]; j < pos_data_lod[i + 1]; ++j) {
           T score = pos_data[j * 2];
@@ -311,20 +316,23 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       std::map<int, std::vector<std::pair<T, int>>>* false_pos) const {
     int batch_size = gt_boxes.size();
     for (int n = 0; n < batch_size; ++n) {
-      auto image_gt_boxes = gt_boxes[n];
-      for (auto it = image_gt_boxes.begin(); it != image_gt_boxes.end(); ++it) {
+      auto& image_gt_boxes = gt_boxes[n];
+      for (auto& image_gt_box : image_gt_boxes) {
         size_t count = 0;
-        auto labeled_bboxes = it->second;
+        auto& labeled_bboxes = image_gt_box.second;
         if (evaluate_difficult) {
           count = labeled_bboxes.size();
         } else {
-          for (size_t i = 0; i < labeled_bboxes.size(); ++i)
-            if (!(labeled_bboxes[i].is_difficult)) ++count;
+          for (auto& box : labeled_bboxes) {
+            if (!box.is_difficult) {
+              ++count;
+            }
+          }
         }
         if (count == 0) {
           continue;
         }
-        int label = it->first;
+        int label = image_gt_box.first;
         if (label_pos_count->find(label) == label_pos_count->end()) {
           (*label_pos_count)[label] = count;
         } else {

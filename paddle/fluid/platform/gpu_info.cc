@@ -20,8 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
-              "Default use 92% of GPU memory for PaddlePaddle,"
-              "reserve the rest for page tables, etc");
+              "Allocate a trunk of gpu memory that is this fraction of the "
+              "total gpu memory size. Future memory usage will be allocated "
+              "from the trunk. If the trunk doesn't have enough gpu memory, "
+              "additional trunks of the same size will be requested from gpu "
+              "until the gpu has no memory left for another trunk.");
 
 namespace paddle {
 namespace platform {
@@ -116,7 +119,8 @@ size_t GpuMaxChunkSize() {
   size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
                                           (total - reserving));
 
-  PADDLE_ENFORCE_LE(allocating, available);
+  PADDLE_ENFORCE_LE(allocating, available,
+                    "Insufficient GPU memory to allocation.");
 
   return allocating;
 }

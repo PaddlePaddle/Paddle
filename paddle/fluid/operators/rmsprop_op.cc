@@ -36,9 +36,13 @@ class RmspropOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(param_out) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
-                   "Output(Momentum_out) of RmspropOp should not be null.");
+                   "Output(MomentOut) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MeanSquareOut"),
                    "Output(MeanSquareOut) of RmspropOp should not be null.");
+    if (ctx->Attrs().Get<bool>("centered")) {
+      PADDLE_ENFORCE(ctx->HasOutput("MeanGradOut"),
+                     "Output(MeanGradOut) of RmspropOp should not be null.");
+    }
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
@@ -58,6 +62,9 @@ class RmspropOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
     ctx->SetOutputDim("MeanSquareOut", param_dim);
+    if (ctx->Attrs().Get<bool>("centered")) {
+      ctx->SetOutputDim("MeanGradOut", param_dim);
+    }
   }
 };
 
@@ -70,6 +77,10 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("MeanSquare",
              "(Tensor, default Tensor<float>)"
              " The mean square value that gets updated.");
+    AddInput("MeanGrad",
+             "(Tensor, default Tensor<float>)"
+             " The moving average of gradient")
+        .AsDispensable();
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
              "The learning rate should be a tensor of size 1.");
@@ -82,6 +93,8 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
     AddOutput("MomentOut", "(Tensor) Output updated moment.");
     AddOutput("MeanSquareOut", "(Tensor) Output Mean squared updated value.");
+    AddOutput("MeanGradOut",
+              "(Tensor) Output moving average of gradient updated value.");
 
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) Constant "
@@ -93,6 +106,8 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.9f);
     AddAttr<float>("momentum", "(float, default 0.0) Constant value.")
         .SetDefault(0.0f);
+    AddAttr<bool>("centered", "(bool, default false) use centered rmsprop.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Rmsprop Optimizer. 
 
@@ -102,6 +117,14 @@ MomentOut = momentum * Moment +
             \frac{LearningRate * Grad}{\sqrt{MeanSquareOut + epsilon}} \\
 ParamOut = Param -  MomentOut
 $$
+
+if centered is true:
+
+mean_grad = decay * mean_square{t-1} + (1-decay) * gradient
+mean_square = decay * mean_square{t-1} + (1-decay) * gradient ** 2
+mom = momentum * mom{t-1} + learning_rate * g_t /
+    sqrt(mean_square - mean_grad**2 + epsilon)
+param -= mom
 
 The original slides that proposed Rmsprop: Slide 29 of
 http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)

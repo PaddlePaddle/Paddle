@@ -30,7 +30,7 @@ using std::endl;
 
 void CreateInput(LoDTensor* ids, LoDTensor* scores) {
   LoD lod;
-  vector<size_t> level0({0, 1, 4});
+  vector<size_t> level0({0, 2, 4});
   vector<size_t> level1({0, 1, 2, 3, 4});
   lod.push_back(level0);
   lod.push_back(level1);
@@ -64,17 +64,22 @@ TEST(beam_search_op, run) {
   for (int i = 0; i < 4; i++) {
     pre_ids.mutable_data<int64_t>(place)[i] = i + 1;
   }
+  LoDTensor pre_scores;
+  pre_scores.Resize(framework::make_ddim(vector<int64_t>(4, 1)));
+  for (int i = 0; i < 4; i++) {
+    pre_scores.mutable_data<float>(place)[i] = 0.1 * (i + 1);
+  }
 
-  BeamSearch beamsearch(ids, scores, (int64_t)0, (int64_t)2, 0);
+  BeamSearch beamsearch(ids, scores, (size_t)0, (size_t)2, 0);
   LoDTensor sids, sscores;
-  beamsearch(pre_ids, &sids, &sscores);
+  beamsearch(pre_ids, pre_scores, &sids, &sscores);
 
   LOG(INFO) << "score: " << sscores << endl;
 
   ASSERT_EQ(sids.lod(), sscores.lod());
 
-  vector<int> tids({2, 4, 3, 8});
-  vector<float> tscores({0.3, 0.5, 0.9, 0.7});
+  vector<int> tids({4, 2, 3, 8});
+  vector<float> tscores({0.5, 0.6, 0.9, 0.7});
 
   for (int i = 0; i < 4; i++) {
     ASSERT_EQ(tids[i], sids.data<int64_t>()[i]);

@@ -19,10 +19,12 @@
 #                   Utils
 #=================================================
 
+set -ex
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
-    
+
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
     ${BLUE}build_android${NONE}: run build for android platform
@@ -31,12 +33,14 @@ function print_usage() {
     ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
     ${BLUE}doc${NONE}: generate paddle documents
+    ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}capi${NONE}: generate paddle CAPI package
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
+    ${BLUE}assert_api_not_changed${NONE}: check api compability
     "
 }
 
@@ -64,23 +68,66 @@ function cmake_gen() {
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
-    if [ "$1" != "" ]; then
-        echo "using python abi: $1"
-        if [ "$1" == "cp27-cp27m" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
-            export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
-            PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
-        elif [ "$1" == "cp27-cp27mu" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
-            export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
-            PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        echo "Using python abi: $1"
+        if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
+                export PATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp35-cp35m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.5" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
+                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+            else
+                exit 1
+            fi
+        fi
+    else 
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"     
+            if [ "$1" == "cp27-cp27m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+            elif [ "$1" == "cp27-cp27mu" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+            elif [ "$1" == "cp35-cp35m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
+           fi
         fi
     fi
-
+    
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_AVX=${WITH_AVX:-ON}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+    
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -99,12 +146,19 @@ function cmake_gen() {
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
+        -DPY_VERSION=${PY_VERSION:-2.7}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -126,12 +180,19 @@ EOF
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
+        -DPY_VERSION=${PY_VERSION:-2.7} \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+
 }
 
 function abort(){
@@ -144,19 +205,17 @@ function check_style() {
     trap 'abort' 0
     set -e
 
-    # install glide
-    curl https://glide.sh/get | bash
-    eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    if [ -x "$(command -v gimme)" ]; then
+    	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    fi
 
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
-    cd  $GOPATH/src/github.com/PaddlePaddle/Paddle/go; glide install; cd -
+    mkdir -p ./build/go
+    cp go/glide.* build/go
+    cd build/go; glide install; cd -
 
-    go get github.com/alecthomas/gometalinter
-    gometalinter --install
-
-    cd ${PADDLE_ROOT}
     export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
@@ -183,6 +242,20 @@ function build() {
 EOF
     make clean
     make -j `nproc`
+    make install -j `nproc`
+}
+
+function build_mac() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ============================================
+    Building in /paddle/build ...
+    ============================================
+EOF
+    make clean
+    make -j 8
+    make install -j 8
 }
 
 function build_android() {
@@ -197,7 +270,7 @@ function build_android() {
     fi
 
     ANDROID_STANDALONE_TOOLCHAIN=$ANDROID_TOOLCHAINS_DIR/$ANDROID_ARCH-android-$ANDROID_API
-    
+
     cat <<EOF
     ============================================
     Generating the standalone toolchain ...
@@ -211,13 +284,13 @@ EOF
           --arch=$ANDROID_ARCH \
           --platform=android-$ANDROID_API \
           --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-    
+
     BUILD_ROOT=${PADDLE_ROOT}/build_android
     DEST_ROOT=${PADDLE_ROOT}/install_android
-    
+
     mkdir -p $BUILD_ROOT
     cd $BUILD_ROOT
-    
+
     if [ $ANDROID_ABI == "armeabi-v7a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
             -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
@@ -231,7 +304,6 @@ EOF
             -DUSE_EIGEN_FOR_BLAS=ON \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     elif [ $ANDROID_ABI == "arm64-v8a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -245,7 +317,6 @@ EOF
             -DUSE_EIGEN_FOR_BLAS=OFF \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     elif [ $ANDROID_ABI == "armeabi" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -258,7 +329,6 @@ EOF
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     else
       echo "Invalid ANDROID_ABI: $ANDROID_ABI"
@@ -287,9 +357,8 @@ function build_ios() {
           -DUSE_EIGEN_FOR_BLAS=ON \
           -DWITH_TESTING=OFF \
           -DWITH_SWIG_PY=OFF \
-          -DWITH_STYLE_CHECK=OFF \
           -DCMAKE_BUILD_TYPE=Release
-    
+
     make -j 2
 }
 
@@ -305,12 +374,70 @@ EOF
         ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
-        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
     fi
 }
+
+function run_mac_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+
+        # TODO: jiabin need to refine this part when these tests fixed on mac
+        ctest --output-on-failure -j $1     
+        # make install should also be test when unittest 
+        make install -j 8
+        pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
+        pip uninstall -y paddlepaddle
+    fi
+}
+
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    if [ "$1" == "cp35-cp35m" ]; then
+        # Use sed to make python2 and python3 sepc keeps the same
+        sed -i 's/arg0: str/arg0: unicode/g' new.spec
+        sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
+    fi
+    python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+    deactivate
+}
+
+function assert_api_spec_approvals() {
+    if [ -z ${BRANCH} ]; then
+        BRANCH="develop"
+    fi
+
+    API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/API.spec" || true`
+    echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+    if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+        # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have at least 2 approvals for the api change!"
+        exit 1
+        fi
+    fi
+}
+
 
 function single_test() {
     TEST_NAME=$1
@@ -334,14 +461,14 @@ EOF
 function bind_test() {
     # the number of process to run tests
     NUM_PROC=6
-    
+
     # calculate and set the memory usage for each process
     MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
-    
+
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-    
+
     for (( i = 0; i < $NUM_PROC; i++ )); do
         cuda_list=()
         for (( j = 0; j < $CUDA_DEVICE_COUNT; j++ )); do
@@ -375,8 +502,7 @@ EOF
         -DCMAKE_BUILD_TYPE=Release \
         -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_STYLE_CHECK=OFF
+        -DWITH_MKL=OFF
 
     make -j `nproc` paddle_docs paddle_apis
 
@@ -384,6 +510,43 @@ EOF
     linkchecker doc/v2/en/html/index.html
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
+
+}
+
+function gen_doc_lib() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ========================================
+    Building documentation library ...
+    In /paddle/build
+    ========================================
+EOF
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_DOC=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_FLUID_ONLY=ON
+
+    local LIB_TYPE=$1
+    case $LIB_TYPE in
+      full)
+        # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
+        make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+        ;;
+      pybind)
+        # Build paddle pybind library. Takes 49 minutes to build. Might timeout
+        make -j `nproc` copy_paddle_pybind
+        ;;
+      proto)
+        # Even smaller library.
+        make -j `nproc` framework_py_proto
+        ;;
+      *)
+        exit 0
+        ;;
+      esac
 }
 
 function gen_html() {
@@ -405,17 +568,21 @@ EOF
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
+    CUDA_MAJOR="$(echo $CUDA_VERSION | cut -d '.' -f 1).$(echo $CUDA_VERSION | cut -d '.' -f 2)"
+    CUDNN_MAJOR=$(echo $CUDNN_VERSION | cut -d '.' -f 1)
     if [[ ${WITH_GPU} == "ON" ]]; then
-    BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
+        BASE_IMAGE="nvidia/cuda:${CUDA_MAJOR}-cudnn${CUDNN_MAJOR}-runtime-ubuntu16.04"
     else
-    BASE_IMAGE="ubuntu:16.04"
+        BASE_IMAGE="ubuntu:16.04"
     fi
 
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
+    DOCKERFILE_CUBLAS_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
-        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUDNN_DSO="RUN ln -sf /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUBLAS_DSO="RUN ln -sf /usr/local/cuda/targets/x86_64-linux/lib/libcublas.so.${CUDA_MAJOR} /usr/lib/x86_64-linux-gnu/libcublas.so"
     fi
 
     cat <<EOF
@@ -431,9 +598,9 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
     else
-        NCCL_DEPS=""
+        NCCL_DEPS="true"
     fi
 
     if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
@@ -447,15 +614,15 @@ EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
-    RUN apt-get update &&\
-        ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
@@ -473,29 +640,55 @@ EOF
 
 function gen_capi_package() {
     if [[ ${WITH_C_API} == "ON" ]]; then
-        install_prefix="${PADDLE_ROOT}/build/capi_output"
-        rm -rf $install_prefix
-        make DESTDIR="$install_prefix" install
-        cd $install_prefix/usr/local
-        ls | egrep -v "^Found.*item$" | xargs tar -cf ${PADDLE_ROOT}/build/paddle.tgz
+        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
+        rm -rf $capi_install_prefix
+        make DESTDIR="$capi_install_prefix" install
+        cd $capi_install_prefix/
+        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
     fi
 }
 
 function gen_fluid_inference_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Deploying fluid inference library ...
+    Generating fluid inference library ...
     ========================================
 EOF
-        make inference_lib_dist
-    fi
+        cmake .. -DWITH_DISTRIBUTE=OFF
+        make -j `nproc` inference_lib_dist
+      fi
+}
+
+function tar_fluid_inference_lib() {
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+        cat <<EOF
+    ========================================
+    Taring fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/build
+        cp -r fluid_install_dir fluid
+        tar -czf fluid.tgz fluid
+      fi
+}
+
+function test_fluid_inference_lib() {
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+        cat <<EOF
+    ========================================
+    Testing fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+        ./clean.sh
+      fi
 }
 
 function main() {
-    set -e
     local CMD=$1
     init
     case $CMD in
@@ -522,6 +715,9 @@ function main() {
       doc)
         gen_docs
         ;;
+      gen_doc_lib)
+        gen_doc_lib $2
+        ;;
       html)
         gen_html
         ;;
@@ -536,6 +732,8 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        tar_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       check_style)
         check_style
@@ -543,9 +741,27 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_capi_package
         gen_fluid_inference_lib
+        test_fluid_inference_lib
+        assert_api_spec_approvals
+        ;;
+      maccheck)
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        run_mac_test ${PROC_RUN:-1}
+        ;;
+      macbuild)
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        ;;
+      cicheck_py35)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_test
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       *)
         print_usage

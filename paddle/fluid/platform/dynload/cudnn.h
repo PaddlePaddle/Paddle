@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
+#include <glog/logging.h>
 
 #include <cudnn.h>
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -39,7 +42,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
         cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
       });                                                                  \
       EnforceCUDNNLoaded(#__name);                                         \
-      void* p_##__name = dlsym(cudnn_dso_handle, #__name);                 \
+      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);          \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);            \
     }                                                                      \
   };                                                                       \
@@ -47,13 +50,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                  \
-  struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
-      return __name(args...);                                    \
-    }                                                            \
-  };                                                             \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)     \
+  struct DynLoad__##__name {                        \
+    template <typename... Args>                     \
+    inline cudnnStatus_t operator()(Args... args) { \
+      return ::__name(args...);                     \
+    }                                               \
+  };                                                \
   extern DynLoad__##__name __name
 
 #endif

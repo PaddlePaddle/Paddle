@@ -15,17 +15,20 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include <string>
 #include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {
+
+using paddle::framework::Tensor;
 
 #define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
   class OP_NAME##OpMaker                                                \
       : public ::paddle::framework::OpProtoAndCheckerMaker {            \
    public:                                                              \
     void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME "operator");                   \
-      AddOutput("Out", "Output of" #OP_NAME "operator");                \
+      AddInput("X", "Input of " #OP_NAME " operator");                  \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
       AddAttr<bool>("use_mkldnn",                                       \
                     "(bool, default false) Only used in mkldnn kernel") \
           .SetDefault(false);                                           \
@@ -41,7 +44,7 @@ namespace operators {
                                                                              \
    protected:                                                                \
     std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {    \
-      auto *op = new ::paddle::framework::OpDesc();                          \
+      auto* op = new ::paddle::framework::OpDesc();                          \
       op->SetType(#KERNEL_TYPE "_grad");                                     \
       op->SetInput("Out", Output("Out"));                                    \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
@@ -54,13 +57,50 @@ namespace operators {
     }                                                                        \
   }
 
+framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
+                                      const framework::OperatorWithKernel& oper,
+                                      const std::string& name) {
+  framework::LibraryType library{framework::LibraryType::kPlain};
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+  auto it = oper.Attrs().find("use_mkldnn");
+  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
+      ctx.GetPlace(), layout, library);
+}
+
 class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
+
+class ActivationOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    auto& x = block->FindRecursiveOrCreateVar(x_name);
+    auto& out = block->FindRecursiveOrCreateVar(out_name);
+    out.SetType(x.GetType());
+    out.SetDataType(x.GetDataType());
   }
 };
 
@@ -68,110 +108,117 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->ShareDim("Out", framework::GradVarName("X"));
+    ctx->ShareLoD("Out", framework::GradVarName("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "Out");
   }
 };
 
-__attribute__((unused)) constexpr char SigmoidDoc[] = R"DOC(
+UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
 $$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
+UNUSED constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
-$$out = \log \frac{1}{1 + e^{-x}}$$
+$$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char ExpDoc[] = R"DOC(
+UNUSED constexpr char ExpDoc[] = R"DOC(
 Exp Activation Operator.
 
 $out = e^x$
 
 )DOC";
 
-__attribute__((unused)) constexpr char ReluDoc[] = R"DOC(
+UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $out = \max(x, 0)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char TanhDoc[] = R"DOC(
+UNUSED constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
-$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char TanhShrinkDoc[] = R"DOC(
+UNUSED constexpr char TanhShrinkDoc[] = R"DOC(
 TanhShrink Activation Operator.
 
-$$out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SqrtDoc[] = R"DOC(
+UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
 $out = \sqrt{x}$
 
 )DOC";
 
-__attribute__((unused)) constexpr char AbsDoc[] = R"DOC(
+UNUSED constexpr char AbsDoc[] = R"DOC(
 Abs Activation Operator.
 
 $out = |x|$
 
 )DOC";
 
-__attribute__((unused)) constexpr char CeilDoc[] = R"DOC(
+UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Activation Operator.
 
 $out = ceil(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char FloorDoc[] = R"DOC(
+UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
 $out = floor(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char CosDoc[] = R"DOC(
+UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Activation Operator.
 
 $out = cos(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SinDoc[] = R"DOC(
+UNUSED constexpr char SinDoc[] = R"DOC(
 Sine Activation Operator.
 
 $out = sin(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char RoundDoc[] = R"DOC(
+UNUSED constexpr char RoundDoc[] = R"DOC(
 Round Activation Operator.
 
 $out = [x]$
 
 )DOC";
 
-__attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
+UNUSED constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \frac{1}{x}$$
+$$out = \\frac{1}{x}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char LogDoc[] = R"DOC(
+UNUSED constexpr char LogDoc[] = R"DOC(
 Log Activation Operator.
 
 $out = \ln(x)$
@@ -180,21 +227,21 @@ Natural logarithm of x.
 
 )DOC";
 
-__attribute__((unused)) constexpr char SquareDoc[] = R"DOC(
+UNUSED constexpr char SquareDoc[] = R"DOC(
 Square Activation Operator.
 
 $out = x^2$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SoftplusDoc[] = R"DOC(
+UNUSED constexpr char SoftplusDoc[] = R"DOC(
 Softplus Activation Operator.
 
 $out = \ln(1 + e^{x})$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SoftsignDoc[] = R"DOC(
+UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
 $$out = \frac{x}{1 + |x|}$$
@@ -223,15 +270,14 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "Output of Softshrink operator");
     AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
     AddComment(R"DOC(
-Softshrink Activation Operator.
+:strong:`Softshrink Activation Operator`
 
-$$
-out = \begin{cases} 
-    x - \lambda, \text{if } x > \lambda \\
-    x + \lambda, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases} 
+         x - \lambda, \text{if } x > \lambda \\
+         x + \lambda, \text{if } x < -\lambda \\
+         0,  \text{otherwise}
+         \end{cases}
 
 )DOC");
   }
@@ -242,18 +288,18 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of HardShrink operator");
     AddOutput("Out", "Output of HardShrink operator");
-    AddAttr<float>("threshold", "The value of threshold for HardShrink")
+    AddAttr<float>("threshold",
+                   "The value of threshold for HardShrink. [default: 0.5]")
         .SetDefault(0.5f);
     AddComment(R"DOC(
-HardShrink Activation Operator.
+:strong:`HardShrink activation operator`
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > \lambda \\
-    x, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases}
+            x, \text{if } x > \lambda \\
+            x, \text{if } x < -\lambda \\
+            0,  \text{otherwise}
+          \end{cases}
 
 )DOC");
   }
@@ -354,7 +400,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 STanh Activation Operator.
 
-$$out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
+$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 )DOC");
   }
@@ -365,18 +411,18 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of ThresholdedRelu operator");
     AddOutput("Out", "Output of ThresholdedRelu operator");
-    AddAttr<float>("threshold", "The threshold location of activation")
+    AddAttr<float>("threshold",
+                   "The threshold location of activation. [default 1.0].")
         .SetDefault(1.0f);
     AddComment(R"DOC(
-ThresholdedRelu Activation Operator.
+:strong:`ThresholdedRelu activation operator`
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > threshold \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
 
+    out = \begin{cases}
+             x,  \text{if } x > threshold \\
+             0,  \text{otherwise}
+          \end{cases}
 )DOC");
   }
 };
@@ -415,7 +461,7 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \frac{x}{1 + e^{- \beta x}}$$
+$$out = \\frac{x}{1 + e^{- \beta x}}$$
 
 )DOC");
   }
@@ -493,12 +539,14 @@ namespace ops = paddle::operators;
 #define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)        \
   REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp, \
                     ::paddle::operators::OP_NAME##OpMaker,          \
+                    ::paddle::operators::ActivationOpInferVarType,  \
                     ::paddle::operators::OP_NAME##GradMaker);       \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
 
 #define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
   REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \
                     ::paddle::operators::OP_NAME##OpMaker,              \
+                    ::paddle::operators::ActivationOpInferVarType,      \
                     ::paddle::framework::DefaultGradOpDescMaker<true>); \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
 

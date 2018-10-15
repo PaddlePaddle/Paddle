@@ -78,23 +78,23 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), the input(X) is a LodTensor, which supports "
+             "the input(X) is a LodTensor, which supports "
              "variable time-length input sequences. The underlying tensor "
              "in this LoDTensor is a matrix with shape (T x N), where T "
              "is the total time steps in this mini-batch and N is the input "
              "data dimension.");
     AddInput("Filter",
-             "(Tensor), the input(Filter) is a learnable parameter. It "
+             "the input(Filter) is a learnable parameter. It "
              "is a 2-D tensor with shape (future_context x N), where, "
              "future_context is the future context length and N is the data "
              "dimension.");
     AddOutput("Out",
-              "(LoDTensor), the output(Out) is a LodTensor, which supports "
+              "the output(Out) is a LodTensor, which supports "
               "variable time-length input sequences. The underlying tensor "
               "in this LodTensor is a matrix with shape T x N, i.e., the "
               "same shape as X.");
     AddComment(R"DOC(
-Row-convolution Operator.
+:strong:`Row-convolution operator`
 
 The row convolution is called lookahead convolution.  This operator was 
 introduced in the following paper for DeepSpeech2:
@@ -114,8 +114,22 @@ and a filter ($W$) of size $context \times d$,
 the output sequence is convolved as:
 
 $$
-out_{i, :} = \sum_{j=i}^{i + context} in_{j,:} \dot W_{i-j, :}
+out_{i, :} = \\sum_{j=i}^{i + context} in_{j,:} \\cdot W_{i-j, :}
 $$
+
+In the above equation:
+
+* $Out_{i}$: The i-th row of output variable with shape [1, D].
+
+* $\\tau$: Future context size.
+
+* $X_{j}$: The j-th row of input variable with shape [1, D].
+
+* $W_{i-j}$: The (i-j)-th row of parameters with shape [1, D].
+
+More details about row_conv please refer to
+the design document
+https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
 )DOC");
   }

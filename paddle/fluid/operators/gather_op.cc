@@ -33,7 +33,6 @@ class GatherOp : public framework::OperatorWithKernel {
     auto index_dims = ctx->GetInputDim("Index");
     PADDLE_ENFORCE(index_dims.size() == 1);
     int batch_size = ctx->GetInputDim("Index")[0];
-    PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
     ctx->SetOutputDim("Out", output_dims);
@@ -102,5 +101,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
-REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
+                       ops::GatherOpKernel<int>, ops::GatherOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
+                       ops::GatherGradientOpKernel<int>,
+                       ops::GatherGradientOpKernel<double>);

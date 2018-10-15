@@ -70,6 +70,7 @@ struct TestGatherOpHandle {
   }
 
   void InitGatherOp(size_t input_scope_idx) {
+    std::vector<std::unique_ptr<ir::Node>> nodes;
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope& local_scope = local_scopes_.back()->NewScope();
@@ -81,30 +82,42 @@ struct TestGatherOpHandle {
     }
     param_scopes_[input_scope_idx]->Var("out");
 
-    op_handle_.reset(new GatherOpHandle(local_scopes_, gpu_list_));
+    nodes.emplace_back(
+        ir::CreateNodeForTest("node", ir::Node::Type::kOperation).release());
+    op_handle_.reset(
+        new GatherOpHandle(nodes.back().get(), local_scopes_, gpu_list_));
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
-      auto* in_var_handle = new VarHandle(1, j, "input", gpu_list_[j]);
+      nodes.emplace_back(
+          ir::CreateNodeForTest("node1", ir::Node::Type::kVariable).release());
+      auto* in_var_handle =
+          new VarHandle(nodes.back().get(), 1, j, "input", gpu_list_[j]);
       vars_.emplace_back(in_var_handle);
       op_handle_->AddInput(in_var_handle);
     }
 
     // add dummy var
-    vars_.emplace_back(new DummyVarHandle());
+    nodes.emplace_back(
+        ir::CreateNodeForTest("node2", ir::Node::Type::kVariable).release());
+    vars_.emplace_back(new DummyVarHandle(nodes.back().get()));
     DummyVarHandle* in_dummy_var_handle =
         static_cast<DummyVarHandle*>(vars_.back().get());
-    in_dummy_var_handle->generated_op_ = nullptr;
+    in_dummy_var_handle->ClearGeneratedOp();
     op_handle_->AddInput(in_dummy_var_handle);
 
     // add output
-    auto* out_var_handle =
-        new VarHandle(2, input_scope_idx, "out", gpu_list_[input_scope_idx]);
+    nodes.emplace_back(
+        ir::CreateNodeForTest("node3", ir::Node::Type::kVariable).release());
+    auto* out_var_handle = new VarHandle(nodes.back().get(), 2, input_scope_idx,
+                                         "out", gpu_list_[input_scope_idx]);
     vars_.emplace_back(out_var_handle);
     op_handle_->AddOutput(out_var_handle);
 
     // add dummy var
-    vars_.emplace_back(new DummyVarHandle());
+    nodes.emplace_back(
+        ir::CreateNodeForTest("node4", ir::Node::Type::kVariable).release());
+    vars_.emplace_back(new DummyVarHandle(nodes.back().get()));
     DummyVarHandle* dummy_var_handle =
         static_cast<DummyVarHandle*>(vars_.back().get());
     op_handle_->AddOutput(dummy_var_handle);
