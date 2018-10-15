@@ -114,6 +114,11 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
   auto size = src.numel() * SizeOfType(src.type());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data from " << src.place() << " to "
+              << dst_place;
+      return;
+    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -132,6 +137,12 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
              platform::is_gpu_place(dst_place)) {
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    if (src_ptr == dst_ptr &&
+        src_gpu_place.GetDeviceId() == dst_gpu_place.GetDeviceId()) {
+      VLOG(3) << "Skip copy the same data from " << src.place() << " to "
+              << dst_place;
+      return;
+    }
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   }
 #endif
