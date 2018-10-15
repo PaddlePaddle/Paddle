@@ -12,14 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/lars_momentum_op.h"
 #include "paddle/fluid/operators/momentum_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
+class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
@@ -44,23 +43,28 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
               "It shared memory with Input(Velocity).");
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
-    AddAttr<bool>("use_nesterov",
-                  "(bool, default false) "
-                  "Use Nesterov Momentum")
-        .SetDefault(false);
+    AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
+        .SetDefault(0.001);
+    AddAttr<float>("lars_weight_decay",
+                   "(float, default 0.0005) LARS weight decay")
+        .SetDefault(0.0005);
+
     AddComment(R"DOC(
-Momentum Optimizer.
+Lars Momentum Optimizer.
 
-This optimizer has a flag for Nestrov Momentum.
-The update equations are as follows:
+This optimizer use LARS (https://arxiv.org/abs/1708.03888) to optimize each
+weight using a local learning rate:
 
 $$
-velocity = mu * velocity + gradient \\
-if (use\_nesterov):   \\
-  param = param - (gradient + mu * velocity) * learning\_rate \\
-else:   \\
-  param = param - learning\_rate * velocity. \\
+learning\_rate *= lars_coeff * sqrt(sumsq(param)) 
+    / (sqrt(sumsq(gradient))+ lars\_weight\_decay * sqrt(sumsq(param))) \\
+velocity = mu * velocity + 
+    (gradient + lars\_weight\_decay * param) \\
+param = param - learning\_rate * velocity. \\
 $$
+
+Note that we use lars_weight_decay here to decay weights, you may need not to
+use L2 regularizers in case of using LARS.
 
 )DOC");
   }
@@ -69,6 +73,7 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(momentum, ops::MomentumOp, ops::MomentumOpMaker);
-REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpKernel<float>,
-                       ops::MomentumOpKernel<double>);
+REGISTER_OP_WITHOUT_GRADIENT(lars_momentum, ops::MomentumOp,
+                             ops::LarsMomentumOpMaker);
+REGISTER_OP_CPU_KERNEL(lars_momentum, ops::LarsMomentumOpKernel<float>,
+                       ops::LarsMomentumOpKernel<double>);

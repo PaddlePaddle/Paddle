@@ -1425,7 +1425,7 @@ to transpile() call.")
         elif op_type == "adamax":
             if varkey in ["Moment", "InfNorm"]:
                 return param_shape
-        elif op_type == "momentum":
+        elif op_type in ["momentum", "lars_momentum"]:
             if varkey == "Velocity":
                 return param_shape
         elif op_type == "rmsprop":

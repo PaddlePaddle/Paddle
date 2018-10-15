@@ -42,7 +42,7 @@ __global__ void MomentumKernel(const T* p, const T* g, const T* v,
   }
 }
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class MomentumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -75,5 +75,7 @@ class MomentumOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(momentum, ops::MomentumOpCUDAKernel<float>,
-                        ops::MomentumOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    momentum,
+    ops::MomentumOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MomentumOpCUDAKernel<paddle::platform::CUDADeviceContext, double>);
