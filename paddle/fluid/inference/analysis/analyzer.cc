@@ -97,29 +97,19 @@ class DfgPassManagerImpl final : public DfgPassManager {
   }
 };
 
-Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
+Analyzer::Analyzer(const std::vector<std::string>& ir_passes)
+    : ir_passes_(ir_passes) {
+  Register("manager1", new DfgPassManagerImpl);
+}
 
 void Analyzer::Run(Argument* argument) {
-  std::vector<std::string> passes;
-  for (auto& pass : all_ir_passes_) {
-    if (!disabled_ir_passes_.count(pass)) {
-      passes.push_back(pass);
-      passes.push_back("graph_viz_pass");  // add graphviz for debug.
-    }
-  }
-  passes.push_back("graph_viz_pass");
-  argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(passes));
+  argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(ir_passes_));
 
   for (auto& x : data_) {
     PADDLE_ENFORCE(x->Initialize(argument));
     x->RunAll();
     PADDLE_ENFORCE(x->Finalize());
   }
-}
-
-Analyzer& Analyzer::DisableIrPasses(const std::vector<std::string>& passes) {
-  disabled_ir_passes_.insert(passes.begin(), passes.end());
-  return *this;
 }
 
 }  // namespace analysis

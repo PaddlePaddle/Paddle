@@ -89,11 +89,16 @@ size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
 
 std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
                                                    int *num_ops) {
+  std::unordered_map<std::string, int> res;
   auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
-  auto &fuse_statis = analysis_predictor->analysis_argument()
-                          .Get<std::unordered_map<std::string, int>>(
-                              framework::ir::kFuseStatisAttr);
-  for (auto &item : fuse_statis) {
+  if (!analysis_predictor->analysis_argument().Has(
+          framework::ir::kFuseStatisAttr)) {
+    return res;
+  }
+  res = analysis_predictor->analysis_argument()
+            .Get<std::unordered_map<std::string, int>>(
+                framework::ir::kFuseStatisAttr);
+  for (auto &item : res) {
     LOG(INFO) << "fused " << item.first << " " << item.second;
   }
   int num = 0;
@@ -104,7 +109,7 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
     }
   }
   *num_ops = num;
-  return fuse_statis;
+  return res;
 }
 
 void TestOneThreadPrediction(

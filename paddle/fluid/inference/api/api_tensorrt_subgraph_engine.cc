@@ -112,7 +112,8 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     }
     argument.origin_program_desc.reset(
         new ProgramDesc(*inference_program_->Proto()));
-    Singleton<Analyzer>::Global().Run(&argument);
+    Analyzer analyzer;
+    analyzer.Run(&argument);
     CHECK(argument.transformed_program_desc);
     VLOG(5) << "transformed program:\n"
             << argument.transformed_program_desc->SerializeAsString();

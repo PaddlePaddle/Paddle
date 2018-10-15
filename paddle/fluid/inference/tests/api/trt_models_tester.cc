@@ -16,10 +16,14 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/analysis/analyzer.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 using paddle::contrib::MixedRTConfig;
+using paddle::contrib::AnalysisConfig;
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -43,6 +47,23 @@ MixedRTConfig GetConfigTRT() {
   return config;
 }
 
+void PrepareInputs(std::vector<PaddleTensor> *tensors, int batch_size) {
+  PADDLE_ENFORCE_EQ(tensors->size(), 1UL);
+  auto &tensor = tensors->front();
+  int height = 224;
+  int width = 224;
+  float *data = new float[batch_size * 3 * height * width];
+  memset(data, 0, sizeof(float) * (batch_size * 3 * height * width));
+  data[0] = 1.0f;
+
+  // Prepare inputs
+  tensor.name = "input_0";
+  tensor.shape = std::vector<int>({batch_size, 3, height, width});
+  tensor.data = PaddleBuf(static_cast<void *>(data),
+                          sizeof(float) * (batch_size * 3 * height * width));
+  tensor.dtype = PaddleDType::FLOAT32;
+}
+
 void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   NativeConfig config0 = GetConfigNative();
   config0.model_dir = model_dirname;
@@ -51,26 +72,11 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   config1.model_dir = model_dirname;
   config1.max_batch_size = batch_size;
 
-  auto predictor0 =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
-  auto predictor1 =
-      CreatePaddlePredictor<MixedRTConfig,
-                            PaddleEngineKind::kAutoMixedTensorRT>(config1);
-  // Prepare inputs
-  int height = 224;
-  int width = 224;
-  float *data = new float[batch_size * 3 * height * width];
-  memset(data, 0, sizeof(float) * (batch_size * 3 * height * width));
-  data[0] = 1.0f;
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
 
-  // Prepare inputs
-  PaddleTensor tensor;
-  tensor.name = "input_0";
-  tensor.shape = std::vector<int>({batch_size, 3, height, width});
-  tensor.data = PaddleBuf(static_cast<void *>(data),
-                          sizeof(float) * (batch_size * 3 * height * width));
-  tensor.dtype = PaddleDType::FLOAT32;
-  std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
+  std::vector<PaddleTensor> paddle_tensor_feeds(1);
+  PrepareInputs(&paddle_tensor_feeds, batch_size);
 
   // Prepare outputs
   std::vector<PaddleTensor> outputs0;
@@ -103,4 +109,41 @@ TEST(trt_models_test, main) {
     CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + model_dir);
   }
 }
+
+TEST(Analyzer, use_gpu) {
+  AnalysisConfig config(true);
+  config.model_dir = FLAGS_dirname + "/" + "mobilenet";
+  config.fraction_of_gpu_memory = 0.1;
+  config.device = 0;
+  config.enable_ir_optim = true;
+
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  auto base_predictor = CreatePaddlePredictor<NativeConfig>(config);
+
+  std::vector<PaddleTensor> inputs(1);
+  PrepareInputs(&inputs, 2 /*batch size*/);
+
+  std::vector<PaddleTensor> outputs;
+  inference::Timer timer;
+  timer.tic();
+  for (int i = 0; i < FLAGS_repeat; i++) {
+    ASSERT_TRUE(predictor->Run(inputs, &outputs));
+  }
+  LOG(INFO) << "analysis latency: " << timer.toc() / 10 << " ms";
+
+  timer.tic();
+  for (int i = 0; i < FLAGS_repeat; i++) {
+    ASSERT_TRUE(base_predictor->Run(inputs, &outputs));
+  }
+  LOG(INFO) << "native latency: " << timer.toc() / 10 << " ms";
+
+  int num_ops{0};
+  auto fuse_statis = inference::GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+
+  ASSERT_EQ(fuse_statis["conv_bn_fuse"], 14);
+  ASSERT_EQ(fuse_statis["original_graph"],
+            87);  // not eq if the model is changed.
+}
+
 }  // namespace paddle
