@@ -33,9 +33,9 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW("MergeIds do not support GPU kernel");
     }
 
-    auto ids = ctx.MultiInput<framework::LoDTensor>("Ids");
-    auto row_ids = ctx.MultiInput<framework::LoDTensor>("Rows");
-    auto x_tensors = ctx.MultiInput<framework::LoDTensor>("X");
+    const auto ids = ctx.MultiInput<framework::LoDTensor>("Ids");
+    const auto row_ids = ctx.MultiInput<framework::LoDTensor>("Rows");
+    const auto x_tensors = ctx.MultiInput<framework::LoDTensor>("X");
     auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
 
     PADDLE_ENFORCE_EQ(row_ids.size(), x_tensors.size(),
@@ -48,8 +48,8 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     int embedding_size = 0;
 
     for (int i = 0; i < x_tensors.size(); ++i) {
-      T *x_tensor = x_tensors[i];
-      T *row_id = row_ids[i];
+      const auto *x_tensor = x_tensors[i];
+      const auto *row_id = row_ids[i];
 
       if (embedding_size == 0) {
         embedding_size = x_tensor->dims()[1];
@@ -59,18 +59,19 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
       row_size += x_tensor->dims()[0];
       row_ids_size += row_id->dims()[0];
     }
+
     PADDLE_ENFORCE_EQ(
         row_size, row_ids_size,
         "the merged X dim[0] and merged Rows dim[0] should be the same");
 
-    std::unordered_map<int64_t, std::tuple<T *, int64_t>> selected_rows_idx_map;
+    std::unordered_map<int64_t, std::tuple<int64_t, int64_t>>
+        selected_rows_idx_map;
     for (int i = 0; i < x_tensors.size(); ++i) {
-      T *x_tensor = x_tensors[i];
-      T *row_id = row_ids[i];
+      const auto *row_id = row_ids[i];
 
       for (int j = 0; j < row_id->numel(); ++j) {
-        int64_t key = row_id->data()[j];
-        std::tuple<T *, int64_t> val = std::make_tuple(x_tensor, j);
+        int64_t key = row_id->data<T>()[j];
+        std::tuple<int64_t, int64_t> val = std::make_tuple(i, j);
         selected_rows_idx_map.insert(std::make_pair(key, val));
       }
     }
@@ -85,11 +86,12 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
           framework::make_ddim({nums, embedding_size}), place);
       for (int j = 0; j < nums; ++j) {
         int id = out_ids->data<T>()[j];
-        auto *row_tuple = selected_rows_idx_map[id];
-        T *row_data = row_tuple->get(0);
-        int64_t row_idx = row_tuple->get(1);
+        auto row_tuple = selected_rows_idx_map[id];
+        int64_t row_idx = std::get<1>(row_tuple);
+        const auto *x_tensor = x_tensors[std::get<0>(row_tuple)];
+
         memcpy(out_data + embedding_size * j,
-               row_data->data() + row_idx * embedding_size,
+               x_tensor->data<T>() + row_idx * embedding_size,
                sizeof(T) * embedding_size);
       }
     }

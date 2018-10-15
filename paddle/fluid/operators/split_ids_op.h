@@ -49,8 +49,9 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       std::vector<T> all_ids(batch_size);
       int offset = 0;
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
-        T *ids = ids_tensors[i];
-        std::memcpy(all_ids.data() + offset, ids->data(), ids->numel());
+        const auto *ids = ids_tensors[i];
+        std::memcpy(all_ids.data() + offset, ids->data<T>(),
+                    static_cast<size_t>(ids->numel()));
         offset += ids->numel();
       }
 

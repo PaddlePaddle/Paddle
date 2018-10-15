@@ -58,14 +58,6 @@ class SplitIdsOp : public framework::OperatorWithKernel {
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
     }
-    if (ctx->HasInputs("Refs")) {
-      size_t outs_num = ctx->Outputs("Out").size();
-      std::vector<framework::DDim> out_dims;
-      for (size_t i = 0; i < outs_num; ++i) {
-        out_dims.push_back(ids_dims);
-      }
-      ctx->SetOutputsDim("Out", out_dims);
-    }
   }
 
  protected:
