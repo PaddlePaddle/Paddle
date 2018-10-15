@@ -227,8 +227,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_rnn1, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.use_gpu = true;
-  cfg.fraction_of_gpu_memory = 0.1;
+  cfg.use_gpu = false;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

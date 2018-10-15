@@ -1,4 +1,4 @@
-cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
+cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES})
 set(analysis_deps
         framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log)
 
