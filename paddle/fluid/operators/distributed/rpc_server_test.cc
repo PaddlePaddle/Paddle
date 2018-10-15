@@ -171,7 +171,12 @@ TEST(COMPLETE, CPU) {
   g_rpc_service->WaitServerReady();
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
-  client->AsyncSendComplete(ep);
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  // put nccl id in CPUPlace
+  auto& dev_ctx = *pool.Get(platform::CPUPlace());
+
+  client->AsyncSendComplete(ep, dev_ctx);
   client->Wait();
 
   EXPECT_EQ(g_rpc_service->GetClientNum(), 1);

@@ -39,9 +39,12 @@ void GRPCClient::InitEventLoop() {
 void GRPCClient::SendComplete() {
   std::unique_lock<std::mutex> lk(completed_mutex_);
   if (!completed_) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(platform::CPUPlace());
+
     for (auto& it : channels_) {
       VLOG(3) << "send complete message to " << it.first;
-      this->AsyncSendComplete(it.first);
+      this->AsyncSendComplete(it.first, ctx);
     }
     PADDLE_ENFORCE(this->Wait(), "internal grpc error");
     completed_ = true;
@@ -73,10 +76,11 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   SendProcessor* s = new SendProcessor(ch);
-  VarHandlePtr h(new VarHandle(ep, "Send", var_name_val, p_ctx, p_scope));
+  const std::string method = "SendRPC";
+  VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, this] {
+  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, this] {
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -86,6 +90,8 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
 
     // stub context
     s->response_call_back_ = nullptr;
+
+    PushEvent(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
@@ -122,10 +128,11 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
-  VarHandlePtr h(new VarHandle(ep, "Get", var_name_val, p_ctx, p_scope));
+  const std::string method = "GetRPC";
+  VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, s, this] {
+  framework::AsyncIO([var_name_val, s, method, p_ctx, this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -137,6 +144,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
     // stub context
     s->response_call_back_ = ProcGetResponse;
 
+    PushEvent(method, p_ctx);
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
     call->StartCall();
@@ -161,12 +169,14 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
-  VarHandlePtr h(
-      new VarHandle(ep, "Prefetch", out_var_name_val, p_ctx, p_scope));
+
+  const std::string method = "PrefetchRPC";
+
+  VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      s, this] {
+                      s, method, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -176,6 +186,8 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
 
     // stub context
     s->response_call_back_ = ProcGetResponse;
+
+    PushEvent(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
@@ -188,33 +200,43 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
-                                               int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendBatchBarrier(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  VarHandlePtr h(new VarHandle(ep, "BatchBarrier", BATCH_BARRIER_MESSAGE,
-                               nullptr, nullptr));
+  const std::string method = "BatchBarrierRPC";
+  VarHandlePtr h(
+      new VarHandle(ep, method, BATCH_BARRIER_MESSAGE, &ctx, nullptr));
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
+
+  PushEvent(method, &ctx);
+
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
-                                               int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendFetchBarrier(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
-  VarHandlePtr h(new VarHandle(ep, "FetchBarrier", FETCH_BARRIER_MESSAGE,
-                               nullptr, nullptr));
+  const std::string method = "FetchBarrierRPC";
+  VarHandlePtr h(
+      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, &ctx, nullptr));
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
+
+  PushEvent(method, &ctx);
+
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
@@ -222,35 +244,44 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
 }
 
 VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
+                                           const platform::DeviceContext& ctx,
                                            int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  VarHandlePtr h(
-      new VarHandle(ep, "SendComplete", COMPLETE_MESSAGE, nullptr, nullptr));
+  const std::string method = "SendCompleteRPC";
+  VarHandlePtr h(new VarHandle(ep, method, COMPLETE_MESSAGE, &ctx, nullptr));
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(COMPLETE_MESSAGE);
+
+  PushEvent(method, &ctx);
+
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                               const std::string& dir,
-                                               int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncCheckpointNotify(
+    const std::string& ep, const std::string& dir,
+    const platform::DeviceContext& ctx, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
-  VarHandlePtr h(new VarHandle(ep, "CheckPointNotify", CHECKPOINT_SAVE_MESSAGE,
-                               nullptr, nullptr));
+
+  const std::string method = "CheckPointNotifyRPC";
+
+  VarHandlePtr h(
+      new VarHandle(ep, method, CHECKPOINT_SAVE_MESSAGE, &ctx, nullptr));
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);
   req.set_out_varname(dir);
+
+  PushEvent(method, &ctx);
 
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -273,6 +304,10 @@ void GRPCClient::Proceed() {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
+
+    VarHandlePtr var_h = c->GetVarHandlePtr();
+    platform::PopEvent(var_h->method(), var_h->ctx());
+
     if (c->status_.ok()) {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
