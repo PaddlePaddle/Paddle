@@ -40,8 +40,8 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
                       "The rank of Input(BBoxes) must be 3.");
     PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                       "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 
-                || box_dims[2] == 24 || box_dims[2] == 32,
+    PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
+                       box_dims[2] == 24 || box_dims[2] == 32,
                    "The 2nd dimension of Input(BBoxes) must be 4 or 8, "
                    "represents the layout of coordinate "
                    "[xmin, ymin, xmax, ymax] or "
@@ -181,8 +181,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
                                         bbox_data + kept_idx * box_size, true);
           }
           // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
-          if (box_size == 8 || box_size == 16 || box_size == 24 
-                            || box_size == 32) {
+          if (box_size == 8 || box_size == 16 || box_size == 24 ||
+              box_size == 32) {
             overlap =
                 PolyIoU<T>(bbox_data + idx * box_size,
                            bbox_data + kept_idx * box_size, box_size, true);
