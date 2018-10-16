@@ -659,6 +659,9 @@ class AdamaxOptimizer(Optimizer):
 
             optimizer = fluid.optimizer.Adamax(learning_rate=0.2)
             optimizer.minimize(cost)
+
+    Notes:
+       Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -778,6 +781,9 @@ class DecayedAdagradOptimizer(Optimizer):
 
             optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
             optimizer.minimize(cost)
+
+    Notes:
+       Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
 
@@ -858,6 +864,9 @@ class AdadeltaOptimizer(Optimizer):
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
             _, params_grads = optimizer.minimize(cost)
+
+    Notes:
+       Currently, AdadeltaOptimizer doesn't support sparse parameter optimization.
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
@@ -1126,6 +1135,9 @@ class FtrlOptimizer(Optimizer):
 
               optimizer = fluid.optimizer.Ftrl(0.0001)
               _, params_grads = optimizer.minimize(cost)
+
+    Notes:
+       Currently, FtrlOptimizer doesn't support sparse parameter optimization.
     """
 
     _squared_acc_str = "squared"
