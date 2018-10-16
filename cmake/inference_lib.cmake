@@ -18,7 +18,7 @@ function(copy TARGET)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DSTS DEPS)
     cmake_parse_arguments(copy_lib "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    set(inference_lib_dist_dep ${TARGET} ${inference_lib_dist_dep} PARENT_SCOPE)
+    set(fluid_lib_dist_dep ${TARGET} ${fluid_lib_dist_dep} PARENT_SCOPE)
 
     list(LENGTH copy_lib_SRCS copy_lib_SRCS_len)
     list(LENGTH copy_lib_DSTS copy_lib_DSTS_len)
@@ -185,7 +185,8 @@ copy(cmake_cache
   SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
   DSTS ${FLUID_INSTALL_DIR})
 
-add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 
+# This command generates a complete fluid library for both train and inference
+add_custom_target(fluid_lib_dist DEPENDS ${fluid_lib_dist_dep}) 
 
 # paddle fluid version
 execute_process(

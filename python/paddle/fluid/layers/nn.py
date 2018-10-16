@@ -56,6 +56,7 @@ __all__ = [
     'sequence_expand',
     'sequence_expand_as',
     'sequence_pad',
+    'sequence_unpad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
@@ -107,6 +108,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'margin_rank_loss',
     'elu',
     'relu6',
     'pow',
@@ -2792,7 +2794,7 @@ def sequence_expand_as(x, y, name=None):
 
 
 @templatedoc()
-def sequence_pad(x, pad_value, maxlen=None):
+def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
     ${comment}
 
@@ -2806,7 +2808,9 @@ def sequence_pad(x, pad_value, maxlen=None):
             None or any positive int. When it is None, all sequences will be
             padded up to the length of the longest one among them; when it a
             certain positive value, it must be greater than the length of the
-            longest original sequence."
+            longest original sequence.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
     Returns:
         Variable: The padded sequence batch and the original lengths before
@@ -2841,6 +2845,66 @@ def sequence_pad(x, pad_value, maxlen=None):
                  'Length': length},
         attrs={'padded_length': maxlen})
     return out, length
+
+
+def sequence_unpad(x, length, name=None):
+    """
+    **Sequence Unpad Layer**
+
+    This layer removes the padding data in the input sequences and convert 
+    them into sequences with actual length as output, identitied by lod 
+    information.
+
+    .. code-block:: text
+
+	Example:
+
+	Given input Variable **x**:
+	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
+		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
+		      [11.0, 12.0, 13.0, 14.0, 15.0]], 
+     
+	in which there are 3 sequences padded to length 5, and the acutal length 
+	specified by input Variable **length**:
+
+	    length.data = [[2], [3], [4]],
+
+	after unpadding, the output Variable will be:
+
+	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+	    out.lod = [[2, 3, 4]]      
+
+    Args:
+        x(Variable): Input Variable which contains the padded sequences with
+            equal length.
+        length(Variable): The Variable that specifies the actual ength of
+            sequences after unpadding.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The Variable contains the unpadded sequences.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
+            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
+            out = fluid.layers.sequence_unpad(x=x, length=len)
+    """
+
+    helper = LayerHelper('sequence_unpad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+
+    length.stop_gradient = True
+
+    helper.append_op(
+        type='sequence_unpad',
+        inputs={'X': x,
+                'Length': length},
+        outputs={'Out': out})
+    return out
 
 
 def beam_search(pre_ids,
@@ -5827,6 +5891,54 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def margin_rank_loss(label, left, right, margin=0.1, name=None):
+    """
+    Margin Ranking Loss Layer for ranking problem,
+    which compares left score and right score passed in.
+    The ranking loss can be defined as following equation:
+
+    .. math::
+
+        rank\_loss &= max(0, -label * (left - right) + margin)
+
+    Args:
+       label (Variable): Indicates whether the left is ranked higher than the right or not.
+       left (Variable): Ranking score for left.
+       right (Variable): Ranking score for right.
+       margin (float): Indicates the given margin.
+       name (str|None): A name for this layer (optional). If set None, the layer
+                       will be named automatically.
+    Returns:
+       Variable: The ranking loss.
+    Raises:
+       ValueError: Any of label, left, and right is not a Variable.
+    Examples:
+        .. code-block:: python
+           label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+           left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+           right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+           out = fluid.layers.margin_rank_loss(label, left, right)
+    """
+    helper = LayerHelper('margin_rank_loss', **locals())
+    if not isinstance(label, Variable):
+        raise ValueError("The label should be a Variable.")
+    if not isinstance(left, Variable):
+        raise ValueError("The left should be a Variable.")
+    if not isinstance(right, Variable):
+        raise ValueError("The right should be a Variable.")
+    out = helper.create_tmp_variable(left.dtype)
+    act = helper.create_tmp_variable(left.dtype)
+    helper.append_op(
+        type='margin_rank_loss',
+        inputs={"Label": label,
+                "X1": left,
+                "X2": right},
+        outputs={'Out': out,
+                 'Activated': act},
+        attrs={'margin': margin})
+    return out
+
+
 def pad2d(input,
           paddings=[0, 0, 0, 0],
           mode='constant',
@@ -6290,6 +6402,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         outputs={'Out': out},
         attrs={'win_size': win_size,
                'pad_value': pad_value})
+    return out
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
