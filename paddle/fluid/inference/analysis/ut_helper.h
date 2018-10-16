@@ -37,8 +37,8 @@ static DataFlowGraph ProgramDescToDFG(
   DataFlowGraph graph;
   FluidToDataFlowGraphPass pass;
   Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
-  argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
+  argument.model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.original_program_desc.reset(new framework::proto::ProgramDesc(desc));
   pass.Initialize(&argument);
   pass.Run(&graph);
   pass.Finalize();
@@ -49,7 +49,7 @@ class DFG_Tester : public ::testing::Test {
  protected:
   void SetUp() override {
     auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
-    argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
+    argument.original_program_desc.reset(new framework::proto::ProgramDesc(desc));
   }
 
   Argument argument;

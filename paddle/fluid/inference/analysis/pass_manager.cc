@@ -32,13 +32,13 @@ bool PassManager::Initialize(Argument* argument) {
   return true;
 }
 
-void DfgPassManager::RunAll() {
+void AnalysisPassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
   VLOG(3) << "Total " << data_.size() << " Analysys passes";
   for (auto& pass : data_) {
     string::PrettyLogEndl(string::Style::H1(), "* Running Analysis pass [%s]",
                           pass->repr());
-    pass->Run(argument_->main_dfg.get());
+    pass->Run(argument_->main_graph.get());
   }
 }
 

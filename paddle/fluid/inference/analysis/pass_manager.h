@@ -26,7 +26,7 @@ limitations under the License. */
  *   1. NodePassManager: the passes inside are all NodePasses, it can have
  *      different graph trivial algorithm, for example, DFS_NodePassManager will
  *      trigger the passes in depth first order;
- *   2. DfgPassManager: the passes inside are all DfgPasses.
+ *   2. AnalysisPassManager: the passes inside are all DfgPasses.
  */
 
 #pragma once
@@ -80,13 +80,13 @@ class PassManager : public OrderedRegistry<AnalysisPass> {
 /*
  * A pass manager that process a DFG.
  */
-class DfgPassManager : public PassManager {
+class AnalysisPassManager : public PassManager {
  public:
-  DfgPassManager() = default;
+  AnalysisPassManager() = default;
 
   void RunAll() override;
 
-  virtual ~DfgPassManager() = default;
+  virtual ~AnalysisPassManager() = default;
 };
 
 }  // namespace analysis

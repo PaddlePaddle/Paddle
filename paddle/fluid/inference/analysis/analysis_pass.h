@@ -19,42 +19,48 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/analysis/node.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
+/*
+ * AnalysisPass is a pass used to control the IR passes.
+ */
 class AnalysisPass {
  public:
   AnalysisPass() = default;
   virtual ~AnalysisPass() = default;
+
+  // User should implement these.
+  virtual bool InitializeImpl() = 0;
+  virtual bool FinalizeImpl() = 0;
+  virtual void RunImpl() = 0;
+
   // Mutable Pass.
-  virtual bool Initialize(Argument *argument) { return false; }
-  // Readonly Pass.
-  virtual bool Initialize(const Argument &argument) { return false; }
+  virtual bool Initialize(Argument *argument) {
+    argument_ = argument;
+    return true;
+  }
 
   // Virtual method overriden by subclasses to do any necessary clean up after
   // all passes have run.
-  virtual bool Finalize() { return false; }
+  virtual bool Finalize() { return true; }
 
-  // Create a debugger Pass that draw the DFG by graphviz toolkit.
-  virtual AnalysisPass *CreateGraphvizDebugerPass() const { return nullptr; }
-
-  // Run on a single DataFlowGraph.
-  virtual void Run(DataFlowGraph *x) = 0;
+  // Run on a single Graph.
+  virtual void Run() = 0;
 
   // Human-readable short representation.
   virtual std::string repr() const = 0;
   // Human-readable long description.
   virtual std::string description() const { return "No DOC"; }
-};
 
-// GraphPass processes on any GraphType.
-class DataFlowGraphPass : public AnalysisPass {};
+ protected:
+  Argument *argument_{nullptr};
+};
 
 }  // namespace analysis
 }  // namespace inference

@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/subgraph_splitter.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
-  if (node->type() != Node::Type::kFunction) return false;
-  const auto* func = static_cast<const Function*>(node);
-  if (func->func_type() == "elementwise_add" || func->func_type() == "relu" ||
-      func->func_type() == "conv2d" || func->func_type() == "mul" ||
-      func->func_type() == "sigmoid" || func->func_type() == "softmax") {
-    LOG(INFO) << "sub-graph marked " << node->repr();
+using framework::ir::Node;
+
+SubgraphDetector::NodeInsideSubgraphTeller teller = [](const Node* node) {
+  if (!node->IsOp()) return false;
+  if (node->Op()->Type() == "elementwise_add" || node->Op()->Type() == "relu" ||
+      node->Op()->Type() == "conv2d" || node->Op()->Type() == "mul" ||
+      node->Op()->Type() == "sigmoid" || node->Op()->Type() == "softmax") {
+    LOG(INFO) << "sub-graph marked " << node->Op()->Type();
     return true;
   }
   return false;
@@ -38,13 +40,13 @@ TEST(SubGraphSplitter, Split) {
 
   ASSERT_GT(dfg.nodes.size(), 5UL);
 
-  auto subgraphs = SubGraphSplitter(&dfg, teller)();
+  auto subgraphs = SubgraphDetector(&dfg, teller)();
 
   // Check the number of the marked nodes.
   int marked_nodes = 0;
   for (auto& node : dfg.nodes.nodes()) {
     if (node->IsFunction() &&
-        node->attr(SubGraphSplitter::kMarkerAttrName).Bool()) {
+        node->Get<bool>(SubgraphDetector::kMarkerAttrName).Bool()) {
       ++marked_nodes;
     }
   }
@@ -61,30 +63,6 @@ TEST(SubGraphSplitter, Split) {
   ASSERT_EQ(subgraphs.size(), 1UL);
   // The last sub-graph has 5 Functions.
   ASSERT_EQ(subgraphs.back().size(), 6UL);
-}
-
-TEST(SubGraphSplitter, Fuse) {
-  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
-  auto dfg = ProgramDescToDFG(desc);
-  Argument argument;
-  argument.Set<int>("minimum_subgraph_size", new int(3));
-
-  size_t count0 = dfg.nodes.size();
-
-  SubGraphFuse fuse(&dfg, teller, &argument);
-  fuse();
-
-  int count1 = 0;
-  for (auto& node : dfg.nodes.nodes()) {
-    if (node->deleted()) {
-      LOG(INFO) << "deleted " << node->repr();
-    }
-    count1 += node->deleted();
-  }
-
-  // At least one nodes should be deleted.
-  ASSERT_EQ(dfg.nodes.size(), count0 + 1);  // added a new FunctionBlock
-  ASSERT_EQ(11, count1);
 }
 
 }  // namespace analysis

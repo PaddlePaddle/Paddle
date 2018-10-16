@@ -19,15 +19,17 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+using framework::ir::Node;
+
 TensorRTSubGraphPass::TensorRTSubGraphPass(
     const TensorRTSubGraphPass::NodeInsideSubgraphTeller &teller)
     : node_inside_subgraph_teller_(teller) {}
 
-void TensorRTSubGraphPass::Run(DataFlowGraph *graph) {
-  SubGraphFuse(graph, node_inside_subgraph_teller_, argument_)();
-  VLOG(4) << "debug info "
-          << graph->HumanReadableInfo(false /*show_values*/,
-                                      true /*show_functions*/);
+void TensorRTSubGraphPass::Run(Graph *graph) {
+  SubgraphDetector detector(graph, node_inside_subgraph_teller_);
+
+  std::vector<std::vector<Node*>> subgraphs = detector();
+
 }
 
 }  // namespace analysis

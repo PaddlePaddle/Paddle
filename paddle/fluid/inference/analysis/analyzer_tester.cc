@@ -29,7 +29,7 @@ using namespace framework;  // NOLINT
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.model_dir.reset(new std::string(FLAGS_inference_model_dir));
   Analyzer analyser;
   analyser.Run(&argument);
 }
@@ -41,7 +41,7 @@ TEST(Analyzer, analysis_with_tensorrt) {
   argument.Set<int>("max_batch_size", new int(3));
   argument.Set<int>("workspace_size", new int(1 << 20));
   argument.Set<std::string>("precision_mode", new std::string("FP32"));
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.model_dir.reset(new std::string(FLAGS_inference_model_dir));
   Analyzer analyser;
   analyser.Run(&argument);
 }

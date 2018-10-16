@@ -24,7 +24,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-class TestDfgPassManager final : public DfgPassManager {
+class TestDfgPassManager final : public AnalysisPassManager {
  public:
   TestDfgPassManager() = default;
   virtual ~TestDfgPassManager() = default;

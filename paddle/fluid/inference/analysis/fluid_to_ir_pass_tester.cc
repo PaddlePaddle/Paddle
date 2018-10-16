@@ -28,7 +28,7 @@ TEST(FluidToIrPass, Test) {
   argument.Set(kFluidToIrPassesAttr,
                new std::vector<std::string>({"infer_clean_graph_pass"}));
   pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
+  pass.Run(argument.main_graph.get());
 }
 
 }  // namespace analysis

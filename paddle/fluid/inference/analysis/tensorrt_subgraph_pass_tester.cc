@@ -28,7 +28,7 @@ DEFINE_string(dot_dir, "./", "");
 TEST(TensorRTSubGraphPass, main) {
   std::unordered_set<std::string> teller_set(
       {"elementwise_add", "mul", "sigmoid"});
-  SubGraphSplitter::NodeInsideSubgraphTeller teller = [&](const Node* node) {
+  SubgraphDetector::NodeInsideSubgraphTeller teller = [&](const Node* node) {
     if (node->type() != Node::Type::kFunction) return false;
     const auto* func = static_cast<const Function*>(node);
     if (teller_set.count(func->func_type())) return true;
@@ -54,14 +54,14 @@ TEST(TensorRTSubGraphPass, main) {
   pass0.Initialize(&argument);
   trt_pass.Initialize(&argument);
 
-  argument.main_dfg.reset(new DataFlowGraph);
-  pass0.Run(argument.main_dfg.get());
-  dfg_pass.Run(argument.main_dfg.get());
-  trt_pass.Run(argument.main_dfg.get());
-  dfg_pass1.Run(argument.main_dfg.get());
+  argument.main_graph.reset(new DataFlowGraph);
+  pass0.Run(argument.main_graph.get());
+  dfg_pass.Run(argument.main_graph.get());
+  trt_pass.Run(argument.main_graph.get());
+  dfg_pass1.Run(argument.main_graph.get());
 
   // Check the TRT op's block desc
-  for (auto& node : argument.main_dfg->nodes.nodes()) {
+  for (auto& node : argument.main_graph->nodes.nodes()) {
     if (node->IsFunctionBlock()) {
       LOG(INFO) << "get function block";
     }

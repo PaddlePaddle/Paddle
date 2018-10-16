@@ -40,8 +40,8 @@ bool FluidToIrPass::LoadParams(framework::Scope *scope, const std::string &dir,
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
   framework::Executor executor(place);
-  PADDLE_ENFORCE(argument_->origin_program_desc.get());
-  framework::ProgramDesc program(*argument_->origin_program_desc);
+  PADDLE_ENFORCE(argument_->original_program_desc.get());
+  framework::ProgramDesc program(*argument_->original_program_desc);
   if ((!prog_file.empty()) && (!param_file.empty())) {
     LOG(INFO) << "load single model file from " << prog_file;
     Load(&executor, scope, prog_file, param_file);

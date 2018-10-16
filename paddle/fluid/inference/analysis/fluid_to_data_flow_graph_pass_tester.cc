@@ -25,12 +25,12 @@ TEST(FluidToDataFlowGraphPass, Test) {
   FluidToDataFlowGraphPass pass;
   Argument argument(FLAGS_inference_model_dir);
   pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
+  pass.Run(argument.main_graph.get());
   // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(argument.main_dfg->nodes.size(), 38UL);
+  ASSERT_EQ(argument.main_graph->nodes.size(), 38UL);
   pass.Finalize();
-  ASSERT_FALSE(argument.main_dfg->DotString().empty());
-  EXPECT_FALSE(argument.main_dfg->inputs().empty());
+  ASSERT_FALSE(argument.main_graph->DotString().empty());
+  EXPECT_FALSE(argument.main_graph->inputs().empty());
 }
 
 }  // namespace analysis

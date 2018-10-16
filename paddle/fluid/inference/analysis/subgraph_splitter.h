@@ -20,28 +20,35 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/inference/analysis/data_flow_graph.h"
-#include "paddle/fluid/inference/analysis/node.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
+using framework::ir::Graph;
+
+const char kIsFunctionNode[] = "__is_function_node__";
+const char kFunctionNodeSubGraph[] = "__function_node_sub_graph__";
+const char kSubgraphSplitterMarkerAttrName[] =
+    "_sub_graph_splitter_inside_sub_graph";
+
 /*
  * Detect the nodes in a sub-graph that meet some conditions. This class doesn't
  * modify the graph.
  */
-class SubGraphSplitter {
+class SubgraphDetector {
  public:
-  static const char *kMarkerAttrName;
   // Tell whether a node is inside a sub-graph.
-  using NodeInsideSubgraphTeller = std::function<bool(const Node *)>;
+  using NodeInsideSubgraphTeller =
+      std::function<bool(const framework::ir::Node *)>;
 
-  SubGraphSplitter(DataFlowGraph *graph, const NodeInsideSubgraphTeller &teller)
+  SubgraphDetector(Graph *graph, const NodeInsideSubgraphTeller &teller)
       : graph_(graph), node_inside_subgraph_teller_(teller) {}
 
-  std::vector<std::vector<Node *>> operator()();
+  std::vector<std::vector<framework::ir::Node *>> operator()();
 
  protected:
   // Mark the nodes inside the accepted sub-graph using
@@ -49,10 +56,10 @@ class SubGraphSplitter {
   void MarkNodesInsideSubGraph();
 
   // Merge the marked nodes into sub-graphs and return the sub-graphs.
-  std::vector<std::vector<Node *>> ExtractSubGraphs();
+  std::vector<std::vector<framework::ir::Node *>> ExtractSubGraphs();
 
  private:
-  DataFlowGraph *graph_;
+  Graph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
 };
 
@@ -60,11 +67,12 @@ class SubGraphSplitter {
  * SubGraphFuse - Replace some nodes with the sub-graph node they are inside. To
  * some extent, the TensorRT engine is just a fusion op for a model.
  */
+/*
 class SubGraphFuse {
  public:
-  using NodeInsideSubgraphTeller = SubGraphSplitter::NodeInsideSubgraphTeller;
+  using NodeInsideSubgraphTeller = SubgraphDetector::NodeInsideSubgraphTeller;
 
-  SubGraphFuse(DataFlowGraph *graph, const NodeInsideSubgraphTeller &teller,
+  SubGraphFuse(Graph *graph, const NodeInsideSubgraphTeller &teller,
                Argument *argument)
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
@@ -78,10 +86,11 @@ class SubGraphFuse {
   void ReplaceNodesWithSubGraphs();
 
  private:
-  DataFlowGraph *graph_;
+  Graph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
   Argument *argument_;
 };
+ */
 
 }  // namespace analysis
 }  // namespace inference

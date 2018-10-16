@@ -28,7 +28,7 @@ namespace analysis {
 
 static const char kFluidToIrPassesAttr[] = "__fluid_to_ir_passes__";
 
-class FluidToIrPass final : public DataFlowGraphPass {
+class FluidToIrPass final : public AnalysisPass {
  public:
   FluidToIrPass() = default;
 
@@ -37,31 +37,31 @@ class FluidToIrPass final : public DataFlowGraphPass {
     PADDLE_ENFORCE(argument->Has(kFluidToIrPassesAttr),
                    "argument need the attr %s", kFluidToIrPassesAttr);
     argument_ = argument;
-    if (argument->origin_program_desc) {
-      LOG(WARNING) << "argument's origin_program_desc is already set, might "
+    if (argument->original_program_desc) {
+      LOG(WARNING) << "argument's original_program_desc is already set, might "
                       "duplicate called";
     }
     // set fluid model program path
-    if (!argument->fluid_model_program_path) {
-      ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_dir);
-      argument->fluid_model_program_path.reset(
-          new std::string(*argument->fluid_model_dir + "/__model__"));
+    if (!argument->model_program_path) {
+      ANALYSIS_ARGUMENT_CHECK_FIELD(argument->model_dir);
+      argument->model_program_path.reset(
+          new std::string(*argument->model_dir + "/__model__"));
     }
-    ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_program_path);
+    ANALYSIS_ARGUMENT_CHECK_FIELD(argument->model_program_path);
     // Load program.
-    auto program = LoadProgramDesc(*argument->fluid_model_program_path);
-    argument->origin_program_desc.reset(
+    auto program = LoadProgramDesc(*argument->model_program_path);
+    argument->original_program_desc.reset(
         new framework::proto::ProgramDesc(program));
     // Create main data flow graph.
-    if (!argument->main_dfg) {
-      argument->main_dfg.reset(new DataFlowGraph);
+    if (!argument->main_graph) {
+      argument->main_graph.reset(new DataFlowGraph);
     }
     argument->Set("ir_program_desc", new ProgramDesc(program));
 
     LOG(INFO) << "Loading parameters";
     // Load parameters to argument if needed.
-    if (argument->fluid_model_dir || (argument->fluid_model_program_path &&
-                                      argument->fluid_model_param_path)) {
+    if (argument->model_dir || (argument->model_program_path &&
+                                      argument->model_param_path)) {
 #define SAFE_GET(ATTR) std::string ATTR = argument->ATTR ? *argument->ATTR : "";
       SAFE_GET(fluid_model_dir);
       SAFE_GET(fluid_model_program_path);
@@ -96,8 +96,8 @@ class FluidToIrPass final : public DataFlowGraphPass {
       ir_passes.Apply(ir_passes_to_apply);
     }
 
-    PADDLE_ENFORCE(argument_->main_dfg.get());
-    argument_->main_dfg->Build(ir_passes.graph());
+    PADDLE_ENFORCE(argument_->main_graph.get());
+    argument_->main_graph->Build(ir_passes.graph());
     // inherit the arguments from ir.
     if (ir_passes.graph().Has(framework::ir::kFuseStatisAttr)) {
       argument_->Set(

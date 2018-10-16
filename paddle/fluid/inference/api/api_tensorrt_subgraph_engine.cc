@@ -99,18 +99,18 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
                               new std::string(config_.precision_mode));
 
     if (!config_.model_dir.empty()) {
-      argument.fluid_model_dir.reset(new std::string(config_.model_dir));
+      argument.model_dir.reset(new std::string(config_.model_dir));
     } else {
       PADDLE_ENFORCE(
           !config_.param_file.empty(),
           "Either model_dir or (param_file, prog_file) should be set.");
       PADDLE_ENFORCE(!config_.prog_file.empty());
-      argument.fluid_model_program_path.reset(
+      argument.model_program_path.reset(
           new std::string(config_.prog_file));
-      argument.fluid_model_param_path.reset(
+      argument.model_param_path.reset(
           new std::string(config_.param_file));
     }
-    argument.origin_program_desc.reset(
+    argument.original_program_desc.reset(
         new ProgramDesc(*inference_program_->Proto()));
     Analyzer analyzer;
     analyzer.Run(&argument);

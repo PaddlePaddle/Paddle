@@ -24,13 +24,14 @@
 #pragma once
 
 #include <string>
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+using framework::ir::Graph;
 
 /*
  * The argument definition of both Pass and PassManagers.
@@ -39,26 +40,23 @@ namespace analysis {
  */
 struct Argument {
   Argument() = default;
-  explicit Argument(const std::string& fluid_model_dir)
-      : fluid_model_dir(new std::string(fluid_model_dir)) {}
+  explicit Argument(const std::string& model_dir)
+      : model_dir(new std::string(model_dir)) {}
   // The directory of the trained model.
-  std::unique_ptr<std::string> fluid_model_dir;
+  std::unique_ptr<std::string> model_dir;
   // The path of `__model__` and `param`, this is used when the file name of
   // model and param is changed.
-  std::unique_ptr<std::string> fluid_model_program_path;
-  std::unique_ptr<std::string> fluid_model_param_path;
+  std::unique_ptr<std::string> model_program_path;
+  std::unique_ptr<std::string> model_param_path;
 
   // The graph that process by the Passes or PassManagers.
-  std::unique_ptr<DataFlowGraph> main_dfg;
+  std::unique_ptr<Graph> main_graph;
 
   // The original program desc.
-  std::unique_ptr<framework::proto::ProgramDesc> origin_program_desc;
+  std::unique_ptr<framework::proto::ProgramDesc> original_program_desc;
 
   // The processed program desc.
   std::unique_ptr<framework::proto::ProgramDesc> transformed_program_desc;
-
-  // The output storage path of ModelStorePass.
-  std::unique_ptr<std::string> model_output_store_path;
 
   // Support for any other attributes.
   template <typename T>

@@ -204,18 +204,18 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   FLAGS_IA_enable_ir = config_.enable_ir_optim;
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
-    argument_.fluid_model_dir.reset(new std::string(config_.model_dir));
+    argument_.model_dir.reset(new std::string(config_.model_dir));
   } else {
     PADDLE_ENFORCE(
         !config_.param_file.empty(),
         "Either model_dir or (param_file, prog_file) should be set.");
     PADDLE_ENFORCE(!config_.prog_file.empty());
-    argument_.fluid_model_program_path.reset(
+    argument_.model_program_path.reset(
         new std::string(config_.prog_file));
-    argument_.fluid_model_param_path.reset(new std::string(config_.param_file));
+    argument_.model_param_path.reset(new std::string(config_.param_file));
   }
 
-  argument_.origin_program_desc.reset(
+  argument_.original_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
 
   auto passes = config_.pass_builder()->AllPasses();
