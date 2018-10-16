@@ -25,7 +25,11 @@ class TestDistSimnetBowDense2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
-        need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '0'}
+        need_envs = {
+            "IS_DISTRIBUTED": '0',
+            "IS_SPARSE": '0',
+            'IS_SELF_CONTAINED_LR': '1'
+        }
         self.check_with_place(
             "dist_simnet_bow.py",
             delta=1e-5,
@@ -39,7 +43,11 @@ class TestDistSimnetBow2x2DenseAsync(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
-        need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '0'}
+        need_envs = {
+            "IS_DISTRIBUTED": '0',
+            "IS_SPARSE": '0',
+            'IS_SELF_CONTAINED_LR': '1'
+        }
         self.check_with_place(
             "dist_simnet_bow.py",
             delta=100,
@@ -53,7 +61,11 @@ class TestDistSimnetBowSparse2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
-        need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '1'}
+        need_envs = {
+            "IS_DISTRIBUTED": '0',
+            "IS_SPARSE": '1',
+            'IS_SELF_CONTAINED_LR': '1'
+        }
         self.check_with_place(
             "dist_simnet_bow.py",
             delta=1e-5,
@@ -67,10 +79,68 @@ class TestDistSimnetBow2x2SparseAsync(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
-        need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '1'}
+        need_envs = {
+            "IS_DISTRIBUTED": '0',
+            "IS_SPARSE": '1',
+            'IS_SELF_CONTAINED_LR': '1'
+        }
         self.check_with_place(
             "dist_simnet_bow.py",
             delta=100,
+            check_error_log=False,
+            need_envs=need_envs)
+
+
+class TestDistSimnetBow2x2LookupTableSync(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._enforce_place = "CPU"
+
+    def test_simnet_bow(self):
+        need_envs = {
+            "IS_DISTRIBUTED": '1',
+            "IS_SPARSE": '1',
+            'IS_SELF_CONTAINED_LR': '1'
+        }
+        self.check_with_place(
+            "dist_simnet_bow.py",
+            delta=1e-5,
+            check_error_log=False,
+            need_envs=need_envs)
+
+
+class TestDistSimnetBow2x2LookupTableAsync(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._enforce_place = "CPU"
+
+    def test_simnet_bow(self):
+        need_envs = {
+            "IS_DISTRIBUTED": '1',
+            "IS_SPARSE": '1',
+            'IS_SELF_CONTAINED_LR': '1'
+        }
+        self.check_with_place(
+            "dist_simnet_bow.py",
+            delta=100,
+            check_error_log=False,
+            need_envs=need_envs)
+
+
+class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._enforce_place = "CPU"
+
+    def test_simnet_bow(self):
+        need_envs = {
+            "IS_DISTRIBUTED": '1',
+            "IS_SPARSE": '1',
+            'IS_SELF_CONTAINED_LR': '0'
+        }
+        self.check_with_place(
+            "dist_simnet_bow.py",
+            delta=1e-5,
             check_error_log=False,
             need_envs=need_envs)
 
