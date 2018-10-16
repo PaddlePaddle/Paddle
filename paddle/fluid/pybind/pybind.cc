@@ -57,6 +57,10 @@ limitations under the License. */
 
 #include "pybind11/stl.h"
 
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -380,7 +384,8 @@ All parameter, weight, gradient are variables in Paddle.
                                return make_ddim(shape);
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims);
+              holder->InitOnce(capacity, dims,
+                               FLAGS_reader_queue_speed_test_mode);
               return holder->GetQueue();
             },
         py::return_value_policy::copy);
