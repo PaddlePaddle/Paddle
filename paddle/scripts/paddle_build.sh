@@ -648,25 +648,25 @@ function gen_capi_package() {
     fi
 }
 
-function gen_fluid_inference_lib() {
+function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Generating fluid inference library ...
+    Generating fluid library for train and inference ...
     ========================================
 EOF
         cmake .. -DWITH_DISTRIBUTE=OFF
-        make -j `nproc` inference_lib_dist
+        make -j `nproc` fluid_lib_dist
       fi
 }
 
-function tar_fluid_inference_lib() {
+function tar_fluid_lib() {
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Taring fluid inference library ...
+    Taring fluid library for train and inference ...
     ========================================
 EOF
         cd ${PADDLE_ROOT}/build
@@ -675,11 +675,11 @@ EOF
       fi
 }
 
-function test_fluid_inference_lib() {
+function test_fluid_lib() {
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Testing fluid inference library ...
+    Testing fluid library for inference ...
     ========================================
 EOF
         cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
@@ -731,9 +731,9 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_inference_lib
-        tar_fluid_inference_lib
-        test_fluid_inference_lib
+        gen_fluid_lib
+        tar_fluid_lib
+        test_fluid_lib
         ;;
       check_style)
         check_style
@@ -744,8 +744,8 @@ function main() {
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_capi_package
-        gen_fluid_inference_lib
-        test_fluid_inference_lib
+        gen_fluid_lib
+        test_fluid_lib
         assert_api_spec_approvals
         ;;
       maccheck)

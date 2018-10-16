@@ -230,7 +230,7 @@ if(WITH_DISTRIBUTE)
         op_library(${dist_op} DEPS ${DISTRIBUTE_DEPS})
         set_source_files_properties(${dist_op}.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     endforeach()
-    
+
     #set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     #cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op
     #        listen_and_serv_op sum_op executor SERIAL)
@@ -268,6 +268,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
 else()
     set(DEPS_OPS ${DEPS_OPS} tensorrt_engine_op)
 endif()
+op_library(clip_by_norm_op DEPS selected_rows_functor selected_rows)
 op_library(sum_op DEPS selected_rows_functor)
 op_library(sgd_op DEPS selected_rows_functor)
 op_library(print_op DEPS lod_tensor)
