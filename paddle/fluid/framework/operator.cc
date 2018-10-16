@@ -689,7 +689,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto expected_kernel_key =
       this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "expected_kernel_key: " << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN

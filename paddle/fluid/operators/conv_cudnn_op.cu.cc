@@ -43,6 +43,7 @@ template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    VLOG(3) << "inside cudnn";
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
     auto* input = ctx.Input<Tensor>("Input");
@@ -59,7 +60,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-
+    VLOG(3) << "get all inputs";
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
@@ -72,7 +73,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
-
+    VLOG(3) << "create tensor descriptor";
 #if CUDNN_VERSION_MIN(7, 0, 1)
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
@@ -81,7 +82,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         cudnn_conv_desc, groups));
     groups = 1;
 #endif
-
+    VLOG(3) << "before create tensor descriptor";
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()), groups);
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
@@ -111,7 +112,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       output_height = output->dims()[2];
       output_width = output->dims()[3];
     }
-
+    VLOG(3) << "after create tensor descriptor";
     int group_offset_in =
         input_channels / groups * input_height * input_width * input_depth;
     int group_offset_out =
@@ -129,6 +130,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
+    VLOG(3) << "set cudnn algorithm";
     CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
@@ -149,7 +151,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           cudnn_conv_desc, CUDNN_DEFAULT_MATH));
     }
 #endif
-
+    VLOG(3) << "before get workspace";
     // get workspace size able to allocate
     CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
@@ -158,10 +160,12 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // the limit because the algo is overrided to use tensor core.
     PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
                       "workspace_size to be allocated exceeds the limit");
-
+    VLOG(3) << "after get workspace";
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    workspace_size_in_bytes = 1024;
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
+    VLOG(3) << "allocate memory";
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
@@ -171,8 +175,10 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes,
           &beta, cudnn_output_desc, output_data + i * group_offset_out));
     }
+    VLOG(3) << "cudnn forward";
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
+    VLOG(3) << "cudnn pass";
   }
 };
 
@@ -318,6 +324,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // Already on GPU
     void* cudnn_workspace = nullptr;
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    workspace_size_in_bytes = 1024;
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
