@@ -173,7 +173,6 @@ TEST(COMPLETE, CPU) {
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  // put nccl id in CPUPlace
   auto& dev_ctx = *pool.Get(platform::CPUPlace());
 
   client->AsyncSendComplete(ep, dev_ctx);

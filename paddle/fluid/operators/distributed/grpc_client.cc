@@ -102,8 +102,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
       h->Wait();
     }
   });
-
-  this->req_count_++;
+  req_count_++;
 
   return h;
 }
@@ -338,10 +337,6 @@ void GRPCClient::Proceed() {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
-
-    // VarHandlePtr var_h = c->GetVarHandlePtr();
-    // platform::PopEvent(var_h->method(), var_h->ctx());
-
     if (c->status_.ok()) {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
