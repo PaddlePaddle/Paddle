@@ -209,22 +209,22 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
       IR_NODE_LINK_TO(conv, bn_out);
     } else {
       // create an elementwise add node.
-    OpDesc desc;
-    desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
-    desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));
-    desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
-    desc.SetType("elementwise_add");
-    desc.SetAttr("axis", 1);
-    auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
+      OpDesc desc;
+      desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
+      desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));
+      desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
+      desc.SetType("elementwise_add");
+      desc.SetAttr("axis", 1);
+      auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
       GraphSafeRemoveNodes(
           graph.get(),
           {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
            bn_variance_out, bn_saved_mean, bn_saved_variance});
 
-    IR_NODE_LINK_TO(conv_out, eltwise_op);
-    IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
-    IR_NODE_LINK_TO(eltwise_op, bn_out);
+      IR_NODE_LINK_TO(conv_out, eltwise_op);
+      IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
+      IR_NODE_LINK_TO(eltwise_op, bn_out);
     }
     found_conv_bn_count++;
   };
