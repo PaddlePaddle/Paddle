@@ -1149,32 +1149,31 @@ to transpile() call.")
         # STEP: create prefetch block
         table_var = pserver_program.global_block().vars[self.table_name]
         prefetch_var_name_to_block_id = []
-        for index in range(len(self.all_prefetch_input_vars)):
-            prefetch_block = pserver_program._create_block(optimize_block.idx)
-            trainer_ids = self.all_prefetch_input_vars[index][pserver_index]
-            pserver_ids = pserver_program.global_block().create_var(
-                name=trainer_ids.name,
-                type=trainer_ids.type,
-                shape=trainer_ids.shape,
-                dtype=trainer_ids.dtype)
-            trainer_out = self.all_prefetch_output_vars[index][pserver_index]
-            pserver_out = pserver_program.global_block().create_var(
-                name=trainer_out.name,
-                type=trainer_out.type,
-                shape=trainer_out.shape,
-                dtype=trainer_out.dtype)
-            prefetch_block.append_op(
-                type="lookup_sparse_table",
-                inputs={'Ids': pserver_ids,
-                        "W": table_var},
-                outputs={"Out": pserver_out},
-                attrs={
-                    "is_sparse": True,  # has no effect on lookup_table op
-                    "is_distributed": True,
-                    "padding_idx": -1
-                })
-            prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
-                prefetch_block.idx))
+        prefetch_block = pserver_program._create_block(optimize_block.idx)
+        trainer_ids = self.all_prefetch_input_vars[pserver_index]
+        pserver_ids = pserver_program.global_block().create_var(
+            name=trainer_ids.name,
+            type=trainer_ids.type,
+            shape=trainer_ids.shape,
+            dtype=trainer_ids.dtype)
+        trainer_out = self.all_prefetch_output_vars[pserver_index]
+        pserver_out = pserver_program.global_block().create_var(
+            name=trainer_out.name,
+            type=trainer_out.type,
+            shape=trainer_out.shape,
+            dtype=trainer_out.dtype)
+        prefetch_block.append_op(
+            type="lookup_sparse_table",
+            inputs={'Ids': pserver_ids,
+                    "W": table_var},
+            outputs={"Out": pserver_out},
+            attrs={
+                "is_sparse": True,  # has no effect on lookup_table op
+                "is_distributed": True,
+                "padding_idx": -1
+            })
+        prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
+            prefetch_block.idx))
         return prefetch_var_name_to_block_id
 
     def _create_table_optimize_block(self, pserver_index, pserver_program,
