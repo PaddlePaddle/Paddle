@@ -2848,7 +2848,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
 def sequence_unpad(x, length, name=None):
     """
-    Sequence Unpad Layer
+    **Sequence Unpad Layer**
 
     This layer removes the padding data in the input sequences and convert 
     them into sequences with actual length as output, identitied by lod 
@@ -2864,14 +2864,14 @@ def sequence_unpad(x, length, name=None):
 		      [11.0, 12.0, 13.0, 14.0, 15.0]], 
      
 	in which there are 3 sequences padded to length 5, and the acutal length 
-	specified by input Variable *length*:
+	specified by input Variable **length**:
 
 	    length.data = [[2], [3], [4]],
 
 	after unpadding, the output Variable will be:
 
 	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[0, 2, 5, 9]]      
+	    out.lod = [[2, 3, 4]]      
 
     Args:
         x(Variable): Input Variable which contains the padded sequences with
