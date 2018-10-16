@@ -29,6 +29,12 @@ int GetCUDADeviceCount();
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
 int GetCUDAComputeCapability(int i);
 
+//! Get the runtime version of the ith GPU
+int GetCUDARuntimeVersion(int id);
+
+//! Get the driver version of the ith GPU
+int GetCUDADriverVersion(int id);
+
 //! Get the MultiProcessors of the ith GPU.
 int GetCUDAMultiProcessors(int i);
 

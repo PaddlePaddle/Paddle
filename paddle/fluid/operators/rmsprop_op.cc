@@ -32,6 +32,11 @@ class RmspropOp : public framework::OperatorWithKernel {
                    "Input(Grad) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Moment"),
                    "Input(Moment) of RmspropOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(param_out) of RmspropOp should not be null.");

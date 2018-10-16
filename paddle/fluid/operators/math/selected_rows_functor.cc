@@ -15,6 +15,7 @@ limitations under the License. */
 #include <set>
 #include <unordered_map>
 
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
