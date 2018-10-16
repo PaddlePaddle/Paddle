@@ -123,7 +123,15 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
-        for _ in six.moves.xrange(RUN_STEP):
+        for batch_id in six.moves.xrange(RUN_STEP):
+            if args.profile and batch_id == 5:
+                profiler.start_profiler("All")
+                profiler.reset_profiler()
+            elif args.profile and batch_id == RUN_STEP:
+                #print("profiling total time: ", time.time() - start_time)
+                profiler.stop_profiler("total", "/tmp/profile_trainer_%d" %
+                                       (args.trainer_id))
+
             loss, = exe.run(fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             print(loss)
@@ -143,6 +151,7 @@ def runtime_main(test_class):
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
+    parser.add_argument('--profile', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False, default=True)
 

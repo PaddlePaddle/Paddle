@@ -17,6 +17,7 @@ import cProfile
 import time
 import os
 import traceback
+import sys
 
 import numpy as np
 
@@ -227,6 +228,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 print("profiling total time: ", time.time() - start_time)
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
+                sys.exit(0)
             if iters == args.iterations:
                 reader_generator.close()
                 break

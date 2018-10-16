@@ -80,7 +80,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, this] {
+  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -91,14 +91,19 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     // stub context
     s->response_call_back_ = nullptr;
 
-    // PushEvent(method, p_ctx);
+    platform::RecordEvent record_event(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+    this->req_count_++;
+
+    if (platform::IsProfileEnabled()) {
+      h->Wait();
+    }
   });
-  req_count_++;
 
   return h;
 }
