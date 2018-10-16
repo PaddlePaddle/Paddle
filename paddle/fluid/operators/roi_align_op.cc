@@ -10,7 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_align_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
