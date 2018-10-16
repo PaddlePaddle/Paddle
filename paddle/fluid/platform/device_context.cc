@@ -201,12 +201,15 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
