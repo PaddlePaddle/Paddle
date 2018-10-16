@@ -64,8 +64,6 @@ class VarHandle {
     scope_ = p_scope;
     name_ = name;
     method_ = method;
-
-    profiler_.reset(new platform::RecordEvent(method, p_ctx));
   }
 
   virtual ~VarHandle() {}
@@ -86,10 +84,6 @@ class VarHandle {
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       status_ = ok ? kFinishState : kErrorState;
-      if (profiler_.get()) {
-        platform::RecordEvent* tmp = profiler_.release();
-        delete tmp;
-      }
     }
 
     VLOG(7) << "VarHandle finish:" << ok;
@@ -129,8 +123,6 @@ class VarHandle {
     kFinishState = 1,
   };
   VarHandleStatus status_;
-
-  std::unique_ptr<platform::RecordEvent> profiler_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(VarHandle);
