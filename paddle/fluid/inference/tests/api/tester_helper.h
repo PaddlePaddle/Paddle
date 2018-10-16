@@ -35,6 +35,8 @@ DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
+DEFINE_bool(_use_mkldnn, true,
+            "Running the inference program with mkldnn library.");
 
 namespace paddle {
 namespace inference {
@@ -165,7 +167,8 @@ void TestPrediction(const AnalysisConfig &config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
-  LOG(INFO) << "use_analysis: " << use_analysis;
+  LOG(INFO) << "use_analysis: " << use_analysis
+            << ", use_mkldnn: " << config._use_mkldnn;
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -177,6 +180,7 @@ void TestPrediction(const AnalysisConfig &config,
 void CompareNativeAndAnalysis(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
+  LOG(INFO) << "use_mkldnn: " << config._use_mkldnn;
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
