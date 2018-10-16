@@ -154,6 +154,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'sequence_reverse',
     'affine_channel',
 ]
 
@@ -7481,6 +7482,34 @@ def maxout(x, groups, name=None):
         inputs={"X": x},
         attrs={"groups": groups},
         outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def sequence_reverse(x, name=None):
+    """ 
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${y_type}): ${y_comment}
+    """
+    helper = LayerHelper("sequence_reverse", **locals())
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="sequence_reverse",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs=dict())
     return out
 
 
