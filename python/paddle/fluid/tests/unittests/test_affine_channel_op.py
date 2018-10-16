@@ -21,9 +21,11 @@ import paddle.fluid.core as core
 
 
 def affine_channel(x, scale, bias, layout):
-    assert len(x.shape) == 4
     C = x.shape[1] if layout == 'NCHW' else x.shape[-1]
-    new_shape = (1, C, 1, 1) if layout == 'NCHW' else (1, 1, 1, C)
+    if len(x.shape) == 4:
+        new_shape = (1, C, 1, 1) if layout == 'NCHW' else (1, 1, 1, C)
+    else:
+        new_shape = (1, C)
     scale = scale.reshape(new_shape)
     bias = bias.reshape(new_shape)
     return x * scale + bias
@@ -45,23 +47,16 @@ class TestAffineChannelOp(OpTest):
         self.outputs = {'Out': y}
 
     def test_check_output(self):
-        #self.check_output()
-        self.check_output_with_place(core.CPUPlace(), atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
-        #self.check_grad(['X', 'Scale', 'Bias'], 'Out')
-        self.check_grad_with_place(core.CPUPlace(), ['X', 'Scale', 'Bias'],
-                                   'Out')
+        self.check_grad(['X', 'Scale', 'Bias'], 'Out')
 
     def test_check_grad_stopgrad_dx(self):
-        #self.check_grad(['Scale', 'Bias'], 'Out', no_grad_set=set('X'))
-        self.check_grad_with_place(
-            core.CPUPlace(), ['Scale', 'Bias'], 'Out', no_grad_set=set(['X']))
+        self.check_grad(['Scale', 'Bias'], 'Out', no_grad_set=set('X'))
 
     def test_check_grad_stopgrad_dscale_dbias(self):
-        #self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
-        self.check_grad_with_place(
-            core.CPUPlace(), ['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
+        self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
 
     def init_test_case(self):
         self.shape = [2, 32, 14, 14]
@@ -74,6 +69,13 @@ class TestAffineChannelNHWC(TestAffineChannelOp):
         self.shape = [2, 14, 14, 32]
         self.C = 32
         self.layout = 'NHWC'
+
+
+class TestAffineChannel2D(TestAffineChannelOp):
+    def init_test_case(self):
+        self.shape = [16, 64]
+        self.C = 64
+        self.layout = 'NCHW'
 
 
 class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):

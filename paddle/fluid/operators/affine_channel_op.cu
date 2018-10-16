@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, framework::DataLayout layout>
+template <typename T, framework::DataLayout layout, bool HasBias>
 __global__ void KeAffineChannelCUDA(const T* x, const T* scale, const T* bias,
                                     const int C, const int HxW, const int num,
                                     T* y) {
@@ -28,7 +28,7 @@ __global__ void KeAffineChannelCUDA(const T* x, const T* scale, const T* bias,
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? i / HxW % C : i % C;
-    if (bias) {
+    if (HasBias) {
       y[i] = scale[c] * x[i] + bias[c];
     } else {
       y[i] = scale[c] * x[i];
@@ -54,7 +54,8 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     const int num = x->numel();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1] : dims[3];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
     int HxW = num / N / C;
 
     const T* x_d = x->data<T>();
@@ -65,14 +66,12 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     int block = 1024;
     int grid = (num + block - 1) / block;
     if (layout == framework::DataLayout::kNCHW) {
-      KeAffineChannelCUDA<
-          T,
-          framework::DataLayout::kNCHW><<<grid, block, 0, dev_ctx.stream()>>>(
+      KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
+                          true><<<grid, block, 0, dev_ctx.stream()>>>(
           x_d, scale_d, bias_d, C, HxW, num, y_d);
     } else {
-      KeAffineChannelCUDA<
-          T,
-          framework::DataLayout::kNHWC><<<grid, block, 0, dev_ctx.stream()>>>(
+      KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
+                          true><<<grid, block, 0, dev_ctx.stream()>>>(
           x_d, scale_d, bias_d, C, HxW, num, y_d);
     }
   }
@@ -129,7 +128,8 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     const int num = x->numel();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1] : dims[3];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
     int HxW = num / N / C;
 
     const T* x_d = x->data<T>();
@@ -147,9 +147,9 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     int grid2 = std::min(C, max_blocks);
     if (layout == framework::DataLayout::kNCHW) {
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW><<<
-            grid1, block, 0, dev_ctx.stream()>>>(dy_d, s_d, nullptr, C, HxW,
-                                                 num, dx_d);
+        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
+                            false><<<grid1, block, 0, dev_ctx.stream()>>>(
+            dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
       if (dscale && dbias) {
         AffineChannelScaleBiasGradientCUDAKernel<
@@ -159,9 +159,9 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
       }
     } else {
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW><<<
-            grid1, block, 0, dev_ctx.stream()>>>(dy_d, s_d, nullptr, C, HxW,
-                                                 num, dx_d);
+        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
+                            false><<<grid1, block, 0, dev_ctx.stream()>>>(
+            dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
       if (dscale && dbias) {
         AffineChannelScaleBiasGradientCUDAKernel<

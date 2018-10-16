@@ -22,13 +22,16 @@ namespace operators {
 class AffineChannelOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Feature map input with order NCHW or NHWC.");
+    AddInput("X",
+             "(Tensor) Feature map input can be a 4D tensor with order NCHW "
+             "or NHWC. It also can be a 2D tensor and C is the second "
+             "dimension.");
     AddInput("Scale",
-             "(Tensor) 1D input of shape (C); the c-th element "
+             "(Tensor) 1D input of shape (C), the c-th element "
              "is the scale factor of the affine transformation "
              "for the c-th channel of the input.");
     AddInput("Bias",
-             "(Tensor) 1D input of shape (C); the c-th element "
+             "(Tensor) 1D input of shape (C), the c-th element "
              "is the bias of the affine transformation for the "
              "c-th channel of the input.");
     AddAttr<std::string>(
@@ -38,11 +41,15 @@ class AffineChannelOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddOutput("Out", "(Tensor) A tensor of the same shape as X.");
+    AddOutput("Out", "(Tensor) A tensor of the same shape and order with X.");
     AddComment(R"DOC(
 
 Applies a separate affine transformation to each channel of the input. Useful
 for replacing spatial batch norm with its equivalent fixed transformation.
+The input also can be 2D tensor and applies a affine transformation in second
+dimension.
+
+$$Out = Scale*X + Bias$$
 
 )DOC");
   }
@@ -118,7 +125,8 @@ class AffineChannelKernel : public framework::OpKernel<T> {
 
     auto dims = x->dims();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1] : dims[3];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
     auto* scale_d = scale->data<T>();
@@ -164,7 +172,8 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
 
     auto dims = x->dims();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1] : dims[3];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
     auto* x_d = x->data<T>();
