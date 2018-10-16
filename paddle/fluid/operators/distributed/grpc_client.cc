@@ -98,12 +98,12 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
-    this->req_count_++;
-
     if (platform::IsProfileEnabled()) {
       h->Wait();
     }
   });
+
+  this->req_count_++;
 
   return h;
 }
@@ -137,7 +137,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, s, method, p_ctx, this] {
+  framework::AsyncIO([var_name_val, s, method, p_ctx, h, this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -149,11 +149,16 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
     // stub context
     s->response_call_back_ = ProcGetResponse;
 
-    // PushEvent(method, p_ctx);
+    platform::RecordEvent record_event(method, p_ctx);
+
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+    if (platform::IsProfileEnabled()) {
+      h->Wait();
+    }
   });
 
   req_count_++;
@@ -181,7 +186,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      s, method, this] {
+                      s, method, h, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -192,13 +197,17 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     // stub context
     s->response_call_back_ = ProcGetResponse;
 
-    // PushEvent(method, p_ctx);
+    platform::RecordEvent record_event(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
         &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+
+    if (platform::IsProfileEnabled()) {
+      h->Wait();
+    }
   });
 
   req_count_++;
@@ -219,11 +228,16 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
 
-  // PushEvent(method, &ctx);
+  platform::RecordEvent record_event(method, &ctx);
 
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+
+  if (platform::IsProfileEnabled()) {
+    h->Wait();
+  }
+
   return h;
 }
 
@@ -240,11 +254,16 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
 
-  // PushEvent(method, &ctx);
+  platform::RecordEvent record_event(method, &ctx);
 
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+
+  if (platform::IsProfileEnabled()) {
+    h->Wait();
+  }
+
   return h;
 }
 
@@ -261,11 +280,16 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(COMPLETE_MESSAGE);
 
-  // PushEvent(method, &ctx);
+  platform::RecordEvent record_event(method, &ctx);
 
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+
+  if (platform::IsProfileEnabled()) {
+    h->Wait();
+  }
+
   return h;
 }
 
@@ -286,11 +310,16 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);
   req.set_out_varname(dir);
 
-  // PushEvent(method, &ctx);
+  platform::RecordEvent record_event(method, &ctx);
 
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+
+  if (platform::IsProfileEnabled()) {
+    h->Wait();
+  }
+
   return h;
 }
 
