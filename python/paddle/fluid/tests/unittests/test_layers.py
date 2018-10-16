@@ -194,6 +194,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_expand(x=x, y=y, ref_level=1))
         print(str(program))
 
+    def test_sequence_unpad(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10, 5], dtype='float32')
+            length = layers.data(name='length', shape=[1], dtype='int64')
+            self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
+        print(str(program))
+
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
