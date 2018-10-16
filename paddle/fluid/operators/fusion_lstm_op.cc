@@ -278,6 +278,204 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
             wh_data, D4, static_cast<T>(1), out, D4)
 
+#ifdef __AVX__
+#define GET_CT_MOVE_ONE_STEP(ct_1, gates, ct)                          \
+  tmp0 = _mm256_mul_ps(_mm256_loadu_ps((const float*)gates + i),       \
+                       _mm256_loadu_ps((const float*)gates + D + i));  \
+  tmp1 = _mm256_mul_ps(_mm256_loadu_ps((const float*)ct_1 + i),        \
+                       _mm256_loadu_ps((const float*)gates + D2 + i)); \
+  tmp0 = _mm256_add_ps(tmp0, tmp1);                                    \
+  _mm256_storeu_ps(reinterpret_cast<float*>(ct) + i, tmp0)
+
+// gates: W_ch, W_ih, W_fh, W_oh
+#define GET_Ct(ct_1, gates, ct)                    \
+  /* C_t = C_t-1 * fgated + cand_gated * igated*/  \
+  act_cand(D, gates, gates);                       \
+  if ((D >= 8) && std::is_same<float, T>::value) { \
+    constexpr int block = 8;                       \
+    const int rest = D % block;                    \
+    const int end = D - rest;                      \
+    int i = 0;                                     \
+                                                   \
+    __m256 tmp0, tmp1;                             \
+    for (i = 0; i < end; i += block) {             \
+      GET_CT_MOVE_ONE_STEP(ct_1, gates, ct);       \
+    }                                              \
+                                                   \
+    if (rest > 0) {                                \
+      i = D - 8;                                   \
+      GET_CT_MOVE_ONE_STEP(ct_1, gates, ct);       \
+    }                                              \
+  } else {                                         \
+    blas.VMUL(D, gates, gates + D, gates + D);     \
+    blas.VMUL(D, ct_1, gates + D2, gates + D2);    \
+    blas.VADD(D, gates + D, gates + D2, ct);       \
+  }
+
+#define GET_HT_MOVE_ONE_STEP(ct, gates, ht)                           \
+  tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)gates + D2 + i),  \
+                      _mm256_loadu_ps((const float*)gates + D3 + i)); \
+  _mm256_storeu_ps(reinterpret_cast<float*>(ht) + i, tmp)
+
+#define GET_Ht(ct, gates, ht)                      \
+  /* H_t = act_cell(C_t) * ogated */               \
+  act_cell(D, ct, gates + D2);                     \
+  if ((D >= 8) && std::is_same<float, T>::value) { \
+    constexpr int block = 8;                       \
+    const int rest = D % block;                    \
+    const int end = D - rest;                      \
+    int i = 0;                                     \
+                                                   \
+    __m256 tmp;                                    \
+    for (i = 0; i < end; i += block) {             \
+      GET_HT_MOVE_ONE_STEP(ct, gates, ht);         \
+    }                                              \
+                                                   \
+    if (rest > 0) {                                \
+      i = D - 8;                                   \
+      GET_HT_MOVE_ONE_STEP(ct, gates, ht);         \
+    }                                              \
+  } else {                                         \
+    blas.VMUL(D, gates + D2, gates + D3, ht);      \
+  }
+
+#define GET_CT_NOH0C0_MOVE_ONE_STEP(gates, ct)                       \
+  tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)gates + i),      \
+                      _mm256_loadu_ps((const float*)gates + D + i)); \
+  _mm256_storeu_ps(reinterpret_cast<float*>(ct) + i, tmp)
+
+#define GET_Ct_NOH0C0(gates, ct)                   \
+  /* C_t = igated * cgated*/                       \
+  act_gate(D, gates + D, gates + D);               \
+  act_cand(D, gates, gates);                       \
+  if ((D >= 8) && std::is_same<float, T>::value) { \
+    constexpr int block = 8;                       \
+    const int rest = D % block;                    \
+    const int end = D - rest;                      \
+    int i = 0;                                     \
+                                                   \
+    __m256 tmp;                                    \
+    for (i = 0; i < end; i += block) {             \
+      GET_CT_NOH0C0_MOVE_ONE_STEP(gates, ct);      \
+    }                                              \
+                                                   \
+    if (rest > 0) {                                \
+      i = D - 8;                                   \
+      GET_CT_NOH0C0_MOVE_ONE_STEP(gates, ct);      \
+    }                                              \
+  } else {                                         \
+    blas.VMUL(D, gates, gates + D, ct);            \
+  }
+
+#define COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht)          \
+  tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)wc_data + D2 + i),     \
+                      _mm256_loadu_ps((const float*)ct + i));              \
+  tmp = _mm256_add_ps(tmp, _mm256_loadu_ps((const float*)gates + D3 + i)); \
+  _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D3 + i, tmp)
+
+#define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht)                  \
+  GET_Ct_NOH0C0(gates, ct);                                          \
+  /* get outgated, put W_oc * C_t on igated */                       \
+  if ((D >= 8) && std::is_same<float, T>::value) {                   \
+    constexpr int block = 8;                                         \
+    const int rest = D % block;                                      \
+    const int end = D - rest;                                        \
+    int i = 0;                                                       \
+                                                                     \
+    __m256 tmp, last_gates_D3;                                       \
+    if (rest > 0) {                                                  \
+      i = D - 8;                                                     \
+      last_gates_D3 = _mm256_loadu_ps((const float*)gates + D3 + i); \
+    }                                                                \
+    for (i = 0; i < end; i += block) {                               \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);     \
+    }                                                                \
+                                                                     \
+    if (rest > 0) {                                                  \
+      i = D - 8;                                                     \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D3 + i,     \
+                       last_gates_D3);                               \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);     \
+    }                                                                \
+  } else {                                                           \
+    blas.VMUL(D, wc_data + D2, ct, gates + D);                       \
+    blas.VADD(D, gates + D, gates + D3, gates + D3);                 \
+  }                                                                  \
+  act_gate(D, gates + D3, gates + D3);                               \
+  GET_Ht(ct, gates, ht)
+
+#define COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht)             \
+  tmp0 = _mm256_mul_ps(_mm256_loadu_ps((const float*)wc_data + i),           \
+                       _mm256_loadu_ps((const float*)ct_1 + i));             \
+  tmp1 = _mm256_mul_ps(_mm256_loadu_ps((const float*)wc_data + D + i),       \
+                       _mm256_loadu_ps((const float*)ct_1 + i));             \
+  tmp0 = _mm256_add_ps(tmp0, _mm256_loadu_ps((const float*)gates + D + i));  \
+  tmp1 = _mm256_add_ps(tmp1, _mm256_loadu_ps((const float*)gates + D2 + i)); \
+  _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D + i, tmp0);           \
+  _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D2 + i, tmp1)
+
+#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)                             \
+  /* get fgated and igated*/                                                   \
+  if ((D >= 8) && std::is_same<float, T>::value) {                             \
+    constexpr int block = 8;                                                   \
+    const int rest = D % block;                                                \
+    const int end = D - rest;                                                  \
+    int i = 0;                                                                 \
+                                                                               \
+    __m256 tmp0, tmp1, last_gates_D, last_gates_D2;                            \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      last_gates_D = _mm256_loadu_ps((const float*)gates + D + i);             \
+      last_gates_D2 = _mm256_loadu_ps((const float*)gates + D2 + i);           \
+    }                                                                          \
+    for (i = 0; i < end; i += block) {                                         \
+      COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht);                \
+    }                                                                          \
+                                                                               \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D + i, last_gates_D); \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D2 + i,               \
+                       last_gates_D2);                                         \
+      COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht);                \
+    }                                                                          \
+  } else {                                                                     \
+    blas.VMUL(D, wc_data, ct_1, checked_cell_data);                            \
+    blas.VMUL(D, wc_data + D, ct_1, checked_cell_data + D);                    \
+    blas.VADD(D2, checked_cell_data, gates + D, gates + D);                    \
+  }                                                                            \
+  act_gate(D2, gates + D, gates + D);                                          \
+  GET_Ct(ct_1, gates, ct);                                                     \
+  /* get ogated*/                                                              \
+  if ((D >= 8) && std::is_same<float, T>::value) {                             \
+    constexpr int block = 8;                                                   \
+    const int rest = D % block;                                                \
+    const int end = D - rest;                                                  \
+    int i = 0;                                                                 \
+                                                                               \
+    __m256 tmp, last_gates_D3;                                                 \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      last_gates_D3 = _mm256_loadu_ps((const float*)gates + D3 + i);           \
+    }                                                                          \
+    for (i = 0; i < end; i += block) {                                         \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);               \
+    }                                                                          \
+                                                                               \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D3 + i,               \
+                       last_gates_D3);                                         \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);               \
+    }                                                                          \
+  } else {                                                                     \
+    blas.VMUL(D, wc_data + D2, ct, gates + D);                                 \
+    blas.VADD(D, gates + D, gates + D3, gates + D3);                           \
+  }                                                                            \
+  act_gate(D, gates + D3, gates + D3);                                         \
+  GET_Ht(ct, gates, ht)
+#else
+// gates: W_ch, W_ih, W_fh, W_oh
 #define GET_Ct(ct_1, gates, ct)                   \
   /* C_t = C_t-1 * fgated + cand_gated * igated*/ \
   act_cand(D, gates, gates);                      \
@@ -296,22 +494,12 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   act_cand(D, gates, gates);         \
   blas.VMUL(D, gates, gates + D, ct)
 
-#define COMPUTE_CtHt_NOH0C0(gates, ct, ht) \
-  GET_Ct_NOH0C0(gates, ct);                \
-  act_gate(D, gates + D3, gates + D3);     \
-  GET_Ht(ct, gates, ht)
-
 #define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht) \
   GET_Ct_NOH0C0(gates, ct);                         \
   /* get outgated, put W_oc * C_t on igated */      \
   blas.VMUL(D, wc_data + D2, ct, gates + D);        \
   blas.VADD(D, gates + D, gates + D3, gates + D3);  \
   act_gate(D, gates + D3, gates + D3);              \
-  GET_Ht(ct, gates, ht)
-
-#define COMPUTE_CtHt(gates, ct_1, ct, ht) \
-  act_gate(D3, gates + D, gates + D);     \
-  GET_Ct(ct_1, gates, ct);                \
   GET_Ht(ct, gates, ht)
 
 #define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)        \
@@ -325,6 +513,17 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   blas.VMUL(D, wc_data + D2, ct, gates + D);              \
   blas.VADD(D, gates + D, gates + D3, gates + D3);        \
   act_gate(D, gates + D3, gates + D3);                    \
+  GET_Ht(ct, gates, ht)
+#endif
+
+#define COMPUTE_CtHt_NOH0C0(gates, ct, ht) \
+  GET_Ct_NOH0C0(gates, ct);                \
+  act_gate(D, gates + D3, gates + D3);     \
+  GET_Ht(ct, gates, ht)
+
+#define COMPUTE_CtHt(gates, ct_1, ct, ht) \
+  act_gate(D3, gates + D, gates + D);     \
+  GET_Ct(ct_1, gates, ct);                \
   GET_Ht(ct, gates, ht)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
@@ -594,6 +793,13 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
   }
 
+#ifdef __AVX__
+#undef GET_CT_MOVE_ONE_STEP
+#undef GET_HT_MOVE_ONE_STEP
+#undef GET_CT_NOH0C0_MOVE_ONE_STEP
+#undef COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP
+#undef COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP
+#endif
 #undef COMPUTE_CtHt_PEEPHOLE
 #undef COMPUTE_CtHt
 #undef GET_Ct_NOH0C0
