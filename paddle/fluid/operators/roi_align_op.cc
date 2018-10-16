@@ -132,6 +132,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
                  "and pooled_w, likewise for height")
         .SetDefault(-1);
     AddComment(R"DOC(
+    
     )DOC");
   }
 };
