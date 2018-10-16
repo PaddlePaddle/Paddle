@@ -15,12 +15,16 @@
 #ifndef PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_EMBEDDING_PASS_H_
 #define PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_EMBEDDING_PASS_H_
 
+#include <string>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 /*
  * Remove the sum op of all gradients of embedding lookup table.
@@ -32,8 +36,9 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
   virtual ~LockFreeOptimizeEmbeddingPass() {}
 
  protected:
-  ir::Node* CreateNewOptimizerNode(std::unique_ptr<ir::Graph> graph,
-                                   ir::Node* sum_node);
+  ir::Node* CreateNewOptimizerNode(ir::Graph* graph, ir::Node* node,
+                                   const std::string& optimizer_type,
+                                   const std::string& grad_name) const;
 
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 };

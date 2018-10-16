@@ -60,6 +60,21 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     // Find the sum op after embedding lookup_table_grad op
     if (node->NodeType() == Node::Type::kOperation) {
       if (node->Name() == "lookup_table_grad") {
+        ir::Node* new_optimizer_node = nullptr;
+        for (Node* lookup_table_grad_output : node->outputs) {
+          if (lookup_table_grad_output->NodeType() == Node::Type::kVariable &&
+              !ir::IsControlDepVar(*lookup_table_grad_output)) {
+            // TODO(minqiyang): only support sgd at current time, please add
+            // other
+            // optimizers later.
+            new_optimizer_node = CreateNewOptimizerNode(
+                graph.get(), node, "sgd", lookup_table_grad_output->Name());
+            break;
+          }
+        }
+
+        PADDLE_ENFORCE(new_optimizer_node);
+
         for (Node* lookup_table_grad_output : node->outputs) {
           // redirect lookup_table_grad_output to from sum op to sgd optimizers
           for (auto grad_connected_op_iter =
@@ -77,11 +92,9 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
               lookup_table_grad_output->outputs.erase(grad_connected_op_iter);
 
               // add the output link to sgd optimizers
-              lookup_table_grad_output->outputs.erase(grad_connected_op_iter);
-
-              Node* optimizer_node = CreateNewOptimizerNode(graph, sum_op);
-              PADDLE_ENFORCE(optimizer_node);
-              lookup_table_grad_output->outputs.emplace_back(optimizer_node);
+              lookup_table_grad_output->outputs.emplace_back(
+                  new_optimizer_node);
+              new_optimizer_node->inputs.push_back(lookup_table_grad_output);
             }
           }
         }
@@ -110,46 +123,6 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     graph->RemoveNode(sum_op);
   }
 
-  // for (auto* node : graph->Nodes()) {
-  // // Find the sum op after embedding lookup_table_grad op
-  // if (node->NodeType() == Node::Type::kOperation) {
-  // if (node->Name() == "lookup_table_grad") {
-  // LOG(ERROR) << "Found lookup_table_grad op: " << node->Name() << "_" <<
-  // node->id();
-  // for (Node* grad_var : node->outputs) {
-  // if (grad_var->NodeType() == Node::Type::kVariable) {
-  // LOG(ERROR) << "Found lookup_table_grad op outputs: " << grad_var->Name() <<
-  // "_" << grad_var->id();
-  // for (Node* sum_op : grad_var->outputs) {
-  // LOG(ERROR) << "Found grad_var outputs: " << sum_op->Name() << "_" <<
-  // sum_op->id();
-  // LOG(ERROR) << "Found sum op: " << sum_op->Name() << "_" << sum_op->id();
-  // // Find the sgd op via sum op
-  // for (Node* emb_grad_var : sum_op->outputs) {
-  // if (node->NodeType() == Node::Type::kOperation) {
-
-  // }
-  // if (emb_grad_var->NodeType() == Node::Type::kVariable &&
-  // emb_grad_var->Name() == "") {
-
-  // }
-  // // TODO(minqiyang): only support sgd at current time
-  // LOG(ERROR) << "Found optimize op: " << optimize_op->Name() << "_" <<
-  // optimize_op->id();
-  // if (optimize_op->NodeType() == Node::Type::kOperation &&
-  // optimize_op->Name() == "sgd") {
-  // LOG(ERROR) << "Output link: " << grad_var->Name()
-  // << "_" << grad_var->id() << " --> "
-  // << optimize_op->Name() << "_" << optimize_op->id();
-  // }
-  // }
-  // }
-  // }
-  // }
-  // }
-  // }
-  // }
-
   // for (Node* output_node : node->outputs) {
   // LOG(ERROR) << "Output link: " << node->Name() << "_"
   // << node->id() << " --> " << output_node->Name() << "_"
@@ -167,26 +140,45 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
 }
 
 ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewOptimizerNode(
-    std::unique_ptr<ir::Graph> graph, ir::Node* sum_node) {
-  for (Node* sum_op_output : sum_node->outputs) {
-    for (Node* optimize_op : sum_op_output->outputs) {
-      // TODO(minqiyang): only support sgd at current time, please add other
-      // optimizers later.
-      if (optimize_op->NodeType() == Node::Type::kOperation &&
-          optimize_op->Name() == "sgd") {
-        OpDesc desc;
-        std::string fc_x_in = subgraph.at(x)->Name();
-        std::string fc_Y_in = w->Name();
-        std::string fc_bias_in = fc_bias->Name();
-        std::string fc_out_out = fc_out->Name();
-        desc.SetInput("Input", std::vector<std::string>({fc_x_in}));
-        desc.SetInput("W", std::vector<std::string>({fc_Y_in}));
-        desc.SetInput("Bias", std::vector<std::string>({fc_bias_in}));
-        desc.SetOutput("Out", std::vector<std::string>({fc_out_out}));
-        desc.SetType("fc");
+    ir::Graph* graph, ir::Node* node, const std::string& optimizer_type,
+    const std::string& grad_name) const {
+  for (Node* lookup_table_grad_output : node->outputs) {
+    if (lookup_table_grad_output->NodeType() == Node::Type::kVariable) {
+      for (Node* grad_connected_op : lookup_table_grad_output->outputs) {
+        if (grad_connected_op->NodeType() == Node::Type::kOperation &&
+            grad_connected_op->Name() == "sum") {
+          for (Node* sum_op_output : grad_connected_op->outputs) {
+            for (Node* optimize_op : sum_op_output->outputs) {
+              if (optimize_op->NodeType() == Node::Type::kOperation &&
+                  optimize_op->Name() == optimizer_type) {
+                OpDesc* old_desc = optimize_op->Op();
+                // Keep with the same block between new optimizer and the old
+                // one
+                OpDesc new_desc(*old_desc, old_desc->Block());
+                new_desc.SetInput("Param", old_desc->Input("Param"));
+                new_desc.SetInput("LearningRate",
+                                  old_desc->Input("LearningRate"));
+                new_desc.SetInput("Grad",
+                                  std::vector<std::string>({grad_name}));
+                new_desc.SetOutput("ParamOut", old_desc->Output("ParamOut"));
+                new_desc.SetType(optimizer_type);
+
+                // Keep with the same output nodes between new optimizer and the
+                // old one
+                Node* sgd_node = graph->CreateOpNode(&new_desc);
+                sgd_node->outputs.insert(sgd_node->outputs.end(),
+                                         optimize_op->outputs.begin(),
+                                         optimize_op->outputs.end());
+                return sgd_node;
+              }
+            }
+          }
+        }
       }
     }
   }
+
+  return nullptr;
 }
 
 }  // namespace ir
