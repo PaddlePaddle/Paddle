@@ -29,8 +29,8 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext>
 void GetAccumulators(const framework::ExecutionContext& ctx,
-                     int64_t& num_updates, int64_t& num_accumulates,
-                     int64_t& old_num_accumulates);
+                     int64_t* num_updates, int64_t* num_accumulates,
+                     int64_t* old_num_accumulates);
 
 template <typename DeviceContext>
 void SetAccumulators(const framework::ExecutionContext& ctx,
@@ -47,15 +47,16 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     int64_t num_updates = 0;
     int64_t num_accumulates = 0;
     int64_t old_num_accumulates = 0;
-    GetAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
-                                   old_num_accumulates);
+    GetAccumulators<DeviceContext>(ctx, &num_updates, &num_accumulates,
+                                   &old_num_accumulates);
 
     // Get attrs
     float average_window = ctx.Attr<float>("average_window");
     int64_t max_average_window = ctx.Attr<int64_t>("max_average_window");
     int64_t min_average_window = ctx.Attr<int64_t>("min_average_window");
-    min_average_window =
-        std::min<int64_t>(min_average_window, max_average_window);
+    PADDLE_ENFORCE_LE(min_average_window, max_average_window,
+                      "min_average_window shouldn't be larger than "
+                      "max_average_window");
 
     // Get inputs
     auto* param = ctx.Input<Tensor>("param");

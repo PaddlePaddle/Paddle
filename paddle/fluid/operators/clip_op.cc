@@ -38,8 +38,7 @@ class ClipOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor)The input of clip op."
              "The number of dimensions must be between [1, 9].");
@@ -81,8 +80,9 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(clip, ops::ClipOp, ops::ClipOpMaker<float>, clip_grad,
-            ops::ClipOpGrad);
+REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

@@ -13,26 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include <string>
 #include "paddle/fluid/framework/data_layout.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
-
-template <typename T>
-using EigenArrayMap =
-    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using ConstEigenArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
-template <typename T>
-using ConstEigenVectorArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
@@ -86,9 +74,13 @@ class BatchNormOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::ToDataType(ctx.Input<Tensor>("X")->type());
-    // For float or float16 input tensor, the type of the scale, bias, mean,
-    // and var tensors should both be float.
+    // By default, the type of the scale, bias, mean,
+    // and var tensors should both be float. (For float or float16 input tensor)
+    // or double (For double input tensor).
     auto bn_param_type = framework::proto::VarType::FP32;
+    if (input_data_type == framework::proto::VarType::FP64) {
+      bn_param_type = framework::proto::VarType::FP64;
+    }
     PADDLE_ENFORCE_EQ(bn_param_type,
                       framework::ToDataType(ctx.Input<Tensor>("Scale")->type()),
                       "Scale input should be of float type");
@@ -101,14 +93,26 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(bn_param_type, framework::ToDataType(
                                          ctx.Input<Tensor>("Variance")->type()),
                       "Variance input should be of float type");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library);
   }
 };
 
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "")
@@ -131,13 +135,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization");
+    AddOutput("Y", "result after normalization").Reuse("X");
     AddOutput("MeanOut",
               "Share memory with Mean. "
-              "Store the global mean when training");
+              "Store the global mean when training")
+        .Reuse("Mean");
     AddOutput("VarianceOut",
               "Share memory with Variance. "
-              "Store the global Variance when training");
+              "Store the global Variance when training")
+        .Reuse("Variance");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
               "will apply to output when training")
@@ -146,6 +152,12 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Variance of the current mini batch, "
               "will apply to output when training")
         .AsIntermediate();
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("fuse_with_relu",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Batch Normalization.
 
@@ -204,6 +216,18 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
+      EigenVectorArrayMap<T> running_mean_arr(
+          mean_out->mutable_data<T>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<T> running_var_arr(
+          variance_out->mutable_data<T>(ctx.GetPlace()), C);
+
+      if ((N * sample_size) == 1) {
+        LOG(WARNING) << "Only 1 element in normalization dimension, "
+                     << "we skip the batch norm calculation, let y = x.";
+        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+        return;
+      }
+
       switch (data_layout) {
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
@@ -235,10 +259,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           PADDLE_THROW("Unknown storage order: %s", data_layout_str);
       }
 
-      EigenVectorArrayMap<T> running_mean_arr(
-          mean_out->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> running_var_arr(
-          variance_out->mutable_data<T>(ctx.GetPlace()), C);
       running_mean_arr =
           running_mean_arr * momentum + saved_mean_e * (1. - momentum);
       running_var_arr =
@@ -344,8 +364,22 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.GetPlace());
+
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        layout, library);
   }
 };
 
@@ -400,6 +434,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     d_bias_arr.setZero();
     d_scale_arr.setZero();
+
+    if ((N * sample_size) == 1) {
+      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
+      return;
+    }
 
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 
@@ -469,6 +508,7 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
     op->SetInput("Scale", Input("Scale"));
+    op->SetInput("Bias", Input("Bias"));
     op->SetInput("SavedMean", Output("SavedMean"));
     op->SetInput("SavedVariance", Output("SavedVariance"));
 
@@ -491,8 +531,9 @@ REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    batch_norm,
-    ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>);
+    batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BatchNormKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -84,19 +84,17 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
         }
       }
       out_dims[0] = out_first_dim;
-      ctx->SetOutputDim("Out", out_dims);
     } else {
       out_dims[0] = -1;
-      ctx->SetOutputDim("Out", out_dims);
-      ctx->ShareLoD("X", /*->*/ "Out");
     }
+    ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class SequenceExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor whose lod "
              "level is at most 1.");
@@ -201,8 +199,10 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_expand, ops::SequenceExpandOp, ops::SequenceExpandOpMaker,
-            sequence_expand_grad, ops::SequenceExpandOpGrad);
+REGISTER_OPERATOR(sequence_expand, ops::SequenceExpandOp,
+                  ops::SequenceExpandOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, float>,

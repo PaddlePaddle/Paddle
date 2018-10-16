@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <future>  // NOLINT
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
-#include <future>
-#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -36,25 +36,32 @@ class RecvOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    int sync_mode = Attr<int>("sync_mode");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i];
-      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
-    }
-    PADDLE_ENFORCE(client_.Wait());
-  }
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
- private:
-  mutable detail::RPCClient client_;
+    std::vector<distributed::VarHandlePtr> rets;
+    for (size_t i = 0; i < outs.size(); i++) {
+      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+      rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
+    }
+    if (sync_mode) {
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      }
+    }
+  }
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDuplicable();
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
     AddComment(R"DOC(
 Recv operator
@@ -66,7 +73,16 @@ This operator can get variables from server side.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<int>("sync_mode",
+                 "(int, default 0)"
+                 "sync recv or async recv.")
+        .SetDefault(0);
   }
+};
+
+class RecvOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {}
 };
 
 }  // namespace operators
@@ -74,4 +90,5 @@ This operator can get variables from server side.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv, ops::RecvOp, ops::RecvOpMaker);
+REGISTER_OPERATOR(recv, ops::RecvOp, paddle::framework::EmptyGradOpMaker,
+                  ops::RecvOpMaker, ops::RecvOpShapeInference);

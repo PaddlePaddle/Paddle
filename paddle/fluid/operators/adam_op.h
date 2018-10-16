@@ -14,8 +14,11 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
+#include <Eigen/Dense>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -24,8 +27,14 @@ namespace operators {
 
 namespace scatter = paddle::operators::math::scatter;
 
+struct GPUAdam;
+struct CPUAdam;
+
+template <typename T, typename Flavour>
+struct AdamFunctor;
+
 template <typename T>
-struct AdamFunctor {
+struct AdamFunctor<T, GPUAdam> {
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -71,6 +80,7 @@ struct AdamFunctor {
 
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
     p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
@@ -79,6 +89,71 @@ struct AdamFunctor {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
+  }
+};
+
+template <typename T>
+struct AdamFunctor<T, CPUAdam> {
+  T beta1_;
+  T beta2_;
+  T epsilon_;
+
+  const T* beta1_pow_;
+  const T* beta2_pow_;
+  const T* moment1_;
+  T* moment1_out_;
+  const T* moment2_;
+  T* moment2_out_;
+  const T* lr_;
+  const T* grad_;
+  const T* param_;
+  T* param_out_;
+
+  AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
+              const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
+              T* mom2_out, const T* lr, const T* grad, const T* param,
+              T* param_out)
+      : beta1_(beta1),
+        beta2_(beta2),
+        epsilon_(epsilon),
+        beta1_pow_(beta1_pow),
+        beta2_pow_(beta2_pow),
+        moment1_(mom1),
+        moment1_out_(mom1_out),
+        moment2_(mom2),
+        moment2_out_(mom2_out),
+        lr_(lr),
+        grad_(grad),
+        param_(param),
+        param_out_(param_out) {}
+
+  void operator()(size_t numel) const {
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{
+        grad_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom1{
+        moment1_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom2{
+        moment2_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> param{
+        param_, static_cast<Eigen::Index>(numel)};
+
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param_out{
+        param_out_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment1_out{
+        moment1_out_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_out{
+        moment2_out_, static_cast<Eigen::Index>(numel)};
+
+    T lr = *lr_;
+    T beta1_pow = *beta1_pow_;
+    T beta2_pow = *beta2_pow_;
+
+    // Calculation
+    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+
+    moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
+    moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
+    param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
   }
 };
 
@@ -101,12 +176,13 @@ struct SparseAdamFunctor {
 
   const int64_t* rows_;
   int64_t row_numel_;
+  int64_t row_count_;
 
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
                     const T* param, T* param_out, const int64_t* rows,
-                    int64_t row_numel)
+                    int64_t row_numel, int64_t row_count)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -121,27 +197,33 @@ struct SparseAdamFunctor {
         param_(param),
         param_out_(param_out),
         rows_(rows),
-        row_numel_(row_numel) {}
+        row_numel_(row_numel),
+        row_count_(row_count) {}
 
   inline HOSTDEVICE void operator()(size_t i) const {
+    auto row_idx =
+        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+    T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
+
+    // The following code is the same as dense
+    T mom1 = moment1_[i];
+    T mom2 = moment2_[i];
+    T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
-    for (int64_t j = 0; j < row_numel_; ++j) {
-      T g = grad_[i * row_numel_ + j];
-      T mom1 = moment1_[rows_[i] * row_numel_ + j];
-      T mom2 = moment2_[rows_[i] * row_numel_ + j];
-      T lr = *lr_;
-      T p = param_[rows_[i] * row_numel_ + j];
+    T p = param_[i];
 
-      lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
-      mom1 = beta1_ * mom1 + (1 - beta1_) * g;
-      mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-      p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+    // Calculation
+    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-      moment1_out_[rows_[i] * row_numel_ + j] = mom1;
-      moment2_out_[rows_[i] * row_numel_ + j] = mom2;
-      param_out_[rows_[i] * row_numel_ + j] = p;
-    }  // for col id
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
+    p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+
+    // Write back to global memory
+    moment1_out_[i] = mom1;
+    moment2_out_[i] = mom2;
+    param_out_[i] = p;
   }
 };
 
@@ -149,6 +231,12 @@ template <typename DeviceContext, typename T>
 class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const auto* param_var = ctx.InputVar("Param");
+    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Param").front(), param_var->Type().name());
+
     using paddle::framework::LoDTensor;
     using paddle::operators::detail::Ref;
 
@@ -177,34 +265,82 @@ class AdamOpKernel : public framework::OpKernel<T> {
 
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
-      AdamFunctor<T> functor(
-          beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          lr.template data<T>(), grad.template data<T>(),
-          param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()));
-      platform::ForRange<DeviceContext> for_range(
-          static_cast<const DeviceContext&>(ctx.device_context()),
-          param.numel());
-      for_range(functor);
+
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        AdamFunctor<T, CPUAdam> functor(
+            beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad.template data<T>(),
+            param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()));
+        functor(param.numel());
+      } else if (platform::is_gpu_place(ctx.GetPlace())) {
+        AdamFunctor<T, GPUAdam> functor(
+            beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad.template data<T>(),
+            param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()));
+
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(ctx.device_context()),
+            param.numel());
+        for_range(functor);
+      }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
-      // merge duplicated rows if any.
-      scatter::MergeAdd<DeviceContext, T> merge_func;
-      auto grad_merge =
-          merge_func(ctx.template device_context<DeviceContext>(), grad);
+      if (grad.rows().size() == 0) {
+        VLOG(3) << "grad row size is 0!!";
+        return;
+      }
+
+      std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
+      bool is_strict_sorted = true;
+      for (size_t i = 1; i < cpu_rows.size(); ++i) {
+        if (cpu_rows[i - 1] >= cpu_rows[i]) {
+          is_strict_sorted = false;
+          break;
+        }
+      }
+
+      const framework::SelectedRows* grad_merge_ptr;
+      if (is_strict_sorted) {
+        grad_merge_ptr = &grad;
+      } else {
+        // merge duplicated rows if any.
+        // The rows of grad_merge have been sorted inside MergeAdd functor
+        scatter::MergeAdd<DeviceContext, T> merge_func;
+        auto* grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
+                                   .Var()
+                                   ->GetMutable<framework::SelectedRows>();
+        merge_func(ctx.template device_context<DeviceContext>(), grad,
+                   grad_merge_var);
+        grad_merge_ptr = grad_merge_var;
+      }
+
+      auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      int64_t* rows = nullptr;
+      const int64_t* rows = nullptr;
+// When compiled without CUDA, the CUDAData() interface should not be
+// provided.
+#if defined(PADDLE_WITH_CUDA)
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = grad_merge.mutable_rows()->CUDAMutableData(ctx.GetPlace());
+        rows = grad_merge.rows().CUDAData(ctx.GetPlace());
       } else {
-        rows = grad_merge.mutable_rows()->data();
+#endif
+        rows = grad_merge.rows().data();
+
+#if defined(PADDLE_WITH_CUDA)
       }
+#endif
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
       SparseAdamFunctor<T> functor(
@@ -214,10 +350,11 @@ class AdamOpKernel : public framework::OpKernel<T> {
           mom2.template data<T>(),
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           lr.template data<T>(), grad_data, param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel);
+          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+          grad_merge.rows().size());
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(ctx.device_context()),
-          grad_merge.rows().size());
+          param.numel());
       for_range(functor);
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");

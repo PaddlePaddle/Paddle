@@ -20,7 +20,7 @@ The primary usage shows below.
 
 ..  code-block:: python
 
-    import paddle.v2 as paddle
+    import paddle
 
     img = paddle.layer.data(name='img', type=paddle.data_type.dense_vector(784))
     hidden = paddle.layer.fc(input=img, size=200)

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/var_type_inference.h"
+#include <string>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -21,10 +22,20 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class NOP : public OperatorBase {
+ public:
+  NOP(const std::string &type, const VariableNameMap &inputs,
+      const VariableNameMap &outputs, const AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const Scope &scope,
+               const platform::Place &place) const override {}
+};
+
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "");
     AddComment("");

@@ -11,6 +11,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -18,12 +21,16 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
+DEFINE_bool(check_nan_inf, false,
+            "Checking whether operator produce NAN/INF or not. It will be "
+            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -35,19 +42,82 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDims(const Scope& scope, const std::string& name) {
+proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
+  if (var->IsType<framework::LoDTensor>()) {
+    return framework::ToDataType(var->Get<framework::LoDTensor>().type());
+  } else if (var->IsType<framework::SelectedRows>()) {
+    return framework::ToDataType(
+        var->Get<framework::SelectedRows>().value().type());
+  } else {
+    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+  }
+}
+
+static DDim GetDims(const Scope& scope, const std::string& name,
+                    bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
+    return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+    if (get_actual_dim) {
+      return var->Get<SelectedRows>().value().dims();
+    } else {
+      return var->Get<SelectedRows>().GetCompleteDims();
+    }
   } else {
     return DDim({-1});
   }
+}
+
+static bool VarInited(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) return false;
+  return var->IsInitialized();
+}
+
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(ToDataType(tensor.type()));
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = var->Get<SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return DataTypeToString(ToDataType(tensor.type()));
+    }
+  } else {
+    return "";
+  }
+}
+
+static int GetRowSize(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return -1;
+  }
+
+  if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().rows().size();
+  }
+
+  return -1;
 }
 
 static LoD GetLoD(const Scope& scope, const std::string& name) {
@@ -59,13 +129,18 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
+    return tensor.lod();
   } else {
     return default_lod;
   }
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -74,7 +149,18 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
+}
+
+bool OperatorBase::HasInputs(const std::string& name) const {
+  if (inputs_.find(name) != inputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string OperatorBase::Input(const std::string& name) const {
@@ -91,6 +177,14 @@ const std::vector<std::string>& OperatorBase::Inputs(
   PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
                  type_, name);
   return it->second;
+}
+
+bool OperatorBase::HasOutputs(const std::string& name) const {
+  if (outputs_.find(name) != outputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
@@ -116,10 +210,21 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     auto& input = *it;
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
-      ss << input.second[i];
+      auto var_name = input.second[i];
+      ss << var_name;
       if (scope) {
-        ss << "[" << GetDims(*scope, input.second[i]) << "]";
-        ss << "(" << GetLoD(*scope, input.second[i]) << ")";
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          int row_size = GetRowSize(*scope, var_name);
+          if (row_size >= 0) {
+            ss << "[row_size=" << row_size << "]";
+          }
+          std::string dtype = GetDtype(*scope, var_name);
+          ss << ":" << dtype;
+          ss << "[" << GetDims(*scope, var_name, true) << "]";
+          ss << "(" << GetLoD(*scope, var_name) << ")";
+        }
       }
       if (i != input.second.size() - 1) {
         ss << ", ";
@@ -136,10 +241,19 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     auto& output = *it;
     ss << output.first << "[";
     for (size_t i = 0; i < output.second.size(); ++i) {
-      ss << output.second[i];
+      auto var_name = output.second[i];
+      ss << var_name;
       if (scope) {
-        ss << "[" << GetDims(*scope, output.second[i]) << "]";
-        ss << "(" << GetLoD(*scope, output.second[i]) << ")";
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          int row_size = GetRowSize(*scope, output.second[i]);
+          if (row_size >= 0) {
+            ss << "[row_size=" << row_size << "]";
+          }
+          ss << "[" << GetDims(*scope, var_name, true) << "]";
+          ss << "(" << GetLoD(*scope, var_name) << ")";
+        }
       }
       if (i != output.second.size() - 1) {
         ss << ", ";
@@ -153,17 +267,6 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   }
   ss << "}.";
   return ss.str();
-}
-
-void OperatorBase::Rename(const std::string& old_name,
-                          const std::string& new_name) {
-  for (auto& input : inputs_) {
-    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
-  }
-  for (auto& output : outputs_) {
-    std::replace(output.second.begin(), output.second.end(), old_name,
-                 new_name);
-  }
 }
 
 OperatorBase::OperatorBase(const std::string& type,
@@ -215,13 +318,18 @@ void OperatorBase::CheckAllInputOutputSet() const {
   if (op_info == nullptr || op_info->proto_ == nullptr) return;
 
   for (auto& in : op_info->Proto().inputs()) {
-    PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
-                   "Type %s's input %s is not set", Type(), in.name());
+    if (!in.dispensable()) {
+      PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
+                     "Operator %s's input, %s, is not set", Type(), in.name());
+    }
   }
 
   for (auto& out : op_info->Proto().outputs()) {
-    PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
-                   "Type %s's output %s is not set", Type(), out.name());
+    if (!out.dispensable()) {
+      PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
+                     "Operator %s's output, %s, is not set", Type(),
+                     out.name());
+    }
   }
 }
 
@@ -262,6 +370,38 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
+}
+
+bool ExecutionContext::HasInput(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
+  }
+  auto& ins = Inputs(name);
+  size_t length = ins.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input %s should not have more than one inputs", name);
+  auto arg = ins[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
+}
+
+bool ExecutionContext::HasOutput(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto& outs = Outputs(name);
+  size_t length = outs.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output %s should not have more than one inputs", name);
+  auto arg = outs[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
 }
 
 template <>
@@ -311,7 +451,6 @@ bool OpSupportGPU(const std::string& op_type) {
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
     // All control operator must support GPU
-
     return true;
   }
   for (auto& kern_pair : it->second) {
@@ -328,32 +467,41 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
-    auto& ins = Inputs(name);
-    size_t length = ins.size();
-    if (length == 0) {
+    // has only one input
+    const auto& ins = op_.Inputs();
+    auto it = ins.find(name);
+    if (it == ins.end()) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
+    const auto& in = it->second;
+    if (in.size() == 0 || in[0] == kEmptyVarName) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(in.size(), 1UL,
                       "Input %s should not have more than one inputs", name);
-    auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    return scope_.FindVar(in[0]) != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
-    auto& outs = Outputs(name);
-    size_t length = outs.size();
-    if (length == 0) {
+    // has only one output
+    const auto& outs = op_.Outputs();
+    auto it = outs.find(name);
+    if (it == outs.end()) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output %s should not have more than one inputs", name);
-    auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    const auto& out = it->second;
+    if (out.size() == 0 || out[0] == kEmptyVarName) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(out.size(), 1UL,
+                      "Output %s should not have more than one outputs", name);
+    return scope_.FindVar(out[0]) != nullptr;
   }
 
   bool HasInputs(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto inputs = op_.Inputs(name);
     if (inputs.empty()) {
       return false;
@@ -367,6 +515,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto outputs = op_.Outputs(name);
     if (outputs.empty()) {
       return false;
@@ -391,37 +542,70 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const override {
+  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    const std::string& input_n = Inputs(in)[i];
+    const std::string& output_n = Outputs(out)[j];
+
+    Variable* in_var = scope_.FindVar(input_n);
+    Variable* out_var = scope_.FindVar(output_n);
+    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
+                   "The type of %s and %s is not the same.", output_n,
+                   GetDim(input_n));
+
+    if (in_var->IsType<framework::SelectedRows>()) {
+      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
+      out_sele_rows->set_rows(in_sele_rows.rows());
+      out_sele_rows->set_height(in_sele_rows.height());
+    } else if (in_var->IsType<framework::LoDTensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+      out_lod_tensor->Resize(in_lod_tensor.dims());
+    } else {
+      PADDLE_THROW(
+          "Currently, the input type of ShareDim only can be LoDTensor "
+          "or SelectedRows.");
+    }
+  }
+
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const override {
+    const std::vector<std::string>& inputs = Inputs(in);
+    const std::vector<std::string>& outputs = Outputs(out);
+    PADDLE_ENFORCE_LT(i, inputs.size());
+    PADDLE_ENFORCE_LT(j, outputs.size());
+    Variable* in_var = scope_.FindVar(inputs.at(i));
     if (!in_var->IsType<LoDTensor>()) return;
+    Variable* out_var = scope_.FindVar(outputs.at(j));
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
-    // TODO(dzhwinter) : reuse ShareLoD in most operators.
-    // Need to call ShareLayout explicitly in sequence related ops.
-    // Shall we have a better method to shared info between in/out Tensor?
-    out_tensor->set_layout(in_tensor.layout());
-  }
-
-  void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
-                   size_t j = 0) const {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
-    if (!in_var->IsType<LoDTensor>()) return;
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_layout(in_tensor.layout());
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
+#ifdef PADDLE_WITH_MKLDNN
+    // Fix me: ugly workaround below
+    // Correct solution:
+    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor should be set "manually" in Compute()
+    //    of each OPKernel. The reason layout should NOT be shared between
+    //    input and output "automatically" (now by InferShape()->ShareLoD())
+    //    is that layout transform may occur after InferShape().
+    // Workaround:
+    //    Skip set_layout() when input layout is kMKLDNN
+    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    in Compute()
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+      out_tensor->set_layout(in_tensor.layout());
   }
 
   bool IsRuntime() const override { return true; }
@@ -429,6 +613,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
@@ -476,6 +661,20 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
+static void CheckTensorNANOrInf(const std::string& name,
+                                const framework::Tensor& tensor) {
+  if (tensor.memory_size() == 0) {
+    return;
+  }
+  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
+    return;
+  }
+  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
+                 "Tensor %s contains Inf", name);
+  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
+                 "Tensor %s contains NAN", name);
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
@@ -483,9 +682,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  // For profiling, don't move out of this function because that will result
-  // in the failure of multi-GPU profiling.
-  platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -493,8 +689,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     PADDLE_THROW(
         "There are no kernels which are registered in the %s operator.", type_);
   }
-
-  ExecutionContext ctx(*this, scope, *dev_ctx);
 
   OpKernelMap& kernels = kernels_iter->second;
 
@@ -505,62 +699,127 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   //   Do selection
   // }
 
-  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
+  auto expected_kernel_key =
+      this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_MKLDNN
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  if (kernel_iter == kernels.end() &&
+      expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    expected_kernel_key.library_type_ = LibraryType::kPlain;
+    expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   if (kernel_iter == kernels.end()) {
     PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  // do data transform
-  Scope& new_scope = scope.NewScope();
+  // do data transformScope &transfer_scope;
+  std::vector<std::string> transfered_inplace_vars;
+  auto* transfer_scope =
+      TryTransferData(scope, expected_kernel_key, &transfered_inplace_vars);
 
-  for (auto& var_name_item : this->Inputs()) {
-    for (auto& var_name : var_name_item.second) {
-      auto* var = scope.FindVar(var_name);
-      if (var && VarIsTensor(var)) {
-        auto* tensor_in = GetTensorFromVar(var);
-        if (tensor_in->IsInitialized()) {
-          auto kernel_type_for_var = this->GetKernelTypeForVar(
-              var_name_item.first, *tensor_in, expected_kernel_key);
-          if (TransFromNeeded(kernel_type_for_var, expected_kernel_key)) {
-            auto out_var_names = OutputVars(true);
-            if (std::find(out_var_names.begin(), out_var_names.end(),
-                          var_name) != out_var_names.end()) {
-              PADDLE_THROW(
-                  "var %s is both input and output, "
-                  "does not support transform",
-                  var_name);
-            }
-            VLOG(3) << "Transform Variable " << var_name << " from "
-                    << kernel_type_for_var << " to " << expected_kernel_key;
-            auto* trans_var = new_scope.Var(var_name);
-            std::shared_ptr<Tensor> out(new Tensor);
-            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
-                          out.get());
-            CopyVariableWithTensor(*var, *(out.get()), *trans_var);
-          }
-        }
-      }
-    }
+  // exec scope is the scope that kernel actually executed on.
+  const Scope& exec_scope =
+      (transfer_scope == nullptr ? scope : *transfer_scope);
+
+  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
-  kernel_iter->second->Compute(
-      ExecutionContext(*this, new_scope, *new_dev_ctx));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transfered.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
-    new_dev_ctx->Wait();
+    dev_ctx->Wait();
   }
+
+  if (FLAGS_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
+      }
+    }
+  }
+}
+void OperatorWithKernel::TransferInplaceVarsBack(
+    const Scope& scope, const std::vector<std::string>& inplace_vars,
+    const Scope& transfer_scope) const {
+  for (auto& var_name : inplace_vars) {
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
+    auto* transformed_tensor =
+        GetTensorFromVar(transfer_scope.FindVar(var_name));
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
+}
+
+Scope* OperatorWithKernel::TryTransferData(
+    const Scope& scope, const OpKernelType& expected_kernel_key,
+    std::vector<std::string>* transfered_inplace_vars) const {
+  Scope* new_scope = nullptr;
+  for (auto& var_name_item : Inputs()) {
+    for (auto& var_name : var_name_item.second) {
+      auto* var = scope.FindVar(var_name);
+      // Only tensor can be tranfer to another device.
+      if (var == nullptr || !VarIsTensor(var)) {
+        continue;
+      }
+
+      auto* tensor_in = GetTensorFromVar(var);
+      if (!tensor_in->IsInitialized()) {
+        continue;
+      }
+
+      auto kernel_type_for_var = GetKernelTypeForVar(
+          var_name_item.first, *tensor_in, expected_kernel_key);
+
+      if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+        continue;
+      }
+
+      auto out_var_names = OutputVars(true);
+      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
+          out_var_names.end()) {
+        transfered_inplace_vars->emplace_back(var_name);
+      }
+
+      VLOG(3) << "Transform Variable " << var_name << " from "
+              << kernel_type_for_var << " to " << expected_kernel_key;
+
+      if (new_scope == nullptr) {
+        new_scope = &scope.NewScope();
+      }
+
+      auto* trans_var = new_scope->Var(var_name);
+      Tensor out;
+      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
+      SetTensorToVariable(*var, out, trans_var);
+    }
+  }
+
+  return new_scope;
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
+  std::string last_input_name;
   for (auto& input : this->inputs_) {
     for (auto& ipt_name : input.second) {
       auto* var = scope.FindVar(ipt_name);
@@ -575,9 +834,12 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
-          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                         "DataType of Paddle Op %s must be the same.", Type());
+          PADDLE_ENFORCE(
+              tmp == data_type || data_type == -1,
+              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
+              Type(), last_input_name, data_type, ipt_name, tmp);
           data_type = tmp;
+          last_input_name = ipt_name;
         }
       }
     }
@@ -594,7 +856,8 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
 OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
     const OpKernelType& expected_kernel_type) const {
-  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
+                      tensor.layout());
 }
 
 }  // namespace framework

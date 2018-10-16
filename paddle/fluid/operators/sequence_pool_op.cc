@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_pool_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -37,8 +38,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequencePoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
               "(Tensor) The output of SequencePoolOp does not contain LoD "
@@ -102,8 +102,9 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("X", framework::GradVarName("X"));
+
+    ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 
  protected:

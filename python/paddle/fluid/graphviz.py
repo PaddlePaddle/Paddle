@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import random
+import six
+import functools
 import subprocess
 import logging
 
 
 def crepr(v):
-    if type(v) is str or type(v) is unicode:
+    if isinstance(v, six.string_types):
         return '"%s"' % v
     return str(v)
 
@@ -83,7 +87,7 @@ class Graph(object):
         file = open(dot_path, 'w')
         file.write(self.__str__())
         image_path = os.path.join(
-            os.path.dirname(__file__), dot_path[:-3] + "pdf")
+            os.path.dirname(dot_path), dot_path[:-3] + "pdf")
         cmd = ["dot", "-Tpdf", dot_path, "-o", image_path]
         subprocess.Popen(
             cmd,
@@ -104,8 +108,9 @@ class Graph(object):
 
     def _rank_repr(self):
         ranks = sorted(
-            self.rank_groups.items(),
-            cmp=lambda a, b: a[1].priority > b[1].priority)
+            six.iteritems(self.rank_groups),
+            key=functools.cmp_to_key(
+                lambda a, b: a[1].priority > b[1].priority))
         repr = []
         for x in ranks:
             repr.append(str(x[1]))
@@ -148,7 +153,7 @@ class Node(object):
             name=self.name,
             label=self.label,
             extra=',' + ','.join("%s=%s" % (key, crepr(value))
-                                 for key, value in self.attrs.items())
+                                 for key, value in six.iteritems(self.attrs))
             if self.attrs else "")
         return reprs
 
@@ -172,7 +177,7 @@ class Edge(object):
             target=self.target.name,
             extra="" if not self.attrs else
             "[" + ','.join("{}={}".format(attr[0], crepr(attr[1]))
-                           for attr in self.attrs.items()) + "]")
+                           for attr in six.iteritems(self.attrs)) + "]")
         return repr
 
 
@@ -199,7 +204,7 @@ class GraphPreviewGenerator(object):
         else:
             self.graph.show(path)
 
-    def add_param(self, name, data_type, shape, highlight=False):
+    def add_param(self, name, data_type, highlight=False):
         label = '\n'.join([
             '<<table cellpadding="5">',
             '  <tr>',
@@ -212,11 +217,6 @@ class GraphPreviewGenerator(object):
             '  <tr>',
             '    <td>',
             str(data_type),
-            '    </td>'
-            '  </tr>',
-            '  <tr>',
-            '    <td>',
-            '[%s]' % 'x'.join(shape),
             '    </td>'
             '  </tr>',
             '</table>>',

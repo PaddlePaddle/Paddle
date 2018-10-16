@@ -13,6 +13,8 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/maxout_op.h"
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -20,8 +22,7 @@ using framework::Tensor;
 
 class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxOutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of maxout operator. "
@@ -70,8 +71,7 @@ class MaxOutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MaxoutOp"
-                   "should not be null.");
+                   "Input(X) of MaxoutOpshould not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
@@ -89,9 +89,10 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of MaxOutOpGrad must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+                   "Output(Grad@X) of MaxOutOpGrad should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -99,8 +100,9 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(maxout, ops::MaxOutOp, ops::MaxOutOpMaker, maxout_grad,
-            ops::MaxOutOpGrad);
+REGISTER_OPERATOR(maxout, ops::MaxOutOp, ops::MaxOutOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);
 REGISTER_OP_CPU_KERNEL(
     maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

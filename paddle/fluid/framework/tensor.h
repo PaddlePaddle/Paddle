@@ -34,6 +34,28 @@ namespace framework {
 class LoDTensor;
 
 class Tensor {
+#ifdef PADDLE_WITH_MKLDNN
+
+ public:
+  inline mkldnn::memory::format format() const { return format_; }
+
+  inline void set_format(const mkldnn::memory::format format) {
+    format_ = format;
+  }
+
+ protected:
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+
+  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+#endif
+
  public:
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -45,64 +67,58 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : offset_(0), is_pinned_(false) {}
+  Tensor() : offset_(0) {}
 
   /*! Constructor with place should only be used in pybind. */
-  explicit Tensor(const platform::Place& place)
-      : offset_(0), is_pinned_(false) {
+  explicit Tensor(const platform::Place& place) : offset_(0) {
     holder_->set_place(place);
   }
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>
-  inline T* data();
+  T* data();
 
   /*! Return a pointer to constant memory block. */
   template <typename T>
-  inline const T* data() const;
+  const T* data() const;
 
   inline bool IsInitialized() const;
-
-  inline void switch_place(platform::Place new_place);
 
   /**
    * @brief   Return a pointer to mutable memory block.
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(platform::Place place, bool is_pinned = false);
+  T* mutable_data(platform::Place place, size_t requested_size = 0);
 
-  inline void* mutable_data(platform::Place place, std::type_index type,
-                            bool is_pinned = false);
+  void* mutable_data(platform::Place place, std::type_index type,
+                     size_t requested_size = 0);
 
-  inline void* mutable_data(platform::Place place, bool is_pinned = false);
+  void* mutable_data(platform::Place place, size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
    *
-   * @param[in] dims    The dimensions of the memory block.
-   * @param[in] place   The place of the memory block.
+   * @param[in] dims           The dimensions of the memory block.
+   * @param[in] place          The place of the memory block.
+   * @param[in] requested_size The size of the block in bytes.
    *
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(DDim dims, platform::Place place,
-                         bool is_pinned = false);
+  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
-  inline const DDim& dims() const;
+  const DDim& dims() const;
 
   /*! Return the numel of the memory block. */
-  inline int64_t numel() const;
-
-  /*! Return the numel of the memory block. */
-  inline bool isPinned() const;
+  int64_t numel() const;
 
   /*! Resize the dimensions of the memory block. */
-  inline Tensor& Resize(const DDim& dims);
+  Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
-  inline Tensor& ShareDataWith(const Tensor& src);
+  Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.
@@ -112,7 +128,7 @@ class Tensor {
    * @param[in] end_idx     The index of the end row(exclusive) to slice.
    *                        The index number begins from 0.
    */
-  inline Tensor Slice(int begin_idx, int end_idx) const;
+  Tensor Slice(int begin_idx, int end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -129,11 +145,13 @@ class Tensor {
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
 
-  inline void check_memory_size() const;
+  void check_memory_size() const;
 
-  inline DataLayout layout() const { return layout_; }
+  DataLayout layout() const { return layout_; }
 
-  inline void set_layout(const DataLayout layout) { layout_ = layout; }
+  void set_layout(const DataLayout layout) { layout_ = layout; }
+
+  void clear() { holder_ = nullptr; }
 
  private:
   /**
@@ -152,14 +170,12 @@ class Tensor {
 
   template <typename Place>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(Place place, size_t size, std::type_index type,
-                    bool is_pinned = false)
-        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size, is_pinned)),
-               memory::PODDeleter<uint8_t, Place>(place, is_pinned)),
+    PlaceholderImpl(Place place, size_t size, std::type_index type)
+        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size)),
+               memory::PODDeleter<uint8_t, Place>(place)),
           place_(place),
           size_(size),
-          type_(type),
-          is_pinned_(is_pinned) {
+          type_(type) {
       PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
                               (is_cpu_place(place_) ? "CPU" : "GPU"));
     }
@@ -182,9 +198,6 @@ class Tensor {
 
     /* the current type of memory */
     std::type_index type_;
-
-    /*! use pinned memory or not. */
-    bool is_pinned_;
   };
 
   /*! holds the memory block if allocated. */
@@ -208,8 +221,10 @@ class Tensor {
    *       N,C,H,W for respectively the batch size, the number of
    *       feature maps, the height.
    */
-
-  DataLayout layout_ = DataLayout::kNHWC;
+  // Fix me: here just change the default layout to kNCHW
+  // it doesn't fix the real issue, i.e. feeder should set up tensor layout
+  // according to actual input data
+  DataLayout layout_ = DataLayout::kNCHW;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
@@ -219,17 +234,7 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
-  bool is_pinned_;
 };
-
-inline void Tensor::switch_place(platform::Place new_place) {
-  if (holder_->place() == new_place) {
-    return;
-  }
-
-  // TODO(tonyyang-svail): do memcpy here.
-  PADDLE_THROW("Not Implemented");
-}
 
 }  // namespace framework
 }  // namespace paddle

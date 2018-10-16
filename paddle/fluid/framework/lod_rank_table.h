@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <iosfwd>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {

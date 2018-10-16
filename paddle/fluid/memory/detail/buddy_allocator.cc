@@ -15,12 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "glog/logging.h"
 
+DEFINE_bool(free_idle_memory, false,
+            "If it is true, Paddle will try to free idle memory trunks during "
+            "running time.");
+
 namespace paddle {
 namespace memory {
 namespace detail {
 
-BuddyAllocator::BuddyAllocator(SystemAllocator* system_allocator,
-                               size_t min_chunk_size, size_t max_chunk_size)
+BuddyAllocator::BuddyAllocator(
+    std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
+    size_t max_chunk_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
       cache_(system_allocator->UseGpu()),
@@ -46,7 +51,8 @@ inline size_t align(size_t size, size_t alignment) {
 
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
-  size_t size = align(unaligned_size + sizeof(Metadata), min_chunk_size_);
+  size_t size =
+      align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
 
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
@@ -103,7 +109,7 @@ void BuddyAllocator::Free(void* p) {
     return;
   }
 
-  block->mark_as_free(cache_);
+  block->mark_as_free(&cache_);
 
   total_used_ -= block->total_size(cache_);
   total_free_ += block->total_size(cache_);
@@ -122,7 +128,7 @@ void BuddyAllocator::Free(void* p) {
                                    right_buddy));
 
       // merge its right buddy to the block
-      block->merge(cache_, right_buddy);
+      block->merge(&cache_, right_buddy);
     }
   }
 
@@ -139,7 +145,7 @@ void BuddyAllocator::Free(void* p) {
                                    left_buddy->total_size(cache_), left_buddy));
 
       // merge the block to its left buddy
-      left_buddy->merge(cache_, block);
+      left_buddy->merge(&cache_, block);
       block = left_buddy;
     }
   }
@@ -150,26 +156,29 @@ void BuddyAllocator::Free(void* p) {
   pool_.insert(
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
-  // Clean up if existing too much free memory
+  if (FLAGS_free_idle_memory) {
+    // Clean up if existing too much free memory
+    // Prefer freeing fallback allocation first
+    CleanIdleFallBackAlloc();
 
-  // Prefer freeing fallback allocation first
-  CleanIdleFallBackAlloc();
-
-  // Free normal allocation
-  CleanIdleNormalAlloc();
+    // Free normal allocation
+    CleanIdleNormalAlloc();
+  }
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
+size_t BuddyAllocator::GetMinChunkSize() { return min_chunk_size_; }
+size_t BuddyAllocator::GetMaxChunkSize() { return max_chunk_size_; }
 
 void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;
-  void* p = system_allocator_->Alloc(index, size);
+  void* p = system_allocator_->Alloc(&index, size);
 
   VLOG(10) << "Allocated " << p << " from system allocator.";
 
   if (p == nullptr) return nullptr;
 
-  static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::HUGE_CHUNK, index,
+  static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::HUGE_CHUNK, index,
                                      size, nullptr, nullptr);
 
   return static_cast<MemoryBlock*>(p)->data();
@@ -187,14 +196,14 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
 
   // Allocate a new maximum sized block
   size_t index = 0;
-  void* p = system_allocator_->Alloc(index, max_chunk_size_);
+  void* p = system_allocator_->Alloc(&index, max_chunk_size_);
 
   if (p == nullptr) return pool_.end();
 
   VLOG(10) << "Creating and inserting new block " << p
            << " from system allocator";
 
-  static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::FREE_CHUNK, index,
+  static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::FREE_CHUNK, index,
                                      max_chunk_size_, nullptr, nullptr);
 
   // gpu fallback allocation
@@ -238,11 +247,11 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
 
   VLOG(10) << "Split block (" << block << ", " << block->total_size(cache_)
            << ") into";
-  block->split(cache_, size);
+  block->split(&cache_, size);
 
   VLOG(10) << "Left block (" << block << ", " << block->total_size(cache_)
            << ")";
-  block->set_type(cache_, MemoryBlock::ARENA_CHUNK);
+  block->set_type(&cache_, MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
   if (block->has_right_buddy(cache_)) {

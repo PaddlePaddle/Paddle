@@ -42,8 +42,7 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
 template <typename T>
 class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MarginRankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X1",
              "(2-D tensor with shape [batch_size x 1]) The score for "
              "one item X1 to be ranked, from pairwise ranking model.");
@@ -111,9 +110,10 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP(margin_rank_loss, ops::MarginRankLossOp,
-            ops::MarginRankLossOpMaker<float>, margin_rank_loss_grad,
-            ops::MarginRankLossGradOp);
+REGISTER_OPERATOR(margin_rank_loss, ops::MarginRankLossOp,
+                  ops::MarginRankLossOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     margin_rank_loss,
     ops::MarginRankLossKernel<paddle::platform::CPUDeviceContext, float>);

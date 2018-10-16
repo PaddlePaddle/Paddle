@@ -17,6 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class MomentumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -31,6 +33,11 @@ class MomentumOp : public framework::OperatorWithKernel {
                    "Input(velocity) of Momentum should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
                    "Input(LearningRate) of Momentum should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of Momentum should not be null.");
@@ -50,12 +57,17 @@ class MomentumOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MomentumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter that has to be updated");
@@ -91,7 +103,7 @@ The update equations are as follows:
 $$
 velocity = mu * velocity + gradient \\
 if (use\_nesterov):   \\
-  param = param - gradient * learning\_rate + mu * velocity * learning\_rate \\
+  param = param - (gradient + mu * velocity) * learning\_rate \\
 else:   \\
   param = param - learning\_rate * velocity. \\
 $$

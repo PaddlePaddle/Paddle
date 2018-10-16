@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -52,9 +54,9 @@ class MulOp : public framework::OperatorWithKernel {
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
-    PADDLE_ENFORCE_EQ(
-        x_mat_dims[1], y_mat_dims[0],
-        "First matrix's width must be equal with second matrix's height.");
+    PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
+                      "First matrix's width must be equal with second matrix's "
+                      "height. %s, %s");
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
@@ -74,8 +76,7 @@ class MulOp : public framework::OperatorWithKernel {
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
@@ -155,12 +156,33 @@ class MulGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class MulOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+    retv->SetType("mul_grad");
+    retv->SetInput("X", Input("X"));
+    retv->SetInput("Y", Input("Y"));
+    retv->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    retv->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    retv->SetAttrMap(Attrs());
+    return retv;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
+REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGradMaker);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
-    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
+    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);

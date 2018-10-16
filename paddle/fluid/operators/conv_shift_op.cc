@@ -44,7 +44,7 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
                       "The 2nd dimension of Input(Y) should be less than or "
                       "equal to the 2nd dimension of Input(X).");
-    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -75,8 +75,7 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
 
 class ConvShiftOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConvShiftOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape B x M, "
              "where B is the batch size and M is the data dimension.");
@@ -193,8 +192,9 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
-            conv_shift_grad, ops::ConvShiftGradOp);
+REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 REGISTER_OP_CPU_KERNEL(conv_shift,
                        ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(

@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -74,21 +76,6 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int filter_width = col->dims()[2];
     int col_height = col->dims()[3];
     int col_width = col->dims()[4];
-
-    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
-                       (dilation[0] * (filter_height - 1) + 1)) /
-                              stride[0] +
-                          1,
-                      col_height,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       (dilation[1] * (filter_width - 1) + 1)) /
-                              stride[1] +
-                          1,
-                      col_width,
-                      "col_width and padding(padding_left, padding_right) are "
-                      "inconsistent.");
 
     int num_outputs = im_channels * col_height * col_width;
     int blocks = (num_outputs + 1024 - 1) / 1024;
@@ -271,21 +258,6 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     int filter_width = col->dims()[4];
     int col_height = col->dims()[0];
     int col_width = col->dims()[1];
-
-    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
-                       (dilation[0] * (filter_height - 1) + 1)) /
-                              stride[0] +
-                          1,
-                      col_height,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       (dilation[1] * (filter_width - 1) + 1)) /
-                              stride[1] +
-                          1,
-                      col_width,
-                      "col_width and padding(padding_left, padding_right) are "
-                      "inconsistent.");
 
     int block_dim_x = 0;
     int block_dim_y = 0;

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -35,24 +34,25 @@ class Tuple {
  public:
   using ElementVars = std::vector<ElementVar>;
 
-  Tuple(std::vector<ElementVar>& var, std::vector<VarDesc>& var_desc)
+  Tuple(const std::vector<ElementVar>& var,
+        const std::vector<VarDesc>& var_desc)
       : var_(var), var_desc_(var_desc) {}
-  Tuple(std::vector<ElementVar>& var) : var_(var) {}
+  explicit Tuple(std::vector<ElementVar>& var) : var_(var) {}
 
-  ElementVar get(int idx) const { return var_[idx]; };
+  ElementVar get(int idx) const { return var_[idx]; }
 
-  ElementVar& get(int idx) { return var_[idx]; };
+  ElementVar& get(int idx) { return var_[idx]; }
 
-  bool isSameType(Tuple& t) const;
+  bool isSameType(const Tuple& t) const;
 
-  size_t getSize() const { return var_.size(); };
+  size_t getSize() const { return var_.size(); }
 
  private:
   ElementVars var_;
   std::vector<VarDesc> var_desc_;
 };
 
-bool Tuple::isSameType(Tuple& t) const {
+bool Tuple::isSameType(const Tuple& t) const {
   size_t tuple_size = getSize();
   if (tuple_size != t.getSize()) {
     return false;

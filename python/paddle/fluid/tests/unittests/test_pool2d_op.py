@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -29,14 +31,14 @@ def max_pool2D_forward_naive(x,
     if global_pool == 1:
         ksize = [H, W]
     H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
-    for i in xrange(H_out):
-        for j in xrange(W_out):
+    for i in range(H_out):
+        for j in range(W_out):
             r_start = np.max((i * strides[0] - paddings[0], 0))
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
             c_start = np.max((j * strides[1] - paddings[1], 0))
@@ -57,14 +59,14 @@ def avg_pool2D_forward_naive(x,
     if global_pool == 1:
         ksize = [H, W]
     H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
-    for i in xrange(H_out):
-        for j in xrange(W_out):
+    for i in range(H_out):
+        for j in range(W_out):
             r_start = np.max((i * strides[0] - paddings[0], 0))
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
             c_start = np.max((j * strides[1] - paddings[1], 0))
@@ -109,8 +111,11 @@ class TestPool2d_Op(OpTest):
 
         self.outputs = {'Out': output}
 
+    def testcudnn(self):
+        return core.is_compiled_with_cuda() and self.use_cudnn
+
     def test_check_output(self):
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
@@ -119,7 +124,7 @@ class TestPool2d_Op(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.use_cudnn and self.pool_type != "max":
+        if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, set(['X']), 'Out', max_relative_error=0.07)
@@ -315,37 +320,6 @@ class TestCeilModeCase3(TestCase1):
 class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
-
-
-#--------------------test pool2d MKLDNN--------------------
-class TestMKLDNNCase1(TestPool2d_Op):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase2(TestCase1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase3(TestCase2):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase4(TestCase3):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase5(TestCase4):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase6(TestCase5):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
 
 
 if __name__ == '__main__':

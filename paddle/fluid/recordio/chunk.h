@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,7 @@ namespace recordio {
 
 // A Chunk contains the Header and optionally compressed records.
 class Chunk {
-public:
+ public:
   Chunk() : num_bytes_(0) {}
   void Add(const std::string& buf) {
     num_bytes_ += buf.size();
@@ -46,16 +47,27 @@ public:
 
   bool Empty() const { return records_.empty(); }
 
-private:
+ private:
   std::vector<std::string> records_;
   // sum of record lengths in bytes.
   size_t num_bytes_;
   DISABLE_COPY_AND_ASSIGN(Chunk);
 };
 
-size_t CompressData(const char* in, size_t in_length, Compressor ct, char* out);
+class ChunkParser {
+ public:
+  explicit ChunkParser(std::istream& sin);
 
-void DeflateData(const char* in, size_t in_length, Compressor ct, char* out);
+  bool Init();
+  std::string Next();
+  bool HasNext() const;
+
+ private:
+  Header header_;
+  uint32_t pos_{0};
+  std::istream& in_;
+  std::unique_ptr<std::istream> compressed_stream_;
+};
 
 }  // namespace recordio
 }  // namespace paddle

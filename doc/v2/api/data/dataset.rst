@@ -1,82 +1,82 @@
 Dataset
 =======
 
-..  automodule:: paddle.v2.dataset
+..  automodule:: paddle.dataset
     :members:
     :noindex:
 
 mnist
 +++++
 
-..  automodule:: paddle.v2.dataset.mnist
+..  automodule:: paddle.dataset.mnist
     :members:
     :noindex:
 
 cifar
 +++++
 
-..  automodule:: paddle.v2.dataset.cifar
+..  automodule:: paddle.dataset.cifar
     :members:
     :noindex:
 
 conll05
 +++++++
 
-..  automodule:: paddle.v2.dataset.conll05
+..  automodule:: paddle.dataset.conll05
     :members: get_dict,get_embedding,test
     :noindex:
 
 imdb
 ++++
 
-..  automodule:: paddle.v2.dataset.imdb
+..  automodule:: paddle.dataset.imdb
     :members:
     :noindex:
 
 imikolov
 ++++++++
 
-..  automodule:: paddle.v2.dataset.imikolov
+..  automodule:: paddle.dataset.imikolov
     :members:
     :noindex:
 
 movielens
 +++++++++
 
-..  automodule:: paddle.v2.dataset.movielens
+..  automodule:: paddle.dataset.movielens
     :members:
     :noindex:
 
-..  autoclass:: paddle.v2.dataset.movielens.MovieInfo
+..  autoclass:: paddle.dataset.movielens.MovieInfo
     :noindex:
-    
-..  autoclass:: paddle.v2.dataset.movielens.UserInfo
+
+..  autoclass:: paddle.dataset.movielens.UserInfo
     :noindex:
 
 sentiment
 +++++++++
 
-..  automodule:: paddle.v2.dataset.sentiment
+..  automodule:: paddle.dataset.sentiment
     :members:
     :noindex:
 
 uci_housing
 +++++++++++
 
-..  automodule:: paddle.v2.dataset.uci_housing
+..  automodule:: paddle.dataset.uci_housing
     :members:
     :noindex:
 
 wmt14
 +++++
 
-..  automodule:: paddle.v2.dataset.wmt14
+..  automodule:: paddle.dataset.wmt14
     :members:
     :noindex:
 
 wmt16
 +++++
 
-..  automodule:: paddle.v2.dataset.wmt16
+..  automodule:: paddle.dataset.wmt16
     :members:
     :noindex:

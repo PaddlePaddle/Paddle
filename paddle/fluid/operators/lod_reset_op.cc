@@ -47,8 +47,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
 
 class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDResetOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, LoDTensor) Input variable of LoDResetOp which "
              "could be a Tensor or LoDTensor, where the data of output "
@@ -155,8 +154,9 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker, lod_reset_grad,
-            ops::LoDResetGradOp);
+REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp);
 REGISTER_OP_CPU_KERNEL(
     lod_reset, ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,

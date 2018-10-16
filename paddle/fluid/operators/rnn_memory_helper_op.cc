@@ -42,7 +42,7 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
 
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
-    out_tensor->ShareDataWith(mem_tensor);
+    framework::TensorCopySync(mem_tensor, dev_place, out_tensor);
     out_tensor->set_lod(mem_tensor.lod());
   }
 };
@@ -50,17 +50,18 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
 class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of rnn_memory_helper op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output of rnn_memory_helper op should not be null.");
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "");
     AddOutput("Out", "");
     AddAttr<int>("dtype",
@@ -108,7 +109,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
-      in_grad_tensor->ShareDataWith(out_grad_tensor);
+      framework::TensorCopySync(out_grad_tensor, dev_place, in_grad_tensor);
       in_grad_tensor->set_lod(out_grad_tensor.lod());
     }
   }
@@ -117,8 +118,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 class RNNMemoryHelperGradOpInfoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperGradOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(framework::GradVarName("Out"), "");
     AddInput("X", "");
     AddInput("Out", "");
@@ -135,8 +135,11 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
-    PADDLE_ENFORCE(ctx->HasOutput(x_grad_name), "");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "");
+    PADDLE_ENFORCE(ctx->HasOutput(x_grad_name),
+                   "Gradient of Input(X) in rnn_memory_helper_grad of should "
+                   "not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of rnn_memory_helper_grad of should not be null.");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
   }

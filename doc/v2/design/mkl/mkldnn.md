@@ -5,7 +5,7 @@
 充分展现英特尔平台的优势，有效提升PaddlePaddle在英特尔架构上的性能。
 
 <div align="center">
-<img src="image/overview.png"><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/v2/images/overview.png"><br/>
 Figure 1. PaddlePaddle on IA
 </div>
 
@@ -42,16 +42,43 @@ Figure 1. PaddlePaddle on IA
 
 MKL，MKLML以及MKL-DNN三者关系如下表：
 
-| Name        |  Open Source     | License     | Descriptions  |
-| :---------- | :--------------- | :---------- | :------------ |
-|   MKL       |     No           | Proprietary | Accelerate math processing routines | 
-|   MKLML     |     No           | Proprietary | Small package of MKL, especially for Machine Learning |
-|   MKL-DNN   |     Yes          | Apache 2.0  | Accelerate primitives processing routines especially for Deep Neural Networks  |
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Open Source</th>
+<th>License</th>
+<th>Descriptions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MKL</td>
+<td>No</td>
+<td>Proprietary</td>
+<td>Accelerate math processing routines</td>
+</tr>
+<tr>
+<td>MKLML</td>
+<td>No</td>
+<td>Proprietary</td>
+<td>Small package of MKL, especially for Machine Learning</td>
+</tr>
+
+<tr>
+<td>MKL-DNN</td>
+<td>Yes</td>
+<td>Apache 2.0</td>
+<td>Accelerate primitives processing routines especially for Deep Neural Networks</td>
+</tr>
+
+</tbody>
+</table>
 
 MKLML可以与MKL-DNN共同使用，以此达到最好的性能。
 
 <div align="center">
-<img src="image/engine.png"><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/v2/images/engine.png"><br/>
 Figure 2. PaddlePaddle with MKL Engines
 </div>
 
@@ -89,7 +116,7 @@ PaddlePaddle/Paddle
 ### CMake
 在`CMakeLists.txt`中提供一个与MKL有关的总开关：`WITH_MKL`，它负责决定编译时是否使用MKLML和MKL-DNN
 
-- `WITH_MKLML` 控制是否使用MKLML库。 
+- `WITH_MKLML` 控制是否使用MKLML库。
 当打开`WITH_MKL`时，会自动使用MKLML库作为PaddlePaddle的CBLAS和LAPACK库，同时会开启Intel OpenMP用于提高MKLML的性能。
 编译时会把对应的头文件和库放在`build/third_party/install/mklml/*`目录下对应的地方。
 MKLML的库目前都是动态库，主要包括`libiomp5.so`和`libmklml_intel.so`。
@@ -103,7 +130,7 @@ MKL-DNN的库目前只有动态库`libmkldnn.so`。
 所以我们定义了一个`MKLDNNMatrix`用于管理MKL-DNN数据的不同格式以及相互之间的转换。
 
 <div align="center">
-<img src="image/matrix.png"><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/v2/images/matrix.png"><br/>
 Figure 3. MKLDNNMatrix
 </div>
 
@@ -113,7 +140,7 @@ Figure 3. MKLDNNMatrix
 子类只需要使用定义好的接口，实现具体的函数功能即可。
 
 <div align="center">
-<img src="image/layers.png"><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/v2/images/layers.png"><br/>
 Figure 4. MKLDNNLayer
 </div>
 
@@ -150,7 +177,7 @@ Figure 4. MKLDNNLayer
 所以整体上，在实现每个子类的时候就不需要关心分支的事情了。
 
 <div align="center">
-<img src="image/gradients.png"><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/v2/images/gradients.png"><br/>
 Figure 5. Merge Gradients
 </div>
 
@@ -172,7 +199,7 @@ if use_mkldnn
     self.layer_type = mkldnn_*
 ```
 
-所有MKL-DNN的`layer_type`会以*mkldnn_*开头，这些会在`MKLDNN*Layer`注册layer的时候保证，以示区分。 
+所有MKL-DNN的`layer_type`会以*mkldnn_*开头，这些会在`MKLDNN*Layer`注册layer的时候保证，以示区分。
 
 同时,会在`paddle/utils.Flags`中添加一个`use_mkldnn`的flag，用于选择是否使用MKL-DNN的相关功能。
 

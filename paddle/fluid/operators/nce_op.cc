@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nce_op.h"
 
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -73,8 +75,7 @@ class NCEOp : public framework::OperatorWithKernel {
 
 class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCEOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input", "(Tensor) A tensor of shape [batch_size, dim].");
     AddInput(
         "Label",
@@ -127,8 +128,10 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                               "user should avoid setting this attribute.")
         .SetDefault({});
     AddComment(R"DOC(
-Compute and return the noise-contrastive estimation training loss.
-See [Noise-contrastive estimation: A new estimation principle for unnormalized statistical models](http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf).
+Compute and return the noise-contrastive estimation training loss. See 
+`Noise-contrastive estimation: A new estimation principle for unnormalized 
+statistical models 
+ <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
 By default this operator uses a uniform distribution for sampling.
 )DOC");
   }
@@ -179,7 +182,9 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(nce, ops::NCEOp, ops::NCEOpMaker, nce_grad, ops::NCEOpGrad);
+REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,

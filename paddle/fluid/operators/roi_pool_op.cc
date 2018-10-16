@@ -18,8 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-static constexpr int kROISize = 5;
+using LoDTensor = framework::LoDTensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
@@ -40,11 +39,11 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D tensor of shape (num_rois, 5)"
-                   "given as [[batch_id, x1, y1, x2, y2], …].");
+                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "given as [[x1, y1, x2, y2], …].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
-                   "ROIs should be a 2-D tensor of shape (num_rois, 5)"
-                   "given as [[batch_id, x1, y1, x2, y2], …].");
+                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "given as [[x1, y1, x2, y2], …].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -99,8 +98,7 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
 
 class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ROIPoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor), "
              "the input of ROIPoolOp. "
@@ -109,10 +107,10 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(Tensor), "
+             "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D tensor of shape (num_rois, 5)"
-             "given as [[batch_id, x1, y1, x2, y2], …]. "
+             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "given as [[x1, y1, x2, y2], …]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -141,7 +139,20 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The pooled output width.")
         .SetDefault(1);
     AddComment(R"DOC(
-ROIPool operator
+**ROIPool Operator**
+
+Region of interest pooling (also known as RoI pooling) is to perform
+is to perform max pooling on inputs of nonuniform sizes to obtain
+fixed-size feature maps (e.g. 7*7).
+
+The operator has three steps:
+
+1. Dividing each region proposal into equal-sized sections with
+   the pooled_width and pooled_height
+
+2. Finding the largest value in each section
+
+3. Copying these max values to the output buffer
 
 ROI Pooling for Faster-RCNN. The link below is a further introduction: 
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
@@ -153,8 +164,9 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker, roi_pool_grad,
-            ops::ROIPoolGradOp);
+REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,

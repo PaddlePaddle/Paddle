@@ -14,7 +14,14 @@
 
 #include "paddle/fluid/framework/threadpool.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
+
+DEFINE_int32(io_threadpool_size, 100,
+             "number of threads used for doing IO, default 100");
+
+DEFINE_int32(dist_threadpool_size, 0,
+             "number of threads used for distributed executed.");
 
 namespace paddle {
 namespace framework {
@@ -31,6 +38,10 @@ void ThreadPool::Init() {
   if (threadpool_.get() == nullptr) {
     // TODO(Yancey1989): specify the max threads number
     int num_threads = std::thread::hardware_concurrency();
+    if (FLAGS_dist_threadpool_size > 0) {
+      num_threads = FLAGS_dist_threadpool_size;
+      VLOG(1) << "set dist_threadpool_size to " << num_threads;
+    }
     PADDLE_ENFORCE_GT(num_threads, 0);
     threadpool_.reset(new ThreadPool(num_threads));
   }
@@ -88,6 +99,21 @@ void ThreadPool::TaskLoop() {
         completed_.notify_all();
       }
     }
+  }
+}
+
+std::unique_ptr<ThreadPool> ThreadPoolIO::io_threadpool_(nullptr);
+std::once_flag ThreadPoolIO::io_init_flag_;
+
+ThreadPool* ThreadPoolIO::GetInstanceIO() {
+  std::call_once(io_init_flag_, &ThreadPoolIO::InitIO);
+  return io_threadpool_.get();
+}
+
+void ThreadPoolIO::InitIO() {
+  if (io_threadpool_.get() == nullptr) {
+    // TODO(typhoonzero1986): make this configurable
+    io_threadpool_.reset(new ThreadPool(FLAGS_io_threadpool_size));
   }
 }
 

@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
-import paddle.v2 as paddle
+import paddle
 import unittest
 import numpy
+
+from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import max_sequence_len
+from paddle.fluid.layers.control_flow import lod_tensor_to_array
+from paddle.fluid.layers.control_flow import array_to_lod_tensor
+from paddle.fluid.layers.control_flow import shrink_memory
 
 
 class TestDynRNN(unittest.TestCase):
@@ -38,12 +46,11 @@ class TestDynRNN(unittest.TestCase):
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
 
-            rank_table = fluid.layers.lod_rank_table(x=sent_emb)
+            rank_table = lod_rank_table(x=sent_emb)
 
-            sent_emb_array = fluid.layers.lod_tensor_to_array(
-                x=sent_emb, table=rank_table)
+            sent_emb_array = lod_tensor_to_array(x=sent_emb, table=rank_table)
 
-            seq_len = fluid.layers.max_sequence_len(rank_table=rank_table)
+            seq_len = max_sequence_len(rank_table=rank_table)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             i.stop_gradient = False
 
@@ -66,7 +73,7 @@ class TestDynRNN(unittest.TestCase):
                 mem = fluid.layers.array_read(array=mem_array, i=i)
                 ipt = fluid.layers.array_read(array=sent_emb_array, i=i)
 
-                mem = fluid.layers.shrink_memory(x=mem, i=i, table=rank_table)
+                mem = shrink_memory(x=mem, i=i, table=rank_table)
 
                 hidden = fluid.layers.fc(input=[mem, ipt], size=100, act='tanh')
 
@@ -75,8 +82,7 @@ class TestDynRNN(unittest.TestCase):
                 fluid.layers.array_write(x=hidden, i=i, array=mem_array)
                 fluid.layers.less_than(x=i, y=seq_len, cond=cond)
 
-            all_timesteps = fluid.layers.array_to_lod_tensor(
-                x=out, table=rank_table)
+            all_timesteps = array_to_lod_tensor(x=out, table=rank_table)
             last = fluid.layers.sequence_last_step(input=all_timesteps)
             logits = fluid.layers.fc(input=last, size=1, act=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
@@ -131,12 +137,148 @@ class TestDynRNN(unittest.TestCase):
         loss_0 = exe.run(main_program,
                          feed=feeder.feed(data),
                          fetch_list=[loss])[0]
-        for _ in xrange(100):
+        for _ in range(100):
             val = exe.run(main_program,
                           feed=feeder.feed(data),
                           fetch_list=[loss])[0]
         # loss should be small after 100 mini-batch
         self.assertLess(val[0], loss_0[0])
+
+    # this unit test is just used to the two layer nested dyn_rnn.
+    def test_train_nested_dyn_rnn(self):
+        word_dict = [i for i in range(30)]
+
+        def fake_reader():
+            seq_len, label = [[2, 2]], [0, 1]
+            data = []
+            for ele in seq_len:
+                for j in ele:
+                    data.append([numpy.random.randint(30) \
+                                 for _ in range(j)])
+
+            while True:
+                yield data, label
+
+        train_data = paddle.batch(fake_reader, batch_size=2)
+
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            sentence = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=2)
+            label = fluid.layers.data(
+                name='label', shape=[1], dtype='float32', lod_level=1)
+
+            rnn = fluid.layers.DynamicRNN()
+            with rnn.block():
+                in_ = rnn.step_input(sentence)
+                sent_emb = fluid.layers.embedding(
+                    input=in_, size=[len(word_dict), 32], dtype='float32')
+                out_ = fluid.layers.fc(input=sent_emb, size=100, act='tanh')
+
+                rnn1 = fluid.layers.DynamicRNN()
+                with rnn1.block():
+                    in_1 = rnn1.step_input(out_)
+                    out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
+                    rnn1.output(out_1)
+
+                last = fluid.layers.sequence_last_step(input=rnn1())
+                rnn.output(last)
+
+            last = rnn()
+            logits = fluid.layers.fc(input=last, size=1, act=None)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=logits, label=label)
+            loss = fluid.layers.mean(loss)
+            sgd = fluid.optimizer.SGD(1e-3)
+            #sgd = fluid.optimizer.Adam(1e-3)
+            sgd.minimize(loss=loss)
+
+        cpu = fluid.CPUPlace()
+        exe = fluid.Executor(cpu)
+        exe.run(startup_program)
+        feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
+        data = next(train_data())
+        val = exe.run(main_program, feed=feeder.feed(data),
+                      fetch_list=[loss])[0]
+
+        for _ in range(100):
+            val = exe.run(main_program,
+                          feed=feeder.feed(data),
+                          fetch_list=[loss])[0]
+            print(val)
+
+    # this unit test is just used to the two layer nested dyn_rnn.
+    def test_train_nested_dyn_rnn2(self):
+        word_dict = [i for i in range(30)]
+
+        def fake_reader():
+            seq_len, label = [[2, 2]], [0, 1]
+            data = []
+            for ele in seq_len:
+                for j in ele:
+                    data.append([numpy.random.randint(30) \
+                                 for _ in range(j)])
+
+            while True:
+                yield data, label
+
+        train_data = paddle.batch(fake_reader, batch_size=2)
+        hidden_size = 32
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            sentence = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=2)
+            label = fluid.layers.data(
+                name='label', shape=[1], dtype='float32', lod_level=1)
+
+            rnn = fluid.layers.DynamicRNN()
+            with rnn.block():
+                in_ = rnn.step_input(sentence)
+                sent_emb = fluid.layers.embedding(
+                    input=in_,
+                    size=[len(word_dict), hidden_size],
+                    dtype='float32')
+                input_forward_proj = fluid.layers.fc(input=sent_emb,
+                                                     size=hidden_size * 4,
+                                                     act=None,
+                                                     bias_attr=False)
+                forward, _ = fluid.layers.dynamic_lstm(
+                    input=input_forward_proj,
+                    size=hidden_size * 4,
+                    use_peepholes=False)
+
+                rnn1 = fluid.layers.DynamicRNN()
+                with rnn1.block():
+                    in_1 = rnn1.step_input(forward)
+                    out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
+                    rnn1.output(out_1)
+
+                last = fluid.layers.sequence_last_step(input=rnn1())
+                rnn.output(last)
+
+            last = rnn()
+            logits = fluid.layers.fc(input=last, size=1, act=None)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=logits, label=label)
+            loss = fluid.layers.mean(loss)
+            sgd = fluid.optimizer.SGD(1e-3)
+            #sgd = fluid.optimizer.Adam(1e-3)
+            sgd.minimize(loss=loss)
+
+        cpu = fluid.CPUPlace()
+        exe = fluid.Executor(cpu)
+        exe.run(startup_program)
+        feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
+        data = next(train_data())
+        val = exe.run(main_program, feed=feeder.feed(data),
+                      fetch_list=[loss])[0]
+
+        for _ in range(100):
+            val = exe.run(main_program,
+                          feed=feeder.feed(data),
+                          fetch_list=[loss])[0]
 
 
 if __name__ == '__main__':

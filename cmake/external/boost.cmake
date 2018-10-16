@@ -23,8 +23,17 @@ set(BOOST_PROJECT       "extern_boost")
 # checked that the devtools package of CentOS 6 installs boost 1.41.0.
 # So we use 1.41.0 here.
 set(BOOST_VER           "1.41.0")
-set(BOOST_TAR           "boost_1_41_0")
-set(BOOST_URL           "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz")
+if((NOT DEFINED BOOST_TAR) OR (NOT DEFINED BOOST_URL))
+    message(STATUS "use pre defined download url")
+    set(BOOST_TAR "boost_1_41_0" CACHE STRING "" FORCE)
+    set(BOOST_URL "http://paddlepaddledeps.cdn.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
+endif()
+IF (WIN32)
+    MESSAGE(WARNING, "In windows, boost can not be downloaded automaticlly, please build it manually and put it at " ${THIRD_PARTY_PATH}install/boost)
+else()
+    MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
+ENDIF(WIN32)
+
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
 set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}/${BOOST_TAR}" CACHE PATH "boost include directory." FORCE)
@@ -32,12 +41,13 @@ set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 
 include_directories(${BOOST_INCLUDE_DIR})
 
+if (NOT WIN32)
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
     DOWNLOAD_COMMAND      wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
-                          && tar zxf ${BOOST_TAR}.tar.gz
+    && tar zxf ${BOOST_TAR}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
@@ -45,8 +55,9 @@ ExternalProject_Add(
     INSTALL_COMMAND       ""
     UPDATE_COMMAND        ""
 )
+endif(NOT WIN32)
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
+if (${CMAKE_VERSION} VERSION_LESS "3.3.0" OR NOT WIN32)
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/boost_dummy.c)
     file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
     add_library(boost STATIC ${dummyfile})

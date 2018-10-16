@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -24,19 +23,23 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+template <typename T>
+inline bool IsType(const std::type_index& type_index) {
+  return type_index == std::type_index(typeid(T));
+}
+
 inline proto::VarType::Type ToVarType(std::type_index type) {
-  if (type.hash_code() == typeid(LoDTensor).hash_code()) {
+  if (IsType<LoDTensor>(type)) {
     return proto::VarType_Type_LOD_TENSOR;
-  } else if (type.hash_code() == typeid(LoDRankTable).hash_code()) {
+  } else if (IsType<LoDRankTable>(type)) {
     return proto::VarType_Type_LOD_RANK_TABLE;
-  } else if (type.hash_code() == typeid(LoDTensorArray).hash_code()) {
+  } else if (IsType<LoDTensorArray>(type)) {
     return proto::VarType_Type_LOD_TENSOR_ARRAY;
-  } else if (type.hash_code() == typeid(SelectedRows).hash_code()) {
+  } else if (IsType<SelectedRows>(type)) {
     return proto::VarType_Type_SELECTED_ROWS;
-  } else if (type.hash_code() == typeid(ReaderHolder).hash_code()) {
+  } else if (IsType<ReaderHolder>(type)) {
     return proto::VarType_Type_READER;
-  } else if (type.hash_code() == typeid(ChannelHolder).hash_code()) {
-    return proto::VarType_Type_CHANNEL;
   } else {
     PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
   }
@@ -59,9 +62,6 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       return;
     case proto::VarType_Type_READER:
       visitor(var.Get<ReaderHolder>());
-      return;
-    case proto::VarType_Type_CHANNEL:
-      visitor(var.Get<ChannelHolder>());
       return;
     default:
       PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));

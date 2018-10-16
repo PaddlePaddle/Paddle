@@ -78,12 +78,11 @@ class ScatterGradOp : public framework::OperatorWithKernel {
 
 class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ScatterOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The source input of scatter op");
     AddInput("Ids", "The index input of scatter op where X will be updated");
-    AddInput("Updates", "The updated value of updates op");
-    AddOutput("Out", "The output of add op");
+    AddInput("Updates", "The updated value of scatter op");
+    AddOutput("Out", "The output of scatter op");
     AddComment(R"DOC(
 Scatter Operator.
 
@@ -91,7 +90,7 @@ This operator obtains output by updating the input on selected indices on the fi
 
 $$
 Out = X \\
-Out[Ids] = X[Ids] + Updates
+Out[Ids] = Updates
 $$
 
 )DOC");
@@ -102,7 +101,8 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, scatter_grad,
-            ops::ScatterGradOp);
+REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

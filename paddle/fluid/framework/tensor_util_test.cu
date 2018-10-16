@@ -27,9 +27,9 @@ static __global__ void FillNAN(float* buf) {
 }
 
 static __global__ void FillInf(float* buf) {
-  buf[0] = 0.0;
-  buf[1] = INFINITY;
-  buf[2] = 0.5;
+  buf[0] = INFINITY;
+  buf[1] = 0.1;
+  buf[2] = 0.2;
 }
 
 static __global__ void FillNAN(platform::float16* buf) {
@@ -44,10 +44,21 @@ static __global__ void FillInf(platform::float16* buf) {
   buf[2] = 0.5;
 }
 
+static __global__ void FillFinite(float* buf) {
+  buf[0] = 0.0;
+  buf[1] = 0.1;
+  buf[2] = 0.2;
+}
+
+static __global__ void FillFinite(platform::float16* buf) {
+  buf[0] = 0.0;
+  buf[1] = 0.1;
+  buf[2] = 0.2;
+}
+
 TEST(TensorContainsNAN, GPU) {
-  using namespace paddle::platform;
-  CUDAPlace gpu(0);
-  auto& pool = DeviceContextPool::Instance();
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     Tensor tensor;
@@ -58,7 +69,8 @@ TEST(TensorContainsNAN, GPU) {
   }
   {
     Tensor tensor;
-    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    paddle::platform::float16* buf =
+        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
     FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsNAN(tensor));
@@ -66,9 +78,8 @@ TEST(TensorContainsNAN, GPU) {
 }
 
 TEST(TensorContainsInf, GPU) {
-  using namespace paddle::platform;
-  CUDAPlace gpu(0);
-  auto& pool = DeviceContextPool::Instance();
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     Tensor tensor;
@@ -79,10 +90,169 @@ TEST(TensorContainsInf, GPU) {
   }
   {
     Tensor tensor;
-    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    paddle::platform::float16* buf =
+        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
     FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsInf(tensor));
+  }
+}
+
+TEST(TensorIsfinite, GPU) {
+  paddle::platform::CUDAPlace gpu(0);
+  using paddle::platform::float16;
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto* cuda_ctx = pool.GetByPlace(gpu);
+  // contains inf
+  {
+    Tensor tensor;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    EXPECT_TRUE(!TensorIsfinite(tensor));
+  }
+  {
+    Tensor tensor;
+    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    EXPECT_TRUE(!TensorIsfinite(tensor));
+  }
+
+  // contains nan
+  {
+    Tensor tensor;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    EXPECT_TRUE(!TensorIsfinite(tensor));
+  }
+  {
+    Tensor tensor;
+    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    EXPECT_TRUE(!TensorIsfinite(tensor));
+  }
+
+  // all element are finite
+  {
+    Tensor tensor;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillFinite<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    EXPECT_TRUE(TensorIsfinite(tensor));
+  }
+  {
+    Tensor tensor;
+    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    FillFinite<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    EXPECT_TRUE(TensorIsfinite(tensor));
+  }
+}
+
+TEST(TensorContainsInf, GPUWithoutWait) {
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto* cuda_ctx = pool.GetByPlace(gpu);
+  {
+    Tensor tensor, out;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorContainsInf(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    ASSERT_EQ(tmp.data<bool>()[0], true);
+  }
+  {
+    Tensor tensor, out;
+    paddle::platform::float16* buf =
+        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
+    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorContainsInf(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    ASSERT_EQ(tmp.data<bool>()[0], true);
+  }
+}
+
+TEST(TensorContainsNAN, GPUWithoutWait) {
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto* cuda_ctx = pool.GetByPlace(gpu);
+  {
+    Tensor tensor, out;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorContainsNAN(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    ASSERT_EQ(tmp.data<bool>()[0], true);
+  }
+  {
+    Tensor tensor, out;
+    paddle::platform::float16* buf =
+        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
+    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorContainsNAN(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    ASSERT_EQ(tmp.data<bool>()[0], true);
+  }
+}
+
+TEST(TensorIsfinite, GPUWithoutWait) {
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto* cuda_ctx = pool.GetByPlace(gpu);
+  {
+    Tensor tensor, out;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorIsfinite(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    EXPECT_EQ(tmp.data<bool>()[0], false);
+  }
+  {
+    Tensor tensor, out;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorIsfinite(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    EXPECT_EQ(tmp.data<bool>()[0], false);
+  }
+  {
+    Tensor tensor, out;
+    float* buf = tensor.mutable_data<float>({3}, gpu);
+    FillFinite<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    cuda_ctx->Wait();
+    TensorIsfinite(tensor, &out);
+    platform::CPUPlace cpu;
+    Tensor tmp;
+    TensorCopy(out, cpu, *cuda_ctx, &tmp);
+    cuda_ctx->Wait();
+    EXPECT_EQ(tmp.data<bool>()[0], true);
   }
 }
 

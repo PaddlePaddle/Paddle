@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -35,7 +37,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
       if (lod_t->lod().size() > 0) {
         auto y_lod = lod_t->lod();
         auto last_level = y_lod[y_lod.size() - 1];
-        PADDLE_ENFORCE_EQ(last_level.back(), in->dims()[0],
+        PADDLE_ENFORCE_EQ((int64_t)(last_level.back()), in->dims()[0],
                           "Last value of `Y`'s last level LoD should be equal "
                           "to the first dimension of `X`");
         out->set_lod(y_lod);
@@ -44,8 +46,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
         auto* lod = lod_t->data<int>();
         if (platform::is_gpu_place(ctx.GetPlace())) {
           framework::Tensor lod_cpu;
-          framework::TensorCopy(*lod_t, platform::CPUPlace(),
-                                ctx.device_context(), &lod_cpu);
+          framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
         level0 = std::vector<int>(lod, lod + lod_t->numel());

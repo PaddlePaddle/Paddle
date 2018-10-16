@@ -11,16 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
-import argparse
-import paddle.fluid as fluid
-import paddle.v2 as paddle
-import sys
-import numpy
-import unittest
+
+import paddle.fluid.core as core
 import math
-import sys
 import os
+import sys
+import unittest
+
+import numpy
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 
 BATCH_SIZE = 64
 
@@ -62,6 +67,7 @@ def train(nn_type,
           use_cuda,
           parallel,
           save_dirname=None,
+          save_full_dirname=None,
           model_filename=None,
           params_filename=None,
           is_local=True):
@@ -76,8 +82,8 @@ def train(nn_type,
         net_conf = conv_net
 
     if parallel:
-        places = fluid.layers.get_places()
-        pd = fluid.layers.ParallelDo(places)
+        places = get_places()
+        pd = ParallelDo(places)
         with pd.do():
             img_ = pd.read_input(img)
             label_ = pd.read_input(label)
@@ -95,7 +101,7 @@ def train(nn_type,
     test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimize_ops, params_grads = optimizer.minimize(avg_loss)
+    optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
@@ -138,6 +144,13 @@ def train(nn_type,
                                 exe,
                                 model_filename=model_filename,
                                 params_filename=params_filename)
+                        if save_full_dirname is not None:
+                            fluid.io.save_inference_model(
+                                save_full_dirname, [], [],
+                                exe,
+                                model_filename=model_filename,
+                                params_filename=params_filename,
+                                export_for_deployment=False)
                         return
                     else:
                         print(
@@ -151,24 +164,18 @@ def train(nn_type,
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        pserver_endpoints = os.getenv("PSERVERS")
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
@@ -215,10 +222,12 @@ def infer(use_cuda,
 
 def main(use_cuda, parallel, nn_type, combine):
     save_dirname = None
+    save_full_dirname = None
     model_filename = None
     params_filename = None
     if not use_cuda and not parallel:
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
+        save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
         if combine == True:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
@@ -229,6 +238,7 @@ def main(use_cuda, parallel, nn_type, combine):
         use_cuda=use_cuda,
         parallel=parallel,
         save_dirname=save_dirname,
+        save_full_dirname=save_full_dirname,
         model_filename=model_filename,
         params_filename=params_filename)
     infer(
@@ -261,6 +271,8 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
 
 def inject_all_tests():
     for use_cuda in (False, True):
+        if use_cuda and not core.is_compiled_with_cuda():
+            continue
         for parallel in (False, True):
             for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)

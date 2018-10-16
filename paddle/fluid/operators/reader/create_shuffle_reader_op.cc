@@ -23,42 +23,52 @@ namespace reader {
 
 class ShuffleReader : public framework::DecoratedReader {
  public:
-  ShuffleReader(ReaderBase* reader, size_t buffer_size, size_t seed = 0)
+  ShuffleReader(const std::shared_ptr<ReaderBase>& reader, size_t buffer_size,
+                size_t seed = 0)
       : DecoratedReader(reader), buffer_size_(buffer_size), seed_(seed) {
     VLOG(10) << "Create shuffle reader of " << reader_;
     if (seed_ == 0) {
       std::random_device device;
       seed_ = device();
     }
-    ReadIntoBuffers();
+    ReloadBuffer();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!HasNext()) {
-      PADDLE_THROW("There is no next data!");
-    }
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+    out->clear();
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
-      ReadIntoBuffers();
+      ReloadBuffer();
+      if (buffer_.empty()) {
+        return;
+      }
     }
     *out = buffer_[iteration_pos_++];
   }
 
-  bool HasNext() const override {
-    return iteration_pos_ < buffer_.size() || reader_->HasNext();
+ private:
+  void ShutdownImpl() override {
+    reader_->Shutdown();
+    buffer_.clear();
+    iteration_pos_ = 0;
   }
 
- private:
-  void ReadIntoBuffers() {
+  void StartImpl() override {
+    reader_->Start();
+    ReloadBuffer();
+  }
+
+  void ReloadBuffer() {
     buffer_.clear();
     buffer_.reserve(buffer_size_);
     iteration_pos_ = 0;
     for (size_t i = 0; i < buffer_size_; ++i) {
-      if (!reader_->HasNext()) {
+      std::vector<framework::LoDTensor> ins;
+      reader_->ReadNext(&ins);
+      if (ins.empty()) {
         break;
       }
-      buffer_.emplace_back();
-      reader_->ReadNext(&buffer_.back());
+      buffer_.emplace_back(ins);
     }
     std::mt19937 g(seed_);
     std::shuffle(buffer_.begin(), buffer_.end(), g);
@@ -80,19 +90,21 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    auto* out = detail::Ref(scope.FindVar(Output("Out")))
+                    .GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    auto& var = detail::Ref(scope.FindVar(Output("Out")));
-    var.GetMutable<framework::ReaderHolder>()->Reset(
-        new ShuffleReader(underlying_reader.Get(),
-                          static_cast<size_t>(Attr<int>("buffer_size"))));
+    out->Reset(framework::MakeDecoratedReader<ShuffleReader>(
+        underlying_reader, static_cast<size_t>(Attr<int>("buffer_size"))));
   }
 };
 
 class CreateShuffleReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateShuffleReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("buffer_size", "The shuffle buffer size.").GreaterThan(0);
     AddComment(R"DOC(
       CreateShuffleReader Operator

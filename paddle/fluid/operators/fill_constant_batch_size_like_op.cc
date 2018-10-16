@@ -30,19 +30,18 @@ class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
 };
 
 class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
- public:
-  FillConstantBatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : BatchSizeLikeOpMaker(proto, op_checker) {
-    AddAttr<int>("dtype",
-                 "(int, default 5 (FP32)) "
-                 "Output data type")
+ protected:
+  void Apply() override {
+    AddAttr<int>(
+        "dtype",
+        "It could be numpy.dtype. Output data type. Default is float32")
         .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<float>("value", "(float, default 0) The value to be filled")
+    AddAttr<float>("value", "default 0. The value to be filled")
         .SetDefault(0.0f);
     AddComment(R"DOC(
-FillConstantBatchSizeLike Operator.
-
-Fill up a variable with specified constant value.
+This function creates a tensor of specified *shape*, *dtype* and batch size,
+and initializes this with a constant supplied in *value*. The batch size is
+obtained from the `input` tensor.
 
 )DOC");
   }

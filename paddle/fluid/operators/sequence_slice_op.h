@@ -66,22 +66,20 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      framework::TensorCopy(*offset, platform::CPUPlace(), ctx.device_context(),
-                            &offset_cpu);
+      framework::TensorCopySync(*offset, platform::CPUPlace(), &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      framework::TensorCopy(*length, platform::CPUPlace(), ctx.device_context(),
-                            &length_cpu);
+      framework::TensorCopySync(*length, platform::CPUPlace(), &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 
     for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_LT(0, offset_data[i],
+      PADDLE_ENFORCE_LE(0, offset_data[i],
                         "The offset[%d] must greater than zero.", i);
       PADDLE_ENFORCE_LT(0, length_data[i],
                         "The length[%d] must greater than zero.", i);
-      PADDLE_ENFORCE_LT(lod[0][i] + offset_data[i] + length_data[i],
+      PADDLE_ENFORCE_LE(lod[0][i] + offset_data[i] + length_data[i],
                         lod[0][i + 1], "The target tensor's length overflow.");
     }
 
@@ -127,13 +125,11 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      framework::TensorCopy(*offset, platform::CPUPlace(), ctx.device_context(),
-                            &offset_cpu);
+      framework::TensorCopySync(*offset, platform::CPUPlace(), &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      framework::TensorCopy(*length, platform::CPUPlace(), ctx.device_context(),
-                            &length_cpu);
+      framework::TensorCopySync(*length, platform::CPUPlace(), &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 

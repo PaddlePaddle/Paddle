@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import math
 import sys
+import paddle.compat as cpt
 from op_test import OpTest
 
 
@@ -25,7 +28,7 @@ class TestROIPoolOp(OpTest):
         self.make_rois()
         self.calc_roi_pool()
 
-        self.inputs = {'X': self.x, 'ROIs': self.rois}
+        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
@@ -36,7 +39,7 @@ class TestROIPoolOp(OpTest):
         self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
 
     def init_test_case(self):
-        self.batch_size = 5
+        self.batch_size = 3
         self.channels = 3
         self.height = 6
         self.width = 4
@@ -47,7 +50,6 @@ class TestROIPoolOp(OpTest):
         self.spatial_scale = 1.0 / 4.0
         self.pooled_height = 2
         self.pooled_width = 2
-        self.rois_num = 2
 
         self.x = np.random.random(self.x_dim).astype('float32')
 
@@ -59,11 +61,11 @@ class TestROIPoolOp(OpTest):
 
         for i in range(self.rois_num):
             roi = self.rois[i]
-            roi_batch_id = roi[0]
-            roi_start_w = int(round(roi[1] * self.spatial_scale))
-            roi_start_h = int(round(roi[2] * self.spatial_scale))
-            roi_end_w = int(round(roi[3] * self.spatial_scale))
-            roi_end_h = int(round(roi[4] * self.spatial_scale))
+            roi_batch_id = int(roi[0])
+            roi_start_w = int(cpt.round(roi[1] * self.spatial_scale))
+            roi_start_h = int(cpt.round(roi[2] * self.spatial_scale))
+            roi_end_w = int(cpt.round(roi[3] * self.spatial_scale))
+            roi_end_h = int(cpt.round(roi[4] * self.spatial_scale))
 
             roi_height = int(max(roi_end_h - roi_start_h + 1, 1))
             roi_width = int(max(roi_end_w - roi_start_w + 1, 1))
@@ -98,29 +100,32 @@ class TestROIPoolOp(OpTest):
                             for w in range(wstart, wend):
                                 if x_i[c, h, w] > out_data[i, c, ph, pw]:
                                     out_data[i, c, ph, pw] = x_i[c, h, w]
-                                    argmax_data[i, c, ph, pw] = h * \
-                                        self.width + w
+                                    argmax_data[i, c, ph,
+                                                pw] = h * self.width + w
 
         self.outs = out_data.astype('float32')
         self.argmaxes = argmax_data.astype('int64')
 
     def make_rois(self):
         rois = []
-        batch_ids = np.random.randint(0, self.batch_size, size=self.rois_num)
-        for i in range(self.rois_num):
-            x1 = np.random.random_integers(
-                0, self.width / self.spatial_scale - self.pooled_width)
-            y1 = np.random.random_integers(
-                0, self.height / self.spatial_scale - self.pooled_height)
+        self.rois_lod = [[]]
+        for bno in range(self.batch_size):
+            self.rois_lod[0].append(bno + 1)
+            for i in range(bno + 1):
+                x1 = np.random.random_integers(
+                    0, self.width // self.spatial_scale - self.pooled_width)
+                y1 = np.random.random_integers(
+                    0, self.height // self.spatial_scale - self.pooled_height)
 
-            x2 = np.random.random_integers(x1 + self.pooled_width,
-                                           self.width / self.spatial_scale)
-            y2 = np.random.random_integers(y1 + self.pooled_height,
-                                           self.height / self.spatial_scale)
+                x2 = np.random.random_integers(x1 + self.pooled_width,
+                                               self.width // self.spatial_scale)
+                y2 = np.random.random_integers(
+                    y1 + self.pooled_height, self.height // self.spatial_scale)
 
-            roi = [batch_ids[i], x1, y1, x2, y2]
-            rois.append(roi)
-        self.rois = np.array(rois).astype("int64")
+                roi = [bno, x1, y1, x2, y2]
+                rois.append(roi)
+        self.rois_num = len(rois)
+        self.rois = np.array(rois).astype("float32")
 
     def setUp(self):
         self.op_type = "roi_pool"

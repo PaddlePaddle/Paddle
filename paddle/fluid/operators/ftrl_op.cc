@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 class FTRLOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -33,6 +34,16 @@ class FTRLOp : public framework::OperatorWithKernel {
                    "Input(Grad) of FTRL should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
                    "Input(LearningRate) of FTRL should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Grad").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of FTRL should not be null.");
@@ -53,12 +64,17 @@ class FTRLOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SquaredAccumOut", param_dim);
     ctx->SetOutputDim("LinearAccumOut", param_dim);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class FTRLOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FTRLOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter value that has to be updated.");

@@ -1,8 +1,10 @@
+if (NOT WIN32)
 add_subdirectory(detail)
+endif(NOT WIN32)
 
 function(math_library TARGET)
-    # math_library is a function to create math library. 
-    # The interface is the same as cc_library. 
+    # math_library is a function to create math library.
+    # The interface is the same as cc_library.
     # But it handle split GPU/CPU code and link some common library.
     set(cc_srcs)
     set(cu_srcs)
@@ -38,28 +40,39 @@ math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
-math_library(gru_compute DEPS activation_functions math_function)
 math_library(im2col)
+
+if (NOT WIN32) # windows do not support avx functions yet.
+math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
-math_library(math_function DEPS cblas)
+# TODO(TJ): ugly workaround, clean me
+cc_library(cpu_lstm_compute SRCS cpu_lstm_compute.cc DEPS activation_functions cblas cpu_info)
+endif (NOT WIN32)
+
+cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
+math_library(math_function DEPS blas)
 math_library(maxouting)
 math_library(pooling)
-math_library(selected_rows_functor DEPS selected_rows math_function)
+math_library(selected_rows_functor DEPS selected_rows math_function blas)
 math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function)
+if (NOT WIN32)
+math_library(matrix_bit_code)
+endif (NOT WIN32)
 math_library(unpooling)
 math_library(vol2col)
 
-cc_test(math_function_test SRCS math_function_test.cc)
+cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)
 cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)
 cc_test(im2col_test SRCS im2col_test.cc DEPS im2col)
 cc_test(vol2col_test SRCS vol2col_test.cc DEPS vol2col)
 cc_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS sequence_padding)
 if(WITH_GPU)
-    nv_test(math_function_gpu_test SRCS math_function_test.cu)
-    nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu DEPS selected_rows_functor)
+    nv_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function)
+    nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu DEPS selected_rows_functor math_function)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat)
+cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)

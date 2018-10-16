@@ -12,8 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+
+#include <map>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #define INLINE_FOR2(sizei, sizej)     \
@@ -49,6 +55,15 @@ struct SelectedRowsAddTo {
                   const int64_t input2_offset, framework::SelectedRows* input2);
 };
 
+// input2 = [all input in input1] + input2
+template <typename DeviceContext, typename T>
+struct SelectedRowsSumTo {
+  void operator()(const DeviceContext& context,
+                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<int64_t>& input2_offsets,
+                  framework::SelectedRows* input2);
+};
+
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
@@ -65,6 +80,107 @@ struct MergeAdd {
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
                                      const framework::SelectedRows& input);
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output);
+};
+
+template <>
+struct MergeAdd<platform::CPUDeviceContext, float> {
+  framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
+                                     const framework::SelectedRows& input) {
+    framework::SelectedRows out;
+    (*this)(context, input, &out);
+    return out;
+  }
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output) {
+    framework::SelectedRows& out = *output;
+    std::vector<int64_t> input_rows(input.rows());
+
+    std::map<int64_t, std::vector<int64_t>> merge_row_map;
+    for (size_t i = 0; i < input_rows.size(); ++i) {
+      merge_row_map[input_rows[i]].push_back(i);
+    }
+
+    std::vector<int64_t> merge_rows(merge_row_map.size());
+    size_t idx = 0;
+    int64_t input_width = input.value().dims()[1];
+    out.set_height(input.height());
+
+    auto* out_data = out.mutable_value()->mutable_data<float>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+    auto* in_data = input.value().data<float>();
+
+    auto blas = GetBlas<platform::CPUDeviceContext, float>(context);
+    for (auto& row_pair : merge_row_map) {
+      auto* out_ptr = out_data + idx * input_width;
+      auto& rows = row_pair.second;
+      merge_rows[idx] = row_pair.first;
+      ++idx;
+      // rows.size() is always larger than 0
+      blas.VCOPY(input_width, in_data + rows[0] * input_width, out_ptr);
+
+      for (size_t i = 1; i < rows.size(); ++i) {
+        blas.AXPY(input_width, 1., in_data + rows[i] * input_width, out_ptr);
+      }
+    }
+
+    out.set_rows(merge_rows);
+  }
+};
+
+template <>
+struct MergeAdd<platform::CPUDeviceContext, double> {
+  framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
+                                     const framework::SelectedRows& input) {
+    framework::SelectedRows out;
+    (*this)(context, input, &out);
+    return out;
+  }
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output) {
+    framework::SelectedRows& out = *output;
+    std::vector<int64_t> input_rows(input.rows());
+
+    std::map<int64_t, std::vector<int64_t>> merge_row_map;
+    for (size_t i = 0; i < input_rows.size(); ++i) {
+      merge_row_map[input_rows[i]].push_back(i);
+    }
+
+    std::vector<int64_t> merge_rows(merge_row_map.size());
+    size_t idx = 0;
+    int64_t input_width = input.value().dims()[1];
+    out.set_height(input.height());
+
+    auto* out_data = out.mutable_value()->mutable_data<double>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+    auto* in_data = input.value().data<double>();
+
+    auto blas = GetBlas<platform::CPUDeviceContext, double>(context);
+    for (auto& row_pair : merge_row_map) {
+      auto* out_ptr = out_data + idx * input_width;
+      auto& rows = row_pair.second;
+      merge_rows[idx] = row_pair.first;
+      ++idx;
+      // rows.size() is always larger than 0
+      blas.VCOPY(input_width, in_data + rows[0] * input_width, out_ptr);
+
+      for (size_t i = 1; i < rows.size(); ++i) {
+        blas.AXPY(input_width, 1., in_data + rows[i] * input_width, out_ptr);
+      }
+    }
+
+    out.set_rows(merge_rows);
+  }
 };
 
 template <typename DeviceContext, typename T>

@@ -8,11 +8,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
 #include <memory>
+#include <mutex>  // NOLINT
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
@@ -22,14 +24,17 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include <mkldnn.hpp>
+#include "mkldnn.hpp"
 #endif
 
+#include <map>
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/stream_callback_manager.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -67,6 +72,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
+class CudnnHolder;
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -94,23 +100,53 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
+  /*! \brief  Run a cudnn function with the workspace provided by
+   * CUDADeviceContext */
+  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
+                                 size_t workspace_len) const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
+
+  template <typename Callback>
+  void RecordEvent(cudaEvent_t ev, Callback callback) {
+    std::lock_guard<std::mutex> guard(mtx_);
+    callback();
+    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
+  }
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    std::lock_guard<std::mutex> guard(callback_mtx_);
+    callback_manager_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const {
+    std::lock_guard<std::mutex> guard(callback_mtx_);
+    callback_manager_->Wait();
+  }
 
  private:
   CUDAPlace place_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-
-  mutable std::mutex mutex_;
+  std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
 
-  int compute_capability;
-  int multi_process;
-  int max_threads_per_mp;
+  int compute_capability_;
+  int runtime_version_;
+  int driver_version_;
+  int multi_process_;
+  int max_threads_per_mp_;
+
+  mutable std::mutex mtx_;
+
+  // This lock is only used by callback
+  // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
+  mutable std::mutex callback_mtx_;
+  std::unique_ptr<StreamCallbackManager> callback_manager_;
 };
 
 template <>
@@ -118,6 +154,25 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = CUDADeviceContext;
 };
 
+// Currently, CUDAPinnedDeviceContext is only used to data copying.
+class CUDAPinnedDeviceContext : public DeviceContext {
+ public:
+  CUDAPinnedDeviceContext();
+  explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  CUDAPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
+  using TYPE = CUDAPinnedDeviceContext;
+};
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -173,9 +228,7 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::unordered_map<const platform::Place,
-                     std::unique_ptr<platform::DeviceContext>, PlaceHash>
-      device_contexts_;
+  std::map<Place, std::unique_ptr<DeviceContext>> device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

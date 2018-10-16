@@ -79,8 +79,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
 
 class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSliceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor), "
              "the input of SequenceSliceOp.");
@@ -120,8 +119,10 @@ NOTE: The first dimension size of input, the size of offset and Length, should b
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_slice, ops::SequenceSliceOp, ops::SequenceSliceOpMaker,
-            sequence_slice_grad, ops::SequenceSliceGradOp);
+REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
+                  ops::SequenceSliceOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);

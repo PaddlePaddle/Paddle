@@ -19,18 +19,20 @@ namespace paddle {
 namespace operators {
 template <>
 void GetAccumulators<paddle::platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx, int64_t& num_updates_,
-    int64_t& num_accumulates_, int64_t& old_num_accumulates_) {
+    const framework::ExecutionContext& ctx, int64_t* num_updates_,
+    int64_t* num_accumulates_, int64_t* old_num_accumulates_) {
   auto* in_old_num_accumulates = ctx.Input<Tensor>("in_old_num_accumulates");
   auto* in_num_accumulates = ctx.Input<Tensor>("in_num_accumulates");
   auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
   auto stream = ctx.cuda_device_context().stream();
-  memory::Copy(platform::CPUPlace(), &old_num_accumulates_,
-               platform::CUDAPlace(), in_old_num_accumulates->data<int64_t>(),
-               sizeof(int64_t), stream);
-  memory::Copy(platform::CPUPlace(), &num_accumulates_, platform::CUDAPlace(),
+  auto cuda_place =
+      boost::get<platform::CUDAPlace>(in_old_num_accumulates->place());
+  memory::Copy(platform::CPUPlace(), old_num_accumulates_, cuda_place,
+               in_old_num_accumulates->data<int64_t>(), sizeof(int64_t),
+               stream);
+  memory::Copy(platform::CPUPlace(), num_accumulates_, cuda_place,
                in_num_accumulates->data<int64_t>(), sizeof(int64_t), stream);
-  memory::Copy(platform::CPUPlace(), &num_updates_, platform::CUDAPlace(),
+  memory::Copy(platform::CPUPlace(), num_updates_, cuda_place,
                in_num_updates->data<int64_t>(), sizeof(int64_t), stream);
 }
 
@@ -42,14 +44,16 @@ void SetAccumulators<paddle::platform::CUDADeviceContext>(
   auto* out_old_num_accumulates = ctx.Output<Tensor>("out_old_num_accumulates");
   auto* out_num_accumulates = ctx.Output<Tensor>("out_num_accumulates");
   auto* out_num_updates = ctx.Output<Tensor>("out_num_updates");
+  auto cuda_place =
+      boost::get<platform::CUDAPlace>(out_old_num_accumulates->place());
 
-  memory::Copy(platform::CUDAPlace(), out_old_num_accumulates->data<int64_t>(),
+  memory::Copy(cuda_place, out_old_num_accumulates->data<int64_t>(),
                platform::CPUPlace(), &old_num_accumulates_, sizeof(int64_t),
                stream);
-  memory::Copy(platform::CUDAPlace(), out_num_accumulates->data<int64_t>(),
+  memory::Copy(cuda_place, out_num_accumulates->data<int64_t>(),
                platform::CPUPlace(), &num_accumulates_, sizeof(int64_t),
                stream);
-  memory::Copy(platform::CUDAPlace(), out_num_updates->data<int64_t>(),
+  memory::Copy(cuda_place, out_num_updates->data<int64_t>(),
                platform::CPUPlace(), &num_updates_, sizeof(int64_t), stream);
 }
 

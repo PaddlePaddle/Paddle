@@ -17,6 +17,7 @@ import unittest
 
 from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
 import paddle.fluid.layers as layers
+import paddle.fluid as fluid
 
 main_program = default_main_program()
 
@@ -27,25 +28,25 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        main_program.rollback()
+        main_program._rollback()
 
         b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        main_program.rollback()
+        main_program._rollback()
         b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
@@ -87,57 +88,6 @@ class TestProgram(unittest.TestCase):
         print(prog)
         print(prog_restored)
 
-    def test_append_backward(self):
-        prog = Program()
-        block = prog.global_block()
-
-        mul_x = block.create_var(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-        mul_op = block.append_op(
-            type="mul",
-            inputs={"X": [mul_x],
-                    "Y": mul_y},
-            outputs={"Out": [mul_out]},
-            attrs={"x_num_col_dims": 1})
-
-        add_y = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="add.y")
-        add_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="add.out")
-        add_op = block.append_op(
-            type="elementwise_add",
-            inputs={"X": mul_out,
-                    "Y": add_y},
-            outputs={"Out": add_out},
-            attrs={"x_num_col_dims": 1})
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out")
-        block.append_op(
-            type="mean", inputs={"X": add_out}, outputs={"Out": mean_out})
-
-        self.assertEqual(mul_op.idx, 0)
-        self.assertEqual(add_op.idx, 1)
-        param_to_grad = prog.append_backward(mean_out, set())
-
-        for var_name in ("mul.x", "mul.y", "mul.out", "add.y", "add.out",
-                         "mean.out"):
-            self.assertEqual(param_to_grad[var_name][0],
-                             grad_var_name(var_name))
-            self.assertEqual(param_to_grad[var_name][1], 0)
-
-        expect_ops = [
-            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
-            "elementwise_add_grad", "mul_grad"
-        ]
-        actual_ops = []
-        for op in block.ops:
-            actual_ops.append(op.type)
-        self.assertEqual(actual_ops, expect_ops)
-
     def test_program_clone_with_parameter(self):
         main_program = Program()
         startup_program = Program()
@@ -148,6 +98,39 @@ class TestProgram(unittest.TestCase):
 
         new_program = main_program.clone()
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
+
+    def test_program_inference_optimize(self):
+        def net():
+            reader = fluid.layers.py_reader(
+                capacity=10,
+                shapes=[[-1, 10], [-1, 1]],
+                lod_levels=[0, 0],
+                dtypes=['float32', 'int64'],
+                use_double_buffer=True)
+            in_data, label = fluid.layers.read_file(reader)
+            predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
+            loss = fluid.layers.mean(
+                fluid.layers.cross_entropy(
+                    input=predict_label, label=label))
+
+            optimizer = fluid.optimizer.Adam()
+            optimizer.minimize(loss)
+
+        startup_program = fluid.Program()
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            net()
+        no_read_program = main_program._inference_optimize()
+        keep_read_program = main_program._inference_optimize(
+            prune_read_op=False)
+        no_read_ops = no_read_program.global_block().ops
+        keep_read_ops = keep_read_program.global_block().ops
+        self.assertEqual(len(keep_read_ops) - len(no_read_ops), 2)
+        self.assertEqual(keep_read_ops[0].type, 'create_double_buffer_reader')
+        self.assertEqual(keep_read_ops[1].type, 'read')
+
+        for i in range(len(no_read_ops)):
+            self.assertEqual(no_read_ops[i].type, keep_read_ops[i + 2].type)
 
 
 if __name__ == '__main__':

@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
+#include <queue>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-
-#include <queue>
 
 namespace paddle {
 namespace framework {
@@ -135,6 +134,11 @@ OpDesc *BlockDesc::PrependOp() {
   return ops_.front().get();
 }
 
+void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
+  need_update_ = true;
+  ops_.emplace_front(std::move(op_desc));
+}
+
 OpDesc *BlockDesc::InsertOp(size_t index) {
   need_update_ = true;
   auto it = ops_.begin() + index;
@@ -144,55 +148,11 @@ OpDesc *BlockDesc::InsertOp(size_t index) {
 }
 
 void BlockDesc::RemoveOp(size_t s, size_t e) {
-  if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
+  if (ops_.begin() + s >= ops_.end() || ops_.begin() + e > ops_.end()) {
     return;
   }
-  auto get_vars = [](std::deque<std::unique_ptr<OpDesc>>::iterator &op,
-                     std::vector<std::string> &v) {
-    auto in_names = (*op)->InputArgumentNames();
-    v.insert(v.end(), in_names.begin(), in_names.end());
-    auto out_names = (*op)->OutputArgumentNames();
-    v.insert(v.end(), out_names.begin(), out_names.end());
-    std::sort(v.begin(), v.end());
-    auto last = std::unique(v.begin(), v.end());
-    v.erase(last, v.end());
-  };
   need_update_ = true;
-
-  for (size_t i = s; i < e; i++) {
-    // since remove op one by one, every time remove the first op.
-    auto op = ops_.begin() + s;
-
-    // collect input and output variables from current delete op
-    std::vector<std::string> cur_vars;
-    get_vars(op, cur_vars);
-
-    // remove current op
-    ops_.erase(ops_.begin() + s);
-
-    // collect input and output variables from other ops
-    std::vector<std::string> other_vars;
-    for (auto it = ops_.begin(); it != ops_.end(); it++) {
-      get_vars(it, other_vars);
-    }
-
-    // variables should be deleted
-    std::vector<std::string> delete_vars;
-    // delete_vars = cur_vars -  cur_vars ^ other_input_vars
-    std::set_difference(cur_vars.begin(), cur_vars.end(), other_vars.begin(),
-                        other_vars.end(),
-                        std::inserter(delete_vars, delete_vars.end()));
-    // remove variables
-    for (size_t i = 0; i < delete_vars.size(); i++) {
-      auto name = delete_vars[i];
-      auto it = vars_.find(name);
-      PADDLE_ENFORCE(it != vars_.end(),
-                     "%s is not in variable list, it should not be deleted",
-                     name);
-      vars_.erase(it);
-      VLOG(3) << "deleting variable " << name;
-    }
-  }
+  ops_.erase(ops_.begin() + s, ops_.begin() + e);
 }
 
 std::vector<OpDesc *> BlockDesc::AllOps() const {
@@ -209,17 +169,13 @@ void BlockDesc::Flush() {
   }
 
   if (need_update_) {
-    auto &op_field = *this->desc_->mutable_ops();
-    this->ClearPBOps();
-    op_field.Reserve(static_cast<int>(ops_.size()));
+    this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
-      op_field.AddAllocated(op_desc->Proto());
+      this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
     }
-    auto &var_field = *this->desc_->mutable_vars();
-    this->ClearPBVars();
-    var_field.Reserve(static_cast<int>(vars_.size()));
+    this->desc_->mutable_vars()->Clear();
     for (auto &var_desc : vars_) {
-      var_field.AddAllocated(var_desc.second->Proto());
+      this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
     }
     need_update_ = false;
   }
@@ -240,7 +196,7 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
     vars_[var_desc.name()].reset(new VarDesc(var_desc));
   }
   for (const proto::OpDesc &op_desc : desc_->ops()) {
-    ops_.emplace_back(new OpDesc(op_desc, prog, this));
+    ops_.emplace_back(new OpDesc(op_desc, this));
   }
 }
 
@@ -249,27 +205,11 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
     : prog_(prog), desc_(desc) {
   need_update_ = true;
   for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op->Proto(), prog, this));
+    ops_.emplace_back(new OpDesc(*op, this));
   }
   for (auto &it : other.vars_) {
     auto *var = new VarDesc(*it.second);
     vars_[it.first].reset(var);
-  }
-}
-
-void BlockDesc::ClearPBOps() {
-  auto ops = this->desc_->mutable_ops();
-  while (!ops->empty()) {
-    // we do not own the OpDesc, so release the ownership.
-    ops->ReleaseLast();
-  }
-}
-
-void BlockDesc::ClearPBVars() {
-  auto vars = this->desc_->mutable_vars();
-  while (!vars->empty()) {
-    // we do not own the VarDesc, so release the ownership.
-    vars->ReleaseLast();
   }
 }
 

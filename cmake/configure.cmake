@@ -41,17 +41,48 @@ if(USE_EIGEN_FOR_BLAS)
     add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
 endif(USE_EIGEN_FOR_BLAS)
 
+if(EIGEN_USE_THREADS)
+    add_definitions(-DEIGEN_USE_THREADS)
+endif(EIGEN_USE_THREADS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
 
 if(NOT CMAKE_CROSSCOMPILING)
-    if(WITH_AVX AND AVX_FOUND)
+    if(WITH_AVX AND AVX512F_FOUND)
+        set(SIMD_FLAG ${AVX512F_FLAG})
+    elseif(WITH_AVX AND AVX2_FOUND)
+        set(SIMD_FLAG ${AVX2_FLAG})
+    elseif(WITH_AVX AND AVX_FOUND)
         set(SIMD_FLAG ${AVX_FLAG})
     elseif(SSE3_FOUND)
         set(SIMD_FLAG ${SSE3_FLAG})
     endif()
 endif()
+
+if(WIN32)
+  # windows header option for all targets.
+  add_definitions(-D_XKEYCHECK_H)
+  # Use symbols instead of absolute path, reduce the cmake link command length. 
+  SET(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  SET(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  SET(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+  SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+  SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
+  SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
+
+  # Specify the program to use when building static libraries
+  SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
+  SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
+
+  # set defination for the dll export
+  if (NOT MSVC)
+    message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
+  endif(NOT MSVC)
+endif(WIN32)
 
 if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
@@ -80,6 +111,36 @@ if(WITH_GPU)
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
+
+    if(TENSORRT_FOUND)
+        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
+        endif()
+        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+            message(FATAL_ERROR "TensorRT needs CUDNN >= 7.0 to compile")
+        endif()
+        if(${TENSORRT_MAJOR_VERSION} VERSION_LESS 4)
+            message(FATAL_ERROR "Paddle needs TensorRT >= 4.0 to compile")
+        endif()
+        include_directories(${TENSORRT_INCLUDE_DIR})
+    endif()
+    if(WITH_ANAKIN)
+        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            message(WARNING "Anakin needs CUDA >= 8.0 to compile. Force WITH_ANAKIN=OFF")
+            set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when CUDA >= 8.0." FORCE)
+        endif()
+        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+            message(WARNING "Anakin needs CUDNN >= 7.0 to compile. Force WITH_ANAKIN=OFF")
+            set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when CUDNN >= 7.0." FORCE)
+        endif()
+    endif()
+    if(WITH_ANAKIN)
+        # NOTICE(minqiyang): the end slash is important because $CUDNN_INCLUDE_DIR
+        # is a softlink to real cudnn.h directory
+        set(ENV{CUDNN_INCLUDE_DIR} "${CUDNN_INCLUDE_DIR}/")
+        get_filename_component(CUDNN_LIBRARY_DIR ${CUDNN_LIBRARY} DIRECTORY)
+        set(ENV{CUDNN_LIBRARY} ${CUDNN_LIBRARY_DIR})
+    endif()
 elseif(WITH_AMD_GPU)
     add_definitions(-DPADDLE_WITH_HIP)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
@@ -100,6 +161,10 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
+
+if(WITH_DISTRIBUTE)
+  add_definitions(-DPADDLE_WITH_DISTRIBUTE)
+endif()
 
 if(WITH_GOLANG)
   # we need to symlink Paddle directory into GOPATH. If we
@@ -149,3 +214,11 @@ if(WITH_GOLANG)
   endif()
 
 endif(WITH_GOLANG)
+
+if(WITH_GRPC)
+    add_definitions(-DPADDLE_WITH_GRPC)
+endif(WITH_GRPC)
+
+if(WITH_BRPC_RDMA)
+    add_definitions(-DPADDLE_WITH_BRPC_RDMA)
+endif(WITH_BRPC_RDMA)

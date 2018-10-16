@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "gather.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "scatter.h"
+#include "paddle/fluid/operators/gather.h"
+#include "paddle/fluid/operators/scatter.h"
 
 namespace paddle {
 namespace operators {
@@ -34,9 +34,9 @@ class ScatterOpKernel : public framework::OpKernel<T> {
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
-    // In place output: Out = X, Out[Ids] += Updates
-    Out->ShareDataWith(*X);
-    // Apply ScatterUpdate: Out[index] += Updates[:]
+    // In place output: Out = X, Out[Ids] = Updates
+    framework::TensorCopySync(*X, ctx.GetPlace(), Out);
+    // Apply ScatterUpdate: Out[index] = Updates[:]
     ScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
   }
 };
@@ -53,9 +53,9 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dX = dO
-    dX->ShareDataWith(*dOut);
+    framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
     dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates += dO[Ids]
+    // Gradient by Gather: dUpdates = dO[Ids]
     CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
   }
 };

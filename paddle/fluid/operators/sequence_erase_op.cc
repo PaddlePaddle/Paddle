@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_erase_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -23,9 +24,9 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceEraseOp should not be null.");
+                   "Input(X) of SequenceErase operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceEraseOp should not be null.");
+                   "Output(Out) of SequenceErase operator should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
                    "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
@@ -36,8 +37,7 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
 class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceEraseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(2-D LoDTensor with the 2nd dim. equal to 1) "
              "Input LoDTensor of SequenceEraseOp.");

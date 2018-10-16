@@ -21,36 +21,25 @@ namespace reader {
 
 class MultiPassReader : public framework::DecoratedReader {
  public:
-  MultiPassReader(ReaderBase* reader, int pass_num)
+  MultiPassReader(const std::shared_ptr<ReaderBase>& reader, int pass_num)
       : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!HasNext()) {
-      PADDLE_THROW("There is no next data!");
-    }
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     reader_->ReadNext(out);
-  }
-
-  bool HasNext() const override {
-    if (reader_->HasNext()) {
-      return true;
-    } else {
+    if (out->empty() && pass_count_ < pass_num_ - 1) {
+      reader_->Shutdown();
+      reader_->Start();
+      reader_->ReadNext(out);
       ++pass_count_;
-      if (pass_count_ >= pass_num_) {
-        return false;
-      } else {
-        reader_->ReInit();
-        return true;
-      }
     }
-  }
-
-  void ReInit() override {
-    pass_count_ = 0;
-    reader_->ReInit();
   }
 
  private:
+  void StartImpl() override {
+    pass_count_ = 0;
+    reader_->Start();
+  }
+
   int pass_num_;
   mutable int pass_count_;
 };
@@ -62,30 +51,33 @@ class CreateMultiPassReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    auto* out = detail::Ref(scope.FindVar(Output("Out")))
+                    .GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    auto& out = detail::Ref(scope.FindVar(Output("Out")));
     int pass_num = Attr<int>("pass_num");
-    out.GetMutable<framework::ReaderHolder>()->Reset(
-        new MultiPassReader(underlying_reader.Get(), pass_num));
+    out->Reset(framework::MakeDecoratedReader<MultiPassReader>(
+        underlying_reader, pass_num));
   }
 };
 
 class CreateMultiPassReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateMultiPassReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("pass_num", "The number of pass to run.").GreaterThan(0);
     AddComment(R"DOC(
       CreateMultiPassReader Operator
 
-      This operator creates a multi-pass reader. A multi-pass reader 
-      is used to yield data for several pass training continuously. 
-      It takes the the number of pass to run as one of its attributes
-      ('pass_num'), and maintains a pass counter to record how many 
-      passes it has completed. When the underlying reader reach the EOF, 
-      the multi-pass reader checks whether it has completed training 
-      of the given number of pass. If not, the underlying reader will 
+      This operator creates a multi-pass reader. A multi-pass reader
+      is used to yield data for several pass training continuously.
+      It takes the number of passes to run as one of its attributes
+      ('pass_num'), and maintains a pass counter to record how many
+      passes it has completed. When the underlying reader reaches the
+      EOF, the multi-pass reader checks whether it has completed training
+      of the given number of pass. If not, the underlying reader will
       be re-initialized and starts a new pass automatically.
     )DOC");
   }

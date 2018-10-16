@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -55,8 +56,7 @@ class ExpandOp : public framework::OperatorWithKernel {
 
 class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
              "X is the input to be expanded.");
@@ -128,8 +128,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(expand, ops::ExpandOp, ops::ExpandOpMaker, expand_grad,
-            ops::ExpandGradOp);
+REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp);
 REGISTER_OP_CPU_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

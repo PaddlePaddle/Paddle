@@ -15,14 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <atomic>
 
-#include "threadpool.h"
+#include "paddle/fluid/framework/threadpool.h"
 
 namespace framework = paddle::framework;
 
-void do_sum(framework::ThreadPool* pool, std::atomic<int>& sum, int cnt) {
+void do_sum(framework::ThreadPool* pool, std::atomic<int>* sum, int cnt) {
   std::vector<std::future<void>> fs;
   for (int i = 0; i < cnt; ++i) {
-    fs.push_back(framework::Async([&sum]() { sum.fetch_add(1); }));
+    fs.push_back(framework::Async([sum]() { sum->fetch_add(1); }));
   }
 }
 
@@ -46,7 +46,7 @@ TEST(ThreadPool, ConcurrentRun) {
   int n = 50;
   // sum = (n * (n + 1)) / 2
   for (int i = 1; i <= n; ++i) {
-    std::thread t(do_sum, pool, std::ref(sum), i);
+    std::thread t(do_sum, pool, &sum, i);
     threads.push_back(std::move(t));
   }
   for (auto& t : threads) {

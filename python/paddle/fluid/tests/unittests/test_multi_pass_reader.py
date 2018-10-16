@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 
 import paddle.fluid as fluid
-import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
+import paddle
+import paddle.dataset.mnist as mnist
+from paddle.fluid.layers.io import open_recordio_file
 
 
 class TestMultipleReader(unittest.TestCase):
@@ -39,13 +42,12 @@ class TestMultipleReader(unittest.TestCase):
 
     def test_main(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data_file = fluid.layers.open_recordio_file(
+            data_file = open_recordio_file(
                 filename='./mnist.recordio',
                 shapes=[(-1, 784), (-1, 1)],
                 lod_levels=[0, 0],
-                dtypes=['float32', 'int64'])
-            data_file = fluid.layers.create_multi_pass_reader(
-                reader=data_file, pass_num=self.pass_num)
+                dtypes=['float32', 'int64'],
+                pass_num=self.pass_num)
             img, label = fluid.layers.read_file(data_file)
 
             if fluid.core.is_compiled_with_cuda():
@@ -57,9 +59,11 @@ class TestMultipleReader(unittest.TestCase):
             exe.run(fluid.default_startup_program())
 
             batch_count = 0
-            while not data_file.eof():
-                img_val, = exe.run(fetch_list=[img])
+            while True:
+                try:
+                    img_val, = exe.run(fetch_list=[img])
+                except fluid.core.EOFException:
+                    break
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)
-            data_file.reset()
             self.assertEqual(batch_count, self.num_batch * self.pass_num)

@@ -23,6 +23,12 @@ template <typename T>
 class MomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const auto* param_var = ctx.InputVar("Param");
+    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Param").front(), param_var->Type().name());
+
     auto param_out = ctx.Output<framework::Tensor>("ParamOut");
     auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
     auto param = ctx.Input<framework::Tensor>("Param");
@@ -46,7 +52,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     v_out = v * mu + g;
     if (use_nesterov) {
-      p_out = p - (g - v_out * mu) * lr[0];
+      p_out = p - (g + v_out * mu) * lr[0];
     } else {
       p_out = p - lr[0] * v_out;
     }

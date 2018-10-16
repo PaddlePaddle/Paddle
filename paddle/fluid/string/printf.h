@@ -71,6 +71,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <string>
+
 #include "tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
 
 namespace paddle {
@@ -79,6 +81,13 @@ namespace string {
 template <typename... Args>
 void Fprintf(std::ostream& out, const char* fmt, const Args&... args) {
   tinyformat::vformat(out, fmt, tinyformat::makeFormatList(args...));
+}
+
+template <typename... Args>
+std::string Sprintf(const Args&... args) {
+  std::ostringstream oss;
+  Fprintf(oss, "");
+  return oss.str();
 }
 
 template <typename... Args>

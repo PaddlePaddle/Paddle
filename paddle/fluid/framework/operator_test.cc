@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace framework {
@@ -46,8 +46,7 @@ class OpWithoutKernelTest : public OperatorBase {
 
 class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpWithoutKernelCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
     AddAttr<float>("scale", "scale of cosine op");
@@ -72,7 +71,7 @@ REGISTER_OP_WITHOUT_GRADIENT(test_operator,
                              paddle::framework::OpWithoutKernelCheckerMaker);
 
 TEST(OperatorBase, all) {
-  paddle::framework::InitDevices();
+  paddle::framework::InitDevices(true);
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("test_operator");
   BuildVar("input", {"IN1"}, op_desc.add_inputs());
@@ -98,8 +97,7 @@ namespace framework {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("x", "input of test op");
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -137,9 +135,7 @@ class CPUKernelTest : public OpKernel<float> {
 class OpKernelTestMultiInputsProtoAndCheckerMaker
     : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
-                                              OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
     AddOutput("ys", "outputs of test op").AsDuplicable();
@@ -198,7 +194,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 
 // test with single input
 TEST(OpKernel, all) {
-  paddle::framework::InitDevices();
+  paddle::framework::InitDevices(true);
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   BuildVar("x", {"IN1"}, op_desc.add_inputs());
@@ -226,10 +222,8 @@ REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
 
 // test with multi inputs
 TEST(OpKernel, multi_inputs) {
-  using namespace paddle::framework;
-
-  paddle::framework::InitDevices();
-  proto::OpDesc op_desc;
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
 
   op_desc.set_type("op_multi_inputs_with_kernel");
   BuildVar("xs", {"x0", "x1", "x2"}, op_desc.add_inputs());
@@ -243,36 +237,13 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  scope.Var("x0")->GetMutable<LoDTensor>();
-  scope.Var("x1")->GetMutable<LoDTensor>();
-  scope.Var("x2")->GetMutable<LoDTensor>();
-  scope.Var("k0")->GetMutable<LoDTensor>();
-  scope.Var("y0")->GetMutable<LoDTensor>();
-  scope.Var("y1")->GetMutable<LoDTensor>();
+  scope.Var("x0")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("x1")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("x2")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("k0")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("y0")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("y1")->GetMutable<paddle::framework::LoDTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
-}
-
-class OperatorClone : public paddle::framework::OperatorBase {
- public:
-  DEFINE_OP_CLONE_METHOD(OperatorClone);
-  OperatorClone(const std::string& type,
-                const paddle::framework::VariableNameMap& inputs,
-                const paddle::framework::VariableNameMap& outputs,
-                const paddle::framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const paddle::framework::Scope& scope,
-               const paddle::platform::Place& place) const override {}
-};
-
-TEST(Operator, Clone) {
-  paddle::framework::InitDevices();
-  OperatorClone a("ABC", paddle::framework::VariableNameMap{},
-                  paddle::framework::VariableNameMap{},
-                  paddle::framework::AttributeMap{});
-  auto b = a.Clone();
-  ASSERT_EQ(a.Type(), b->Type());
 }

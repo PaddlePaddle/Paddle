@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -154,7 +155,7 @@ class RowwiseSum<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(in_dims.size(), 2U);
     auto height = in_dims[0];
     auto size = in_dims[1];
-    PADDLE_ENFORCE_EQ(out->numel(), size);
+    PADDLE_ENFORCE_EQ(out->numel(), height);
 
     T* out_buf = out->mutable_data<T>(out->place());
     const T* in_buf = input.data<T>();

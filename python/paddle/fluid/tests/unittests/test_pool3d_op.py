@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -29,22 +31,22 @@ def max_pool3D_forward_naive(x,
     if global_pool == 1:
         ksize = [D, H, W]
     D_out = (D - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     H_out = (H - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     W_out = (W - ksize[2] + 2 * paddings[2] + strides[2] - 1
-             ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
-                                                   paddings[2]) / strides[2] + 1
+             ) // strides[2] + 1 if ceil_mode else (
+                 W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
-    for k in xrange(D_out):
+    for k in range(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
         d_end = np.min((k * strides[0] + ksize[0] - paddings[0], D))
-        for i in xrange(H_out):
+        for i in range(H_out):
             h_start = np.max((i * strides[0] - paddings[0], 0))
             h_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-            for j in xrange(W_out):
+            for j in range(W_out):
                 w_start = np.max((j * strides[1] - paddings[1], 0))
                 w_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
                 x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
@@ -63,22 +65,22 @@ def avg_pool3D_forward_naive(x,
     if global_pool == 1:
         ksize = [D, H, W]
     D_out = (D - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     H_out = (H - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     W_out = (W - ksize[2] + 2 * paddings[2] + strides[2] - 1
-             ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
-                                                   paddings[2]) / strides[2] + 1
+             ) // strides[2] + 1 if ceil_mode else (
+                 W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
-    for k in xrange(D_out):
+    for k in range(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
         d_end = np.min((k * strides[0] + ksize[0] - paddings[0], D))
-        for i in xrange(H_out):
+        for i in range(H_out):
             h_start = np.max((i * strides[0] - paddings[0], 0))
             h_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-            for j in xrange(W_out):
+            for j in range(W_out):
                 w_start = np.max((j * strides[1] - paddings[1], 0))
                 w_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
                 x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
@@ -90,20 +92,22 @@ def avg_pool3D_forward_naive(x,
 
 class TestPool3d_Op(OpTest):
     def setUp(self):
+        self.op_type = "pool3d"
         self.use_cudnn = False
+        self.dtype = np.float32
         self.init_test_case()
         self.init_global_pool()
-        self.init_op_type()
+        self.init_kernel_type()
         self.init_pool_type()
         self.init_ceil_mode()
 
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
-        input = np.random.random(self.shape).astype("float32")
+        input = np.random.random(self.shape).astype(self.dtype)
         output = self.pool3D_forward_naive(input, self.ksize, self.strides,
                                            self.paddings, self.global_pool,
-                                           self.ceil_mode).astype("float32")
-        self.inputs = {'X': input}
+                                           self.ceil_mode).astype(self.dtype)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,
@@ -116,17 +120,22 @@ class TestPool3d_Op(OpTest):
             'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
-        self.outputs = {'Out': output.astype('float32')}
+        self.outputs = {'Out': output}
+
+    def testcudnn(self):
+        return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
             self.check_output()
 
     def test_check_grad(self):
-        if self.use_cudnn and self.pool_type != "max":
+        if self.dtype == np.float16:
+            return
+        if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, set(['X']), 'Out', max_relative_error=0.07)
@@ -139,8 +148,8 @@ class TestPool3d_Op(OpTest):
         self.strides = [1, 1, 1]
         self.paddings = [0, 0, 0]
 
-    def init_op_type(self):
-        self.op_type = "pool3d"
+    def init_kernel_type(self):
+        pass
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -155,14 +164,10 @@ class TestPool3d_Op(OpTest):
 
 class TestCase1(TestPool3d_Op):
     def init_test_case(self):
-        self.op_type = "pool3d"
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
         self.paddings = [0, 0, 0]
-
-    def init_op_type(self):
-        self.op_type = "pool3d"
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -179,9 +184,6 @@ class TestCase2(TestPool3d_Op):
         self.strides = [1, 1, 1]
         self.paddings = [1, 1, 1]
 
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "avg"
         self.pool3D_forward_naive = avg_pool3D_forward_naive
@@ -191,27 +193,18 @@ class TestCase2(TestPool3d_Op):
 
 
 class TestCase3(TestPool3d_Op):
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 class TestCase4(TestCase1):
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 class TestCase5(TestCase2):
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
@@ -219,39 +212,105 @@ class TestCase5(TestCase2):
 
 #--------------------test pool3d--------------------
 class TestCUDNNCase1(TestPool3d_Op):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase1(TestPool3d_Op):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase2(TestCase1):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase2(TestCase1):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase3(TestCase2):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase3(TestCase2):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase4(TestCase3):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase4(TestCase3):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase5(TestCase4):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase5(TestCase4):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase6(TestCase5):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase6(TestCase5):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCeilModeCase1(TestCUDNNCase1):

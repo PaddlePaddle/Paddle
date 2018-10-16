@@ -46,8 +46,7 @@ class LogLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class LogLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LogLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Predicted",
              "The input value (Predicted) of Log loss op."
              "Predicted is a 2-D tensor with shape [batch_size, 1].");
@@ -106,8 +105,9 @@ class LogLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>, log_loss_grad,
-            ops::LogLossGradOp);
+REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

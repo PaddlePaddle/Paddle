@@ -38,15 +38,14 @@ class WriteToArrayOp : public ArrayOp {
                << " to " << offset + 1;
       out->resize(offset + 1);
     }
+    auto *out_tensor = &out->at(offset);
+    out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      auto *out_tensor = &out->at(offset);
-
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
       TensorCopy(x_tensor, place, dev_ctx, out_tensor);
-      out_tensor->set_lod(x_tensor.lod());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                   "nothing has been written to output array["
@@ -57,8 +56,7 @@ class WriteToArrayOp : public ArrayOp {
 
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WriteToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
     AddInput(
         "I",
@@ -148,8 +146,7 @@ class ReadFromArrayOp : public ArrayOp {
 
 class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadFromArrayProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(TensorArray) the array will be read from.");
     AddInput("I",
              "(Tensor) the subscript index in tensor array. The number of "

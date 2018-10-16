@@ -3,6 +3,14 @@ INCLUDE(ExternalProject)
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
 SET(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR}/src/extern_eigen3)
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
+if(NOT WITH_FAST_MATH)
+  # EIGEN_FAST_MATH: https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+  # enables some optimizations which might affect the accuracy of the result. 
+  # This currently enables the SSE vectorization of sin() and cos(), 
+  # and speedups sqrt() for single precision.
+  # Defined to 1 by default. Define it to 0 to disable.
+  add_definitions(-DEIGEN_FAST_MATH=0)
+endif()
 
 if(WITH_AMD_GPU)
     ExternalProject_Add(
@@ -21,9 +29,12 @@ else()
     ExternalProject_Add(
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY  "https://github.com/RLovelett/eigen.git"
-        GIT_TAG         70661066beef694cadf6c304d0d07e0758825c10
+        GIT_REPOSITORY  "https://github.com/eigenteam/eigen-git-mirror"
+        # eigen on cuda9.1 missing header of math_funtions.hpp
+        # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
+        GIT_TAG         917060c364181f33a735dc023818d5a54f60e54c
         PREFIX          ${EIGEN_SOURCE_DIR}
+        DOWNLOAD_NAME   "eigen"
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""

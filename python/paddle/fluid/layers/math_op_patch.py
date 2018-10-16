@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..framework import Variable, unique_name
-from layer_function_generator import OpProtoHolder
-from ..initializer import force_init_on_cpu
+from __future__ import print_function
 
-__all__ = ['monkey_patch_variable']
+from ..framework import Variable, unique_name
+from .layer_function_generator import OpProtoHolder
+from ..initializer import force_init_on_cpu
 
 
 def monkey_patch_variable():
@@ -169,7 +169,9 @@ def monkey_patch_variable():
             # a*b == b*a. Do not need to reverse explicitly
         ("__rmul__", "elementwise_mul", False),
         ("__div__", "elementwise_div", False),
+        ("__truediv__", "elementwise_div", False),
         ("__rdiv__", "elementwise_div", True),
+        ("__rtruediv__", "elementwise_div", True),
         ("__pow__", "elementwise_pow", False),
         ("__rpow__", "elementwise_pow", True),
             # for logical compare

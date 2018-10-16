@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <type_traits>
+
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
-
-#include <type_traits>
 
 namespace paddle {
 namespace operators {
@@ -70,9 +70,9 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
     r_prev_state = value.prev_state_value[frame_idx];
   }
 
-  op(r_value_in, r_value_ig, r_value_fg, r_value_og, r_prev_state, r_state,
-     r_state_atv, r_out, r_checkI, r_checkF, r_checkO, active_node, active_gate,
-     active_state);
+  op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
+     &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
+     active_node, active_gate, active_state);
 
   value.gate_value[frame_idx] = r_value_in;
   value.gate_value[frame_idx + frame_size] = r_value_ig;
@@ -145,11 +145,11 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
     r_prev_state = value.prev_state_value[frame_idx];
   }
 
-  op(r_value_in, r_value_ig, r_value_fg, r_value_og, r_grad_in, r_grad_ig,
-     r_grad_fg, r_grad_og, r_prev_state, r_prev_state_grad, r_state,
-     r_state_grad, r_state_atv, r_output_grad, r_checkI, r_checkF, r_checkO,
-     r_checkIGrad, r_checkFGrad, r_checkOGrad, active_node, active_gate,
-     active_state);
+  op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_grad_in, &r_grad_ig,
+     &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad, &r_state,
+     &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI, &r_checkF,
+     &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad, active_node,
+     active_gate, active_state);
 
   grad.gate_grad[frame_idx] = r_grad_in;
   grad.gate_grad[frame_idx + frame_size] = r_grad_ig;

@@ -11,11 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include <vector>
+
 #include "glog/logging.h"
+#include "gtest/gtest.h"
 
 TEST(Device, Init) {
   using paddle::platform::DeviceContext;
@@ -67,20 +68,4 @@ TEST(Device, DeviceContextPool) {
     auto dev_ctx = pool.Get(CUDAPlace(i));
     ASSERT_NE(dev_ctx, nullptr);
   }
-}
-
-int main(int argc, char** argv) {
-  std::vector<paddle::platform::Place> places;
-
-  places.emplace_back(paddle::platform::CPUPlace());
-  int count = paddle::platform::GetCUDADeviceCount();
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::CUDAPlace(i));
-  }
-
-  VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Init(places);
-
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/logical_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -20,8 +21,7 @@ namespace operators {
 template <typename OpComment>
 class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BinaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X",
              string::Sprintf("(LoDTensor) Left hand operand of %s operator",
@@ -44,8 +44,7 @@ Each element of Out is calculated by %s
 template <typename OpComment>
 class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UnaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
                                   comment.type));
@@ -147,6 +146,6 @@ REGISTER_UNARY_LOGICAL_OP(logical_not, "$$Out = !X$$");
 REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CPU,
                               paddle::operators::LogicalNotFunctor);
 REGISTER_BINARY_LOGICAL_OP(logical_xor,
-                           "$$Out = (X || Y) \\, \\&\\& \\, !(X \\&\\& Y)$$");
+                           "$$Out = (X || Y) \\&\\& !(X \\&\\& Y)$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CPU,
                                paddle::operators::LogicalXorFunctor);

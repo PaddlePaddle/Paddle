@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -69,8 +70,7 @@ class GradOpDescMakerBase {
                       " for input argument with a list of variables, "
                       " drop_empty_grad is not allowed because it makes"
                       " the correspondence bewteen a variable and its gradient"
-                      " ambiguous. Use REGISTER_OP_EX to register the op"
-                      " or call InputGrad(?,false) in GradOpDescMaker."
+                      " ambiguous."
                       " Op type %s",
                       fwd_op_.Type());
 
@@ -128,6 +128,9 @@ class GradOpDescMakerBase {
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
+
+ protected:
+  const OpDesc& ForwardOp() const { return fwd_op_; }
 
  private:
   const OpDesc& fwd_op_;

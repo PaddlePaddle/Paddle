@@ -20,8 +20,7 @@ namespace operators {
 class SoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxWithCrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
              "which is a 2-D tensor with shape [N x K]. N is the batch_size, "
@@ -45,6 +44,12 @@ class SoftmaxWithCrossEntropyOpMaker
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<int>(
+        "ignore_index",
+        "(int, default -100), Specifies a target value that is ignored and"
+        "does not contribute to the input gradient. Only valid if soft_label"
+        "is set to False")
+        .SetDefault(-100);
     AddComment(R"DOC(
 Softmax With Cross Entropy Operator.
 

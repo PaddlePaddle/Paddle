@@ -8,10 +8,18 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/device_context.h"
+
+#include <set>
+#include <string>
 #include <unordered_set>
+#include <vector>
+
 #include "paddle/fluid/memory/memory.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/rw_lock.h"
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -31,7 +39,7 @@ DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
   using PtrType = std::unique_ptr<DeviceContext>;
-  std::unordered_set<Place, PlaceHash> set;
+  std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
   }
@@ -49,6 +57,16 @@ DeviceContextPool::DeviceContextPool(
 #ifdef PADDLE_WITH_CUDA
       device_contexts_.emplace(
           p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
+#else
+      PADDLE_THROW(
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
+    } else if (platform::is_cuda_pinned_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+      device_contexts_.emplace(
+          p,
+          PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
@@ -127,11 +145,62 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable unsigned int* semaphore_;
 };
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+  }
+
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_len) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
+  ~CudnnHolder() {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+    if (workspace_ != nullptr) {
+      paddle::memory::Free(place_, workspace_);
+    }
+  }
+
+ private:
+  void ReallocateWorkspace(size_t required_workspace_len) {
+    if (required_workspace_len <= workspace_len_) {
+      return;
+    }
+    if (workspace_ != nullptr) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      paddle::memory::Free(place_, workspace_);
+    }
+    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
+    workspace_len_ = required_workspace_len;
+  }
+
+  cudnnHandle_t cudnn_handle_;
+  void* workspace_;
+  size_t workspace_len_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : place_(place), cudnn_holder_(nullptr) {
   SetDeviceId(place_.device);
-  compute_capability = GetCUDAComputeCapability(place_.device);
-  multi_process = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  compute_capability_ = GetCUDAComputeCapability(place_.device);
+  multi_process_ = GetCUDAMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -139,20 +208,27 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
   if (dynload::HasCUDNN()) {
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
-  } else {
-    cudnn_handle_ = nullptr;
+    cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
+
+  driver_version_ = GetCUDADriverVersion(place_.device);
+  runtime_version_ = GetCUDARuntimeVersion(place_.device);
+
+  LOG(INFO) << "device: " << place_.device
+            << ", CUDA Capability: " << compute_capability_
+            << ", Driver Version: " << driver_version_ / 1000 << "."
+            << (driver_version_ % 100) / 10
+            << ", Runtime Version: " << runtime_version_ / 1000 << "."
+            << (runtime_version_ % 100) / 10;
+
+  callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  WaitStreamCallback();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  if (cudnn_handle_ != nullptr) {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -161,17 +237,16 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  std::lock_guard<std::mutex> guard(mutex_);
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE(cudaGetLastError());
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
-  return compute_capability;
+  return compute_capability_;
 }
 
 int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
-  return multi_process * max_threads_per_mp;
+  return multi_process_ * max_threads_per_mp_;
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
@@ -182,10 +257,31 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return cublas_handle_;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
+  return cudnn_holder_->cudnn_handle();
+}
+
+void CUDADeviceContext::RunCudnnFuncWithWorkspace(
+    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
+  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
+}
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

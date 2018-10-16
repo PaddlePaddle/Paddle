@@ -38,8 +38,7 @@ ENDIF()
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/gangliao/warp-ctc.git"
-    GIT_TAG         b63a0644654a3e0ed624c85a1767bc8193aead09
+    GIT_REPOSITORY  "https://github.com/dzhwinter/warp-ctc.git"
     PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -62,7 +61,8 @@ ExternalProject_Add(
 )
 
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
-INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
+INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})

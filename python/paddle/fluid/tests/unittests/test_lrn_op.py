@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -34,7 +36,7 @@ class TestLRNOp(OpTest):
         return x + 1
 
     def get_out(self):
-        start = -(self.n - 1) / 2
+        start = -(self.n - 1) // 2
         end = start + self.n
 
         mid = np.empty((self.N, self.C, self.H, self.W)).astype("float32")
@@ -85,35 +87,6 @@ class TestLRNOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
-
-
-class TestLRNMKLDNNOp(TestLRNOp):
-    def get_attrs(self):
-        attrs = TestLRNOp.get_attrs(self)
-        attrs['use_mkldnn'] = True
-        return attrs
-
-    def test_check_output(self):
-        self.check_output(atol=0.002)
-
-
-class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
-    def get_attrs(self):
-        attrs = TestLRNMKLDNNOp.get_attrs(self)
-        attrs['is_test'] = True
-        return attrs
-
-    def test_check_grad_normal(self):
-        def check_raise_is_test():
-            try:
-                self.check_grad(['X'], 'Out', max_relative_error=0.01)
-            except Exception as e:
-                t = \
-                "is_test attribute should be set to False in training phase."
-                if t in str(e):
-                    raise AttributeError
-
-        self.assertRaises(AttributeError, check_raise_is_test)
 
 
 if __name__ == "__main__":

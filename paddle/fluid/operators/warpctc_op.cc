@@ -53,8 +53,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
 
 class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WarpCTCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Logits",
              "(LodTensor, default: LoDTensor<float>), the unscaled "
              "probabilities of variable-length sequences, which is a 2-D "
@@ -132,8 +131,9 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker, warpctc_grad,
-            ops::WarpCTCGradOp);
+REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

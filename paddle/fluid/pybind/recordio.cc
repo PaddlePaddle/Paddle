@@ -13,18 +13,26 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/recordio.h"
+
 #include <fstream>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/recordio/writer.h"
 
 namespace paddle {
 namespace pybind {
 
+namespace {
+
 class RecordIOWriter {
  public:
   RecordIOWriter(const std::string& filename, recordio::Compressor compressor,
                  size_t max_num_record)
-      : stream_(filename), writer_(&stream_, compressor, max_num_record) {}
+      : closed_(false),
+        stream_(filename),
+        writer_(&stream_, compressor, max_num_record) {}
 
   void AppendTensor(const framework::LoDTensor& tensor) {
     tensors_.push_back(tensor);
@@ -33,7 +41,7 @@ class RecordIOWriter {
   void CompleteAppendTensor() {
     auto& ctx =
         *platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-    framework::WriteToRecordIO(writer_, tensors_, ctx);
+    framework::WriteToRecordIO(&writer_, tensors_, ctx);
     tensors_.clear();
   }
 
@@ -41,16 +49,26 @@ class RecordIOWriter {
     PADDLE_ENFORCE(tensors_.empty());
     writer_.Flush();
     stream_.close();
+    closed_ = true;
+  }
+
+  ~RecordIOWriter() {
+    if (!closed_) {
+      Close();
+    }
   }
 
  private:
+  bool closed_;
   std::vector<framework::LoDTensor> tensors_;
   std::ofstream stream_;
   recordio::Writer writer_;
 };
 
-void BindRecordIOWriter(py::module& m) {
-  py::class_<RecordIOWriter> writer(m, "RecordIOWriter", "");
+}  // namespace
+
+void BindRecordIOWriter(py::module* m) {
+  py::class_<RecordIOWriter> writer(*m, "RecordIOWriter", "");
   py::enum_<recordio::Compressor>(writer, "Compressor", "")
       .value("Snappy", recordio::Compressor::kSnappy)
       .value("NoCompress", recordio::Compressor::kNoCompress);
