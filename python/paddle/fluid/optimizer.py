@@ -661,7 +661,7 @@ class AdamaxOptimizer(Optimizer):
             optimizer.minimize(cost)
 
     Notes:
-       Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
+       Currently, AdamaxOptimizer doesn't support sparse gradient.
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -783,7 +783,7 @@ class DecayedAdagradOptimizer(Optimizer):
             optimizer.minimize(cost)
 
     Notes:
-       Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
+       Currently, DecayedAdagradOptimizer doesn't support sparse gradient.
     """
     _moment_acc_str = "moment"
 
@@ -866,7 +866,7 @@ class AdadeltaOptimizer(Optimizer):
             _, params_grads = optimizer.minimize(cost)
 
     Notes:
-       Currently, AdadeltaOptimizer doesn't support sparse parameter optimization.
+       Currently, AdadeltaOptimizer doesn't support sparse gradient.
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
@@ -1137,7 +1137,7 @@ class FtrlOptimizer(Optimizer):
               _, params_grads = optimizer.minimize(cost)
 
     Notes:
-       Currently, FtrlOptimizer doesn't support sparse parameter optimization.
+       Currently, FtrlOptimizer doesn't support sparse gradient.
     """
 
     _squared_acc_str = "squared"
