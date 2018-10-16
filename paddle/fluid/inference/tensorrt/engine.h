@@ -132,6 +132,16 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
 
+  // TODO: (NHZLX)
+  // In the normal case, the paddle-trt exists bug when runing the googlenet.
+  // When there are more than two convolutions of 1 * 1 with the same input, the
+  // paddle-tensorrt will do the merging optimization, which fuse those conv
+  // into
+  // one conv, and then trigger bug. So,  We should use strategy to avoid this
+  // optimization for the time being. This bug will be fixed in the future.
+  std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
+      itensor_quote_num;
+
  private:
   // the max batch size
   int max_batch_;
