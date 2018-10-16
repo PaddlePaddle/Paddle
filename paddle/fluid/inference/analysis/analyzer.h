@@ -80,7 +80,8 @@ class Analyzer : public OrderedRegistry<PassManager> {
       "conv_eltwiseadd_bn_fuse_pass",  //
 #ifdef PADDLE_WITH_MKLDNN
       "conv_bias_mkldnn_fuse_pass",  //
-      "conv_relu_mkldnn_fuse_pass",  //
+      "conv_relu_mkldnn_fuse_pass",             //
+      "conv_elementwise_add_mkldnn_fuse_pass",  //
 #endif
   }};
 
