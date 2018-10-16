@@ -1118,6 +1118,7 @@ to transpile() call.")
 
     def _split_table_grad_and_add_send_vars(self, program, pserver_endpoints):
         # 2. add split_ids_op and send_op to send gradient to pservers
+
         # there should only be one table_name
         all_ops = program.global_block().ops
         table_grad_name = grad_var_name(self.table_name)
