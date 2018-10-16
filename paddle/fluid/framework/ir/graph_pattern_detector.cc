@@ -1024,15 +1024,15 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ElementwiseAdd::operator()(PDNode *y_var) {
+PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
 
-  auto x_var = pattern->NewNode(elementwise_add_x_repr())
-                   ->AsInput()
-                   ->assert_is_op_input("elementwise_add", "X");
+  x_var->assert_is_op_input("elementwise_add", "X");
 
-  y_var->assert_is_op_input("elementwise_add", "Y");
+  auto y_var = pattern->NewNode(elementwise_add_x_repr())
+                   ->AsInput()
+                   ->assert_is_op_input("elementwise_add", "Y");
 
   auto out_var = pattern->NewNode(elementwise_add_out_repr())
                      ->AsOutput()

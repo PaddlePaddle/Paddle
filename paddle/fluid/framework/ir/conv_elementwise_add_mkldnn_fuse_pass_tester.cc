@@ -109,7 +109,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
     }
 
     SetOp(&prog, "conv2d", {"a", "bias", "weights"}, {"b"});
-    SetOp(&prog, "elementwise_add", {"c", "b"}, {"d"});
+    SetOp(&prog, "elementwise_add", {"b", "c"}, {"d"});
     SetOp(&prog, "relu", {"d"}, {"e"});
 
     return prog;
@@ -160,7 +160,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
     }
 
     SetOp(&prog, "conv2d", {"a", "bias", "weights"}, {"b"});
-    SetOp(&prog, "elementwise_add", {"c", "b"}, {"d"});
+    SetOp(&prog, "elementwise_add", {"b", "c"}, {"d"});
 
     return prog;
   };
@@ -211,7 +211,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
 
     SetOp(&prog, "sigmoid", {"a"}, {"b"});
     SetOp(&prog, "conv2d", {"b", "bias", "weights"}, {"c"});
-    SetOp(&prog, "elementwise_add", {"d", "c"}, {"e"});
+    SetOp(&prog, "elementwise_add", {"c", "d"}, {"e"});
     SetOp(&prog, "relu", {"e"}, {"f"});
 
     return prog;
