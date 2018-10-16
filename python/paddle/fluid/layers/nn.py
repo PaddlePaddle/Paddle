@@ -1914,19 +1914,23 @@ def sequence_slice(input, offset, length, name=None):
     .. code-block:: text
     
 	- Case:
-            Given the input Variable **input**,
-	        input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
-	        input.lod = [[0, 3, 5]], input.dims = (5, 2)
 
-	    with offset.data = [[0], [1]], length.data = [[2], [1]],
+            Given the input Variable **input**:
+                
+                input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
+                input.lod = [[3, 2]],
+                input.dims = (5, 2),
+
+            with offset.data = [[0], [1]] and length.data = [[2], [1]],
 
             the output Variable will be
-
-	        out.data = [[a1, a2], [b1, b2], [e1, e2]],
-	        out.lod = [[0, 2, 3]], out.dims = (3, 2)
+                
+                out.data = [[a1, a2], [b1, b2], [e1, e2]],
+                out.lod = [[2, 1]],
+                out.dims = (3, 2).
 	
-    NOTE: The first dimension size of input, the size of offset and Length 
-          should be equal. The offset start from 0.
+    NOTE: The first dimension size of **input**, **offset** and **length** 
+          should be equal. The **offset** should start from 0.
     
     Args:
         input(Variable): The input Variable which consists of the complete 
