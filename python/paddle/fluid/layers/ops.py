@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
+from .. import core
+from ..framework import convert_np_dtype_to_dtype_
 
 __activations_noattr__ = [
     'sigmoid',
@@ -58,8 +60,11 @@ _uniform_random_ = generate_layer_fn('uniform_random')
 
 
 def uniform_random(shape, dtype=None, min=None, max=None, seed=None):
+    locals_var = locals().keys()
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
@@ -78,8 +83,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
+    locals_var = locals().keys()
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
@@ -99,12 +105,12 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
+    locals_var = locals().keys()
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
-
     return _cum_sum_(**kwargs)
 
 
@@ -121,8 +127,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
+    locals_var = locals().keys()
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
