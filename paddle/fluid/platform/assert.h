@@ -36,6 +36,23 @@ limitations under the License. */
       asm("trap;");                                                     \
     }                                                                   \
   } while (0)
+#elif defined(__HIP_DEVICE_COMPILE__) && !defined(NDEBUG)
+#include <stdio.h>
+#define PADDLE_ASSERT(e)                                           \
+  do {                                                             \
+    if (!(e)) {                                                    \
+      printf("%s:%d Assertion `%s` failed.\n", __FILE__, __LINE__, \
+             TOSTRING(e));                                         \
+    }                                                              \
+  } while (0)
+
+#define PADDLE_ASSERT_MSG(e, m)                                         \
+  do {                                                                  \
+    if (!(e)) {                                                         \
+      printf("%s:%d Assertion `%s` failed (%s).\n", __FILE__, __LINE__, \
+             TOSTRING(e), m);                                           \
+    }                                                                   \
+  } while (0)
 #else
 #include <assert.h>
 // For cuda, the assertions can affect performance and it is therefore

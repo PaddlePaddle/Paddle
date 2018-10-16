@@ -25,6 +25,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif  // PADDLE_WITH_HIP
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
@@ -113,6 +116,16 @@ Event::Event(EventType type, std::string name, uint32_t thread_id,
     PADDLE_ENFORCE(cudaEventRecord(event_, stream));
   }
 #endif
+#ifdef PADDLE_WITH_HIP
+  has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
+  if (has_cuda_) {
+    auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
+    PADDLE_ENFORCE(hipGetDevice(&device_));
+    PADDLE_ENFORCE(hipEventCreate(&event_));
+    auto stream = cuda_dev_ctx->stream();
+    PADDLE_ENFORCE(hipEventRecord(event_, stream));
+  }
+#endif
   cpu_ns_ = GetTimeInNsec();
 }
 
@@ -132,12 +145,20 @@ double Event::CudaElapsedMs(const Event& e) const {
   float ms;
   PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
   return ms;
+#elif defined(PADDLE_WITH_HIP)
+  PADDLE_ENFORCE(e.has_cuda() && has_cuda());
+  PADDLE_ENFORCE(e.device() == device());
+  PADDLE_ENFORCE(hipEventSynchronize(event_));
+  PADDLE_ENFORCE(hipEventSynchronize(e.event()));
+  float ms;
+  PADDLE_ENFORCE(hipEventElapsedTime(&ms, event_, e.event()));
+  return ms;
 #else
   PADDLE_THROW("CUDA is not enabled");
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 static void ForEachDevice(std::function<void(int)> func) {
   auto original_device = GetCurrentDeviceId();
   int count = GetCUDADeviceCount();
@@ -236,7 +257,7 @@ void EnableProfiler(ProfilerState state) {
   g_state = state;
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   if (g_state == ProfilerState::kCUDA) {
     // Generate some dummy events first to reduce the startup overhead.
     for (int i = 0; i < 5; i++) {

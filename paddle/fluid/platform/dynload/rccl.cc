@@ -12,42 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <algorithm>
-#include <condition_variable>  // NOLINT
-#include <memory>
-#include <mutex>  // NOLINT
-#include <string>
-#include <unordered_map>
-#include <vector>
-
-#include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/rccl.h"
-#else
-#include "paddle/fluid/platform/dynload/nccl.h"
-#endif
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace platform {
-constexpr int kInvalidGPUId = -1;
+namespace dynload {
 
-struct Communicator {
-  Communicator() {}
+std::once_flag rccl_dso_flag;
+void *rccl_dso_handle;
 
-  int GetCommId(int device_id) const;
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-  void InitAll(const std::vector<int>& gpus);
+RCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
-#ifdef PADDLE_WITH_HIP
-  const std::vector<rcclComm_t>& comms() const;
-#else
-  const std::vector<ncclComm_t>& comms() const;
-#endif
-};
-
+}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

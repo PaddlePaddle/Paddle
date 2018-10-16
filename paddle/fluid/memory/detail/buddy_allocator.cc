@@ -185,7 +185,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   if (system_allocator_->UseGpu()) {
     if ((total_used_ + total_free_) == 0) {
       // Compute the maximum allocation size for the first allocation.

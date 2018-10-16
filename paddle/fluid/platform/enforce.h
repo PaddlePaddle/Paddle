@@ -53,6 +53,23 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_HIP
+
+#include "paddle/fluid/platform/dynload/hipblas.h"
+#include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/fluid/platform/dynload/hiprand.h"
+#include "paddle/fluid/platform/dynload/rccl.h"
+
+#include <hip/hip_runtime_api.h>
+#include <hipblas.h>
+#include <miopen/miopen.h>
+#include <hiprand.h>
+#include <rccl.h>
+#include <thrust/system/cuda/error.h>
+#include <thrust/system_error.h>
+
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -242,6 +259,74 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 }
 #endif  // __APPLE__ and windows
 #endif  // PADDLE_WITH_CUDA
+
+
+#ifdef PADDLE_WITH_HIP
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    hipError_t e, const Args&... args) {
+  if (UNLIKELY(e)) {
+    throw thrust::system_error(e, thrust::cuda_category(),
+                               string::Sprintf(args...));
+  }
+}
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    hiprandStatus_t stat, const Args&... args) {
+  if (stat != HIPRAND_STATUS_SUCCESS) {
+    throw thrust::system_error(hipErrorLaunchFailure, thrust::cuda_category(),
+                               string::Sprintf(args...));
+  }
+}
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    miopenStatus_t stat, const Args&... args) {
+  if (stat == miopenStatusSuccess) {
+    return;
+  } else {
+    throw std::runtime_error(platform::dynload::miopenGetErrorString(stat) +
+                             string::Sprintf(args...));
+  }
+}
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    hipblasStatus_t stat, const Args&... args) {
+  std::string err;
+  if (stat == HIPBLAS_STATUS_SUCCESS) {
+    return;
+  } else if (stat == HIPBLAS_STATUS_NOT_INITIALIZED) {
+    err = "CUBLAS: not initialized, ";
+  } else if (stat == HIPBLAS_STATUS_ALLOC_FAILED) {
+    err = "CUBLAS: alloc failed, ";
+  } else if (stat == HIPBLAS_STATUS_INVALID_VALUE) {
+    err = "CUBLAS: invalid value, ";
+  } else if (stat == HIPBLAS_STATUS_MAPPING_ERROR) {
+    err = "CUBLAS: mapping error, ";
+  } else if (stat == HIPBLAS_STATUS_EXECUTION_FAILED) {
+    err = "CUBLAS: execution failed, ";
+  } else if (stat == HIPBLAS_STATUS_INTERNAL_ERROR) {
+    err = "CUBLAS: internal error, ";
+  } else if (stat == HIPBLAS_STATUS_NOT_SUPPORTED) {
+    err = "CUBLAS: not supported, ";
+  }
+  throw std::runtime_error(err + string::Sprintf(args...));
+}
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    rcclResult_t stat, const Args&... args) {
+  if (stat == rcclSuccess) {
+    return;
+  } else {
+    throw std::runtime_error(string::Sprintf(args...));
+  }
+}
+
+#endif  // PADDLE_WITH_HIP
 
 template <typename T>
 inline void throw_on_error(T e) {

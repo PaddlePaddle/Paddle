@@ -123,7 +123,7 @@ bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   if (!events_.empty()) {  // Use event
     std::function<void()> method = callback;
     for (auto &p : dev_ctxes_) {
@@ -137,14 +137,14 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
   } else {
 #endif
     callback();
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   }
 #endif
 }
 
 void OpHandleBase::RunAndRecordEvent(platform::Place p,
                                      const std::function<void()> &callback) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   if (platform::is_cpu_place(p) || events_.empty()) {
     callback();
   } else {

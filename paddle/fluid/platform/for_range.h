@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_HIP
+#include "hip/hip_runtime.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -40,7 +43,7 @@ struct ForRange<CPUDeviceContext> {
   size_t limit_;
 };
 
-#ifdef __NVCC__
+#if defined(__HIPCC__) || defined(__NVCC__)
 template <typename Function>
 __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
   size_t idx = static_cast<size_t>(threadIdx.x);
@@ -67,11 +70,21 @@ struct ForRange<CUDADeviceContext> {
     int grid_size = (limit_ + num_threads - 1) / num_threads;
 
     if (grid_size == 1) {
+#ifdef __NVCC__
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
           func);
+#else
+      hipLaunchKernelGGL((ForRangeElemwiseOpGridIsOne), dim3(1), dim3(block_size), 0, dev_ctx_.stream(), 
+          func);
+#endif
     } else {
+#ifdef __NVCC__
       ForRangeElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
           func, limit_);
+#else
+      hipLaunchKernelGGL((ForRangeElemwiseOp), dim3(grid_size), dim3(block_size), 0, dev_ctx_.stream(), 
+          func, limit_);
+#endif
     }
   }
 

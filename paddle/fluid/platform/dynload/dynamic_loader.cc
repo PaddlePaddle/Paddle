@@ -39,6 +39,12 @@ DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libcublas, "
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
+#ifdef PADDLE_WITH_HIP
+DEFINE_string(rccl_dir, "",
+              "Specify path for loading nccl library, such as libcublas, "
+              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
+              "dlopen will search cuda from LD_LIBRARY_PATH");
+#endif
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
@@ -166,7 +172,11 @@ void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #else
+#ifdef PADDLE_WITH_HIP
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhipblas.so");
+#else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
+#endif
 #endif
 }
 
@@ -174,7 +184,11 @@ void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false);
+#ifdef PADDLE_WITH_HIP
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libMIOpen.so", false);
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcudnn.so");
+#endif
 #endif
 }
 
@@ -194,7 +208,11 @@ void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #else
+#ifdef PADDLE_WITH_HIP
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhiprand.so");
+#else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
+#endif
 #endif
 }
 
@@ -213,6 +231,12 @@ void* GetNCCLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so");
 #endif
 }
+
+#ifdef PADDLE_WITH_HIP
+void* GetRCCLDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so");
+}
+#endif
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)

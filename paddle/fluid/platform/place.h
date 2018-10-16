@@ -105,7 +105,7 @@ struct PlaceVisitorWrapper
   }
 
   typename Visitor::result_type operator()(const CUDAPlace &cuda) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     return visitor_(cuda);
 #else
     PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
@@ -115,7 +115,7 @@ struct PlaceVisitorWrapper
 
   typename Visitor::result_type operator()(
       const CUDAPinnedPlace &cuda_pinned) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     return visitor_(cuda_pinned);
 #else
     PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");

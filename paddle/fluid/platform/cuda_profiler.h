@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#ifdef PADDLE_WITH_HIP
+#include "hip/hip_runtime_api.h"
+#else
 #include <cuda_profiler_api.h>
+#endif
 
 #include <string>
 
@@ -21,6 +25,17 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+#ifdef PADDLE_WITH_HIP
+void CudaProfilerInit(std::string output_file, std::string output_mode,
+                      std::string config_file) {
+}
+
+void CudaProfilerStart() { PADDLE_ENFORCE(hipProfilerStart()); }
+
+void CudaProfilerStop() { PADDLE_ENFORCE(hipProfilerStop()); }
+
+#else
 
 void CudaProfilerInit(std::string output_file, std::string output_mode,
                       std::string config_file) {
@@ -34,5 +49,6 @@ void CudaProfilerStart() { PADDLE_ENFORCE(cudaProfilerStart()); }
 
 void CudaProfilerStop() { PADDLE_ENFORCE(cudaProfilerStop()); }
 
+#endif
 }  // namespace platform
 }  // namespace paddle
