@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from .ops import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_not, logical_or
 import numpy
 import warnings
 import six
@@ -41,7 +41,6 @@ __all__ = [
     'DynamicRNN',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
-    'ParallelDo',
     'Print',
     'is_empty',
 ]
@@ -218,10 +217,10 @@ class BlockGuard(object):
         self.main_program = main_program
 
     def __enter__(self):
-        self.main_program.create_block()
+        self.main_program._create_block()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.main_program.rollback()
+        self.main_program._rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True
@@ -259,7 +258,7 @@ class ParallelDo(object):
       # ParallelDo version & Single-thread version
       if thread_num > 1:
           places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.ParallelDo(places)
+          pd = fluid.layers.control_flow.ParallelDo(places)
           with pd.do():
               images = pd.read_input(images)
               label = pd.read_input(label)
@@ -1571,6 +1570,10 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
+    
+    NOTES:
+        Currently it is not supported that setting is_sparse to True of any 
+        layers within DynamicRNN.
     """
     BEFORE_RNN = 0
     IN_RNN = 1

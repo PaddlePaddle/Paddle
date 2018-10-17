@@ -11,10 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <algorithm>
+#include <map>
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -25,6 +28,61 @@ struct CopyRange {
   size_t begin;
   size_t end;
 };
+
+struct LoDTensorToArrayFunctor;
+
+template <typename DeviceContext>
+struct LoDTensorToArrayFunctorImpl {
+  const LoDTensorToArrayFunctor *prev_functor_;
+  DeviceContext *dev_ctx_;
+  template <typename T>
+  void apply();
+};
+
+struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
+  std::vector<const framework::Tensor *> ref_inputs_;
+  mutable std::vector<framework::Tensor *> outputs_;
+  const framework::Tensor &input_;
+
+  explicit LoDTensorToArrayFunctor(const framework::Tensor &input)
+      : input_(input) {}
+
+  void AddOutput(framework::Tensor *t) {
+    outputs_.emplace_back(t);
+    ref_inputs_.emplace_back(t);
+  }
+
+  template <typename Place>
+  void operator()(Place place) const {
+    auto &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx = pool.Get(place);
+    if (std::is_same<Place, platform::CPUPlace>::value) {
+      Apply(static_cast<platform::CPUDeviceContext *>(dev_ctx));
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      Apply(static_cast<platform::CUDADeviceContext *>(dev_ctx));
+#else
+      PADDLE_THROW("Not compiled with cuda");
+#endif
+    }
+  }
+
+  template <typename DeviceContext>
+  void Apply(DeviceContext *dev_ctx) const {
+    LoDTensorToArrayFunctorImpl<DeviceContext> func;
+    func.prev_functor_ = this;
+    func.dev_ctx_ = dev_ctx;
+    framework::VisitDataType(framework::ToDataType(input_.type()), func);
+  }
+};
+
+template <typename DeviceContext>
+template <typename T>
+void LoDTensorToArrayFunctorImpl<DeviceContext>::apply() {
+  math::ConcatGradFunctor<DeviceContext, T> func;
+  func(*dev_ctx_, prev_functor_->input_, prev_functor_->ref_inputs_, 0,
+       &prev_functor_->outputs_);
+}
 
 class LoDTensorToArrayOp : public framework::OperatorBase {
  public:
@@ -72,6 +130,11 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         copy_ranges[t].emplace_back(CopyRange{start_offset, end_offset});
       }
     }
+
+    auto &outputs = *const_cast<framework::Scope &>(scope)
+                         .Var()
+                         ->GetMutable<std::map<size_t, framework::Tensor>>();
+
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
       size_t height = std::accumulate(
@@ -90,17 +153,16 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         // out[i][offset: offset+len] = x[each_range.begin: each_range.end]
         auto slice = out[i].Slice(static_cast<int>(offset),
                                   static_cast<int>(offset + len));
-
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto &dev_ctx = *pool.Get(place);
-
-        framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
-                                      static_cast<int>(each_range.end)),
-                              x.place(), dev_ctx, &slice);
+        outputs.insert({each_range.begin, slice});
         offset += len;
       }
     }
+
+    LoDTensorToArrayFunctor functor(x);
+    for (auto &out_pair : outputs) {
+      functor.AddOutput(&out_pair.second);
+    }
+    platform::VisitPlace(place, functor);
   }
 };
 

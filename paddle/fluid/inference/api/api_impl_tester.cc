@@ -21,6 +21,12 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
+#ifdef __clang__
+#define ACC_DIFF 4e-3
+#else
+#define ACC_DIFF 1e-3
+#endif
+
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 namespace paddle {
@@ -43,7 +49,7 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
 
 NativeConfig GetConfig() {
   NativeConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
 #ifdef PADDLE_WITH_CUDA
@@ -99,8 +105,8 @@ void MainWord2Vec(bool use_gpu) {
 
   float* lod_data = output1.data<float>();
   for (int i = 0; i < output1.numel(); ++i) {
-    EXPECT_LT(lod_data[i] - data[i], 1e-3);
-    EXPECT_GT(lod_data[i] - data[i], -1e-3);
+    EXPECT_LT(lod_data[i] - data[i], ACC_DIFF);
+    EXPECT_GT(lod_data[i] - data[i], -ACC_DIFF);
   }
 }
 
@@ -110,7 +116,7 @@ void MainImageClassification(bool use_gpu) {
   NativeConfig config = GetConfig();
   config.use_gpu = use_gpu;
   config.model_dir =
-      FLAGS_dirname + "image_classification_resnet.inference.model";
+      FLAGS_dirname + "/image_classification_resnet.inference.model";
 
   const bool is_combined = false;
   std::vector<std::vector<int64_t>> feed_target_shapes =
@@ -144,7 +150,7 @@ void MainImageClassification(bool use_gpu) {
   float* data = static_cast<float*>(outputs[0].data.data());
   float* lod_data = output1.data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
-    EXPECT_NEAR(lod_data[j], data[j], 1e-3);
+    EXPECT_NEAR(lod_data[j], data[j], ACC_DIFF);
   }
 }
 
@@ -199,7 +205,7 @@ void MainThreadsWord2Vec(bool use_gpu) {
       float* ref_data = refs[tid].data<float>();
       EXPECT_EQ(refs[tid].numel(), static_cast<int64_t>(len / sizeof(float)));
       for (int i = 0; i < refs[tid].numel(); ++i) {
-        EXPECT_NEAR(ref_data[i], data[i], 1e-3);
+        EXPECT_NEAR(ref_data[i], data[i], ACC_DIFF);
       }
     });
   }
@@ -214,7 +220,7 @@ void MainThreadsImageClassification(bool use_gpu) {
   NativeConfig config = GetConfig();
   config.use_gpu = use_gpu;
   config.model_dir =
-      FLAGS_dirname + "image_classification_resnet.inference.model";
+      FLAGS_dirname + "/image_classification_resnet.inference.model";
 
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
   std::vector<framework::LoDTensor> jobs(num_jobs);
@@ -251,7 +257,7 @@ void MainThreadsImageClassification(bool use_gpu) {
       float* ref_data = refs[tid].data<float>();
       EXPECT_EQ((size_t)refs[tid].numel(), len / sizeof(float));
       for (int i = 0; i < refs[tid].numel(); ++i) {
-        EXPECT_NEAR(ref_data[i], data[i], 1e-3);
+        EXPECT_NEAR(ref_data[i], data[i], ACC_DIFF);
       }
     });
   }

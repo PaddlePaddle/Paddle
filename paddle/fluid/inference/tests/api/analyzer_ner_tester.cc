@@ -12,23 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include <gtest/gtest.h>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/platform/profiler.h"
-
-DEFINE_string(infer_model, "", "model path");
-DEFINE_string(infer_data, "", "data path");
-DEFINE_int32(batch_size, 10, "batch size.");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
+using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> word_data_all, mention_data_all;
@@ -108,120 +96,75 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-// the first inference result
-const int chinese_ner_result_data[] = {30, 45, 41, 48, 17, 26,
-                                       48, 39, 38, 16, 25};
+void SetConfig(contrib::AnalysisConfig *cfg) {
+  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->param_file = FLAGS_infer_model + "/param";
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
+}
 
-void TestChineseNERPrediction(bool use_analysis) {
-  NativeConfig config;
-  config.prog_file = FLAGS_infer_model + "/__model__";
-  config.param_file = FLAGS_infer_model + "/param";
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-
-  std::vector<PaddleTensor> input_slots, outputs;
-  std::unique_ptr<PaddlePredictor> predictor;
-  Timer timer;
-  if (use_analysis) {
-    AnalysisConfig cfg;
-    cfg.prog_file = FLAGS_infer_model + "/__model__";
-    cfg.param_file = FLAGS_infer_model + "/param";
-    cfg.use_gpu = false;
-    cfg.device = 0;
-    cfg.specify_input_name = true;
-    cfg.enable_ir_optim = true;
-    predictor =
-        CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
-  } else {
-    predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  }
-
-  if (FLAGS_test_all_data) {
-    LOG(INFO) << "test all data";
-    double sum = 0;
-    size_t num_samples;
-    for (int i = 0; i < FLAGS_repeat; i++) {
-      DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-      num_samples = data.num_samples;
-      for (size_t bid = 0; bid < num_samples; ++bid) {
-        PrepareInputs(&input_slots, &data, FLAGS_batch_size);
-        timer.tic();
-        predictor->Run(input_slots, &outputs);
-        sum += timer.toc();
-      }
-    }
-    LOG(INFO) << "total number of samples: " << num_samples;
-    PrintTime(FLAGS_batch_size, FLAGS_repeat, 1, 0, sum / FLAGS_repeat);
-    LOG(INFO) << "average latency of each sample: "
-              << sum / FLAGS_repeat / num_samples;
-    return;
-  }
-  // Prepare inputs.
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-  PrepareInputs(&input_slots, &data, FLAGS_batch_size);
-
-  timer.tic();
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    predictor->Run(input_slots, &outputs);
-  }
-  PrintTime(FLAGS_batch_size, FLAGS_repeat, 1, 0, timer.toc() / FLAGS_repeat);
-
-  PADDLE_ENFORCE(outputs.size(), 1UL);
-  auto &out = outputs[0];
-  size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                [](int a, int b) { return a * b; });
-  PADDLE_ENFORCE_GT(size, 0);
-  int64_t *result = static_cast<int64_t *>(out.data.data());
-  for (size_t i = 0; i < std::min(11UL, size); i++) {
-    PADDLE_ENFORCE(result[i], chinese_ner_result_data[i]);
-  }
-
-  if (use_analysis) {
-    // run once for comparion as reference
-    auto ref_predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-    std::vector<PaddleTensor> ref_outputs_slots;
-    ref_predictor->Run(input_slots, &ref_outputs_slots);
-    EXPECT_EQ(ref_outputs_slots.size(), outputs.size());
-    auto &ref_out = ref_outputs_slots[0];
-    size_t ref_size =
-        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
-                        [](int a, int b) { return a * b; });
-    EXPECT_EQ(size, ref_size);
-    int64_t *pdata_ref = static_cast<int64_t *>(ref_out.data.data());
-    for (size_t i = 0; i < size; ++i) {
-      EXPECT_EQ(pdata_ref[i], result[i]);
-    }
-
-    AnalysisPredictor *analysis_predictor =
-        dynamic_cast<AnalysisPredictor *>(predictor.get());
-    auto &fuse_statis = analysis_predictor->analysis_argument()
-                            .Get<std::unordered_map<std::string, int>>(
-                                framework::ir::kFuseStatisAttr);
-    for (auto &item : fuse_statis) {
-      LOG(INFO) << "fused " << item.first << " " << item.second;
-    }
-    int num_ops = 0;
-    for (auto &node :
-         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
-      if (node->IsFunction()) {
-        ++num_ops;
-      }
-    }
-    LOG(INFO) << "has num ops: " << num_ops;
-    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
-    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
-    EXPECT_EQ(num_ops, 14);
+  std::vector<PaddleTensor> input_slots;
+  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
+  for (int bid = 0; bid < epoch; ++bid) {
+    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    (*inputs).emplace_back(input_slots);
   }
 }
 
-TEST(Analyzer_Chinese_ner, native) { TestChineseNERPrediction(false); }
+// Easy for profiling independently.
+TEST(Analyzer_Chinese_ner, profile) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
 
-TEST(Analyzer_Chinese_ner, analysis) { TestChineseNERPrediction(true); }
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+    // the first inference result
+    const int chinese_ner_result_data[] = {30, 45, 41, 48, 17, 26,
+                                           48, 39, 38, 16, 25};
+    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
+    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(size, 0);
+    int64_t *result = static_cast<int64_t *>(outputs[0].data.data());
+    for (size_t i = 0; i < std::min(11UL, size); i++) {
+      EXPECT_EQ(result[i], chinese_ner_result_data[i]);
+    }
+  }
+}
+
+// Check the fuse status
+TEST(Analyzer_Chinese_ner, fuse_statis) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+  EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
+  EXPECT_EQ(num_ops, 14);
+}
+
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_Chinese_ner, compare) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
 
 }  // namespace inference
 }  // namespace paddle

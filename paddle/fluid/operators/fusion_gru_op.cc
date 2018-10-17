@@ -25,14 +25,14 @@ namespace paddle {
 namespace operators {
 
 void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of GRU should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Assert only one Input(X) of GRU.");
   PADDLE_ENFORCE(ctx->HasInput("WeightX"),
-                 "Input(WeightX) of GRU should not be null.");
+                 "Assert only one Input(WeightX) of GRU.");
   PADDLE_ENFORCE(ctx->HasInput("WeightH"),
-                 "Input(WeightH) of GRU should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Output(XX) of GRU should not be null.");
+                 "Assert only one Input(WeightH) of GRU.");
+  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Assert only one Output(XX) of GRU.");
   PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                 "Output(Hidden) of GRU should not be null.");
+                 "Assert only one Output(Hidden) of GRU.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
@@ -80,11 +80,11 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
     PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
-                   "Output(ReorderedH0) of GRU should not be null.");
+                   "Assert only one Output(ReorderedH0) of GRU.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
-                   "Output(BatchedInput) of GRU should not be null.");
+                   "Assert only one Output(BatchedInput) of GRU.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchedOut"),
-                   "Output(BatchedOut) of GRU should not be null.");
+                   "Assert only one Output(BatchedOut) of GRU.");
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedOut", out_dims);
   }
@@ -290,12 +290,13 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   void BatchCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
     auto* x = ctx.Input<LoDTensor>("X");
+    INIT_BASE_INPUT_OUTPUT
+    INIT_BASE_SIZES
     if (x->lod()[0].size() == 2) {
+      xx->Resize({total_T, D3});
       SeqCompute(ctx);
       return;
     }
-    INIT_BASE_INPUT_OUTPUT
-    INIT_BASE_SIZES
     INIT_VEC_FUNC
 
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");

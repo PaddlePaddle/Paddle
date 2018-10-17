@@ -79,7 +79,7 @@ class TestReshapeOpWithInputShape(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", sum_outputs=["Out"])
+        self.check_grad(["X"], "Out")
 
 
 if __name__ == "__main__":

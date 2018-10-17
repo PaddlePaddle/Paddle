@@ -22,8 +22,8 @@ class TestDistMnist2x2(TestDistBase):
         self._sync_mode = True
         self._use_reduce = False
 
-    def test_se_resnext(self):
-        self.check_with_place("dist_mnist.py", delta=1e-7)
+    def test_dist_train(self):
+        self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 class TestDistMnist2x2WithMemopt(TestDistBase):
@@ -31,8 +31,8 @@ class TestDistMnist2x2WithMemopt(TestDistBase):
         self._sync_mode = True
         self._mem_opt = True
 
-    def test_se_resnext(self):
-        self.check_with_place("dist_mnist.py", delta=1e-7)
+    def test_dist_train(self):
+        self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 class TestDistMnistAsync(TestDistBase):
@@ -40,7 +40,7 @@ class TestDistMnistAsync(TestDistBase):
         self._sync_mode = False
         self._use_reduce = False
 
-    def test_se_resnext(self):
+    def test_dist_train(self):
         self.check_with_place("dist_mnist.py", delta=200)
 
 

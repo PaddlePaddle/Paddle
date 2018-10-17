@@ -47,7 +47,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.3)))
+            value=0.01)))
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -56,7 +56,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.2)))
+            value=0.01)))
 
     SIZE = 10
     input_shape = conv_pool_2.shape
@@ -68,7 +68,7 @@ def cnn_model(data):
         size=SIZE,
         act="softmax",
         param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.1)))
+            initializer=fluid.initializer.Constant(value=0.01)))
     return predict
 
 

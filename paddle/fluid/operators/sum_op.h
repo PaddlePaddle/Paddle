@@ -32,7 +32,7 @@ class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_vars = context.MultiInputVar("X");
-    int N = in_vars.size();
+    size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
 
     bool in_place = out_var == in_vars[0];
@@ -53,7 +53,7 @@ class SumKernel : public framework::OpKernel<T> {
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();
       // If in_place, just skip the first tensor
-      for (int i = in_place ? 1 : 0; i < N; i++) {
+      for (size_t i = in_place ? 1 : 0; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
           if (in_t.numel() == 0) {
@@ -101,13 +101,13 @@ class SumKernel : public framework::OpKernel<T> {
 
       // Runtime InferShape
       size_t first_dim = 0;
-      for (int i = 0; i < N; i++) {
+      for (size_t i = 0; i < in_num; i++) {
         auto &sel_row = get_selected_row(i);
         first_dim += sel_row.rows().size();
       }
 
       std::vector<int64_t> in_dim;
-      for (int i = 0; i < N; i++) {
+      for (size_t i = 0; i < in_num; i++) {
         auto &sel_row = get_selected_row(i);
         if (sel_row.rows().size() > 0) {
           in_dim = framework::vectorize(sel_row.value().dims());
@@ -116,14 +116,14 @@ class SumKernel : public framework::OpKernel<T> {
       }
       if (in_dim.empty()) {
         VLOG(3) << "WARNING: all the inputs are empty";
-        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+        in_dim =
+            framework::vectorize(get_selected_row(in_num - 1).value().dims());
       } else {
         in_dim[0] = static_cast<int64_t>(first_dim);
       }
 
       out_value->Resize(framework::make_ddim(in_dim));
       out_value->mutable_data<T>(context.GetPlace());
-
       // if all the input sparse vars are empty, no need to
       // merge these vars.
       if (first_dim == 0UL) {
@@ -133,7 +133,7 @@ class SumKernel : public framework::OpKernel<T> {
       math::SelectedRowsAddTo<DeviceContext, T> functor;
 
       int64_t offset = 0;
-      for (int i = 0; i < N; i++) {
+      for (size_t i = 0; i < in_num; i++) {
         auto &sel_row = get_selected_row(i);
         if (sel_row.rows().size() == 0) {
           continue;

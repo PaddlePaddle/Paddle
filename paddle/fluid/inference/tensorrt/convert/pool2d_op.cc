@@ -72,6 +72,8 @@ class Pool2dOpConverter : public OpConverter {
     layer->setPadding(nv_paddings);
 
     auto output_name = op_desc.Output("Out")[0];
+    layer->setName(("pool2d (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {
       engine_->DeclareOutput(output_name);

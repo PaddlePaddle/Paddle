@@ -36,7 +36,11 @@ class TestAucOp(OpTest):
             "StatPos": stat_pos,
             "StatNeg": stat_neg
         }
-        self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
+        self.attrs = {
+            'curve': 'ROC',
+            'num_thresholds': num_thresholds,
+            "slide_steps": 1
+        }
 
         python_auc = metrics.Auc(name="auc",
                                  curve='ROC',
@@ -45,7 +49,6 @@ class TestAucOp(OpTest):
 
         self.outputs = {
             'AUC': np.array(python_auc.eval()),
-            'BatchAUC': np.array(python_auc.eval()),
             'StatPosOut': np.array(python_auc._stat_pos),
             'StatNegOut': np.array(python_auc._stat_neg)
         }

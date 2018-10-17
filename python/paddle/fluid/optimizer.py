@@ -26,6 +26,7 @@ from .layer_helper import LayerHelper
 from .regularizer import append_regularization_ops
 from .clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
+from .layers import ops
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -43,11 +44,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self,
-                 learning_rate,
-                 regularization=None,
-                 LARS_weight_decay=0.0,
-                 name=None):
+    def __init__(self, learning_rate, regularization=None, name=None):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
@@ -68,7 +65,6 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
-        self._LARS_weight_decay = LARS_weight_decay
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -109,7 +105,6 @@ class Optimizer(object):
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
         if type(param_lr) == Variable:
-            # param learning rate has been updated (LARS)
             print("returns updated param lr ", param_lr)
             return param_lr
         else:
@@ -227,16 +222,12 @@ class Optimizer(object):
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
             self._create_global_learning_rate()
-            if self._LARS_weight_decay > 0.0:
-                layers.append_LARS(parameters_and_grads,
-                                   self._global_learning_rate(),
-                                   self._LARS_weight_decay)
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                with param_and_grad[0].block.program.optimized_guard(
+                with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
@@ -287,6 +278,9 @@ class SGDOptimizer(Optimizer):
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
         Can be a float value or a Variable with one float value as data element.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
@@ -295,10 +289,12 @@ class SGDOptimizer(Optimizer):
             sgd_optimizer.minimize(cost)
     """
 
-    def __init__(self, learning_rate, **kwargs):
+    def __init__(self, learning_rate, regularization=None, name=None):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "sgd"
 
     def _append_optimize_op(self, block, param_and_grad):
@@ -343,6 +339,9 @@ class MomentumOptimizer(Optimizer):
         Can be a float value or a Variable with one float value as data element.
         momentum (float): momentum factor
         use_nesterov (bool): enables Nesterov momentum
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
@@ -352,11 +351,18 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self, learning_rate, momentum, use_nesterov=False, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 use_nesterov=False,
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
@@ -412,6 +418,9 @@ class AdagradOptimizer(Optimizer):
         learning_rate (float|Variable): the learning rate used to update parameters. \
         Can be a float value or a Variable with one float value as data element.
         epsilon (float): a small float value for numerical stability.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
@@ -421,11 +430,17 @@ class AdagradOptimizer(Optimizer):
     """
     _moment_acc_str = "moment"
 
-    def __init__(self, learning_rate, epsilon=1.0e-6, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 epsilon=1.0e-6,
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
 
@@ -485,6 +500,9 @@ class AdamOptimizer(Optimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): a small float value for numerical stability.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
@@ -503,13 +521,16 @@ class AdamOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
-                 **kwargs):
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
         super(AdamOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "adam"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -580,7 +601,7 @@ class AdamOptimizer(Optimizer):
         for param, grad in param_and_grads:
             if grad is None:
                 continue
-            with param.block.program.optimized_guard([param, grad]):
+            with param.block.program._optimized_guard([param, grad]):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
@@ -629,12 +650,18 @@ class AdamaxOptimizer(Optimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): a small float value for numerical stability.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
 
             optimizer = fluid.optimizer.Adamax(learning_rate=0.2)
             optimizer.minimize(cost)
+
+    Notes:
+       Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -645,13 +672,16 @@ class AdamaxOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
-                 **kwargs):
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
         super(AdamaxOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "adamax"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -709,7 +739,7 @@ class AdamaxOptimizer(Optimizer):
         for param, grad in parameters_and_grads:
             if grad is None:
                 continue
-            with param.block.program.optimized_guard([param, grad]):
+            with param.block.program._optimized_guard([param, grad]):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 main_block.append_op(
@@ -742,22 +772,35 @@ class DecayedAdagradOptimizer(Optimizer):
         Can be a float value or a Variable with one float value as data element.
         decay (float): decay rate.
         epsilon (float): a small float value for numerical stability.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
 
             optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
             optimizer.minimize(cost)
+
+    Notes:
+       Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
 
-    def __init__(self, learning_rate, decay=0.95, epsilon=1.0e-6, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 decay=0.95,
+                 epsilon=1.0e-6,
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         assert decay is not None
         assert epsilon is not None
 
         super(DecayedAdagradOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "decayed_adagrad"
         self._decay = decay
         self._epsilon = epsilon
@@ -811,6 +854,9 @@ class AdadeltaOptimizer(Optimizer):
         learning_rate(float): global learning rate
         rho(float): rho in equation
         epsilon(float): epsilon in equation
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Examples:
         .. code-block:: python
@@ -818,12 +864,20 @@ class AdadeltaOptimizer(Optimizer):
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
             _, params_grads = optimizer.minimize(cost)
+
+    Notes:
+       Currently, AdadeltaOptimizer doesn't support sparse parameter optimization.
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
     _avg_squared_update_acc_str = "_avg_squared_update"
 
-    def __init__(self, learning_rate, epsilon=1.0e-6, rho=0.95, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 epsilon=1.0e-6,
+                 rho=0.95,
+                 regularization=None,
+                 name=None):
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if epsilon is None:
@@ -831,7 +885,9 @@ class AdadeltaOptimizer(Optimizer):
         if rho is None:
             raise ValueError("rho is not set.")
         super(AdadeltaOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
@@ -932,6 +988,9 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
@@ -953,9 +1012,12 @@ class RMSPropOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  momentum=0.0,
                  centered=False,
-                 **kwargs):
+                 regularization=None,
+                 name=None):
         super(RMSPropOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if rho is None:
@@ -1061,6 +1123,9 @@ class FtrlOptimizer(Optimizer):
         l1 (float):
         l2 (float):
         lr_power (float):
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
@@ -1070,14 +1135,25 @@ class FtrlOptimizer(Optimizer):
 
               optimizer = fluid.optimizer.Ftrl(0.0001)
               _, params_grads = optimizer.minimize(cost)
+
+    Notes:
+       Currently, FtrlOptimizer doesn't support sparse parameter optimization.
     """
 
     _squared_acc_str = "squared"
     _linear_acc_str = "linear"
 
-    def __init__(self, learning_rate, l1=0.0, l2=0.0, lr_power=-0.5, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 l1=0.0,
+                 l2=0.0,
+                 lr_power=-0.5,
+                 regularization=None,
+                 name=None):
         super(FtrlOptimizer, self).__init__(
-            learning_rate=learning_rate, **kwargs)
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
 
@@ -1155,7 +1231,9 @@ class ModelAverage(Optimizer):
         average_window_rate: The rate of average window.
         min_average_window: The minimum size of average window.
         max_average_window: The maximum size of average window.
-
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
     Examples:
 
       .. code-block:: python
@@ -1178,8 +1256,10 @@ class ModelAverage(Optimizer):
                  average_window_rate,
                  min_average_window=10000,
                  max_average_window=10000,
-                 **kwargs):
-        super(ModelAverage, self).__init__(0.0, **kwargs)
+                 regularization=None,
+                 name=None):
+        super(ModelAverage, self).__init__(
+            0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
@@ -1198,7 +1278,7 @@ class ModelAverage(Optimizer):
         for param, grad in self.params_grads:
             if grad is None:
                 continue
-            with param.block.program.optimized_guard([param, grad]):
+            with param.block.program._optimized_guard([param, grad]):
                 self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
@@ -1234,7 +1314,7 @@ class ModelAverage(Optimizer):
             x=tmp, dtype='float32' if self._dtype == None else self._dtype)
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype == None else self._dtype)
-        layers.elementwise_div(x=sum, y=tmp, out=param)
+        ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])

@@ -19,6 +19,7 @@ import unittest
 import paddle.fluid as fluid
 import paddle
 import paddle.dataset.mnist as mnist
+from paddle.fluid.layers.io import open_recordio_file
 
 
 class TestMultipleReader(unittest.TestCase):
@@ -41,7 +42,7 @@ class TestMultipleReader(unittest.TestCase):
 
     def test_main(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data_file = fluid.layers.open_recordio_file(
+            data_file = open_recordio_file(
                 filename='./mnist.recordio',
                 shapes=[(-1, 784), (-1, 1)],
                 lod_levels=[0, 0],

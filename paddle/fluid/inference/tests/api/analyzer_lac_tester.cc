@@ -12,25 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include <gtest/gtest.h>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/platform/profiler.h"
-
-DEFINE_string(infer_model, "", "model path for LAC");
-DEFINE_string(infer_data, "", "data file for LAC");
-DEFINE_int32(batch_size, 1, "batch size.");
-DEFINE_int32(burning, 0, "Burning before repeat.");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<int64_t> data;
@@ -92,6 +80,7 @@ struct DataRecord {
       }
     }
   }
+
   DataRecord NextBatch() {
     DataRecord data;
     data.data = batched_datas[batch_iter];
@@ -117,155 +106,76 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_slots->assign({input_tensor});
 }
 
-void BenchAllData(const std::string &model_path, const std::string &data_file,
-                  const int batch_size, const int repeat) {
-  NativeConfig config;
-  config.model_dir = model_path;
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-  std::vector<PaddleTensor> input_slots, outputs_slots;
-  DataRecord data(data_file, batch_size);
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  GetOneBatch(&input_slots, &data, batch_size);
-  for (int i = 0; i < FLAGS_burning; i++) {
-    predictor->Run(input_slots, &outputs_slots);
-  }
-  Timer timer;
-  double sum = 0;
-  for (int i = 0; i < repeat; i++) {
-    for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
-      GetOneBatch(&input_slots, &data, batch_size);
-      timer.tic();
-      predictor->Run(input_slots, &outputs_slots);
-      sum += timer.toc();
-    }
-  }
-  PrintTime(batch_size, repeat, 1, 0, sum / repeat);
+void SetConfig(AnalysisConfig *cfg) {
+  cfg->model_dir = FLAGS_infer_model;
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
 }
 
-const int64_t lac_ref_data[] = {24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25,
-                                25, 25, 25, 25, 44, 24, 25, 25, 25, 36, 42, 43,
-                                44, 14, 15, 44, 14, 15, 44, 14, 15, 44, 38, 39,
-                                14, 15, 44, 22, 23, 23, 23, 23, 23, 23, 23};
-
-void TestLACPrediction(const std::string &model_path,
-                       const std::string &data_file, const int batch_size,
-                       const int repeat, bool test_all_data,
-                       bool use_analysis = false) {
-  NativeConfig config;
-  config.model_dir = model_path;
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-  std::vector<PaddleTensor> input_slots, outputs_slots;
-  DataRecord data(data_file, batch_size);
-  GetOneBatch(&input_slots, &data, batch_size);
-  std::unique_ptr<PaddlePredictor> predictor;
-  if (use_analysis) {
-    AnalysisConfig cfg;
-    cfg.model_dir = model_path;
-    cfg.use_gpu = false;
-    cfg.device = 0;
-    cfg.specify_input_name = true;
-    cfg.enable_ir_optim = true;
-    predictor =
-        CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
-  } else {
-    predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  }
-  for (int i = 0; i < FLAGS_burning; i++) {
-    predictor->Run(input_slots, &outputs_slots);
-  }
-  Timer timer;
-  if (test_all_data) {
-    double sum = 0;
-    LOG(INFO) << "Total number of samples: " << data.datasets.size();
-    for (int i = 0; i < repeat; i++) {
-      for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
-        GetOneBatch(&input_slots, &data, batch_size);
-        timer.tic();
-        predictor->Run(input_slots, &outputs_slots);
-        sum += timer.toc();
-      }
-    }
-    PrintTime(batch_size, repeat, 1, 0, sum / repeat);
-    LOG(INFO) << "Average latency of each sample: "
-              << sum / repeat / data.datasets.size() << " ms";
-    return;
-  }
-  timer.tic();
-  for (int i = 0; i < repeat; i++) {
-    predictor->Run(input_slots, &outputs_slots);
-  }
-  PrintTime(batch_size, repeat, 1, 0, timer.toc() / repeat);
-
-  // check result
-  EXPECT_EQ(outputs_slots.size(), 1UL);
-  auto &out = outputs_slots[0];
-  size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                [](int a, int b) { return a * b; });
-  size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
-  PADDLE_ENFORCE_GT(size, 0);
-  EXPECT_GE(size, batch1_size);
-  int64_t *pdata = static_cast<int64_t *>(out.data.data());
-  for (size_t i = 0; i < batch1_size; ++i) {
-    EXPECT_EQ(pdata[i], lac_ref_data[i]);
-  }
-
-  if (use_analysis) {
-    // run once for comparion as reference
-    auto ref_predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-    std::vector<PaddleTensor> ref_outputs_slots;
-    ref_predictor->Run(input_slots, &ref_outputs_slots);
-    EXPECT_EQ(ref_outputs_slots.size(), outputs_slots.size());
-    auto &ref_out = ref_outputs_slots[0];
-    size_t ref_size =
-        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
-                        [](int a, int b) { return a * b; });
-    EXPECT_EQ(size, ref_size);
-    int64_t *pdata_ref = static_cast<int64_t *>(ref_out.data.data());
-    for (size_t i = 0; i < size; ++i) {
-      EXPECT_EQ(pdata_ref[i], pdata[i]);
-    }
-
-    AnalysisPredictor *analysis_predictor =
-        dynamic_cast<AnalysisPredictor *>(predictor.get());
-    auto &fuse_statis = analysis_predictor->analysis_argument()
-                            .Get<std::unordered_map<std::string, int>>(
-                                framework::ir::kFuseStatisAttr);
-    for (auto &item : fuse_statis) {
-      LOG(INFO) << "fused " << item.first << " " << item.second;
-    }
-    int num_ops = 0;
-    for (auto &node :
-         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
-      if (node->IsFunction()) {
-        ++num_ops;
-      }
-    }
-    LOG(INFO) << "has num ops: " << num_ops;
-    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
-    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 4);
-    EXPECT_EQ(num_ops, 11);
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+  std::vector<PaddleTensor> input_slots;
+  int epoch = FLAGS_test_all_data ? data.batched_datas.size() : 1;
+  LOG(INFO) << "number of samples: " << epoch;
+  for (int bid = 0; bid < epoch; ++bid) {
+    GetOneBatch(&input_slots, &data, FLAGS_batch_size);
+    (*inputs).emplace_back(input_slots);
   }
 }
 
-TEST(Analyzer_LAC, native) {
-  LOG(INFO) << "LAC with native";
-  TestLACPrediction(FLAGS_infer_model, FLAGS_infer_data, FLAGS_batch_size,
-                    FLAGS_repeat, FLAGS_test_all_data);
+// Easy for profiling independently.
+TEST(Analyzer_LAC, profile) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+    // the first inference result
+    const int64_t lac_ref_data[] = {
+        24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25, 25, 25, 25, 25,
+        44, 24, 25, 25, 25, 36, 42, 43, 44, 14, 15, 44, 14, 15, 44, 14,
+        15, 44, 38, 39, 14, 15, 44, 22, 23, 23, 23, 23, 23, 23, 23};
+    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
+    size_t size = GetSize(outputs[0]);
+    size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
+    PADDLE_ENFORCE_GE(size, batch1_size);
+    int64_t *pdata = static_cast<int64_t *>(outputs[0].data.data());
+    for (size_t i = 0; i < batch1_size; ++i) {
+      EXPECT_EQ(pdata[i], lac_ref_data[i]);
+    }
+  }
 }
 
-TEST(Analyzer_LAC, analysis) {
-  LOG(INFO) << "LAC with analysis";
-  TestLACPrediction(FLAGS_infer_model, FLAGS_infer_data, FLAGS_batch_size,
-                    FLAGS_repeat, FLAGS_test_all_data, true);
+// Check the fuse status
+TEST(Analyzer_LAC, fuse_statis) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+  EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 4);
+  EXPECT_EQ(num_ops, 11);
+}
+
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_LAC, compare) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
 }
 
 }  // namespace analysis

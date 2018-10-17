@@ -12,23 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include <gflags/gflags.h>
-#include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
-#include <gtest/gtest.h>
-#include <fstream>
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/timer.h"
-
-DEFINE_string(infer_model, "", "Directory of the inference model.");
-DEFINE_string(infer_data, "", "Path of the dataset.");
-DEFINE_int32(batch_size, 1, "batch size.");
-DEFINE_int32(repeat, 1, "How many times to repeat run.");
-DEFINE_int32(topn, -1, "Run top n batches of data to save time");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -37,82 +21,101 @@ struct DataReader {
   explicit DataReader(const std::string &path)
       : file(new std::ifstream(path)) {}
 
-  bool NextBatch(PaddleTensor *tensor, int batch_size) {
+  bool NextBatch(std::vector<PaddleTensor> *input, int batch_size) {
     PADDLE_ENFORCE_EQ(batch_size, 1);
     std::string line;
-    tensor->lod.clear();
-    tensor->lod.emplace_back(std::vector<size_t>({0}));
+    PaddleTensor tensor;
+    tensor.dtype = PaddleDType::INT64;
+    tensor.lod.emplace_back(std::vector<size_t>({0}));
     std::vector<int64_t> data;
 
     for (int i = 0; i < batch_size; i++) {
       if (!std::getline(*file, line)) return false;
       inference::split_to_int64(line, ' ', &data);
     }
-    tensor->lod.front().push_back(data.size());
+    tensor.lod.front().push_back(data.size());
 
-    tensor->data.Resize(data.size() * sizeof(int64_t));
-    memcpy(tensor->data.data(), data.data(), data.size() * sizeof(int64_t));
-    tensor->shape.clear();
-    tensor->shape.push_back(data.size());
-    tensor->shape.push_back(1);
+    tensor.data.Resize(data.size() * sizeof(int64_t));
+    memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
+    tensor.shape.push_back(data.size());
+    tensor.shape.push_back(1);
+    input->assign({tensor});
     return true;
   }
 
   std::unique_ptr<std::ifstream> file;
 };
 
-void Main(int batch_size) {
-  // shape --
-  // Create Predictor --
-  AnalysisConfig config;
-  config.model_dir = FLAGS_infer_model;
-  config.use_gpu = false;
-  config.enable_ir_optim = true;
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+void SetConfig(AnalysisConfig *cfg) {
+  cfg->model_dir = FLAGS_infer_model;
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
+}
 
-  std::vector<PaddleTensor> input_slots(1);
-  // one batch starts
-  // data --
-  auto &input = input_slots[0];
-  input.dtype = PaddleDType::INT64;
-
-  inference::Timer timer;
-  double sum = 0;
-  std::vector<PaddleTensor> output_slots;
-
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  std::vector<PaddleTensor> input_slots;
+  DataReader reader(FLAGS_infer_data);
   int num_batches = 0;
-  for (int t = 0; t < FLAGS_repeat; t++) {
-    DataReader reader(FLAGS_infer_data);
-    while (reader.NextBatch(&input, FLAGS_batch_size)) {
-      if (FLAGS_topn > 0 && num_batches > FLAGS_topn) break;
-      timer.tic();
-      CHECK(predictor->Run(input_slots, &output_slots));
-      sum += timer.toc();
-      ++num_batches;
-    }
+  while (reader.NextBatch(&input_slots, FLAGS_batch_size)) {
+    (*inputs).emplace_back(input_slots);
+    ++num_batches;
+    if (!FLAGS_test_all_data) return;
   }
-  PrintTime(batch_size, FLAGS_repeat, 1, 0, sum / FLAGS_repeat);
+  LOG(INFO) << "total number of samples: " << num_batches * FLAGS_batch_size;
+}
 
-  // Get output
-  LOG(INFO) << "get outputs " << output_slots.size();
+// Easy for profiling independently.
+TEST(Analyzer_Text_Classification, profile) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
 
-  for (auto &output : output_slots) {
-    LOG(INFO) << "output.shape: " << to_string(output.shape);
-    // no lod ?
-    CHECK_EQ(output.lod.size(), 0UL);
-    LOG(INFO) << "output.dtype: " << output.dtype;
-    std::stringstream ss;
-    for (int i = 0; i < 5; i++) {
-      ss << static_cast<float *>(output.data.data())[i] << " ";
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+
+  if (FLAGS_num_threads == 1) {
+    // Get output
+    LOG(INFO) << "get outputs " << outputs.size();
+    for (auto &output : outputs) {
+      LOG(INFO) << "output.shape: " << to_string(output.shape);
+      // no lod ?
+      CHECK_EQ(output.lod.size(), 0UL);
+      LOG(INFO) << "output.dtype: " << output.dtype;
+      std::stringstream ss;
+      for (int i = 0; i < 5; i++) {
+        ss << static_cast<float *>(output.data.data())[i] << " ";
+      }
+      LOG(INFO) << "output.data summary: " << ss.str();
+      // one batch ends
     }
-    LOG(INFO) << "output.data summary: " << ss.str();
-    // one batch ends
   }
 }
 
-TEST(text_classification, basic) { Main(FLAGS_batch_size); }
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_Text_Classification, compare) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
+
+TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  // Enable embedding_fc_lstm_fuse_pass (disabled by default)
+  auto it = std::find(cfg.ir_passes.begin(), cfg.ir_passes.end(),
+                      "embedding_fc_lstm_fuse_pass");
+  if (it != cfg.ir_passes.end()) cfg.ir_passes.erase(it);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
 
 }  // namespace inference
 }  // namespace paddle

@@ -39,31 +39,28 @@ __all__ = [
     'detection_map',
     'rpn_target_assign',
     'anchor_generator',
+    'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
-]
-
-__auto__ = [
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
 ]
 
-__all__ += __auto__
 
-for _OP in set(__auto__):
-    globals()[_OP] = generate_layer_fn(_OP)
-
-
-def rpn_target_assign(loc,
-                      scores,
+def rpn_target_assign(bbox_pred,
+                      cls_logits,
                       anchor_box,
                       anchor_var,
-                      gt_box,
+                      gt_boxes,
+                      is_crowd,
+                      im_info,
                       rpn_batch_size_per_im=256,
-                      fg_fraction=0.25,
+                      rpn_straddle_thresh=0.0,
+                      rpn_fg_fraction=0.5,
                       rpn_positive_overlap=0.7,
-                      rpn_negative_overlap=0.3):
+                      rpn_negative_overlap=0.3,
+                      use_random=True):
     """
     ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
 
@@ -83,14 +80,13 @@ def rpn_target_assign(loc,
     the positive anchors.
 
     Args:
-        loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
-        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
+        cls_logits(Variable): A 3-D Tensor with shape [N, M, 1] represents the
+            predicted confidence predictions. N is the batch size, 1 is the
+            frontground and background sigmoid, M is number of bounding boxes.
         anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax],
             [xmin, ymin] is the left top coordinate of the anchor box,
@@ -99,11 +95,16 @@ def rpn_target_assign(loc,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
+        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+        3 is the height, width and scale.
         rpn_batch_size_per_im(int): Total number of RPN examples per image.
-        fg_fraction(float): Target fraction of RoI minibatch that is labeled
+        rpn_straddle_thresh(float): Remove RPN anchors that go outside the image
+            by straddle_thresh pixels.
+        rpn_fg_fraction(float): Target fraction of RoI minibatch that is labeled
             foreground (i.e. class > 0), 0-th class is background.
         rpn_positive_overlap(float): Minimum overlap required between an anchor
             and ground-truth box for the (anchor, gt box) pair to be a positive
@@ -129,45 +130,48 @@ def rpn_target_assign(loc,
     Examples:
         .. code-block:: python
 
-        loc = layers.data(name='location', shape=[2, 80],
+        bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
                           append_batch_size=False, dtype='float32')
-        scores = layers.data(name='scores', shape=[2, 40],
+        cls_logits = layers.data(name='cls_logits', shape=[100, 1],
                           append_batch_size=False, dtype='float32')
         anchor_box = layers.data(name='anchor_box', shape=[20, 4],
                           append_batch_size=False, dtype='float32')
-        gt_box = layers.data(name='gt_box', shape=[10, 4],
+        gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
         loc_pred, score_pred, loc_target, score_target =
-            fluid.layers.detection_output(loc=location,
-                                          scores=scores,
+            fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
+                                          cls_logits=cls_logits,
                                           anchor_box=anchor_box,
-                                          gt_box=gt_box)
+                                          gt_boxes=gt_boxes)
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
-    # Compute overlaps between the prior boxes and the gt boxes overlaps
-    iou = iou_similarity(x=gt_box, y=anchor_box)
     # Assign target label to anchors
     loc_index = helper.create_tmp_variable(dtype='int32')
     score_index = helper.create_tmp_variable(dtype='int32')
-    target_label = helper.create_tmp_variable(dtype='int64')
+    target_label = helper.create_tmp_variable(dtype='int32')
     target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
-        inputs={'Anchor': anchor_box,
-                'GtBox': gt_box,
-                'DistMat': iou},
+        inputs={
+            'Anchor': anchor_box,
+            'GtBoxes': gt_boxes,
+            'IsCrowd': is_crowd,
+            'ImInfo': im_info
+        },
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
             'TargetLabel': target_label,
-            'TargetBBox': target_bbox,
+            'TargetBBox': target_bbox
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_straddle_thresh': rpn_straddle_thresh,
             'rpn_positive_overlap': rpn_positive_overlap,
             'rpn_negative_overlap': rpn_negative_overlap,
-            'fg_fraction': fg_fraction
+            'rpn_fg_fraction': rpn_fg_fraction,
+            'use_random': use_random
         })
 
     loc_index.stop_gradient = True
@@ -175,12 +179,12 @@ def rpn_target_assign(loc,
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
 
-    scores = nn.reshape(x=scores, shape=(-1, 1))
-    loc = nn.reshape(x=loc, shape=(-1, 4))
-    predicted_scores = nn.gather(scores, score_index)
-    predicted_location = nn.gather(loc, loc_index)
+    cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
+    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = nn.gather(cls_logits, score_index)
+    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_scores, predicted_location, target_label, target_bbox
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox
 
 
 def detection_output(loc,
@@ -272,7 +276,7 @@ def detection_output(loc,
         target_box=loc,
         code_type='decode_center_size')
     compile_shape = scores.shape
-    run_shape = ops.shape(scores)
+    run_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
     scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
@@ -294,6 +298,101 @@ def detection_output(loc,
         })
     nmsed_outs.stop_gradient = True
     return nmsed_outs
+
+
+@templatedoc()
+def iou_similarity(x, y, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper("iou_similarity", **locals())
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="iou_similarity",
+        inputs={"X": x,
+                "Y": y},
+        attrs={},
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def box_coder(prior_box,
+              prior_box_var,
+              target_box,
+              code_type="encode_center_size",
+              box_normalized=True,
+              name=None):
+    """
+    ${comment}
+
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        code_type(${code_type_type}): ${code_type_comment}
+        box_normalized(${box_normalized_type}): ${box_normalized_comment}
+
+    Returns:
+        output_box(${output_box_type}): ${output_box_comment}
+    """
+    helper = LayerHelper("box_coder", **locals())
+
+    if name is None:
+        output_box = helper.create_tmp_variable(dtype=prior_box.dtype)
+    else:
+        output_box = helper.create_variable(
+            name=name, dtype=prior_box.dtype, persistable=False)
+
+    helper.append_op(
+        type="box_coder",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box
+        },
+        attrs={"code_type": code_type,
+               "box_normalized": box_normalized},
+        outputs={"OutputBox": output_box})
+    return output_box
+
+
+@templatedoc()
+def polygon_box_transform(input, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(${input_type}): ${input_comment}
+
+    Returns:
+        output(${output_type}): ${output_comment}
+    """
+    helper = LayerHelper("polygon_box_transform", **locals())
+    if name is None:
+        output = helper.create_tmp_variable(dtype=input.dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=prior_box.input, persistable=False)
+
+    helper.append_op(
+        type="polygon_box_transform",
+        inputs={"Input": input},
+        attrs={},
+        outputs={"Output": output})
+    return output
 
 
 @templatedoc()
@@ -685,7 +784,7 @@ def ssd_loss(location,
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
-    conf_shape = ops.shape(confidence)
+    conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
         return nn.flatten(x=var, axis=2)
@@ -712,11 +811,10 @@ def ssd_loss(location,
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
+    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape.stop_gradient = True
     conf_loss = nn.reshape(
-        x=conf_loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+        x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
@@ -785,11 +883,7 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(
-        x=loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+    loss = nn.reshape(x=loss, shape=(num, num_prior), actual_shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -1256,17 +1350,67 @@ def anchor_generator(input,
     return anchor, var
 
 
+def roi_perspective_transform(input,
+                              rois,
+                              transformed_height,
+                              transformed_width,
+                              spatial_scale=1.0):
+    """
+    ROI perspective transform op.
+
+    Args:
+        input (Variable): The input of ROIPerspectiveTransformOp. The format of 
+                          input tensor is NCHW. Where N is batch size, C is the
+                          number of input channels, H is the height of the feature,
+                          and W is the width of the feature.
+        rois (Variable):  ROIs (Regions of Interest) to be transformed. It should be
+                          a 2-D LoDTensor of shape (num_rois, 8). Given as 
+                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
+                          top left coordinates, and (x2, y2) is the top right 
+                          coordinates, and (x3, y3) is the bottom right coordinates, 
+                          and (x4, y4) is the bottom left coordinates.
+        transformed_height (integer): The height of transformed output.
+        transformed_height (integer): The width of transformed output.
+        spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
+
+    Returns:
+        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape 
+                  (num_rois, channels, transformed_h, transformed_w).
+
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.roi_perspective_transform(input, rois, 7, 7, 1.0)
+    """
+    helper = LayerHelper('roi_perspective_transform', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="roi_perspective_transform",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": out},
+        attrs={
+            "transformed_height": transformed_height,
+            "transformed_width": transformed_width,
+            "spatial_scale": spatial_scale
+        })
+    return out
+
+
 def generate_proposal_labels(rpn_rois,
                              gt_classes,
+                             is_crowd,
                              gt_boxes,
-                             im_scales,
+                             im_info,
                              batch_size_per_im=256,
                              fg_fraction=0.25,
                              fg_thresh=0.25,
                              bg_thresh_hi=0.5,
                              bg_thresh_lo=0.0,
                              bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-                             class_nums=None):
+                             class_nums=None,
+                             use_random=True):
     """
     ** Generate proposal labels Faster-RCNN **
     TODO(buxingyuan): Add Document
@@ -1285,8 +1429,9 @@ def generate_proposal_labels(rpn_rois,
         inputs={
             'RpnRois': rpn_rois,
             'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
             'GtBoxes': gt_boxes,
-            'ImScales': im_scales
+            'ImInfo': im_info
         },
         outputs={
             'Rois': rois,
@@ -1302,7 +1447,8 @@ def generate_proposal_labels(rpn_rois,
             'bg_thresh_hi': bg_thresh_hi,
             'bg_thresh_lo': bg_thresh_lo,
             'bbox_reg_weights': bbox_reg_weights,
-            'class_nums': class_nums
+            'class_nums': class_nums,
+            'use_random': use_random
         })
 
     rois.stop_gradient = True

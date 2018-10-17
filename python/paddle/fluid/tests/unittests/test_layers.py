@@ -194,6 +194,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_expand(x=x, y=y, ref_level=1))
         print(str(program))
 
+    def test_sequence_unpad(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10, 5], dtype='float32')
+            length = layers.data(name='length', shape=[1], dtype='int64')
+            self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
+        print(str(program))
+
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
@@ -382,6 +390,43 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_sequence_scatter(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                shape=[3, 6],
+                append_batch_size=False,
+                dtype='float32')
+            idx = layers.data(
+                name='idx',
+                shape=[12, 1],
+                append_batch_size=False,
+                dtype='int32',
+                lod_level=1)
+            updates = layers.data(
+                name='updates',
+                shape=[12, 1],
+                append_batch_size=False,
+                dtype='float32',
+                lod_level=1)
+            out = layers.sequence_scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sequence_slice(self):
+        program = Program()
+        with program_guard(program):
+            import numpy as np
+            seqs = layers.data(
+                name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            offset = layers.assign(input=np.array([[0, 1]]).astype('int32'))
+            length = layers.assign(input=np.array([[2, 1]]).astype('int32'))
+            out = layers.sequence_slice(
+                input=seqs, offset=offset, length=length)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_lod_reset(self):
         program = Program()
         with program_guard(program):
@@ -517,7 +562,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
-            out = layers.shape(input, name="shape")
+            out = layers.shape(input)
             self.assertIsNotNone(out)
         print(str(program))
 
@@ -549,6 +594,168 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_brelu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.brelu(input, t_min=1.0, t_max=20.0, name='brelu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_leaky_relu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.leaky_relu(input, alpha=0.1, name='leaky_relu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_soft_relu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.soft_relu(input, threshold=30.0, name='soft_relu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sigmoid(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.sigmoid(input, name='sigmoid')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_logsigmoid(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.logsigmoid(input, name='logsigmoid')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_exp(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.exp(input, name='exp')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_tanh(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.tanh(input, name='tanh')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_tanh_shrink(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.tanh_shrink(input, name='tanh_shrink')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sqrt(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.sqrt(input, name='sqrt')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_abs(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.abs(input, name='abs')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_ceil(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.ceil(input, name='ceil')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_floor(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.floor(input, name='floor')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_cos(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.cos(input, name='cos')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sin(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.sin(input, name='sin')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_round(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.round(input, name='round')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_reciprocal(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.reciprocal(input, name='reciprocal')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_square(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.square(input, name='square')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_softplus(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.softplus(input, name='softplus')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_softsign(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.softsign(input, name='softsign')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_roi_perspective_transform(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[8], dtype="float32", lod_level=1)
+            output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_sequence_enumerate(self):
         program = Program()
         with program_guard(program):
@@ -564,6 +771,89 @@ class TestBook(unittest.TestCase):
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
+
+    def test_expand(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="input", shape=[10], dtype='int32')
+            out = layers.expand(x, [1, 2])
+        print(str(program))
+
+    def test_uniform_random_batch_size_like(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_gaussian_random(self):
+        program = Program()
+        with program_guard(program):
+            out = layers.gaussian_random(shape=[20, 30])
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sampling_id(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name="X",
+                shape=[13, 11],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.sampling_id(x)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_gaussian_random_batch_size_like(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.gaussian_random_batch_size_like(
+                input, shape=[-1, 11], mean=1.0, std=2.0)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sum(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.sum(input)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_slice(self):
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        axes = [0, 1, 2]
+
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+
+    def test_softshrink(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.softshrink(input, name='softshrink')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def iou_similarity(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[16], dtype="float32")
+            y = layers.data(name="y", shape=[16], dtype="float32")
+            out = layers.iou_similarity(x, y, name='iou_similarity')
+            self.assertIsNotNone(out)
+        print(str(program))
 
 
 if __name__ == '__main__':

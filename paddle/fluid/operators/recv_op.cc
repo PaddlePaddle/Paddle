@@ -45,12 +45,15 @@ class RecvOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
+    std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
+      rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
     }
     if (sync_mode) {
-      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      }
     }
   }
 };

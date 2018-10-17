@@ -59,40 +59,32 @@ GRPCClient::~GRPCClient() {
     }
     channels_.clear();
   }
-
   client_thread_->join();
 }
 
-bool GRPCClient::AsyncSendVar(const std::string& ep,
-                              const platform::DeviceContext& ctx,
-                              const framework::Scope& scope,
-                              const std::string& var_name, int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
+                                      const platform::DeviceContext& ctx,
+                                      const framework::Scope& scope,
+                                      const std::string& var_name,
+                                      int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
+  SendProcessor* s = new SendProcessor(ch);
+  VarHandlePtr h(new VarHandle(ep, "Send", var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
-                      this] {
+  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, this] {
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
-    // varhandle
-    VarHandle var_h;
-    var_h.ep = ep_val;
-    var_h.scope = p_scope;
-    var_h.name = var_name_val;
-    var_h.ctx = p_ctx;
-    var_h.method = "Send";
-
-    VLOG(3) << var_h.String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
-    SendProcessor* s = new SendProcessor(ch);
-    s->Prepare(var_h, time_out);
     s->response_call_back_ = nullptr;
 
     auto call = s->stub_g_.PrepareUnaryCall(
@@ -102,15 +94,15 @@ bool GRPCClient::AsyncSendVar(const std::string& ep,
   });
   req_count_++;
 
-  return true;
+  return h;
 }
 
 void ProcGetResponse(const VarHandle& var_h,
                      const ::grpc::ByteBuffer& ret_msg) {
   framework::Variable* outvar = nullptr;
-  // get response's trainer_id is not useful
+  // get response's trainer_id is not used
   int trainer_id;
-  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar,
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx(), var_h.scope(), &outvar,
                             &trainer_id);
 }
 
@@ -122,18 +114,21 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-bool GRPCClient::AsyncGetVar(const std::string& ep,
-                             const platform::DeviceContext& ctx,
-                             const framework::Scope& scope,
-                             const std::string& var_name, int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
+                                     const platform::DeviceContext& ctx,
+                                     const framework::Scope& scope,
+                                     const std::string& var_name,
+                                     int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
+  GetProcessor* s = new GetProcessor(ch);
+  VarHandlePtr h(new VarHandle(ep, "Get", var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, ch,
-                      this] {
+  framework::AsyncIO([var_name_val, s, this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -141,19 +136,9 @@ bool GRPCClient::AsyncGetVar(const std::string& ep,
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    // var handle
-    VarHandle var_h;
-    var_h.ep = ep_val;
-    var_h.scope = p_scope;
-    var_h.name = var_name_val;
-    var_h.ctx = p_ctx;
-    var_h.method = "Get";
-
-    VLOG(3) << var_h.String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
-    GetProcessor* s = new GetProcessor(ch);
-    s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
     auto call = s->stub_g_.PrepareUnaryCall(
@@ -164,42 +149,36 @@ bool GRPCClient::AsyncGetVar(const std::string& ep,
 
   req_count_++;
 
-  return true;
+  return h;
 }
 
-bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
-                                  const platform::DeviceContext& ctx,
-                                  const framework::Scope& scope,
-                                  const std::string& in_var_name,
-                                  const std::string& out_var_name,
-                                  int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
+                                          const platform::DeviceContext& ctx,
+                                          const framework::Scope& scope,
+                                          const std::string& in_var_name,
+                                          const std::string& out_var_name,
+                                          int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
   const std::string out_var_name_val = out_var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
+  GetProcessor* s = new GetProcessor(ch);
+  VarHandlePtr h(
+      new VarHandle(ep, "Prefetch", out_var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      time_out, ch, this] {
+                      s, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
 
-    // var handle
-    VarHandle var_h;
-    var_h.ep = ep_val;
-    var_h.scope = p_scope;
-    var_h.name = out_var_name_val;
-    var_h.ctx = p_ctx;
-    var_h.method = "Prefetch";
-
-    VLOG(3) << var_h.String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
-    GetProcessor* s = new GetProcessor(ch);
-    s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
     auto call = s->stub_g_.PrepareUnaryCall(
@@ -210,56 +189,68 @@ bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
   });
 
   req_count_++;
-  return true;
+  return h;
 }
 
-void GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
-                                       int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
+                                               int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  s->Prepare(time_out);
+  VarHandlePtr h(new VarHandle(ep, "BatchBarrier", BATCH_BARRIER_MESSAGE,
+                               nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return h;
 }
 
-void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
-                                       int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
+                                               int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
-  s->Prepare(time_out);
+  VarHandlePtr h(new VarHandle(ep, "FetchBarrier", FETCH_BARRIER_MESSAGE,
+                               nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return h;
 }
 
-void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
+                                           int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  s->Prepare(time_out);
+  VarHandlePtr h(
+      new VarHandle(ep, "SendComplete", COMPLETE_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(COMPLETE_MESSAGE);
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return h;
 }
 
-void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                       const std::string& dir,
-                                       int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                               const std::string& dir,
+                                               int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
-  s->Prepare(time_out);
+  VarHandlePtr h(new VarHandle(ep, "CheckPointNotify", CHECKPOINT_SAVE_MESSAGE,
+                               nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);
@@ -268,6 +259,7 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return h;
 }
 
 bool GRPCClient::Wait() {
@@ -280,32 +272,42 @@ void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
+  VLOG(3) << "GRPCClient Proceed begin";
   while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
     if (c->status_.ok()) {
-      VLOG(3) << c->var_h_.String() << " process";
+      VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      LOG(ERROR) << c->var_h_.String()
+      LOG(ERROR) << c->GetVarHandlePtr()->String()
                  << " meets grpc error:" << c->status_.error_message();
       {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
       }
-      sync_cond_.notify_all();
+      c->Finish(false);
     } else {
-      LOG(FATAL) << c->var_h_.String()
+      LOG(FATAL) << c->GetVarHandlePtr()->String()
                  << " meets grpc error:" << c->status_.error_message();
+      c->Finish(false);
     }
-    delete c;
+
+    bool notify = false;
     {
       std::lock_guard<std::mutex> lk(sync_mutex_);
       req_count_--;
+      notify = (req_count_ <= 0 || !c->status_.ok());
     }
-    sync_cond_.notify_all();
+
+    delete c;
+
+    if (notify) {
+      sync_cond_.notify_all();
+    }
   }
+  VLOG(3) << "GRPCClient Proceed end";
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {

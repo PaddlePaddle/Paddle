@@ -16,16 +16,33 @@
 
 #include <glog/logging.h>
 #include <sys/time.h>
-#include <algorithm>
+#include <chrono>  // NOLINT
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle_inference_api.h"
 
 namespace paddle {
 namespace inference {
+
+// Timer for timer
+class Timer {
+ public:
+  std::chrono::high_resolution_clock::time_point start;
+  std::chrono::high_resolution_clock::time_point startu;
+
+  void tic() { start = std::chrono::high_resolution_clock::now(); }
+  double toc() {
+    startu = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span =
+        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
+                                                                  start);
+    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
+    return used_time_ms;
+  }
+};
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -75,12 +92,16 @@ std::string to_string<std::vector<std::vector<float>>>(
     const std::vector<std::vector<std::vector<float>>> &vec);
 
 template <typename T>
+int VecReduceToInt(const std::vector<T> &v) {
+  return std::accumulate(v.begin(), v.end(), 1, [](T a, T b) { return a * b; });
+}
+
+template <typename T>
 static void TensorAssignData(PaddleTensor *tensor,
                              const std::vector<std::vector<T>> &data) {
   // Assign buffer
-  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1,
-                            [](int a, int b) { return a * b; });
-  tensor->data.Resize(sizeof(T) * dim);
+  int num_elems = VecReduceToInt(tensor->shape);
+  tensor->data.Resize(sizeof(T) * num_elems);
   int c = 0;
   for (const auto &f : data) {
     for (T v : f) {
@@ -89,7 +110,21 @@ static void TensorAssignData(PaddleTensor *tensor,
   }
 }
 
-std::string DescribeTensor(const PaddleTensor &tensor) {
+template <typename T>
+static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                    const std::vector<std::vector<T>> &data) {
+  int size{0};
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  int c = 0;
+  for (const auto &f : data) {
+    for (T v : f) {
+      ptr[c++] = v;
+    }
+  }
+  return size;
+}
+
+static std::string DescribeTensor(const PaddleTensor &tensor) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";
@@ -113,8 +148,7 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   os << "\n";
   os << " - data: ";
 
-  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
-                            [](int a, int b) { return a * b; });
+  int dim = VecReduceToInt(tensor.shape);
   for (int i = 0; i < dim; i++) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
@@ -122,11 +156,17 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   return os.str();
 }
 
-void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-               double latency) {
+static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+                      double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
             << ", latency: " << latency << "ms ======";
+  if (epoch > 1) {
+    int samples = batch_size * epoch;
+    LOG(INFO) << "====== sample number: " << samples
+              << ", average latency of each sample: " << latency / samples
+              << "ms ======";
+  }
 }
 
 }  // namespace inference

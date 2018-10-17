@@ -28,10 +28,20 @@ cc_library(data_balance_op_handle SRCS data_balance_op_handle.cc DEPS op_handle_
 cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor)
 cc_library(fuse_vars_op_handle SRCS fuse_vars_op_handle.cc DEPS op_handle_base scope)
 
+if(WITH_GPU)
+  cc_library(reference_count_pass SRCS reference_count_pass.cc DEPS computation_op_handle scale_loss_grad_op_handle rpc_op_handle
+          all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle graph graph_helper pass)
+endif()
+
 cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_devices_helper computation_op_handle
         scale_loss_grad_op_handle rpc_op_handle all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle)
 
-cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto)
+if(WITH_GPU)
+  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto reference_count_pass)
+else()
+  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto)
+endif()
+
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
         simple_threadpool device_context)
 
@@ -44,3 +54,8 @@ cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_execu
 #        device_context reduce_op_handle )
 cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc
         DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool device_context)
+
+cc_library(build_strategy SRCS build_strategy.cc DEPS
+        graph_viz_pass multi_devices_graph_pass
+        multi_devices_graph_print_pass multi_devices_graph_check_pass
+        fuse_elewise_add_act_pass)

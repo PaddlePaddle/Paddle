@@ -137,8 +137,10 @@ def parse_args():
         action='store_true',
         help='If set, keep the random seed and do not shuffle the data.')
     parser.add_argument(
-        '--use_lars',
-        action='store_true',
-        help='If set, use lars for optimizers, ONLY support resnet module.')
+        '--reduce_strategy',
+        type=str,
+        choices=['reduce', 'all_reduce'],
+        default='all_reduce',
+        help='Specify the reduce strategy, can be reduce, all_reduce')
     args = parser.parse_args()
     return args

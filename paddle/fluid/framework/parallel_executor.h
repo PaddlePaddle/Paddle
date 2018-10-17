@@ -14,18 +14,24 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/fluid/framework/details/build_strategy.h>
+#include <atomic>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/details/reference_count_pass.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -66,10 +72,27 @@ class ParallelExecutor {
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
 
+ private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
- private:
-  ParallelExecutorPrivate *member_;
+  std::unique_ptr<ParallelExecutorPrivate> member_;
+
+#ifdef PADDLE_WITH_CUDA
+  // ref_cnts_ is only initialized when ParallelExecutor constructs, and then
+  // keeps unchanged
+  // Before each iteration, cur_ref_cnts_ is reset to ref_cnts_
+  details::DeviceReferenceCountMap ref_cnts_;
+  details::AtomicDeviceReferenceCountMap cur_ref_cnts_;
+  details::DeviceGarbageCollectorMap gcs_;
+
+  void ResetReferenceCount() {
+    for (auto &pair1 : ref_cnts_) {
+      for (auto &pair2 : *(pair1.second)) {
+        (*(cur_ref_cnts_[pair1.first]))[pair2.first] = pair2.second;
+      }
+    }
+  }
+#endif
 };
 
 }  // namespace framework

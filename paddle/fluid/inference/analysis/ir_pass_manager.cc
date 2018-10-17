@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
@@ -37,13 +38,16 @@ IRPassManager::IRPassManager(const ProgramDesc &program,
 void IRPassManager::Apply(const std::vector<std::string> &passes) {
   // Apply all the passes
   std::string pre_pass;
+  int pass_num = 0;
   for (const std::string &pass_name : passes) {
     PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass_name);
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     if (pass_name == "graph_viz_pass") {
-      std::string dot_file_path =
-          "ir_" + (pre_pass.empty() ? "origin" : pre_pass) + ".dot";
+      std::string dot_file_path = std::to_string(pass_num) + "_ir_" +
+                                  (pre_pass.empty() ? "origin" : pre_pass) +
+                                  ".dot";
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
+      pass_num++;
     }
     graph_ = pass->Apply(std::move(graph_));
     pre_pass = pass_name;

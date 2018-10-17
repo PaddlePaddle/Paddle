@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -21,7 +22,7 @@ namespace operators {
  */
 template <typename T>
 inline void BoxToDelta(const int box_num, const framework::Tensor& ex_boxes,
-                       const framework::Tensor& gt_boxes, const T* weights,
+                       const framework::Tensor& gt_boxes, const float* weights,
                        const bool normalized, framework::Tensor* box_delta) {
   auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
   auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
@@ -59,6 +60,36 @@ void Gather(const T* in, const int in_stride, const int* index, const int num,
   for (int i = 0; i < num; ++i) {
     int id = index[i];
     memcpy(out + i * in_stride, in + id * in_stride, stride_bytes);
+  }
+}
+
+template <typename T>
+void BboxOverlaps(const framework::Tensor& r_boxes,
+                  const framework::Tensor& c_boxes,
+                  framework::Tensor* overlaps) {
+  auto r_boxes_et = framework::EigenTensor<T, 2>::From(r_boxes);
+  auto c_boxes_et = framework::EigenTensor<T, 2>::From(c_boxes);
+  auto overlaps_et = framework::EigenTensor<T, 2>::From(*overlaps);
+  int r_num = r_boxes.dims()[0];
+  int c_num = c_boxes.dims()[0];
+  auto zero = static_cast<T>(0.0);
+  T r_box_area, c_box_area, x_min, y_min, x_max, y_max, inter_w, inter_h,
+      inter_area;
+  for (int i = 0; i < r_num; ++i) {
+    r_box_area = (r_boxes_et(i, 2) - r_boxes_et(i, 0) + 1) *
+                 (r_boxes_et(i, 3) - r_boxes_et(i, 1) + 1);
+    for (int j = 0; j < c_num; ++j) {
+      c_box_area = (c_boxes_et(j, 2) - c_boxes_et(j, 0) + 1) *
+                   (c_boxes_et(j, 3) - c_boxes_et(j, 1) + 1);
+      x_min = std::max(r_boxes_et(i, 0), c_boxes_et(j, 0));
+      y_min = std::max(r_boxes_et(i, 1), c_boxes_et(j, 1));
+      x_max = std::min(r_boxes_et(i, 2), c_boxes_et(j, 2));
+      y_max = std::min(r_boxes_et(i, 3), c_boxes_et(j, 3));
+      inter_w = std::max(x_max - x_min + 1, zero);
+      inter_h = std::max(y_max - y_min + 1, zero);
+      inter_area = inter_w * inter_h;
+      overlaps_et(i, j) = inter_area / (r_box_area + c_box_area - inter_area);
+    }
   }
 }
 

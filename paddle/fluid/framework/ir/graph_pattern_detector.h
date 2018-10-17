@@ -95,6 +95,7 @@ struct PDNode {
   PDNode* assert_is_op();
   PDNode* assert_is_op(const std::string& op_type);
   PDNode* assert_is_var();
+  PDNode* assert_is_not_ctrl_var();
   PDNode* assert_var_not_persistable();
   PDNode* assert_is_persistable_var();
   PDNode* assert_is_op_output(const std::string& op_type);
@@ -112,6 +113,20 @@ struct PDNode {
   PDNode* assert_op_has_n_inputs(const std::string& op_type, size_t n);
   PDNode* assert_op_has_n_outputs(const std::string& op_type, size_t n);
   PDNode* assert_more(teller_t&& teller);
+
+  PDNode* assert_is_ops_output(const std::unordered_set<std::string>& op_types);
+  PDNode* assert_is_ops(const std::unordered_set<std::string>& op_types);
+  PDNode* assert_is_ops_output(const std::unordered_set<std::string>& op_types,
+                               const std::string& argument);
+  PDNode* assert_is_ops_nth_input(
+      const std::unordered_set<std::string>& op_types,
+      const std::string& argument, int nth);
+  PDNode* assert_is_ops_input(const std::unordered_set<std::string>& op_types);
+  PDNode* assert_is_ops_input(const std::unordered_set<std::string>& op_types,
+                              const std::string& argument);
+  PDNode* assert_is_ops_nth_output(
+      const std::unordered_set<std::string>& op_types,
+      const std::string& argument, int nth);
 
  private:
   PDNode(PDPattern* pattern, const std::string& name = "",
@@ -360,6 +375,65 @@ struct PatternBase {
   size_t id_;
 };
 
+// Conv with batch norm
+// op: conv + (elementwise_add +) batch_norm
+// named nodes:
+// conv_weight, conv_out, conv,
+// bn_x, bn_scale, bn_bias, bn_mean,  bn_variance,
+// bn_batch_norm, bn_y, bn_mean_out, bn_variance_out,
+// bn_saved_mean, bn_saved_variance
+struct ConvBN : public PatternBase {
+  ConvBN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bn") {}
+
+  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(batch_norm);
+  PATTERN_DECL_NODE(eltwise);  // ELEMENTWISE_ADD
+  // CONV inputs
+  PATTERN_DECL_NODE(conv_weight);  // Filter
+  // CONV outputs
+  PATTERN_DECL_NODE(conv_out);  // tmp
+  // ELTWISE inputs
+  PATTERN_DECL_NODE(eltwise_y_in);
+  // ELTWISE outputs
+  PATTERN_DECL_NODE(eltwise_out);  // tmp
+  // BN inputs
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_mean);
+  PATTERN_DECL_NODE(bn_variance);
+  // BN outputs
+  PATTERN_DECL_NODE(bn_out);  // Out
+  PATTERN_DECL_NODE(bn_mean_out);
+  PATTERN_DECL_NODE(bn_variance_out);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_saved_variance);
+};
+
+// CONV with ReLU
+// op: conv + relu
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// relu_out, relu
+struct ConvReLU : public PatternBase {
+  ConvReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_relu") {}
+
+  PDNode* operator()(PDNode* conv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(relu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(relu_out);
+};
+
 // FC with bias
 // op: mul + elementwise_add
 // named nodes:
@@ -379,6 +453,23 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(w);
   PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
   PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(Out);
+};
+
+// Embedding
+struct Embedding : public PatternBase {
+  Embedding(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "embedding") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(lookup_table);
+  // Inputs
+  //
+  PATTERN_DECL_NODE(Ids);
+  PATTERN_DECL_NODE(W);  // embeddings
+  // Outputs
   PATTERN_DECL_NODE(Out);
 };
 
@@ -407,7 +498,7 @@ struct LSTM : public PatternBase {
 
 struct GRU : public PatternBase {
   GRU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "lstm") {}
+      : PatternBase(pattern, name_scope, "gru") {}
 
   PDNode* operator()(PDNode* x);
 
@@ -425,12 +516,80 @@ struct GRU : public PatternBase {
   PATTERN_DECL_NODE(Hidden);
 };
 
+// The following patterns are used to fuse elewise_add and act
+// formula: act(ele_add(x, y))
+// op: elementwise_add + act
+// named nodes: elementwise_add, act
+//              ele_x, ele_y, elewise_add_out, act_out
+struct ElewiseAddAct : public PatternBase {
+  ElewiseAddAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elewise_add_act") {}
+
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add);
+  PATTERN_DECL_NODE(act);
+  // declare variable node's name
+  PATTERN_DECL_NODE(elewise_add_out);
+  PATTERN_DECL_NODE(ele_y);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// formula: ele_add(x, act(y))
+// op: elementwise_add + act
+// named nodes: elementwise_add, act
+//              act_in, act_out, ele_x, elewise_add_out
+struct ActElewiseAdd : public PatternBase {
+  ActElewiseAdd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "act_elewise_add") {}
+
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(ele_add);
+  // declare variable node's name
+  PATTERN_DECL_NODE(act_out);
+  PATTERN_DECL_NODE(ele_x);
+  PATTERN_DECL_NODE(elewise_add_out);
+};
+
+// the backward of act(ele_add(x, y))
+// the act is inplace.
+// op: elementwise_add_grad + act_grad
+// named nodes: elementwise_add_grad, act_grad
+//              act_out, act_out_g, ele_y, d_itermediate_out, d_ele_x, d_ele_y
+struct ElewiseAddActInplaceGrad : public PatternBase {
+  ElewiseAddActInplaceGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elewise_add_act_grad1") {}
+
+  // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
+  // ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(act_grad);
+  PATTERN_DECL_NODE(ele_add_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(act_out);
+  PATTERN_DECL_NODE(d_itermediate_out);
+  PATTERN_DECL_NODE(d_ele_x);
+  PATTERN_DECL_NODE(d_ele_y);
+  PATTERN_DECL_NODE(ele_y);
+};
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
 #define IR_NODE_LINK_TO(a, b) \
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
+
+// Set the out_var as the output of the op
+#define IR_OP_VAR_LINK(op, out_var) \
+  op->outputs.push_back(out_var);   \
+  out_var->inputs.clear();          \
+  out_var->inputs.push_back(op);
 
 }  // namespace ir
 }  // namespace framework

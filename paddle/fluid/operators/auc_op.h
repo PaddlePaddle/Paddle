@@ -32,7 +32,9 @@ class AucKernel : public framework::OpKernel<T> {
 
     std::string curve = ctx.Attr<std::string>("curve");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
+    // buckets contain numbers from 0 to num_thresholds
     int num_pred_buckets = num_thresholds + 1;
+    int slide_steps = ctx.Attr<int>("slide_steps");
 
     // Only use output var for now, make sure it's persistable and
     // not cleaned up for each batch.
@@ -40,16 +42,19 @@ class AucKernel : public framework::OpKernel<T> {
     auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
     auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
 
-    auto *stat_pos_data = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
-    auto *stat_neg_data = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
-    calcAuc(ctx, label, predict, stat_pos_data, stat_neg_data, num_thresholds,
-            auc);
+    auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
+    auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
 
-    auto *batch_auc = ctx.Output<Tensor>("BatchAUC");
-    std::vector<int64_t> stat_pos_batch(num_pred_buckets, 0);
-    std::vector<int64_t> stat_neg_batch(num_pred_buckets, 0);
-    calcAuc(ctx, label, predict, stat_pos_batch.data(), stat_neg_batch.data(),
-            num_thresholds, batch_auc);
+    std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
+    std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
+
+    auto stat_pos_calc = stat_pos_data.data();
+    auto stat_neg_calc = stat_neg_data.data();
+
+    statAuc(label, predict, num_pred_buckets, num_thresholds, slide_steps,
+            origin_stat_pos, origin_stat_neg, &stat_pos_calc, &stat_neg_calc);
+
+    calcAuc(ctx, stat_pos_calc, stat_neg_calc, num_thresholds, auc);
   }
 
  private:
@@ -58,28 +63,75 @@ class AucKernel : public framework::OpKernel<T> {
     return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
   }
 
-  inline static void calcAuc(const framework::ExecutionContext &ctx,
-                             const framework::Tensor *label,
+  inline static void statAuc(const framework::Tensor *label,
                              const framework::Tensor *predict,
-                             int64_t *stat_pos, int64_t *stat_neg,
-                             int num_thresholds,
-                             framework::Tensor *auc_tensor) {
+                             const int num_pred_buckets,
+                             const int num_thresholds, const int slide_steps,
+                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
+                             int64_t **stat_pos, int64_t **stat_neg) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
     const auto *label_data = label->data<int64_t>();
 
-    auto *auc = auc_tensor->mutable_data<double>(ctx.GetPlace());
-
     for (size_t i = 0; i < batch_size; i++) {
       uint32_t binIdx = static_cast<uint32_t>(
           inference_data[i * inference_width + 1] * num_thresholds);
       if (label_data[i]) {
-        stat_pos[binIdx] += 1.0;
+        (*stat_pos)[binIdx] += 1.0;
       } else {
-        stat_neg[binIdx] += 1.0;
+        (*stat_neg)[binIdx] += 1.0;
       }
     }
+
+    int bucket_length = num_pred_buckets * sizeof(int64_t);
+
+    // will stat auc unlimited.
+    if (slide_steps == 0) {
+      for (int slide = 0; slide < num_pred_buckets; ++slide) {
+        origin_stat_pos[slide] += (*stat_pos)[slide];
+        origin_stat_neg[slide] += (*stat_neg)[slide];
+      }
+
+      *stat_pos = origin_stat_pos;
+      *stat_neg = origin_stat_neg;
+
+    } else {
+      for (int slide = 1; slide < slide_steps; ++slide) {
+        int dst_idx = (slide - 1) * num_pred_buckets;
+        int src_inx = slide * num_pred_buckets;
+        std::memcpy(origin_stat_pos + dst_idx, origin_stat_pos + src_inx,
+                    bucket_length);
+        std::memcpy(origin_stat_neg + dst_idx, origin_stat_neg + src_inx,
+                    bucket_length);
+      }
+
+      std::memcpy(origin_stat_pos + (slide_steps - 1) * num_pred_buckets,
+                  *stat_pos, bucket_length);
+      std::memcpy(origin_stat_neg + (slide_steps - 1) * num_pred_buckets,
+                  *stat_neg, bucket_length);
+
+      std::memset(*stat_pos, 0, bucket_length);
+      std::memset(*stat_neg, 0, bucket_length);
+
+      for (int slide = 0; slide < num_pred_buckets; ++slide) {
+        int stat_pos_steps = 0;
+        int stat_neg_steps = 0;
+        for (int step = 0; step < slide_steps; ++step) {
+          stat_pos_steps += origin_stat_pos[slide + step * num_pred_buckets];
+          stat_neg_steps += origin_stat_neg[slide + step * num_pred_buckets];
+        }
+        (*stat_pos)[slide] += stat_pos_steps;
+        (*stat_neg)[slide] += stat_neg_steps;
+      }
+    }
+  }
+
+  inline static void calcAuc(const framework::ExecutionContext &ctx,
+                             int64_t *stat_pos, int64_t *stat_neg,
+                             int num_thresholds,
+                             framework::Tensor *auc_tensor) {
+    auto *auc = auc_tensor->mutable_data<double>(ctx.GetPlace());
 
     *auc = 0.0f;
 
@@ -96,7 +148,6 @@ class AucKernel : public framework::OpKernel<T> {
       totPos += stat_pos[idx];
       totNeg += stat_neg[idx];
       *auc += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
-
       --idx;
     }
 

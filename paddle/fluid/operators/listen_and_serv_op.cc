@@ -59,17 +59,16 @@ static void ParallelExecuteBlocks(
     framework::ProgramDesc *program, framework::Scope *scope) {
   std::vector<std::future<void>> fs;
   for (size_t idx : parallel_blkids) {
-    fs.push_back(
-        framework::Async([&executor, &prepared, &program, &scope, idx]() {
-          int run_block = idx;  // thread local
-          try {
-            VLOG(3) << "running server block: " << run_block
-                    << "pointer: " << prepared[run_block].get();
-            executor->RunPreparedContext(prepared[run_block].get(), scope);
-          } catch (const std::exception &e) {
-            LOG(ERROR) << "run sub program error " << e.what();
-          }
-        }));
+    fs.push_back(framework::Async([&executor, &prepared, &scope, idx]() {
+      int run_block = idx;  // thread local
+      try {
+        VLOG(3) << "running server block: " << run_block
+                << "pointer: " << prepared[run_block].get();
+        executor->RunPreparedContext(prepared[run_block].get(), scope);
+      } catch (const std::exception &e) {
+        LOG(ERROR) << "run sub program error " << e.what();
+      }
+    }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
