@@ -59,13 +59,6 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
   // the lookup_table_grad_output_node's related lookup_table op
   bool IsRelatedEmbeddingOp(ir::Node* ctrl_dep_var_node,
                             ir::Node* lookup_table_grad_output_node) const;
-
-  static const std::string kGradSumOpType;
-  // TODO(minqiyang): only support sgd at current time, please add
-  // other optimizers later.
-  static const std::string kOptimizerType;
-  static const std::string kEmbeddingGradOpType;
-  static const std::string kEmbeddingOpType;
 };
 
 }  // namespace ir

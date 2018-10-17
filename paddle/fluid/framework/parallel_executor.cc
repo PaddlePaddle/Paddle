@@ -247,6 +247,7 @@ void ParallelExecutor::BCastParamsToDevices(
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+  auto start = std::chrono::system_clock::now();
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {
     ResetReferenceCount();
@@ -262,6 +263,9 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
+  auto end = std::chrono::system_clock::now();
+  std::chrono::duration<double> diff = end - start;
+  LOG(ERROR) << "run end, cost: " << diff.count();
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(

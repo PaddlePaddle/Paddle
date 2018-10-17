@@ -24,13 +24,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-const char LockFreeOptimizeEmbeddingPass::kGradSumOpType[] = "sum";
+const char kGradSumOpType[] = "sum";
 // TODO(minqiyang): only support sgd at current time, please add
 // other optimizers later.
-const char LockFreeOptimizeEmbeddingPass::kOptimizerType[] = "sgd";
-const char LockFreeOptimizeEmbeddingPass::kEmbeddingGradOpType[] =
-    "lookup_table_grad";
-const char LockFreeOptimizeEmbeddingPass::kEmbeddingOpType[] = "lookup_table";
+const char kOptimizerType[] = "sgd";
+const char kEmbeddingGradOpType[] = "lookup_table_grad";
+const char kEmbeddingOpType[] = "lookup_table";
 
 std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
