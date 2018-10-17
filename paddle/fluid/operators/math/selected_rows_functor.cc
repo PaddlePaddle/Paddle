@@ -233,8 +233,8 @@ template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_floating_point<T>::value &&
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
-                size_t data_len, const T* in, T* out) {
+elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
+                   size_t data_len, const T* in, T* out) {
   blas->AXPY(data_len, 1., in, out);
 }
 
@@ -242,8 +242,8 @@ template <typename DeviceContext, typename T>
 typename std::enable_if<
     !std::is_floating_point<T>::value &&
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
-                size_t data_len, const T* in, T* out) {
+elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
+                   size_t data_len, const T* in, T* out) {
   for (int64_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
@@ -308,7 +308,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
       for (size_t i = 0; i < input_rows.size(); i++) {
         size_t out_i = rows_to_id[input_rows[i]];
-        elementwise_add<platform::CPUDeviceContext, T>(
+        elementwise_add_to<platform::CPUDeviceContext, T>(
             context, &blas, static_cast<size_t>(input_width),
             &input_data[i * input_width], &out_data[out_i * input_width]);
       }
