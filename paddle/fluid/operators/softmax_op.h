@@ -37,8 +37,8 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     if (std::type_index(typeid(T)) ==
         std::type_index(typeid(platform::float16))) {
       PADDLE_THROW(
-                   "Softmax contains sum, which will lead to overflow in float16, "
-                   "please use the softmax_cudnn");
+          "Softmax contains sum, which will lead to overflow in float16, "
+          "please use the softmax_cudnn");
     }
 
     math::SoftmaxFunctor<DeviceContext, T>()(
