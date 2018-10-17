@@ -194,6 +194,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_expand(x=x, y=y, ref_level=1))
         print(str(program))
 
+    def test_sequence_unpad(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10, 5], dtype='float32')
+            length = layers.data(name='length', shape=[1], dtype='int64')
+            self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
+        print(str(program))
+
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
@@ -403,6 +411,19 @@ class TestBook(unittest.TestCase):
                 dtype='float32',
                 lod_level=1)
             out = layers.sequence_scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sequence_slice(self):
+        program = Program()
+        with program_guard(program):
+            import numpy as np
+            seqs = layers.data(
+                name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            offset = layers.assign(input=np.array([[0, 1]]).astype('int32'))
+            length = layers.assign(input=np.array([[2, 1]]).astype('int32'))
+            out = layers.sequence_slice(
+                input=seqs, offset=offset, length=length)
             self.assertIsNotNone(out)
         print(str(program))
 
