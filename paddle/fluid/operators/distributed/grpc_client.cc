@@ -98,7 +98,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
-    if (UNLIKELY(platform::IsProfileEnabled()) {
+    if (UNLIKELY(platform::IsProfileEnabled())) {
       h->Wait();
     }
   });
@@ -155,7 +155,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
-    if (UNLIKELY(platform::IsProfileEnabled()) {
+    if (UNLIKELY(platform::IsProfileEnabled())) {
       h->Wait();
     }
   });
@@ -204,7 +204,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
 
-    if (UNLIKELY(platform::IsProfileEnabled()) {
+    if (UNLIKELY(platform::IsProfileEnabled())) {
       h->Wait();
     }
   });
@@ -233,7 +233,7 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 
-  if (UNLIKELY(platform::IsProfileEnabled()) {
+  if (UNLIKELY(platform::IsProfileEnabled())) {
     h->Wait();
   }
 
@@ -259,7 +259,7 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 
-  if (UNLIKELY(platform::IsProfileEnabled()) {
+  if (UNLIKELY(platform::IsProfileEnabled())) {
     h->Wait();
   }
 
@@ -285,7 +285,7 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 
-  if (UNLIKELY(platform::IsProfileEnabled()) {
+  if (UNLIKELY(platform::IsProfileEnabled())) {
     h->Wait();
   }
 
@@ -315,7 +315,7 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 
-  if (UNLIKELY(platform::IsProfileEnabled()) {
+  if (UNLIKELY(platform::IsProfileEnabled())) {
     h->Wait();
   }
 
