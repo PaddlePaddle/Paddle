@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
 class AdadeltaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -31,6 +32,16 @@ class AdadeltaOp : public framework::OperatorWithKernel {
                    "Input(AvgSquaredGrad) of AdadeltaOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("AvgSquaredUpdate"),
                    "Input(AvgSquaredUpdate) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Grad").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of AdadeltaOp should not be null.");
@@ -56,6 +67,7 @@ class AdadeltaOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("AvgSquaredGradOut", param_dim);
     ctx->SetOutputDim("AvgSquaredUpdateOut", param_dim);
   }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
