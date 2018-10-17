@@ -36,7 +36,7 @@ void LodTensorArray2LodTensorVector(const framework::Scope &scope,
     auto &feed_input =
         *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
     feed_input.ShareDataWith(inx[i]);
-    res_names.push_back(var_name);
+    res_names->push_back(var_name);
   }
 }
 
@@ -54,7 +54,7 @@ void LodTensorVectorResizefromLodTensorArray(
         *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
     auto dims = inx[i].dims();
     feed_input.Resize(dims);
-    res_names.push_back(var_name);
+    res_names->push_back(var_name);
   }
 }
 
