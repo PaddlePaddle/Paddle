@@ -225,10 +225,27 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(
-      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
-      "Only kExclude is supported yet.");
-  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
+  bool use_mkldnn = config_._use_mkldnn;
+  switch (config_.ir_mode) {
+    case contrib::AnalysisConfig::IrPassMode::kExclude:
+      Analyzer()
+          .IncludeAllIrPasses()
+          .SetUseMkldnn(use_mkldnn)
+          .DisableIrPasses(use_mkldnn ? config_.ir_mkldnn_passes
+                                      : config_.ir_passes)
+          .Run(&argument_);
+      break;
+    case contrib::AnalysisConfig::IrPassMode::kInclude:
+      Analyzer()
+          .SetUseMkldnn(use_mkldnn)
+          .IncludeIrPasses(use_mkldnn ? config_.ir_mkldnn_passes
+                                      : config_.ir_passes)
+          .Run(&argument_);
+      break;
+    default:
+      LOG(ERROR) << "Only kExclude and kInclude modes are supoorted yet.";
+  }
 
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
