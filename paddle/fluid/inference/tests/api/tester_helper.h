@@ -35,7 +35,7 @@ DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
-DEFINE_bool(use_MKLDNN, true,
+DEFINE_bool(use_MKLDNN, false,
             "Running the inference program with mkldnn library.");
 
 namespace paddle {
