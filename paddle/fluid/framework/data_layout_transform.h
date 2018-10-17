@@ -62,6 +62,18 @@ inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
   return MKLDNNDataType::data_undef;
 }
 
+inline std::type_index MKLDNNToTypeIndex(const MKLDNNDataType data_type) {
+  static const std::map<MKLDNNDataType, std::type_index> dict{
+      {MKLDNNDataType::f32, std::type_index(typeid(float))},  // NOLINT
+      {MKLDNNDataType::s8, std::type_index(typeid(char))},    // NOLINT
+      {MKLDNNDataType::u8, std::type_index(typeid(unsigned char))},
+      {MKLDNNDataType::s16, std::type_index(typeid(int16_t))},
+      {MKLDNNDataType::s32, std::type_index(typeid(int32_t))}};
+  auto iter = dict.find(data_type);
+  if (iter != dict.end()) return iter->second;
+  return std::type_index(typeid(float));
+}
+
 #endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
