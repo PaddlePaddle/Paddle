@@ -74,9 +74,13 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
           framework::proto::VarType::SELECTED_ROWS) {
         block->FindRecursiveOrCreateVar(out_var).SetType(
             framework::proto::VarType::SELECTED_ROWS);
-      } else {
+      } else if (block->FindRecursiveOrCreateVar(input_var).GetType() ==
+                 framework::proto::VarType::LOD_TENSOR) {
         block->FindRecursiveOrCreateVar(out_var).SetType(
             framework::proto::VarType::LOD_TENSOR);
+      } else {
+        PADDLE_THROW(
+            "Only support LodTensor and SelectedRows, Unexpected Input Type.");
       }
     }
   }
@@ -135,5 +139,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(momentum, ops::MomentumOp, ops::MomentumOpMaker,
                   paddle::framework::EmptyGradOpMaker,
                   ops::MomentumOpInferVarType);
-REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpKernel<float>,
-                       ops::MomentumOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);
