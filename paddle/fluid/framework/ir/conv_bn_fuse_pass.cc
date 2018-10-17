@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -181,17 +183,9 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
         auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
                           eltwise_y_in_tensor->dims());
-        using EigenVectorArrayMap =
-            Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
-        using ConstEigenVectorArrayMap =
-            Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
-        EigenVectorArrayMap conv_bias_array(
-            conv_bias_tensor->mutable_data<float>(platform::CPUPlace()),
-            conv_bias_tensor->numel(), 1);
-        ConstEigenVectorArrayMap eltwise_y_in_array(
-            eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-            eltwise_y_in_tensor->numel(), 1);
-        conv_bias_array = conv_bias_array + eltwise_y_in_array;
+
+        auto eigen_conv_bias = EigenVector<float>::From(*conv_bias_tensor);
+        eigen_conv_bias += EigenVector<float>::From(*eltwise_y_in_tensor);
       } else {
         // add new conv_bias node
         conv->Op()->SetInput(
