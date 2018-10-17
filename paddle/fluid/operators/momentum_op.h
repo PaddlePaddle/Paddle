@@ -153,33 +153,6 @@ class DenseMomentumFunctor<T, NoNesterov> {
   }
 };
 
-// TODO(dzh): enhance speed use eigen
-// template<typename T>
-// class CPUSparseMomentumFunctor {
-// private:
-//   const T* p_;
-//   const T* g_;
-//   const T* v_;
-//   const T* lr_;
-//   const T mu_;
-//   const bool use_nesterov_;
-//   const int64_t* rows_;
-//   const int64_t row_numel_;
-//   const int64_t row_height_;
-//   T* p_out_;
-//   T* v_out_;
-
-// public:
-//   CPUSparseMomentumFunctor(const T* p, const T* g, const T* v, const T* lr,
-//   const T mu, const bool use_nesterov, const int64_t* rows, const int64_t
-//   row_numel, const int64_t row_height, T* p_out, T* v_out) :p_(p), g_(g),
-//   v_(v), lr_(lr), mu_(mu), rows_(rows), row_numel_(row_numel),
-//   row_height_(row_height), p_out_(p_out), v_out_(v_out) {}
-//   inline void operator()() {
-
-//   }
-// };
-
 template <typename T, typename UpdateMethod>
 class SparseMomentumFunctor;
 
@@ -367,7 +340,10 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
     } else {
-      PADDLE_THROW("Unsupported Variable Type of Grad");
+      PADDLE_THROW(
+          string::Sprintf("MomentumOp only supports LoDTensor or SelectedRows "
+                          "gradient, but the received Variable Type is %s",
+                          grad_var->Type().name()));
     }
   }
 };
