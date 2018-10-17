@@ -210,13 +210,6 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     }
   }
 
-  // for (Node* input_node : node->inputs) {
-  // LOG(ERROR) << "Input link: " << input_node->Name() << "_"
-  // << input_node->id() << " --> " << node->Name() << "_"
-  // << node->id();
-  // }
-  // }
-
   return graph;
 }
 
@@ -243,6 +236,8 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewOptimizerNode(
             std::vector<std::string> op_role_vars =
                 boost::get<std::vector<std::string>>(new_desc.GetAttr(
                     framework::OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+            // replace the second op role var, because the grad name was
+            // changed in new optimizer
             op_role_vars.pop_back();
             op_role_vars.push_back(lookup_table_grad_output->Name());
             for (std::string x : op_role_vars) {
@@ -253,11 +248,8 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewOptimizerNode(
                 op_role_vars);
             new_desc.SetType(optimizer_type);
 
-            new_desc.SetAttr(
-                framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
-                op_role_vars);
-
-            // set backward op's op role var
+            // set backward op's op role var, this will be used to
+            // set device_id in multi_device_pass
             lookup_table_grad->Op()->SetAttr(
                 framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
                 op_role_vars);
