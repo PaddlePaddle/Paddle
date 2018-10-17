@@ -15,11 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_lstm_compute.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/jit_kernel.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -219,121 +217,55 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 template <typename T>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
-#define INIT_VEC_FUNC                                                          \
-  std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand; \
-  auto& act_gate_str = ctx.Attr<std::string>("gate_activation");               \
-  auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
-  auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
-  if (platform::jit::MayIUse(platform::jit::avx)) {                            \
-    math::VecActivations<T, platform::jit::avx> act_functor;                   \
-    act_gate = act_functor(act_gate_str);                                      \
-    act_cell = act_functor(act_cell_str);                                      \
-    act_cand = act_functor(act_cand_str);                                      \
-  } else {                                                                     \
-    math::VecActivations<T, platform::jit::isa_any> act_functor;               \
-    act_gate = act_functor(act_gate_str);                                      \
-    act_cell = act_functor(act_cell_str);                                      \
-    act_cand = act_functor(act_cand_str);                                      \
-  }
+#define INIT_BASE_DEFINES                                   \
+  using DeviceContext = paddle::platform::CPUDeviceContext; \
+  auto* x = ctx.Input<LoDTensor>("X");                      \
+  auto* h0 = ctx.Input<Tensor>("H0");                       \
+  auto* c0 = ctx.Input<Tensor>("C0");                       \
+  auto* wx = ctx.Input<Tensor>("WeightX");                  \
+  auto* wh = ctx.Input<Tensor>("WeightH");                  \
+  auto* bias = ctx.Input<Tensor>("Bias");                   \
+  auto* xx = ctx.Output<LoDTensor>("XX");                   \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");       \
+  auto* cell_out = ctx.Output<LoDTensor>("Cell");           \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");           \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes");     \
+  auto x_dims = x->dims();   /* T x M*/                     \
+  auto wh_dims = wh->dims(); /* D x 4D*/                    \
+  const int M = x_dims[1];                                  \
+  const int D = wh_dims[0];                                 \
+  const int D4 = wh_dims[1]
 
-#define INIT_BASE_INPUT_OUTPUT                        \
-  auto* x = ctx.Input<LoDTensor>("X");                \
-  auto* h0 = ctx.Input<Tensor>("H0");                 \
-  auto* c0 = ctx.Input<Tensor>("C0");                 \
-  auto* wx = ctx.Input<Tensor>("WeightX");            \
-  auto* wh = ctx.Input<Tensor>("WeightH");            \
-  auto* bias = ctx.Input<Tensor>("Bias");             \
-  auto* xx = ctx.Output<LoDTensor>("XX");             \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden"); \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");     \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");     \
-  bool use_peepholes = ctx.Attr<bool>("use_peepholes");
+#define INIT_OTHER_DEFINES                                                  \
+  const T* x_data = x->data<T>();                                           \
+  const T* wx_data = wx->data<T>();                                         \
+  const T* wh_data = wh->data<T>();                                         \
+  /* diagonal weight*/                                                      \
+  const T* wp_data = bias->data<T>() + D4;                                  \
+  /* for peephole only*/                                                    \
+  T* checked_cell_data = nullptr;                                           \
+  auto place = ctx.GetPlace();                                              \
+  if (use_peepholes) {                                                      \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                        \
+    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");                 \
+    checked_cell_data = checked_cell->mutable_data<T>(place);               \
+  }                                                                         \
+  const auto& ker =                                                         \
+      math::jitkernel::KernelPool::Instance()                               \
+          .template Get<math::jitkernel::LSTMKernel<T>, const std::string&, \
+                        const std::string&, const std::string&>(            \
+              ctx.Attr<std::string>("gate_activation"),                     \
+              ctx.Attr<std::string>("candidate_activation"),                \
+              ctx.Attr<std::string>("cell_activation"), D, use_peepholes)
 
-#define INIT_BASE_SIZES                  \
-  auto x_dims = x->dims();   /* T x M*/  \
-  auto wh_dims = wh->dims(); /* D x 4D*/ \
-  const int M = x_dims[1];               \
-  const int D = wh_dims[0];              \
-  const int D2 = D * 2;                  \
-  const int D3 = D * 3;                  \
-  const int D4 = wh_dims[1];
-
-#define INIT_BASE_INPUT_DATAS                                 \
-  const T* x_data = x->data<T>();                             \
-  const T* wx_data = wx->data<T>();                           \
-  const T* wh_data = wh->data<T>();                           \
-  /* diagonal weight*/                                        \
-  const T* wc_data = bias->data<T>() + D4;                    \
-  /* for peephole only*/                                      \
-  T* checked_cell_data = nullptr;                             \
-  auto place = ctx.GetPlace();                                \
-  if (use_peepholes) {                                        \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/          \
-    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");   \
-    checked_cell_data = checked_cell->mutable_data<T>(place); \
-  }
-
-/// Compute LSTM
+// Wh GEMM
 #define GEMM_WH_ADDON(bs, prev, out)                                           \
   blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
             wh_data, D4, static_cast<T>(1), out, D4)
 
-#define GET_Ct(ct_1, gates, ct)                   \
-  /* C_t = C_t-1 * fgated + cand_gated * igated*/ \
-  act_cand(D, gates, gates);                      \
-  blas.VMUL(D, gates, gates + D, gates + D);      \
-  blas.VMUL(D, ct_1, gates + D2, gates + D2);     \
-  blas.VADD(D, gates + D, gates + D2, ct)
-
-#define GET_Ht(ct, gates, ht)        \
-  /* H_t = act_cell(C_t) * ogated */ \
-  act_cell(D, ct, gates + D2);       \
-  blas.VMUL(D, gates + D2, gates + D3, ht)
-
-#define GET_Ct_NOH0C0(gates, ct)     \
-  /* C_t = igated * cgated*/         \
-  act_gate(D, gates + D, gates + D); \
-  act_cand(D, gates, gates);         \
-  blas.VMUL(D, gates, gates + D, ct)
-
-#define COMPUTE_CtHt_NOH0C0(gates, ct, ht) \
-  GET_Ct_NOH0C0(gates, ct);                \
-  act_gate(D, gates + D3, gates + D3);     \
-  GET_Ht(ct, gates, ht)
-
-#define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht) \
-  GET_Ct_NOH0C0(gates, ct);                         \
-  /* get outgated, put W_oc * C_t on igated */      \
-  blas.VMUL(D, wc_data + D2, ct, gates + D);        \
-  blas.VADD(D, gates + D, gates + D3, gates + D3);  \
-  act_gate(D, gates + D3, gates + D3);              \
-  GET_Ht(ct, gates, ht)
-
-#define COMPUTE_CtHt(gates, ct_1, ct, ht) \
-  act_gate(D3, gates + D, gates + D);     \
-  GET_Ct(ct_1, gates, ct);                \
-  GET_Ht(ct, gates, ht)
-
-#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)        \
-  /* get fgated and igated*/                              \
-  blas.VMUL(D, wc_data, ct_1, checked_cell_data);         \
-  blas.VMUL(D, wc_data + D, ct_1, checked_cell_data + D); \
-  blas.VADD(D2, checked_cell_data, gates + D, gates + D); \
-  act_gate(D2, gates + D, gates + D);                     \
-  GET_Ct(ct_1, gates, ct);                                \
-  /* get ogated*/                                         \
-  blas.VMUL(D, wc_data + D2, ct, gates + D);              \
-  blas.VADD(D, gates + D, gates + D3, gates + D3);        \
-  act_gate(D, gates + D3, gates + D3);                    \
-  GET_Ht(ct, gates, ht)
-
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
-    INIT_BASE_INPUT_OUTPUT
-    INIT_BASE_SIZES
-    INIT_VEC_FUNC
-    INIT_BASE_INPUT_DATAS
-
+    INIT_BASE_DEFINES;
+    INIT_OTHER_DEFINES;
     auto x_lod = x->lod();
     const int total_T = x_dims[0];
     const int N = x_lod[0].size() - 1;
@@ -357,89 +289,47 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       gate_offset = -D;
     }
 
-#define MOVE_ONE_STEP                    \
-  prev_h_data = h_out_data;              \
-  prev_c_data = c_out_data;              \
-  xx_data = xx_data + xx_offset;         \
-  h_out_data = h_out_data + gate_offset; \
-  c_out_data = c_out_data + gate_offset
-
-#define PROCESS_H0C0_DEFINES                       \
-  int bid = is_reverse ? N - 1 - i : i;            \
-  int seq_len = x_lod[0][bid + 1] - x_lod[0][bid]; \
-  const T* prev_c_data = nullptr;                  \
-  const T* prev_h_data = nullptr;                  \
-  int tstart = 0
-
-#define PROCESS_H0C0_PEEPHOLE                                      \
-  PROCESS_H0C0_DEFINES;                                            \
-  if (h0_data) {                                                   \
-    prev_h_data = h0_data + bid * D;                               \
-    prev_c_data = c0_data + bid * D;                               \
-  } else {                                                         \
-    COMPUTE_CtHt_PEEPHOLE_NOH0C0(xx_data, c_out_data, h_out_data); \
-    MOVE_ONE_STEP;                                                 \
-    tstart = 1;                                                    \
-  }
-
-#define PROCESS_H0C0                                      \
-  PROCESS_H0C0_DEFINES;                                   \
-  if (h0_data) {                                          \
-    prev_h_data = h0_data + bid * D;                      \
-    prev_c_data = c0_data + bid * D;                      \
-  } else {                                                \
-    COMPUTE_CtHt_NOH0C0(xx_data, c_out_data, h_out_data); \
-    MOVE_ONE_STEP;                                        \
-    tstart = 1;                                           \
-  }
-
-    if (use_peepholes) {
-      for (int i = 0; i < N; ++i) {
-        PROCESS_H0C0_PEEPHOLE
-        for (int step = tstart; step < seq_len; ++step) {
-          GEMM_WH_ADDON(1, prev_h_data, xx_data);
-          COMPUTE_CtHt_PEEPHOLE(xx_data, prev_c_data, c_out_data, h_out_data);
-          MOVE_ONE_STEP;
-        }
-      }
-    } else {
-      // TODO(TJ): unly workaround, clean me
-      std::function<void(T*, const T*, T*, T*)> compute_ctht;
-      if (platform::jit::MayIUse(platform::jit::avx) &&
-          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
-          act_cell_str == "tanh" && D == 8) {
-        compute_ctht = math::lstm_compute_ctht<T>;
+    for (int i = 0; i < N; ++i) {
+      int bid = is_reverse ? N - 1 - i : i;
+      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
+      const T* prev_c_data = nullptr;
+      const T* prev_h_data = nullptr;
+      int tstart = 0;
+      if (h0_data) {
+        prev_h_data = h0_data + bid * D;
+        prev_c_data = c0_data + bid * D;
       } else {
-        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
-          COMPUTE_CtHt(gates, ct_1, ct, ht);
-        };
+        ker->ComputeC1H1(xx_data, c_out_data, h_out_data, wp_data);
+        tstart = 1;
+        // move one step
+        prev_h_data = h_out_data;
+        prev_c_data = c_out_data;
+        xx_data = xx_data + xx_offset;
+        h_out_data = h_out_data + gate_offset;
+        c_out_data = c_out_data + gate_offset;
       }
-      for (int i = 0; i < N; ++i) {
-        PROCESS_H0C0
-        for (int step = tstart; step < seq_len; ++step) {
-          GEMM_WH_ADDON(1, prev_h_data, xx_data);
-          compute_ctht(xx_data, prev_c_data, c_out_data, h_out_data);
-          MOVE_ONE_STEP;
-        }
+      for (int step = tstart; step < seq_len; ++step) {
+        GEMM_WH_ADDON(1, prev_h_data, xx_data);
+        ker->ComputeCtHt(xx_data, prev_c_data, c_out_data, h_out_data, wp_data,
+                         checked_cell_data);
+        // move one step
+        prev_h_data = h_out_data;
+        prev_c_data = c_out_data;
+        xx_data = xx_data + xx_offset;
+        h_out_data = h_out_data + gate_offset;
+        c_out_data = c_out_data + gate_offset;
       }
     }
-#undef PROCESS_H0C0_DEFINES
-#undef PROCESS_H0C0_PEEPHOLE
-#undef PROCESS_H0C0
-#undef MOVE_ONE_STEP
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = platform::CPUDeviceContext;
-    INIT_BASE_INPUT_OUTPUT
-    INIT_BASE_SIZES
+    INIT_BASE_DEFINES;
     if (x->lod()[0].size() == 2) {
       xx->Resize({x_dims[0], D4});
       SeqCompute(ctx);
       return;
     }
-    INIT_VEC_FUNC
-    INIT_BASE_INPUT_DATAS
+    INIT_OTHER_DEFINES;
 
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
@@ -487,8 +377,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       prev_c_data = reordered_c0_data;
       size_t sz = sizeof(T) * D;
       for (int i = 0; i < max_bs; ++i) {
-        std::memcpy(reordered_h0_data, h0_data + seq_order[i] * D, sz);
-        std::memcpy(reordered_c0_data, c0_data + seq_order[i] * D, sz);
+        blas.VCOPY(sz, h0_data + seq_order[i] * D, reordered_h0_data);
+        blas.VCOPY(sz, c0_data + seq_order[i] * D, reordered_c0_data);
         reordered_h0_data += D;
         reordered_c0_data += D;
       }
@@ -498,13 +388,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       T* cur_h_out_data = batched_h_out_data;
       T* cur_c_out_data = batched_c_out_data;
       for (int i = 0; i < max_bs; ++i) {
-        GET_Ct_NOH0C0(cur_in_data, cur_c_out_data);
-        if (use_peepholes) {
-          blas.VMUL(D, wc_data + D2, cur_c_out_data, cur_in_data + D);
-          blas.VADD(D, cur_in_data + D, cur_in_data + D3, cur_in_data + D3);
-        }
-        act_gate(D, cur_in_data + D3, cur_in_data + D3);
-        GET_Ht(cur_c_out_data, cur_in_data, cur_h_out_data);
+        ker->ComputeC1H1(cur_in_data, cur_c_out_data, cur_h_out_data, wp_data);
         cur_in_data += D4;
         cur_c_out_data += D;
         cur_h_out_data += D;
@@ -513,71 +397,37 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       prev_h_data = batched_h_out_data;
       prev_c_data = batched_c_out_data;
     }
+
+    // compute kernel part
     const auto& batch_starts = batched_lod[0];
     const int max_seq_len = batch_starts.size() - 1;
     const int offset = tstart * max_bs * D;
     batched_input_data = batched_input_data + offset * 4;
     batched_h_out_data = batched_h_out_data + offset;
     batched_c_out_data = batched_c_out_data + offset;
-
-#define DEFINE_CUR                        \
-  T* cur_in_data = batched_input_data;    \
-  T* cur_prev_c_data = prev_c_data;       \
-  T* cur_c_out_data = batched_c_out_data; \
-  T* cur_h_out_data = batched_h_out_data
-
-#define MOVE_ONE_BATCH  \
-  cur_in_data += D4;    \
-  cur_prev_c_data += D; \
-  cur_c_out_data += D;  \
-  cur_h_out_data += D
-
-#define MOVE_ONE_STEP                  \
-  prev_c_data = batched_c_out_data;    \
-  prev_h_data = batched_h_out_data;    \
-  batched_c_out_data = cur_c_out_data; \
-  batched_h_out_data = cur_h_out_data; \
-  batched_input_data = cur_in_data
-
-    if (use_peepholes) {
-      for (int step = tstart; step < max_seq_len; ++step) {
-        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
-        GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
-        DEFINE_CUR;
-        for (int i = 0; i < cur_bs; ++i) {
-          COMPUTE_CtHt_PEEPHOLE(cur_in_data, cur_prev_c_data, cur_c_out_data,
-                                cur_h_out_data);
-          MOVE_ONE_BATCH;
-        }
-        MOVE_ONE_STEP;
+    for (int step = tstart; step < max_seq_len; ++step) {
+      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
+      T* cur_in_data = batched_input_data;
+      T* cur_prev_c_data = prev_c_data;
+      T* cur_c_out_data = batched_c_out_data;
+      T* cur_h_out_data = batched_h_out_data;
+      for (int i = 0; i < cur_bs; ++i) {
+        ker->ComputeCtHt(cur_in_data, cur_prev_c_data, cur_c_out_data,
+                         cur_h_out_data, wp_data, checked_cell_data);
+        // move one batch
+        cur_in_data += D4;
+        cur_prev_c_data += D;
+        cur_c_out_data += D;
+        cur_h_out_data += D;
       }
-    } else {
-      // TODO(TJ): unly workaround, clean me
-      std::function<void(T*, const T*, T*, T*)> compute_ctht;
-      if (platform::jit::MayIUse(platform::jit::avx) &&
-          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
-          act_cell_str == "tanh" && D == 8) {
-        compute_ctht = math::lstm_compute_ctht<T>;
-      } else {
-        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
-          COMPUTE_CtHt(gates, ct_1, ct, ht);
-        };
-      }
-      for (int step = tstart; step < max_seq_len; ++step) {
-        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
-        GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
-        DEFINE_CUR;
-        for (int i = 0; i < cur_bs; ++i) {
-          compute_ctht(cur_in_data, cur_prev_c_data, cur_c_out_data,
-                       cur_h_out_data);
-          MOVE_ONE_BATCH;
-        }
-        MOVE_ONE_STEP;
-      }
+      // move one step
+      prev_c_data = batched_c_out_data;
+      prev_h_data = batched_h_out_data;
+      batched_c_out_data = cur_c_out_data;
+      batched_h_out_data = cur_h_out_data;
+      batched_input_data = cur_in_data;
     }
-#undef MOVE_ONE_STEP
-#undef MOVE_ONE_BATCH
-#undef DEFINE_CUR
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batched_h_out->set_lod(batched_lod);
@@ -594,18 +444,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
   }
 
-#undef COMPUTE_CtHt_PEEPHOLE
-#undef COMPUTE_CtHt
-#undef GET_Ct_NOH0C0
-#undef COMPUTE_CtHt_NOH0C0
-#undef COMPUTE_CtHt_PEEPHOLE_NOH0C0
-#undef GET_Ht
-#undef GET_Ct
 #undef GEMM_WH_ADDON
-#undef INIT_BASE_INPUT_DATAS
-#undef INIT_BASE_SIZES
-#undef INIT_BASE_INPUT_OUTPUT
-#undef INIT_VEC_FUNC
+#undef INIT_OTHER_DEFINES
+#undef INIT_BASE_DEFINES
 };
 
 }  // namespace operators
