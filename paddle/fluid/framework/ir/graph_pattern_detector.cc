@@ -626,6 +626,112 @@ bool VarLinksFromOp(Node *node, const std::string &op_type) {
   return false;
 }
 
+PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
+                                     bool with_eltwise_add) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+
+  PDNode *eltwise_op = nullptr;
+  if (with_eltwise_add) {
+    eltwise_op =
+        pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
+  }
+  auto *batch_norm_op =
+      pattern->NewNode(batch_norm_repr())->assert_is_op("batch_norm");
+  // Create variables
+  // Conv Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d");
+
+  PDNode *eltwise_y_in_var = nullptr;
+  PDNode *eltwise_out_var = nullptr;
+  if (with_eltwise_add) {
+    // Conv output as Bias input
+    conv_out_var->assert_is_op_input("elementwise_add", "X");
+    // Bias
+    eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
+                           ->assert_is_op_input("elementwise_add", "Y")
+                           ->AsInput();
+    eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("elementwise_add");
+  } else {
+    // Conv output as BN input
+    conv_out_var->assert_is_op_input("batch_norm", "X");
+  }
+
+  // BN Scale
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->AsInput()
+                           ->assert_is_persistable_var()
+                           ->assert_is_op_input("batch_norm", "Scale");
+  // BN Bias
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("batch_norm", "Bias");
+  // BN Mean
+  auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("batch_norm", "Mean");
+  // BN Variance
+  auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("batch_norm", "Variance");
+
+  // BN output
+  auto *bn_out_var = pattern->NewNode(bn_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("batch_norm");
+
+  auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
+                              ->AsOutput()
+                              ->assert_is_op_output("batch_norm", "MeanOut");
+
+  auto *bn_variance_out_var =
+      pattern->NewNode(bn_variance_out_repr())
+          ->AsOutput()
+          ->assert_is_op_output("batch_norm", "VarianceOut");
+
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->AsOutput()
+          ->assert_is_op_output("batch_norm", "SavedMean");
+
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->AsOutput()
+          ->assert_is_op_output("batch_norm", "SavedVariance");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+
+  if (with_eltwise_add) {
+    eltwise_op->LinksFrom({conv_out_var, eltwise_y_in_var})
+        .LinksTo({eltwise_out_var});
+    batch_norm_op
+        ->LinksFrom({eltwise_out_var, bn_scale_var, bn_bias_var, bn_mean_var,
+                     bn_variance_var})
+        .LinksTo({bn_out_var, bn_mean_out_var, bn_variance_out_var,
+                  bn_saved_mean_var, bn_saved_variance_var});
+  } else {
+    batch_norm_op
+        ->LinksFrom({conv_out_var, bn_scale_var, bn_bias_var, bn_mean_var,
+                     bn_variance_var})
+        .LinksTo({bn_out_var, bn_mean_out_var, bn_variance_out_var,
+                  bn_saved_mean_var, bn_saved_variance_var});
+  }
+  return bn_out_var;
+}
+
 PDNode *patterns::ConvReLU::operator()(
     paddle::framework::ir::PDNode *conv_input) {
   // Create Operators

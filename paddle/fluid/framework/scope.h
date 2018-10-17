@@ -63,6 +63,11 @@ class Scope {
   /// Caller doesn't own the returned Variable.
   Variable* FindVar(const std::string& name) const;
 
+  /// Find a variable in the current scope.
+  /// Return nullptr if cannot find.
+  /// Caller doesn't own the returned Variable.
+  Variable* FindLocalVar(const std::string& name) const;
+
   const Scope* parent() const { return parent_; }
 
   /// Find the scope or an ancestor scope that contains the given variable.
