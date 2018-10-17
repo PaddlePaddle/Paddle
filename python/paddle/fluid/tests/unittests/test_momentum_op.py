@@ -121,22 +121,13 @@ class TestSparseMomentumOp(unittest.TestCase):
         grad_tensor = grad_selected_rows.get_tensor()
         grad_tensor.set(grad_np_array, place)
 
-        velocity_selected_rows = scope.var('Velocity').get_selected_rows()
-        velocity_selected_rows.set_height(height)
-        velocity_selected_rows.set_rows(rows)
-        velocity_np_array = np.ones((len(rows), row_numel)).astype("float32")
-        velocity_np_array[0, 0] = 2.0
-        velocity_np_array[2, 8] = 2.0
-        velocity_tensor = velocity_selected_rows.get_tensor()
-        velocity_tensor.set(velocity_np_array, place)
-        velocity_out_selected_rows = scope.var('VelocityOut').get_selected_rows(
-        )
-        velocity_out_selected_rows.set_height(height)
-        velocity_out_selected_rows.set_rows(rows)
-        velocity_out_np_array = np.full((len(rows), row_numel),
+        velocity = scope.var('Velocity').get_tensor()
+        velocity_np_array = np.ones((height, row_numel)).astype("float32")
+        velocity.set(velocity_np_array, place)
+        velocity_out = scope.var('VelocityOut').get_tensor()
+        velocity_out_np_array = np.full((height, row_numel),
                                         0.0).astype("float32")
-        velocity_out_tensor = velocity_out_selected_rows.get_tensor()
-        velocity_out_tensor.set(velocity_out_np_array, place)
+        velocity_out.set(velocity_out_np_array, place)
 
         # create and initialize LeraningRate Variable
         lr = scope.var('LearningRate').get_tensor()
@@ -158,19 +149,22 @@ class TestSparseMomentumOp(unittest.TestCase):
 
         # get and compare result
         param_out_np_array = np.array(param_out)
-        velocity_out_np_array = np.array(velocity_out_tensor)
+        velocity_out_np_array = np.array(velocity_out)
 
         # TODO(dzh): add a more suitable general numpy interface
         # for sparse update.
-        _velocity_out = mu * velocity_np_array + grad_np_array
-        _param = param_array[rows]
+        _grad_np_array = np.full((height, row_numel), 0.0).astype("float32")
+        for i in range(len(rows)):
+            _grad_np_array[rows[i]] = grad_np_array[i]
+        _velocity_out = mu * velocity_np_array + _grad_np_array
+        _param = param_array
         if use_nesterov:
-            _param_out = _param - grad_np_array * lr_array - \
-                        _velocity_out * mu * lr_array
+            _param_out = _param - (_grad_np_array + _velocity_out * mu
+                                   ) * lr_array
         else:
-            _param_out = _param - lr * _velocity_out
-        self.assertTrue((_param_out == param_out_np_array[rows]).all())
+            _param_out = _param - lr_array * _velocity_out
         self.assertTrue((_velocity_out == velocity_out_np_array).all())
+        self.assertTrue((_param_out == param_out_np_array).all())
 
     def init_kernel(self):
         pass
