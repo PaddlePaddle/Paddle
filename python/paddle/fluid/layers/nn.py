@@ -1280,7 +1280,9 @@ def sequence_conv(input,
         bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
             If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
-        param_attr (ParamAttr|None): attributes for parameter
+        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+            of this layer. If it is set to None, the parameter is initialized with
+            Xavier. Default: None.
         act (str): the activation type
 
     Returns:
