@@ -56,6 +56,7 @@ __all__ = [
     'sequence_expand',
     'sequence_expand_as',
     'sequence_pad',
+    'sequence_unpad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
@@ -64,6 +65,7 @@ __all__ = [
     'reduce_prod',
     'sequence_first_step',
     'sequence_last_step',
+    'sequence_slice',
     'dropout',
     'split',
     'ctc_greedy_decoder',
@@ -1902,6 +1904,76 @@ def sequence_last_step(input):
     return sequence_pool(input=input, pool_type="last")
 
 
+def sequence_slice(input, offset, length, name=None):
+    """
+    **Sequence Slice Layer**
+
+    The layer crops a subsequence from given sequence with given start 
+    offset and subsequence length.
+
+    It only supports sequence data (LoDTensor with lod_level equal to 1).
+
+    .. code-block:: text
+    
+	- Case:
+
+            Given the input Variable **input**:
+                
+                input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
+                input.lod = [[3, 2]],
+                input.dims = (5, 2),
+
+            with offset.data = [[0], [1]] and length.data = [[2], [1]],
+
+            the output Variable will be
+                
+                out.data = [[a1, a2], [b1, b2], [e1, e2]],
+                out.lod = [[2, 1]],
+                out.dims = (3, 2).
+	
+    NOTE: The first dimension size of **input**, **offset** and **length** 
+          should be equal. The **offset** should start from 0.
+    
+    Args:
+        input(Variable): The input Variable which consists of the complete 
+                         sequences.
+        offset(Variable): The offset to slice each sequence.
+        length(Variable): The length of each subsequence.
+        name(str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The output subsequences.
+
+    Examples:
+
+        .. code-block:: python
+
+             import numpy as np
+             seqs = fluid.layers.data(name='x', shape=[10, 5],
+                              dtype='float32', lod_level=1)
+             offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
+             length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
+             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset, 
+                                                   length=length)
+    """
+    helper = LayerHelper("sequence_slice", **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+
+    offset.stop_gradient = True
+    length.stop_gradient = True
+
+    helper.append_op(
+        type="sequence_slice",
+        inputs={"X": input,
+                "Offset": offset,
+                "Length": length},
+        outputs={"Out": out})
+
+    return out
+
+
 @templatedoc()
 def pool2d(input,
            pool_size=-1,
@@ -2793,7 +2865,7 @@ def sequence_expand_as(x, y, name=None):
 
 
 @templatedoc()
-def sequence_pad(x, pad_value, maxlen=None):
+def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
     ${comment}
 
@@ -2807,7 +2879,9 @@ def sequence_pad(x, pad_value, maxlen=None):
             None or any positive int. When it is None, all sequences will be
             padded up to the length of the longest one among them; when it a
             certain positive value, it must be greater than the length of the
-            longest original sequence."
+            longest original sequence.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
     Returns:
         Variable: The padded sequence batch and the original lengths before
@@ -2842,6 +2916,66 @@ def sequence_pad(x, pad_value, maxlen=None):
                  'Length': length},
         attrs={'padded_length': maxlen})
     return out, length
+
+
+def sequence_unpad(x, length, name=None):
+    """
+    **Sequence Unpad Layer**
+
+    This layer removes the padding data in the input sequences and convert 
+    them into sequences with actual length as output, identitied by lod 
+    information.
+
+    .. code-block:: text
+
+	Example:
+
+	Given input Variable **x**:
+	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
+		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
+		      [11.0, 12.0, 13.0, 14.0, 15.0]], 
+     
+	in which there are 3 sequences padded to length 5, and the acutal length 
+	specified by input Variable **length**:
+
+	    length.data = [[2], [3], [4]],
+
+	after unpadding, the output Variable will be:
+
+	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+	    out.lod = [[2, 3, 4]]      
+
+    Args:
+        x(Variable): Input Variable which contains the padded sequences with
+            equal length.
+        length(Variable): The Variable that specifies the actual ength of
+            sequences after unpadding.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The Variable contains the unpadded sequences.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
+            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
+            out = fluid.layers.sequence_unpad(x=x, length=len)
+    """
+
+    helper = LayerHelper('sequence_unpad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+
+    length.stop_gradient = True
+
+    helper.append_op(
+        type='sequence_unpad',
+        inputs={'X': x,
+                'Length': length},
+        outputs={'Out': out})
+    return out
 
 
 def beam_search(pre_ids,
