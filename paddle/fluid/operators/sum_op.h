@@ -69,15 +69,32 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
-      auto *out = context.Output<SelectedRows>("Out");
-      out->mutable_rows()->clear();
+      if (in_place && in_vars.size() < 2) {
+        return;
+      }
 
       std::vector<const paddle::framework::SelectedRows *> inputs;
+      SelectedRows temp_in0;
 
-      for (auto &in_var : in_vars) {
-        inputs.push_back(&in_var->Get<SelectedRows>());
+      if (in_place) {
+        auto &in0 = in_vars[0]->Get<SelectedRows>();
+        temp_in0.set_height(in0.height());
+        temp_in0.set_rows(in0.rows());
+        framework::TensorCopy(in0.value(), in0.place(),
+                              context.device_context(),
+                              temp_in0.mutable_value());
+        inputs.push_back(&temp_in0);
+        for (size_t i = 1; i < in_vars.size(); ++i) {
+          inputs.push_back(&in_vars[i]->Get<SelectedRows>());
+        }
+      } else {
+        for (auto &in_var : in_vars) {
+          inputs.push_back(&in_var->Get<SelectedRows>());
+        }
       }
+
+      auto *out = context.Output<SelectedRows>("Out");
+      out->mutable_rows()->clear();
 
       math::scatter::MergeAdd<DeviceContext, T> merge_add;
       merge_add(context.template device_context<DeviceContext>(), inputs, out);
