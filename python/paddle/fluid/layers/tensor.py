@@ -24,10 +24,10 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
-    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
-    'argmin', 'argmax', 'argsort', 'ones', 'zeros', 'reverse', 'has_inf',
-    'has_nan', 'isfinite'
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
+    'lod_tensor_array_concat', 'concat', 'sums', 'assign',
+    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
+    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite'
 ]
 
 
@@ -187,6 +187,37 @@ def concat(input, axis=0, name=None):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
+        inputs={'X': input},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
+
+
+def lod_tensor_array_concat(input, axis=1, name=None):
+    """
+    **Concat**
+
+    This function concatenates the input LodTensorArray along the axis mentioned
+    and returns that as the output.
+
+    Args:
+        input(list): Input LodTensorArray
+        axis(int): Integer axis along which the tensors will be concatenated
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the concatenation
+
+    Examples:
+        .. code-block:: python
+
+           out = fluid.layers.concat(input=weights_array)
+    """
+    helper = LayerHelper('lod_tensor_array_concat', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='lod_tensor_array_concat',
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
