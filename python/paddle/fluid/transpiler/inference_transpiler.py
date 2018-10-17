@@ -465,7 +465,7 @@ class InferenceTranspiler(object):
         in_var = self.block.vars[conv_op.input("Input")[0]]
         bias_var = self.block.vars[conv_op.input("Bias")[0]]
 
-        conv_op.set_attr("fuse_residual_connection", True)
+        conv_op._set_attr("fuse_residual_connection", True)
         attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
 
         self.block._insert_op(
