@@ -862,11 +862,12 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    const T kOne{1};
     T b = static_cast<T>(beta);
-    auto temp1 = static_cast<T>(1) /
-                 (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
-    auto temp2 = temp1 * (static_cast<T>(1) - (static_cast<T>(beta) * out));
-    dx.device(d) = dout * ((static_cast<T>(beta) * out) + temp2);
+    auto temp1 = kOne /
+                 (kOne + (-b * x).exp());
+    auto temp2 = temp1 * (kOne - (b * out));
+    dx.device(d) = dout * (b * out + temp2);
   }
 };
 

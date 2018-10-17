@@ -292,7 +292,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
     bool firststep = true;
 
     for (int k = 0; k < MaxLength; k++) {
-      topk[k].set(-INFINITY, -1);
+      topk[k].clear();
     }
     while (k) {
       ThreadGetTopK<T, MaxLength, BlockSize>(
