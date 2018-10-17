@@ -50,7 +50,7 @@ Record ProcessALine(const std::string &line) {
   return record;
 }
 
-void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS__use_mkldnn) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->param_file = FLAGS_infer_model + "/__params__";
   cfg->prog_file = FLAGS_infer_model + "/__model__";
   cfg->use_gpu = false;
@@ -60,7 +60,7 @@ void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS__use_mkldnn) {
   // TODO(TJ): fix fusion gru
   cfg->ir_passes.push_back("fc_gru_fuse_pass");
 #ifdef PADDLE_WITH_MKLDNN
-  cfg->_use_mkldnn = _use_mkldnn;
+  cfg->_use_mkldnn = FLAGS_use_MKLDNN;
 #endif
 }
 
@@ -129,9 +129,11 @@ TEST(Analyzer_vis, compare) {
   // since default config._use_mkldnn=true in this case,
   // we should compare analysis_outputs in config._use_mkldnn=false
   // with native_outputs as well.
+  FLAGS_use_MKLDNN = false;
   AnalysisConfig cfg1;
-  SetConfig(&cfg1, false);
+  SetConfig(&cfg1);
   CompareNativeAndAnalysis(cfg1, input_slots_all);
+  FLAGS_use_MKLDNN = true;
 #endif
 }
 
