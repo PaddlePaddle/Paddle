@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS__use_mkldnn) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->param_file = FLAGS_infer_model + "/params";
   cfg->prog_file = FLAGS_infer_model + "/model";
   cfg->use_gpu = false;
@@ -28,7 +28,7 @@ void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS__use_mkldnn) {
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
 #ifdef PADDLE_WITH_MKLDNN
-  cfg->_use_mkldnn = _use_mkldnn;
+  cfg->_use_mkldnn = FLAGS_use_MKLDNN;
 #endif
 }
 
@@ -96,9 +96,11 @@ TEST(Analyzer_resnet50, compare) {
   // since default config._use_mkldnn=true in this case,
   // we should compare analysis_outputs in config._use_mkldnn=false
   // with native_outputs as well.
+  FLAGS_use_MKLDNN = false;
   AnalysisConfig cfg1;
-  SetConfig(&cfg1, false);
+  SetConfig(&cfg1);
   CompareNativeAndAnalysis(cfg1, input_slots_all);
+  FLAGS_use_MKLDNN = true;
 #endif
 }
 
