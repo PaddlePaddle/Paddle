@@ -275,6 +275,7 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+      // FIXME(gongwb): parse error_details?
       LOG(ERROR) << c->GetVarHandlePtr()->String()
                  << " meets grpc error, error_code:" << c->status_.error_code()
                  << " error_message:" << c->status_.error_message()
