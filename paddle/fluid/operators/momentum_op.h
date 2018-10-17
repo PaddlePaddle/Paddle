@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/algorithm.h"
@@ -303,28 +304,30 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       auto* merged_grad = const_cast<framework::Scope&>(ctx.scope())
                               .Var()
                               ->GetMutable<framework::SelectedRows>();
-
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      platform::ForRange<DeviceContext> for_range(
-          static_cast<const DeviceContext&>(ctx.device_context()),
-          param->numel());
-
       const int64_t* rows = nullptr;
+#ifdef PADDLE_WITH_CUDA
       if (platform::is_gpu_place(ctx.GetPlace())) {
         rows = merged_grad->rows().CUDAData(ctx.GetPlace());
       } else {
+#endif
         rows = merged_grad->rows().data();
+#ifdef PADDLE_WITH_CUDA
       }
-
+#endif
+      int64_t row_numel =
+          merged_grad->value().numel() / merged_grad->rows().size();
+      platform::ForRange<DeviceContext> for_range(
+          static_cast<const DeviceContext&>(ctx.device_context()),
+          param->numel());
       if (use_nesterov) {
         SparseMomentumFunctor<T, UseNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
-            velocity->data<T>(), learning_rate->data<T>(), mu, rows,
+            velocity->data<T>(), learning_rate->data<T>(), mu, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
-            static_cast<int64_t>(merged_grad->height()),
             param_out->mutable_data<T>(ctx.GetPlace()),
             velocity_out->mutable_data<T>(ctx.GetPlace()));
         for_range(functor);
@@ -332,9 +335,8 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       } else {
         SparseMomentumFunctor<T, NoNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
-            velocity->data<T>(), learning_rate->data<T>(), mu, rows,
+            velocity->data<T>(), learning_rate->data<T>(), mu, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
-            static_cast<int64_t>(merged_grad->height()),
             param_out->mutable_data<T>(ctx.GetPlace()),
             velocity_out->mutable_data<T>(ctx.GetPlace()));
         for_range(functor);

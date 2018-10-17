@@ -45,12 +45,15 @@ class MomentumOp : public framework::OperatorWithKernel {
                    "Output(VelocityOut) of Momentum should not be null.");
 
     auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Grad"),
-        "Param and Grad input of MomentumOp should have the same dimension.");
-    PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Velocity"),
-        "Param and Velocity of MomentumOp should have the same dimension.");
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Grad"),
+          "Param and Grad input of MomentumOp should have the same dimension.");
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Velocity"),
+          "Param and Velocity of MomentumOp should have the same dimension.");
+    }
     PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
                       "Learning_rate should be a scalar");
 
