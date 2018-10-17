@@ -78,8 +78,13 @@ def simple_img_conv_pool(input,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
-        bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+            of conv2d. If it is set to None, the parameter is initialized with
+            :math:`Normal(0.0, std)`, and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`.
+            Default: None.
+        bias_attr (ParamAttr): The parameter attribute for the bias of conv2d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         act (str): Activation type for Conv2d. Default: None
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
