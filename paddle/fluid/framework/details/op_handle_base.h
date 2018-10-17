@@ -64,7 +64,8 @@ class OpHandleBase {
   virtual bool IsMultiDeviceTransfer() { return false; }
 
   const platform::DeviceContext *DeviceContext(platform::Place place) {
-    return dev_ctxes_[place];
+    auto it = dev_ctxes_.find(place);
+    return it != dev_ctxes_.end() ? it->second : nullptr;
   }
 
   void SetDeviceContext(platform::Place place, platform::DeviceContext *ctx_) {

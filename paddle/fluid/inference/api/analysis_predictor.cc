@@ -25,9 +25,11 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(profile);
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 
@@ -46,6 +48,9 @@ bool AnalysisPredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 #endif
+
+  // no matter with or without MKLDNN
+  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -335,6 +340,19 @@ bool AnalysisPredictor::LoadProgramDesc() {
   }
   return true;
 }
+
+AnalysisPredictor::~AnalysisPredictor() {
+#if !defined(_WIN32)
+  if (FLAGS_profile) {
+    platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                              "./profile.log");
+  }
+#endif
+  if (sub_scope_) {
+    scope_->DeleteScope(sub_scope_);
+  }
+}
+
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
