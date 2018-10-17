@@ -389,7 +389,7 @@ def dynamic_lstm(input,
 
             hidden_dim = 512
             forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
-                                           act=None, bias_attr=None)
+                                           bias_attr=False)
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
@@ -1277,7 +1277,9 @@ def sequence_conv(input,
         filter_size (int): the filter size (H and W).
         filter_stride (int): stride of the filter.
         padding (bool): if True, add paddings.
-        bias_attr (ParamAttr|None): attributes for bias
+        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         param_attr (ParamAttr|None): attributes for parameter
         act (str): the activation type
 
@@ -1308,7 +1310,7 @@ def sequence_conv(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
+def sequence_softmax(input, use_cudnn=False):
     """
     This function computes the softmax activation among all time-steps for each
     sequence. The dimension of each time-step should be 1. Thus, the shape of
@@ -1328,8 +1330,6 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
 
     Args:
         input (Variable): The input variable which is a LoDTensor.
-        bias_attr (ParamAttr|None): attributes for bias
-        param_attr (ParamAttr|None): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
         library is installed. Default: False
 
@@ -1355,7 +1355,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
     return softmax_out
 
 
-def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
+def softmax(input, use_cudnn=True, name=None):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
@@ -1382,8 +1382,6 @@ def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
 
     Args:
         input (Variable): The input variable.
-        bias_attr (ParamAttr): attributes for bias
-        param_attr (ParamAttr): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
         library is installed.
 
@@ -1492,13 +1490,19 @@ def conv2d(input,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
-        bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+            of this layer. If it is set to None, the parameter is initialized with
+            :math:`Normal(0.0, std)`, and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`.
+            Default: None.
+        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act (str): Activation type. Default: None
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            will be named automatically. Default: None
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1516,7 +1520,7 @@ def conv2d(input,
     """
 
     num_channels = input.shape[1]
-
+    assert param_attr is not False, "param_attr should not be False here."
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
@@ -1544,7 +1548,8 @@ def conv2d(input,
     filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
-        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        filter_num_elem = filter_size[0] * filter_size[1] * num_channels
+        std = (2.0 / (filter_num_elem))**0.5
         return Normal(0.0, std, 0)
 
     filter_param = helper.create_parameter(
@@ -1655,13 +1660,19 @@ def conv3d(input,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameters to the Conv3d Layer. Default: None
-        bias_attr (ParamAttr): Bias parameter for the Conv3d layer. Default: None
+        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+            of this layer. If it is set to None, the parameter is initialized with
+            :math:`Normal(0.0, std)`, and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`.
+            Default: None.
+        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act (str): Activation type. Default: None
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            will be named automatically. Default: None.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1679,7 +1690,7 @@ def conv3d(input,
     """
 
     l_type = 'conv3d'
-
+    assert param_attr is not False, "param_attr should not be False here."
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -1704,7 +1715,9 @@ def conv3d(input,
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
     def _get_default_param_initializer():
-        std = (2.0 / (filter_size[0]**3 * num_channels))**0.5
+        filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
+            2] * num_channels
+        std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
     filter_param = helper.create_parameter(
@@ -2396,15 +2409,19 @@ def conv2d_transpose(input,
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
-            Default: groups=1
-        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
-                               Default: None
-        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+            Default: groups = 1.
+        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+            of this layer. If it is set to None, the parameter is initialized with
+            Xavier. Default: None.
+        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act(str): Activation type. Default: None
+            library is installed. Default: True.
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            will be named automatically. Default: True.
 
     Returns:
         Variable: The tensor variable storing the convolution transpose result.
@@ -2455,6 +2472,7 @@ def conv2d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
+
     if output_size is None:
         output_size = []
     elif isinstance(output_size, list) or isinstance(output_size, int):
@@ -2464,6 +2482,7 @@ def conv2d_transpose(input,
     padding = utils.convert_to_list(padding, 2, 'padding')
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
+
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
@@ -2576,12 +2595,16 @@ def conv3d_transpose(input,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups=1
-        param_attr(ParamAttr): The parameters to the Conv3d_transpose Layer.
-            Default: None
-        bias_attr(ParamAttr): Bias parameter for the Conv3d layer. Default: None
+        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+            of this layer. If it is set to None, the parameter is initialized with
+            Xavier. Default: None.
+        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act(str): Activation type. Default: None
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
