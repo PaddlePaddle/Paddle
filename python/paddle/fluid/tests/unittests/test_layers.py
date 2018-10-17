@@ -414,6 +414,19 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_sequence_slice(self):
+        program = Program()
+        with program_guard(program):
+            import numpy as np
+            seqs = layers.data(
+                name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            offset = layers.assign(input=np.array([[0, 1]]).astype('int32'))
+            length = layers.assign(input=np.array([[2, 1]]).astype('int32'))
+            out = layers.sequence_slice(
+                input=seqs, offset=offset, length=length)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_lod_reset(self):
         program = Program()
         with program_guard(program):

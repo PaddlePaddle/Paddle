@@ -370,8 +370,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
   std::vector<std::vector<Event>> merged_events_list;
   if (merge_thread) {
     std::vector<Event> merged_events;
-    for (int i = 0; i < events.size(); ++i) {
-      for (int j = 0; j < events[i].size(); ++j) {
+    for (size_t i = 0; i < events.size(); ++i) {
+      for (size_t j = 0; j < events[i].size(); ++j) {
         merged_events.push_back(events[i][j]);
       }
     }
