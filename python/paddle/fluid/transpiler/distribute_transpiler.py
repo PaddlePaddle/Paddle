@@ -1246,7 +1246,7 @@ to transpile() call.")
             grad_var = pserver_program.global_block()._rename_var(
                 origin_grad_name, splited_grad_name)
 
-            inputs = {
+        inputs = {
             "Param": [param_var],
             "Grad": [grad_var],
             "LearningRate": [lr_var]
