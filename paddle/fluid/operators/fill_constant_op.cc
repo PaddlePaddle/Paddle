@@ -70,6 +70,12 @@ class FillConstantOp : public framework::OperatorBase {
   }
 };
 
+class FillConstantOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {}
+};
+
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -102,4 +108,5 @@ Fill up a variable with specified constant value.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fill_constant, ops::FillConstantOp,
                   ops::FillConstantInferShape, ops::FillConstantOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::FillConstantOpVarTypeInference);
