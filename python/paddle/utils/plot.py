@@ -36,7 +36,7 @@ class Ploter(object):
         Args:
             title: assign the title of input data.
             step: x_axis of the data.
-            value: y_axis of the data
+            value: y_axis of the data.
     """
 
     def __init__(self, *args):
