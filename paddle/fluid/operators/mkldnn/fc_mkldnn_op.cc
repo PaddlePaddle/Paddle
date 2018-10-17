@@ -59,11 +59,31 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     // dimensions assuming the weights weren't transposed.
     std::swap(fc_weights_tz[0], fc_weights_tz[1]);
 
-    auto fc_src_md = platform::MKLDNNMemDesc(
+    auto fc_usr_src_md = platform::MKLDNNMemDesc(
         fc_src_tz, platform::MKLDNNGetDataType<T>(), input->format());
-    auto fc_src_memory_pd = memory::primitive_desc(fc_src_md, mkldnn_engine);
-    auto fc_src_memory =
-        memory(fc_src_memory_pd, to_void_cast<T>(input->data<T>()));
+    auto fc_usr_src_memory_pd = memory::primitive_desc(fc_usr_src_md, mkldnn_engine);
+    auto fc_usr_src_memory =
+        memory(fc_usr_src_memory_pd, to_void_cast<T>(input->data<T>()));
+
+    auto fc_src_memory = fc_usr_src_memory;
+    auto fc_src_md = fc_usr_src_md;
+
+    // flatten the input dimensions to 2d if necessary
+    if(input->dims().size() == 4) {
+      fc_src_md = platform::MKLDNNMemDesc(
+        fc_src_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::nchw);
+      auto fc_src_memory_pd = memory::primitive_desc(fc_usr_src_md, mkldnn_engine);
+      auto fc_src_memory = memory(fc_usr_src_memory_pd);
+      auto reorder = mkldnn::reorder(fc_usr_src_memory, fc_src_memory);
+      std::vector<mkldnn::primitive> pipeline{reorder};
+      stream(stream::kind::eager).submit(pipeline).wait();
+      fc_src_tz = {fc_src_tz[0], fc_src_tz[1] * fc_src_tz[2] * fc_src_tz[3]};
+
+      fc_src_md = platform::MKLDNNMemDesc(
+        fc_src_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::nc);
+      fc_src_memory_pd = memory::primitive_desc(fc_usr_src_md, mkldnn_engine);
+      fc_src_memory = memory(fc_usr_src_memory_pd, fc_src_memory.get_data_handle());
+    }
 
     auto fc_weights_md = platform::MKLDNNMemDesc(
         fc_weights_tz, platform::MKLDNNGetDataType<T>(), w->format());
