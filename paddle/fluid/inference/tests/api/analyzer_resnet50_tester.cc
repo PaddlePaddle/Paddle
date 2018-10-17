@@ -20,16 +20,14 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void SetConfig(AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS_use_MKLDNN) {
   cfg->param_file = FLAGS_infer_model + "/params";
   cfg->prog_file = FLAGS_infer_model + "/model";
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
-#ifdef PADDLE_WITH_MKLDNN
-  cfg->_use_mkldnn = FLAGS_use_MKLDNN;
-#endif
+  cfg->_use_mkldnn = _use_mkldnn;
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -92,17 +90,19 @@ TEST(Analyzer_resnet50, compare) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(cfg, input_slots_all);
-#ifdef PADDLE_WITH_MKLDNN
-  // since default config._use_mkldnn=true in this case,
-  // we should compare analysis_outputs in config._use_mkldnn=false
-  // with native_outputs as well.
-  FLAGS_use_MKLDNN = false;
-  AnalysisConfig cfg1;
-  SetConfig(&cfg1);
-  CompareNativeAndAnalysis(cfg1, input_slots_all);
-  FLAGS_use_MKLDNN = true;
-#endif
 }
+
+// Compare result of NativeConfig and AnalysisConfig with MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_resnet50, compare_mkldnn) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg, true);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
+#endif
 
 }  // namespace analysis
 }  // namespace inference
