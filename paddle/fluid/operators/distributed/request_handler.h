@@ -30,7 +30,6 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +84,6 @@ class VarHandle {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       status_ = ok ? kFinishState : kErrorState;
     }
-
     VLOG(7) << "VarHandle finish:" << ok;
     wait_cond_.notify_all();
   }
