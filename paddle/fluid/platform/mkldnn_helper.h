@@ -70,6 +70,7 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
                                           mkldnn::memory::data_type data_type,
                                           mkldnn::memory::format format) {
   mkldnn::memory::dims tz = dims;
+  std::cout<<"this is MKLDNNMemDesc"<<"   data_type"<<data_type<<"   format"<<format<<std::endl;
   return mkldnn::memory::desc({tz}, data_type, format);
 }
 
@@ -163,6 +164,7 @@ std::cout<<"mem_p == null"<<std::endl;
       mem_p->set_data_handle(ptr);
       // Mark that reusing happenned. All primitives from operator instance
       // should be reused or none of them. So we check consistency
+std::cout<<"1 is reuse = "<<is_reusing_;
       is_reusing_ = true;
     }
 std::cout<<"mdp fmt = "<<mdp.desc().data.format<<"   mem_p fmt = "<<mem_p->get_primitive_desc().desc().data.format<<std::endl;
@@ -188,6 +190,7 @@ std::cout<<"mem_p == null"<<std::endl;
       mem_p->set_data_handle(ptr);
       // Mark that reusing happenned. All primitives from operator instance
       // should be reused or none of them. So we check consistency
+std::cout<<"2 is reuse = "<<is_reusing_;
       is_reusing_ = true;
     }
 std::cout<<"md fmt = "<<md.data.format<<"   mem_p fmt = "<<mem_p->get_primitive_desc().desc().data.format<<std::endl;
@@ -239,6 +242,7 @@ std::cout<<"md fmt = "<<md.data.format<<"   mem_p fmt = "<<mem_p->get_primitive_
       if (reorder_p != nullptr) {
         pipeline.push_back(*reorder_p);
       }
+std::cout<<"3 is reuse = "<<is_reusing_;
       is_reusing_ = true;
     }
     return target_memory_p;
