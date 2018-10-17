@@ -33,9 +33,11 @@ class SplitOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     std::vector<framework::Tensor*> outputs;
+    std::vector<const framework::Tensor*> shape_refer;
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
       outputs.push_back(outs[j]);
+      shape_refer.emplace_back(outs[j]);
     }
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
@@ -45,18 +47,15 @@ class SplitOpKernel : public framework::OpKernel<T> {
 
       for (size_t i = 0; i < outs.size(); ++i) {
         auto out_stride = framework::stride_numel(outs[i]->dims());
-        auto* out = outputs[i];
         StridedNumelCopyWithAxis<T>(
             ctx.device_context(), axis, outputs[i]->data<T>(), out_stride,
             in->data<T>() + input_offset, in_stride, out_stride[axis]);
         input_offset += out_stride[axis];
       }
     } else {
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
-          concat_grad_functor;
-      concat_grad_functor(dev_ctx, *in, ctx.MultiInput<framework::Tensor>("X"),
-                          static_cast<int>(axis), &outputs);
+      math::ConcatGradFunctor<DeviceContext, T> functor;
+      functor(ctx.template device_context<DeviceContext>(), *in, shape_refer,
+              static_cast<int>(axis), &outputs);
     }
   }
 };
