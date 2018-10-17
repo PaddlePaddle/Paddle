@@ -36,11 +36,36 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
   virtual ~LockFreeOptimizeEmbeddingPass() {}
 
  protected:
-  ir::Node* CreateNewOptimizerNode(ir::Graph* graph, ir::Node* node,
+  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+
+ private:
+  // Create a new optimizer node via current optimizer node
+  ir::Node* CreateNewOptimizerNode(ir::Graph* graph, ir::Node* grad_node,
+                                   ir::Node* grad_output_node,
                                    const std::string& optimizer_type,
                                    const std::string& grad_name) const;
 
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  // Replace the input weight's optimizers
+  void ReplaceUpstreamOptimizerNode(ir::Node* upstream_node,
+                                    ir::Node* old_optimizer_node,
+                                    ir::Node* new_optimizer_node) const;
+
+  // Replace the output weight's optimizers
+  void ReplaceDownstreamOptimizerNode(ir::Node* downstream_node,
+                                      ir::Node* old_optimizer_node,
+                                      ir::Node* new_optimizer_node) const;
+
+  // Check if ctrl_dep_var_node's input op equals to
+  // the lookup_table_grad_output_node's related lookup_table op
+  bool IsRelatedEmbeddingOp(ir::Node* ctrl_dep_var_node,
+                            ir::Node* lookup_table_grad_output_node) const;
+
+  static const std::string kGradSumOpType;
+  // TODO(minqiyang): only support sgd at current time, please add
+  // other optimizers later.
+  static const std::string kOptimizerType;
+  static const std::string kEmbeddingGradOpType;
+  static const std::string kEmbeddingOpType;
 };
 
 }  // namespace ir
