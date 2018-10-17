@@ -1278,12 +1278,15 @@ def sequence_conv(input,
         filter_size (int): the filter size (H and W).
         filter_stride (int): stride of the filter.
         padding (bool): if True, add paddings.
-        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            If it is set to None or one attribute of ParamAttr, sequence_conv
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
-            of this layer. If it is set to None, the parameter is initialized with
-            Xavier. Default: None.
+            of sequence_conv. If it is set to None or one attribute of ParamAttr, sequence_conv
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
         act (str): the activation type
 
     Returns:
@@ -1492,14 +1495,17 @@ def conv2d(input,
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1
+            connected to the second half of the input channels. Default: groups=1.
         param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
-            of this layer. If it is set to None, the parameter is initialized with
-            :math:`Normal(0.0, std)`, and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`.
-            Default: None.
-        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
@@ -1551,8 +1557,8 @@ def conv2d(input,
     filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
-        filter_num_elem = filter_size[0] * filter_size[1] * num_channels
-        std = (2.0 / (filter_num_elem))**0.5
+        filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
     filter_param = helper.create_parameter(
@@ -1664,12 +1670,15 @@ def conv3d(input,
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
         param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
-            of this layer. If it is set to None, the parameter is initialized with
-            :math:`Normal(0.0, std)`, and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`.
-            Default: None.
-        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as param_attr. If it is set to None, the parameter
+            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
+            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
@@ -2414,11 +2423,14 @@ def conv2d_transpose(input,
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
         param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
-            of this layer. If it is set to None, the parameter is initialized with
-            Xavier. Default: None.
-        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d_transpose.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            If it is set to None or one attribute of ParamAttr, conv2d_transpose
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
         act (str): Activation type, if it is set to None, activation is not appended.
@@ -2599,11 +2611,14 @@ def conv3d_transpose(input,
             filters is only connected to the second half of the input channels.
             Default: groups=1
         param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
-            of this layer. If it is set to None, the parameter is initialized with
-            Xavier. Default: None.
-        bias_attr (ParamAttr): The parameter attribute for the bias of this layer.
+            of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d_transpose.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
