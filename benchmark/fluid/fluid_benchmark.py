@@ -17,7 +17,6 @@ import cProfile
 import time
 import os
 import traceback
-import sys
 
 import numpy as np
 
