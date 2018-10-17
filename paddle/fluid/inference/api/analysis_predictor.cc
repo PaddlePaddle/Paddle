@@ -340,6 +340,19 @@ bool AnalysisPredictor::LoadProgramDesc() {
   }
   return true;
 }
+
+AnalysisPredictor::~AnalysisPredictor() {
+#if !defined(_WIN32)
+  if (FLAGS_profile) {
+    platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                              "./profile.log");
+  }
+#endif
+  if (sub_scope_) {
+    scope_->DeleteScope(sub_scope_);
+  }
+}
+
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
