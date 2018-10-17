@@ -311,8 +311,7 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   config.use_feed_fetch_ops = true;
-  auto native_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
   auto analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
