@@ -20,7 +20,7 @@ else
 fi
 
 USE_TENSORRT=OFF
-if [ [-d"$TENSORRT_INCLUDE_DIR"] -a [-d"$TENSORRT_LIB_DIR"] ]; then
+if [ -d "$TENSORRT_INCLUDE_DIR" -a -d "$TENSORRT_LIB_DIR" ]; then
   USE_TENSORRT=ON
 fi
 
