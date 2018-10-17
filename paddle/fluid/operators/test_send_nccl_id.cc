@@ -97,7 +97,7 @@ TEST(SendNcclId, RPCServer) {
   LOG(INFO) << "connect to server" << ep;
   client->AsyncSendVar(ep, dev_ctx, scope, NCCL_ID_VARNAME);
   client->Wait();
-  client->AsyncSendBatchBarrier(ep, dev_ctx);
+  client->AsyncSendBatchBarrier(ep);
   client->Wait();
 
   server_thread.join();

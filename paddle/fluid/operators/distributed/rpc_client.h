@@ -52,21 +52,17 @@ class RPCClient {
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendBatchBarrier(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      int64_t time_out = FLAGS_rpc_deadline) = 0;
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendFetchBarrier(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      int64_t time_out = FLAGS_rpc_deadline) = 0;
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
-      const platform::DeviceContext& ctx,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendComplete(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      int64_t time_out = FLAGS_rpc_deadline) = 0;
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   // Complete tells all the pserver instances that finishe the training,
   // the pserver can reduce it's barrier count, and continue to train

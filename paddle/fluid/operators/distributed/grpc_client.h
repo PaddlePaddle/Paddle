@@ -197,21 +197,17 @@ class GRPCClient : public RPCClient {
                                 int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendBatchBarrier(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      int64_t time_out = FLAGS_rpc_deadline) override;
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendFetchBarrier(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      int64_t time_out = FLAGS_rpc_deadline) override;
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
-      const platform::DeviceContext& ctx,
       int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendComplete(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      int64_t time_out = FLAGS_rpc_deadline) override;
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
   bool Wait() override;
 

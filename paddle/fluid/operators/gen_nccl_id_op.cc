@@ -69,7 +69,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
     client->Wait();
     for (auto& ep : endpoint_list) {
-      client->AsyncSendBatchBarrier(ep, dev_ctx);
+      client->AsyncSendBatchBarrier(ep);
     }
     client->Wait();
     VLOG(3) << "sending completed...";
