@@ -149,9 +149,17 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::RecordEvent record_event(Type(), pool.Get(place));
-  RunImpl(scope, place);
+
+  // The profile has a process-wide mutex, results in serious performance issue
+  // in concurrency scenerio. Here use an `if` to fix this issue.
+  // Please not remove the `if`, ask @Superjomn if there are any concern.
+  if (platform::IsProfileEnabled()) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::RecordEvent record_event(Type(), pool.Get(place));
+    RunImpl(scope, place);
+  } else {
+    RunImpl(scope, place);
+  }
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
@@ -540,6 +548,36 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string>& Outputs(
       const std::string& name) const override {
     return op_.Outputs(name);
+  }
+
+  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    const std::string& input_n = Inputs(in)[i];
+    const std::string& output_n = Outputs(out)[j];
+
+    Variable* in_var = scope_.FindVar(input_n);
+    Variable* out_var = scope_.FindVar(output_n);
+    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
+                   "The type of %s and %s is not the same.", output_n,
+                   GetDim(input_n));
+
+    if (in_var->IsType<framework::SelectedRows>()) {
+      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
+      out_sele_rows->set_rows(in_sele_rows.rows());
+      out_sele_rows->set_height(in_sele_rows.height());
+    } else if (in_var->IsType<framework::LoDTensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+      out_lod_tensor->Resize(in_lod_tensor.dims());
+    } else {
+      PADDLE_THROW(
+          "Currently, the input type of ShareDim only can be LoDTensor "
+          "or SelectedRows.");
+    }
   }
 
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,

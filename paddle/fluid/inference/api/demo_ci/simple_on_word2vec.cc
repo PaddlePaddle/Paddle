@@ -22,8 +22,8 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <thread>  //NOLINT
+
 #include "paddle/fluid/inference/paddle_inference_api.h"
-#include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
@@ -62,17 +62,17 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    PADDLE_ENFORCE(outputs.size(), 1UL);
+    CHECK_EQ(outputs.size(), 1UL);
     // Check the output buffer size and result of each tid.
-    PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+    CHECK_EQ(outputs.front().data.length(), 33168UL);
     float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                        0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
          i++) {
-      PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
-                     result[i]);
+      CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
+                 0.001);
     }
   }
 }
@@ -108,9 +108,9 @@ void MainThreads(int num_threads, bool use_gpu) {
         CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
-        PADDLE_ENFORCE(outputs.size(), 1UL);
+        CHECK_EQ(outputs.size(), 1UL);
         // Check the output buffer size and result of each tid.
-        PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+        CHECK_EQ(outputs.front().data.length(), 33168UL);
         float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                            0.000932706};
         const size_t num_elements =
@@ -118,8 +118,8 @@ void MainThreads(int num_threads, bool use_gpu) {
         // The outputs' buffers are in CPU memory.
         for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
              i++) {
-          PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
-                         result[i]);
+          CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i],
+                     result[i], 0.001);
         }
       }
     });

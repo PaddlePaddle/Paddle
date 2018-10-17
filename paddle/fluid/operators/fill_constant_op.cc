@@ -37,6 +37,12 @@ class FillConstantOp : public framework::OperatorWithKernel {
   }
 };
 
+class FillConstantOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {}
+};
+
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -67,8 +73,6 @@ Fill up a variable with specified constant value.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_constant,
     ops::FillConstantOpKernel<paddle::platform::CPUDeviceContext, float>,

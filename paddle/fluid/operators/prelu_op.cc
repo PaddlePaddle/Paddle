@@ -49,7 +49,7 @@ class PReluOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_THROW("Unkown mode %s", mode);
     }
-    ctx->SetOutputDim("Out", x_dim);
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
