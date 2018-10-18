@@ -32,7 +32,7 @@ struct TolerableValue {
     if (x == INFINITY) return kApproInf;
     // TolerableValue is always used after log. So the kLogMin is a more
     // appropriate value than kApproInf
-    if (x == -INFINITY) return -kLogMin;
+    if (x == -INFINITY) return kLogMin;
     return x;
   }
 };
