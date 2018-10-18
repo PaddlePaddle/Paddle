@@ -132,6 +132,11 @@ class RmspropOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     using LoDTensor = framework::LoDTensor;
+    const auto *param_var = ctx.InputVar("Param");
+    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Param").front(), param_var->Type().name());
     auto *grad_var = ctx.InputVar("Grad");
     auto *param_out = ctx.Output<LoDTensor>("ParamOut");
     auto *moment_out = ctx.Output<LoDTensor>("MomentOut");
