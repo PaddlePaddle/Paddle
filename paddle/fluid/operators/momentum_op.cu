@@ -15,76 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/momentum_op.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-__global__ void MomentumKernel(const T* p, const T* g, const T* v,
-                               const T* learning_rate, const T mu,
-                               const int64_t num, bool use_nesterov, T* p_out,
-                               T* v_out) {
-  T lr = learning_rate[0];
-  if (use_nesterov) {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-         i += blockDim.x * gridDim.x) {
-      T g_val = g[i];
-      T v_new = v[i] * mu + g_val;
-      v_out[i] = v_new;
-      p_out[i] = p[i] - (g_val + v_new * mu) * lr;
-    }
-  } else {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-         i += blockDim.x * gridDim.x) {
-      T v_new = v[i] * mu + g[i];
-      v_out[i] = v_new;
-      p_out[i] = p[i] - lr * v_new;
-    }
-  }
-}
-
-template <typename T>
-class MomentumOpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(), param_var->Type().name());
-    const auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Grad").front(), grad_var->Type().name());
-
-    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
-    auto param = ctx.Input<framework::Tensor>("Param");
-    auto velocity = ctx.Input<framework::Tensor>("Velocity");
-    auto grad = ctx.Input<framework::Tensor>("Grad");
-    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-
-    T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
-    T* v_out = velocity_out->mutable_data<T>(ctx.GetPlace());
-
-    T mu = static_cast<T>(ctx.Attr<float>("mu"));
-    bool use_nesterov = ctx.Attr<bool>("use_nesterov");
-
-    auto* p = param->data<T>();
-    auto* v = velocity->data<T>();
-    auto* g = grad->data<T>();
-    auto* lr = learning_rate->data<T>();
-
-    int block = 512;
-    int grid = (param->numel() + block - 1) / block;
-    MomentumKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        p, g, v, lr, mu, param->numel(), use_nesterov, p_out, v_out);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(momentum, ops::MomentumOpCUDAKernel<float>,
-                        ops::MomentumOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    momentum, ops::MomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MomentumOpKernel<paddle::platform::CUDADeviceContext, double>);
