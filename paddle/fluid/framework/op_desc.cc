@@ -81,10 +81,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                    "The %s[%d] is @EMPTY@", out, j);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The %d-th output of Output(%s) must be LoDTensor.", j,
-                      out);
-
+    if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
+      VLOG(3) << "input " << in << " is not LodTensor";
+      return;
+    }
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
