@@ -81,6 +81,8 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
 
+    if (FindFuseOption(conv_op, elementwise_add_op) != FUSE_MKLDNN) return;
+
     OpDesc op_desc;
     op_desc.SetType("conv2d");
 
