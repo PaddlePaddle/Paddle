@@ -24,7 +24,7 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__global__ void KernelConcat(T** inputs, const int* input_cols, int col_size,
+__global__ void ConcatKernel(T** inputs, const int* input_cols, int col_size,
                              const int output_rows, const int output_cols,
                              T* output) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -50,7 +50,7 @@ __global__ void KernelConcat(T** inputs, const int* input_cols, int col_size,
 }
 
 template <typename T>
-__global__ void KernelConcat(T** inputs_data, const int fixed_in_col,
+__global__ void ConcatKernel(T** inputs_data, const int fixed_in_col,
                              const int out_rows, const int out_cols,
                              T* output_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -67,7 +67,7 @@ __global__ void KernelConcat(T** inputs_data, const int fixed_in_col,
 }
 
 template <typename T>
-__global__ void KernelSplit(const T* input_data, const int in_row,
+__global__ void SplitKernel(const T* input_data, const int in_row,
                             const int in_col, const int* out_cols,
                             int out_cols_size, T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -94,7 +94,7 @@ __global__ void KernelSplit(const T* input_data, const int in_row,
 }
 
 template <typename T>
-__global__ void KernelSplit(const T* input_data, const int in_row,
+__global__ void SplitKernel(const T* input_data, const int in_row,
                             const int in_col, const int fixed_out_col,
                             T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -170,11 +170,11 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
-      KernelConcat<<<grid_size, block_size, 0, context.stream()>>>(
+      ConcatKernel<<<grid_size, block_size, 0, context.stream()>>>(
           dev_ins_data, in_col, out_row, out_col, output->data<T>());
     } else {
       const int* dev_ins_col_data = inputs_col.CUDAData(context.GetPlace());
-      KernelConcat<<<grid_size, block_size, 0, context.stream()>>>(
+      ConcatKernel<<<grid_size, block_size, 0, context.stream()>>>(
           dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col.size()),
           out_row, out_col, output->data<T>());
     }
@@ -248,11 +248,11 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
-      KernelSplit<<<grid_size, block_size, 0, context.stream()>>>(
+      SplitKernel<<<grid_size, block_size, 0, context.stream()>>>(
           input.data<T>(), in_row, in_col, out0_col, dev_out_gpu_data);
     } else {
       const int* dev_outs_col_data = outputs_cols.CUDAData(context.GetPlace());
-      KernelSplit<<<grid_size, block_size, 0, context.stream()>>>(
+      SplitKernel<<<grid_size, block_size, 0, context.stream()>>>(
           input.data<T>(), in_row, in_col, dev_outs_col_data,
           static_cast<int>(outputs_cols.size()), dev_out_gpu_data);
     }

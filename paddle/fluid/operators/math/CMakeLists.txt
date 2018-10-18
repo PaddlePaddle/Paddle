@@ -45,8 +45,6 @@ math_library(im2col)
 if (NOT WIN32) # windows do not support avx functions yet.
     math_library(gru_compute DEPS activation_functions math_function)
     math_library(lstm_compute DEPS activation_functions)
-    # TODO(TJ): ugly workaround, clean me
-    cc_library(cpu_lstm_compute SRCS cpu_lstm_compute.cc DEPS activation_functions cblas cpu_info)
 endif (NOT WIN32)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
@@ -76,3 +74,7 @@ if(WITH_GPU)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
+cc_library(jit_kernel 
+    SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_lstm.cc
+    DEPS cpu_info cblas activation_functions)
+cc_test(jit_kernel_test SRCS jit_kernel_test.cc DEPS jit_kernel)

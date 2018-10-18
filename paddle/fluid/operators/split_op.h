@@ -38,13 +38,13 @@ class SplitOpKernel : public framework::OpKernel<T> {
       shape_refer.emplace_back(outs[j]);
     }
 
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (axis == 0 && outs.size() < 10) {
-      StridedMemcpyWithAxis0<T>(ctx.device_context(), *in, shape_refer, &outs);
+      StridedMemcpyWithAxis0<T>(dev_ctx, *in, shape_refer, &outs);
     } else {
       math::SplitFunctor<DeviceContext, T> functor;
-      functor(ctx.template device_context<DeviceContext>(), *in, shape_refer,
-              axis, &outs);
+      functor(dev_ctx, *in, shape_refer, axis, &outs);
     }
   }
 };
