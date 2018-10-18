@@ -172,7 +172,7 @@ def get_model(args, is_train, main_prog, startup_prog):
     reader, dshape, class_dim = _model_reader_dshape_classdim(args, is_train)
 
     pyreader = None
-    trainer_count = int(os.getenv("PADDLE_TRAINERS"))
+    trainer_count = int(os.getenv("PADDLE_TRAINERS", 1))
     with fluid.program_guard(main_prog, startup_prog):
         with fluid.unique_name.guard():
             if args.use_reader_op:

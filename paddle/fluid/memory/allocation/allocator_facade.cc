@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include <gflags/gflags.h>
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -24,6 +26,7 @@
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -31,6 +34,11 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #endif
+
+DEFINE_int32(
+    gpu_allocator_retry_time, 0,
+    "The retry time (milliseconds) when allocator fails "
+    "to allocate memory. No retry if this value is not greater than 0");
 
 namespace paddle {
 namespace memory {
@@ -60,6 +68,7 @@ class CPUManagedAllocator : public ManagedAllocator {
       return normal_allocator_->AllocateShared(size, attr);
     }
   }
+
   bool IsAllocThreadSafe() const override { return true; }
 
  private:
@@ -86,8 +95,12 @@ class CUDAManagedAllocator : public ManagedAllocator {
       size_t capacity = available / max_chunk_size_;
 
       if (capacity == 1) {
+        VLOG(10) << "Create BestFitAllocator with chunk_size "
+                 << max_chunk_size_;
         default_allocator_ = BestFitAllocatorCreator();
       } else {
+        VLOG(10) << "Create AutoIncrementAllocator with chunk_size "
+                 << max_chunk_size_ << " and capacity " << capacity;
         default_allocator_ = std::make_shared<AutoIncrementAllocator>(
             [this] { return std::move(BestFitAllocatorCreator()); }, capacity);
       }
@@ -116,6 +129,7 @@ class CUDAManagedAllocator : public ManagedAllocator {
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
     return default_allocator_->Allocate(size, attr);
   }
+
   std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override {
     return default_allocator_->AllocateShared(size, attr);
   }
@@ -123,10 +137,20 @@ class CUDAManagedAllocator : public ManagedAllocator {
   std::shared_ptr<ManagedAllocator> BestFitAllocatorCreator() {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
-    return std::make_shared<AlignedAllocator<64u>>(
-        NaiveManagedAllocator::Create(std::unique_ptr<Allocator>(
-            new LockedAllocator(std::unique_ptr<Allocator>(
-                new BestFitAllocator(allocation))))));
+    std::unique_ptr<Allocator> unmanaged_allocator(new LockedAllocator(
+        std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
+
+    if (FLAGS_gpu_allocator_retry_time <= 0) {
+      VLOG(10) << "Create NaiveManagedAllocator without retry";
+      return std::make_shared<AlignedAllocator<64u>>(
+          NaiveManagedAllocator::Create(std::move(unmanaged_allocator)));
+    } else {
+      VLOG(10) << "Create RetryAllocator with retry_time "
+               << FLAGS_gpu_allocator_retry_time << "ms";
+      return std::make_shared<AlignedAllocator<64u>>(RetryAllocator::Create(
+          std::move(unmanaged_allocator),
+          static_cast<size_t>(FLAGS_gpu_allocator_retry_time)));
+    }
   }
 
   bool IsAllocThreadSafe() const override { return true; }
@@ -141,7 +165,8 @@ class CUDAManagedAllocator : public ManagedAllocator {
 
 class AllocatorFacadePrivate {
  public:
-  std::map<platform::Place, std::shared_ptr<ManagedAllocator>> allocators_;
+  std::unordered_map<platform::Place, std::shared_ptr<ManagedAllocator>>
+      allocators_;
 
   ~AllocatorFacadePrivate() = default;
 
@@ -184,13 +209,13 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return m_->allocators_[place]->AllocateShared(size, attr);
+  return m_->allocators_.at(place)->AllocateShared(size, attr);
 }
 
 std::unique_ptr<Allocation> AllocatorFacade::Alloc(const platform::Place& place,
                                                    size_t size,
                                                    Allocator::Attr attr) {
-  return m_->allocators_[place]->Allocate(size, attr);
+  return m_->allocators_.at(place)->Allocate(size, attr);
 }
 
 }  // namespace allocation

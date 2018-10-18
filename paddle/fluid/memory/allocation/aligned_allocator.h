@@ -77,6 +77,8 @@ class ThinAlignedAllocator : public ManagedAllocator {
 
   std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
 
+  bool IsAllocThreadSafe() const;
+
  protected:
   std::shared_ptr<ManagedAllocator> underlying_allocator_;
 };

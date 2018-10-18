@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -130,5 +131,65 @@ typename Visitor::result_type VisitPlace(const Place &place,
   return boost::apply_visitor(PlaceVisitorWrapper<Visitor>(visitor), place);
 }
 
+struct PlaceHashVisitor : public boost::static_visitor<size_t> {
+  template <typename Place>
+  inline size_t operator()(const Place &place) const {
+    return place.hash();
+  }
+};
+
 }  // namespace platform
 }  // namespace paddle
+
+namespace std {
+
+template <>
+struct hash<::paddle::platform::CPUPlace> {
+  using argument_type = ::paddle::platform::CPUPlace;
+  using result_type = size_t;
+
+  constexpr inline result_type operator()(const argument_type &place) const {
+    return static_cast<result_type>(-1);
+  }
+};
+
+template <>
+struct hash<::paddle::platform::CUDAPlace> {
+  using argument_type = ::paddle::platform::CUDAPlace;
+  using result_type = size_t;
+
+  inline result_type operator()(const argument_type &place) const {
+    return static_cast<result_type>(place.device);
+  }
+};
+
+template <>
+struct hash<::paddle::platform::CUDAPinnedPlace> {
+  using argument_type = ::paddle::platform::CUDAPinnedPlace;
+  using result_type = size_t;
+
+  constexpr inline result_type operator()(const argument_type &place) const {
+    return static_cast<result_type>(-2);
+  }
+};
+
+namespace {  // NOLINT
+struct PlaceHashVisitor : public boost::static_visitor<size_t> {
+  template <typename Place>
+  inline size_t operator()(const Place &place) const {
+    return std::hash<Place>()(place);
+  }
+};
+}
+
+template <>
+struct hash<::paddle::platform::Place> {
+  using argument_type = ::paddle::platform::Place;
+  using result_type = size_t;
+
+  inline result_type operator()(const argument_type &place) const {
+    return boost::apply_visitor(PlaceHashVisitor(), place);
+  }
+};
+
+}  // namespace std
