@@ -127,7 +127,6 @@ void CTRReader::ReadThread(const std::vector<std::string>& file_list,
                            int batch_size,
                            std::shared_ptr<LoDTensorBlockingQueue> queue) {
   std::string line;
-  std::vector<framework::LoDTensor> read_data;
 
   std::vector<std::unordered_map<std::string, std::vector<int64_t>>> batch_data;
   std::vector<int64_t> batch_label;
