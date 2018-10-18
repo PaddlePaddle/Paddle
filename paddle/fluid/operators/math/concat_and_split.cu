@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -67,9 +67,9 @@ __global__ void KernelConcat(T** inputs_data, const int fixed_in_col,
 }
 
 template <typename T>
-__global__ void KernelConcatGrad(const T* input_data, const int in_row,
-                                 const int in_col, const int* out_cols,
-                                 int out_cols_size, T** outputs_data) {
+__global__ void KernelSplit(const T* input_data, const int in_row,
+                            const int in_col, const int* out_cols,
+                            int out_cols_size, T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   int curr_segment = 0;
   int curr_offset = out_cols[0];
@@ -94,9 +94,9 @@ __global__ void KernelConcatGrad(const T* input_data, const int in_row,
 }
 
 template <typename T>
-__global__ void KernelConcatGrad(const T* input_data, const int in_row,
-                                 const int in_col, const int fixed_out_col,
-                                 T** outputs_data) {
+__global__ void KernelSplit(const T* input_data, const int in_row,
+                            const int in_col, const int fixed_out_col,
+                            T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
     int split = tid_x / fixed_out_col;
@@ -189,7 +189,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatGradFunctor<platform::CUDADeviceContext, T> {
+class SplitFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
@@ -248,11 +248,11 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
-      KernelConcatGrad<<<grid_size, block_size, 0, context.stream()>>>(
+      KernelSplit<<<grid_size, block_size, 0, context.stream()>>>(
           input.data<T>(), in_row, in_col, out0_col, dev_out_gpu_data);
     } else {
       const int* dev_outs_col_data = outputs_cols.CUDAData(context.GetPlace());
-      KernelConcatGrad<<<grid_size, block_size, 0, context.stream()>>>(
+      KernelSplit<<<grid_size, block_size, 0, context.stream()>>>(
           input.data<T>(), in_row, in_col, dev_outs_col_data,
           static_cast<int>(outputs_cols.size()), dev_out_gpu_data);
     }
@@ -264,7 +264,7 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
 
 #define DEFINE_FUNCTOR(type)                                       \
   template class ConcatFunctor<platform::CUDADeviceContext, type>; \
-  template class ConcatGradFunctor<platform::CUDADeviceContext, type>
+  template class SplitFunctor<platform::CUDADeviceContext, type>
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

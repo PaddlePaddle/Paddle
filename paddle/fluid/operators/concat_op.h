@@ -17,7 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -107,7 +107,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
       }
     } else {
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
+      paddle::operators::math::SplitFunctor<DeviceContext, T>
           concat_grad_functor;
       concat_grad_functor(dev_ctx, *out_grad,
                           ctx.MultiInput<framework::Tensor>("X"),

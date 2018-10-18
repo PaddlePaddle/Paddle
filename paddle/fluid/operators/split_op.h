@@ -17,7 +17,7 @@ limitations under the License. */
 #include <chrono>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -53,7 +53,7 @@ class SplitOpKernel : public framework::OpKernel<T> {
         input_offset += out_stride[axis];
       }
     } else {
-      math::ConcatGradFunctor<DeviceContext, T> functor;
+      math::SplitFunctor<DeviceContext, T> functor;
       functor(ctx.template device_context<DeviceContext>(), *in, shape_refer,
               static_cast<int>(axis), &outputs);
     }

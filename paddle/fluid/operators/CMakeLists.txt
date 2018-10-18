@@ -315,7 +315,7 @@ op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
-op_library(concat_op DEPS concat)
+op_library(concat_op DEPS concat_and_split)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 
