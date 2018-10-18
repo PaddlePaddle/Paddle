@@ -168,7 +168,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     startup_exe = fluid.Executor(place)
     startup_exe.run(startup_prog)
     strategy = fluid.ExecutionStrategy()
-    strategy.num_threads = args.cpus
+    strategy.num_threads = 0  #args.cpus
     strategy.allow_op_delay = False
     build_strategy = fluid.BuildStrategy()
     if args.reduce_strategy == "reduce":
@@ -187,6 +187,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         num_trainers = 1
         trainer_id = 0
 
+    print('Use parallel_executor')
+    strategy.type = 2
     exe = fluid.ParallelExecutor(
         True,
         avg_loss.name,

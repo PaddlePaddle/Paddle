@@ -48,8 +48,11 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         auto_increment_allocator
         zero_size_allocator
         conditional_allocator
+        retry_allocator
         cuda_device_guard)
 
 nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator naive_managed_allocator best_fit_allocator locked_allocator cpu_allocator)
+
+cc_test(allocator_facade_test SRCS allocator_facade_test.cc DEPS allocator_facade)

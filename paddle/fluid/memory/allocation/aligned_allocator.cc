@@ -26,6 +26,11 @@ std::shared_ptr<Allocation> ThinAlignedAllocator::AllocateShared(
     size_t size, Allocator::Attr attr) {
   return std::shared_ptr<Allocation>(Allocate(size, attr).release());
 }
+
+bool ThinAlignedAllocator::IsAllocThreadSafe() const {
+  return underlying_allocator_->IsAllocThreadSafe();
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
