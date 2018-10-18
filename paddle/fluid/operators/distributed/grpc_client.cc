@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/distributed/grpc_client.h"
-
 #include <sys/time.h>
-
 #include <limits>
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/distributed/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -336,8 +334,11 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+      // FIXME(gongwb): parse error_details?
       LOG(ERROR) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error:" << c->status_.error_message();
+                 << " meets grpc error, error_code:" << c->status_.error_code()
+                 << " error_message:" << c->status_.error_message()
+                 << " error_details:" << c->status_.error_details();
       {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
@@ -345,7 +346,10 @@ void GRPCClient::Proceed() {
       c->Finish(false);
     } else {
       LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error:" << c->status_.error_message();
+                 << " meets grpc error, error_code:" << c->status_.error_code()
+                 << " error_message:" << c->status_.error_message()
+                 << " error_details:" << c->status_.error_details();
+
       c->Finish(false);
     }
 
