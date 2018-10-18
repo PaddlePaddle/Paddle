@@ -40,7 +40,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
-std::cout<<"this is dequant op ***********"<<std::endl;
+
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();

@@ -153,11 +153,8 @@ class MKLDNNHandler {
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
                    "Fail to find mem primitive in device context");
-    //mem_p = nullptr;
     if (mem_p == nullptr) {
       mem_p = std::make_shared<mkldnn::memory>(mdp, ptr);
-std::cout<<"mem_p == null"<<std::endl;
-//std::cout<<"mdp fmt = "<<mdp.desc().data.format<<"   mem_p fmt = "<<mem_p->get_primitive_desc().desc().data.format<<std::endl;
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
       mem_p->set_data_handle(ptr);
@@ -165,7 +162,6 @@ std::cout<<"mem_p == null"<<std::endl;
       // should be reused or none of them. So we check consistency
       is_reusing_ = true;
     }
-std::cout<<"mdp fmt = "<<mdp.desc().data.format<<"   mem_p fmt = "<<mem_p->get_primitive_desc().desc().data.format<<std::endl;
     return mem_p;
   }
 
@@ -178,9 +174,7 @@ std::cout<<"mdp fmt = "<<mdp.desc().data.format<<"   mem_p fmt = "<<mem_p->get_p
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
                    "Fail to find mem primitive in device context");
-    //mem_p = nullptr;
     if (mem_p == nullptr) {
-std::cout<<"mem_p == null"<<std::endl;
       mem_p = std::make_shared<mkldnn::memory>(
           mkldnn::memory::primitive_desc{md, engine_}, ptr);
       dev_ctx_.SetBlob(local_key, mem_p);
@@ -190,7 +184,6 @@ std::cout<<"mem_p == null"<<std::endl;
       // should be reused or none of them. So we check consistency
       is_reusing_ = true;
     }
-std::cout<<"md fmt = "<<md.data.format<<"   mem_p fmt = "<<mem_p->get_primitive_desc().desc().data.format<<std::endl;
     return mem_p;
   }
 

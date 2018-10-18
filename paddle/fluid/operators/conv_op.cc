@@ -94,10 +94,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
   auto input_data_type =
       framework::ToDataType(ctx.Input<Tensor>("Input")->type());
-  //auto filter_data_type =
-  //    framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
-  //PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-  //                  "input and filter data type should be consistent");
+  auto filter_data_type =
+      framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
+  PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+                    "input and filter data type should be consistent");
 
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,

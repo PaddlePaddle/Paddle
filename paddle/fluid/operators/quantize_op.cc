@@ -37,7 +37,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
-std::cout<<"this is quantize op!!!!!!!!!!!!!!"<<std::endl;
+
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
@@ -68,12 +68,7 @@ std::cout<<"this is quantize op!!!!!!!!!!!!!!"<<std::endl;
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
         new reorder::primitive_desc(dst_pd, src_pd, attri));    
     auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
-
     pipeline.push_back(*reorder_p);
-    stream(stream::kind::eager).submit(pipeline).wait();
-
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(dst_memory));
   }
 };
 

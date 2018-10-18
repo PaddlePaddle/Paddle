@@ -821,7 +821,6 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
               "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
               Type(), last_input_name, data_type, ipt_name, tmp);
           data_type = tmp;
-          std::cout<<"data_type = "<<data_type;
           last_input_name = ipt_name;
         }
       }
