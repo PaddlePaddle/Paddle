@@ -130,6 +130,13 @@ struct EOFException : public std::exception {
 #define UNLIKELY(condition) (condition == 0)
 #endif
 
+#if !defined(_WIN32)
+#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
+#else
+// there is no equivalent intrinsics in msvc.
+#define LIKELY(condition) (condition != 0)
+#endif
+
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     bool stat, const Args&... args) {
