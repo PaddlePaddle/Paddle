@@ -64,21 +64,21 @@ def simple_img_conv_pool(input,
             average-pooling. Default :math:`max`.
         global_pooling (bool): Whether to use the global pooling. If global_pooling = true,
             pool_size and pool_padding while be ignored. Default False
-        conv_stride (int|list|tuple): The stride size of the Conv2d Layer. If stride is a
+        conv_stride (int|list|tuple): The stride size of the conv2d Layer. If stride is a
             list or tuple, it must contain two integers, (conv_stride_H, conv_stride_W). Otherwise,
             the conv_stride_H = conv_stride_W = conv_stride. Default: conv_stride = 1.
-        conv_padding (int|list|tuple): The padding size of the Conv2d Layer. If padding is
+        conv_padding (int|list|tuple): The padding size of the conv2d Layer. If padding is
             a list or  tuple, it must contain two integers, (conv_padding_H, conv_padding_W).
             Otherwise, the conv_padding_H = conv_padding_W = conv_padding. Default: conv_padding = 0.
-        conv_dilation (int|list|tuple): The dilation size of the Conv2d Layer. If dilation is
+        conv_dilation (int|list|tuple): The dilation size of the conv2d Layer. If dilation is
             a list or tuple, it must contain two integers, (conv_dilation_H, conv_dilation_W).
             Otherwise, the conv_dilation_H = conv_dilation_W = conv_dilation. Default: conv_dilation = 1.
-        conv_groups (int): The groups number of the Conv2d Layer. According to grouped
+        conv_groups (int): The groups number of the conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1.
-        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,

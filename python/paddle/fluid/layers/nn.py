@@ -360,6 +360,11 @@ def dynamic_lstm(input,
                                                 W_{fh}, W_{oh}`}
                                - The shape is (D x 4D), where D is the hidden
                                  size.
+
+                               If it is set to None or one attribute of ParamAttr,
+                               dynamic_lstm will create ParamAttr as param_attr.
+                               If the Initializer of the param_attr is not set, the
+                               parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
@@ -372,6 +377,11 @@ def dynamic_lstm(input,
                                  - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
                                  - The shape is (1 x 7D).
+
+                              If it is set to None or one attribute of ParamAttr,
+                              dynamic_lstm will create ParamAttr as bias_attr.
+                              If the Initializer of the bias_attr is not set,
+                              the bias is initialized zero. Default: None.
         use_peepholes (bool): ${use_peepholes_comment}
         is_reverse (bool): ${is_reverse_comment}
         gate_activation (str): ${gate_activation_comment}
@@ -394,7 +404,7 @@ def dynamic_lstm(input,
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
-
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
     helper = LayerHelper('lstm', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -529,6 +539,11 @@ def dynamic_lstmp(input,
                                  size.
                                - Projection weight = {:math:`W_{rh}`}.
                                - The shape of projection weight is (D x P).
+
+                               If it is set to None or one attribute of ParamAttr,
+                               dynamic_lstm will create ParamAttr as param_attr.
+                               If the Initializer of the param_attr is not set, the
+                               parameter is initialized with Xavier. Default: None.
         bias_attr(ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
@@ -541,6 +556,11 @@ def dynamic_lstmp(input,
                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
                                 - The shape is (1 x 7D).
+
+                              If it is set to None or one attribute of ParamAttr,
+                              dynamic_lstm will create ParamAttr as bias_attr.
+                              If the Initializer of the bias_attr is not set,
+                              the bias is initialized zero. Default: None.
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
@@ -585,6 +605,7 @@ def dynamic_lstmp(input,
                                                      proj_activation="tanh")
     """
 
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -1284,11 +1305,12 @@ def sequence_conv(input,
             If it is set to None or one attribute of ParamAttr, sequence_conv
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
             of sequence_conv. If it is set to None or one attribute of ParamAttr, sequence_conv
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        act (str): the activation type
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
 
@@ -1503,7 +1525,7 @@ def conv2d(input,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1.
-        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
@@ -1676,7 +1698,7 @@ def conv3d(input,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
@@ -2138,8 +2160,14 @@ def batch_norm(input,
         is_test(bool, Default False): Used for training or training.
         momentum(float, Default 0.9):
         epsilon(float, Default 1e-05):
-        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
-        bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
@@ -2159,6 +2187,7 @@ def batch_norm(input,
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
+    assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -2429,7 +2458,7 @@ def conv2d_transpose(input,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
-        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
@@ -2458,7 +2487,7 @@ def conv2d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
-
+    assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
     input_channel = input.shape[1]
 
     op_type = 'conv2d_transpose'
@@ -2617,7 +2646,7 @@ def conv3d_transpose(input,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups=1
-        param_attr (ParamAttr): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
             of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
@@ -2646,6 +2675,7 @@ def conv3d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
+    assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
@@ -4019,7 +4049,8 @@ def nce(input,
         sample_weight=None,
         param_attr=None,
         bias_attr=None,
-        num_neg_samples=None):
+        num_neg_samples=None,
+        name=None):
     """
     ${comment}
 
@@ -4030,9 +4061,18 @@ def nce(input,
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
-        param_attr (ParamAttr|None): attributes for parameter
-        bias_attr (ParamAttr|None): attributes for bias
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+             of nce. If it is set to None or one attribute of ParamAttr, nce
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of nce.
+             If it is set to False, no bias will be added to the output units.
+             If it is set to None or one attribute of ParamAttr, nce
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
         num_neg_samples (int): ${num_neg_samples_comment}
+        name (str|None): A name for this layer(optional). If set None, the layer
+             will be named automatically. Default: None.
 
     Returns:
         Variable: The output nce loss.
@@ -4065,19 +4105,28 @@ def nce(input,
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
-    dim = input.shape[1]
     assert isinstance(label, Variable)
+
+    dim = input.shape[1]
     num_true_class = label.shape[1]
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=[num_total_classes, dim],
         is_bias=False,
         dtype=input.dtype)
-    b = helper.create_parameter(
-        attr=helper.bias_attr,
-        shape=[num_total_classes, 1],
-        is_bias=True,
-        dtype=input.dtype)
+    inputs = {
+        'Input': input,
+        'Label': label,
+        'Weight': w,
+        'SampleWeight': sample_weight if sample_weight is not None else []
+    }
+    if helper.bias_attr:
+        b = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=[num_total_classes, 1],
+            is_bias=True,
+            dtype=input.dtype)
+        inputs['Bias'] = b
     cost = helper.create_tmp_variable(dtype=input.dtype)
     sample_logits = helper.create_tmp_variable(dtype=input.dtype)
     sample_labels = helper.create_tmp_variable(dtype=label.dtype)
@@ -4094,13 +4143,7 @@ def nce(input,
 
     helper.append_op(
         type='nce',
-        inputs={
-            'Input': input,
-            'Label': label,
-            'Weight': w,
-            'Bias': b,
-            'SampleWeight': sample_weight if sample_weight is not None else []
-        },
+        inputs=inputs,
         outputs={
             'Cost': cost,
             'SampleLogits': sample_logits,
@@ -4110,7 +4153,12 @@ def nce(input,
     return cost / (num_neg_samples + 1)
 
 
-def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
+def hsigmoid(input,
+             label,
+             num_classes,
+             param_attr=None,
+             bias_attr=None,
+             name=None):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
@@ -4131,11 +4179,17 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
         num_classes: (int), The number of classes, must not be less than 2.
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter
-             attribute for learnable parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter
-             attribute for the bias of this layer. If it is set to False, no
-             bias will be applied.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+             of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of hsigmoid.
+             If it is set to False, no bias will be added to the output units.
+             If it is set to None or one attribute of ParamAttr, hsigmoid
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
+        name (str|None): A name for this layer(optional). If set None, the layer
+             will be named automatically. Default: None.
 
     Returns:
         Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
