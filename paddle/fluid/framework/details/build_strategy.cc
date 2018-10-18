@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/build_strategy.h"
 
+#include <glog/logging.h>
+
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -56,10 +58,23 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto multi_devices_print_pass = AppendPass("multi_devices_print_pass");
-      multi_devices_print_pass->SetNotOwned<const std::string>(
-          "debug_graphviz_path", &strategy_.debug_graphviz_path_);
+      const std::string graph_path = string::Sprintf("%s%s", strategy_.debug_graphviz_path_.c_str(), "_multi_devices_graph");
+      VLOG(3) << "multi_device graph " << graph_path;
+      multi_devices_print_pass->Set<std::string>(kGraphvizPath, new std::string(graph_path));
       multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
           "graph_printer", new details::GraphvizSSAGraphPrinter);
+    }
+
+    // Add memory optimize pass
+    if (strategy.memory_optimize_) {
+      auto memory_optimize = AppendPass("memory_optimize_pass");
+      if (!strategy.debug_graphviz_path_.empty()) {
+        auto viz_pass = AppendPass("graph_viz_pass");
+        const std::string graph_path = string::Sprintf(
+                                                       "%s%s", strategy.debug_graphviz_path_.c_str(), "_optimized_graph");
+        viz_pass->Set<std::string>("graph_viz_path",
+                                   new std::string(graph_path));
+      }
     }
 
     // Verify that the graph is correct for multi-device executor.
@@ -124,3 +139,4 @@ USE_PASS(graph_viz_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
+USE_PASS(memory_optimize_pass);

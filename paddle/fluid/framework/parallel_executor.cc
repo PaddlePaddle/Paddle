@@ -156,9 +156,7 @@ ParallelExecutor::ParallelExecutor(
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
 
-<<<<<<< HEAD
-  graph = ApplyMemoryOptimizePass(build_strategy, std::move(graph));
-=======
+  // graph = ApplyMemoryOptimizePass(build_strategy, std::move(graph));
   if (VLOG_IS_ON(5)) {
     // If the loss_var_name is given, the number of graph should be only one.
     if (loss_var_name.size()) {
@@ -166,7 +164,6 @@ ParallelExecutor::ParallelExecutor(
                         "The number of graph should be only one");
     }
   }
->>>>>>> origin/develop
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
@@ -315,16 +312,7 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
-<<<<<<< HEAD
 
-USE_PASS(fuse_elewise_add_act_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(multi_devices_pass);
-USE_PASS(multi_devices_check_pass);
-USE_PASS(multi_devices_print_pass);
-USE_PASS(memory_optimize_pass);
-=======
->>>>>>> origin/develop
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 #endif
