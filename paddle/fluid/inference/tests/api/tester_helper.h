@@ -81,8 +81,7 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
   if (use_analysis) {
     return CreatePaddlePredictor<contrib::AnalysisConfig>(config);
   } else {
-    return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-        config);
+    return CreatePaddlePredictor<NativeConfig>(config);
   }
 }
 
