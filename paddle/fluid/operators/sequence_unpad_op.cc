@@ -50,7 +50,7 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
     if (x_dims.size() == 2) {
       out_dims_vec.push_back(1);
     } else {
-      for (size_t i = 2; i < x_dims.size(); ++i) {
+      for (int i = 2; i < x_dims.size(); ++i) {
         out_dims_vec.push_back(x_dims[i]);
       }
     }

@@ -163,7 +163,8 @@ void TestPrediction(const AnalysisConfig &config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
-  LOG(INFO) << "use_analysis: " << use_analysis;
+  LOG(INFO) << "use_analysis: " << use_analysis
+            << ", use_mkldnn: " << config._use_mkldnn;
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -175,6 +176,7 @@ void TestPrediction(const AnalysisConfig &config,
 void CompareNativeAndAnalysis(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
+  LOG(INFO) << "use_mkldnn: " << config._use_mkldnn;
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
