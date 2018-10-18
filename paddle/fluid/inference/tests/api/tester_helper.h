@@ -79,8 +79,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const AnalysisConfig &config, bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig,
-                                 PaddleEngineKind::kAnalysis>(config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(config);
   } else {
     return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
         config);

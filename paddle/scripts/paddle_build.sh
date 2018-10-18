@@ -390,7 +390,9 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-
+        #remove proxy here to fix dist error on mac
+        export http_proxy=
+        export https_proxy=
         # TODO: jiabin need to refine this part when these tests fixed on mac
         ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
