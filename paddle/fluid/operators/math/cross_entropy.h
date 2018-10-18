@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <limits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -26,9 +27,12 @@ struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
     PADDLE_ASSERT(std::is_floating_point<T>::value);
     const T kApproInf = 1e20;
+    const T kLogMin = log(std::numeric_limits<T>::min());
 
     if (x == INFINITY) return kApproInf;
-    if (x == -INFINITY) return -kApproInf;
+    // TolerableValue is always used after log. So the kLogMin is a more
+    // appropriate value than kApproInf
+    if (x == -INFINITY) return -kLogMin;
     return x;
   }
 };
