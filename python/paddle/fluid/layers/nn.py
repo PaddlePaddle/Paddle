@@ -5184,7 +5184,8 @@ def roi_align(input,
               pooled_height=1,
               pooled_width=1,
               spatial_scale=1.0,
-              sampling_ratio=-1):
+              sampling_ratio=-1,
+              name=None):
     """
     ${comment}
 
