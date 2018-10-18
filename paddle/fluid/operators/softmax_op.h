@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <type_traits>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/float16.h"
@@ -34,8 +37,7 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     int rank = X->dims().size();
     Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
     Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
-    if (std::type_index(typeid(T)) ==
-        std::type_index(typeid(platform::float16))) {
+    if (std::is_same<T, platform::float16>::value) {
       PADDLE_THROW(
           "Softmax contains sum, which will lead to overflow in float16, "
           "please use the softmax_cudnn");
@@ -62,8 +64,7 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     Tensor dOut_2d = framework::ReshapeToMatrix(*dOut, rank - 1);
     Tensor dX_2d = framework::ReshapeToMatrix(*dX, rank - 1);
 
-    if (std::type_index(typeid(T)) ==
-        std::type_index(typeid(platform::float16))) {
+    if (std::is_same<T, platform::float16>::value) {
       PADDLE_THROW(
           "Softmax contains sum, which will lead to overflow in flaot16, "
           "please use the softmax_cudnn");
