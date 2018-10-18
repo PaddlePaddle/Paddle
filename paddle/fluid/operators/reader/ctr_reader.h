@@ -68,7 +68,7 @@ class CTRReader : public framework::FileReader {
  private:
   void ReadThread(const std::vector<std::string>& file_list,
                   const std::vector<std::string>& slots, int batch_size,
-                  std::shared_ptr<LoDTensorBlockingQueue>* queue);
+                  std::shared_ptr<LoDTensorBlockingQueue> queue);
 
  private:
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
