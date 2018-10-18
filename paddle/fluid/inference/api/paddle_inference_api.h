@@ -261,6 +261,7 @@ struct AnalysisConfig : public NativeConfig {
 
   void SetIncludeMode() {
     ir_mode = IrPassMode::kInclude;
+    // this pass has to be run at the beginning of all fuse passes
     ir_passes = {"infer_clean_graph_pass"};
   }
 
