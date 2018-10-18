@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <list>
 #include <string>
 #include <unordered_map>
@@ -28,7 +29,9 @@ namespace details {
 class ControlFlowGraph {
  public:
   explicit ControlFlowGraph(const ir::Graph& graph);
+
   void DataAnalysis();
+
   void UpdateGraph(ir::Node* old_node, ir::Node* new_node, int beign_idx);
 
   const std::unordered_set<ir::Node*>& LiveIn(ir::Node* op) const;
