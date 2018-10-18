@@ -1414,16 +1414,16 @@ def generate_proposal_labels(rpn_rois,
     """
     ** Generate proposal labels Faster-RCNN **
     This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
-    to sample foregroud boxes and background boxes, and compute loss target.
+    to sample foreground boxes and background boxes, and compute loss target.
 
     RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
     were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
-    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foregroud sample.
+    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
     If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
     then it was considered as a background sample.
-    After all foregroud and background boxes are chosen (so called Rois),
+    After all foreground and background boxes are chosen (so called Rois),
     then we apply random sampling to make sure
-    the number of foregroud boxes is no more than batch_size_per_im * fg_fraction.
+    the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
 
     For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
     Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
