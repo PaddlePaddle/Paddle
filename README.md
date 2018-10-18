@@ -19,7 +19,7 @@ Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest feature of PaddlePaddle.
 
 
-### Latest PaddlePaddle Release: [Fluid 0.15.0](https://github.com/PaddlePaddle/Paddle/tree/v0.15.0)
+### Latest PaddlePaddle Release: [Fluid 1.0.0](https://github.com/PaddlePaddle/Paddle/tree/release/1.0.0)
 ### Install Latest Stable Release:
 ```
 # Linux CPU
@@ -76,26 +76,26 @@ pip install paddlepaddle-gpu==0.15.0.post85
 
 ## Installation
 
-It is recommended to read [this doc](http://paddlepaddle.org/documentation/docs/zh/0.15.0/new_docs/beginners_guide/install/install_doc.html) on our website.
+It is recommended to read [this doc](http://paddlepaddle.org/documentation/docs/zh/1.0/beginners_guide/index.html) on our website.
 
 ## Documentation
 
-We provide [English](http://paddlepaddle.org/documentation/docs/en/0.15.0/getstarted/index_en.html) and
-[Chinese](http://paddlepaddle.org/documentation/docs/zh/0.15.0/new_docs/beginners_guide/index.html) documentation.
+We provide [English](http://paddlepaddle.org/documentation/docs/en/1.0.0/getstarted/index_en.html) and
+[Chinese](http://paddlepaddle.org/documentation/docs/zh/1.0/beginners_guide/index.html) documentation.
 
 - [Deep Learning 101](https://github.com/PaddlePaddle/book)
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](http://paddlepaddle.org/documentation/docs/zh/0.15.0/new_docs/user_guides/howto/training/cluster_howto.html)
+- [Distributed Training](http://paddlepaddle.org/documentation/docs/zh/1.0/user_guides/howto/training/cluster_howto.html)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Python API](http://paddlepaddle.org/documentation/api/zh/0.15.0/fluid.html)
+- [Python API](http://paddlepaddle.org/documentation/api/zh/1.0/fluid.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://paddlepaddle.org/documentation/docs/zh/0.15.0/new_docs/advanced_usage/development/contribute_to_paddle.html)
+- [How to Contribute](http://paddlepaddle.org/documentation/docs/zh/1.0/advanced_usage/development/contribute_to_paddle.html)
 
    We appreciate your contributions!
 
