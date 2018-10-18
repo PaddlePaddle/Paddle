@@ -1,5 +1,5 @@
 if (NOT WIN32)
-add_subdirectory(detail)
+    add_subdirectory(detail)
 endif(NOT WIN32)
 
 function(math_library TARGET)
@@ -43,10 +43,10 @@ math_library(depthwise_conv)
 math_library(im2col)
 
 if (NOT WIN32) # windows do not support avx functions yet.
-math_library(gru_compute DEPS activation_functions math_function)
-math_library(lstm_compute DEPS activation_functions)
-# TODO(TJ): ugly workaround, clean me
-cc_library(cpu_lstm_compute SRCS cpu_lstm_compute.cc DEPS activation_functions cblas cpu_info)
+    math_library(gru_compute DEPS activation_functions math_function)
+    math_library(lstm_compute DEPS activation_functions)
+    # TODO(TJ): ugly workaround, clean me
+    cc_library(cpu_lstm_compute SRCS cpu_lstm_compute.cc DEPS activation_functions cblas cpu_info)
 endif (NOT WIN32)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
@@ -60,7 +60,7 @@ math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function)
 if (NOT WIN32)
-math_library(matrix_bit_code)
+    math_library(matrix_bit_code)
 endif (NOT WIN32)
 math_library(unpooling)
 math_library(vol2col)
