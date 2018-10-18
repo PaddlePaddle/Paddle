@@ -70,6 +70,7 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
                                           mkldnn::memory::data_type data_type,
                                           mkldnn::memory::format format) {
   mkldnn::memory::dims tz = dims;
+std::cout<<"this is MKLDNNMemDesc"<<"   data_type"<<data_type<<"   format"<<format<<std::endl;
   return mkldnn::memory::desc({tz}, data_type, format);
 }
 
@@ -153,6 +154,7 @@ class MKLDNNHandler {
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
                    "Fail to find mem primitive in device context");
+    //mem_p = nullptr;
     if (mem_p == nullptr) {
       mem_p = std::make_shared<mkldnn::memory>(mdp, ptr);
       dev_ctx_.SetBlob(local_key, mem_p);
