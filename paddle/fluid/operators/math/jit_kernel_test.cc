@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sys/time.h>
 #include <cmath>    // for exp
 #include <cstring>  // for memcpy
+#include <random>
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
