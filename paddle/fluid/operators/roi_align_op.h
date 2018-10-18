@@ -24,7 +24,7 @@ using LoDTensor = framework::LoDTensor;
 static constexpr int kROISize = 4;
 
 template <class T>
-void pre_calc_for_bilinear_interpolate(
+void PreCalcForBilinearInterpolate(
     const platform::DeviceContext& ctx, const int height, const int width,
     const int pooled_height, const int pooled_width, const int iy_upper,
     const int ix_upper, T roi_ymin, T roi_xmin, T bin_size_h, T bin_size_w,
@@ -53,12 +53,8 @@ void pre_calc_for_bilinear_interpolate(
             pre_calc_index += 1;
             continue;
           }
-          if (y <= 0) {
-            y = 0;
-          }
-          if (x <= 0) {
-            x = 0;
-          }
+          y = y <= 0 ? 0 : y;
+          x = x <= 0 ? 0 : x;
 
           int y_low = static_cast<int>(y);
           int x_low = static_cast<int>(x);
@@ -104,12 +100,8 @@ void bilinear_interpolate_gradient(const int height, const int width, T y, T x,
     x_low = x_high = y_low = y_high = -1;
     return;
   }
-  if (y <= 0) {
-    y = 0;
-  }
-  if (x <= 0) {
-    x = 0;
-  }
+  y = y <= 0 ? 0 : y;
+  x = x <= 0 ? 0 : x;
   y_low = static_cast<int>(y);
   x_low = static_cast<int>(x);
   if (y_low >= height - 1) {
@@ -139,7 +131,6 @@ void bilinear_interpolate_gradient(const int height, const int width, T y, T x,
     *(batch_grad_data + y_high * width + x_low) += diff3;
     *(batch_grad_data + y_high * width + x_high) += diff4;
   }
-  return;
 }
 
 template <typename DeviceContext, typename T>
@@ -214,7 +205,7 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
       pre_pos.Resize({pre_size, kROISize});
       pre_w.Resize({pre_size, kROISize});
 
-      pre_calc_for_bilinear_interpolate(
+      PreCalcForBilinearInterpolate(
           dev_ctx, height, width, pooled_height, pooled_width, roi_bin_grid_h,
           roi_bin_grid_w, roi_ymin, roi_xmin, bin_size_h, bin_size_w,
           roi_bin_grid_h, roi_bin_grid_w, &pre_pos, &pre_w);
@@ -245,7 +236,6 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
       }
       rois_data += roi_stride[0];
     }
-    return;
   }
 };
 
@@ -264,79 +254,78 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
     auto in_dims = in->dims();
-    if (in_grad) {
-      int channels = in_dims[1];
-      int height = in_dims[2];
-      int width = in_dims[3];
-      int rois_num = rois->dims()[0];
-      Tensor roi_batch_id_list;
-      roi_batch_id_list.Resize({rois_num});
-      int* roi_batch_id_data =
-          roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
+    if (!in_grad) {
+      return;
+    }
+    int channels = in_dims[1];
+    int height = in_dims[2];
+    int width = in_dims[3];
+    int rois_num = rois->dims()[0];
+    Tensor roi_batch_id_list;
+    roi_batch_id_list.Resize({rois_num});
+    int* roi_batch_id_data =
+        roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          roi_batch_id_data[i] = n;
-        }
+    auto rois_lod = rois->lod().back();
+    int rois_batch_size = rois_lod.size() - 1;
+    for (int n = 0; n < rois_batch_size; ++n) {
+      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+        roi_batch_id_data[i] = n;
       }
+    }
 
-      const T* rois_data = rois->data<T>();
-      const T* out_grad_data = out_grad->data<T>();
-      T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
+    const T* rois_data = rois->data<T>();
+    const T* out_grad_data = out_grad->data<T>();
+    T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-      auto in_stride = framework::stride(in->dims());
-      auto roi_stride = framework::stride(rois->dims());
-      auto out_stride = framework::stride(out_grad->dims());
+    auto in_stride = framework::stride(in->dims());
+    auto roi_stride = framework::stride(rois->dims());
+    auto out_stride = framework::stride(out_grad->dims());
 
-      for (int n = 0; n < rois_num; ++n) {
-        int roi_batch_idx = roi_batch_id_data[n];
-        T roi_xmin = rois_data[0] * spatial_scale;
-        T roi_ymin = rois_data[1] * spatial_scale;
-        T roi_xmax = rois_data[2] * spatial_scale;
-        T roi_ymax = rois_data[3] * spatial_scale;
-        T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
-        T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
-        T bin_size_h =
-            static_cast<T>(roi_height) / static_cast<T>(pooled_height);
-        T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
-        for (int c = 0; c < channels; ++c) {
-          T* batch_grad_data =
-              in_grad_data + roi_batch_idx * in_stride[0] + c * in_stride[1];
-          const T* batch_out_grad_data =
-              out_grad_data + n * out_stride[0] + c * out_stride[1];
-          for (int ph = 0; ph < pooled_height; ++ph) {
-            for (int pw = 0; pw < pooled_width; ++pw) {
-              int pool_index = ph * pooled_width + pw;
-              T out_grad_this_bin = batch_out_grad_data[pool_index];
-              int roi_bin_grid_h = (sampling_ratio > 0)
-                                       ? sampling_ratio
-                                       : ceil(roi_height / pooled_height);
-              int roi_bin_grid_w = (sampling_ratio > 0)
-                                       ? sampling_ratio
-                                       : ceil(roi_width / pooled_width);
-              T count = roi_bin_grid_h * roi_bin_grid_w;
-              for (int iy = 0; iy < roi_bin_grid_h; iy++) {
-                const T y = roi_ymin + ph * bin_size_h +
-                            static_cast<T>(iy + .5f) * bin_size_h /
-                                static_cast<T>(roi_bin_grid_h);
-                for (int ix = 0; ix < roi_bin_grid_w; ix++) {
-                  const T x = roi_xmin + pw * bin_size_w +
-                              static_cast<T>(ix + .5f) * bin_size_w /
-                                  static_cast<T>(roi_bin_grid_w);
-                  bilinear_interpolate_gradient(height, width, y, x,
-                                                out_grad_this_bin, count,
-                                                batch_grad_data);
-                }
+    for (int n = 0; n < rois_num; ++n) {
+      int roi_batch_idx = roi_batch_id_data[n];
+      T roi_xmin = rois_data[0] * spatial_scale;
+      T roi_ymin = rois_data[1] * spatial_scale;
+      T roi_xmax = rois_data[2] * spatial_scale;
+      T roi_ymax = rois_data[3] * spatial_scale;
+      T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
+      T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
+      T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
+      T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
+      for (int c = 0; c < channels; ++c) {
+        T* batch_grad_data =
+            in_grad_data + roi_batch_idx * in_stride[0] + c * in_stride[1];
+        const T* batch_out_grad_data =
+            out_grad_data + n * out_stride[0] + c * out_stride[1];
+        for (int ph = 0; ph < pooled_height; ++ph) {
+          for (int pw = 0; pw < pooled_width; ++pw) {
+            int pool_index = ph * pooled_width + pw;
+            T out_grad_this_bin = batch_out_grad_data[pool_index];
+            int roi_bin_grid_h = (sampling_ratio > 0)
+                                     ? sampling_ratio
+                                     : ceil(roi_height / pooled_height);
+            int roi_bin_grid_w = (sampling_ratio > 0)
+                                     ? sampling_ratio
+                                     : ceil(roi_width / pooled_width);
+            T count = roi_bin_grid_h * roi_bin_grid_w;
+            for (int iy = 0; iy < roi_bin_grid_h; iy++) {
+              const T y = roi_ymin + ph * bin_size_h +
+                          static_cast<T>(iy + .5f) * bin_size_h /
+                              static_cast<T>(roi_bin_grid_h);
+              for (int ix = 0; ix < roi_bin_grid_w; ix++) {
+                const T x = roi_xmin + pw * bin_size_w +
+                            static_cast<T>(ix + .5f) * bin_size_w /
+                                static_cast<T>(roi_bin_grid_w);
+                bilinear_interpolate_gradient(height, width, y, x,
+                                              out_grad_this_bin, count,
+                                              batch_grad_data);
               }
             }
           }
         }
-        rois_data += roi_stride[0];
       }
+      rois_data += roi_stride[0];
     }
-    return;
   }
 };
 }  // namespace operators

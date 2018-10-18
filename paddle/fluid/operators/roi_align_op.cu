@@ -34,17 +34,13 @@ static inline int NumBlocks(const int N) {
        i += blockDim.x * gridDim.x)
 
 template <class T>
-__device__ T bilinear_interpolate(const T* input_data, const int height,
-                                  const int width, T y, T x) {
+__device__ T BilinearInterpolate(const T* input_data, const int height,
+                                 const int width, T y, T x) {
   if (y < -1.0 || y > height || x < -1.0 || x > width) {
     return 0;
   }
-  if (y <= 0) {
-    y = 0;
-  }
-  if (x <= 0) {
-    x = 0;
-  }
+  y = y <= 0 ? 0 : y;
+  x = x <= 0 ? 0 : x;
   int y_low = static_cast<int>(y);
   int x_low = static_cast<int>(x);
   int y_high;
@@ -75,20 +71,16 @@ __device__ T bilinear_interpolate(const T* input_data, const int height,
 }
 
 template <class T>
-__device__ void bilinear_interpolate_gradient(const int height, const int width,
-                                              T y, T x, T* w1, T* w2, T* w3,
-                                              T* w4, int* x_low, int* x_high,
-                                              int* y_low, int* y_high) {
+__device__ void BilinearInterpolateGradient(const int height, const int width,
+                                            T y, T x, T* w1, T* w2, T* w3,
+                                            T* w4, int* x_low, int* x_high,
+                                            int* y_low, int* y_high) {
   if (y < -1.0 || y > height || x < -1.0 || x > width) {
     return;
   }
 
-  if (y <= 0) {
-    y = 0;
-  }
-  if (x <= 0) {
-    x = 0;
-  }
+  y = y <= 0 ? 0 : y;
+  x = x <= 0 ? 0 : x;
   *y_low = static_cast<int>(y);
   *x_low = static_cast<int>(x);
   if (*y_low >= height - 1) {
@@ -153,7 +145,7 @@ __global__ void GPUROIAlignForward(
         const T x = roi_xmin + pw * bin_size_w +
                     static_cast<T>(ix + .5f) * bin_size_w /
                         static_cast<T>(roi_bin_grid_w);
-        T val = bilinear_interpolate(offset_input_data, height, width, y, x);
+        T val = BilinearInterpolate(offset_input_data, height, width, y, x);
         output_val += val;
       }
     }
@@ -213,8 +205,8 @@ __global__ void GPUROIAlignBackward(const int nthreads, const T* input_rois,
                         static_cast<T>(roi_bin_grid_w);
         T w1 = 0, w2 = 0, w3 = 0, w4 = 0;
         int x_low = -1, x_high = -1, y_low = -1, y_high = -1;
-        bilinear_interpolate_gradient(height, width, y, x, &w1, &w2, &w3, &w4,
-                                      &x_low, &x_high, &y_low, &y_high);
+        BilinearInterpolateGradient(height, width, y, x, &w1, &w2, &w3, &w4,
+                                    &x_low, &x_high, &y_low, &y_high);
         T diff1 = out_grad_this_bin * w1 / count;
         T diff2 = out_grad_this_bin * w2 / count;
         T diff3 = out_grad_this_bin * w3 / count;
@@ -279,8 +271,8 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
       }
     }
     Tensor roi_batch_id_list_gpu;
-    framework::TensorCopy(roi_batch_id_list, ctx.GetPlace(),
-                          ctx.device_context(), &roi_batch_id_list_gpu);
+    framework::TensorCopySync(roi_batch_id_list, ctx.GetPlace(),
+                              &roi_batch_id_list_gpu);
     GPUROIAlignForward<
         T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
         output_size, in->data<T>(), rois->data<T>(), spatial_scale, channels,
@@ -310,38 +302,39 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int height = in->dims()[2];
     int width = in->dims()[3];
 
-    if (in_grad) {
-      Tensor roi_batch_id_list;
-      roi_batch_id_list.Resize({rois_num});
-      int* roi_batch_id_data =
-          roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          roi_batch_id_data[i] = n;
-        }
+    if (!in_grad) {
+      return;
+    }
+    Tensor roi_batch_id_list;
+    roi_batch_id_list.Resize({rois_num});
+    int* roi_batch_id_data =
+        roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+    auto rois_lod = rois->lod().back();
+    int rois_batch_size = rois_lod.size() - 1;
+    for (int n = 0; n < rois_batch_size; ++n) {
+      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+        roi_batch_id_data[i] = n;
       }
-      Tensor roi_batch_id_list_gpu;
-      framework::TensorCopy(roi_batch_id_list, ctx.GetPlace(),
-                            ctx.device_context(), &roi_batch_id_list_gpu);
+    }
+    Tensor roi_batch_id_list_gpu;
+    framework::TensorCopySync(roi_batch_id_list, ctx.GetPlace(),
+                              &roi_batch_id_list_gpu);
 
-      in_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.cuda_device_context(), in_grad, static_cast<T>(0));
+    in_grad->mutable_data<T>(ctx.GetPlace());
+    math::SetConstant<Place, T> set_zero;
+    set_zero(ctx.cuda_device_context(), in_grad, static_cast<T>(0));
 
-      int output_grad_size = out_grad->numel();
-      int blocks = NumBlocks(output_grad_size);
-      int threads = kNumCUDAThreads;
+    int output_grad_size = out_grad->numel();
+    int blocks = NumBlocks(output_grad_size);
+    int threads = kNumCUDAThreads;
 
-      if (output_grad_size > 0) {
-        GPUROIAlignBackward<
-            T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-            output_grad_size, rois->data<T>(), out_grad->data<T>(), rois_num,
-            spatial_scale, channels, height, width, pooled_height, pooled_width,
-            sampling_ratio, roi_batch_id_list_gpu.data<int>(),
-            in_grad->mutable_data<T>(ctx.GetPlace()));
-      }
+    if (output_grad_size > 0) {
+      GPUROIAlignBackward<
+          T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+          output_grad_size, rois->data<T>(), out_grad->data<T>(), rois_num,
+          spatial_scale, channels, height, width, pooled_height, pooled_width,
+          sampling_ratio, roi_batch_id_list_gpu.data<int>(),
+          in_grad->mutable_data<T>(ctx.GetPlace()));
     }
   }
 };

@@ -94,7 +94,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor), "
-             "the input of ROIAlignOp. "
+             "The input of ROIAlignOp. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
              "H is the height of the feature, and "
@@ -104,7 +104,6 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], …]. "
-             "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
     AddOutput("Out",
