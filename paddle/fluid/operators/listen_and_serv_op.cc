@@ -66,7 +66,7 @@ static void ParallelExecuteBlocks(
                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
+        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
       }
     }));
   }
