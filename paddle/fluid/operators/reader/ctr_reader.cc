@@ -72,29 +72,29 @@ static inline void parse_line(
   }
 }
 
-// class Reader {
-// public:
-//  virtual ~Reader() {}
-//  virtual bool HasNext() = 0;
-//  virtual void NextLine(std::string& line) = 0;
-//};
+class Reader {
+ public:
+  virtual ~Reader() {}
+  virtual bool HasNext() = 0;
+  virtual void NextLine(std::string* line) = 0;
+};
 
-class GzipReader {
+class GzipReader : public Reader {
  public:
   explicit GzipReader(const std::string& file_name)
       : gzstream_(file_name.c_str()) {}
 
   ~GzipReader() {}
 
-  bool HasNext() { return gzstream_.peek() != EOF; }
+  bool HasNext() override { return gzstream_.peek() != EOF; }
 
-  void NextLine(std::string* line) { std::getline(gzstream_, *line); }
+  void NextLine(std::string* line) override { std::getline(gzstream_, *line); }
 
  private:
   igzstream gzstream_;
 };
 
-class MultiGzipReader {
+class MultiGzipReader : public Reader {
  public:
   explicit MultiGzipReader(const std::vector<std::string>& file_list) {
     for (auto& file : file_list) {
@@ -102,7 +102,7 @@ class MultiGzipReader {
     }
   }
 
-  bool HasNext() {
+  bool HasNext() override {
     if (current_reader_index_ >= readers_.size()) {
       return false;
     }
@@ -113,7 +113,7 @@ class MultiGzipReader {
     return true;
   }
 
-  void NextLine(std::string* line) {
+  void NextLine(std::string* line) override {
     readers_[current_reader_index_]->NextLine(line);
   }
 
@@ -151,6 +151,7 @@ void CTRReader::ReadThread(const std::vector<std::string>& file_list,
     for (auto& slots_to_data : batch_data) {
       std::vector<size_t> lod_data{0};
       std::vector<int64_t> batch_feasign;
+      std::vector<int64_t> batch_label;
 
       auto& feasign = slots_to_data[slot];
 
