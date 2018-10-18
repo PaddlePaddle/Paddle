@@ -130,6 +130,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   }
   return graph;
 }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
@@ -139,4 +140,5 @@ USE_PASS(graph_viz_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
-USE_PASS(memory_optimize_pass);
+USE_PASS(analysis_var_pass);
+USE_PASS(memory_reuse_pass);

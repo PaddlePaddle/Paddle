@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/details/reference_count_pass.h"
 #endif
@@ -75,8 +74,14 @@ class ParallelExecutor {
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
+  void RuntimePassesRunOnce(const std::vector<std::string> &fetch_tensors,
+                            const std::string &fetched_var_name);
+
   std::unique_ptr<ParallelExecutorPrivate> member_;
 
+  std::once_flag runtime_passes_run_once_;
+  // fetched vars will be skipped in reference count pass/memory optimize pass.
+  std::unordered_set<std::string> fetched_vars_;
 #ifdef PADDLE_WITH_CUDA
   // ref_cnts_ is only initialized when ParallelExecutor constructs, and then
   // keeps unchanged

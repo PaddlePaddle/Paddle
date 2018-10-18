@@ -127,29 +127,6 @@ ParallelExecutor::ParallelExecutor(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
 
-  auto max_memory_size = GetEagerDeletionThreshold();
-  if (max_memory_size >= 0) {
-    for (auto &place : member_->places_) {
-      if (!platform::is_gpu_place(place)) continue;
-      auto gpu_place = boost::get<platform::CUDAPlace>(place);
-      if (gcs_[gpu_place.device] == nullptr) {
-        ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
-        cur_ref_cnts_[gpu_place.device].reset(
-            new details::AtomicReferenceCountMap());
-        gcs_[gpu_place.device].reset(
-            new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
-      }
-    }
-    if (!gcs_.empty()) {
-      auto ref_cnt_pass =
-          ir::PassRegistry::Instance().Get("reference_count_pass");
-      ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
-      ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
-      ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-      graph = ref_cnt_pass->Apply(std::move(graph));
-      graph->SetNotOwned("garbage_collector", &gcs_);
-    }
-  }
 #else
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
@@ -245,19 +222,49 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
+void ParallelExecutor::RuntimePassesRunOnce(const std::vector<std::string> &fetch_tensors,
+                                            const std::string &fetched_var_name) {
+  // fill fetched vars
+  for(auto& var : fetch_tensors) {
+    fetched_vars_.insert(var);
+  }
+  fetched_vars_.insert(fetched_var_name);
+
+#ifdef PADDLE_WITH_CUDA
+  auto max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size >= 0) {
+    for (auto &place : member_->places_) {
+      if (!platform::is_gpu_place(place)) continue;
+      auto gpu_place = boost::get<platform::CUDAPlace>(place);
+      if (gcs_[gpu_place.device] == nullptr) {
+        ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
+        cur_ref_cnts_[gpu_place.device].reset(
+            new details::AtomicReferenceCountMap());
+        gcs_[gpu_place.device].reset(
+            new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
+      }
+    }
+    if (!gcs_.empty()) {
+      auto ref_cnt_pass =
+          ir::PassRegistry::Instance().Get("reference_count_pass");
+      ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
+      ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
+      ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+      ref_cnt_pass->SetNotOwned(details::kFetchedVars, &fetched_vars_);
+      graph = ref_cnt_pass->Apply(std::move(graph));
+      graph->SetNotOwned("garbage_collector", &gcs_);
+    }
+  }
+#endif
+}
+
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+  std::call_once(runtime_passes_run_once_, RuntimePassesRunOnce, fetch_tensors, fetched_var_name);
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {
     ResetReferenceCount();
-    for (auto &pair : cur_ref_cnts_) {
-      auto &name_map = *(pair.second);
-      for (auto &fetch_name : fetch_tensors) {
-        name_map.erase(fetch_name);
-      }
-      name_map.erase(fetched_var_name);
-    }
   }
 #endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);

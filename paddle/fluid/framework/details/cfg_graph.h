@@ -26,6 +26,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+using NodePool = std::set<ir::Node*>; // order matters
+
 class ControlFlowGraph {
  public:
   explicit ControlFlowGraph(const ir::Graph& graph);
