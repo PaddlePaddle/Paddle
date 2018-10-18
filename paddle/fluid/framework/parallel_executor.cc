@@ -308,6 +308,10 @@ ParallelExecutor::~ParallelExecutor() {
       }
     }
   }
+
+  // member_ must be destructed before gcs_ since the destructor of
+  // ReferenceCountOpHandle use raw pointers of gcs_ inside.
+  member_.reset();
 }
 
 }  // namespace framework

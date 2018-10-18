@@ -100,16 +100,6 @@ class OpDesc {
   std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
-  void SetInputMap(const VariableNameMap &input) {
-    this->inputs_ = input;
-    this->need_update_ = true;
-  }
-
-  void SetOutputMap(const VariableNameMap &output) {
-    this->outputs_ = output;
-    this->need_update_ = true;
-  }
-
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
