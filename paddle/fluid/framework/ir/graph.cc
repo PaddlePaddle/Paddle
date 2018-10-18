@@ -65,9 +65,12 @@ bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
       // a variable name with the suffix `.block` means it's a splited
       // variable by (DistributeTranspiler)
       // [python/paddle/fluid/transpiler/distribute_transpiler.py]
-      if (var.find(".block") != std::string::npos &&
-          std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
-        return true;
+      if (var.find(".block") != std::string::npos ||
+          var.find(".pserver") != std::string::npos) {
+        if (std::find(rpc_vars.begin(), rpc_vars.end(), var) !=
+            rpc_vars.end()) {
+          return true;
+        }
       }
     }
     return false;
