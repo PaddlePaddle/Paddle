@@ -50,7 +50,7 @@ Record ProcessALine(const std::string &line) {
   return record;
 }
 
-void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS_use_MKLDNN) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->param_file = FLAGS_infer_model + "/__params__";
   cfg->prog_file = FLAGS_infer_model + "/__model__";
   cfg->use_gpu = false;
@@ -59,7 +59,6 @@ void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS_use_MKLDNN) {
   cfg->specify_input_name = true;
   // TODO(TJ): fix fusion gru
   cfg->ir_passes.push_back("fc_gru_fuse_pass");
-  cfg->_use_mkldnn = _use_mkldnn;
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -82,9 +81,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
-TEST(Analyzer_vis, profile) {
+void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg._use_mkldnn = use_mkldnn;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -106,6 +106,12 @@ TEST(Analyzer_vis, profile) {
   }
 }
 
+TEST(Analyzer_vis, profile) { profile(); }
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_vis, fuse_statis) {
   AnalysisConfig cfg;
@@ -116,25 +122,19 @@ TEST(Analyzer_vis, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_vis, compare) {
+void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg._use_mkldnn = use_mkldnn;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(cfg, input_slots_all);
 }
 
-// Compare result of NativeConfig and AnalysisConfig with MKLDNN
+TEST(Analyzer_vis, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_vis, compare_mkldnn) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg, true);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
-}
+TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
 }  // namespace analysis
