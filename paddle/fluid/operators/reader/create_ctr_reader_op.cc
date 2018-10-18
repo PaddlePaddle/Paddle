@@ -41,7 +41,13 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    out->Reset(std::make_shared<CTRReader>(queue_holder->GetQueue()));
+    int thread_num = Attr<int>("thread_num");
+    std::vector<std::string> slots = Attr<std::vector<std::string>>("slots");
+    int batch_size = Attr<int>("batch_size");
+    std::vector<std::string> file_list =
+        Attr<std::vector<std::string>>("file_list");
+    out->Reset(std::make_shared<CTRReader>(queue_holder->GetQueue(), batch_size,
+                                           thread_num, slots, file_list));
   }
 };
 
@@ -50,6 +56,12 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
   void Apply() override {
     AddInput("blocking_queue",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
+    AddAttr<int>("thread_num", "the thread num to read data");
+    AddAttr<int>("batch_size", "the batch size of read data");
+    AddAttr<std::vector<std::string>>("file_list",
+                                      "The list of files that need to read");
+    AddAttr<std::vector<std::string>>(
+        "slots", "the slots that should be extract from file");
 
     AddComment(R"DOC(
 			Create CTRReader to support read ctr data with cpp.
