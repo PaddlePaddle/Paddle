@@ -287,7 +287,10 @@ void GRPCClient::Proceed() {
       c->Finish(false);
     } else {
       LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error:" << c->status_.error_message();
+                 << " meets grpc error, error_code:" << c->status_.error_code()
+                 << " error_message:" << c->status_.error_message()
+                 << " error_details:" << c->status_.error_details();
+
       c->Finish(false);
     }
 
