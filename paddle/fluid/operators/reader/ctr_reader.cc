@@ -132,31 +132,36 @@ void CTRReader::ReadThread(const std::vector<std::string>& file_list,
   std::vector<int64_t> batch_label;
 
   MultiGzipReader reader(file_list);
-  // read all files
-  for (int i = 0; i < batch_size; ++i) {
-    if (reader.HasNext()) {
-      reader.NextLine(&line);
-      std::unordered_map<std::string, std::vector<int64_t>> slots_to_data;
-      int64_t label;
-      parse_line(line, slots, &label, &slots_to_data);
-      batch_data.push_back(slots_to_data);
-      batch_label.push_back(label);
-    } else {
-      break;
-    }
-  }
 
-  std::vector<framework::LoDTensor> lod_datas;
-  for (auto& slot : slots) {
-    for (auto& slots_to_data : batch_data) {
+  while (reader.HasNext()) {
+    // read all files
+    for (int i = 0; i < batch_size; ++i) {
+      if (reader.HasNext()) {
+        reader.NextLine(&line);
+        std::unordered_map<std::string, std::vector<int64_t>> slots_to_data;
+        int64_t label;
+        parse_line(line, slots, &label, &slots_to_data);
+        batch_data.push_back(slots_to_data);
+        batch_label.push_back(label);
+      } else {
+        break;
+      }
+    }
+
+    std::vector<framework::LoDTensor> lod_datas;
+
+    // first insert tensor for each slots
+    for (auto& slot : slots) {
       std::vector<size_t> lod_data{0};
       std::vector<int64_t> batch_feasign;
-      std::vector<int64_t> batch_label;
 
-      auto& feasign = slots_to_data[slot];
+      for (size_t i = 0; i < batch_data.size(); ++i) {
+        auto& feasign = batch_data[i][slot];
 
-      lod_data.push_back(lod_data.back() + feasign.size());
-      batch_feasign.insert(feasign.end(), feasign.begin(), feasign.end());
+        lod_data.push_back(lod_data.back() + feasign.size());
+        batch_feasign.insert(feasign.end(), feasign.begin(), feasign.end());
+      }
+
       framework::LoDTensor lod_tensor;
       framework::LoD lod{lod_data};
       lod_tensor.set_lod(lod);
@@ -166,8 +171,17 @@ void CTRReader::ReadThread(const std::vector<std::string>& file_list,
       memcpy(tensor_data, batch_feasign.data(), batch_feasign.size());
       lod_datas.push_back(lod_tensor);
     }
+
+    // insert label tensor
+    framework::LoDTensor label_tensor;
+    int64_t* label_tensor_data = label_tensor.mutable_data<int64_t>(
+        framework::make_ddim({1, static_cast<int64_t>(batch_label.size())}),
+        platform::CPUPlace());
+    memcpy(label_tensor_data, batch_label.data(), batch_label.size());
+    lod_datas.push_back(label_tensor);
+
+    queue->Push(lod_datas);
   }
-  queue->Push(lod_datas);
 }
 
 }  // namespace reader
