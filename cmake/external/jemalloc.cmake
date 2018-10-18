@@ -48,7 +48,7 @@ if(UNIX OR LINUX OR APPLE)
   string(STRIP ${AUTOCONF_PATH} AUTOCONF_PATH)
   MESSAGE(STATUS "Autoconf: ${AUTOCONF_PATH}")
 
-  set(JEMALLOC_BUILD_COMMAND cd ${JEMALLOC_SOURCES_DIR}/src/extern_jemalloc
+  set(JEMALLOC_BUILD_COMMAND export EXTRA_CFLAGS='-fPIC' && cd ${JEMALLOC_SOURCES_DIR}/src/extern_jemalloc
       && ./autogen.sh --with-jemalloc-prefix=je_ --prefix ${JEMALLOC_INSTALL_DIR} && make -j8)
   set(JEMALLOC_INSTALL_COMMAND cd ${JEMALLOC_SOURCES_DIR}/src/extern_jemalloc
       && make install_bin install_include install_lib)
