@@ -52,7 +52,6 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
     desc->SetAttr("fuse_relu", true);
     GraphSafeRemoveNodes(graph.get(), {relu, conv_out});
 
-    PADDLE_ENFORCE(subgraph.count(conv_input));
     IR_NODE_LINK_TO(conv, relu_out);
 
     found_conv_relu_count++;

@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -43,6 +45,20 @@ namespace ir {
   GET_IR_NODE_FROM_SUBGRAPH(bn_variance_out, bn_variance_out, pattern_name); \
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, pattern_name);     \
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance, pattern_name)
+
+// Check environment flag whether MKL-DNN should be used
+// TODO(wojtuss): remove after the "OP placement" pass is added
+static bool IsMKLDNNSetOn() {
+  const char* flag = std::getenv("FLAGS_use_mkldnn");
+  if (flag) {
+    std::string flag_str(flag);
+    std::transform(flag_str.begin(), flag_str.end(), flag_str.begin(),
+                   ::toupper);
+    return !flag_str.compare("ON") || !flag_str.compare("TRUE") ||
+           !flag_str.compare("1");
+  }
+  return false;
+}
 
 void recompute_bias_and_weights(const Scope* scope,
                                 ir::Node* conv_weight,            //
@@ -132,6 +148,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+    eltwise_y_in_desc.SetPersistable(true);
     auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
     auto* eltwise_y_in_tensor =
         scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
@@ -151,26 +168,58 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
                                *bn_mean, *bn_variance, eltwise_y_in_tensor,
                                epsilon);
 
-    // Create an elementwise add node
-    OpDesc desc;
-    desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
-    desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));
-    desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
-    desc.SetType("elementwise_add");
-    desc.SetAttr("axis", 1);
-    bool a = boost::get<bool>(conv->Op()->GetAttr("use_mkldnn"));
-    desc.SetAttr("use_mkldnn", a);
-    auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
+    // check if MKL-DNN should be used
+    // TODO(wojtuss): replace after the "OP placement" pass is added
+    // bool use_mkldnn = boost::get<bool>(conv->Op()->GetAttr("use_mkldnn"));
+    bool use_mkldnn = IsMKLDNNSetOn();
+    // with MKL-DNN fuse conv+bn into conv with bias
+    // without MKL-DNN fuse conv+bn into conv+elementwise_add
+    if (use_mkldnn) {
+      auto conv_bias_names = conv->Op()->Input("Bias");
+      if (conv_bias_names.size() > 0) {
+        // reuse existing conv bias node
+        PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1);
+        auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
+        auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
+        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
+                          eltwise_y_in_tensor->dims());
 
-    GraphSafeRemoveNodes(graph.get(), {bn_scale, bn_bias, bn_mean, bn_variance,
-                                       batch_norm, bn_mean_out, bn_variance_out,
-                                       bn_saved_mean, bn_saved_variance});
+        auto eigen_conv_bias = EigenVector<float>::From(*conv_bias_tensor);
+        eigen_conv_bias += EigenVector<float>::From(*eltwise_y_in_tensor);
+      } else {
+        // add new conv_bias node
+        conv->Op()->SetInput(
+            "Bias", std::vector<std::string>({eltwise_y_in_node->Name()}));
+        IR_NODE_LINK_TO(eltwise_y_in_node, conv);
+      }
+      conv->Op()->SetOutput("Output",
+                            std::vector<std::string>({bn_out->Name()}));
 
-    PADDLE_ENFORCE(subgraph.count(conv_input));
-    IR_NODE_LINK_TO(conv_out, eltwise_op);
-    IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
-    IR_NODE_LINK_TO(eltwise_op, bn_out);
+      GraphSafeRemoveNodes(
+          graph.get(),
+          {conv_out, bn_scale, bn_bias, bn_mean, bn_variance, batch_norm,
+           bn_mean_out, bn_variance_out, bn_saved_mean, bn_saved_variance});
 
+      IR_NODE_LINK_TO(conv, bn_out);
+    } else {
+      // create an elementwise add node.
+      OpDesc desc;
+      desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
+      desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));
+      desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
+      desc.SetType("elementwise_add");
+      desc.SetAttr("axis", 1);
+      auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
+
+      GraphSafeRemoveNodes(
+          graph.get(),
+          {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
+           bn_variance_out, bn_saved_mean, bn_saved_variance});
+
+      IR_NODE_LINK_TO(conv_out, eltwise_op);
+      IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
+      IR_NODE_LINK_TO(eltwise_op, bn_out);
+    }
     found_conv_bn_count++;
   };
 
