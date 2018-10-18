@@ -40,21 +40,21 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/flags.h"
-#include "paddle/fluid/inference/analysis/pass_manager.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class Analyzer : public OrderedRegistry<PassManager> {
+class Analyzer final {
  public:
-  // Register all the pass-managers.
-  explicit Analyzer(
-      const std::vector<std::string>& ir_passes = std::vector<std::string>({}));
+  Analyzer();
 
   void Run(Argument* argument);
 
   DISABLE_COPY_AND_ASSIGN(Analyzer);
+
+ protected:
+  void RunIrAnalysis(Argument* argument);
 
  private:
   std::vector<std::string> ir_passes_;

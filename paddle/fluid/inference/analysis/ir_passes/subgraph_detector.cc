@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/analysis/subgraph_splitter.h"
+#include <string>
+#include <utility>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 
 namespace paddle {
 namespace inference {
@@ -30,7 +33,7 @@ const char kNodeDeleted[] = "_node_deleted_";
 static const bool kFalse = false;
 template <typename T>
 struct AttrGetter {
-  AttrGetter(const char *attr_key) : attr_key_(attr_key) {}
+  explicit AttrGetter(const char *attr_key) : attr_key_(attr_key) {}
 
   void Set(Node *x, T &&t) {
     if (!x->Has(attr_key_)) {
@@ -40,16 +43,14 @@ struct AttrGetter {
     }
   }
 
-  const T &Get(Node *x) {
-    return x->Get<T>(attr_key_);
-  }
+  const T &Get(Node *x) { return x->Get<T>(attr_key_); }
 
  private:
   const char *attr_key_;
 };
 
-template<>
-const bool& AttrGetter<bool>::Get(Node*x) {
+template <>
+const bool &AttrGetter<bool>::Get(Node *x) {
   if (!x->Has(attr_key_)) return kFalse;
   return x->Get<bool>(attr_key_);
 }
@@ -77,8 +78,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     for (auto *in : node->inputs) {
       // The Value that is written by nodes inside a sub-graph shouldn't be the
       // input of the sub-graph.
-      if (!nodes.count(in) && in->IsVar() &&
-          !inlink_in_subgraph(in)) {
+      if (!nodes.count(in) && in->IsVar() && !inlink_in_subgraph(in)) {
         inputs.insert(in);
       }
     }
@@ -421,7 +421,8 @@ void SubGraphFuse::ReplaceNodesWithSubGraphs() {
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
-    auto* block_node = graph_->CreateEmptyNode("subgraph", framework::ir::Node::Type::kOperation);
+    auto* block_node = graph_->CreateEmptyNode("subgraph",
+framework::ir::Node::Type::kOperation);
     auto o = ExtractInputAndOutputOfSubGraph(subgraph);
     block_node->inlinks = std::move(io.first);
     block_node->outlinks = std::move(io.second);

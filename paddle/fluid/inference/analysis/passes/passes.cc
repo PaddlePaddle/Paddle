@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
-
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/analysis/passes/passes.h"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
+#include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
-
-TEST(FluidToIrPass, Test) {
-  FluidToIrPass pass;
-  Argument argument(FLAGS_inference_model_dir);
-  argument.Set(kFluidToIrPassesAttr,
-               new std::vector<std::string>({"infer_clean_graph_pass"}));
-  pass.Initialize(&argument);
-  pass.Run(argument.main_graph.get());
+PassRegistry::PassRegistry() {
+  passes_.emplace("ir_analysis_pass",
+                  std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
+  passes_.emplace("ir_graph_build_pass",
+                  std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
+  passes_.emplace("ir_analysis_compose_pass",
+                  std::unique_ptr<AnalysisPass>(new IrAnalysisComposePass));
 }
 
 }  // namespace analysis

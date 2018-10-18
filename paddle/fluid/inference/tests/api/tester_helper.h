@@ -103,8 +103,8 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
   }
   int num = 0;
   for (auto &node :
-       analysis_predictor->analysis_argument().main_graph->nodes.nodes()) {
-    if (node->IsFunction()) {
+       analysis_predictor->analysis_argument().main_graph()->Nodes()) {
+    if (node->IsOp()) {
       ++num;
     }
   }

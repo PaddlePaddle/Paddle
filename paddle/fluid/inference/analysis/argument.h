@@ -24,8 +24,10 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -40,17 +42,54 @@ using framework::ir::Graph;
  */
 struct Argument {
   Argument() = default;
-  explicit Argument(const std::string& model_dir)
-      : model_dir(new std::string(model_dir)) {}
-  // The directory of the trained model.
-  std::unique_ptr<std::string> model_dir;
-  // The path of `__model__` and `param`, this is used when the file name of
-  // model and param is changed.
-  std::unique_ptr<std::string> model_program_path;
-  std::unique_ptr<std::string> model_param_path;
+  explicit Argument(const std::string& model_dir) { SetModelDir(model_dir); }
+
+// Declare an argument field with getter and setter.
+#define DECL_ARGUMENT_FIELD(field__, Field, type__) \
+  DECL_ARGUMENT_GETTER(field__, type__);            \
+  void Set##Field(const type__& x) {                \
+    if (!Has(#field__)) {                           \
+      Set<type__>(#field__, new type__(x));         \
+    } else {                                        \
+      *field__() = x;                               \
+    }                                               \
+  }
+#define DECL_ARGUMENT_GETTER(field__, type__) \
+  type__* field__() { return Has(#field__) ? &Get<type__>(#field__) : nullptr; }
+
+#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__) \
+  DECL_ARGUMENT_GETTER(field__, type__)                    \
+  void Set##Field(std::unique_ptr<type__>&& x) {           \
+    if (Has(#field__)) {                                   \
+      Release<type__>(#field__);                           \
+    }                                                      \
+    Set<type__>(#field__, x.release());                    \
+  }
+
+  // Model path
+  DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
+  // Model specified with program and parameters files.
+  DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
+  DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
+
+  // The overall graph to work on.
+  DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, Graph);
+  // The overall Scope to work on.
+  DECL_ARGUMENT_UNIQUE_FIELD(scope, Scope, framework::Scope);
+
+  DECL_ARGUMENT_UNIQUE_FIELD(main_program, MainProgram, framework::ProgramDesc);
+
+  // The ir passes to perform in analysis phase.
+  DECL_ARGUMENT_FIELD(ir_analysis_passes, IrAnalysisPasses,
+                      std::vector<std::string>);
+
+  DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
+  DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
+                      std::function<bool(const framework::ir::Node*)>);
 
   // The graph that process by the Passes or PassManagers.
-  std::unique_ptr<Graph> main_graph;
+  // std::unique_ptr<Graph> main_graph;
 
   // The original program desc.
   std::unique_ptr<framework::proto::ProgramDesc> original_program_desc;
@@ -100,12 +139,9 @@ struct Argument {
   std::unordered_map<std::string, std::function<void()>> attr_deleters_;
 };
 
-#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-#define ANALYSIS_ARGUMENT_CHECK_FIELD(field__)               \
-  if (UNLIKELY(!(field__))) {                                \
-    LOG(ERROR) << "field " << #field__ << " should be set."; \
-    return false;                                            \
-  }
+#define ARGUMENT_CHECK_FIELD(argument__, fieldname__) \
+  PADDLE_ENFORCE(argument__->fieldname__(),           \
+                 "the argument field [%s] should be set", #fieldname__);
 
 }  // namespace analysis
 }  // namespace inference

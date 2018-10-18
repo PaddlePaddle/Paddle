@@ -15,26 +15,22 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
-#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
-#include "paddle/fluid/inference/analysis/pass_manager.h"
-#include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
-
-DEFINE_bool(IA_enable_tensorrt_subgraph_engine, false,
-            "Enable subgraph to TensorRT engine for acceleration");
-
-DEFINE_bool(IA_enable_ir, false, "Turn on IR support");
-
-DEFINE_string(IA_graphviz_log_root, "./",
-              "Graphviz debuger for data flow graphs.");
-
-DEFINE_string(IA_output_storage_path, "", "optimized model output path");
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
+Analyzer::Analyzer() {}
+
+void Analyzer::Run(Argument *argument) { RunIrAnalysis(argument); }
+
+void Analyzer::RunIrAnalysis(Argument *argument) {
+  IrAnalysisComposePass pass;
+  pass.RunImpl(argument);
+}
+
+/*
 class PassManagerImpl final : public AnalysisPassManager {
  public:
   PassManagerImpl() {
@@ -85,12 +81,13 @@ Analyzer::Analyzer(const std::vector<std::string>& ir_passes)
 void Analyzer::Run(Argument* argument) {
   argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(ir_passes_));
 
-  for (auto& x : data_) {
+  for (auto& x : elements_) {
     PADDLE_ENFORCE(x->Initialize(argument));
     x->RunAll();
     PADDLE_ENFORCE(x->Finalize());
   }
 }
+ */
 
 }  // namespace analysis
 }  // namespace inference

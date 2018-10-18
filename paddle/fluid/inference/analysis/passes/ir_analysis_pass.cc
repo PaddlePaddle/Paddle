@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
-
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
+#include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST(FluidToDataFlowGraphPass, Test) {
-  FluidToDataFlowGraphPass pass;
-  Argument argument(FLAGS_inference_model_dir);
-  pass.Initialize(&argument);
-  pass.Run(argument.main_graph.get());
-  // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(argument.main_graph->nodes.size(), 38UL);
-  pass.Finalize();
-  ASSERT_FALSE(argument.main_graph->DotString().empty());
-  EXPECT_FALSE(argument.main_graph->inputs().empty());
+void IrAnalysisPass::RunImpl(Argument *argument) {
+  ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
+  ARGUMENT_CHECK_FIELD(argument, main_program);
+  ARGUMENT_CHECK_FIELD(argument, scope);
+
+  // Apply passes.
+  auto graph = IRPassManager(argument).Apply();
+  argument->SetMainGraph(std::move(graph));
 }
+
+std::string IrAnalysisPass::repr() const { return "ir-analysis-pass"; }
 
 }  // namespace analysis
 }  // namespace inference

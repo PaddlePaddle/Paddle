@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
-#include "paddle/fluid/inference/analysis/subgraph_splitter.h"
+#pragma once
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-using framework::ir::Node;
-
-TensorRTSubGraphPass::TensorRTSubGraphPass(
-    const TensorRTSubGraphPass::NodeInsideSubgraphTeller &teller)
-    : node_inside_subgraph_teller_(teller) {}
-
-void TensorRTSubGraphPass::Run(Graph *graph) {
-  SubgraphDetector detector(graph, node_inside_subgraph_teller_);
-
-  std::vector<std::vector<Node*>> subgraphs = detector();
-
-}
+class TensorRtSubgraphPass : public framework::ir::Pass {
+ public:
+  std::unique_ptr<framework::ir::Graph> ApplyImpl(
+      std::unique_ptr<framework::ir::Graph> graph) const override;
+};
 
 }  // namespace analysis
 }  // namespace inference
-
 }  // namespace paddle

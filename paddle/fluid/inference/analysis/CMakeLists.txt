@@ -1,23 +1,24 @@
-cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES})
-set(analysis_deps
-        framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log)
+unset(analysis_deps CACHE)
+set(analysis_deps # analysis_deps can be extended accross the project
+        framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log CACHE INTERNAL "")
 
-cc_library(subgraph_splitter SRCS subgraph_splitter.cc DEPS ${inference_analyzer})
-cc_library(tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass.cc DEPS ${inference_analyzer} DEPS subgraph_splitter)
+add_subdirectory(ir_passes)
+add_subdirectory(passes)
+
+cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES})
+
+cc_library(argument SRCS argument.cc DEPS scope proto_desc)
+#cc_library(tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass.cc DEPS ${inference_analyzer} DEPS subgraph_splitter)
 cc_library(analysis_pass SRCS analysis_pass.cc)
 
-cc_library(analysis SRCS pass_manager.cc graph_traits.cc subgraph_splitter.cc
+cc_library(analysis SRCS graph_traits.cc
   analyzer.cc
   helper.cc
-  # passes
-  fluid_to_data_flow_graph_pass.cc
-  fluid_to_ir_pass.cc
   DEPS ${analysis_deps}
   analysis_pass
   )
 
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
-cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
 
 function (inference_analysis_test TARGET)
     if(WITH_TESTING)
@@ -38,8 +39,3 @@ function (inference_analysis_test TARGET)
 endfunction(inference_analysis_test)
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc EXTRA_DEPS paddle_inference_api)
-inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc)
-inference_analysis_test(test_fluid_to_data_flow_graph_pass SRCS fluid_to_data_flow_graph_pass_tester.cc)
-inference_analysis_test(test_subgraph_splitter SRCS subgraph_splitter_tester.cc)
-inference_analysis_test(test_tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass_tester.cc)
-inference_analysis_test(test_pass_manager SRCS pass_manager_tester.cc)

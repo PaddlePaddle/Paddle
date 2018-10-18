@@ -107,7 +107,7 @@ class Graph {
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     PADDLE_ENFORCE(var_desc);
-    auto* x = AddNode(new ir::Node(var_desc));
+    auto *x = AddNode(new ir::Node(var_desc));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -115,7 +115,7 @@ class Graph {
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     PADDLE_ENFORCE(op_desc);
-    auto* x = AddNode(new ir::Node(op_desc));
+    auto *x = AddNode(new ir::Node(op_desc));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -127,7 +127,7 @@ class Graph {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
-    auto* x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -135,7 +135,7 @@ class Graph {
   // A more free style way of creating a graph node. Mostly use for test
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
-    auto* x = AddNode(new ir::Node(name, type));
+    auto *x = AddNode(new ir::Node(name, type));
     x->SetId(num_node_created_++);
     return x;
   }

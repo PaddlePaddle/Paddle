@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
@@ -87,7 +88,6 @@ class Node {
   int id_;
 
  private:
-
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
 

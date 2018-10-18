@@ -36,22 +36,10 @@ class AnalysisPass {
   virtual ~AnalysisPass() = default;
 
   // User should implement these.
-  virtual bool InitializeImpl() = 0;
-  virtual bool FinalizeImpl() = 0;
-  virtual void RunImpl() = 0;
-
-  // Mutable Pass.
-  virtual bool Initialize(Argument *argument) {
-    argument_ = argument;
-    return true;
-  }
-
-  // Virtual method overriden by subclasses to do any necessary clean up after
-  // all passes have run.
-  virtual bool Finalize() { return true; }
+  virtual void RunImpl(Argument* argument) = 0;
 
   // Run on a single Graph.
-  virtual void Run() = 0;
+  void Run(Argument* argument) { RunImpl(argument); }
 
   // Human-readable short representation.
   virtual std::string repr() const = 0;
@@ -59,7 +47,7 @@ class AnalysisPass {
   virtual std::string description() const { return "No DOC"; }
 
  protected:
-  Argument *argument_{nullptr};
+  Argument* argument_{nullptr};
 };
 
 }  // namespace analysis

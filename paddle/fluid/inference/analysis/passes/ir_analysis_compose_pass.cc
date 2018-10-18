@@ -12,41 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/analysis/argument.h"
+
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
-using string::PrettyLogEndl;
-using string::PrettyLog;
-using string::Style;
 
-IRPassManager::IRPassManager(Argument *argument) {
-  ARGUMENT_CHECK_FIELD(argument, main_program);
-  graph_ = std::unique_ptr<Graph>(new Graph(*argument->main_program()));
-  if (argument->scope()) {
-    graph_->Set(framework::ir::kParamScopeAttr,
-                new framework::Scope *(argument->scope()));
-  }
-
+void IrAnalysisComposePass::RunImpl(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
-  CreatePasses(argument, *argument->ir_analysis_passes());
+  CreateIrPasses(argument, *argument->ir_analysis_passes());
+  InitTensorRTAttrs(argument);
+  ApplyIrPasses(argument);
 }
 
-void IRPassManager::CreatePasses(Argument *argument,
-                                 const std::vector<std::string> &passes) {
+std::string IrAnalysisComposePass::repr() const {
+  return "ir-analysis-compose-pass";
+}
+
+void IrAnalysisComposePass::CreateIrPasses(
+    Argument *argument, const std::vector<std::string> &passes) {
   std::string pre_pass;
   int pass_num = 0;
   for (const std::string &pass_name : passes) {
-    PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass_name);
+    string::PrettyLogEndl(string::Style::H2(), "--- Running IR pass [%s]",
+                          pass_name);
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
 
     // Set some pass attributes.
@@ -69,13 +65,28 @@ void IRPassManager::CreatePasses(Argument *argument,
   }
 }
 
-std::unique_ptr<Graph> IRPassManager::Apply() {
-  // Apply all the passes
-  std::unique_ptr<Graph> graph;
-  for (auto &pass : passes_) {
-    graph = pass->Apply(std::move(graph_));
+void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
+  if (argument->use_tensorrt() && *argument->use_tensorrt()) {
+    argument->SetTensorRtNodeTeller([](const framework::ir::Node *node) {
+      std::unordered_set<std::string> teller_set(
+          {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
+           "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
+           "elementwise_add", "dropout"});
+      if (!node->IsOp()) return false;
+
+      if (teller_set.count(node->Op()->Type())) {
+        return true;
+      } else {
+        return false;
+      }
+    });
   }
-  return std::move(graph);
+}
+
+void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
+  // Create passes.
+  IRPassManager manager(argument);
+  manager.Apply();
 }
 
 }  // namespace analysis

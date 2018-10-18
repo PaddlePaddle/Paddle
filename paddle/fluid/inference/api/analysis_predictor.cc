@@ -198,21 +198,16 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 void AnalysisPredictor::OptimizeInferenceProgram() {
-  // Currentlly, the IR not works with TensorRT, turn TensorRT off temporarily.
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "";  // Don't output the model.
-  FLAGS_IA_enable_ir = config_.enable_ir_optim;
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
-    argument_.model_dir.reset(new std::string(config_.model_dir));
+    argument_.SetModelDir(config_.model_dir);
   } else {
     PADDLE_ENFORCE(
         !config_.param_file.empty(),
         "Either model_dir or (param_file, prog_file) should be set.");
     PADDLE_ENFORCE(!config_.prog_file.empty());
-    argument_.model_program_path.reset(
-        new std::string(config_.prog_file));
-    argument_.model_param_path.reset(new std::string(config_.param_file));
+    argument_.SetModelProgramPath(config_.prog_file);
+    argument_.SetModelParamsPath(config_.param_file);
   }
 
   argument_.original_program_desc.reset(
@@ -220,7 +215,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.enable_ir_optim) passes.clear();
-  Analyzer(passes).Run(&argument_);
+  argument_.SetIrAnalysisPasses(passes);
+  Analyzer().Run(&argument_);
 
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
