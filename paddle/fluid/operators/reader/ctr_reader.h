@@ -22,10 +22,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filtering_streambuf.hpp>
-
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
