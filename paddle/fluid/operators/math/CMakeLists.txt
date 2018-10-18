@@ -76,5 +76,5 @@ cc_test(concat_test SRCS concat_test.cc DEPS concat)
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
 cc_library(jit_kernel 
     SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_lstm.cc
-    DEPS cpu_info cblas activation_functions)
+    DEPS cpu_info cblas)
 cc_test(jit_kernel_test SRCS jit_kernel_test.cc DEPS jit_kernel)
