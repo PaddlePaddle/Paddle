@@ -65,6 +65,7 @@ __all__ = [
     'reduce_prod',
     'sequence_first_step',
     'sequence_last_step',
+    'sequence_slice',
     'dropout',
     'split',
     'ctc_greedy_decoder',
@@ -152,6 +153,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'affine_channel',
 ]
 
 
@@ -1901,6 +1903,76 @@ def sequence_last_step(input):
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
     return sequence_pool(input=input, pool_type="last")
+
+
+def sequence_slice(input, offset, length, name=None):
+    """
+    **Sequence Slice Layer**
+
+    The layer crops a subsequence from given sequence with given start 
+    offset and subsequence length.
+
+    It only supports sequence data (LoDTensor with lod_level equal to 1).
+
+    .. code-block:: text
+    
+	- Case:
+
+            Given the input Variable **input**:
+                
+                input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
+                input.lod = [[3, 2]],
+                input.dims = (5, 2),
+
+            with offset.data = [[0], [1]] and length.data = [[2], [1]],
+
+            the output Variable will be
+                
+                out.data = [[a1, a2], [b1, b2], [e1, e2]],
+                out.lod = [[2, 1]],
+                out.dims = (3, 2).
+	
+    NOTE: The first dimension size of **input**, **offset** and **length** 
+          should be equal. The **offset** should start from 0.
+    
+    Args:
+        input(Variable): The input Variable which consists of the complete 
+                         sequences.
+        offset(Variable): The offset to slice each sequence.
+        length(Variable): The length of each subsequence.
+        name(str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The output subsequences.
+
+    Examples:
+
+        .. code-block:: python
+
+             import numpy as np
+             seqs = fluid.layers.data(name='x', shape=[10, 5],
+                              dtype='float32', lod_level=1)
+             offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
+             length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
+             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset, 
+                                                   length=length)
+    """
+    helper = LayerHelper("sequence_slice", **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+
+    offset.stop_gradient = True
+    length.stop_gradient = True
+
+    helper.append_op(
+        type="sequence_slice",
+        inputs={"X": input,
+                "Offset": offset,
+                "Length": length},
+        outputs={"Out": out})
+
+    return out
 
 
 @templatedoc()
@@ -7195,5 +7267,46 @@ def maxout(x, groups, name=None):
         type="maxout",
         inputs={"X": x},
         attrs={"groups": groups},
+        outputs={"Out": out})
+    return out
+
+
+def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
+    """
+    Applies a separate affine transformation to each channel of the input.
+    Useful for replacing spatial batch norm with its equivalent fixed
+    transformation. The input also can be 2D tensor and applies a affine
+    transformation in second dimension.
+    
+    Args:
+        x (Variable): Feature map input can be a 4D tensor with order NCHW
+            or NHWC. It also can be a 2D tensor and the affine transformation
+            is applied in the second dimension.
+        scale (Variable): 1D input of shape (C), the c-th element is the scale
+            factor of the affine transformation for the c-th channel of
+            the input.
+        bias (Variable): 1D input of shape (C), the c-th element is the bias
+            of the affine transformation for the c-th channel of the input.
+        data_layout (string, default NCHW): NCHW or NHWC. If input is 2D
+            tensor, you can ignore data_layout.
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out (Variable): A tensor of the same shape and data layout with x.
+    """
+    helper = LayerHelper("affine_channel", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="affine_channel",
+        inputs={"X": x,
+                'Scale': scale,
+                'Bias': bias},
+        attrs={"data_layout": data_layout},
         outputs={"Out": out})
     return out
