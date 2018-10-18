@@ -205,7 +205,7 @@ void MainThreadsWord2Vec(bool use_gpu) {
       float* ref_data = refs[tid].data<float>();
       EXPECT_EQ(refs[tid].numel(), static_cast<int64_t>(len / sizeof(float)));
       for (int i = 0; i < refs[tid].numel(); ++i) {
-        EXPECT_NEAR(ref_data[i], data[i], ACC_DIFF);
+        EXPECT_NEAR(ref_data[i], data[i], 2e-3);
       }
     });
   }

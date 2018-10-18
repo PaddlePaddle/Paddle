@@ -51,9 +51,7 @@ void TestWord2vecPrediction(const std::string& model_path) {
   config.model_dir = model_path;
   config.use_gpu = false;
   config.device = 0;
-  auto predictor =
-      ::paddle::CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-          config);
+  auto predictor = ::paddle::CreatePaddlePredictor<NativeConfig>(config);
 
   // One single batch
 
