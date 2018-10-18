@@ -127,6 +127,18 @@ function cmake_gen() {
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
+
+    echo "why there is no autoconf"
+    if ! [ -x "$(command -v autoconf)" ]; then
+        autoconf_version=2.69
+        autoconf_path="${PADDLE_ROOT}/build/third_party/extern_autoconf/autoconf"
+        autoconf_url="http://ftp.gnu.org/gnu/autoconf/autoconf-${autoconf_version}.tar.gz"
+        mkdir -p ${autoconf_path} && cd ${autoconf_path}  \
+          && curl -sLO ${autoconf_url} && tar -zxf autoconf-${autoconf_version}.tar.gz  \
+          && cd autoconf-${autoconf_version} \
+          && ./configure && make && make install
+        cd ${PADDLE_ROOT}/build
+    fi
     
     cat <<EOF
     ========================================
