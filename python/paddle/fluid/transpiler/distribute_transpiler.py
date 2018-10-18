@@ -1133,7 +1133,8 @@ to transpile() call.")
                     inputs={
                         'Ids': [program.global_block().vars[table_grad_name]]
                     },
-                    outputs={"Out": self.trainer_side_table_grad_list})
+                    outputs={"Out": self.trainer_side_table_grad_list},
+                    attrs={RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE})
                 program.global_block()._insert_op(
                     index=op_index + 2,
                     type="send",
