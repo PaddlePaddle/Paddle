@@ -14,8 +14,20 @@
 
 #pragma once
 
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 #include <vector>
+
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
@@ -24,11 +36,20 @@ namespace reader {
 
 class CTRReader : public framework::FileReader {
  public:
-  explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue)
+  explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+                     int batch_size, int thread_num,
+                     const std::vector<std::string>& slots,
+                     const std::vector<std::string>& file_list)
       : framework::FileReader() {
+    thread_num_ = thread_num;
+    batch_size_ = batch_size;
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     queue_ = queue;
+    slots_ = slots;
+    file_list_ = file_list;
   }
+
+  ~CTRReader() { queue_->Close(); }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
@@ -36,14 +57,29 @@ class CTRReader : public framework::FileReader {
     if (!success) out->clear();
   }
 
-  ~CTRReader() { queue_->Close(); }
-
   void Shutdown() override { queue_->Close(); }
 
-  void Start() override { queue_->ReOpen(); }
+  void Start() override {
+    queue_->ReOpen();
+    for (int i = 0; i < thread_num_; i++) {
+      read_threads_.emplace_back(
+          new std::thread(std::bind(&CTRReader::ReadThread, this, file_list_,
+                                    slots_, batch_size_, queue_)));
+    }
+  }
+
+ private:
+  void ReadThread(const std::vector<std::string>& file_list,
+                  const std::vector<std::string>& slots, int batch_size,
+                  std::shared_ptr<LoDTensorBlockingQueue>* queue);
 
  private:
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
+  std::vector<std::unique_ptr<std::thread>> read_threads_;
+  int thread_num_;
+  int batch_size_;
+  std::vector<std::string> slots_;
+  std::vector<std::string> file_list_;
 };
 
 }  // namespace reader
