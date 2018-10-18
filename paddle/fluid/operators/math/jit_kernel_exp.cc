@@ -27,13 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-
-#ifdef __AVX__
-namespace detail {
-__m256 Exp(__m256 a);
-}  // namespace detail
-#endif
-
 namespace jitkernel {
 namespace jit = platform::jit;
 
@@ -205,7 +198,7 @@ __m256 ExpAVX(__m256 x) {
 #ifdef __AVX2__
 __m256 ExpAVX2(__m256 x) {
   __m256 tmp = _mm256_setzero_ps(), fx;
-  __m256 one = *reinterpret_cast<const __m256*> _ps256_one;
+  __m256 one = *reinterpret_cast<const __m256*>(_ps256_one);
   __m256i imm0;
 
   x = _mm256_min_ps(x, *reinterpret_cast<const __m256*>(_ps256_exp_hi));
@@ -335,7 +328,8 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
   template <>                                                                  \
   void VSigmoidKernelImpl<float, isa, kEQ8>::Compute(const float* x, float* y) \
       const {                                                                  \
-    /*use static const??*/ __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX); \
+    /* TODO(TJ): try to use static const*/                                     \
+    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                        \
     __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                        \
     __m256 tmp = _mm256_loadu_ps(x);                                           \
     INTRI_SIGMOID(tmp, min, max, expisa);                                      \
