@@ -30,19 +30,23 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
+void ReadThread(const std::vector<std::string>& file_list,
+                const std::vector<std::string>& slots, int batch_size,
+                std::shared_ptr<LoDTensorBlockingQueue> queue);
+
 class CTRReader : public framework::FileReader {
  public:
   explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
                      int batch_size, int thread_num,
                      const std::vector<std::string>& slots,
                      const std::vector<std::string>& file_list)
-      : framework::FileReader() {
-    thread_num_ = thread_num;
-    batch_size_ = batch_size;
+      : thread_num_(thread_num),
+        batch_size_(batch_size),
+        slots_(slots),
+        file_list_(file_list) {
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     queue_ = queue;
-    slots_ = slots;
-    file_list_ = file_list;
+    SplitFiles();
   }
 
   ~CTRReader() { queue_->Close(); }
@@ -53,30 +57,41 @@ class CTRReader : public framework::FileReader {
     if (!success) out->clear();
   }
 
-  void Shutdown() override { queue_->Close(); }
+  void Shutdown() override {
+    VLOG(3) << "Shutdown reader";
+    for (auto& read_thread : read_threads_) {
+      read_thread->join();
+    }
+    read_threads_.clear();
+    queue_->Close();
+  }
 
   void Start() override {
+    VLOG(3) << "Start reader";
     queue_->ReOpen();
-    //    for (int i = 0; i < thread_num_; i++) {
-    //      read_threads_.emplace_back(
-    //          new std::thread(std::bind(&CTRReader::ReadThread, this,
-    //          file_list_,
-    //                                    slots_, batch_size_, queue_)));
-    //    }
+    for (int i = 0; i < file_groups_.size(); i++) {
+      read_threads_.emplace_back(new std::thread(std::bind(
+          &ReadThread, file_groups_[i], slots_, batch_size_, queue_)));
+    }
   }
 
  private:
-  void ReadThread(const std::vector<std::string>& file_list,
-                  const std::vector<std::string>& slots, int batch_size,
-                  std::shared_ptr<LoDTensorBlockingQueue> queue);
+  void SplitFiles() {
+    file_groups_.resize(file_list_.size() > thread_num_ ? thread_num_
+                                                        : file_list_.size());
+    for (int i = 0; i < file_list_.size(); ++i) {
+      file_groups_[i % thread_num_].push_back(file_list_[i]);
+    }
+  }
 
  private:
+  const int thread_num_;
+  const int batch_size_;
+  const std::vector<std::string> slots_;
+  const std::vector<std::string> file_list_;
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
   std::vector<std::unique_ptr<std::thread>> read_threads_;
-  int thread_num_;
-  int batch_size_;
-  std::vector<std::string> slots_;
-  std::vector<std::string> file_list_;
+  std::vector<std::vector<std::string>> file_groups_;
 };
 
 }  // namespace reader
