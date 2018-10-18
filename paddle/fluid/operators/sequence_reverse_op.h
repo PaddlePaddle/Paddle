@@ -70,6 +70,8 @@ Y.data() = [
 ]
 
 This Operator is useful to build a reverse dynamic RNN network.
+
+This Operator only supports one-level lod currently.
     )DOC");
   }
 };
