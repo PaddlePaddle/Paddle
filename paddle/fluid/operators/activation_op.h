@@ -255,7 +255,6 @@ struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   float threshold;
-
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
@@ -864,8 +863,7 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     const T kOne{1};
     T b = static_cast<T>(beta);
-    auto temp1 = kOne /
-                 (kOne + (-b * x).exp());
+    auto temp1 = kOne / (kOne + (-b * x).exp());
     auto temp2 = temp1 * (kOne - (b * out));
     dx.device(d) = dout * (b * out + temp2);
   }
