@@ -61,11 +61,12 @@ class CTRReader : public framework::FileReader {
 
   void Start() override {
     queue_->ReOpen();
-    for (int i = 0; i < thread_num_; i++) {
-      read_threads_.emplace_back(
-          new std::thread(std::bind(&CTRReader::ReadThread, this, file_list_,
-                                    slots_, batch_size_, queue_)));
-    }
+    //    for (int i = 0; i < thread_num_; i++) {
+    //      read_threads_.emplace_back(
+    //          new std::thread(std::bind(&CTRReader::ReadThread, this,
+    //          file_list_,
+    //                                    slots_, batch_size_, queue_)));
+    //    }
   }
 
  private:
