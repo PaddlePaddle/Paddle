@@ -20,14 +20,13 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void SetConfig(AnalysisConfig *cfg, bool _use_mkldnn = FLAGS_use_MKLDNN) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->param_file = FLAGS_infer_model + "/params";
   cfg->prog_file = FLAGS_infer_model + "/model";
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
-  cfg->_use_mkldnn = _use_mkldnn;
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -53,9 +52,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_resnet50, profile) {
+void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg._use_mkldnn = use_mkldnn;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -70,6 +70,11 @@ TEST(Analyzer_resnet50, profile) {
   }
 }
 
+TEST(Analyzer_resnet50, profile) { profile(); }
+#ifndef PADDLE_WITH_MKLDNN
+TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_resnet50, fuse_statis) {
   AnalysisConfig cfg;
@@ -83,25 +88,19 @@ TEST(Analyzer_resnet50, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_resnet50, compare) {
+void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg._use_mkldnn = use_mkldnn;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(cfg, input_slots_all);
 }
 
-// Compare result of NativeConfig and AnalysisConfig with MKLDNN
+TEST(Analyzer_resnet50, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_resnet50, compare_mkldnn) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg, true);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
-}
+TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
 }  // namespace analysis
