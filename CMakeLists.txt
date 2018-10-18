@@ -72,6 +72,7 @@ option(WITH_INFERENCE    "Compile fluid inference library"              ON)
 option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
+option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -125,6 +126,9 @@ set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
 
 set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
   "A path setting fluid shared and static libraries")
+
+set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
+  "A path setting fluid inference shared and static libraries")
 
 if (WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "

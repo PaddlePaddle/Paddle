@@ -375,6 +375,44 @@ struct PatternBase {
   size_t id_;
 };
 
+// Conv with batch norm
+// op: conv + (elementwise_add +) batch_norm
+// named nodes:
+// conv_weight, conv_out, conv,
+// bn_x, bn_scale, bn_bias, bn_mean,  bn_variance,
+// bn_batch_norm, bn_y, bn_mean_out, bn_variance_out,
+// bn_saved_mean, bn_saved_variance
+struct ConvBN : public PatternBase {
+  ConvBN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bn") {}
+
+  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(batch_norm);
+  PATTERN_DECL_NODE(eltwise);  // ELEMENTWISE_ADD
+  // CONV inputs
+  PATTERN_DECL_NODE(conv_weight);  // Filter
+  // CONV outputs
+  PATTERN_DECL_NODE(conv_out);  // tmp
+  // ELTWISE inputs
+  PATTERN_DECL_NODE(eltwise_y_in);
+  // ELTWISE outputs
+  PATTERN_DECL_NODE(eltwise_out);  // tmp
+  // BN inputs
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_mean);
+  PATTERN_DECL_NODE(bn_variance);
+  // BN outputs
+  PATTERN_DECL_NODE(bn_out);  // Out
+  PATTERN_DECL_NODE(bn_mean_out);
+  PATTERN_DECL_NODE(bn_variance_out);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_saved_variance);
+};
+
 // CONV with ReLU
 // op: conv + relu
 // named nodes:
