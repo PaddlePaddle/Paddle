@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -322,7 +321,6 @@ std::cout<<"this is conv kernel op....................."<<std::endl;
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
-    std::cout<<"fuse_relu = "<<fuse_relu<<"  fuse_residual_conn = "<<fuse_residual_conn<<std::endl;
 
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
@@ -431,20 +429,15 @@ std::cout<<"log3....."<<std::endl;
         (g == 1) ? chosen_memory_format : mkldnn::memory::format::goihw);
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<float>(), chosen_memory_format);
-    //memory::data_type dst_dt = memory::data_type::f32;
-    //auto dst_dt = std::type_index(typeid(float));
     if(is_INT8){
         src_md = platform::MKLDNNMemDesc(
             src_tz, memory::data_type::u8, chosen_memory_format);
         weights_md = platform::MKLDNNMemDesc(
             weights_tz, memory::data_type::s8,
             (g == 1) ? chosen_memory_format : mkldnn::memory::format::goihw);
-        //dst_dt = fuse_relu?memory::data_type::u8:memory::data_type::s8;
-        //dst_dt = fuse_relu? std::type_index(typeid(unsigned char)) : std::type_index(typeid(char));
         dst_md = platform::MKLDNNMemDesc(
             dst_tz,
-            fuse_relu? paddle::framework::ToMKLDNNDataType(std::type_index(typeid(unsigned char))) : 
-            paddle::framework::ToMKLDNNDataType(std::type_index(typeid(char))),
+            fuse_relu?memory::data_type::u8:memory::data_type::s8,
             chosen_memory_format);
     }
 
@@ -509,7 +502,7 @@ std::cout<<"log3....."<<std::endl;
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
     if(is_INT8){
-        //T* output_data = nullptr;
+        int8_t* output_data = nullptr;
         if (fuse_residual_conn) {
           auto residual_param = ctx.Input<Tensor>("ResidualData");
           PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
@@ -517,28 +510,15 @@ std::cout<<"log3....."<<std::endl;
                             "same dimension sizes");
 
           output->ShareDataWith(*residual_param);
-          if(fuse_relu){
-              uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
-              dst_memory_p =
-                  handler.AcquireDstMemoryFromPrimitive(to_void_cast<uint8_t>(output_data));
-          } else{
-              int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
-              dst_memory_p =
-                  handler.AcquireDstMemoryFromPrimitive(to_void_cast<int8_t>(output_data));
-          }
+          output_data = output->mutable_data<int8_t>(ctx.GetPlace());
         } else {
           std::cout<<"conv log 1 ....................."<<std::endl;
-          if(fuse_relu){
-              uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace(), handler.GetDstMemorySize());
-              dst_memory_p =
-                  handler.AcquireDstMemoryFromPrimitive(to_void_cast<uint8_t>(output_data));
-          } else{
-              int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace(), handler.GetDstMemorySize());
-              dst_memory_p =
-                  handler.AcquireDstMemoryFromPrimitive(to_void_cast<int8_t>(output_data));
-          }
+          output_data =
+              output->mutable_data<int8_t>(ctx.GetPlace(), handler.GetDstMemorySize());
           std::cout<<"conv log 2 //////////////////////"<<std::endl;
         }
+        dst_memory_p =
+            handler.AcquireDstMemoryFromPrimitive(to_void_cast<int8_t>(output_data));
 std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<std::endl;
     } else{
         T* output_data = nullptr;
@@ -602,10 +582,7 @@ std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
-    //output->set_data_type(paddle::framework::MKLDNNToTypeIndex(dst_dt));
-    //output->set_data_type(dst_dt);
-    std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<"dst dt = "<<dst_memory_p->get_primitive_desc().desc().data.data_type<<std::endl;
-    std::cout<<"this is conv end!!!!!!!!!!!!!!!!!!!!"<<std::endl;
+    std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<std::endl;
   }
 
  private:
@@ -939,7 +916,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(conv2d, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConvMKLDNNOpKernel<float>,
-                   ops::ConvMKLDNNOpKernel<uint8_t>);
+                   ops::ConvMKLDNNOpKernel<int8_t>);
 
 REGISTER_OP_KERNEL(conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConvMKLDNNGradOpKernel<float>);

@@ -46,9 +46,9 @@ std::cout<<"this is dequant op ***********"<<std::endl;
     const auto& engine = dev_ctx.GetEngine();
  
     const T* input_data = input->data<T>();
-    float* output_data = output->mutable_data<float>(ctx.GetPlace());
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
     //T scale_data = *(scale->data<T>());
-    std::vector<float> scale_data = {*(scale->data<float>())};
+    std::vector<T> scale_data = {*(scale->data<T>())};
 
     std::vector<primitive> pipeline;
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
@@ -69,7 +69,7 @@ std::cout<<"this is dequant op ***********"<<std::endl;
     auto dst_md = platform::MKLDNNMemDesc(
             {dst_tz}, memory::data_type::f32, memory::format::nchw);
     auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<float>(output_data));
+    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<T>(output_data));
     
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
         new reorder::primitive_desc(dst_pd, src_pd, attri));    
@@ -112,5 +112,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_KERNEL(dequantize, MKLDNN, ::paddle::platform::CPUPlace, ops::DeQuantOpKernel<uint8_t>);
+REGISTER_OP_KERNEL(dequantize, MKLDNN, ::paddle::platform::CPUPlace, ops::DeQuantOpKernel<float>);
                    

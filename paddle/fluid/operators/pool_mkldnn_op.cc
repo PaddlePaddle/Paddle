@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +71,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-std::cout<<"this is pool op"<<std::endl;
+
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -130,16 +129,14 @@ std::cout<<"this is pool op"<<std::endl;
         CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
                           padding_right_bottom);
       }
-      mkldnn::memory::data_type dt = paddle::framework::ToMKLDNNDataType(input->type());
-      std::cout<<"input type = "<<dt<<std::endl;
       auto src_md = platform::MKLDNNMemDesc(
-          src_tz, dt, input_format);
+          src_tz, platform::MKLDNNGetDataType<T>(), input_format);
 
       /* create memory descriptor for pooling without specified format
        * ('any') which lets a primitive (pooling in this case) choose
        * the memory format preferred for best performance
        */
-      auto dst_md = platform::MKLDNNMemDesc(dst_tz, dt,
+      auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
                                             mkldnn::memory::format::any);
 
       std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
@@ -402,9 +399,6 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::PoolMKLDNNOpKernel<float>,
-                   ops::PoolMKLDNNOpKernel<int8_t>,
-                   ops::PoolMKLDNNOpKernel<uint8_t>);
-
+                   ops::PoolMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNGradOpKernel<float>);

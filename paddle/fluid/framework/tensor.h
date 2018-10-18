@@ -39,14 +39,8 @@ class Tensor {
  public:
   inline mkldnn::memory::format format() const { return format_; }
 
-  inline mkldnn::memory::data_type data_type() const { return data_type_; }
-
   inline void set_format(const mkldnn::memory::format format) {
     format_ = format;
-  }
-  
-  inline void set_data_type(const mkldnn::memory::data_type data_type) {
-    data_type_ = data_type;
   }
 
  protected:
@@ -60,8 +54,6 @@ class Tensor {
    */
 
   mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
-
-  mkldnn::memory::data_type data_type_ = mkldnn::memory::data_type::f32;
 #endif
 
  public:
