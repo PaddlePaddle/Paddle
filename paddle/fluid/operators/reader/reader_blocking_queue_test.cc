@@ -229,7 +229,7 @@ TEST(BlockingQueue, speed_test_mode) {
     q1.Receive(&b);
     EXPECT_EQ(b, i);
   }
-  EXPECT_EQ(q1.Size(), 0);
+  EXPECT_EQ(q1.Size(), 0UL);
 
   BlockingQueue<size_t> q2(queue_size, true);
   for (size_t i = 0; i < queue_size; ++i) {

@@ -91,7 +91,7 @@ TEST(SelectedRows, SparseTable) {
   ASSERT_TRUE(table.HasKey(10));
   ASSERT_TRUE(table.HasKey(8));
   ASSERT_TRUE(table.HasKey(6));
-  ASSERT_EQ(table.rows().size(), 3);
+  ASSERT_EQ(table.rows().size(), 3UL);
 
   framework::Tensor ids;
   ids.Resize(framework::make_ddim({4}));

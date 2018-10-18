@@ -61,7 +61,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     if (x_t->dims().size() == 2) {
       out_dims_vec.push_back(1);
     } else {
-      for (size_t i = 2; i < x_t->dims().size(); ++i) {
+      for (int i = 2; i < x_t->dims().size(); ++i) {
         out_dims_vec.push_back(x_t->dims()[i]);
       }
     }
