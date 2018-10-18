@@ -124,7 +124,10 @@ class MultiGzipReader : public Reader {
 
 void ReadThread(const std::vector<std::string>& file_list,
                 const std::vector<std::string>& slots, int batch_size,
+                int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  (*thread_status)[thread_id] = Running;
+
   std::string line;
 
   std::vector<std::unordered_map<std::string, std::vector<int64_t>>> batch_data;
@@ -181,6 +184,8 @@ void ReadThread(const std::vector<std::string>& file_list,
 
     queue->Push(lod_datas);
   }
+
+  (*thread_status)[thread_id] = Stopped;
 }
 
 }  // namespace reader
