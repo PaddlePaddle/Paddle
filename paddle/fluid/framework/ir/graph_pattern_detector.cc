@@ -259,6 +259,8 @@ GraphPatternDetector::DetectPatterns() {
   return result;
 }
 
+// TODO(Superjomn) enhance the function as it marks unique unique as duplicates
+// see https://github.com/PaddlePaddle/Paddle/issues/13550
 void GraphPatternDetector::UniquePatterns(
     std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
   if (subgraphs->empty()) return;
