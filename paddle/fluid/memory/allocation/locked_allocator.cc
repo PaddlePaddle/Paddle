@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
+#include <mutex>  // NOLINT
 
 namespace paddle {
 namespace memory {

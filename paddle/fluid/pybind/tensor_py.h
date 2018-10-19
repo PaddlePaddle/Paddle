@@ -63,8 +63,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 #ifdef PADDLE_WITH_CUDA
         auto *src_ptr = static_cast<const void *>(tensor.data<CUR_TYPE>());
         auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
-            tensor.dims(), platform::CPUPlace(),
-            memory::Allocator::kCrossDevice));
+            tensor.dims(), platform::CPUPlace()));
 
         paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
                                         sizeof(CUR_TYPE) * tensor.numel(),

@@ -112,8 +112,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
-  auto dst_ptr =
-      dst->mutable_data(dst_place, src.type(), memory::Allocator::kCrossDevice);
+  auto dst_ptr = dst->mutable_data(dst_place, src.type());
   auto size = src.numel() * SizeOfType(src.type());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,

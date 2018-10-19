@@ -98,7 +98,6 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace& place) {
 }
 
 #ifdef PADDLE_WITH_CUDA
-
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static std::once_flag init_flag;
   static detail::BuddyAllocator** a_arr = nullptr;
@@ -128,15 +127,21 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   platform::SetDeviceId(gpu_id);
   return a_arr[gpu_id];
 }
+#endif
 
 template <>
 size_t Used<platform::CUDAPlace>(const platform::CUDAPlace& place) {
+#ifdef PADDLE_WITH_CUDA
   return GetGPUBuddyAllocator(place.device)->Used();
+#else
+  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
 }
 
 template <>
 void* Alloc<platform::CUDAPlace>(const platform::CUDAPlace& place,
                                  size_t size) {
+#ifdef PADDLE_WITH_CUDA
   auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto* ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
@@ -156,13 +161,21 @@ void* Alloc<platform::CUDAPlace>(const platform::CUDAPlace& place,
     cudaMemset(ptr, 0xEF, size);
   }
   return ptr;
+#else
+  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
 }
 
 template <>
 void Free<platform::CUDAPlace>(const platform::CUDAPlace& place, void* p) {
+#ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
+#else
+  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
   static std::once_flag init_flag;
   static BuddyAllocator* ba = nullptr;
@@ -176,15 +189,21 @@ BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
 
   return ba;
 }
+#endif
 
 template <>
 size_t Used<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace& place) {
+#ifdef PADDLE_WITH_CUDA
   return GetCUDAPinnedBuddyAllocator()->Used();
+#else
+  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+#endif
 }
 
 template <>
 void* Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace& place,
                                        size_t size) {
+#ifdef PADDLE_WITH_CUDA
   auto* buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void* ptr = buddy_allocator->Alloc(size);
 
@@ -196,14 +215,20 @@ void* Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace& place,
     memset(ptr, 0xEF, size);
   }
   return ptr;
+#else
+  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+#endif
 }
 
 template <>
 void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace& place,
                                      void* p) {
+#ifdef PADDLE_WITH_CUDA
   GetCUDAPinnedBuddyAllocator()->Free(p);
-}
+#else
+  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
 #endif
+}
 
 struct AllocVisitor : public boost::static_visitor<void*> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}

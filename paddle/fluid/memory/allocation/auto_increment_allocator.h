@@ -17,6 +17,7 @@
 #include <atomic>  // NOLINT
 #include <functional>
 #include <memory>
+#include <mutex>   // NOLINT
 #include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"

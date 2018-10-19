@@ -22,9 +22,9 @@ namespace allocation {
 
 std::unique_ptr<Allocation> CPUPinnedAllocator::Allocate(size_t size,
                                                          Allocator::Attr attr) {
-  PADDLE_ENFORCE_EQ(
-      attr, kCrossDevice,
-      "CPUPinnedAllocator should be used for Cross-Device Communication");
+  // PADDLE_ENFORCE_EQ(
+  //    attr, kCrossDevice,
+  //    "CPUPinnedAllocator should be used for Cross-Device Communication");
 
   void* ptr;
   PADDLE_ENFORCE(cudaMallocHost(&ptr, size));
