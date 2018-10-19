@@ -40,6 +40,7 @@ void FusionSeqConvEltAddReluOp::InferShape(
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
+  int context_length = ctx->Attrs().Get<int>("contextLength");
   PADDLE_ENFORCE(
       ctx->Attrs().Get<int>("contextStride") == 1,
       "Currently, FusionSeqConvEltAddReluOp only supports contextStride=1.");
@@ -47,10 +48,11 @@ void FusionSeqConvEltAddReluOp::InferShape(
                  "Input(X, Filter) should be 2-D tensor.");
   PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
                  "Input(X, Filter) should be 2-D tensor.");
-  PADDLE_ENFORCE(
-      w_dims[0] == ctx->Attrs().Get<int>("contextLength") * x_dims[1],
-      "Filter's height should be context_length * "
-      "input_hidden_size .");
+  PADDLE_ENFORCE(w_dims[0] == context_length * x_dims[1],
+                 "Filter's height should be context_length * "
+                 "input_hidden_size .");
+  PADDLE_ENFORCE_GT(context_length + ctx->Attrs().Get<int>("contextStart"), 0,
+                    "contextStart size should be smaller than contextLength.");
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
@@ -156,9 +158,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
       T* dst_data = col_data + st * col_mat_w;
       int seq_len = ed - st;
       if (seq_len > up_pad + down_pad) {
-        // zero all up_pad
+        // zero all up_pad and fill data
         std::memset(dst_data, 0, up_pad * col_mat_w_sz);
-        // fill up_pad data
         dst_data = dst_data + up_pad * src_mat_w;
         int copy_size = col_mat_w_sz - up_pad * src_mat_w_sz;
         for (int j = 0; j < up_pad; ++j) {
@@ -173,9 +174,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
           dst_data += col_mat_w;
           src_data += src_mat_w;
         }
-        // zero all down_pad
+        // zero all down_pad and fill data
         std::memset(dst_data, 0, down_pad * col_mat_w_sz);
-        // fill down_pad data
         copy_size -= src_mat_w_sz;
         for (int j = 0; j < down_pad; ++j) {
           std::memcpy(dst_data, src_data, copy_size);
@@ -186,27 +186,29 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_GE(context_length, up_pad + down_pad + 1);
         std::memset(dst_data, 0, seq_len * col_mat_w_sz);
+        dst_data = dst_data + up_pad * src_mat_w;
         int zero_sz = up_pad * src_mat_w_sz;
-        int seq_len_size = seq_len * src_mat_w_sz;
+        int cur_src_sz = seq_len * src_mat_w_sz;
         for (int j = 0; j < std::min(up_pad, seq_len); ++j) {
-          int copy_size = std::min(seq_len_size, col_mat_w_sz - zero_sz);
-          std::memcpy(dst_data + zero_sz / sizeof(T), src_data, copy_size);
-          dst_data += col_mat_w;
+          int copy_size = std::min(cur_src_sz, col_mat_w_sz - zero_sz);
+          std::memcpy(dst_data, src_data, copy_size);
+          dst_data += (col_mat_w - src_mat_w);
           zero_sz -= src_mat_w_sz;
         }
+        // from bottom
+        dst_data = col_data + ed * col_mat_w;
+        src_data = x_data + st * src_mat_w;
         zero_sz = down_pad * src_mat_w_sz;
-        dst_data = col_data + (ed - 1) * col_mat_w;
-        src_data = x_data + (ed - up_pad - 1) * src_mat_w;
-        for (int j = 0; j < std::min(0, seq_len - up_pad); ++j) {
-          int copy_size = std::min(seq_len_size, col_mat_w_sz - zero_sz);
-          std::memcpy(dst_data, src_data, copy_size);
+        for (int j = 1; j <= std::min(down_pad, seq_len); ++j) {
+          int copy_size = std::min(cur_src_sz, col_mat_w_sz - zero_sz);
+          std::memcpy(dst_data - (zero_sz + copy_size) / sizeof(T),
+                      src_data + std::max(seq_len - j - up_pad, 0) * src_mat_w,
+                      copy_size);
           dst_data -= col_mat_w;
-          src_data += src_mat_w;
           zero_sz -= src_mat_w_sz;
         }
       }
     }
-
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     math::FCCompute<DeviceContext, T>(blas, x_dims[0], w_dims[1], w_dims[0],
