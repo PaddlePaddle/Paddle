@@ -59,7 +59,6 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", {x_dims[0], weight_dims[0]});
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

@@ -70,7 +70,6 @@ class MulOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

@@ -104,7 +104,6 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
     }
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
-    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 
  protected:

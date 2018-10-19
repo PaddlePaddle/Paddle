@@ -56,7 +56,6 @@ class CosSimOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", {x_dims[0], 1});
     ctx->SetOutputDim("XNorm", {x_dims[0], 1});
     ctx->SetOutputDim("YNorm", {y_dims[0], 1});
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

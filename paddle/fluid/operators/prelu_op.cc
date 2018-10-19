@@ -50,7 +50,6 @@ class PReluOp : public framework::OperatorWithKernel {
       PADDLE_THROW("Unkown mode %s", mode);
     }
     ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

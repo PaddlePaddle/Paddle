@@ -460,11 +460,6 @@ class Pad2dOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (out_dims[0] == x_dim[0]) {
-      // Only pass LoD when the first dimension is equal between
-      // output and input.
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
   }
 };
 

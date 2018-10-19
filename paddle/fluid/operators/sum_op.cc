@@ -60,7 +60,6 @@ class SumOp : public framework::OperatorWithKernel {
       }
     }
     ctx->SetOutputDim("Out", in_dim);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

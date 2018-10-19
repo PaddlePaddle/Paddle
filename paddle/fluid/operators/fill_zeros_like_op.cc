@@ -27,7 +27,6 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillZerosLikeOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

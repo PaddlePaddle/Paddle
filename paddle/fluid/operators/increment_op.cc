@@ -32,7 +32,6 @@ class IncrementOp : public framework::OperatorWithKernel {
                    "Output(Out) of IncrementOp should not be null.");
     PADDLE_ENFORCE_EQ(1, framework::product(ctx->GetInputDim("X")));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", "Out");
   }
 
  protected:

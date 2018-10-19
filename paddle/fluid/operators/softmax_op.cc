@@ -38,7 +38,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                    "Output(Out) of SoftmaxOp should not be null.");
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

@@ -50,7 +50,6 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
                    "Output(Out) of FakeDequantizeMaxAbsOp should not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

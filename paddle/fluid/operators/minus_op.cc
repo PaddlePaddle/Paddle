@@ -42,7 +42,6 @@ class MinusOp : public framework::OperatorWithKernel {
         x_dims, y_dims,
         "Minus operator must take two tensor with same num of elements");
     ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

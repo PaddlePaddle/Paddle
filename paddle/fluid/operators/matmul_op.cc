@@ -318,7 +318,6 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out = {1};
     }
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
-    context->ShareLoD("X", /*->*/ "Out");
   }
 };
 

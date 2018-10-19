@@ -35,11 +35,6 @@ class UnsqueezeOpInferShape : public framework::InferShapeBase {
                    "should be in the range of [1, 6] (Eigen limit)");
     auto out_dims = GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
-    if (x_dims[0] == out_dims[0]) {
-      // Only pass LoD when the first dimension of output and Input(X)
-      // are the same.
-      ctx->ShareLoD("X", "Out");
-    }
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
@@ -143,7 +138,6 @@ class UnsqueezeGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 };
 

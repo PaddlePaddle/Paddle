@@ -55,7 +55,6 @@ class LayerNormOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     ctx->SetOutputDim("Mean", {left});
     ctx->SetOutputDim("Variance", {left});
-    ctx->ShareLoD("X", "Y");
   }
 };
 

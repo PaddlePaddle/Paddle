@@ -109,7 +109,6 @@ class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
                    "Output(Scale) of FakeQuantizeOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -169,7 +168,6 @@ class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

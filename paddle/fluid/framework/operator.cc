@@ -586,6 +586,63 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
+
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
+#ifdef PADDLE_WITH_MKLDNN
+    // Fix me: ugly workaround below
+    // Correct solution:
+    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor should be set "manually" in Compute()
+    //    of each OPKernel. The reason layout should NOT be shared between
+    //    input and output "automatically" (now by InferShape()->ShareLoD())
+    //    is that layout transform may occur after InferShape().
+    // Workaround:
+    //    Skip set_layout() when input layout is kMKLDNN
+    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    in Compute()
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+      out_tensor->set_layout(in_tensor.layout());
+  }
+
+  void DefaultShareLoD() const {
+    const VariableNameMap& inputs = op_.Inputs();
+    const VariableNameMap& outputs = op_.Outputs();
+    if (inputs.empty() || outputs.empty()) return;
+    const std::vector<std::string>& first_in_vars = inputs.begin()->second;
+    const std::vector<std::string>& first_out_vars = outputs.begin()->second;
+    if (first_in_vars.empty() || first_out_vars.empty()) return;
+
+    Variable* in_var = scope_.FindVar(first_in_vars.at(0));
+    if (!in_var->IsType<LoDTensor>()) return;
+    Variable* out_var = scope_.FindVar(first_out_vars.at(0));
+    if (!out_var->IsType<LoDTensor>()) return;
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_lod(in_tensor.lod());
+
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
+#ifdef PADDLE_WITH_MKLDNN
+    // Fix me: ugly workaround below
+    // Correct solution:
+    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor should be set "manually" in Compute()
+    //    of each OPKernel. The reason layout should NOT be shared between
+    //    input and output "automatically" (now by InferShape()->ShareLoD())
+    //    is that layout transform may occur after InferShape().
+    // Workaround:
+    //    Skip set_layout() when input layout is kMKLDNN
+    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    in Compute()
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+      out_tensor->set_layout(in_tensor.layout());
   }
 
   bool IsRuntime() const override { return true; }
@@ -658,6 +715,7 @@ static void CheckTensorNANOrInf(const std::string& name,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  infer_shape_ctx.DefaultShareLoD();
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);

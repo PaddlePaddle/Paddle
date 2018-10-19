@@ -40,7 +40,6 @@ class OneHotOp : public framework::OperatorWithKernel {
     framework::DDim out_dims(x_dims);
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /* --> */ "Out");
   }
 };
 

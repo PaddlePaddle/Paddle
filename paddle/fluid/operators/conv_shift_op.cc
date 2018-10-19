@@ -45,7 +45,6 @@ class ConvShiftOp : public framework::OperatorWithKernel {
                       "The 2nd dimension of Input(Y) should be less than or "
                       "equal to the 2nd dimension of Input(X).");
     ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

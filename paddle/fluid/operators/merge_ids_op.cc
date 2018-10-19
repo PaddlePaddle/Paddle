@@ -94,7 +94,6 @@ class MergeIdsOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(var_type, framework::proto::VarType::LOD_TENSOR,
                         "input X only support lod tensors");
     }
-    ctx->ShareLoD("Ids", "Out");
   }
 
  private:

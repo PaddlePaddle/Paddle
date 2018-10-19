@@ -31,7 +31,6 @@ class DropoutOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("Mask", x_dims);
     }
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

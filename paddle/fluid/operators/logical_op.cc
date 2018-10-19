@@ -75,7 +75,6 @@ class BinaryLogicalOpInferShape : public framework::InferShapeBase {
                       "The number of elements in X and Y should be same");
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
   }
 };
 
@@ -89,7 +88,6 @@ class UnaryLogicalOpInferShape : public framework::InferShapeBase {
     auto dim_x = context->GetInputDim("X");
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
   }
 };
 

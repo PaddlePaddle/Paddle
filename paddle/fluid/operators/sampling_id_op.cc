@@ -38,7 +38,6 @@ class SamplingIdOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input_dims;
     ctx->SetOutputDim("Out", dims);
-    ctx->ShareLoD("X", "Out");
   }
 };
 

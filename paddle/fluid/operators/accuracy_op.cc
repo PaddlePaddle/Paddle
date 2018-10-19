@@ -49,7 +49,6 @@ class AccuracyOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Accuracy", {1});
     ctx->SetOutputDim("Correct", {1});
     ctx->SetOutputDim("Total", {1});
-    ctx->ShareLoD("Out", /*->*/ "Accuracy");
   }
 
  protected:

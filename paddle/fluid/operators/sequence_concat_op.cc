@@ -66,10 +66,6 @@ class SeqConcatShapeInferer : public framework::InferShapeBase {
     }
     out_dims[0] = batch_size;
     context->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
-      // in Kernel.
-      context->ShareLoD("X", "Out");
-    }
   }
 };
 

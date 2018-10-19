@@ -45,7 +45,6 @@ class RowConvOp : public framework::OperatorWithKernel {
         x_dims[1], filter_dims[1],
         "The 2nd dimension of Input(X) and Input(Filter) should be same.");
     ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", "Out");
   }
 };
 

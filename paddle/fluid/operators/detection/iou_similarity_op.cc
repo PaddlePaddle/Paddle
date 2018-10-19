@@ -35,7 +35,6 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The rank of Input(Y) must be 2.");
     PADDLE_ENFORCE_EQ(y_dims[1], 4UL, "The shape of Y is [M, 4]");
 
-    ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", framework::make_ddim({x_dims[0], y_dims[0]}));
   }
 };

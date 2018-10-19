@@ -36,11 +36,6 @@ class FlattenOpInferShape : public framework::InferShapeBase {
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (in_dims[0] == out_dims[0]) {
-      // Only pass LoD when the first dimension of output and Input(X)
-      // are the same.
-      ctx->ShareLoD("X", "Out");
-    }
   }
 
   static std::vector<int32_t> GetOutputShape(const int axis,
@@ -131,7 +126,6 @@ class FlattenGradInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     context->SetOutputDim(framework::GradVarName("X"),
                           context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
   }
 };
 

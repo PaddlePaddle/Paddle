@@ -183,10 +183,6 @@ class ReduceOp : public framework::OperatorWithKernel {
       }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
-      if (dims[0] != 0) {
-        // Only pass LoD when not reducing on the first dim.
-        ctx->ShareLoD("X", /*->*/ "Out");
-      }
     }
   }
 };
@@ -213,7 +209,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
-      ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
   }
 };

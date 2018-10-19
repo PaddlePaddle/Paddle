@@ -48,7 +48,6 @@ class MeanGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 };
 

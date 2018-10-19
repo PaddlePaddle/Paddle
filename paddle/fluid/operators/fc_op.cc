@@ -52,7 +52,6 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
                     "Fully Connected input and weigth size do not match.");
 
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-  ctx->ShareLoD("Input", "Out");
 }
 
 framework::OpKernelType FCOp::GetExpectedKernelType(

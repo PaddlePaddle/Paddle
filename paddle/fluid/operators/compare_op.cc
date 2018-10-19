@@ -63,7 +63,6 @@ class CompareOpInferShape : public framework::InferShapeBase {
                       "The size of dim_y should not be greater than dim_x's.");
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
   }
 };
 

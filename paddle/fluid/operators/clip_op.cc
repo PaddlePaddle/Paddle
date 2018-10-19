@@ -31,7 +31,6 @@ class ClipOp : public framework::OperatorWithKernel {
     auto min = ctx->Attrs().Get<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
     ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

@@ -29,7 +29,6 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
                    "Output(Out) of SequenceSoftmaxOp should not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

@@ -40,7 +40,6 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
           "The number of elements in Input(PriorDist) must be equal to the "
           "dimension of each label.");
     }
-    ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", in_dims);
   }
 };

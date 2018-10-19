@@ -44,8 +44,6 @@ class ArgsortOp : public framework::OperatorWithKernel {
 
     ctx->ShareDim("X", "Out");
     ctx->ShareDim("X", "Indices");
-    ctx->ShareLoD("X", "Out");
-    ctx->ShareLoD("X", "Indices");
   }
 };
 

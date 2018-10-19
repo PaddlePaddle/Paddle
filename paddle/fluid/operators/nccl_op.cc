@@ -110,7 +110,6 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -156,7 +155,6 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -204,7 +202,6 @@ class NCCLBcastOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

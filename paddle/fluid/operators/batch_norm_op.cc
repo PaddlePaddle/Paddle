@@ -66,7 +66,6 @@ class BatchNormOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("VarianceOut", {C});
     ctx->SetOutputDim("SavedMean", {C});
     ctx->SetOutputDim("SavedVariance", {C});
-    ctx->ShareLoD("X", "Y");
   }
 
  protected:

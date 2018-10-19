@@ -59,12 +59,6 @@ class SplitOp : public framework::OperatorWithKernel {
       }
     }
     ctx->SetOutputsDim("Out", outs_dims);
-    if (axis != 0) {
-      // Only pass LoD when not spliting along the first dim.
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
-      }
-    }
   }
 };
 

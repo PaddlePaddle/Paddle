@@ -285,7 +285,6 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) {
       if (ctx->HasInputs("X")) {
         ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
-        ctx->ShareLoD("X", x_grad_name);
       } else {
         // Currently, only when Binary is elementwise_add or elementwise_sub,
         // the "X" could be absent.

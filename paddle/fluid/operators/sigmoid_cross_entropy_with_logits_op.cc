@@ -41,7 +41,6 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
                       "be equal.");
 
     ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

@@ -38,7 +38,6 @@ class HuberLossOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Residual", x_dims);
     ctx->SetOutputDim("Out", {x_dims[0], 1});
-    ctx->ShareLoD("X", "Out");
   }
 };
 

@@ -69,7 +69,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                                           strides[i]));
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
-  ctx->ShareLoD("Input", "Output");
 }
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(

@@ -77,7 +77,6 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
                                           paddings[i], strides[i], ceil_mode));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-  ctx->ShareLoD("X", "Out");
 }
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(

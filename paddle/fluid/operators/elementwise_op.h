@@ -43,7 +43,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                       "Rank of first input must >= rank of second input.");
 
     ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -160,11 +159,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->ShareDim("X", /*->*/ x_grad_name);
-      ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
     if (ctx->HasOutput(y_grad_name)) {
       ctx->ShareDim("Y", /*->*/ y_grad_name);
-      ctx->ShareLoD("Y", /*->*/ y_grad_name);
     }
   }
 
@@ -198,14 +195,12 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->ShareDim(framework::GradVarName("Out"), /*->*/ x_grad_name);
-      ctx->ShareLoD(framework::GradVarName("Out"), /*->*/ x_grad_name);
     }
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
 
       ctx->ShareDim("Y", /*->*/ y_grad_name);
-      ctx->ShareLoD("Y", /*->*/ y_grad_name);
     }
   }
 };

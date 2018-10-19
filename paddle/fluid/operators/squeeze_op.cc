@@ -42,11 +42,6 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
 
     auto out_dims = GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
-    if (x_dims[0] == out_dims[0]) {
-      // Only pass LoD when the first dimension of output and Input(X)
-      // are the same.
-      ctx->ShareLoD("X", "Out");
-    }
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
@@ -157,7 +152,6 @@ class SqueezeGradInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     context->SetOutputDim(framework::GradVarName("X"),
                           context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
   }
 };
 

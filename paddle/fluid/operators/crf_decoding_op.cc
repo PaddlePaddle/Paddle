@@ -110,8 +110,6 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
           "The height of Input(Emission) and the height of Input(Label) "
           "should be the same.");
     }
-
-    ctx->ShareLoD("Emission", /*->*/ "ViterbiPath");
     ctx->SetOutputDim("ViterbiPath", {emission_dims[0], 1});
   }
 

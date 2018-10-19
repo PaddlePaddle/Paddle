@@ -31,7 +31,6 @@ class ClipByNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(max_norm, 0, "max_norm should be greater than 0.");
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

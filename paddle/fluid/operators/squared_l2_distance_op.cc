@@ -50,7 +50,6 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("Out", {x_dims[0], 1});
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
