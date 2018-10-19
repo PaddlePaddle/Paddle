@@ -57,6 +57,9 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<bool>("div_prob_in_train",
+                  "When it's True, dropout act samle as tf")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Dropout Operator.
@@ -104,7 +107,9 @@ REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>);
+    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad,
-    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, double>);
