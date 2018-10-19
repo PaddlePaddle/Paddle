@@ -47,15 +47,15 @@ class CTRReader : public framework::FileReader {
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     PADDLE_ENFORCE_GT(file_list.size(), 0, "file list should not be empty");
     thread_num_ =
-        file_list_.size() > thread_num_ ? thread_num_ : file_list_.size();
+        file_list_.size() > thread_num ? thread_num : file_list_.size();
     queue_ = queue;
     SplitFiles();
-    for (int i = 0; i < thread_num; ++i) {
+    for (int i = 0; i < thread_num_; ++i) {
       read_thread_status_.push_back(Stopped);
     }
   }
 
-  ~CTRReader() { queue_->Close(); }
+  ~CTRReader() { Shutdown(); }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
@@ -74,8 +74,11 @@ class CTRReader : public framework::FileReader {
 
   void Start() override {
     VLOG(3) << "Start reader";
+    PADDLE_ENFORCE_EQ(read_threads_.size(), 0, "read thread should be empty!");
     queue_->ReOpen();
-    for (int thread_id = 0; thread_id < file_groups_.size(); thread_id++) {
+    VLOG(3) << "reopen success";
+    VLOG(3) << "thread_num " << thread_num_;
+    for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
       read_threads_.emplace_back(new std::thread(
           std::bind(&ReadThread, file_groups_[thread_id], slots_, batch_size_,
                     thread_id, &read_thread_status_, queue_)));
@@ -86,7 +89,10 @@ class CTRReader : public framework::FileReader {
   void SplitFiles() {
     file_groups_.resize(thread_num_);
     for (int i = 0; i < file_list_.size(); ++i) {
-      file_groups_[i % thread_num_].push_back(file_list_[i]);
+      auto& file_name = file_list_[i];
+      std::ifstream f(file_name.c_str());
+      PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);
+      file_groups_[i % thread_num_].push_back(file_name);
     }
   }
 

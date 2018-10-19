@@ -17,6 +17,7 @@ endfunction()
 
 cc_library(buffered_reader SRCS buffered_reader.cc DEPS reader simple_threadpool)
 cc_library(ctr_reader SRCS ctr_reader.cc DEPS reader simple_threadpool boost gzstream)
+cc_test(ctr_reader_test SRCS ctr_reader_test.cc DEPS ctr_reader)
 reader_library(open_files_op SRCS open_files_op.cc DEPS buffered_reader)
 reader_library(create_ctr_reader_op SRCS create_ctr_reader_op.cc DEPS ctr_reader)
 reader_library(create_random_data_generator_op SRCS create_random_data_generator_op.cc)
