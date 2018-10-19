@@ -157,6 +157,7 @@ __all__ = [
     'sequence_reverse',
     'affine_channel',
     'hash',
+    'grid_sampler',
 ]
 
 
@@ -7580,3 +7581,38 @@ def hash(input, hash_size, num_hash=1, name=None):
         attrs={'num_hash': num_hash,
                'mod_by': hash_size})
     return out
+
+
+@templatedoc()
+def grid_sampler(x, grid):
+    """
+    It sample data from input x by the given grid, insert data of each
+    point by bilinear interp.
+
+    Args:
+        x(Variable): Input data of shape [N, H, W, C]
+        grid(Variable): Input grid tensor of shape [N, H, W, 2]
+
+    Returns:
+        out(Variable): Output data indices by grid from x of shape [N, H, W, C]
+    """
+    helper = LayerHelper("grid_sampler", **locals())
+
+    if not isinstance(x, Variable):
+        return ValueError("The x should be a Variable")
+
+    if not isinstance(grid, Variable):
+        return ValueError("The grid should be a Variable")
+
+    out = helper.create_tmp_variable(x.dtype)
+    ipts = {'X': x, 'Grid': grid}
+    attrs = {}
+
+    helper.apppend_op(
+            type='grid_sampler',
+            inputs=ipts,
+            outputs={'Output', out},
+            attrs = None if len(attrs) == 0 else attrs)
+
+    return 0
+

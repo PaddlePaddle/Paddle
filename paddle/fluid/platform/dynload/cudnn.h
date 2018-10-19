@@ -90,6 +90,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnSetConvolutionNdDescriptor);         \
   __macro(cudnnGetConvolutionNdDescriptor);         \
   __macro(cudnnDeriveBNTensorDescriptor);           \
+  __macro(cudnnCreateSpatialTransformerDescriptor); \
+  __macro(cudnnSetSpatialTransformerNdDescriptor);  \
+  __macro(cudnnDestroySpatialTransformerDescriptor);\
+  __macro(cudnnSpatialTfGridGeneratorForward);      \
+  __macro(cudnnSpatialTfGridGeneratorBackward);     \
+  __macro(cudnnSpatialTfSamplerForward);            \
+  __macro(cudnnSpatialTfSamplerBackward);           \
   __macro(cudnnCreate);                             \
   __macro(cudnnDestroy);                            \
   __macro(cudnnSetStream);                          \
