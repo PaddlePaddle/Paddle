@@ -83,7 +83,8 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
-  UniquePatterns(&subgraphs);
+  // https://github.com/PaddlePaddle/Paddle/issues/13550
+  // UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
   ValidateByNodeRole(&subgraphs);
 
@@ -660,6 +661,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
+                           ->assert_is_persistable_var()
                            ->AsInput();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
@@ -964,6 +966,84 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
       .LinksTo({d_ele_x_var, d_ele_y_var});
 
   return ele_add_grad;
+}
+
+PDNode *patterns::ConvBias::operator()(
+    paddle::framework::ir::PDNode *conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *eltiwse_op =
+      pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("elementwise_add");
+  // Bias stored in elementwise_add
+  auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
+                               ->AsInput()
+                               ->assert_is_persistable_var()
+                               ->assert_is_op_input("elementwise_add", "Y");
+  // output
+  auto *eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                              ->AsOutput()
+                              ->assert_is_op_output("elementwise_add");
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  eltiwse_op->LinksFrom({conv_out_var, eltwise_bias_var})
+      .LinksTo({eltwise_out_var});
+  return eltwise_out_var;
+}
+
+PDNode *patterns::Conv::operator()() {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+  auto input_var = pattern->NewNode(conv_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("conv2d", "Input");
+
+  auto bias_var = pattern->NewNode(conv_bias_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("conv2d", "Bias");
+
+  auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("conv2d", "Filter");
+
+  auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("conv2d", "Output");
+
+  conv_op->LinksFrom({input_var, bias_var, filter_var});
+  conv_op->LinksTo({output_var});
+
+  return output_var;
+}
+
+PDNode *patterns::ElementwiseAdd::operator()(PDNode *y_var) {
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+
+  auto x_var = pattern->NewNode(elementwise_add_x_repr())
+                   ->AsInput()
+                   ->assert_is_op_input("elementwise_add", "X");
+
+  y_var->assert_is_op_input("elementwise_add", "Y");
+
+  auto out_var = pattern->NewNode(elementwise_add_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output("elementwise_add", "Out");
+
+  elementwise_add_op->LinksFrom({x_var, y_var});
+  elementwise_add_op->LinksTo({out_var});
+
+  return out_var;
 }
 
 }  // namespace ir

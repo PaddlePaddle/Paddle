@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,6 +35,19 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 
 using contrib::AnalysisConfig;
+
+// Check environment flag whether MKL-DNN should be used
+static bool IsMKLDNNSetOn() {
+  const char *flag = std::getenv("FLAGS_use_mkldnn");
+  if (flag) {
+    std::string flag_str(flag);
+    std::transform(flag_str.begin(), flag_str.end(), flag_str.begin(),
+                   ::toupper);
+    return !flag_str.compare("ON") || !flag_str.compare("TRUE") ||
+           !flag_str.compare("1");
+  }
+  return false;
+}
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
@@ -72,13 +86,16 @@ bool AnalysisPredictor::Init(
 
   if (!program) {
     if (!LoadProgramDesc()) return false;
+    if (IsMKLDNNSetOn() || config_._use_mkldnn) {
+      LOG(INFO) << "MKL-DNN enabled";
+      config_._use_mkldnn = true;
+    }
     OptimizeInferenceProgram();
+    if (config_._use_mkldnn) {
+      executor_->EnableMKLDNN(*inference_program_);
+    }
   } else {
     inference_program_ = program;
-  }
-
-  if (config_._use_mkldnn) {
-    executor_->EnableMKLDNN(*inference_program_);
   }
 
   executor_->Prepare(scope_.get(), *inference_program_, 0,
@@ -225,10 +242,35 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(
-      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
-      "Only kExclude is supported yet.");
-  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
+#ifdef PADDLE_WITH_MKLDNN
+  bool mkldnn_enabled = IsMKLDNNSetOn();
+#endif
+  switch (config_.ir_mode) {
+    case contrib::AnalysisConfig::IrPassMode::kExclude:
+      Analyzer()
+          .IncludeAllIrPasses()
+#ifdef PADDLE_WITH_MKLDNN
+          .DisableIrPasses(mkldnn_enabled ? config_.ir_mkldnn_passes
+                                          : config_.ir_passes)
+#else
+          .DisableIrPasses(config_.ir_passes)
+#endif
+          .Run(&argument_);
+      break;
+    case contrib::AnalysisConfig::IrPassMode::kInclude:
+      Analyzer()
+#ifdef PADDLE_WITH_MKLDNN
+          .IncludeIrPasses(mkldnn_enabled ? config_.ir_mkldnn_passes
+                                          : config_.ir_passes)
+#else
+          .IncludeIrPasses(config_.ir_passes)
+#endif
+          .Run(&argument_);
+      break;
+    default:
+      LOG(ERROR) << "Only kExclude and kInclude modes are supoorted yet.";
+  }
 
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
