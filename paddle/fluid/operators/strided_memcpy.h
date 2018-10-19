@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/detail/strided_memcpy.h"
-
 namespace paddle {
 namespace operators {
 
@@ -104,7 +104,7 @@ inline void StridedMemcpyWithAxis0(
     const platform::DeviceContext& dev_ctx, const framework::Tensor& input,
     const std::vector<const framework::Tensor*>& shape_refer,
     std::vector<framework::Tensor*>* outputs) {
-  const auto in_stride = stride_numel(input.dims());
+  const framework::DDim in_stride = stride_numel(input.dims());
   const int axis = 0;
   size_t input_offset = 0;
 
