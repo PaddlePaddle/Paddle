@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/jit_kernel.h"  // TODO(TJ): add deps
+#include "paddle/fluid/operators/math/jit_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
 

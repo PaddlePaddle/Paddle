@@ -447,20 +447,17 @@ class VAddReluKernelImpl : public VAddReluKernel<T> {
 #ifdef __AVX__
 INTRI8_FLOAT(jit::avx);
 INTRI16_FLOAT(jit::avx);
-INTRI_COMMON_FLOAT(jit::avx, kGT8LT16);
 INTRI_COMMON_FLOAT(jit::avx, kGT16);
 #endif
 #ifdef __AVX2__
 INTRI8_FLOAT(jit::avx2);
 INTRI16_FLOAT(jit::avx2);
-INTRI_COMMON_FLOAT(jit::avx2, kGT8LT16);
 INTRI_COMMON_FLOAT(jit::avx2, kGT16);
 #endif
 #ifdef __AVX512F__
 // TODO(TJ): refine avx512
 INTRI8_FLOAT(jit::avx512f);
 INTRI16_FLOAT(jit::avx512f);
-INTRI_COMMON_FLOAT(jit::avx512f, kGT8LT16);
 INTRI_COMMON_FLOAT(jit::avx512f, kGT16);
 #endif
 
