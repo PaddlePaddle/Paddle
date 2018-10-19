@@ -47,9 +47,35 @@ std::cout<<"this is quantize op!!!!!!!!!!!!!!"<<std::endl;
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     const T* input_data = input->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
     std::vector<T> scale_data = {*(scale->data<T>())};
 
+FILE *fp = fopen("quant_input.txt","w");
+printf("quantize check!!!!\n");
+std::vector<int> tz = paddle::framework::vectorize2int(input->dims());
+int count=1;
+for(int i=0; i<tz.size(); i++){
+    count*=tz[i];
+    printf("%d ",tz[i]);
+}
+printf("\n");
+int num=0;
+for(int i=0; i<count; i++){
+    if(num==32){ fprintf(fp,"\n"); num=0;}
+    fprintf(fp,"%f ", *(input_data+i));
+    num ++;
+}
+fprintf(fp,"\n");
+fclose(fp);
+for(int i=0; i<scale_data.size(); i++){
+    printf("%f", scale_data[i]);
+}
+printf("\n");
+for(int i=0; i<50; i++){
+    printf("%f ", (*(input_data+i))*scale_data[0]);
+}
+printf("\n");
+fflush(stdout);
     mkldnn::primitive_attr attri;
     int mask = 0;
     attri.set_output_scales(mask, scale_data);
@@ -63,10 +89,10 @@ std::cout<<"this is quantize op!!!!!!!!!!!!!!"<<std::endl;
     auto dst_md = platform::MKLDNNMemDesc(
             {dst_tz}, memory::data_type::u8, memory::format::nhwc);
     auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<T>(output_data));
+    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<uint8_t>(output_data));
     
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-        new reorder::primitive_desc(dst_pd, src_pd, attri));    
+        new reorder::primitive_desc(src_pd, dst_pd, attri));    
     auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
 
     pipeline.push_back(*reorder_p);
