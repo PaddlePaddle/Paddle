@@ -101,10 +101,12 @@ Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
 
 void Analyzer::Run(Argument* argument) {
   std::vector<std::string> passes;
+#ifdef PADDLE_WITH_MKLDNN
   if (use_mkldnn_) {
     VLOG(3) << "Adding MKL-DNN placement pass";
     passes.push_back("mkldnn_placement_pass");
   }
+#endif
   for (auto& pass : ir_passes_) {
     if (!disabled_ir_passes_.count(pass)) {
       passes.push_back(pass);
