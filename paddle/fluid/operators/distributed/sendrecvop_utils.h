@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {

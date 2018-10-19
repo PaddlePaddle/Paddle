@@ -37,7 +37,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            ::grpc::ByteBuffer* msg,
                            const std::string& out_name) {
   platform::RecordRPCEvent record_event("serial", &ctx);
-
   // Default DestroyCallback does nothing, When using GPU
   // the CPU buffer need to be freed.
   DestroyCallback destroy_callback = [](void* backing) {};
