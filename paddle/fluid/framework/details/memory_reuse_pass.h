@@ -24,20 +24,10 @@ namespace framework {
 namespace details {
 
 class MemoryOptimizePass : public ir::Pass {
- public:
-  bool IsValidVar(ir::Node* node) const;
-  ir::Node* SearchMatch(ir::Node* var) const;
-  const std::string DebugString(ir::Node* var) const;
-
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
- private:
-  // std::unique_ptr<ir::Graph> graph_;
-  mutable std::unique_ptr<ControlFlowGraph> cfg_;
-  mutable std::set<ir::Node*> pool_;  // order matters
-  mutable std::unordered_set<ir::Node*> skip_set_;
 };
 
 }  // namespace details

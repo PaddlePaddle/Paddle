@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/cfg_graph.h"
 
 #include <algorithm>
+
+#include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
@@ -59,7 +60,7 @@ ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
   }
 }
 
-void ControlFlowGraph::DataAnalysis() {
+void ControlFlowGraph::LiveVariableAnalysis() {
   // compute the liveness of for each variable though worklist algorithm.
   // It iterates the operators from end to begin, compute the live in/live out
   // variable set for each op, then the diff between in/out will be used for

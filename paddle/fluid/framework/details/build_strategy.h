@@ -61,8 +61,8 @@ struct BuildStrategy {
   };
 
   enum class OptimizeStrategy {
-    kBruteForce = 0,
-    kControlFlowGraph = 1,
+    kBruteForce = 0, // naive recursive compute unused var names.
+    kControlFlowGraph = 1, // use cfg_graph algorithm, faster speed.
   };
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};

@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -63,7 +64,7 @@ ParallelExecutor::ParallelExecutor(
     Scope *scope, const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
     size_t num_trainers, size_t trainer_id)
-    : member_(new ParallelExecutorPrivate(places)) {
+  : member_(new ParallelExecutorPrivate(places)), build_strategy_(build_strategy), exec_strategy_(exec_strategy) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->use_all_reduce_ =
@@ -141,18 +142,7 @@ ParallelExecutor::ParallelExecutor(
                         "The number of graph should be only one");
     }
   }
-
-  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
-  } else {
-    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
-  }
-
-  member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, std::move(var_infos),
-      member_->places_, std::move(member_->executor_)));
+  graph_.reset(std::move(graph));
 }
 
 void ParallelExecutor::BCastParamsToDevices(
@@ -230,6 +220,8 @@ void ParallelExecutor::RuntimePassesRunOnce(const std::vector<std::string> &fetc
   }
   fetched_vars_.insert(fetched_var_name);
 
+  std::unique_ptr<ir::Graph> graph = std::move(graph_);
+  // reference count pass
 #ifdef PADDLE_WITH_CUDA
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
@@ -256,11 +248,39 @@ void ParallelExecutor::RuntimePassesRunOnce(const std::vector<std::string> &fetc
     }
   }
 #endif
+
+  // memory optimize pass
+  if(build_strategy_.memory_optimize_) {
+    auto analysis_var_pass = ir::PassRegistry::Instance().Get("analysis_var_pass");
+    details::UnlivedNodePool node_pool;
+    analysis_var_pass->SetNotOwned(details::kGlobalUnlivedNodePool, &node_pool);
+    graph = analysis_var_pass->Apply(std::move(graph));
+
+    // TODO(dzh): reuse based unique name maybe deperated.
+    auto memory_reuse_pass = ir::PassRegistry::Instance().Get("memory_reuse_pass");;
+    memory_reuse_pass->SetNotOwned(details::kGlobalUnlivedNodePool, &node_pool);
+    graph = memory_reuse_pass->Apply(std::move(graph));
+    memory_reuse_pass->SetNotOwned(details::kFetchedVars, &fetched_vars_);
+  }
+
+  // ssa-graph pass
+  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+                                                                   exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  } else {
+    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+                                                                       exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  }
+
+  member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+                                                                      exec_strategy, member_->local_scopes_, std::move(var_infos),
+                                                                      member_->places_, std::move(member_->executor_)));
 }
 
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+  // TODO(dzh): if fetched vars changes between step runs. the fetched_vars need to update.
   std::call_once(runtime_passes_run_once_, RuntimePassesRunOnce, fetch_tensors, fetched_var_name);
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {

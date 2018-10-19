@@ -79,6 +79,13 @@ class ParallelExecutor {
 
   std::unique_ptr<ParallelExecutorPrivate> member_;
 
+  // for runtime passes.
+  const BuildStrategy build_strategy_;
+
+  const ExecutionStrategy exec_strategy_;
+
+  std::unique_ptr<ir::Graph> graph_;
+
   std::once_flag runtime_passes_run_once_;
   // fetched vars will be skipped in reference count pass/memory optimize pass.
   std::unordered_set<std::string> fetched_vars_;

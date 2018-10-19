@@ -15,10 +15,12 @@
 #pragma once
 
 #include <list>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <utility>
 
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -26,13 +28,18 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-using NodePool = std::set<ir::Node*>; // order matters
+constexpr char kGlobalUnlivedNodePool[] = "global_unused_node_pool";
+constexpr char kGlobalReusedNodePairMap[] = "global_reused_nodepair_map";
+
+using UnlivedNodePool = std::set<ir::Node*>; // order matters
+using ReusedNodePairMap = std::unordered_map<Node* /*op*/,
+                                             std::pair<Node*/*var*/, Node*/*reused var*/>>;
 
 class ControlFlowGraph {
  public:
   explicit ControlFlowGraph(const ir::Graph& graph);
 
-  void DataAnalysis();
+  void LiveVariableAnalysis();
 
   void UpdateGraph(ir::Node* old_node, ir::Node* new_node, int beign_idx);
 
