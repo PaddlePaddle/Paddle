@@ -92,9 +92,12 @@ DataReader::DataReader(const std::string& data_list_path,
 
   if (!(width == height && width == CropSize)) {
     std::stringstream ss;
-    ss << "Width and heigth must be both " << CropSize << " because this reader is for "
-          "validation which does resize of smaller edge to " << ResizeSize << " and "
-          "center crop of (" << CropSize << ", " << CropSize << "). Your width and heigth are: ("
+    ss << "Width and heigth must be both " << CropSize
+       << " because this reader is for "
+          "validation which does resize of smaller edge to "
+       << ResizeSize << " and "
+                        "center crop of ("
+       << CropSize << ", " << CropSize << "). Your width and heigth are: ("
        << width << ", " << height << ")." << std::endl;
     throw std::invalid_argument(ss.str());
   }

@@ -19,9 +19,9 @@
 #include <random>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tests/api/data_reader.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -95,16 +95,13 @@ T FindStandardDev(std::vector<T> v) {
 }
 
 void PostprocessBenchmarkData(std::vector<double> latencies,
-                              std::vector<float> infer_accs,
                               std::vector<double> fpses, double total_time_sec,
                               int total_samples) {
   // get rid of the first FLAGS_skip_batch_num data
   SkipFirstNData(latencies, FLAGS_skip_batch_num);
-  SkipFirstNData(infer_accs, FLAGS_skip_batch_num);
   SkipFirstNData(fpses, FLAGS_skip_batch_num);
 
   double lat_avg = FindAverage(latencies);
-  float acc_avg = FindAverage(infer_accs);
   double fps_avg = FindAverage(fpses);
 
   double lat_pc99 = FindPercentile(latencies, 99);
@@ -121,7 +118,6 @@ void PostprocessBenchmarkData(std::vector<double> latencies,
          lat_std, lat_pc99);
   printf("Total examples: %d, total time: %.5f, total examples/sec: %.5f\n",
          total_samples, total_time_sec, examples_per_sec);
-  printf("Avg accuracy: %f\n\n", acc_avg);
 }
 
 void Main() {
@@ -192,7 +188,8 @@ void Main() {
   // create predictor
   contrib::AnalysisConfig config;
   // MKLDNNAnalysisConfig config;
-  config.model_dir = FLAGS_infer_model;
+  config.param_file = FLAGS_infer_model + "/params";
+  config.prog_file = FLAGS_infer_model + "/model";
   // include mode: define which passes to include
   config.SetIncludeMode();
   config.use_gpu = false;
@@ -251,21 +248,18 @@ void Main() {
         paddle::platform::ResetProfiler();
       }
     }
-    std::vector<PaddleTensor> input = {input_data, input_label};
+    std::vector<PaddleTensor> input = {input_data};
     timer.tic();
     CHECK(predictor->Run(input, &output_slots));
     double batch_time = timer.toc() / 1000;
-    CHECK_GE(output_slots.size(), 3UL);
-    CHECK_EQ(output_slots[1].lod.size(), 0UL);
-    CHECK_EQ(output_slots[1].dtype, paddle::PaddleDType::FLOAT32);
+    PADDLE_ENFORCE_EQ(output_slots.size(), 1UL);
+
     batch_times.push_back(batch_time);
-    float* acc1 = static_cast<float*>(output_slots[1].data.data());
-    infer_accs.push_back(*acc1);
     double fps = FLAGS_batch_size / batch_time;
     fpses.push_back(fps);
     std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
-    printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n", i + 1,
-           appx.c_str(), *acc1, batch_time, fps);
+    printf("Iteration: %d%s, latency: %.5f s, fps: %f\n", i + 1, appx.c_str(),
+           batch_time, fps);
   }
 
   if (FLAGS_profile) {
@@ -275,8 +269,7 @@ void Main() {
 
   double total_samples = FLAGS_iterations * FLAGS_batch_size;
   double total_time = timer_total.toc() / 1000;
-  PostprocessBenchmarkData(batch_times, infer_accs, fpses, total_time,
-                           total_samples);
+  PostprocessBenchmarkData(batch_times, fpses, total_time, total_samples);
 }
 
 TEST(resnet50, basic) { Main(); }

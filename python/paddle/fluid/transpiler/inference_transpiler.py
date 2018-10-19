@@ -347,10 +347,8 @@ class InferenceTranspiler(object):
         bias_op = self.block._insert_op(
             index,
             type="elementwise_add",
-            inputs={
-                "X": x_var,
-                "Y": y_var
-            },
+            inputs={"X": x_var,
+                    "Y": y_var},
             outputs={"Out": out_var},
             attrs={"axis": 1})  # dim_start=1
         return bias_op
@@ -441,11 +439,9 @@ class InferenceTranspiler(object):
         self.block._insert_op(
             index,
             type="conv2d",
-            inputs={
-                "Input": in_var,
-                "Filter": filter_var,
-                "Bias": bias_var
-            },
+            inputs={"Input": in_var,
+                    "Filter": filter_var,
+                    "Bias": bias_var},
             outputs={"Output": out_var},
             attrs=attrs)
 
