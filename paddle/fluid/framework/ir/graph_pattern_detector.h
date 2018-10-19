@@ -617,7 +617,6 @@ struct Conv : public PatternBase {
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
-  PATTERN_DECL_NODE(conv_bias);
   PATTERN_DECL_NODE(conv_filter);
   PATTERN_DECL_NODE(conv_residual_data);
   PATTERN_DECL_NODE(conv_output);

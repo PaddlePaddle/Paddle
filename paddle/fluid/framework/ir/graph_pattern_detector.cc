@@ -1014,7 +1014,7 @@ PDNode *patterns::Conv::operator()() {
                         ->AsOutput()
                         ->assert_is_op_output("conv2d", "Output");
 
-  conv_op->LinksFrom({input_var, /*bias_var,*/ filter_var});
+  conv_op->LinksFrom({input_var, filter_var});
   conv_op->LinksTo({output_var});
 
   return output_var;
