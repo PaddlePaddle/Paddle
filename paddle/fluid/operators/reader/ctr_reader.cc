@@ -58,10 +58,8 @@ static inline void parse_line(
     const std::string& item = ret[i];
     std::vector<std::string> feasign_and_slot;
     string_split(item, ':', &feasign_and_slot);
-    auto& slot = feasign_and_slot[1];
     if (feasign_and_slot.size() == 2 &&
-        slot_to_index.find(slot) != slot_to_index.end()) {
-      const std::string& slot = feasign_and_slot[1];
+        slot_to_index.find(feasign_and_slot[1]) != slot_to_index.end()) {
       int64_t feasign = std::strtoll(feasign_and_slot[0].c_str(), NULL, 10);
       (*slot_to_data)[feasign_and_slot[1]].push_back(feasign);
     }
@@ -164,7 +162,7 @@ void ReadThread(const std::vector<std::string>& file_list,
 
   VLOG(3) << "reader inited";
 
-  clock_t t0 = clock();
+  uint64_t t0 = GetTimeInSec();
 
   int i = 0;
 
@@ -219,13 +217,12 @@ void ReadThread(const std::vector<std::string>& file_list,
     memcpy(label_tensor_data, batch_label.data(), batch_label.size());
     lod_datas.push_back(label_tensor);
 
-    //    queue->Push(lod_datas);
+    queue->Push(lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
 
     if (i != 0 && i % 100 == 0) {
-      clock_t t1 = clock();
-      float line_per_s = 100 * batch_size * static_cast<int64>(CLOCKS_PER_SEC) /
-                         static_cast<int>(t1 - t0);
+      uint64_t t1 = GetTimeInSec();
+      float line_per_s = 100 * batch_size / static_cast<int>(t1 - t0);
       VLOG(3) << "[" << thread_id << "]"
               << " line_per_second = " << line_per_s;
       t0 = t1;

@@ -25,16 +25,17 @@ using paddle::operators::reader::LoDTensorBlockingQueue;
 using paddle::operators::reader::LoDTensorBlockingQueueHolder;
 using paddle::operators::reader::CTRReader;
 using paddle::framework::LoDTensor;
+using paddle::operators::reader::GetTimeInSec;
 
 TEST(CTR_READER, read_data) {
   LoDTensorBlockingQueueHolder queue_holder;
   int capacity = 64;
-  queue_holder.InitOnce(capacity, {}, true);
+  queue_holder.InitOnce(capacity, {}, false);
 
   std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
 
   int batch_size = 10;
-  int thread_num = 2;
+  int thread_num = 4;
   std::vector<std::string> slots = {
       "6002", "6003", "6004", "6005", "6006", "6007", "6008", "6009", "6010",
       "6011", "6012", "6013", "6014", "6015", "6016", "6017", "6018", "6019",
@@ -109,7 +110,8 @@ TEST(CTR_READER, read_data) {
   std::vector<std::string> file_list = {
       "/Users/qiaolongfei/project/gzip_test/part-00000-A.gz",
       "/Users/qiaolongfei/project/gzip_test/part-00001-A.gz",
-      "/Users/qiaolongfei/project/gzip_test/part-00002-A.gz"};
+      "/Users/qiaolongfei/project/gzip_test/part-00002-A.gz",
+      "/Users/qiaolongfei/project/gzip_test/part-00003-A.gz"};
 
   CTRReader reader(queue, batch_size, thread_num, slots, file_list);
 
@@ -118,13 +120,11 @@ TEST(CTR_READER, read_data) {
   std::cout << "start to reader data" << std::endl;
   std::vector<LoDTensor> out;
   int read_batch = 1000;
-  clock_t t0 = clock();
+  uint64_t t0 = GetTimeInSec();
   for (int i = 0; i < read_batch; ++i) {
     reader.ReadNext(&out);
   }
-  clock_t t1 = clock();
-  float line_per_s = read_batch * batch_size *
-                     static_cast<int64>(CLOCKS_PER_SEC) /
-                     static_cast<int>(t1 - t0);
+  uint64_t t1 = GetTimeInSec();
+  float line_per_s = read_batch * batch_size / static_cast<int>(t1 - t0);
   VLOG(3) << "line_per_second = " << line_per_s;
 }
