@@ -515,20 +515,14 @@ void OpDesc::InferShape(const BlockDesc &block) const {
 }
 
 void OpDesc::InferVarType(BlockDesc *block) const {
+  // There are a few places that var type can be set.
+  // When VarDesc is created, default set to LOD_TENSOR.
+  // When output variable is created, default is defaut set to LOD_TENSOR.
+  // We limit here to be the only place that operator defines its customized
+  // var type inference. Hence, we don't do any "default" setting here.
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     info.infer_var_type_(*this, block);
-  } else {
-    // all output type is LoDTensor by default
-    VLOG(10) << this->Type()
-             << " has not registered InferVarType. Set output variables to "
-                "LOD_TENSOR";
-    for (auto &out_pair : this->outputs_) {
-      for (auto &out_var_name : out_pair.second) {
-        block->FindRecursiveOrCreateVar(out_var_name)
-            .SetType(proto::VarType::LOD_TENSOR);
-      }
-    }
   }
 }
 
