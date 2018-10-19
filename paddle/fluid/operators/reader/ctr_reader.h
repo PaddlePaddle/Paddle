@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <sys/time.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -36,6 +38,15 @@ void ReadThread(const std::vector<std::string>& file_list,
                 const std::vector<std::string>& slots, int batch_size,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue);
+
+inline uint64_t GetTimeInSec() {
+  using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
+                                 std::chrono::high_resolution_clock,
+                                 std::chrono::steady_clock>::type;
+  return std::chrono::duration_cast<std::chrono::seconds>(
+             clock::now().time_since_epoch())
+      .count();
+}
 
 class CTRReader : public framework::FileReader {
  public:
@@ -88,7 +99,7 @@ class CTRReader : public framework::FileReader {
  private:
   void SplitFiles() {
     file_groups_.resize(thread_num_);
-    for (int i = 0; i < file_list_.size(); ++i) {
+    for (size_t i = 0; i < file_list_.size(); ++i) {
       auto& file_name = file_list_[i];
       std::ifstream f(file_name.c_str());
       PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);

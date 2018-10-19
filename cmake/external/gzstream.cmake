@@ -44,4 +44,4 @@ SET_PROPERTY(TARGET gzstream PROPERTY IMPORTED_LOCATION
         "${GZSTREAM_INSTALL_DIR}/lib/libgzstream.a")
 
 include_directories(${GZSTREAM_INCLUDE_DIR})
-ADD_DEPENDENCIES(gzstream extern_gzstream)
+ADD_DEPENDENCIES(gzstream extern_gzstream zlib)
