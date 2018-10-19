@@ -46,29 +46,44 @@ static inline void string_split(const std::string& s, const char delimiter,
 }
 
 static inline void parse_line(
-    const std::string& line, const std::vector<std::string>& slots,
+    const std::string& line,
+    const std::unordered_map<std::string, size_t>& slot_to_index,
     int64_t* label,
-    std::unordered_map<std::string, std::vector<int64_t>>* slots_to_data) {
+    std::unordered_map<std::string, std::vector<int64_t>>* slot_to_data) {
   std::vector<std::string> ret;
   string_split(line, ' ', &ret);
   *label = std::stoi(ret[2]) > 0;
 
   for (size_t i = 3; i < ret.size(); ++i) {
     const std::string& item = ret[i];
-    std::vector<std::string> slot_and_feasign;
-    string_split(item, ':', &slot_and_feasign);
-    if (slot_and_feasign.size() == 2) {
-      const std::string& slot = slot_and_feasign[1];
-      int64_t feasign = std::strtoll(slot_and_feasign[0].c_str(), NULL, 10);
-      (*slots_to_data)[slot_and_feasign[1]].push_back(feasign);
+    std::vector<std::string> feasign_and_slot;
+    string_split(item, ':', &feasign_and_slot);
+    auto& slot = feasign_and_slot[1];
+    if (feasign_and_slot.size() == 2 &&
+        slot_to_index.find(slot) != slot_to_index.end()) {
+      const std::string& slot = feasign_and_slot[1];
+      int64_t feasign = std::strtoll(feasign_and_slot[0].c_str(), NULL, 10);
+      (*slot_to_data)[feasign_and_slot[1]].push_back(feasign);
     }
   }
 
   // NOTE:: if the slot has no value, then fill [0] as it's data.
-  for (auto& slot : slots) {
-    if (slots_to_data->find(slot) == slots_to_data->end()) {
-      (*slots_to_data)[slot].push_back(0);
+  for (auto& item : slot_to_index) {
+    if (slot_to_data->find(item.first) == slot_to_data->end()) {
+      (*slot_to_data)[item.first].push_back(0);
     }
+  }
+}
+
+static void print_map(
+    std::unordered_map<std::string, std::vector<int64_t>>* map) {
+  for (auto it = map->begin(); it != map->end(); ++it) {
+    std::cout << it->first << " -> ";
+    std::cout << "[";
+    for (auto& i : it->second) {
+      std::cout << i << " ";
+    }
+    std::cout << "]\n";
   }
 }
 
@@ -126,7 +141,14 @@ void ReadThread(const std::vector<std::string>& file_list,
                 const std::vector<std::string>& slots, int batch_size,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  VLOG(3) << "reader thread start! thread_id = " << thread_id;
   (*thread_status)[thread_id] = Running;
+  VLOG(3) << "set status to running";
+
+  std::unordered_map<std::string, size_t> slot_to_index;
+  for (size_t i = 0; i < slots.size(); ++i) {
+    slot_to_index[slots[i]] = i;
+  }
 
   std::string line;
 
@@ -135,20 +157,28 @@ void ReadThread(const std::vector<std::string>& file_list,
 
   MultiGzipReader reader(file_list);
 
+  VLOG(3) << "reader inited";
+
   while (reader.HasNext()) {
-    // read all files
+    batch_data.clear();
+    batch_label.clear();
+
+    // read batch_size data
     for (int i = 0; i < batch_size; ++i) {
       if (reader.HasNext()) {
         reader.NextLine(&line);
-        std::unordered_map<std::string, std::vector<int64_t>> slots_to_data;
+        std::unordered_map<std::string, std::vector<int64_t>> slot_to_data;
         int64_t label;
-        parse_line(line, slots, &label, &slots_to_data);
-        batch_data.push_back(slots_to_data);
+        parse_line(line, slot_to_index, &label, &slot_to_data);
+        batch_data.push_back(slot_to_data);
         batch_label.push_back(label);
       } else {
         break;
       }
     }
+
+    VLOG(3) << "read one batch, batch_size = " << batch_data.size();
+    print_map(&batch_data[0]);
 
     std::vector<framework::LoDTensor> lod_datas;
 
@@ -159,9 +189,9 @@ void ReadThread(const std::vector<std::string>& file_list,
 
       for (size_t i = 0; i < batch_data.size(); ++i) {
         auto& feasign = batch_data[i][slot];
-
         lod_data.push_back(lod_data.back() + feasign.size());
-        batch_feasign.insert(feasign.end(), feasign.begin(), feasign.end());
+        batch_feasign.insert(batch_feasign.end(), feasign.begin(),
+                             feasign.end());
       }
 
       framework::LoDTensor lod_tensor;
@@ -174,6 +204,8 @@ void ReadThread(const std::vector<std::string>& file_list,
       lod_datas.push_back(lod_tensor);
     }
 
+    VLOG(3) << "convert data to tensor";
+
     // insert label tensor
     framework::LoDTensor label_tensor;
     int64_t* label_tensor_data = label_tensor.mutable_data<int64_t>(
@@ -182,10 +214,12 @@ void ReadThread(const std::vector<std::string>& file_list,
     memcpy(label_tensor_data, batch_label.data(), batch_label.size());
     lod_datas.push_back(label_tensor);
 
+    VLOG(3) << "push one data";
     queue->Push(lod_datas);
   }
 
   (*thread_status)[thread_id] = Stopped;
+  VLOG(3) << "thread " << thread_id << " exited";
 }
 
 }  // namespace reader
