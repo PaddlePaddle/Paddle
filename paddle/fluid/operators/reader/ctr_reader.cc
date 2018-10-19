@@ -141,7 +141,12 @@ void ReadThread(const std::vector<std::string>& file_list,
                 const std::vector<std::string>& slots, int batch_size,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
-  VLOG(3) << "reader thread start! thread_id = " << thread_id;
+  VLOG(3) << "[" << thread_id << "]"
+          << " reader thread start! thread_id = " << thread_id;
+  for (auto& file : file_list) {
+    VLOG(3) << "[" << thread_id << "]"
+            << " file " << file;
+  }
   (*thread_status)[thread_id] = Running;
   VLOG(3) << "set status to running";
 
@@ -158,6 +163,10 @@ void ReadThread(const std::vector<std::string>& file_list,
   MultiGzipReader reader(file_list);
 
   VLOG(3) << "reader inited";
+
+  clock_t t0 = clock();
+
+  int i = 0;
 
   while (reader.HasNext()) {
     batch_data.clear();
@@ -176,9 +185,7 @@ void ReadThread(const std::vector<std::string>& file_list,
         break;
       }
     }
-
-    VLOG(3) << "read one batch, batch_size = " << batch_data.size();
-    print_map(&batch_data[0]);
+    //    print_map(&batch_data[0]);
 
     std::vector<framework::LoDTensor> lod_datas;
 
@@ -204,8 +211,6 @@ void ReadThread(const std::vector<std::string>& file_list,
       lod_datas.push_back(lod_tensor);
     }
 
-    VLOG(3) << "convert data to tensor";
-
     // insert label tensor
     framework::LoDTensor label_tensor;
     int64_t* label_tensor_data = label_tensor.mutable_data<int64_t>(
@@ -214,8 +219,18 @@ void ReadThread(const std::vector<std::string>& file_list,
     memcpy(label_tensor_data, batch_label.data(), batch_label.size());
     lod_datas.push_back(label_tensor);
 
-    VLOG(3) << "push one data";
-    queue->Push(lod_datas);
+    //    queue->Push(lod_datas);
+    VLOG(4) << "push one data, queue_size=" << queue->Size();
+
+    if (i != 0 && i % 100 == 0) {
+      clock_t t1 = clock();
+      float line_per_s = 100 * batch_size * static_cast<int64>(CLOCKS_PER_SEC) /
+                         static_cast<int>(t1 - t0);
+      VLOG(3) << "[" << thread_id << "]"
+              << " line_per_second = " << line_per_s;
+      t0 = t1;
+    }
+    i++;
   }
 
   (*thread_status)[thread_id] = Stopped;
