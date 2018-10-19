@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+size_t CpuTotalPhysicalMemory();
+
 //! Get the maximum allocation size for a machine.
 size_t CpuMaxAllocSize();
 

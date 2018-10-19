@@ -23,7 +23,7 @@ namespace allocation {
 class CPUPinnedAllocation : public Allocation {
  public:
   CPUPinnedAllocation(void* ptr, size_t size)
-      : Allocation(ptr, size, platform::CPUPlace()) {}
+      : Allocation(ptr, size, platform::CUDAPinnedPlace()) {}
 };
 
 class CPUPinnedAllocator : public UnmanagedAllocator {

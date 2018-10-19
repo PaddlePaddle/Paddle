@@ -25,17 +25,18 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
-#include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
+#include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #endif
 
-DEFINE_int32(
+DEFINE_int64(
     gpu_allocator_retry_time, 0,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
@@ -49,51 +50,34 @@ class CPUManagedAllocator : public ManagedAllocator {
  public:
   CPUManagedAllocator()
       : normal_allocator_(NaiveManagedAllocator::Create(
-            std::unique_ptr<Allocator>(new CPUAllocator()))),
-        communication_allocator_(NaiveManagedAllocator::Create(
-            std::unique_ptr<Allocator>(new CPUPinnedAllocator()))) {}
+            std::unique_ptr<Allocator>(new CPUAllocator()))) {}
 
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
-    if (attr == kCrossDevice) {
-      return communication_allocator_->Allocate(size, attr);
-    } else {
-      return normal_allocator_->Allocate(size, attr);
-    }
+    return normal_allocator_->Allocate(size, attr);
   }
 
   std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override {
-    if (attr == kCrossDevice) {
-      return communication_allocator_->AllocateShared(size, attr);
-    } else {
-      return normal_allocator_->AllocateShared(size, attr);
-    }
+    return normal_allocator_->AllocateShared(size, attr);
   }
 
   bool IsAllocThreadSafe() const override { return true; }
 
  private:
   std::shared_ptr<ManagedAllocator> normal_allocator_;
-  std::shared_ptr<ManagedAllocator> communication_allocator_;
 };
 
-#ifdef PADDLE_WITH_CUDA
 // TODO(yy): Dirty code here. This class should be configurable in runtime.
-class CUDAManagedAllocator : public ManagedAllocator {
+class ChunkedManagedAllocator : public ManagedAllocator {
  public:
-  explicit CUDAManagedAllocator(int dev_id) {
-    platform::CUDADeviceGuard guard(dev_id);
-    max_chunk_size_ = platform::GpuMaxChunkSize();
-
-    raw_allocator_ = NaiveManagedAllocator::Create(std::unique_ptr<Allocator>(
-        new CUDAAllocator(platform::CUDAPlace(dev_id))));
+  explicit ChunkedManagedAllocator(std::unique_ptr<Allocator> system_allocator,
+                                   size_t max_chunk_size, size_t capacity = 1,
+                                   int64_t retry_time = -1)
+      : max_chunk_size_(max_chunk_size), retry_time_(retry_time) {
+    raw_allocator_ = NaiveManagedAllocator::Create(std::move(system_allocator));
 
     if (max_chunk_size_ == 0) {
       default_allocator_ = raw_allocator_;
     } else {
-      size_t available, total;
-      platform::GpuMemoryUsage(&available, &total);
-      size_t capacity = available / max_chunk_size_;
-
       if (capacity == 1) {
         VLOG(10) << "Create BestFitAllocator with chunk_size "
                  << max_chunk_size_;
@@ -119,7 +103,7 @@ class CUDAManagedAllocator : public ManagedAllocator {
     default_allocator_.reset(cond_allocator);
   }
 
-  ~CUDAManagedAllocator() {
+  ~ChunkedManagedAllocator() {
     // Specify destruct order.
     default_allocator_.reset();
     chunks_.clear();
@@ -140,27 +124,71 @@ class CUDAManagedAllocator : public ManagedAllocator {
     std::unique_ptr<Allocator> unmanaged_allocator(new LockedAllocator(
         std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
 
-    if (FLAGS_gpu_allocator_retry_time <= 0) {
+    if (retry_time_ <= 0) {
       VLOG(10) << "Create NaiveManagedAllocator without retry";
       return std::make_shared<AlignedAllocator<64u>>(
           NaiveManagedAllocator::Create(std::move(unmanaged_allocator)));
     } else {
-      VLOG(10) << "Create RetryAllocator with retry_time "
-               << FLAGS_gpu_allocator_retry_time << "ms";
+      VLOG(10) << "Create RetryAllocator with retry_time " << retry_time_
+               << "ms";
       return std::make_shared<AlignedAllocator<64u>>(RetryAllocator::Create(
-          std::move(unmanaged_allocator),
-          static_cast<size_t>(FLAGS_gpu_allocator_retry_time)));
+          std::move(unmanaged_allocator), static_cast<size_t>(retry_time_)));
     }
   }
 
   bool IsAllocThreadSafe() const override { return true; }
 
- private:
+ protected:
   size_t max_chunk_size_;
+  int64_t retry_time_;
   std::vector<std::unique_ptr<Allocation>> chunks_;
   std::shared_ptr<ManagedAllocator> raw_allocator_;
   std::shared_ptr<ManagedAllocator> default_allocator_;
 };
+
+#ifdef PADDLE_WITH_CUDA
+
+class CUDAManagedAllocator : public ChunkedManagedAllocator {
+ public:
+  explicit CUDAManagedAllocator(int dev_id)
+      : ChunkedManagedAllocator(
+            std::unique_ptr<Allocator>(
+                new CUDAAllocator(platform::CUDAPlace(dev_id))),
+            GetMaxChunkSize(dev_id), GetCapcity(dev_id), GetRetryTime()) {}
+
+ private:
+  static size_t GetMaxChunkSize(int dev_id) {
+    platform::CUDADeviceGuard guard(dev_id);
+    return platform::GpuMaxChunkSize();
+  }
+
+  static size_t GetCapcity(int dev_id) {
+    platform::CUDADeviceGuard guard(dev_id);
+    size_t available, total;
+    platform::GpuMemoryUsage(&available, &total);
+    size_t max_chunk_size = platform::GpuMaxChunkSize();
+    return max_chunk_size == 0 ? 0 : available / max_chunk_size;
+  }
+
+  static int64_t GetRetryTime() { return FLAGS_gpu_allocator_retry_time; }
+};
+
+class CUDAPinnedManagedAllocator : public ChunkedManagedAllocator {
+ public:
+  CUDAPinnedManagedAllocator()
+      : ChunkedManagedAllocator(
+            std::unique_ptr<Allocator>(new CPUPinnedAllocator()),
+            platform::CUDAPinnedMaxChunkSize(), GetCapacity(), -1) {
+  }  // never retry
+
+ private:
+  static size_t GetCapacity() {
+    size_t total = platform::CpuTotalPhysicalMemory();
+    size_t max_chunk_size = platform::CUDAPinnedMaxChunkSize();
+    return max_chunk_size == 0 ? 0 : total / max_chunk_size;
+  }
+};
+
 #endif
 
 class AllocatorFacadePrivate {
@@ -173,6 +201,7 @@ class AllocatorFacadePrivate {
   AllocatorFacadePrivate() {
     InitCPUAllocator();
     InitCUDAAllocator();
+    InitCUDAPinnedAllocator();
     WrapZeroSizeAllocator();
   }
 
@@ -183,10 +212,18 @@ class AllocatorFacadePrivate {
 
   void InitCUDAAllocator() {
 #ifdef PADDLE_WITH_CUDA
-    for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+    int device_count = platform::GetCUDADeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       allocators_[platform::CUDAPlace(dev_id)] =
           std::make_shared<CUDAManagedAllocator>(dev_id);
     }
+#endif
+  }
+
+  void InitCUDAPinnedAllocator() {
+#ifdef PADDLE_WITH_CUDA
+    allocators_[platform::CUDAPinnedPlace()] =
+        std::make_shared<CUDAPinnedManagedAllocator>();
 #endif
   }
 

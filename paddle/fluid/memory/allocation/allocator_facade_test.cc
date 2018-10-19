@@ -16,37 +16,70 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
+#ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_int32(gpu_allocator_retry_time);
+DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+DECLARE_int64(gpu_allocator_retry_time);
+#endif
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 TEST(allocator, allocator) {
+#ifdef PADDLE_WITH_CUDA
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
   FLAGS_gpu_allocator_retry_time = 500;
+  FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
+#endif
 
   auto &instance = AllocatorFacade::Instance();
+  platform::Place place;
+  size_t size = 1024;
 
   {
-    auto cpu_allocation = instance.Alloc(platform::CPUPlace(), 1024);
+    place = platform::CPUPlace();
+    size = 1024;
+    auto cpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(cpu_allocation, nullptr);
+    ASSERT_NE(cpu_allocation->ptr(), nullptr);
+    ASSERT_EQ(cpu_allocation->place(), place);
+    ASSERT_EQ(cpu_allocation->size(), size);
   }
 
+#ifdef PADDLE_WITH_CUDA
   {
-    auto gpu_allocation = instance.Alloc(platform::CUDAPlace(0), 1024);
+    place = platform::CUDAPlace(0);
+    size = 1024;
+    auto gpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
+    ASSERT_NE(gpu_allocation->ptr(), nullptr);
+    ASSERT_EQ(gpu_allocation->place(), place);
+    ASSERT_GE(gpu_allocation->size(), size);
   }
 
   {
     // Allocate 2GB gpu memory
-    auto gpu_allocation = instance.Alloc(platform::CUDAPlace(0),
-                                         2 * static_cast<size_t>(1 << 30));
+    place = platform::CUDAPlace(0);
+    size = 2 * static_cast<size_t>(1 << 30);
+    auto gpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
+    ASSERT_NE(gpu_allocation->ptr(), nullptr);
+    ASSERT_EQ(gpu_allocation->place(), place);
+    ASSERT_GE(gpu_allocation->size(), size);
   }
 
-  {}
+  {
+    place = platform::CUDAPinnedPlace();
+    size = (1 << 20);
+    auto cuda_pinned_allocation =
+        instance.Alloc(platform::CUDAPinnedPlace(), 1 << 20);
+    ASSERT_NE(cuda_pinned_allocation, nullptr);
+    ASSERT_NE(cuda_pinned_allocation->ptr(), nullptr);
+    ASSERT_EQ(cuda_pinned_allocation->place(), place);
+    ASSERT_GE(cuda_pinned_allocation->size(), size);
+  }
+#endif
 }
 
 }  // namespace allocation

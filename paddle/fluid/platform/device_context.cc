@@ -13,11 +13,11 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/platform/cuda_device_guard.h"
 
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 namespace paddle {
