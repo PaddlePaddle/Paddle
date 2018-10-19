@@ -30,7 +30,6 @@ namespace analysis {
 
 DEFINE_string(inference_model_dir, "", "inference test model dir");
 
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

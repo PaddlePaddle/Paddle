@@ -211,15 +211,11 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   auto passes = config_.pass_builder()->AllPasses();
-  LOG(INFO) << "analysis predictor get pass builder";
   LOG(INFO) << '\n' << config_.pass_builder()->DebugString();
   if (!config_.enable_ir_optim) passes.clear();
   argument_.SetIrAnalysisPasses(passes);
-  LOG(INFO) << "analysis scope: " << scope_.get();
-  argument_.SetScopeNotOwned(const_cast<framework::Scope*>(scope_.get()));
-  LOG(INFO) << "Analyzer begin ***";
+  argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
   Analyzer().Run(&argument_);
-  LOG(INFO) << "Analyzer end ...";
 
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);

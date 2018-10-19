@@ -298,5 +298,4 @@ TEST(PassBuilder, Delete) {
   ASSERT_EQ(it, passes.end());
 }
 
-
 }  // namespace paddle
