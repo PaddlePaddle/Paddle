@@ -4830,7 +4830,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
+def reshape(x, shape, actual_shape=None, inplace=False, name=None):
     """
     Gives a new shape to the input Tensor without changing its data.
 
@@ -4878,15 +4878,18 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                                 :attr:`shape` specifying shape. That is to
                                 say :attr:`actual_shape` has a higher priority
                                 than :attr:`shape`.
-        act (str): The non-linear activation to be applied to output variable.
-        inplace(bool): If this flag is set true, the output
-                       shares data with input without copying, otherwise
-                       a new output tensor is created
-                       whose data is copied from input x.
+        inplace(bool): If this flag is set true, reuse the input :attr:`x` as
+                       output, which will change the shape of variable :attr:`x`.
+                       Otherwise, preserve the shape :attr:`x` and return a new
+                       output tensor variable whose data is copied from input x
+                       but reshaped. Though setting to :attr:`True` will be more
+                       efficient, :attr:`False` is suggested when :attr:`x` are
+                       used in multiple operators.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: The output tensor.
+        Variable: The reshaped tensor variable. It is a new tensor variable if \
+                  if :attr:`inplace` is :attr:`False`, otherwise it is :attr:`x`.
 
     Raises:
         TypeError: if actual_shape is neither Variable nor None.
@@ -4897,7 +4900,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
             data = fluid.layers.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
-                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True)
+                x=data, shape=[-1, 0, 3, 2], inplace=True)
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
@@ -4924,8 +4927,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
     x_shape = helper.create_tmp_variable(dtype=x.dtype)
+    out = x if inplace else helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
@@ -4933,7 +4936,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
         outputs={"Out": out,
                  "XShape": x_shape})
 
-    return helper.append_activation(out)
+    return out
 
 
 def squeeze(input, axes, name=None):
