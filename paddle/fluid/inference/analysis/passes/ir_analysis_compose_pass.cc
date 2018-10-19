@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
 #include <string>
 #include <vector>
-
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -27,42 +27,13 @@ namespace analysis {
 
 void IrAnalysisComposePass::RunImpl(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
-  CreateIrPasses(argument, *argument->ir_analysis_passes());
   InitTensorRTAttrs(argument);
   ApplyIrPasses(argument);
+  CollectFusionStatis(argument);
 }
 
 std::string IrAnalysisComposePass::repr() const {
   return "ir-analysis-compose-pass";
-}
-
-void IrAnalysisComposePass::CreateIrPasses(
-    Argument *argument, const std::vector<std::string> &passes) {
-  std::string pre_pass;
-  int pass_num = 0;
-  for (const std::string &pass_name : passes) {
-    string::PrettyLogEndl(string::Style::H2(), "--- Running IR pass [%s]",
-                          pass_name);
-    auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
-
-    // Set some pass attributes.
-    if (pass_name == "ir_analysis_pass") {
-      pass->Set("tensorrt_node_teller",
-                new SubgraphDetector::NodeInsideSubgraphTeller(
-                    *argument->tensorrt_node_teller()));
-    }
-
-    if (pass_name == "graph_viz_pass") {
-      std::string dot_file_path = std::to_string(pass_num) + "_ir_" +
-                                  (pre_pass.empty() ? "origin" : pre_pass) +
-                                  ".dot";
-      pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
-      pass_num++;
-    }
-
-    // graph_ = pass->Apply(std::move(graph_));
-    pre_pass = pass_name;
-  }
 }
 
 void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
@@ -84,9 +55,24 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
 }
 
 void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
-  // Create passes.
-  IRPassManager manager(argument);
-  manager.Apply();
+  std::vector<std::string> passes({
+      "ir_graph_build_pass", "ir_analysis_pass",
+  });
+  for (const auto &pass : passes) {
+    LOG(INFO) << "Run pass " << pass;
+    auto *the_pass = PassRegistry::Global().Retreive(pass);
+    the_pass->Run(argument);
+  }
+}
+
+void IrAnalysisComposePass::CollectFusionStatis(Argument *argument) {
+  if (!argument->main_graph()->Has(framework::ir::kFuseStatisAttr)) {
+    LOG(INFO) << "argument has no fuse statis";
+    return;
+  }
+  argument->SetFusionStatis(
+      argument->main_graph()->Get<Argument::fusion_statis_t>(
+          framework::ir::kFuseStatisAttr));
 }
 
 }  // namespace analysis

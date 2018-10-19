@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+#include <paddle/fluid/framework/ir/fuse_pass_base.h>
 #include <string>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/io.h"
@@ -32,15 +33,21 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
   if (argument->model_dir()) {
     auto program = LoadModel(*argument->model_dir(), argument->scope());
-    argument_->SetMainProgram(std::move(program));
+    argument->SetMainProgram(std::move(program));
   } else if (argument->model_program_path() && argument->model_params_path()) {
     auto program = LoadModel(*argument->model_program_path(),
                              *argument->model_params_path(), argument->scope());
-    argument_->SetMainProgram(std::move(program));
+    argument->SetMainProgram(std::move(program));
   } else {
     PADDLE_THROW(
         "either model_dir or (program path and parameter path) should be set.");
   }
+
+  auto graph = std::unique_ptr<Graph>(new Graph(*argument->main_program()));
+  LOG(INFO) << "Load " << graph->Nodes().size() << " nodes";
+  argument->SetMainGraph(std::move(graph));
+  argument->main_graph()->Set(framework::ir::kParamScopeAttr,
+                              new framework::Scope *(argument->scope()));
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

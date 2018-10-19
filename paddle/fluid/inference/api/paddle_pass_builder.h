@@ -25,6 +25,9 @@ namespace paddle {
  */
 class PaddlePassBuilder {
  public:
+  explicit PaddlePassBuilder(const std::vector<std::string> &passes)
+      : passes_(passes) {}
+
   void AppendPass(const std::string &pass_type);
 
   void InsertPass(size_t idx, const std::string &pass_type);
@@ -42,7 +45,7 @@ class PaddlePassBuilder {
   // Human-readible information.
   std::string DebugString();
 
-  const std::vector<std::string> &AllPasses() { return passes_; }
+  const std::vector<std::string> &AllPasses() const { return passes_; }
 
  protected:
   std::vector<std::string> passes_;
@@ -53,6 +56,8 @@ class PaddlePassBuilder {
  */
 class PassStrategy : public PaddlePassBuilder {
  public:
+  explicit PassStrategy(const std::vector<std::string> &passes)
+      : PaddlePassBuilder(passes) {}
   // The MKLDNN control exists in both CPU and GPU mode, because there can be
   // still some CPU kernels running in CPU mode.
   void EnableMKLDNN() { use_mkldnn_ = true; }
@@ -67,7 +72,7 @@ class PassStrategy : public PaddlePassBuilder {
  */
 class CpuPassStrategy : public PassStrategy {
  public:
-  CpuPassStrategy() {
+  CpuPassStrategy() : PassStrategy({}) {
     LOG(INFO) << "Using CPU pass strategy";
     // NOTE the large fusions should be located in the front, so that they will
     // not be damaged by smaller ones.
@@ -92,6 +97,8 @@ class CpuPassStrategy : public PassStrategy {
     }
 #endif
   }
+
+  CpuPassStrategy(const CpuPassStrategy &other) : PassStrategy(other.passes_) {}
 };
 
 /*
@@ -99,13 +106,16 @@ class CpuPassStrategy : public PassStrategy {
  */
 class GpuPassStrategy : public PassStrategy {
  public:
-  GpuPassStrategy() {
+  GpuPassStrategy() : PassStrategy({}) {
     LOG(INFO) << "Using GPU pass strategy";
     passes_.assign({
         "infer_clean_graph_pass",  //
         "conv_bn_fuse_pass",       //
     });
   }
+
+  GpuPassStrategy(const GpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {}
 };
 
 }  // namespace paddle

@@ -33,12 +33,14 @@ class IrAnalysisComposePass : public AnalysisPass {
   std::string repr() const override;
 
  private:
-  void CreateIrPasses(Argument* argument,
-                      const std::vector<std::string>& passes);
-
   void InitTensorRTAttrs(Argument* argument);
 
   void ApplyIrPasses(Argument* argument);
+
+  void CollectFusionStatis(Argument* argument);
+
+  // Assign a Scope for IR passes to modify the weights.
+  void AssignScopeToModify(Argument* argument);
 };
 
 }  // namespace analysis

@@ -24,7 +24,11 @@ namespace analysis {
 struct PassRegistry {
   PassRegistry();
 
-  PassRegistry& Global() {
+  AnalysisPass* Retreive(const std::string& pass_type) {
+    return passes_[pass_type].get();
+  }
+
+  static PassRegistry& Global() {
     static auto* x = new PassRegistry;
     return *x;
   }

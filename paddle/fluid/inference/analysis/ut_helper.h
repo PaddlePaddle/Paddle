@@ -30,16 +30,6 @@ namespace analysis {
 
 DEFINE_string(inference_model_dir, "", "inference test model dir");
 
-class DFG_Tester : public ::testing::Test {
- protected:
-  void SetUp() override {
-    auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
-    argument.original_program_desc.reset(
-        new framework::proto::ProgramDesc(desc));
-  }
-
-  Argument argument;
-};
 
 }  // namespace analysis
 }  // namespace inference

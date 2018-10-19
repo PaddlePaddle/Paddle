@@ -35,9 +35,6 @@ class AnalysisPass {
   AnalysisPass() = default;
   virtual ~AnalysisPass() = default;
 
-  // User should implement these.
-  virtual void RunImpl(Argument* argument) = 0;
-
   // Run on a single Graph.
   void Run(Argument* argument) { RunImpl(argument); }
 
@@ -47,6 +44,9 @@ class AnalysisPass {
   virtual std::string description() const { return "No DOC"; }
 
  protected:
+  // User should implement these.
+  virtual void RunImpl(Argument* argument) = 0;
+
   Argument* argument_{nullptr};
 };
 

@@ -40,7 +40,10 @@ class IRPassManager final {
  public:
   explicit IRPassManager(Argument *argument);
 
-  std::unique_ptr<Graph> Apply();
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph);
+
+  framework::proto::ProgramDesc AcquireProgram(
+      std::unique_ptr<Graph> *graph, const ProgramDesc &program) const;
 
   framework::ir::Graph &graph() const { return *graph_; }
 

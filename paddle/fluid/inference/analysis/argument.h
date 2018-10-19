@@ -54,17 +54,21 @@ struct Argument {
       *field__() = x;                               \
     }                                               \
   }
-#define DECL_ARGUMENT_GETTER(field__, type__) \
+
+#define DECL_ARGUMENT_GETTER(field__, type__)           \
+  static const char* k_##field__() { return #field__; } \
   type__* field__() { return Has(#field__) ? &Get<type__>(#field__) : nullptr; }
 
 #define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__) \
   DECL_ARGUMENT_GETTER(field__, type__)                    \
   void Set##Field(std::unique_ptr<type__>&& x) {           \
+    LOG(INFO) << "set argument field " << #field__;        \
     if (Has(#field__)) {                                   \
       Release<type__>(#field__);                           \
     }                                                      \
     Set<type__>(#field__, x.release());                    \
-  }
+  }                                                        \
+  void Set##Field##NotOwned(type__* x) { SetNotOwned<type__>(#field__, x); }
 
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
@@ -88,14 +92,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
                       std::function<bool(const framework::ir::Node*)>);
 
-  // The graph that process by the Passes or PassManagers.
-  // std::unique_ptr<Graph> main_graph;
+  // The program transformed by IR analysis phase.
+  DECL_ARGUMENT_FIELD(ir_analyzed_program, IrAnalyzedProgram,
+                      framework::proto::ProgramDesc);
 
-  // The original program desc.
-  std::unique_ptr<framework::proto::ProgramDesc> original_program_desc;
-
-  // The processed program desc.
-  std::unique_ptr<framework::proto::ProgramDesc> transformed_program_desc;
+  using fusion_statis_t = std::unordered_map<std::string, int>;
+  DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
 
   // Support for any other attributes.
   template <typename T>
@@ -109,6 +111,17 @@ struct Argument {
       VLOG(3) << "argument delete attr: " << key;
       delete data;
     };
+  }
+
+  template <typename T>
+  void SetNotOwned(const std::string& key, T* data) {
+    PADDLE_ENFORCE_NOT_NULL(data);
+
+    PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
+                   key);
+    attrs_[key] = data;
+    // An empty deleter for that this ptr is not owned, so don't need to delete.
+    attr_deleters_[key] = [data, key]() {};
   }
 
   bool Has(const std::string& name) const { return attrs_.count(name); }

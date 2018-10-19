@@ -46,7 +46,6 @@ void IRPassManager::CreatePasses(Argument *argument,
   std::string pre_pass;
   int pass_num = 0;
   for (const std::string &pass_name : passes) {
-    PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass_name);
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
 
     // Set some pass attributes.
@@ -66,16 +65,36 @@ void IRPassManager::CreatePasses(Argument *argument,
 
     // graph_ = pass->Apply(std::move(graph_));
     pre_pass = pass_name;
+
+    passes_.emplace_back(std::move(pass));
   }
 }
 
-std::unique_ptr<Graph> IRPassManager::Apply() {
+std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
+  if (passes_.empty()) {
+    return graph;
+  }
+  PADDLE_ENFORCE(graph.get());
   // Apply all the passes
-  std::unique_ptr<Graph> graph;
-  for (auto &pass : passes_) {
-    graph = pass->Apply(std::move(graph_));
+  for (const auto &pass : passes_) {
+    PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    graph = pass->Apply(std::move(graph));
   }
   return std::move(graph);
+}
+
+framework::proto::ProgramDesc IRPassManager::AcquireProgram(
+    std::unique_ptr<Graph> *graph, const ProgramDesc &program) const {
+  auto pass =
+      framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
+
+  ProgramDesc desc(program);
+  pass->SetNotOwned("program", &desc);
+  pass->Set("program_proto", new framework::proto::ProgramDesc);
+  auto *the_graph = graph->release();
+  *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
+  LOG(INFO) << "the graph has nodes " << (*graph)->Nodes().size();
+  return pass->Get<framework::proto::ProgramDesc>("program_proto");
 }
 
 }  // namespace analysis

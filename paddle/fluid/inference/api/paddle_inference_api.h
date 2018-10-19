@@ -260,7 +260,7 @@ struct AnalysisConfig : public NativeConfig {
   bool enable_ir_optim = true;
 
   // Get a pass builder for customize the passes in IR analysis phase.
-  PaddlePassBuilder* pass_builder();
+  PaddlePassBuilder* pass_builder() const;
 
   // NOT stable yet.
   bool use_feed_fetch_ops{true};

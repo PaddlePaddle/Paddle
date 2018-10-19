@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
+#include "paddle/fluid/inference/analysis/passes/passes.h"
 
 namespace paddle {
 namespace inference {
@@ -26,8 +27,11 @@ Analyzer::Analyzer() {}
 void Analyzer::Run(Argument *argument) { RunIrAnalysis(argument); }
 
 void Analyzer::RunIrAnalysis(Argument *argument) {
-  IrAnalysisComposePass pass;
-  pass.RunImpl(argument);
+  std::vector<std::string> passes({"ir_analysis_compose_pass"});
+
+  for (auto &pass : passes) {
+    PassRegistry::Global().Retreive(pass)->Run(argument);
+  }
 }
 
 /*

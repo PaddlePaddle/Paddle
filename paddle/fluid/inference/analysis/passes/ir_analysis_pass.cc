@@ -19,13 +19,20 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void IrAnalysisPass::RunImpl(Argument *argument) {
+void IrAnalysisPass::RunImpl(Argument* argument) {
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
   ARGUMENT_CHECK_FIELD(argument, main_program);
   ARGUMENT_CHECK_FIELD(argument, scope);
 
+  auto* the_graph = argument->Release<Graph>(argument->k_main_graph());
+  auto graph = std::unique_ptr<Graph>(the_graph);
+
   // Apply passes.
-  auto graph = IRPassManager(argument).Apply();
+  IRPassManager the_ir_manager(argument);
+  graph = the_ir_manager.Apply(std::move(graph));
+  PADDLE_ENFORCE_GT(graph->Nodes().size(), 0);
+  argument->SetIrAnalyzedProgram(
+      the_ir_manager.AcquireProgram(&graph, *argument->main_program()));
   argument->SetMainGraph(std::move(graph));
 }
 

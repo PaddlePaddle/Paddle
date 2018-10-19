@@ -97,7 +97,7 @@ void PaddleBuf::Free() {
   }
 }
 
-PaddlePassBuilder *contrib::AnalysisConfig::pass_builder() {
+PaddlePassBuilder *contrib::AnalysisConfig::pass_builder() const {
   PADDLE_ENFORCE(
       pass_builder_.get(),
       "Should call constructor first, that will init the pass_builder_.");
@@ -129,9 +129,11 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   _use_mkldnn = other._use_mkldnn;
 
   if (use_gpu) {
-    pass_builder_.reset(new GpuPassStrategy);
+    pass_builder_.reset(new GpuPassStrategy(
+        *static_cast<GpuPassStrategy *>(other.pass_builder())));
   } else {
-    pass_builder_.reset(new CpuPassStrategy);
+    pass_builder_.reset(new CpuPassStrategy(
+        *static_cast<CpuPassStrategy *>(other.pass_builder())));
   }
 }
 

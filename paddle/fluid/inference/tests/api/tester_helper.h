@@ -91,14 +91,11 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
                                                    int *num_ops) {
   std::unordered_map<std::string, int> res;
   auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
-  if (!analysis_predictor->analysis_argument().Has(
-          framework::ir::kFuseStatisAttr)) {
+  auto* fusion_status = analysis_predictor->analysis_argument().fusion_statis();
+  if (!fusion_status) {
     return res;
   }
-  res = analysis_predictor->analysis_argument()
-            .Get<std::unordered_map<std::string, int>>(
-                framework::ir::kFuseStatisAttr);
-  for (auto &item : res) {
+  for (auto &item : *fusion_status) {
     LOG(INFO) << "fused " << item.first << " " << item.second;
   }
   int num = 0;
@@ -109,7 +106,7 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
     }
   }
   *num_ops = num;
-  return res;
+  return *fusion_status;
 }
 
 void TestOneThreadPrediction(

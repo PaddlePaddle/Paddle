@@ -210,18 +210,21 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetModelParamsPath(config_.param_file);
   }
 
-  argument_.original_program_desc.reset(
-      new ProgramDesc(*inference_program_->Proto()));
-
   auto passes = config_.pass_builder()->AllPasses();
+  LOG(INFO) << "analysis predictor get pass builder";
+  LOG(INFO) << '\n' << config_.pass_builder()->DebugString();
   if (!config_.enable_ir_optim) passes.clear();
   argument_.SetIrAnalysisPasses(passes);
+  LOG(INFO) << "analysis scope: " << scope_.get();
+  argument_.SetScopeNotOwned(const_cast<framework::Scope*>(scope_.get()));
+  LOG(INFO) << "Analyzer begin ***";
   Analyzer().Run(&argument_);
+  LOG(INFO) << "Analyzer end ...";
 
-  CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
+  ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
-      new framework::ProgramDesc(*argument_.transformed_program_desc));
+      new framework::ProgramDesc(*argument_.ir_analyzed_program()));
   if (argument_.Has(framework::ir::kParamScopeAttr)) {
     // Update scope.
     scope_.reset(
