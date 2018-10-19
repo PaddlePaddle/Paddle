@@ -54,6 +54,9 @@ class Analyzer : public OrderedRegistry<PassManager> {
   void Run(Argument* argument);
 
   Analyzer& DisableIrPasses(const std::vector<std::string>& passes);
+  Analyzer& IncludeIrPasses(const std::vector<std::string>& passes);
+  Analyzer& IncludeAllIrPasses();
+  Analyzer& SetUseMkldnn(bool use_mkldnn);
 
   DISABLE_COPY_AND_ASSIGN(Analyzer);
 
@@ -81,6 +84,9 @@ class Analyzer : public OrderedRegistry<PassManager> {
   }};
 
   std::unordered_set<std::string> disabled_ir_passes_;
+  // Ir passes to run
+  std::vector<std::string> ir_passes_;
+  bool use_mkldnn_;
 };
 
 }  // namespace analysis
