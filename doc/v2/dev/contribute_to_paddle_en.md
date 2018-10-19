@@ -1,1 +1,1 @@
-../../../contribute_to_paddle_en.md
+../../../CONTRIBUTING.md
