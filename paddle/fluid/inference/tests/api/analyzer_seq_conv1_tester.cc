@@ -182,7 +182,8 @@ TEST(Analyzer_seq_conv1, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   int num_ops;
-  auto fuse_statis = GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  GetFuseStatis(predictor.get(), &num_ops);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

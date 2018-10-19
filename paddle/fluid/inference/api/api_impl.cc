@@ -23,10 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace {
@@ -72,6 +73,9 @@ bool NativePaddlePredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 #endif
+
+  // no matter with or without MKLDNN
+  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -145,7 +149,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
-                                false /* don't create variable eatch time */);
+                                false /* don't create variable each time */);
   VLOG(4) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {

@@ -34,7 +34,7 @@ namespace operators {
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
 
-namespace {  // NOLINT
+namespace {
 
 TRT_DT FluidDataType2TRT(FluidDT type) {
   switch (type) {

@@ -22,7 +22,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
 #include "utils/logger/logger.h"
 
 DEFINE_string(model, "", "Directory of the inference model.");

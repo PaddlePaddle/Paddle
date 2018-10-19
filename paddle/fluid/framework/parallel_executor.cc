@@ -156,10 +156,12 @@ ParallelExecutor::ParallelExecutor(
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
 
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                      "The number of graph should be only one");
+  if (VLOG_IS_ON(5)) {
+    // If the loss_var_name is given, the number of graph should be only one.
+    if (loss_var_name.size()) {
+      PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                        "The number of graph should be only one");
+    }
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
@@ -248,6 +250,13 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {
     ResetReferenceCount();
+    for (auto &pair : cur_ref_cnts_) {
+      auto &name_map = *(pair.second);
+      for (auto &fetch_name : fetch_tensors) {
+        name_map.erase(fetch_name);
+      }
+      name_map.erase(fetched_var_name);
+    }
   }
 #endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);
@@ -298,6 +307,10 @@ ParallelExecutor::~ParallelExecutor() {
       }
     }
   }
+
+  // member_ must be destructed before gcs_ since the destructor of
+  // ReferenceCountOpHandle use raw pointers of gcs_ inside.
+  member_.reset();
 }
 
 }  // namespace framework

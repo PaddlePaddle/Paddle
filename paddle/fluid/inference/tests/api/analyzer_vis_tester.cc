@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
+using contrib::AnalysisConfig;
 
 struct Record {
   std::vector<float> data;
@@ -58,11 +59,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->specify_input_name = true;
   // TODO(TJ): fix fusion gru
   cfg->ir_passes.push_back("fc_gru_fuse_pass");
-#ifdef PADDLE_WITH_MKLDNN
-  cfg->_use_mkldnn = true;
-  // disable mkldnn fuse since it should have some bugs
-  cfg->ir_passes.push_back("conv_relu_mkldnn_fuse_pass");
-#endif
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -85,9 +81,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
-TEST(Analyzer_vis, profile) {
+void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg._use_mkldnn = use_mkldnn;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -109,23 +106,36 @@ TEST(Analyzer_vis, profile) {
   }
 }
 
+TEST(Analyzer_vis, profile) { profile(); }
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_vis, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   int num_ops;
-  GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  GetFuseStatis(predictor.get(), &num_ops);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_vis, compare) {
+void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg._use_mkldnn = use_mkldnn;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(cfg, input_slots_all);
 }
+
+TEST(Analyzer_vis, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 }  // namespace analysis
 }  // namespace inference

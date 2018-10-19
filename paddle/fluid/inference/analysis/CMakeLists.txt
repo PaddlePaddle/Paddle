@@ -1,6 +1,6 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
 set(analysis_deps
-    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log)
+        framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log)
 
 cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
@@ -19,8 +19,6 @@ cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
-
-set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 
 function (inference_analysis_test TARGET)
     if(WITH_TESTING)
