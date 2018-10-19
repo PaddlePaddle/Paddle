@@ -68,8 +68,7 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
   conv_output->AsIntermediate();
 
-  auto conv_op_has_bias = [](const Node& conv_op,
-                             const Scope& scope) -> std::pair<bool, Node*> {
+  auto conv_op_has_bias = [](const Node& conv_op) -> std::pair<bool, Node*> {
     auto bias_input_names = conv_op.Op()->Inputs();
     auto bias_it = bias_input_names.find("Bias");
 
@@ -116,7 +115,7 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
     bool has_bias;
     Node* conv_bias;
 
-    std::tie(has_bias, conv_bias) = conv_op_has_bias(*conv_op, *param_scope());
+    std::tie(has_bias, conv_bias) = conv_op_has_bias(*conv_op);
 
     if (has_bias) {
       op_desc.SetInput("Bias", {conv_bias->Name()});
