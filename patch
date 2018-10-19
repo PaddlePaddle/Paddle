@@ -1,0 +1,70 @@
+diff --git a/python/paddle/fluid/layers/nn.py b/python/paddle/fluid/layers/nn.py
+index 8c0ef7a82..344cbb633 100644
+--- a/python/paddle/fluid/layers/nn.py
++++ b/python/paddle/fluid/layers/nn.py
+@@ -150,6 +150,7 @@ __all__ = [
+     'mul',
+     'sigmoid_cross_entropy_with_logits',
+     'maxout',
++    'grid_sampler',
+ ]
+ 
+ 
+@@ -7084,3 +7085,36 @@ def maxout(x, groups, name=None):
+         attrs={"groups": groups},
+         outputs={"Out": out})
+     return out
++
++@templatedoc()
++def grid_sampler(x, grid):
++    """
++    It sample data from input x by the given grid, insert data of each
++    point by bilinear interp.
++
++    Args:
++        x(Variable): Input data of shape [N, H, W, C]
++        grid(Variable): Input grid tensor of shape [N, H, W, 2]
++
++    Returns:
++        out(Variable): Output data indices by grid from x of shape [N, H, W, C]
++    """
++    helper = LayerHelper("grid_sampler", **locals())
++
++    if not isinstance(x, Variable):
++        return ValueError("The x should be a Variable")
++
++    if not isinstance(grid, Variable):
++        return ValueError("The grid should be a Variable")
++
++    out = helper.create_tmp_variable(x.dtype)
++    ipts = {'X': x, 'Grid': grid}
++    attrs = {}
++
++    helper.apppend_op(
++            type='grid_sampler',
++            inputs=ipts,
++            outputs={'Output', out},
++            attrs = None if len(attrs) == 0 else attrs)
++
++    return 0
+diff --git a/python/paddle/fluid/tests/unittests/test_layers.py b/python/paddle/fluid/tests/unittests/test_layers.py
+index 1d8d0b55f..5ea51c0a4 100644
+--- a/python/paddle/fluid/tests/unittests/test_layers.py
++++ b/python/paddle/fluid/tests/unittests/test_layers.py
+@@ -834,6 +834,16 @@ class TestBook(unittest.TestCase):
+             self.assertIsNotNone(out)
+         print(str(program))
+ 
++    def test_affine_grid_gen(self):
++        program = Program()
++        with program_guard(program):
++            x = layers.data(name='x', shape=[1, 5, 7, 2 ], dtype='float32')
++            grid = layers.data(name='grid', shape=[1, 5, 7, 2], dtype='float32' )
++            out = layers.grid_sampler(x, grid)
++            self.assertIsNotNone(out)
++        print(str(program))
++
++
+ 
+ if __name__ == '__main__':
+     unittest.main()

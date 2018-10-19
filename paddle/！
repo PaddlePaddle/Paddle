@@ -1,0 +1,13 @@
+#!/System/Library/Frameworks/Python.framework/Versions/2.7/bin/python
+# _*_ coding: utf-8 _*_
+import re
+import sys
+
+from IPython import start_ipython
+
+if __name__ == "__main__":
+  sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+  sys.exit(start_ipython())
+
+# #!/bin/bash
+# PYTHONPATH="/usr/local/Cellar/ipython/7.0.1/libexec/lib/python3.7/site-packages:/usr/local/Cellar/ipython/7.0.1/libexec/vendor/lib/python3.7/site-packages" exec "/usr/local/Cellar/ipython/7.0.1/libexec/bin/ipython" "$@"
