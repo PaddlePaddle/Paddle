@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_mkldnn_pass.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
@@ -59,6 +60,12 @@ std::unique_ptr<ir::Graph> FCMKLDNNPass::ApplyImpl(
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
+
+    FuseOptions fuse_option = FindFuseOption(*fc, *fc);
+    if (fuse_option == DO_NOT_FUSE || fuse_option == FUSE_NATIVE) {
+      VLOG(3) << "do not perform fc fuse";
+      return;
+    }
 
     OpDesc* desc = fc->Op();
     auto* weights_var = scope->FindVar(weights->Name());
