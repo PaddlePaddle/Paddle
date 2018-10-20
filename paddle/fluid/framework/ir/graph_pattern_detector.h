@@ -128,6 +128,15 @@ struct PDNode {
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
 
+  template <typename T>
+  PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
+    asserts_.emplace_back([=](Node* x) {
+      return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
+             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+    });
+    return this;
+  }
+
  private:
   PDNode(PDPattern* pattern, const std::string& name = "",
          Type type = Type::kVar)
