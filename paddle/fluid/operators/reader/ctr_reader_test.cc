@@ -35,7 +35,7 @@ TEST(CTR_READER, read_data) {
   std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
 
   int batch_size = 10;
-  int thread_num = 4;
+  int thread_num = 3;
   std::vector<std::string> slots = {
       "6002", "6003", "6004", "6005", "6006", "6007", "6008", "6009", "6010",
       "6011", "6012", "6013", "6014", "6015", "6016", "6017", "6018", "6019",
@@ -119,12 +119,15 @@ TEST(CTR_READER, read_data) {
 
   std::cout << "start to reader data" << std::endl;
   std::vector<LoDTensor> out;
-  int read_batch = 1000;
+  int read_batch = 10000;
   uint64_t t0 = GetTimeInSec();
   for (int i = 0; i < read_batch; ++i) {
     reader.ReadNext(&out);
+    if (i != 0 && i % 100 == 0) {
+      uint64_t t1 = GetTimeInSec();
+      float line_per_s = 100 * batch_size * 1000000 / (t1 - t0);
+      VLOG(3) << "line_per_second = " << line_per_s;
+      t0 = GetTimeInSec();
+    }
   }
-  uint64_t t1 = GetTimeInSec();
-  float line_per_s = read_batch * batch_size / static_cast<int>(t1 - t0);
-  VLOG(3) << "line_per_second = " << line_per_s;
 }
