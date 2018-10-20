@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_bool(with_precision_check, true, "turn on test");
@@ -271,10 +270,11 @@ TEST(Analyzer_rnn1, multi_thread) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(cfg, input_slots_all, &outputs, 4 /* multi_thread */);
 }
 
-bool CompareTensors(framework::Scope &a_scope, framework::Scope &b_scope,
+bool CompareTensors(const framework::Scope &a_scope,
+                    const framework::Scope &b_scope,
                     const std::vector<std::string> &tensors) {
   for (auto &x : tensors) {
     auto *a_var = a_scope.FindVar(x);
@@ -308,18 +308,13 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   PaddlePlace place;
   int output_size{0};
 
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   config.use_feed_fetch_ops = true;
-  auto native_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
-  auto analysis_predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
 #define NEW_TENSOR(name__) \
   auto name__##_tensor = predictor->GetInputTensor(#name__);

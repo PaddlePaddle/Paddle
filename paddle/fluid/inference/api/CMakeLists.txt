@@ -31,7 +31,6 @@ function(inference_api_test TARGET_NAME)
         set(multiValueArgs ARGS)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-        set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
         cc_test(${TARGET_NAME}
                 SRCS ${inference_test_SRC}
                 DEPS "${inference_deps}"

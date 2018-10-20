@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -76,11 +77,9 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const AnalysisConfig &config, bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig,
-                                 PaddleEngineKind::kAnalysis>(config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(config);
   } else {
-    return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-        config);
+    return CreatePaddlePredictor<NativeConfig>(config);
   }
 }
 
@@ -164,7 +163,8 @@ void TestPrediction(const AnalysisConfig &config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
-  LOG(INFO) << "use_analysis: " << use_analysis;
+  LOG(INFO) << "use_analysis: " << use_analysis
+            << ", use_mkldnn: " << config._use_mkldnn;
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -176,10 +176,133 @@ void TestPrediction(const AnalysisConfig &config,
 void CompareNativeAndAnalysis(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
+  LOG(INFO) << "use_mkldnn: " << config._use_mkldnn;
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
   CompareResult(analysis_outputs, native_outputs);
+}
+
+template <typename T>
+std::string LoDTensorSummary(const framework::LoDTensor &tensor) {
+  std::stringstream ss;
+  ss << "\n---- tensor ---" << '\n';
+  ss << "lod: [";
+  for (const auto &level : tensor.lod()) {
+    ss << "[ ";
+    for (auto i : level) {
+      ss << i << ", ";
+    }
+    ss << "]";
+  }
+  ss << "]\n";
+
+  ss << "shape: [";
+  int size = 1;
+  for (int i = 0; i < tensor.dims().size(); i++) {
+    int dim = tensor.dims()[i];
+    ss << dim << ", ";
+    size *= dim;
+  }
+  ss << "]\n";
+
+  ss << "data: ";
+  for (int i = 0; i < std::min(20, size); i++) {
+    ss << tensor.data<T>()[i] << " ";
+  }
+  ss << "\n";
+
+  return ss.str();
+}
+
+static bool CompareLoD(const framework::LoD &a, const framework::LoD &b) {
+  if (a.size() != b.size()) {
+    LOG(ERROR) << string::Sprintf("lod size not match %d != %d", a.size(),
+                                  b.size());
+    return false;
+  }
+  for (size_t i = 0; i < a.size(); i++) {
+    auto &al = a[i];
+    auto &bl = b[i];
+    if (al.size() != bl.size()) {
+      LOG(ERROR) << string::Sprintf("level size %d != %d", al.size(),
+                                    bl.size());
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool CompareShape(const std::vector<int64_t> &a,
+                         const std::vector<int64_t> &b) {
+  if (a.size() != b.size()) {
+    LOG(ERROR) << string::Sprintf("shape size not match %d != %d", a.size(),
+                                  b.size());
+    return false;
+  }
+  for (size_t i = 0; i < a.size(); i++) {
+    if (a[i] != b[i]) {
+      LOG(ERROR) << string::Sprintf("shape %d-th element not match %d != %d", i,
+                                    a[i], b[i]);
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool CompareTensorData(const framework::LoDTensor &a,
+                              const framework::LoDTensor &b) {
+  auto a_shape = framework::vectorize(a.dims());
+  auto b_shape = framework::vectorize(b.dims());
+  size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), 1,
+                                  [](int a, int b) { return a * b; });
+  size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), 1,
+                                  [](int a, int b) { return a * b; });
+  if (a_size != b_size) {
+    LOG(ERROR) << string::Sprintf("tensor data size not match, %d != %d",
+                                  a_size, b_size);
+  }
+
+  for (size_t i = 0; i < a_size; i++) {
+    if (a.type() == typeid(float)) {
+      const auto *a_data = a.data<float>();
+      const auto *b_data = b.data<float>();
+      if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
+        LOG(ERROR) << string::Sprintf(
+            "tensor data %d-th element not match, %f != %f", i, a_data[i],
+            b_data[i]);
+        return false;
+      }
+    } else if (a.type() == typeid(int64_t)) {
+      const auto *a_data = a.data<int64_t>();
+      const auto *b_data = b.data<int64_t>();
+      if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
+        LOG(ERROR) << string::Sprintf(
+            "tensor data %d-th element not match, %f != %f", i, a_data[i],
+            b_data[i]);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+static bool CompareTensor(const framework::LoDTensor &a,
+                          const framework::LoDTensor &b) {
+  if (!CompareLoD(a.lod(), b.lod())) {
+    return false;
+  }
+  if (!CompareShape(framework::vectorize(a.dims()),
+                    framework::vectorize(b.dims()))) {
+    return false;
+  }
+
+  if (!CompareTensorData(a, b)) {
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace inference
