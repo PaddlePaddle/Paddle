@@ -222,7 +222,7 @@ void ReadThread(const std::vector<std::string>& file_list,
 
     if (i != 0 && i % 100 == 0) {
       uint64_t t1 = GetTimeInSec();
-      float line_per_s = 100 * batch_size / static_cast<int>(t1 - t0);
+      float line_per_s = 100 * batch_size * 1000000 / (t1 - t0);
       VLOG(3) << "[" << thread_id << "]"
               << " line_per_second = " << line_per_s;
       t0 = t1;

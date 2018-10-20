@@ -43,7 +43,7 @@ inline uint64_t GetTimeInSec() {
   using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
                                  std::chrono::high_resolution_clock,
                                  std::chrono::steady_clock>::type;
-  return std::chrono::duration_cast<std::chrono::seconds>(
+  return std::chrono::duration_cast<std::chrono::microseconds>(
              clock::now().time_since_epoch())
       .count();
 }
