@@ -349,11 +349,6 @@ PDNode *PDNode::assert_is_op() {
   return this;
 }
 
-// PDNode *PDNode::assert_op_attr() {
-//   asserts_.emplace_back([](Node *x) { return x && x->IsOp(); });
-//   return this;
-// }
-
 PDNode *PDNode::assert_is_op(const std::string &op_type) {
   asserts_.emplace_back([op_type](Node *x) {
     return x && x->IsOp() && x->Op()->Type() == op_type;
@@ -770,10 +765,10 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
   seqconv_input->assert_is_op_input("sequence_conv", "X");
-  auto *seqconv_op =
-      pattern->NewNode(seqconv_repr())->assert_is_op("sequence_conv");
-  //  ->assert_op_attr("paddingTrainable", false)
-  //  ->assert_op_attr("contextStride", 1)
+  auto *seqconv_op = pattern->NewNode(seqconv_repr())
+                         ->assert_is_op("sequence_conv")
+                         ->assert_op_attr<bool>("paddingTrainable", false)
+                         ->assert_op_attr<int>("contextStride", 1);
 
   auto *eltadd_op =
       pattern->NewNode(eltadd_repr())->assert_is_op("elementwise_add");
