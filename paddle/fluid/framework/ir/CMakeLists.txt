@@ -39,6 +39,7 @@ pass_library(seq_concat_fc_fuse_pass inference)
 pass_library(conv_bn_fuse_pass inference)
 if(WITH_MKLDNN)
     pass_library(mkldnn_placement_pass base)
+    pass_library(conv_bias_mkldnn_fuse_pass inference)
     pass_library(conv_relu_mkldnn_fuse_pass inference)
 endif()
 
