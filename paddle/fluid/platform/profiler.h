@@ -71,6 +71,7 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 #if !defined(_WIN32)
 struct RecordEvent {
+  // dev_ctx can be set to nullptr if device is cpu.
   RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();

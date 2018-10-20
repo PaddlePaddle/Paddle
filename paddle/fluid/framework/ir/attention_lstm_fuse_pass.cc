@@ -262,7 +262,7 @@ std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
   std::unordered_set<std::string> specified_vars({"data_lod_attention",
                                                   "cell_init", "hidden_init",
                                                   "data", "week", "minute"});
-  int count = 0;
+  size_t count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsVar() && specified_vars.count(node->Name())) {
       ++count;

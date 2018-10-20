@@ -19,9 +19,19 @@ cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 
 add_subdirectory(api)
 
+set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
+set(SHARED_INFERENCE_SRCS
+    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
+if (WITH_GPU AND TENSORRT_FOUND)
+  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS} paddle_inference_tensorrt_subgraph_engine)
+  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/api/api_tensorrt_subgraph_engine.cc)
+endif()
+
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api 
-           analysis_predictor zero_copy_tensor)
+cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor)
+
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
@@ -29,10 +39,7 @@ if(NOT APPLE)
 endif()
 
 # Create shared library
-cc_library(paddle_fluid_shared SHARED
-    SRCS io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
+cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
     DEPS ${fluid_modules} paddle_fluid_api)
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
