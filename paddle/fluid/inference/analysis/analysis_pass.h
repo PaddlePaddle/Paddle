@@ -41,12 +41,6 @@ class AnalysisPass {
   // all passes have run.
   virtual bool Finalize() { return false; }
 
-  // Get a Pass appropriate to print the Node this pass operates on.
-  virtual AnalysisPass *CreatePrinterPass(std::ostream &os,
-                                          const std::string &banner) const {
-    return nullptr;
-  }
-
   // Create a debugger Pass that draw the DFG by graphviz toolkit.
   virtual AnalysisPass *CreateGraphvizDebugerPass() const { return nullptr; }
 

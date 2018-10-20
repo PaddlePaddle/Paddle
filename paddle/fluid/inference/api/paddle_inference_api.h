@@ -259,18 +259,24 @@ struct AnalysisConfig : public NativeConfig {
     kExclude   // Specify the disabled passes in `ir_passes`.
   };
 
+  void SetIncludeMode() {
+    ir_mode = IrPassMode::kInclude;
+    // this pass has to be run at the beginning of all fuse passes
+    ir_passes = {"infer_clean_graph_pass"};
+  }
+
   // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;
   // Manually determine the IR passes to run.
   IrPassMode ir_mode{IrPassMode::kExclude};
-  std::vector<std::string> ir_passes;
+  // passes to be excluded/included
+  std::vector<std::string> ir_passes{"embedding_fc_lstm_fuse_pass"};
 
   // NOT stable yet.
   bool use_feed_fetch_ops{true};
 
-  // NOTE this is just for internal development, please not use it.	NOT
-  // stable
-  // yet.
+  // NOTE this is just for internal development, please not use it.
+  // NOT stable yet.
   bool _use_mkldnn{false};
 };
 

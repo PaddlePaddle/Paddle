@@ -214,7 +214,6 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_shapes", &pd::VarDesc::SetShapes)
       .def("set_dtype", &pd::VarDesc::SetDataType)
       .def("set_dtypes", &pd::VarDesc::SetDataTypes)
-      .def("set_capacity", &pd::VarDesc::SetCapacity)
       .def("shape", &pd::VarDesc::GetShape,
            pybind11::return_value_policy::reference)
       .def("shapes", &pd::VarDesc::GetShapes,
@@ -251,7 +250,6 @@ void BindVarDsec(pybind11::module *m) {
       .value("STEP_SCOPES", pd::proto::VarType::STEP_SCOPES)
       .value("LOD_RANK_TABLE", pd::proto::VarType::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", pd::proto::VarType::LOD_TENSOR_ARRAY)
-      .value("CHANNEL", pd::proto::VarType::CHANNEL)
       .value("PLACE_LIST", pd::proto::VarType::PLACE_LIST)
       .value("READER", pd::proto::VarType::READER)
       .value("RAW", pd::proto::VarType::RAW);

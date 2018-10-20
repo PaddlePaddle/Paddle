@@ -11,29 +11,34 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
-#include <chrono>  // NOLINT
+#include <algorithm>
+#include <cstdint>  // for int64_t
+#include <numeric>
+
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
-namespace inference {
+namespace operators {
+namespace math {
 
-// Timer for timer
-class Timer {
- public:
-  std::chrono::high_resolution_clock::time_point start;
-  std::chrono::high_resolution_clock::time_point startu;
-
-  void tic() { start = std::chrono::high_resolution_clock::now(); }
-  double toc() {
-    startu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span =
-        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
-                                                                  start);
-    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
-    return used_time_ms;
+template <typename T>
+HOSTDEVICE inline int64_t BinarySearch(const T *x, int64_t num, const T &val) {
+  int64_t beg = 0, end = num - 1;
+  while (beg <= end) {
+    auto mid = ((beg + end) >> 1);
+    if (x[mid] == val)
+      return mid;
+    else if (x[mid] < val)
+      beg = mid + 1;
+    else
+      end = mid - 1;
   }
-};
+  return -1;
+}
 
-}  // namespace inference
+}  // namespace math
+}  // namespace operators
 }  // namespace paddle

@@ -20,13 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
 
-// The mutex is not needed by training and inference, only for distribution.
-#if PADDLE_WITH_DISTRIBUTE
-#define WITH_LOCK 1
-#else
-#define WITH_LOCK 0
-#endif
-
 DEFINE_bool(benchmark, false,
             "Doing memory benchmark. It will make deleting scope synchronized, "
             "and add some memory usage logs."
@@ -56,24 +49,18 @@ int64_t GetEagerDeletionThreshold() {
 Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   kids_.push_back(new Scope(this));
   return *kids_.back();
 }
 
 Variable* Scope::Var(const std::string& name) {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   return VarInternal(name);
 }
 
 Variable* Scope::Var(std::string* name) {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
   if (name != nullptr) {
     *name = new_name;
@@ -82,39 +69,34 @@ Variable* Scope::Var(std::string* name) {
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   return FindVarInternal(name);
 }
 
+Variable* Scope::FindLocalVar(const std::string& name) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return FindVarLocally(name);
+}
+
 const Scope* Scope::FindScope(const Variable* var) const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   return FindScopeInternal(var);
 }
 
 void Scope::DropKids() {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   for (Scope* s : kids_) delete s;
   kids_.clear();
 }
 
 bool Scope::HasKid(const Scope* scope) const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   return it != this->kids_.end();
 }
 
 std::vector<std::string> Scope::LocalVarNames() const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   std::vector<std::string> known_vars;
   known_vars.reserve(this->vars_.size());
   for (auto& p : vars_) {
@@ -124,9 +106,7 @@ std::vector<std::string> Scope::LocalVarNames() const {
 }
 
 void Scope::DeleteScope(Scope* scope) const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
@@ -139,9 +119,7 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   std::set<std::string> var_set(var_names.begin(), var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
@@ -154,16 +132,12 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   RenameInternal(origin_name, new_name);
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
-#if WITH_LOCK
-  std::unique_lock<std::mutex> lock(mutex_);
-#endif
+  std::lock_guard<std::mutex> lock(mutex_);
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
   RenameInternal(origin_name, new_name);
   return new_name;

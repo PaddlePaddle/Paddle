@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from .ops import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_not, logical_or
 import numpy
 import warnings
 import six
@@ -1570,6 +1570,10 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
+    
+    NOTES:
+        Currently it is not supported that setting is_sparse to True of any 
+        layers within DynamicRNN.
     """
     BEFORE_RNN = 0
     IN_RNN = 1
