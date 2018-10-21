@@ -39,15 +39,6 @@ void ReadThread(const std::vector<std::string>& file_list,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue);
 
-inline uint64_t GetTimeInSec() {
-  using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
-                                 std::chrono::high_resolution_clock,
-                                 std::chrono::steady_clock>::type;
-  return std::chrono::duration_cast<std::chrono::microseconds>(
-             clock::now().time_since_epoch())
-      .count();
-}
-
 class CTRReader : public framework::FileReader {
  public:
   explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,

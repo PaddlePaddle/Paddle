@@ -33,6 +33,7 @@ using paddle::operators::reader::LoDTensorBlockingQueueHolder;
 using paddle::operators::reader::CTRReader;
 using paddle::framework::LoDTensor;
 using paddle::framework::LoD;
+using paddle::framework::DDim;
 using paddle::platform::CPUPlace;
 
 static void generatedata(const std::vector<std::string>& data,
@@ -73,17 +74,17 @@ TEST(CTR_READER, read_data) {
   std::vector<int64_t> label_value = {0, 0, 1, 0, 1, 1, 0, 1, 1, 1};
 
   std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6002{
-      {{{0, 1, 2}}, {0, 0}},
-      {{{0, 5, 6}}, {10, 11, 12, 13, 14, 0}},
-      {{{0, 1, 2}}, {0, 0}},
-      {{{0, 1, 2}}, {30, 0}},
-      {{{0, 1, 2}}, {40, 0}}};
+      {{{0, 1, 2, 7}}, {0, 0, 10, 11, 12, 13, 14}},
+      {{{0, 1, 2, 3}}, {0, 0, 0}},
+      {{{0, 1, 2, 3}}, {30, 0, 40}},
+      {{{0, 1}}, {0}}};
   std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6003{
-      {{{0, 1, 4}}, {1, 5, 6, 7}},
-      {{{0, 1, 5}}, {0, 15, 16, 17, 18}},
-      {{{0, 1, 2}}, {0, 0}},
-      {{{0, 1, 3}}, {31, 35, 36}},
-      {{{0, 1, 4}}, {41, 47, 48, 49}}};
+      {{{0, 1, 4, 5}}, {1, 5, 6, 7, 0}},
+      {{{0, 4, 5, 6}}, {15, 16, 17, 18, 0, 0}},
+      {{{0, 1, 3, 4}}, {31, 35, 36, 41}},
+      {{{0, 3}}, {47, 48, 49}}};
+
+  std::vector<DDim> label_dims = {{1, 3}, {1, 3}, {1, 3}, {1, 1}};
 
   LoDTensorBlockingQueueHolder queue_holder;
   int capacity = 64;
@@ -91,7 +92,7 @@ TEST(CTR_READER, read_data) {
 
   std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
 
-  int batch_size = 2;
+  int batch_size = 3;
   int thread_num = 1;
   std::vector<std::string> slots = {"6002", "6003"};
   std::vector<std::string> file_list;
@@ -103,15 +104,15 @@ TEST(CTR_READER, read_data) {
 
   reader.Start();
 
-  size_t batch_num = std::ceil(ctr_data.size() / batch_size) * thread_num;
+  size_t batch_num =
+      std::ceil(static_cast<float>(ctr_data.size()) / batch_size) * thread_num;
 
   for (size_t i = 0; i < batch_num; ++i) {
     std::vector<LoDTensor> out;
     reader.ReadNext(&out);
     ASSERT_EQ(out.size(), slots.size() + 1);
     auto& label_tensor = out.back();
-    ASSERT_EQ(label_tensor.dims(),
-              paddle::framework::make_ddim({1, batch_size}));
+    ASSERT_EQ(label_tensor.dims(), label_dims[i]);
     for (size_t j = 0; j < batch_size && i * batch_num + j < ctr_data.size();
          ++j) {
       auto& label = label_tensor.data<int64_t>()[j];

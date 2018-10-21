@@ -73,18 +73,6 @@ static inline void parse_line(
   }
 }
 
-static void print_map(
-    std::unordered_map<std::string, std::vector<int64_t>>* map) {
-  for (auto it = map->begin(); it != map->end(); ++it) {
-    std::cout << it->first << " -> ";
-    std::cout << "[";
-    for (auto& i : it->second) {
-      std::cout << i << " ";
-    }
-    std::cout << "]\n";
-  }
-}
-
 class Reader {
  public:
   virtual ~Reader() {}
@@ -162,10 +150,6 @@ void ReadThread(const std::vector<std::string>& file_list,
 
   VLOG(3) << "reader inited";
 
-  uint64_t t0 = GetTimeInSec();
-
-  int i = 0;
-
   while (reader.HasNext()) {
     batch_data.clear();
     batch_data.reserve(batch_size);
@@ -186,7 +170,6 @@ void ReadThread(const std::vector<std::string>& file_list,
         break;
       }
     }
-    //    print_map(&batch_data[0]);
 
     std::vector<framework::LoDTensor> lod_datas;
 
@@ -224,19 +207,10 @@ void ReadThread(const std::vector<std::string>& file_list,
 
     queue->Push(lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
-
-    if (i != 0 && i % 100 == 0) {
-      uint64_t t1 = GetTimeInSec();
-      float line_per_s = 100 * batch_size * 1000000 / (t1 - t0);
-      VLOG(3) << "[" << thread_id << "]"
-              << " line_per_second = " << line_per_s;
-      t0 = t1;
-    }
-    i++;
   }
 
   (*thread_status)[thread_id] = Stopped;
-  VLOG(3) << "thread " << thread_id << " exited";
+  VLOG(3) << "set status to stopped, thread " << thread_id << " exited";
 }
 
 }  // namespace reader
