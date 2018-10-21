@@ -218,7 +218,7 @@ void ReadThread(const std::vector<std::string>& file_list,
 
     // insert label tensor
     framework::LoDTensor label_tensor;
-    int64_t* label_tensor_data = label_tensor.mutable_data<int64_t>(
+    auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
         framework::make_ddim({1, static_cast<int64_t>(batch_label.size())}),
         platform::CPUPlace());
     memcpy(label_tensor_data, batch_label.data(),
