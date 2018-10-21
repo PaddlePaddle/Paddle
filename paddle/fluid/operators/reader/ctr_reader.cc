@@ -123,6 +123,26 @@ class MultiGzipReader : public Reader {
   size_t current_reader_index_ = 0;
 };
 
+void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
+                   std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  VLOG(3) << "monitor thread in";
+  bool reader_thread_is_running = true;
+  while (reader_thread_is_running) {
+    VLOG(3) << "reader_thread_is_running";
+    reader_thread_is_running = false;
+    for (size_t i = 0; i < (*thread_status).size(); ++i) {
+      if ((*thread_status)[i] == Running) {
+        VLOG(3) << "reader is running!";
+        reader_thread_is_running = true;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
+  VLOG(3) << "all reader thread is stopped, push empty data into queue";
+  queue->Push({});
+  VLOG(3) << "monitor thread exited";
+}
+
 void ReadThread(const std::vector<std::string>& file_list,
                 const std::vector<std::string>& slots, int batch_size,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
