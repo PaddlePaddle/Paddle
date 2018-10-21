@@ -361,8 +361,8 @@ class OpTest(unittest.TestCase):
             else:
                 return []
         places = [fluid.CPUPlace()]
-        #        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
-        #            places.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+            places.append(core.CUDAPlace(0))
         return places
 
     def check_output(self, atol=1e-5, no_check_set=None, equal_nan=False):

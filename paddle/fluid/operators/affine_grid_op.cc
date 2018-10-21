@@ -52,12 +52,12 @@ class AffineGridOp : public framework::OperatorWithKernel {
 
     auto size = ctx->Attrs().Get<std::vector<int>>("size");
     if (size.size() == 0) {
-      PADDLE_ENFORCE(ctx->HasInput("Size"),
-                     "Input(Size) of AffineGridOp should not be null if "
+      PADDLE_ENFORCE(ctx->HasInput("OutputShape"),
+                     "Input(OutputShape) of AffineGridOp should not be null if "
                      "attr(size) is not configured.");
-      auto size_dims = ctx->GetInputDim("Size");
+      auto size_dims = ctx->GetInputDim("OutputShape");
       PADDLE_ENFORCE(size_dims.size() == 1,
-                     "AffineGrid's Input(Size) should be 1-D tensor.");
+                     "AffineGrid's Input(OutputShape) should be 1-D tensor.");
     } else {
       PADDLE_ENFORCE(size.size() == 4, "The size of attr(size) should be 4.");
     }
@@ -93,8 +93,8 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) A batch of affine transform parameters with shape [N, 2, 3]. "
         "It is used to transform coordinate (x_0, y_0) to coordinate (x_1, "
         "y_1).");
-    AddInput("Size",
-             "(Tensor) The target output image shape with format [N, C, H, W].")
+    AddInput("OutputShape",
+             "(Tensor) The shape of target image with format [N, C, H, W].")
         .AsDispensable();
     AddOutput("Output", "(Tensor) Output Tensor with shape [N, H, W, 2].");
     AddAttr<bool>(
@@ -116,11 +116,11 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
                  [[x_21, x_22, x_23]
                   [x_24, x_25, x_26]]]
     
-        Size = [2, 3, 5, 5]
+        OutputShape = [2, 3, 5, 5]
 
     Step 1:
 
-        Generate relative coordinates according to Size.
+        Generate relative coordinates according to OutputShape.
         The values of relative coordinates are in the interval between -1 and 1.
         The shape of the relative coordinates is [2, H, W] as below:
     
@@ -174,7 +174,7 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto theta_dims = ctx->GetInputDim("Theta");
-    auto size_dims = ctx->GetInputDim("Size");
+    auto size_dims = ctx->GetInputDim("OutputShape");
     if (ctx->HasOutput(framework::GradVarName("Theta"))) {
       ctx->SetOutputDim(framework::GradVarName("Theta"), theta_dims);
     }
@@ -204,7 +204,7 @@ class AffineGridGradMaker : public framework::SingleGradOpDescMaker {
     auto* op = new framework::OpDesc();
     op->SetType("affine_grid_grad");
     op->SetInput("Theta", Input("Theta"));
-    op->SetInput("Size", Input("Size"));
+    op->SetInput("OutputShape", Input("OutputShape"));
     op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
 
     op->SetAttrMap(Attrs());
@@ -224,7 +224,9 @@ REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     affine_grid,
-    ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     affine_grid_grad,
-    ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, double>);

@@ -80,10 +80,6 @@ enum class PoolingMode {
   kMaximumDeterministic,
 };
 
-enum class SamplerType {
-  CUDNN_SAMPLER_BILINEAR,
-};
-
 #if CUDNN_VERSION < 6000
 #pragma message "CUDNN version under 6.0 is supported at best effort."
 #pragma message "We strongly encourage you to move to 6.0 and above."

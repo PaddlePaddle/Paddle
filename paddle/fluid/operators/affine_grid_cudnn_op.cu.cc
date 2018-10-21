@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,8 +39,8 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
     Tensor h_sizes;
     int* h_size_data;
     if (size_attr.size() == 0) {
-      auto* size = ctx.Input<Tensor>("Size");
-      framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+      auto* output_shape = ctx.Input<Tensor>("OutputShape");
+      framework::TensorCopy(*output_shape, platform::CPUPlace(), &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {
       h_size_data = h_sizes.mutable_data<int>({4}, ctx.GetPlace());
@@ -77,8 +77,8 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
     Tensor h_sizes;
     int* h_size_data;
     if (size_attr.size() == 0) {
-      auto* size = ctx.Input<Tensor>("Size");
-      framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+      auto* output_shape = ctx.Input<Tensor>("OutputShape");
+      framework::TensorCopy(*output_shape, platform::CPUPlace(), &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {
       h_size_data = h_sizes.mutable_data<int>({4}, ctx.GetPlace());
@@ -105,6 +105,8 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
 
 namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridOpKernel<float>);
+                   paddle::operators::CUDNNAffineGridOpKernel<float>,
+                   paddle::operators::CUDNNAffineGridOpKernel<double>);
 REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridGradOpKernel<float>);
+                   paddle::operators::CUDNNAffineGridGradOpKernel<float>,
+                   paddle::operators::CUDNNAffineGridGradOpKernel<double>);

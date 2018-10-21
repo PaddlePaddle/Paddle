@@ -153,7 +153,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
-    'affine_grid_gen',
+    'affine_grid_generator',
     'affine_channel',
 ]
 
@@ -6010,7 +6010,7 @@ def crop(x, shape=None, offsets=None, name=None):
     return out
 
 
-def affine_grid_gen(theta, out_shape):
+def affine_grid_generator(theta, out_shape, name=None):
     """
     It generates a grid of (x,y) coordinates using the parameters of
     the affine transformation that correspond to a set of points where
@@ -6026,12 +6026,12 @@ def affine_grid_gen(theta, out_shape):
 
           Given:
 
-              Theta = [[[x_11, x_12, x_13]
+              theta = [[[x_11, x_12, x_13]
                         [x_14, x_15, x_16]]
                        [[x_21, x_22, x_23]
                         [x_24, x_25, x_26]]]
       
-              Size = [2, 3, 5, 5]
+              out_shape = [2, 3, 5, 5]
       
           Step 1:
       
@@ -6084,7 +6084,10 @@ def affine_grid_gen(theta, out_shape):
 
     Args:
         theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
-        size (Variable | list | tuple): The target output image shape with format [N, C, H, W].
+        out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W].
+        out_shape can be a Variable or a list or tuple.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
         Variable: The output with shape [N, H, W, 2].
@@ -6097,13 +6100,13 @@ def affine_grid_gen(theta, out_shape):
         .. code-block:: python
             theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
             out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
-            data = fluid.layers.affine_grid_gen(theta, out_shape)
+            data = fluid.layers.affine_grid_generator(theta, out_shape)
 
             # or
-            data = fluid.layers.affine_grid_gen(theta, [5, 3, 28, 28])
+            data = fluid.layers.affine_grid_generator(theta, [5, 3, 28, 28])
 
     """
-    helper = LayerHelper('affine_grid_gen')
+    helper = LayerHelper('affine_grid_generator')
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
         isinstance(out_shape, Variable)):

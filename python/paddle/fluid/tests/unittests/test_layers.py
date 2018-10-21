@@ -855,7 +855,7 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
-    def test_affine_grid_gen(self):
+    def test_affine_grid_generator(self):
         program = Program()
         with program_guard(program):
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")

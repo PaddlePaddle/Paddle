@@ -53,9 +53,9 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {
-      auto* size = ctx.Input<Tensor>("Size");
+      auto* output_shape = ctx.Input<Tensor>("OutputShape");
       Tensor h_sizes;
-      framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+      framework::TensorCopy(*output_shape, platform::CPUPlace(), &h_sizes);
       const int* h_size_data = h_sizes.data<int>();
       h = h_size_data[2];
       w = h_size_data[3];
@@ -87,6 +87,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     Tensor grid;
     grid.mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
     auto grid_t = EigenTensor<T, 4>::From(grid);
+
     grid_t.device(place) = w_idx_t.reshape(Array2(1, w))
                                .broadcast(Array2(h, 1))
                                .reshape(Array3(h, w, 1))
@@ -99,6 +100,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
                                .concatenate(ones_t, 2)
                                .reshape(Array4(1, h, w, 3))
                                .broadcast(Array4(n, 1, 1, 1));
+
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
@@ -125,9 +127,9 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {
-      auto* size = ctx.Input<Tensor>("Size");
+      auto* output_shape = ctx.Input<Tensor>("OutputShape");
       Tensor h_sizes;
-      framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+      framework::TensorCopy(*output_shape, platform::CPUPlace(), &h_sizes);
       const int* h_size_data = h_sizes.data<int>();
       h = h_size_data[2];
       w = h_size_data[3];
