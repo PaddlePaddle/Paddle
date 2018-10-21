@@ -19,8 +19,8 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -30,10 +30,13 @@ namespace details {
 
 constexpr char kGlobalUnlivedNodePool[] = "global_unused_node_pool";
 constexpr char kGlobalReusedNodePairMap[] = "global_reused_nodepair_map";
+constexpr char kGraphReusedOps[] = "graph_ops_";
 
-using UnlivedNodePool = std::set<ir::Node*>; // order matters
-using ReusedNodePairMap = std::unordered_map<Node* /*op*/,
-                                             std::pair<Node*/*var*/, Node*/*reused var*/>>;
+using UnlivedNodePool = std::set<ir::Node*>;  // order matters
+using ReusedNodePairMap =
+    std::unordered_map<ir::Node* /*op*/,
+                       std::pair<ir::Node* /*var*/, ir::Node* /*reused var*/>>;
+using GraphReusedOps = std::vector<ir::Node*>;
 
 class ControlFlowGraph {
  public:

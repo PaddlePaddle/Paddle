@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
+#include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -50,6 +51,26 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 
+    // NOTE(dzh): memory optimize should be a runtime pass.
+    // However, after multi_devices_pass, VarHandle, OpHandle is
+    // the de-fact IR, any reuse on Graph is meaningless.
+    // A side-effect of that, memory optimize cannot forsee the fetched vars
+    // , so fetchlist should be set persistable before call the Run interface.
+    if (strategy.memory_optimize_) {
+      auto analysis_var_pass = AppendPass("analysis_var_pass");
+      details::ReusedNodePairMap reuse_map;
+      details::GraphReusedOps graph_ops;
+      analysis_var_pass->SetNotOwned(details::kGlobalReusedNodePairMap,
+                                     &reuse_map);
+      analysis_var_pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+
+      // TODO(dzh): reuse based unique name maybe deperated.
+      auto memory_reuse_pass = AppendPass("memory_reuse_pass");
+      memory_reuse_pass->SetNotOwned(details::kGlobalReusedNodePairMap,
+                                     &reuse_map);
+      memory_reuse_pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+    }
+
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -58,23 +79,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto multi_devices_print_pass = AppendPass("multi_devices_print_pass");
-      const std::string graph_path = string::Sprintf("%s%s", strategy_.debug_graphviz_path_.c_str(), "_multi_devices_graph");
+      const std::string graph_path =
+          string::Sprintf("%s%s", strategy_.debug_graphviz_path_.c_str(),
+                          "_multi_devices_graph");
       VLOG(3) << "multi_device graph " << graph_path;
-      multi_devices_print_pass->Set<std::string>(kGraphvizPath, new std::string(graph_path));
+      multi_devices_print_pass->Set<std::string>(kGraphvizPath,
+                                                 new std::string(graph_path));
       multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
           "graph_printer", new details::GraphvizSSAGraphPrinter);
-    }
-
-    // Add memory optimize pass
-    if (strategy.memory_optimize_) {
-      auto memory_optimize = AppendPass("memory_optimize_pass");
-      if (!strategy.debug_graphviz_path_.empty()) {
-        auto viz_pass = AppendPass("graph_viz_pass");
-        const std::string graph_path = string::Sprintf(
-                                                       "%s%s", strategy.debug_graphviz_path_.c_str(), "_optimized_graph");
-        viz_pass->Set<std::string>("graph_viz_path",
-                                   new std::string(graph_path));
-      }
     }
 
     // Verify that the graph is correct for multi-device executor.

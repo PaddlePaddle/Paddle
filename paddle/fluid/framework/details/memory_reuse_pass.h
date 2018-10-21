@@ -15,7 +15,7 @@
 
 #include <set>
 #include <string>
-
+#include <vector>
 #include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -23,11 +23,15 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class MemoryOptimizePass : public ir::Pass {
+class MemoryReusePass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
+ private:
+  void UpdateGraphFromReuseMap(const size_t& idx,
+                               const std::vector<ir::Node*>& graph_ops,
+                               ReusedNodePairMap* reused_node_map) const;
 };
 
 }  // namespace details
