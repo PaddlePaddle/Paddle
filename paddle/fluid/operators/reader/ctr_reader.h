@@ -55,13 +55,14 @@ class CTRReader : public framework::FileReader {
                      const std::vector<std::string>& slots,
                      const std::vector<std::string>& file_list)
       : batch_size_(batch_size), slots_(slots), file_list_(file_list) {
+    PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     PADDLE_ENFORCE_GT(file_list.size(), 0, "file list should not be empty");
     thread_num_ =
         file_list_.size() > thread_num ? thread_num : file_list_.size();
     queue_ = queue;
     SplitFiles();
-    for (int i = 0; i < thread_num_; ++i) {
+    for (size_t i = 0; i < thread_num_; ++i) {
       read_thread_status_.push_back(Stopped);
     }
   }
@@ -76,6 +77,7 @@ class CTRReader : public framework::FileReader {
 
   void Shutdown() override {
     VLOG(3) << "Shutdown reader";
+    // shutdown should stop all the reader thread
     for (auto& read_thread : read_threads_) {
       read_thread->join();
     }
@@ -108,7 +110,7 @@ class CTRReader : public framework::FileReader {
   }
 
  private:
-  int thread_num_;
+  size_t thread_num_;
   const int batch_size_;
   const std::vector<std::string> slots_;
   const std::vector<std::string> file_list_;
