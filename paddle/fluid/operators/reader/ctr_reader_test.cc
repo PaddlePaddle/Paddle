@@ -107,8 +107,8 @@ TEST(CTR_READER, read_data) {
   size_t batch_num =
       std::ceil(static_cast<float>(ctr_data.size()) / batch_size) * thread_num;
 
+  std::vector<LoDTensor> out;
   for (size_t i = 0; i < batch_num; ++i) {
-    std::vector<LoDTensor> out;
     reader.ReadNext(&out);
     ASSERT_EQ(out.size(), slots.size() + 1);
     auto& label_tensor = out.back();
@@ -126,5 +126,12 @@ TEST(CTR_READER, read_data) {
                           tensor_6002.dims()[1] * sizeof(int64_t)),
               0);
   }
+  reader.ReadNext(&out);
+  ASSERT_EQ(out.size(), 0);
   ASSERT_EQ(queue->Size(), 0);
+  reader.Shutdown();
+
+  reader.Start();
+  reader.Shutdown();
+  ASSERT_EQ(queue->Size(), 5);
 }

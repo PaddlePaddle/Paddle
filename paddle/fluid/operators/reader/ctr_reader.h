@@ -16,6 +16,7 @@
 
 #include <sys/time.h>
 
+#include <chrono>  // NOLINT
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -39,6 +40,11 @@ void ReadThread(const std::vector<std::string>& file_list,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue);
 
+// monitor all running thread, if they are all stopped,
+// then push an empty data into LoDTensorBlockingQueue
+void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
+                   std::shared_ptr<LoDTensorBlockingQueue> queue);
+
 class CTRReader : public framework::FileReader {
  public:
   explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
@@ -58,7 +64,7 @@ class CTRReader : public framework::FileReader {
     }
   }
 
-  ~CTRReader() { Shutdown(); }
+  ~CTRReader() {}
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
@@ -68,12 +74,19 @@ class CTRReader : public framework::FileReader {
 
   void Shutdown() override {
     VLOG(3) << "Shutdown reader";
+    if (status_ == ReaderStatus::kStopped) {
+      return;
+    }
     // shutdown should stop all the reader thread
     for (auto& read_thread : read_threads_) {
       read_thread->join();
     }
+    monitor_thread_->join();
+
     read_threads_.clear();
+    monitor_thread_.reset(nullptr);
     queue_->Close();
+    status_ = ReaderStatus::kStopped;
   }
 
   void Start() override {
@@ -87,6 +100,9 @@ class CTRReader : public framework::FileReader {
           std::bind(&ReadThread, file_groups_[thread_id], slots_, batch_size_,
                     thread_id, &read_thread_status_, queue_)));
     }
+    monitor_thread_.reset(new std::thread(
+        std::bind(&MonitorThread, &read_thread_status_, queue_)));
+    status_ = ReaderStatus::kRunning;
   }
 
  private:
@@ -107,6 +123,7 @@ class CTRReader : public framework::FileReader {
   const std::vector<std::string> file_list_;
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
   std::vector<std::unique_ptr<std::thread>> read_threads_;
+  std::unique_ptr<std::thread> monitor_thread_;
   std::vector<ReaderThreadStatus> read_thread_status_;
   std::vector<std::vector<std::string>> file_groups_;
 };
