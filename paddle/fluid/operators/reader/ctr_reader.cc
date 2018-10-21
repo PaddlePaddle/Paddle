@@ -168,7 +168,10 @@ void ReadThread(const std::vector<std::string>& file_list,
 
   while (reader.HasNext()) {
     batch_data.clear();
+    batch_data.reserve(batch_size);
+
     batch_label.clear();
+    batch_label.reserve(batch_size);
 
     // read batch_size data
     for (int i = 0; i < batch_size; ++i) {
@@ -205,7 +208,8 @@ void ReadThread(const std::vector<std::string>& file_list,
       int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
           framework::make_ddim({1, static_cast<int64_t>(batch_feasign.size())}),
           platform::CPUPlace());
-      memcpy(tensor_data, batch_feasign.data(), batch_feasign.size());
+      memcpy(tensor_data, batch_feasign.data(),
+             batch_feasign.size() * sizeof(int64_t));
       lod_datas.push_back(lod_tensor);
     }
 
@@ -214,7 +218,8 @@ void ReadThread(const std::vector<std::string>& file_list,
     int64_t* label_tensor_data = label_tensor.mutable_data<int64_t>(
         framework::make_ddim({1, static_cast<int64_t>(batch_label.size())}),
         platform::CPUPlace());
-    memcpy(label_tensor_data, batch_label.data(), batch_label.size());
+    memcpy(label_tensor_data, batch_label.data(),
+           batch_label.size() * sizeof(int64_t));
     lod_datas.push_back(label_tensor);
 
     queue->Push(lod_datas);
