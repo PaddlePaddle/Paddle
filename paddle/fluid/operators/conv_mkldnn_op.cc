@@ -350,29 +350,10 @@ std::cout<<"fuse_relu = "<<fuse_relu<<"  fuse_residual_conn = "<<fuse_residual_c
 
     std::vector<float> output_shift_scale;
     float sum_scale = 1.0f;
-
-for(int i=0; i<50; i++){
-    printf("%f ", (float)*(input_data+i));
-}
-printf("\n");fflush(stdout);
-
     if(is_INT8){
 std::cout<<"this is conv int8 op .............."<<std::endl;
-
-//unsigned char* a = (unsigned char*)(input_data);
-//for(int i=0; i<50; i++){
-//    printf("%d ", *(a+i));
-//}
-//printf("\n");
-
         int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
         float scale_in_data = *(scale_in->data<float>());
-
-for(int i=0; i<50; i++){
-    printf("%f ", *(input_data+i)/scale_in_data);
-}
-printf("\n");fflush(stdout);
-
         std::vector<float> scale_weights_data(count);
         for(int i=0; i<count; i++){
             scale_weights_data[i] =*(scale_weights->data<float>() + i);
@@ -498,6 +479,7 @@ std::cout<<key_conv_pd<<std::endl;
         weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
             user_weights_memory_p, pipeline, is_test);
     }
+ 
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
     if(is_INT8){
@@ -528,7 +510,7 @@ std::cout<<key_conv_pd<<std::endl;
                   handler.AcquireDstMemoryFromPrimitive(to_void_cast<int8_t>(output_data));
           }
         }
-std::cout<<"input fmt = "<<input->format()<<"   input dt = "<<paddle::framework::ToMKLDNNDataType(input->type())<<"  output fmt = "<<output->format()<<"   output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<"  dst dt = "<<dst_memory_p->get_primitive_desc().desc().data.data_type<<std::endl;
+std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<std::endl;
     } else{
         T* output_data = nullptr;
         if (fuse_residual_conn) {
