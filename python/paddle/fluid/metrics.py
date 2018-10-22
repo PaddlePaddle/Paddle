@@ -610,8 +610,8 @@ class DetectionMAP(object):
 
         In the above example:
 
-        'cur_map_v' is the mAP of current mini-batch.
-        'accum_map_v' is the accumulative mAP of one pass.
+            'cur_map_v' is the mAP of current mini-batch.
+            'accum_map_v' is the accumulative mAP of one pass.
     """
 
     def __init__(self,
