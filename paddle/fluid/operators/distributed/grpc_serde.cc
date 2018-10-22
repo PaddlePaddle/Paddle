@@ -36,6 +36,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
                            const std::string& out_name) {
+  platform::RecordRPCEvent record_event("serial", &ctx);
   // Default DestroyCallback does nothing, When using GPU
   // the CPU buffer need to be freed.
   DestroyCallback destroy_callback = [](void* backing) {};
@@ -147,6 +148,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
                                framework::Variable** var) {
+  platform::RecordRPCEvent record_event("deserial", &ctx);
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();

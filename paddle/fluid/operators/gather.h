@@ -39,11 +39,9 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // check index of shape 1-D
   PADDLE_ENFORCE(index.dims().size() == 1);
-  int index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
-  framework::DDim output_dims(src_dims);
-  output_dims[0] = index_size;
 
   const T* p_src = src.data<T>();
   const int* p_index = index.data<int>();
@@ -55,7 +53,7 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
-  for (int i = 0; i < index_size; ++i) {
+  for (int64_t i = 0; i < index_size; ++i) {
     int index_ = p_index[i];
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
