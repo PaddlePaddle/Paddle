@@ -135,6 +135,22 @@ class FlattenGradInferShape : public framework::InferShapeBase {
   }
 };
 
+class FlattenGradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("flatten_grad");
+    grad_op->SetInput("X", Input("X"));
+    DiscardMemory(Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 class FlattenGradOp : public framework::OperatorBase {
  public:
   using OperatorBase::OperatorBase;
@@ -274,8 +290,7 @@ USE_OP(reshape);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
-                  ops::FlattenOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FlattenOpInferShape, ops::FlattenGradOpMaker);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp, ops::FlattenGradInferShape);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,

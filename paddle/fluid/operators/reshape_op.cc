@@ -184,13 +184,16 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
+                ->type()),
         ctx.device_context());
   }
 };
@@ -243,6 +246,23 @@ class ReshapeGradKernel {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(in_dims);
+  }
+};
+
+// Another possible way to share dims and lods between in and out
+class ReshapeGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("reshape_grad");
+    grad_op->SetInput("X", Input("X"));
+    DiscardMemory(Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -331,10 +351,13 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
 
 }  // namespace operators
 }  // namespace paddle
+
+USE_NO_KERNEL_OP(share_shape_lod);
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ReshapeGradMaker);
 REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,

@@ -181,6 +181,22 @@ class SqueezeGradOp : public framework::OperatorBase {
   }
 };
 
+class SqueezeGradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("squeeze_grad");
+    grad_op->SetInput("X", Input("X"));
+    DiscardMemory(Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 // FIXME(zcd): squeeze2 adds an intermediate output(XShape) based on squeeze,
 // the XShape is used to carry the shape and lod of X which will be used in
 // squeeze_grad, in this way, the framework can reuse the memory of X
@@ -296,8 +312,7 @@ USE_OP(reshape);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
-                  ops::SqueezeOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SqueezeOpInferShape, ops::SqueezeGradOpMaker);
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp, ops::SqueezeGradInferShape);
 
 REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,

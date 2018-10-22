@@ -71,7 +71,7 @@ class GradOpDescMakerBase {
 
     if (!inputs.empty()) {
       std::unique_ptr<OpDesc> discard_memory_op(
-          new OpDesc("share_shape_lod_op", inputs, outputs,
+          new OpDesc("share_shape_lod", inputs, outputs,
                      {{"share_shape", share_shape}, {"share_lod", share_lod}}));
       ret.insert(ret.begin(), std::move(discard_memory_op));
     }

@@ -98,6 +98,23 @@ $[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
   }
 };
 
+class TransposeOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("transpose_grad");
+    grad_op->SetInput("X", Input("X"));
+    DiscardMemory(Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 class TransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -111,6 +128,16 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
+                ->type()),
+        ctx.device_context());
   }
 };
 
@@ -204,9 +231,11 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+USE_NO_KERNEL_OP(share_shape_lod);
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(transpose, ops::TransposeOp, ops::TransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TransposeOpGradMaker);
 REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

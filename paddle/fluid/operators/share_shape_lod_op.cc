@@ -27,7 +27,7 @@ class ShareShapeLodOpInferShape : public framework::InferShapeBase {
         "InferShape of ShareShapeLodOp should not be called during runtime.");
 
     PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) must exist");
-    PADDLE_ENFORCE(ctx->HasInputs("Out"), "Outputs(Out) must exist");
+    PADDLE_ENFORCE(ctx->HasOutputs("Out"), "Outputs(Out) must exist");
 
     const auto& share_shape =
         ctx->Attrs().Get<std::vector<bool>>("share_shape");
