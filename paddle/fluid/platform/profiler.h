@@ -87,6 +87,16 @@ struct RecordEvent {
   std::string full_name_;
 };
 
+class RecordRPCEvent {
+ public:
+  // dev_ctx can be set to nullptr if device is cpu.
+  RecordRPCEvent(const std::string& name, const DeviceContext* dev_ctx);
+  ~RecordRPCEvent() {}
+
+ private:
+  std::unique_ptr<RecordEvent> event_;
+};
+
 struct RecordBlock {
   explicit RecordBlock(int block_id);
   ~RecordBlock();
