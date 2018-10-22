@@ -41,6 +41,7 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'execute_strategy_block',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -112,6 +113,108 @@ def _full_name_scope():
         name = scope.name() + "/" + name
         scope = scope.parent()
     return name
+
+
+@contextlib.contextmanager
+def execute_strategy_block(main_program,
+                           dtype=np.float16,
+                           enable_tensor_core=None,
+                           **kwargs):
+    """
+    The execution of the operators in execute_strategy_block runs in accordance
+    with the parameters specified. If the dtype is np.float32, all operators'
+    input and output are np.float32, if not, execute_strategy_block will insert
+    cast_op to convert to dtype.
+
+    Args:
+        dtype(str): default "float32".
+        ...
+
+    Examples:
+        .. code-block:: python
+
+           with execut_strategy_block(dtype="float16"):
+               conv_pool_1 = fluid.nets.simple_img_conv_pool(
+                                        input=img,
+                                        filter_size=5,
+                                        num_filters=20,
+                                        pool_size=2,
+                                        pool_stride=2,
+                                        act="relu")
+                ...
+    """
+    if not isinstance(main_program, Program):
+        raise TypeError("execut_strategy_block takes a program")
+
+    pre_op_idx = len(main_program.current_block().ops)
+    yield
+    cur_op_idx = len(main_program.current_block().ops)
+
+    cur_block = main_program.current_block()
+    ops = [
+        cur_block.ops[i + pre_op_idx] for i in range(cur_op_idx - pre_op_idx)
+    ]
+
+    inner_inputs = set()
+    inner_outputs = set()
+    itermediate_out = set()
+    for op in ops:
+        for iname in op.input_names:
+            for in_var_name in op.input(iname):
+                if in_var_name not in inner_outputs:
+                    inner_inputs.add(in_var_name)
+                else:
+                    itermediate_out.add(in_var_name)
+
+        for oname in op.output_names:
+            for out_var_name in op.output(oname):
+                inner_outputs.add(out_var_name)
+
+    def _rename_arg_(old_name, new_name, begin_idx=None, end_idx=None):
+        """
+        Traverse all ops in op_descs[begin_idx : end_idx],
+        if any op has inputs/outputs named "old_name", rename it as 'new_name'
+        """
+        if begin_idx is None:
+            begin_idx = 0
+        if end_idx is None:
+            end_idx = len(cur_block.ops)
+        for i in range(begin_idx, end_idx):
+            op_desc = cur_block.ops[i].desc
+            if isinstance(op_desc, tuple):
+                op_desc = op_desc[0]
+            op_desc._rename_input(old_name, new_name)
+            op_desc._rename_output(old_name, new_name)
+
+    def _create_tmp_variable(name, dtype, stop_gradient=False):
+        return cur_block.create_var(
+            name=unique_name.generate(".".join([name, 'tmp'])),
+            dtype=dtype,
+            persistable=False,
+            stop_gradient=stop_gradient)
+
+    # TODO(zcd): insert cast_op to the current block
+    # reset the argument of cur_block.ops and insert them to the current block
+    next_op_idx = pre_op_idx
+    for in_var_name in inner_inputs:
+        in_var = cur_block.var(in_var_name)
+        out_var = _create_tmp_variable("casted_" + in_var.name, dtype)
+        out_var_dtype = convert_np_dtype_to_dtype_(dtype)
+        cur_block._insert_op(
+            next_op_idx,
+            type="cast",
+            inputs={'X': in_var},
+            outputs={"Out": out_var},
+            attrs={'in_dtype': in_var.dtype,
+                   'out_dtype': out_var_dtype})
+        next_op_idx += 1
+        _rename_arg_(in_var.name, out_var.name, next_op_idx)
+        # The output's dtype might be changed too.
+
+    # TODO(zcd): insert cast_op to the current block
+    # Node: Some output doesn't need convert data type
+    # Temporally doesn't cast data to origin type, because some
+    # output may be not used.
 
 
 def generate_control_dev_var_name():
