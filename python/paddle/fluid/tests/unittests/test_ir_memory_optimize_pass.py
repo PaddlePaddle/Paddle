@@ -90,8 +90,6 @@ class TestMNIST(TestParallelExecutorBase):
     def _compare_ir_and_python_memory_optimize(self, model, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
             return
-        # self.check_network_convergence(model, use_cuda=use_cuda, memory_opt=False, use_ir_memory_optimize=False)
-        # self.check_network_convergence(model, use_cuda=use_cuda, memory_opt=False, use_ir_memory_optimize=True)
 
         img, label = self._dummy_data()
         first_loss0, last_loss0 = self.check_network_convergence(
@@ -119,9 +117,9 @@ class TestMNIST(TestParallelExecutorBase):
         self._compare_ir_and_python_memory_optimize(simple_fc_net, False)
         self._compare_ir_and_python_memory_optimize(simple_fc_net, True)
 
-    # def test_fc_with_reshape_net(self):
-    #     self._compare_ir_and_python_memory_optimize(simple_fc_net, False)
-    #     self._compare_ir_and_python_memory_optimize(simple_fc_net, True)
+    def test_fc_with_reshape_net(self):
+        self._compare_ir_and_python_memory_optimize(simple_fc_net, False)
+        self._compare_ir_and_python_memory_optimize(simple_fc_net, True)
 
 
 if __name__ == '__main__':

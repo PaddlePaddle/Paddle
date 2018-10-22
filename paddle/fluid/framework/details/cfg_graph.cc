@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <algorithm>
 
 #include "paddle/fluid/framework/details/cfg_graph.h"
@@ -24,14 +23,10 @@ namespace details {
 
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
   ops_ = ir::TopologySortOperations(graph);
-  // 1. build graph
-  // for (auto& op : ops) {
-  //   PADDLE_ENFORCE(op->NodeType() == ir::Node::Type::kOperation);
-  // }
   for (auto& op : ops_) {
-    PADDLE_ENFORCE(op->NodeType() == ir::Node::Type::kOperation,
-                   string::Sprintf("Expect op, but get %s ", op->Name()));
-    // ops_.push_back(op);
+    PADDLE_ENFORCE(
+        op->NodeType() == ir::Node::Type::kOperation,
+        string::Sprintf("ControlFlow expect op, but get %s ", op->Name()));
     if (successors_.find(op) == successors_.end()) {
       // op info init
       successors_[op] = std::list<ir::Node*>();
@@ -83,13 +78,11 @@ void ControlFlowGraph::LiveVariableAnalysis() {
   while (!worklist.empty()) {
     ir::Node* op = worklist.front();
     worklist.pop_front();
-    PADDLE_ENFORCE(
-        live_in_.find(op) != live_in_.end(),
-        string::Sprintf("Expect %s in live_in, but Not Found.", op->Name()));
+    PADDLE_ENFORCE(live_in_.find(op) != live_in_.end(),
+                   string::Sprintf("Expect var %s in live_in, but Not Found.",
+                                   op->Name()));
     node_live_in = live_in_[op];
     for (auto& s : successors_[op]) {
-      // std::set_union(live_in_[s].begin(), live_in_[s].end(),
-      // live_out_[op].begin(), live_out_[op].end(), live_out_[op].begin());
       for (auto& var : live_in_[s]) {
         if (live_out_[op].find(var) == live_out_[op].end()) {
           live_out_[op].insert(var);
@@ -113,10 +106,6 @@ void ControlFlowGraph::LiveVariableAnalysis() {
         worklist.push_back(pre);
       }
     }
-    // std::set_difference(live_out_[op].begin(), live_out_[op].end(),
-    // defs_[op].begin(), defs_[op].end(), live_in_[op].beign());
-    // std::set_union(live_in_[op].begin(), live_in_[op].end(),
-    // defs_[op].begin(), defs_[op])
   }
 }
 

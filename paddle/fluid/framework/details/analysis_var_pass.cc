@@ -71,8 +71,6 @@ const std::string AnalysisVarPass::DebugString(ir::Node* var) const {
 
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  // auto& node_pool = Get<UnlivedNodePool>(kGlobalUnlivedNodePool);
-  // auto &fetched_vars = Get<std::unordered_set<std::string>>(kFetchedVars);
   auto& node_pair_map = Get<ReusedNodePairMap>(kGlobalReusedNodePairMap);
   auto& graph_ops = Get<std::vector<ir::Node*>>(kGraphReusedOps);
 
@@ -92,7 +90,6 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
                                                   node->Name()));
     auto* desc = node->Var();
     proto::VarType::Type type = desc->GetType();
-    // if (fetched_vars.count(node)) {return false;}
     if (desc->Persistable() || (type != proto::VarType::LOD_TENSOR &&
                                 type != proto::VarType::SELECTED_ROWS) ||
         desc->GetShape().size() == 0) {

@@ -53,17 +53,20 @@ class ControlFlowGraph {
   const std::vector<ir::Node*>& Ops() const;
 
  private:
-  typedef std::unordered_map<ir::Node*, std::list<ir::Node*>> NodeListType;
-  typedef std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>>
-      NodeSetType;
-
-  std::vector<ir::Node*> ops_;  // topology sort ops
-  NodeListType successors_;
-  NodeListType predecessors_;
-  NodeSetType live_in_;
-  NodeSetType live_out_;
-  NodeSetType uses_;
-  NodeSetType defs_;
+  using NodeListMap = std::unordered_map<ir::Node*, std::list<ir::Node*>>;
+  using NodeSetMap =
+      std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>>;
+  // successors ops use the output variables.
+  NodeListMap successors_;
+  // predecessors ops generated input variables.
+  NodeListMap predecessors_;
+  // variables lived before run current op.
+  NodeSetMap live_in_;
+  // variables lived after run current op.
+  NodeSetMap live_out_;
+  NodeSetMap uses_;             // op inputs
+  NodeSetMap defs_;             // op outputs
+  std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
 
 }  // namespace details

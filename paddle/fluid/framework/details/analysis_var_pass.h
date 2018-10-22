@@ -30,10 +30,11 @@ class AnalysisVarPass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
+  // search pool for a best fit Node.
   bool NodeMatching(ir::Node* var, ir::Node** cache, int* idx) const;
 
   const std::string DebugString(ir::Node* var) const;
-
+  // Reuse Node Pool
   mutable details::UnlivedNodePool pool;
 };
 

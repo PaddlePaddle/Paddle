@@ -61,13 +61,13 @@ struct BuildStrategy {
   };
 
   enum class OptimizeStrategy {
-    kBruteForce = 0, // naive recursive compute unused var names.
-    kControlFlowGraph = 1, // use cfg_graph algorithm, faster speed.
+    kBruteForce = 0,        // bruteforce, recursive compute unused var names.
+    kControlFlowGraph = 1,  // use cfg_graph algorithm, faster speed.
   };
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-  OptimizeStrategy strategy_{OptimizeStrategy::kBruteForce};
+  OptimizeStrategy strategy_{OptimizeStrategy::kControlFlowGraph};
 
   std::string debug_graphviz_path_{""};
 
