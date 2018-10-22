@@ -24,6 +24,7 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
   VLOG(3) << "Aplies MKL-DNN placement strategy.";
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
+  graph->Set<bool>("use_mkldnn", new bool(true));
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
