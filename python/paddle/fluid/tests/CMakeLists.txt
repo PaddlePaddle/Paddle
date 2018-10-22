@@ -1,7 +1,7 @@
 if(NOT APPLE)
   set(PYTHON_TESTS_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "python tests directory")
 else()
-  set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
+  set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests CACHE INTERNAL "python tests directory")
 endif(NOT APPLE)
 
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
