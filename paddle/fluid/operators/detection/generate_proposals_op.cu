@@ -417,7 +417,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_rois_data = rpn_rois->data<T>();
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
-    auto &place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
 
     int64_t num_proposals = 0;
     std::vector<size_t> offset(1, 0);

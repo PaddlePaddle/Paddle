@@ -53,22 +53,13 @@ def simple_fc_net(in_size,
                   hidden_sizes,
                   batch_size,
                   queue_capacity,
-                  use_double_buffer=False,
-                  use_feed_list=True):
-    if use_feed_list:
-        data = fluid.layers.data(name="data", dtype='float32', shape=[in_size])
-        label = fluid.layers.data(name='label', dtype='int64', shape=[1])
-        reader = fluid.layers.create_py_reader_by_data(
-            capacity=queue_capacity,
-            use_double_buffer=False,
-            feed_list=[data, label])
-    else:
-        reader = fluid.layers.py_reader(
-            capacity=queue_capacity,
-            shapes=[[-1, in_size], [-1, 1]],
-            lod_levels=[0, 0],
-            dtypes=['float32', 'int64'],
-            use_double_buffer=False)
+                  use_double_buffer=False):
+    reader = fluid.layers.py_reader(
+        capacity=queue_capacity,
+        shapes=[[-1, in_size], [-1, 1]],
+        lod_levels=[0, 0],
+        dtypes=['float32', 'int64'],
+        use_double_buffer=False)
     feed_queue = reader.queue
     reader = fluid.layers.batch(reader, batch_size=batch_size)
     if use_double_buffer:
@@ -109,16 +100,14 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             for use_parallel_executor in [False, True]:
                 for use_double_buffer in [False, True]:
-                    for use_feed_list in [False, True]:
-                        print('Test Parameters:'),
-                        print({
-                            'use_cuda': use_cuda,
-                            'use_parallel_executor': use_parallel_executor,
-                            'use_double_buffer': use_double_buffer,
-                            'use_feed_list': use_feed_list
-                        })
-                        self.main(use_cuda, use_parallel_executor,
-                                  use_double_buffer, use_feed_list)
+                    print('Test Parameters:'),
+                    print({
+                        'use_cuda': use_cuda,
+                        'use_parallel_executor': use_parallel_executor,
+                        'use_double_buffer': use_double_buffer
+                    })
+                    self.main(use_cuda, use_parallel_executor,
+                              use_double_buffer)
 
     def random_reader(self):
         def reader():
@@ -154,14 +143,12 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
     def main(self,
              use_cuda=True,
              use_parallel_executor=False,
-             use_double_buffer=False,
-             use_feed_list=False):
+             use_double_buffer=False):
         assert not use_cuda or use_cuda and core.is_compiled_with_cuda()
 
         self.use_cuda = use_cuda
         self.use_parallel_executor = use_parallel_executor
         self.use_double_buffer = use_double_buffer
-        self.use_feed_list = use_feed_list
 
         startup_program = fluid.Program()
         main_program = fluid.Program()
@@ -173,8 +160,7 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                 hidden_sizes=self.hidden_sizes,
                 batch_size=self.batch_size,
                 queue_capacity=self.queue_capacity,
-                use_double_buffer=self.use_double_buffer,
-                use_feed_list=self.use_feed_list)
+                use_double_buffer=self.use_double_buffer)
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
