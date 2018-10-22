@@ -6119,7 +6119,7 @@ def affine_grid_generator(theta, out_shape, name=None):
     ipts = {'Theta': theta}
     attrs = {}
     if isinstance(out_shape, Variable):
-        ipts['Size'] = out_shape
+        ipts['OutputShape'] = out_shape
     else:
         attrs['size'] = out_shape
 
