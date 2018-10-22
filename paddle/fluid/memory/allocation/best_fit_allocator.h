@@ -37,8 +37,8 @@ struct Chunk {
 //   | Chunk | prev_ pointer | next_ pointer | payload .... |
 //   *-------*---------------*---------------*--------------*
 // This implementation can just return a raw pointer, and we can get the list
-// structure by it. However, we cannot use the same code on GPU since CPU
-// cannot access GPU memory directly.
+// structure by the raw pointer. However, we cannot use the same code on GPU
+// since CPU cannot access GPU memory directly.
 //
 // So we choose to use `std::list` and return an allocation instance, which
 // contains the list node iterator, then we can unify CPU/GPU code.
