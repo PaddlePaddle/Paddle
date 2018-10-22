@@ -31,7 +31,7 @@ namespace allocation {
 // invoke its `allocate` method.
 //
 // NOTE(yy): The AutoIncrementAllocator will prefer to allocate memory from
-// the latest sucessful allocator.
+// the latest successful allocator.
 //
 // NOTE(yy): We may need to release an underlying allocator if it allocate
 // nothing. However, it is generally not useful, since it will make performance
@@ -76,27 +76,26 @@ class AutoIncrementAllocator : public ManagedAllocator {
         }
       } catch (...) {
         // if there is another type of allocation, just rethrow it.
-        std::rethrow_exception(std::current_exception());
+        throw;
       }
     }
-    // No suitable allocator
 
     // This happens when the first allocator is exhausted and
     // there are more than 1 allocation requests
     // In this situation, the first allocation request would success
     // and the second allocation request would fail if we do not use
     // the newly created allocator by the first allocation request.
-    for (size_t new_allocator_num = allocator_num_.load();
-         allocator_num < new_allocator_num; ++allocator_num) {
+    for (cur = allocator_num; cur < allocator_num_; ++cur) {
       try {
-        auto ret = callback(*underlying_allocators_[allocator_num]);
-        prev_success_allocator_ = allocator_num;
+        auto ret = callback(*underlying_allocators_[cur]);
+        prev_success_allocator_ = cur;
         return std::move(ret);
       } catch (BadAlloc&) {
       } catch (...) {
-        std::rethrow_exception(std::current_exception());
+        throw;
       }
     }
+    // No suitable allocator
 
     ManagedAllocator* new_allocator;
     {
@@ -108,7 +107,7 @@ class AutoIncrementAllocator : public ManagedAllocator {
       underlying_allocators_[old_size] = creator_();
       new_allocator = underlying_allocators_[old_size].get();
       prev_success_allocator_ = old_size;
-      allocator_num_.fetch_add(1);
+      ++allocator_num_;
     }
 
     PADDLE_ENFORCE(
