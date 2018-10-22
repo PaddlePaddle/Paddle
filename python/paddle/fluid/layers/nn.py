@@ -5478,7 +5478,7 @@ def roi_align(input,
     """
     helper = LayerHelper('roi_align', **locals())
     dtype = helper.input_dtype()
-    align_out = helper.create_tmp_variable(dtype)
+    align_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="roi_align",
         inputs={"X": input,
@@ -7481,7 +7481,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
     helper = LayerHelper("affine_channel", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
