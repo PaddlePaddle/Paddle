@@ -71,6 +71,7 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
+ protected:
   std::vector<std::unique_ptr<framework::OpDesc>> Make() const override {
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     auto x_g = InputGrad("X");

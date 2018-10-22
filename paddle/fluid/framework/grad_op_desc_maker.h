@@ -45,9 +45,7 @@ class GradOpDescMakerBase {
 
   virtual ~GradOpDescMakerBase() = default;
 
-  virtual std::vector<std::unique_ptr<OpDesc>> Make() const = 0;
-
-  std::vector<std::unique_ptr<OpDesc>> operator()() {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const {
     std::vector<std::unique_ptr<OpDesc>> ret = Make();
     if (discard_memory_map_.empty()) return ret;
 
@@ -71,14 +69,18 @@ class GradOpDescMakerBase {
       }
     }
 
-    std::unique_ptr<OpDesc> discard_memory_op(
-        new OpDesc("share_shape_lod_op", inputs, outputs,
-                   {{"share_lod", share_lod}, {"share_shape", share_shape}}));
-    ret.insert(ret.begin(), std::move(discard_memory_op));
+    if (!inputs.empty()) {
+      std::unique_ptr<OpDesc> discard_memory_op(
+          new OpDesc("share_shape_lod_op", inputs, outputs,
+                     {{"share_shape", share_shape}, {"share_lod", share_lod}}));
+      ret.insert(ret.begin(), std::move(discard_memory_op));
+    }
     return ret;
   }
 
  protected:
+  virtual std::vector<std::unique_ptr<OpDesc>> Make() const = 0;
+
   static std::string DiscardMemoryName(const std::string& name) {
     return name + "@DiscardMemory@";
   }
@@ -170,7 +172,7 @@ class GradOpDescMakerBase {
   const OpDesc& ForwardOp() const { return fwd_op_; }
 
   void DiscardMemory(const std::string& name, bool leave_shape = true,
-                     bool leave_lod = true) {
+                     bool leave_lod = true) const {
     if (discard_memory_map_.count(name)) {
       PADDLE_ENFORCE(discard_memory_map_[name].first == leave_shape,
                      "Have set leave_shape = %d in %s, but reset to be %d",
@@ -181,7 +183,7 @@ class GradOpDescMakerBase {
                      static_cast<int>(discard_memory_map_[name].second),
                      fwd_op_.Type(), leave_lod);
     } else {
-      PADDLE_ENFORCE(leave_shape == false && leave_lod == false,
+      PADDLE_ENFORCE(leave_shape || leave_lod,
                      "Cannot discard memory of %s without leaving shape and "
                      "lods at the same time",
                      name);
@@ -195,14 +197,14 @@ class GradOpDescMakerBase {
       PADDLE_ENFORCE(has_input || has_output,
                      "%s cannot be found in forward_op %s", name,
                      fwd_op_.Type());
-      discard_memory_map_[name] = std::make_pair(leave_lod, leave_shape);
+      discard_memory_map_[name] = std::make_pair(leave_shape, leave_lod);
     }
   }
 
   void DiscardMemory(const std::vector<std::string>& names,
-                     bool leave_shape = true, bool leave_lod = true) {
+                     bool leave_shape = true, bool leave_lod = true) const {
     for (auto& name : names) {
-      DiscardMemory(name, leave_lod, leave_shape);
+      DiscardMemory(name, leave_shape, leave_lod);
     }
   }
 
@@ -210,7 +212,8 @@ class GradOpDescMakerBase {
   const OpDesc& fwd_op_;
 
   // argument_name -> (leave_shape, leave_lod)
-  std::unordered_map<std::string, std::pair<bool, bool>> discard_memory_map_;
+  mutable std::unordered_map<std::string, std::pair<bool, bool>>
+      discard_memory_map_;
 
   const std::unordered_set<std::string>& no_grad_set_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
@@ -223,6 +226,7 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
+ protected:
   std::vector<std::unique_ptr<OpDesc>> Make() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(this->Apply());
@@ -267,6 +271,8 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 class EmptyGradOpMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
+
+ protected:
   std::vector<std::unique_ptr<OpDesc>> Make() const final { return {}; }
 };
 
