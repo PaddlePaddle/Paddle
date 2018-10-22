@@ -633,6 +633,44 @@ struct ConvBias : public PatternBase {
   PATTERN_DECL_NODE(eltwise_bias);
   PATTERN_DECL_NODE(eltwise_out);
 };
+
+// Convolution op
+// Forward pass for convolution.
+// conv_input, conv_bias and conv_filter are inputs.
+// conv_output is a result of the operator.
+// residual_data is data used by skip connection.
+// If residual connection fusion is on, the formula is:
+// conv_output = conv_op(conv_filter, conv_input, conv_bias)
+//             + conv_residual_data
+// If the fusion is off, conv_residual_data is not added.
+struct Conv : public PatternBase {
+  Conv(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "convolution") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_input);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_residual_data);
+  PATTERN_DECL_NODE(conv_output);
+};
+
+// ElementwiseAdd used in residual connections.
+// y_var is used and convolution output.
+// The operator is removed, when residual
+// connection fusion is on.
+struct ElementwiseAdd : public PatternBase {
+  ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_add") {}
+
+  PDNode* operator()(PDNode* x_var);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_x);
+  PATTERN_DECL_NODE(elementwise_add_y);
+  PATTERN_DECL_NODE(elementwise_add_out);
+};
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
