@@ -35,7 +35,7 @@ class RetryAllocation : public Allocation {
         underlying_allocation_(std::move(underlying_allocation)),
         retry_allocator_(retry_allocator) {}
 
-  ~RetryAllocation();
+  ~RetryAllocation() final;
 
  private:
   std::unique_ptr<Allocation> underlying_allocation_;
@@ -61,13 +61,17 @@ class RetryAllocator : public ManagedAllocator,
 
   bool IsAllocThreadSafe() const override;
 
-  std::unique_ptr<Allocation> Allocate(
-      size_t size, Allocator::Attr attr = kDefault) override;
+  std::unique_ptr<Allocation> Allocate(size_t size,
+                                       Allocator::Attr attr) override;
 
-  std::shared_ptr<Allocation> AllocateShared(
-      size_t size, Allocator::Attr attr = kDefault) override;
+  std::shared_ptr<Allocation> AllocateShared(size_t size,
+                                             Allocator::Attr attr) override;
+
+  void FreeUnderlyingAllocation(std::unique_ptr<Allocation>&& allocation);
 
  private:
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr);
+
   void EnforceCheck() {
     PADDLE_ENFORCE_NOT_NULL(
         underlying_allocator_.get(),
