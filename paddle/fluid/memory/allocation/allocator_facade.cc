@@ -193,8 +193,7 @@ class CUDAPinnedManagedAllocator : public ChunkedManagedAllocator {
 
 class AllocatorFacadePrivate {
  public:
-  std::unordered_map<platform::Place, std::shared_ptr<ManagedAllocator>>
-      allocators_;
+  std::map<platform::Place, std::shared_ptr<ManagedAllocator>> allocators_;
 
   ~AllocatorFacadePrivate() = default;
 
