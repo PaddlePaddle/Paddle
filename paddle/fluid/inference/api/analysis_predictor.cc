@@ -25,9 +25,11 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(profile);
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 
@@ -46,6 +48,9 @@ bool AnalysisPredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 #endif
+
+  // no matter with or without MKLDNN
+  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -70,10 +75,6 @@ bool AnalysisPredictor::Init(
     OptimizeInferenceProgram();
   } else {
     inference_program_ = program;
-  }
-
-  if (config_._use_mkldnn) {
-    executor_->EnableMKLDNN(*inference_program_);
   }
 
   executor_->Prepare(scope_.get(), *inference_program_, 0,
@@ -220,10 +221,24 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(
-      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
-      "Only kExclude is supported yet.");
-  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
+  switch (config_.ir_mode) {
+    case contrib::AnalysisConfig::IrPassMode::kExclude:
+      Analyzer()
+          .IncludeAllIrPasses()
+          .SetUseMkldnn(config_._use_mkldnn)
+          .DisableIrPasses(config_.ir_passes)
+          .Run(&argument_);
+      break;
+    case contrib::AnalysisConfig::IrPassMode::kInclude:
+      Analyzer()
+          .SetUseMkldnn(config_._use_mkldnn)
+          .IncludeIrPasses(config_.ir_passes)
+          .Run(&argument_);
+      break;
+    default:
+      LOG(ERROR) << "Only kExclude and kInclude modes are supoorted yet.";
+  }
 
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
@@ -335,6 +350,19 @@ bool AnalysisPredictor::LoadProgramDesc() {
   }
   return true;
 }
+
+AnalysisPredictor::~AnalysisPredictor() {
+#if !defined(_WIN32)
+  if (FLAGS_profile) {
+    platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                              "./profile.log");
+  }
+#endif
+  if (sub_scope_) {
+    scope_->DeleteScope(sub_scope_);
+  }
+}
+
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);

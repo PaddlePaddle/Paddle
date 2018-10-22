@@ -136,9 +136,9 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     // since infershape can not get lod info
     PADDLE_ENFORCE_EQ(ref_lod.size(), 1UL, "Only support input lod size is 1.");
     PADDLE_ENFORCE_EQ(in1_lod.size(), 1UL, "Only support input lod size is 1.");
-    PADDLE_ENFORCE_EQ(in1_lod[0].size() - 1, N,
+    PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0].size() - 1), N,
                       "Batch size of all inputs should be equal.");
-    PADDLE_ENFORCE_EQ(in1_lod[0][N], N,
+    PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0][N]), N,
                       "Seq_length of other inputs should be 1.");
     PADDLE_ENFORCE_EQ(in1_dims[0], N, "input height should be batch size.");
     for (size_t i = 2; i < ins.size(); ++i) {
