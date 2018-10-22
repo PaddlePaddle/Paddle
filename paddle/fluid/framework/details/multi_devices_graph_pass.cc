@@ -265,6 +265,16 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
       std::unordered_set<ir::Node *> optimize_set(optimize_ops.begin(),
                                                   optimize_ops.end());
       for (ir::Node *n : sorted_ret) {
+        // TODO(panyx0718): Revisit this soon.
+        if (boost::get<int>(
+                n->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) !=
+                static_cast<int>(OpRole::kBackward) &&
+            boost::get<int>(
+                n->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) !=
+                static_cast<int>(OpRole::kForward)) {
+          continue;
+        }
+
         for (ir::Node *in : n->inputs) {
           for (ir::Node *pre_n : in->inputs) {
             PADDLE_ENFORCE(optimize_set.find(pre_n) == optimize_set.end(),
