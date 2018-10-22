@@ -150,6 +150,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'reorg',
 ]
 
 
@@ -7083,4 +7084,55 @@ def maxout(x, groups, name=None):
         inputs={"X": x},
         attrs={"groups": groups},
         outputs={"Out": out})
+    return out
+
+
+def reorg(x, stride, name=None):
+    """
+    Gives a stride to reorg the input tensor
+
+    Here are some example:
+
+    input is 4D LoDtensor with shape [batch, channel, height, width] and has an attrs stride = 2
+
+    reorg will do some math work to reorder the elements of input according to stride to construt
+    put with shape [batch, channel * stride * stride, height/stride, width/stride]
+
+    reorg is used to reorgnization the output of pre_layer and change the tensor to fit the shape
+
+    Args:
+        x(variable): The input tensor.
+        stride(variable): The stride to reorg
+
+    Returns:
+        Variable: The output tensor.
+
+    Raises:
+        TypeError: stride type must be a long.
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(
+                name='data', shape=[1, 4, 2, 2], dtype='float32')
+            reorged = fluid.layers.reorged(
+                x=data, stride=2)
+    """
+
+    if not (isinstance(stride, long)):
+        raise ValueError("stride must be a python long")
+
+    helper = LayerHelper("reorg", **locals())
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="reorg",
+        inputs={"X": x},
+        attrs={"stride": stride},
+        outputs={"Out": out})
+
     return out
