@@ -41,8 +41,7 @@ BestFitAllocator::BestFitAllocator(Allocation* allocation)
   chunk.offset_ = 0;
   chunk.is_free = true;
   chunks_.emplace_back(chunk);
-  free_chunks_[HighestBitPos(chunk.size_)].insert(
-      {chunk.size_, chunks_.begin()});
+  InsertFreeNode(chunks_.begin());
 }
 
 std::unique_ptr<Allocation> BestFitAllocator::Allocate(size_t size, Attr attr) {
@@ -86,35 +85,33 @@ BestFitAllocator::ListIt BestFitAllocator::SplitChunk(size_t request_size,
   details::Chunk remaining;
   to_use.size_ = request_size;
   to_use.is_free = false;
-  remaining.size_ = remaining_size;
-  remaining.is_free = true;
-
   // calc offsets
   to_use.offset_ = to_split_it->offset_;
-  remaining.offset_ = to_use.offset_ + to_use.size_;
 
   // insert to chunk list
   auto to_use_it = chunks_.insert(to_split_it, to_use);
-  if (remaining.size_ != 0) {
-    auto bit_size = static_cast<size_t>(HighestBitPos(remaining.size_));
-    free_chunks_[bit_size].insert(
-        {remaining.size_, chunks_.insert(to_split_it, remaining)});
+  if (remaining_size != 0) {
+    remaining.size_ = remaining_size;
+    remaining.is_free = true;
+    remaining.offset_ = to_use.offset_ + to_use.size_;
+    auto remaining_it = chunks_.insert(to_split_it, remaining);
+    InsertFreeNode(remaining_it);
   }
   chunks_.erase(to_split_it);
   return to_use_it;
 }
 
 void BestFitAllocator::Free(Allocation* allocation) {
-  auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
+  auto* bf_allocation = reinterpret_cast<BestFitAllocation*>(allocation);
   auto chunk_it = bf_allocation->ChunkIterator();
   PADDLE_ENFORCE(!chunk_it->is_free);
   chunk_it->is_free = true;
-  if (chunk_it != chunks_.begin()) {
+  if (chunk_it != chunks_.begin()) {  // not the first chunk, try to merge prev.
     auto prev_it = chunk_it;
     --prev_it;
 
     if (prev_it->is_free) {
-      // Merge Left.
+      // Merge Prev.
       EraseFreeNode(prev_it);
       prev_it->size_ += chunk_it->size_;
       chunks_.erase(chunk_it);
@@ -125,6 +122,7 @@ void BestFitAllocator::Free(Allocation* allocation) {
   auto next_it = chunk_it;
   ++next_it;
   if (next_it != chunks_.end() && next_it->is_free) {
+    // not the last chunk, try to merge next
     EraseFreeNode(next_it);
     chunk_it->size_ += next_it->size_;
     chunks_.erase(next_it);
@@ -139,9 +137,11 @@ void BestFitAllocator::InsertFreeNode(const ListIt& it) {
   free_map.insert({it->size_, it});
 }
 void BestFitAllocator::EraseFreeNode(const ListIt& it) {
-  size_t pos = static_cast<size_t>(HighestBitPos(it->size_));
+  auto pos = static_cast<size_t>(HighestBitPos(it->size_));
   auto& free_map = free_chunks_[pos];
   auto map_it = free_map.find(it->size_);
+
+  // This while loop because it is a multi-map
   while (map_it->second != it && map_it != free_map.end()) {
     ++map_it;
   }
