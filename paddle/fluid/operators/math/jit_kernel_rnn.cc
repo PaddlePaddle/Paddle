@@ -354,6 +354,67 @@ REGISTER_JITKERNEL_ARGS(lstm, LSTMKernel, JITKERNEL_DECLARE_LSTM,
 #undef JITKERNEL_DECLARE_LSTM
 #undef JITKERNEL_KEY_LSTM
 #undef JITKERNEL_NEW_LSTM_IMPL
+
+/* GRU JitKernel */
+template <typename T, jit::cpu_isa_t isa, jit_block>
+class GRUKernelImpl : public GRUKernel<T> {
+ public:
+  explicit GRUKernelImpl(const std::string& act_gate,
+                         const std::string& act_state, int d)
+      : GRUKernel<T>() {
+    d_ = d;
+    d2_ = d * 2;
+    act_gate_d2_ = GetActKernel<T>(act_gate, d2_);
+    act_gate_d_ = GetActKernel<T>(act_gate, d);
+    act_state_d_ = GetActKernel<T>(act_state, d);
+    vmul_d_ = KernelPool::Instance().template Get<VMulKernel<T>>(d);
+  }
+
+  void ComputeH1(T* gates, T* ht) const override {
+    act_gate_d_->Compute(gates, gates);
+    act_state_d_->Compute(gates + d2_, gates + d2_);
+    vmul_d_->Compute(gates, gates + d2_, ht);
+  }
+  void ComputeHtPart1(T* gates, const T* ht_1, T* ht) const override {
+    // W: {W_update, W_reset; W_state}
+    act_gate_d2_->Compute(gates, gates);
+    vmul_d_->Compute(ht_1, gates + d_, ht);
+  }
+
+  void ComputeHtPart2(T* gates, const T* ht_1, T* ht) const override {
+    T* y = gates + d2_;
+    act_state_d_->Compute(y, y);
+    // out = zt*ht~ + (1-zt)*ht_1
+    for (int i = 0; i < d_; ++i) {
+      ht[i] = gates[i] * y[i] + (static_cast<T>(1) - gates[i]) * ht_1[i];
+    }
+  }
+
+ private:
+  int d_, d2_;
+  std::shared_ptr<const VActKernel<T>> act_gate_d2_, act_gate_d_, act_state_d_;
+  std::shared_ptr<const VMulKernel<T>> vmul_d_;
+};
+
+#define JITKERNEL_DECLARE_GRU(ker_class, ker_dtype)                       \
+  template <>                                                             \
+  std::shared_ptr<const GRUKernel<ker_dtype>> KernelPool::Get<            \
+      GRUKernel<ker_dtype>, const std::string&, const std::string&, int>( \
+      const std::string& act_gate, const std::string& act_state, int d)
+
+#define JITKERNEL_KEY_GRU(ker_key, dtype_key) \
+  #ker_key #dtype_key + std::to_string(d) + act_gate + act_state
+
+#define JITKERNEL_NEW_GRU_IMPL(ker, dtype, isa, k) \
+  p = std::dynamic_pointer_cast<ker<dtype>>(       \
+      std::make_shared<ker##Impl<dtype, isa, k>>(act_gate, act_state, d));
+
+REGISTER_JITKERNEL_ARGS(gru, GRUKernel, JITKERNEL_DECLARE_GRU,
+                        JITKERNEL_KEY_GRU, JITKERNEL_NEW_GRU_IMPL);
+
+#undef JITKERNEL_NEW_GRU_IMPL
+#undef JITKERNEL_KEY_GRU
+#undef JITKERNEL_DECLARE_GRU
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators
