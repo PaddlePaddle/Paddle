@@ -57,6 +57,10 @@ limitations under the License. */
 
 #include "pybind11/stl.h"
 
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -157,7 +161,50 @@ PYBIND11_PLUGIN(core) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
-  py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
+    LoDTensor is a Tensor with optional LoD information.
+
+    np.array(lod_tensor) can convert LoDTensor to numpy array.
+    lod_tensor.lod() can retrieve the LoD information.
+
+    LoD is short for Level of Details and is usually used for varied sequence
+    length. You can skip the following comment if you don't need optional LoD.
+
+  For example:
+     A LoDTensor X can look like the example below. It contains 2 sequences.
+     The first has length 2 and the second has length 3, as described by x.lod.
+
+     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
+     It means the total number of sequence element. In X, each element has 2
+     columns, hence [5, 2].
+
+      x.lod  = [[2, 3]]
+      x.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8], [9, 10]]
+      x.shape = [5, 2]
+
+      LoD can have multiple levels (for example, a paragraph can have multiple
+      sentences and a sentence can have multiple words). In the following
+      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+      first sequence length is 2 (has 2 sub-sequences), the second one's
+      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+      respectively. And the second sequence's 1 sub-sequence has length 3.
+
+      y.lod = [[2 1], [2 2 3]]
+      y.shape = [2+2+3, ...]
+
+  Note:
+      In above description, LoD is length-based. In Paddle internal
+      implementation, lod is offset-based. Hence, internally,
+      y.lod is represented as [[0, 2, 3], [0, 2, 4, 7]] (length-based
+      equivlent would be [[2-0, 3-2], [2-0, 4-2, 7-4]]).
+
+      Sometimes LoD is called recursive_sequence_length to be more
+      self-explanatory. In this case, it must be length-based. Due to history
+      reasons. when LoD is called lod in public API, it might be offset-based.
+      Users should be careful about it.
+
+        )DOC")
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def("__init__",
@@ -337,7 +384,8 @@ All parameter, weight, gradient are variables in Paddle.
                                return make_ddim(shape);
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims);
+              holder->InitOnce(capacity, dims,
+                               FLAGS_reader_queue_speed_test_mode);
               return holder->GetQueue();
             },
         py::return_value_policy::copy);
@@ -620,26 +668,58 @@ All parameter, weight, gradient are variables in Paddle.
 
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy");
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
+    ExecutionStrategy allows the user to more preciously control how to run
+    the program in ParallelExecutor by setting the property.
+
+    Examples:
+        .. code-block:: python
+
+          exec_strategy = fluid.ExecutionStrategy()
+          exec_strategy.num_threads = 4
+
+          train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                             loss_name=loss.name,
+                                             exec_strategy=exec_strategy)
+
+          train_loss, = train_exe.run([loss.name], feed=feed_dict)
+
+        )DOC");
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
           [](const ExecutionStrategy &self) { return self.num_threads_; },
           [](ExecutionStrategy &self, size_t num_threads) {
             self.num_threads_ = num_threads;
-          })
+          },
+          R"DOC(The type is INT, num_threads represents the size of thread pool that
+            used to run the operators of the current program in ParallelExecutor.
+            If :math:`num\_threads=1`, all the operators will execute one by one,
+            but the order maybe difference between iterations.
+            If it is not set, it will be set in ParallelExecutor according to the
+            device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
+            :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
+            if it is not set, ParallelExecutor will get the cpu count by calling
+            `multiprocessing.cpu_count()`. Default 0.)DOC")
       .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
           [](ExecutionStrategy &self, bool use_cuda) {
             self.use_cuda_ = use_cuda;
-          })
+          })  // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
+      // make user confuse, because ParallelExecutor has a parameter named
+      // 'use_cuda' too, in current implementation, ParallelExecutor's
+      // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
-          })
+          },
+          R"DOC(The type is BOOL, allow_op_delay represents whether to delay the
+                communication operators to run, it may make the execution faster.
+                Note that in some models, allow_op_delay may cause program hang. Default False.)DOC")
       .def_property(
           "num_iteration_per_drop_scope",
           [](const ExecutionStrategy &self) {
@@ -647,7 +727,18 @@ All parameter, weight, gradient are variables in Paddle.
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
-          })
+          },
+          R"DOC(The type is INT, num_iteration_per_drop_scope indicates how
+                many iterations to clean up the temp variables which
+                is generated during execution. It may make the execution faster,
+                because the temp variable's shape maybe the same between two iterations. Default 100.
+
+                NOTES:
+                    1. If you fetch data when calling the 'run', the ParallelExecutor
+                       will clean up the temp variables at the end of the current iteration.
+                    2. In some NLP model, it may cause the GPU memory is insufficient,
+                       in this case, you should reduce `num_iteration_per_drop_scope`.
+              )DOC")
       .def_property(
           "max_queue_size",
           [](const ExecutionStrategy &self) { return self.max_queue_size_; },
@@ -675,7 +766,22 @@ All parameter, weight, gradient are variables in Paddle.
                                   : ExecutionStrategy::kDefault;
       });
 
-  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
+  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
+    BuildStrategy allows the user to more preciously control how to
+    build the SSA Graph in ParallelExecutor by setting the property.
+
+    Examples:
+        .. code-block:: python
+
+          build_strategy = fluid.BuildStrategy()
+          build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+
+          train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                             loss_name=loss.name,
+                                             build_strategy=build_strategy)
+
+          train_loss, = train_exe.run([loss.name], feed=feed_dict)
+)DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
@@ -693,31 +799,51 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
             self.reduce_ = strategy;
-          })
+          },
+          R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
+                  'AllReduce' and 'Reduce'. If you want that all the parameters'
+                  optimization are done on all devices independently, you should choose 'AllReduce';
+                  if you choose 'Reduce', all the parameters' optimization will be evenly distributed
+                  to different devices, and then broadcast the optimized parameter to other devices.
+                  In some models, `Reduce` is faster. Default 'AllReduce'. )DOC")
       .def_property(
           "gradient_scale_strategy",
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
             self.gradient_scale_ = strategy;
-          })
+          },
+          R"DOC(The type is STR, there are three ways of defining :math:`loss@grad` in
+                   ParallelExecutor, 'CoeffNumDevice', 'One' and 'Customized'. By default,
+                   ParallelExecutor sets the :math:`loss@grad` according to the number of devices.
+                   If you want to customize :math:`loss@grad`, you can choose 'Customized'.
+                   Default 'CoeffNumDevice'.)DOC")
       .def_property(
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
             self.debug_graphviz_path_ = path;
-          })
+          },
+          R"DOC(The type is STR, debug_graphviz_path indicate the path that
+                    writing the SSA Graph to file in the form of graphviz, you.
+                    It is useful for debugging. Default "")DOC")
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
-      .def_property("fuse_elewise_add_act_ops",
-                    [](const BuildStrategy &self) {
-                      return self.fuse_elewise_add_act_ops_;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      self.fuse_elewise_add_act_ops_ = b;
-                    })
+          [](BuildStrategy &self, bool b) {
+            self.enable_data_balance_ = b;
+          })  // FIXME(chengudo): enable_data_balance seems not important
+      .def_property(
+          "fuse_elewise_add_act_ops",
+          [](const BuildStrategy &self) {
+            return self.fuse_elewise_add_act_ops_;
+          },
+          [](BuildStrategy &self, bool b) {
+            self.fuse_elewise_add_act_ops_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
+                     to fuse elementwise_add_op and activation_op,
+                     it may make the execution faster. Default False)DOC")
       .def("_create_passes_from_strategy",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy();

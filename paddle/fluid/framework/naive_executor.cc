@@ -37,7 +37,7 @@ static void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -144,6 +144,23 @@ void NaiveExecutor::CleanFeedFetchOps() {
     }
   }
   ops_.swap(ops);
+}
+
+void NaiveExecutor::EnableMKLDNN(const ProgramDesc &program) {
+#ifdef PADDLE_WITH_MKLDNN
+  VLOG(3) << "use_mkldnn=True";
+  for (size_t block_id = 0; block_id < program.Size(); ++block_id) {
+    auto *block = const_cast<ProgramDesc &>(program).MutableBlock(block_id);
+    for (auto *op : block->AllOps()) {
+      if (op->HasAttr("use_mkldnn")) {
+        op->SetAttr("use_mkldnn", true);
+      }
+    }
+  }
+#else
+  LOG(WARNING)
+      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+#endif
 }
 
 }  // namespace framework

@@ -70,6 +70,14 @@ if (NOT EXISTS ${OCR_INSTALL_DIR})
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
+# resnet50
+set(RESNET50_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+if (NOT EXISTS ${RESNET50_INSTALL_DIR})
+    inference_download_and_uncompress(${RESNET50_INSTALL_DIR} ${INFERENCE_URL} "resnet50_model.tar.gz")
+endif()
+inference_analysis_test(test_analyzer_resnet50 SRCS analyzer_resnet50_tester.cc
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS --infer_model=${RESNET50_INSTALL_DIR}/model)
+
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    # anakin rnn1

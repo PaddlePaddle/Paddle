@@ -50,6 +50,27 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
 
+  void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    const std::string &input_n = Inputs(in)[i];
+    const std::string &output_n = Outputs(out)[j];
+
+    PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
+                   in, i);
+    PADDLE_ENFORCE(output_n != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
+
+    auto *in_var = block_.FindVarRecursive(input_n);
+    auto *out_var = block_.FindVarRecursive(output_n);
+
+    PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
+                   "The type of %s and %s is not the same.", input_n, output_n);
+
+    SetDim(output_n, GetDim(input_n));
+  }
+
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
@@ -64,10 +85,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The %d-th output of Output(%s) must be LoDTensor.", j,
-                      out);
-
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 

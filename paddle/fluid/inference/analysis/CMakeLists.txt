@@ -20,8 +20,6 @@ cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
 
-set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-
 function (inference_analysis_test TARGET)
     if(WITH_TESTING)
         set(options "")

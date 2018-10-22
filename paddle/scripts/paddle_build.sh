@@ -390,7 +390,9 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-
+        #remove proxy here to fix dist error on mac
+        export http_proxy=
+        export https_proxy=
         # TODO: jiabin need to refine this part when these tests fixed on mac
         ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
@@ -598,9 +600,9 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
     else
-        NCCL_DEPS=""
+        NCCL_DEPS="true"
     fi
 
     if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
@@ -614,9 +616,8 @@ EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
-    RUN apt-get update &&\
-        ${NCCL_DEPS}\
-        apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -649,42 +650,47 @@ function gen_capi_package() {
     fi
 }
 
-function gen_fluid_inference_lib() {
+function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Generating fluid inference library ...
+    Generating fluid library for train and inference ...
     ========================================
 EOF
         cmake .. -DWITH_DISTRIBUTE=OFF
+        make -j `nproc` fluid_lib_dist
         make -j `nproc` inference_lib_dist
       fi
 }
 
-function tar_fluid_inference_lib() {
+function tar_fluid_lib() {
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Taring fluid inference library ...
+    Taring fluid library for train and inference ...
     ========================================
 EOF
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
         tar -czf fluid.tgz fluid
+        cp -r fluid_inference_install_dir fluid_inference
+        tar -czf fluid_inference.tgz fluid_inference
       fi
 }
 
-function test_fluid_inference_lib() {
+function test_fluid_lib() {
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Testing fluid inference library ...
+    Testing fluid library for inference ...
     ========================================
 EOF
         cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR}
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+                 ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
+                 ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
         ./clean.sh
       fi
 }
@@ -732,9 +738,9 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_inference_lib
-        tar_fluid_inference_lib
-        test_fluid_inference_lib
+        gen_fluid_lib
+        tar_fluid_lib
+        test_fluid_lib
         ;;
       check_style)
         check_style
@@ -745,8 +751,8 @@ function main() {
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_capi_package
-        gen_fluid_inference_lib
-        test_fluid_inference_lib
+        gen_fluid_lib
+        test_fluid_lib
         assert_api_spec_approvals
         ;;
       maccheck)
