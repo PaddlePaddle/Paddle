@@ -4830,7 +4830,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, actual_shape=None, inplace=False, name=None):
+def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     """
     Gives a new shape to the input Tensor without changing its data.
 
@@ -4878,9 +4878,11 @@ def reshape(x, shape, actual_shape=None, inplace=False, name=None):
                                 :attr:`shape` specifying shape. That is to
                                 say :attr:`actual_shape` has a higher priority
                                 than :attr:`shape`.
-        inplace(bool): If this flag is set true, reuse the input :attr:`x` as
-                       output, which will change the shape of variable :attr:`x`.
-                       Otherwise, preserve the shape :attr:`x` and return a new
+        act (str): The non-linear activation to be applied to the reshaped tensor
+                   variable.
+        inplace(bool): If this flag is set true, reuse input :attr:`x` to reshape,
+                       which will change the shape of tensor variable :attr:`x`.
+                       Otherwise, preserve the shape :attr:`x` and create a new
                        output tensor variable whose data is copied from input x
                        but reshaped. Though setting to :attr:`True` will be more
                        efficient, :attr:`False` is suggested when :attr:`x` are
@@ -4936,7 +4938,7 @@ def reshape(x, shape, actual_shape=None, inplace=False, name=None):
         outputs={"Out": out,
                  "XShape": x_shape})
 
-    return out
+    return helper.append_activation(out)
 
 
 def squeeze(input, axes, name=None):
