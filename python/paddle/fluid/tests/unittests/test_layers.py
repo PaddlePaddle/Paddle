@@ -465,6 +465,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_roi_align(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.roi_align(x, rois, 14, 14, 0.5, 2)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_resize_bilinear(self):
         program = Program()
         with program_guard(program):
