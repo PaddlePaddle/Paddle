@@ -35,6 +35,16 @@ class AdamaxOp : public framework::OperatorWithKernel {
                    "Input(LearningRate) of AdamaxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Beta1Pow"),
                    "Input(Beta1Pow) of AdamaxOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Grad").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of AdamaxOp should not be null.");

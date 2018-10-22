@@ -85,10 +85,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The %d-th output of Output(%s) must be LoDTensor.", j,
-                      out);
-
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 

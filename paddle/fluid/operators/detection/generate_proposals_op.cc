@@ -453,33 +453,45 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Scores", "The scores of anchors should be foreground.");
-    AddInput("BboxDeltas", "bbox_deltas.");
-    AddInput("ImInfo", "Information for image reshape.");
-    AddInput("Anchors", "All anchors.");
-    AddInput("Variances", " variances");
+    AddInput("Scores",
+             "(Tensor) The scores from conv is in shape (N, A, H, W), "
+             "N is batch size, A is number of anchors, "
+             "H and W are height and width of the feature map");
+    AddInput("BboxDeltas",
+             "(Tensor) Bounding box deltas from conv is in "
+             "shape (N, 4*A, H, W).");
+    AddInput("ImInfo",
+             "(Tensor) Information for image reshape is in shape (N, 3), "
+             "in format (height, width, scale)");
+    AddInput("Anchors",
+             "(Tensor) Bounding box anchors from anchor_generator_op "
+             "is in shape (A, H, W, 4).");
+    AddInput("Variances",
+             "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
-    AddOutput("RpnRois", "Anchors.");
-    AddOutput("RpnRoiProbs", "Anchors.");
-    AddAttr<int>("pre_nms_topN", "pre_nms_topN");
-    AddAttr<int>("post_nms_topN", "post_nms_topN");
-    AddAttr<float>("nms_thresh", "nms_thres");
-    AddAttr<float>("min_size", "min size");
+    AddOutput("RpnRois",
+              "(LoDTensor), Output proposals with shape (rois_num, 4).");
+    AddOutput("RpnRoiProbs",
+              "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+    AddAttr<int>("pre_nms_topN",
+                 "Number of top scoring RPN proposals to keep before "
+                 "applying NMS.");
+    AddAttr<int>("post_nms_topN",
+                 "Number of top scoring RPN proposals to keep after "
+                 "applying NMS");
+    AddAttr<float>("nms_thresh", "NMS threshold used on RPN proposals.");
+    AddAttr<float>("min_size",
+                   "Proposal height and width both need to be greater "
+                   "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddComment(R"DOC(
-Generate Proposals OP
+This operator Generate bounding box proposals for Faster RCNN.
+The propoasls are generated for a list of images based on image
+score 'Scores', bounding box regression result 'BboxDeltas' as
+well as predefined bounding box shapes 'anchors'. Greedy
+non-maximum suppression is applied to generate the final bounding
+boxes.
 
-This operator proposes rois according to each box with their probability to be a foreground object and 
-the box can be calculated by anchors. Bbox_details and scores are the output of RPN. Final proposals
-could be used to train detection net.
-
-Scores is the probability for each box to be an object. In format of (N, A, H, W) where N is batch size, A is number
-of anchors, H and W are height and width of the feature map.
-BboxDeltas is the differece between predicted box location and anchor location. In format of (N, 4*A, H, W)
-
-For generating proposals, this operator transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4) and 
- calculate box locations as proposals candidates. Then clip boxes to image and remove predicted boxes with small area. 
-Finally, apply nms to get final proposals as output.
 )DOC");
   }
 };
