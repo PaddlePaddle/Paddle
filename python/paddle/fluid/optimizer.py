@@ -15,7 +15,7 @@
 from __future__ import print_function
 import re
 from collections import defaultdict
-from paddle.fluid.framework import Program, Variable, name_scope
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
 from . import framework
 from . import layers
 from .backward import append_backward
@@ -111,7 +111,8 @@ class Optimizer(object):
             if param_lr == 1.0:
                 return self._global_learning_rate()
             else:
-                return self._global_learning_rate() * param_lr
+                with default_main_program()._lr_schedule_guard():
+                    return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -659,6 +660,9 @@ class AdamaxOptimizer(Optimizer):
 
             optimizer = fluid.optimizer.Adamax(learning_rate=0.2)
             optimizer.minimize(cost)
+
+    Notes:
+       Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -778,6 +782,9 @@ class DecayedAdagradOptimizer(Optimizer):
 
             optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
             optimizer.minimize(cost)
+
+    Notes:
+       Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
 
@@ -858,6 +865,9 @@ class AdadeltaOptimizer(Optimizer):
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
             _, params_grads = optimizer.minimize(cost)
+
+    Notes:
+       Currently, AdadeltaOptimizer doesn't support sparse parameter optimization.
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
@@ -1126,6 +1136,9 @@ class FtrlOptimizer(Optimizer):
 
               optimizer = fluid.optimizer.Ftrl(0.0001)
               _, params_grads = optimizer.minimize(cost)
+
+    Notes:
+       Currently, FtrlOptimizer doesn't support sparse parameter optimization.
     """
 
     _squared_acc_str = "squared"
