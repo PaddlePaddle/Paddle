@@ -16,6 +16,7 @@
 #define PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_EMBEDDING_PASS_H_
 
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -60,29 +61,29 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 
  private:
-  // Create a new optimizer node via current optimizer node
-  ir::Node* CreateNewOptimizerNode(ir::Graph* graph, ir::Node* grad_node,
-                                   ir::Node* grad_output_node,
-                                   const std::string& optimizer_type,
-                                   const std::string& grad_name) const;
+  // Create a new sgd node via current optimizer node
+  ir::Node* CreateNewSGDNode(ir::Graph* graph, ir::Node* forward_node,
+                             ir::Node* backward_node, ir::Node* grad_sum_node,
+                             ir::Node* optimize_node) const;
 
   // Replace the input weight's optimizers
-  void ReplaceUpstreamOptimizerNode(ir::Node* upstream_node,
-                                    ir::Node* old_optimizer_node,
-                                    ir::Node* new_optimizer_node) const;
+  void ReplaceUpstreamNode(ir::Node* upstream_node,
+                           ir::Node* old_optimizer_node,
+                           ir::Node* new_optimizer_node) const;
 
   // Replace the output weight's optimizers
-  void ReplaceDownstreamOptimizerNode(ir::Node* downstream_node,
-                                      ir::Node* old_optimizer_node,
-                                      ir::Node* new_optimizer_node) const;
-
-  // Check if ctrl_dep_var_node's input op equals to
-  // the lookup_table_grad_output_node's related lookup_table op
-  bool IsRelatedEmbeddingOp(ir::Node* ctrl_dep_var_node,
-                            ir::Node* lookup_table_grad_output_node) const;
+  void ReplaceAllDownstreamNode(ir::Node* old_optimizer_node,
+                                ir::Node* new_optimizer_node) const;
 
   // Find all weight variables in graph
   bool FindAllWeightVars(ir::Graph* graph) const;
+
+  // Find the forward_op node via the backward_op node
+  ir::Node* FindForwardOpViaBackwardOp(ir::Graph* graph,
+                                       ir::Node* backward_node) const;
+
+  std::vector<ir::Node*> FindConnectedNode(ir::Node* upstream_node,
+                                           ir::Node* downstream_node) const;
 
   inline bool IsOpNamed(ir::Node* node, const std::string& name) const {
     PADDLE_ENFORCE(node);
