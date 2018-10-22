@@ -200,7 +200,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
+  std::vector<std::unique_ptr<framework::OpDesc>> Make() const override {
     auto x_grads = InputGrad("X", false);
     std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
     grad_ops.reserve(x_grads.size());
