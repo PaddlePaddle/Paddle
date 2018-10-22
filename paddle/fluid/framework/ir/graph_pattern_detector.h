@@ -128,6 +128,15 @@ struct PDNode {
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
 
+  template <typename T>
+  PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
+    asserts_.emplace_back([=](Node* x) {
+      return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
+             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+    });
+    return this;
+  }
+
  private:
   PDNode(PDPattern* pattern, const std::string& name = "",
          Type type = Type::kVar)
@@ -431,6 +440,31 @@ struct ConvReLU : public PatternBase {
   // declare variable node's name
   PATTERN_DECL_NODE(conv_weight);
   PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(relu_out);
+};
+
+// SEQCONV with Elementwise_Add ReLU
+// op: seqconv + elementwise_add + relu
+// named nodes:
+// seqconv_input, seqconv_weight,
+// seqconv_out, seqconv,
+// elementwise_add_bias, elementwise_add_out, elementwise_add
+// relu_out, relu
+struct SeqConvEltAddRelu : public PatternBase {
+  SeqConvEltAddRelu(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "seqconv_eltadd_relu") {}
+
+  PDNode* operator()(PDNode* seqconv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(seqconv);
+  PATTERN_DECL_NODE(eltadd);
+  PATTERN_DECL_NODE(relu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(seqconv_weight);
+  PATTERN_DECL_NODE(seqconv_out);
+  PATTERN_DECL_NODE(eltadd_bias);
+  PATTERN_DECL_NODE(eltadd_out);
   PATTERN_DECL_NODE(relu_out);
 };
 
