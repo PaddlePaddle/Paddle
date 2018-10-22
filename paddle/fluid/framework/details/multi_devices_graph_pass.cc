@@ -396,7 +396,21 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                 switch (strategy_.reduce_) {
                   case BuildStrategy::ReduceStrategy::kReduce:
                     cur_device_id = GetAppropriateDeviceID({g_name});
-                    CreateReduceOp(&result, g_name, cur_device_id);
+                    switch (strategy_.emb_opt_) {
+                      case BuildStrategy::EmbeddingOptimizeStrategy::kNoLock:
+                        if (node->Op()->Type() != "lookup_table_grad" &&
+                            node->Op()->Type() != "sum" &&
+                            node->Op()->Type() != "elementwise_add_grad" &&
+                            node->Op()->Type() != "mul_grad") {
+                          LOG(ERROR) << "Add ReduceOp " << g_name;
+                          LOG(ERROR) << "Node Op type " << node->Op()->Type();
+                          CreateReduceOp(&result, g_name, cur_device_id);
+                        }
+                        break;
+                      default:
+                        CreateReduceOp(&result, g_name, cur_device_id);
+                        break;
+                    }
                     graph->Get<ShardedVarDevice>(kShardedVarDevice)
                         .emplace(g_name, cur_device_id);
                     if (!is_dist_train) {

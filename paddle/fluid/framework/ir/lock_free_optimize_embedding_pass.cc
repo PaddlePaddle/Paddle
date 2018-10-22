@@ -18,13 +18,14 @@
 #include <vector>
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-const char kGradSumOpType[] = "sum";
+const char kSumGradOpName[] = "sum";
 // TODO(minqiyang): only support sgd at current time, please add
 // other optimizers later.
 const char kOptimizerType[] = "sgd";
@@ -76,11 +77,15 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     }
   }
 
+  FindAllWeightVars(graph.get());
+
   std::unordered_set<ir::Node*> sum_op_set;
   for (auto* node : graph->Nodes()) {
     // Find the sum op after embedding lookup_table_grad op
     if (node->NodeType() == Node::Type::kOperation &&
-        node->Name() == kEmbeddingGradOpType) {
+        (node->Name() == kEmbeddingGradOpType || node->Name() == "mul_grad" ||
+         node->Name() == "elementwise_add_grad")) {
+      // node->Name() == kEmbeddingGradOpType) {
       // Create new opitimizer node to replace the old one
       ir::Node* new_optimizer_node = nullptr;
       for (Node* lookup_table_grad_output : node->outputs) {
@@ -112,7 +117,7 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
         for (auto grad_connected_op_iter = next_op_vec.begin();
              grad_connected_op_iter != next_op_vec.end();) {
           if ((*grad_connected_op_iter)->NodeType() == Node::Type::kOperation) {
-            if ((*grad_connected_op_iter)->Name() == kGradSumOpType &&
+            if ((*grad_connected_op_iter)->Name() == kSumGradOpName &&
                 !ir::IsControlDepVar(*lookup_table_grad_output)) {
               LOG(ERROR) << "insert to sum_op_set: "
                          << (*grad_connected_op_iter)->Name();
@@ -218,7 +223,7 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewOptimizerNode(
     const std::string& grad_name) const {
   for (Node* grad_connected_op : lookup_table_grad_output->outputs) {
     if (grad_connected_op->NodeType() == Node::Type::kOperation &&
-        grad_connected_op->Name() == kGradSumOpType) {
+        grad_connected_op->Name() == kSumGradOpName) {
       LOG(ERROR) << "Get sum_op node";
       for (Node* sum_op_output : grad_connected_op->outputs) {
         for (Node* optimize_op : sum_op_output->outputs) {
@@ -401,6 +406,75 @@ bool LockFreeOptimizeEmbeddingPass::IsRelatedEmbeddingOp(
 
     // if hit here, then embedding op is NOT found, so we return false
     return false;
+  }
+
+  return false;
+}
+
+bool LockFreeOptimizeEmbeddingPass::FindAllWeightVars(ir::Graph* graph) const {
+  // We could collect all weights' name from SGD, where
+  // W1 <- SGD(W0, Grad0)
+  std::unordered_set<std::string> weight_var_set;
+  for (auto* node : graph->Nodes()) {
+    if (IsOpNamed(node, kOptimizerType)) {
+      auto& param_out_vars = node->Op()->Output("ParamOut");
+      PADDLE_ENFORCE(param_out_vars.size() == 1u);
+      weight_var_set.insert(param_out_vars[0]);
+    }
+  }
+
+  for (std::string weight : weight_var_set) {
+    LOG(ERROR) << "Found weight_var " << weight;
+  }
+
+  // find all grad's merge op via weight name, where
+  // Grad0 <- SUM(Grad1, Grad2, Grad3 ...)
+  std::unordered_set<ir::Node*> grad_sum_op_set;
+  for (ir::Node* node : graph->Nodes()) {
+    if (IsOpNamed(node, kSumGradOpName)) {
+      for (ir::Node* output : node->outputs) {
+        // strip the last grad suffix @GRAD
+        std::string var_name = output->Name();
+        const std::string suffix(kGradVarSuffix);
+        if (var_name != suffix && var_name.size() > suffix.size() &&
+            var_name.substr(var_name.size() - suffix.size()) == suffix) {
+          // if so then strip them off
+          var_name = var_name.substr(0, var_name.size() - suffix.size());
+          if (weight_var_set.contains(var_name)) {
+            grad_sum_op_set.insert(output);
+          }
+        }
+      }
+    }
+  }
+
+  for (ir::Node* node : grad_sum_op_set) {
+    LOG(ERROR) << "Found grad sum op " << node->Name() << "_" << name->id();
+  }
+
+  // get the forward op and backward op pairs, where
+  // out <- forward(X, W)
+  // backward(out, )
+  for (ir::Node* node : grad_sum_op_set) {
+    for (ir::Node* merged_grad_var : node->outputs) {
+      // find the optimizers connected with sum op
+      if (IsVarNameEndsWith(merged_grad_var, kGradVarSuffix) &&
+          merged_grad_var->outputs.size() == 1u) {
+        ir::Node* opt_node = merged_grad_var->outputs[0];
+
+        // find the backward op connected with sum op
+        for (ir::Node* unmerged_grad_var : node->inputs) {
+          if (IsVarNameContains(unmerged_grad_var, kGradVarSuffix) &&
+              unmerged_grad_var->inputs.size() == 1u) {
+            ir::Node* backward_op = unmerged_grad_var->inputs[0];
+          }
+        }
+        // find the forward op related to the backward op
+      }
+    }
+    ir::Node* merged_grad_node = node->outputs[0];
+    IsVarNameEndsWith ir::Node* for (ir::Node* grad_var :
+                                     node->outputs[0]->outputs[0]->inputs) {}
   }
 
   return false;

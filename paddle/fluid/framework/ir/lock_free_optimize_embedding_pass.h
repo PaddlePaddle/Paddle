@@ -30,6 +30,27 @@ class Node;
  * Remove the sum op of all gradients of embedding lookup table.
  * And remove the dependecies of the optimizer related to the
  * same embedding lookup table.
+ *
+ * Before this pass:
+ *
+ * forward_op1 forward_op2
+ *     |            |
+ *  grad_op1    grad_op2
+ *        \      /
+ *          \  /
+ *         sum_op
+ *           |
+ *         sgd_op
+ *
+ * After this pass:
+ * forward_op1 forward_op2
+ *     |            |
+ *  grad_op1    grad_op2
+ *     |            |
+ *  sgd_op1      sgd_op2
+ *
+ * sgd_op1 and sgd_op2 will update the same weight which holds the same
+ * memory, so we could benefits from the acceleration
  */
 class LockFreeOptimizeEmbeddingPass : public Pass {
  public:
@@ -59,6 +80,44 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
   // the lookup_table_grad_output_node's related lookup_table op
   bool IsRelatedEmbeddingOp(ir::Node* ctrl_dep_var_node,
                             ir::Node* lookup_table_grad_output_node) const;
+
+  // Find all weight variables in graph
+  bool FindAllWeightVars(ir::Graph* graph) const;
+
+  inline bool IsOpNamed(ir::Node* node, const std::string& name) const {
+    PADDLE_ENFORCE(node);
+
+    return node->NodeType() == Node::Type::kOperation && node->Name() == name;
+  }
+
+  inline bool IsVarNamed(ir::Node* node, const std::string& name) const {
+    PADDLE_ENFORCE(node);
+
+    return node->NodeType() == Node::Type::kVariable && node->Name() == name;
+  }
+
+  inline bool IsVarNameEndsWith(ir::Node* node, const std::string& name) const {
+    PADDLE_ENFORCE(node);
+
+    return node->NodeType() == Node::Type::kVariable &&
+           node->Name().ends_with(name);
+  }
+
+  inline bool IsVarNameContains(ir::Node* node, const std::string& name) const {
+    PADDLE_ENFORCE(node);
+
+    return node->NodeType() == Node::Type::kVariable &&
+           node->Name().find(name) != std::string::npos;
+  }
+
+  inline bool IsControlDepFrom(ir::Node* ctrl_dep_node, ir::Node* node) const {
+    PADDLE_ENFORCE(ctrl_dep_node);
+    PADDLE_ENFORCE(node);
+
+    return IsControlDepVar(ctrl_dep_node) &&
+           ctrl_dep_node->inputs.size() >= 1u &&
+           ctrl_dep_node->inputs[0] == node;
+  }
 };
 
 }  // namespace ir
