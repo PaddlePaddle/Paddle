@@ -21,6 +21,7 @@ namespace ir {
 std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Aplies MKL-DNN placement strategy.";
+  graph->Set<bool>("use_mkldnn", new bool(true));
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp() && n->Op()->HasAttr("use_mkldnn")) {
       n->Op()->SetAttr("use_mkldnn", true);
