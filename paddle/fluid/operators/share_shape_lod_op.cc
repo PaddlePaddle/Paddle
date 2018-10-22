@@ -41,15 +41,26 @@ class ShareShapeLodOpInferShape : public framework::InferShapeBase {
                    ctx->Inputs("X").size(), ctx->Outputs("Out").size(), n,
                    share_lod.size());
 
+    // FIXME(zjl): Hot-fix. Set all outputs be persistable to prevent memory
+    // reuse
+    auto output_ptrs = ctx->GetOutputVarPtrs("Out");
+    for (auto& out : output_ptrs) {
+      auto var_desc = boost::get<framework::VarDesc*>(out);
+      var_desc->SetPersistable(true);
+    }
+
+    std::vector<framework::DDim> output_dims = ctx->GetInputsDim("X");
     for (size_t i = 0; i < n; ++i) {
-      if (share_shape[i]) {
-        ctx->ShareDim("X", "Out", i, i);
+      if (!share_shape[i]) {
+        output_dims[i] = framework::make_ddim({static_cast<int64_t>(0)});
       }
 
       if (share_lod[i]) {
         ctx->ShareLoD("X", "Out", i, i);
       }
     }
+
+    ctx->SetOutputsDim("Out", output_dims);
   }
 };
 
@@ -77,6 +88,7 @@ class ShareShapeLodOp : public framework::OperatorBase {
       auto& in_tensor = x_vars[i]->Get<framework::LoDTensor>();
       auto* out_tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
       if (share_shape[i]) {
+        // In runtime, should not insert dim 0
         out_tensor->Resize(in_tensor.dims());
       }
 

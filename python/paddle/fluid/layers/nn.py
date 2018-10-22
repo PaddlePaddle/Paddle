@@ -4419,12 +4419,10 @@ def transpose(x, perm, name=None):
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
-    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='transpose2',
+        type='transpose',
         inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'XShape': [x_shape]},
+        outputs={'Out': [out]},
         attrs={'axis': perm})
     return out
 
@@ -4924,16 +4922,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "Each dimension size given in shape must not be negtive "
                 "except one unknown dimension.")
 
-    helper = LayerHelper("reshape2", **locals())
+    helper = LayerHelper("reshape", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
-    x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="reshape2",
+        type="reshape",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
+        outputs={"Out": out})
     return helper.append_activation(out)
 
 
@@ -4976,14 +4971,11 @@ def squeeze(input, axes, name=None):
     """
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
-    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="squeeze2",
+        type="squeeze",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
+        outputs={"Out": out})
     return out
 
 
@@ -5013,14 +5005,11 @@ def unsqueeze(input, axes, name=None):
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
-    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="unsqueeze2",
+        type="unsqueeze",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
+        outputs={"Out": out})
     return out
 
 
@@ -6587,12 +6576,10 @@ def flatten(x, axis=1, name=None):
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)
-    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='flatten2',
+        type='flatten',
         inputs={"X": x},
-        outputs={'Out': out,
-                 'XShape': x_shape},
+        outputs={'Out': out},
         attrs={"axis": axis})
     return out
 

@@ -64,8 +64,8 @@ class GradOpDescMakerBase {
         op->RenameInput(old_name, new_name);
         inputs["X"].emplace_back(old_name);
         outputs["Out"].emplace_back(new_name);
-        share_shape.emplace_back(pair.second.first);
-        share_lod.emplace_back(pair.second.second);
+        share_shape.push_back(pair.second.first);
+        share_lod.push_back(pair.second.second);
       }
     }
 
