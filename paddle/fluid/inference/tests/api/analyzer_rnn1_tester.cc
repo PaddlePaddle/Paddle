@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include<fstream>
 
 DEFINE_bool(with_precision_check, true, "turn on test");
 
@@ -489,6 +490,34 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
 
   LOG(INFO) << "average time: "
             << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
+}
+
+TEST(Analyzer_rnn1, ctr_model) {
+  std::string model = "/chunwei/Paddle/cmake-build-debug/ctr_model";
+
+  AnalysisConfig config;
+  config.model_dir = model;
+  config.use_gpu = false;
+  config.enable_ir_optim = false;
+
+  //auto predictor = CreatePaddlePredictor<NativeConfig>(config);
+  auto predictor = CreatePaddlePredictor(config);
+
+  std::ifstream file("/chunwei/Paddle/cmake-build-debug/paddle/1.txt");
+  std::string line;
+  std::vector<float> value;
+  PaddleTensor tensor;
+  std::vector<PaddleTensor> outputs;
+  while (std::getline(file, line)) {
+    split_to_float(line, ',', &value);
+    tensor.data.Reset(value.data(), value.size() * sizeof(float));
+    tensor.dtype = PaddleDType ::FLOAT32;
+    tensor.shape.assign({1, static_cast<int>(value.size())});
+    LOG(INFO) << "input" << "\n" << DescribeTensor(tensor);
+    ASSERT_TRUE(predictor->Run({tensor}, &outputs));
+    LOG(INFO) << "output: \n" << DescribeTensor(outputs.front());
+  }
+
 }
 
 }  // namespace inference
