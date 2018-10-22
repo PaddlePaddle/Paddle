@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/algorithm/string/predicate.hpp>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -101,7 +103,7 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
     PADDLE_ENFORCE(node);
 
     return node->NodeType() == Node::Type::kVariable &&
-           node->Name().ends_with(name);
+           boost::algorithm::ends_with(node->Name(), name);
   }
 
   inline bool IsVarNameContains(ir::Node* node, const std::string& name) const {
@@ -115,7 +117,7 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
     PADDLE_ENFORCE(ctrl_dep_node);
     PADDLE_ENFORCE(node);
 
-    return IsControlDepVar(ctrl_dep_node) &&
+    return IsControlDepVar(*ctrl_dep_node) &&
            ctrl_dep_node->inputs.size() >= 1u &&
            ctrl_dep_node->inputs[0] == node;
   }

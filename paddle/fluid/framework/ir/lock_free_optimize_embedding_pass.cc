@@ -64,7 +64,7 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
             var_name.substr(var_name.size() - suffix.size()) == suffix) {
           // if so then strip them off
           var_name = var_name.substr(0, var_name.size() - suffix.size());
-          if (weight_var_set.contains(var_name)) {
+          if (weight_var_set.find(var_name) != weight_var_set.end()) {
             grad_sum_op_set.insert(output);
           }
         }
@@ -73,7 +73,7 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
   }
 
   for (ir::Node* node : grad_sum_op_set) {
-    LOG(ERROR) << "Found grad sum op " << node->Name() << "_" << name->id();
+    LOG(ERROR) << "Found grad sum op " << node->Name() << "_" << node->id();
   }
 
   // get the forward op and backward op pairs, where
@@ -98,7 +98,7 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
             ir::Node* forward_op =
                 FindForwardOpViaBackwardOp(graph.get(), backward_op);
 
-            Node* new_optimizer_node = CreateNewOptimizerNode(
+            Node* new_optimizer_node = CreateNewSGDNode(
                 graph.get(), forward_op, backward_op, node, opt_node);
 
             PADDLE_ENFORCE(new_optimizer_node);
@@ -109,7 +109,7 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
   }
 
   // Remove the sum_op and its' outputs and connected Optimizers
-  for (Node* sum_op : sum_op_set) {
+  for (Node* sum_op : grad_sum_op_set) {
     for (Node* sum_op_output : sum_op->outputs) {
       for (Node* optimize_op : sum_op_output->outputs) {
         if (optimize_op->NodeType() == Node::Type::kOperation &&
@@ -166,7 +166,7 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewSGDNode(
   OpDesc new_desc(*old_desc, old_desc->Block());
   new_desc.SetInput("Param", old_desc->Input("Param"));
   new_desc.SetInput("LearningRate", old_desc->Input("LearningRate"));
-  new_desc.SetInput("Grad", std::vector<std::string>({grad_name}));
+  new_desc.SetInput("Grad", std::vector<std::string>({grad_node->Name()}));
   new_desc.SetOutput("ParamOut", old_desc->Output("ParamOut"));
 
   std::vector<std::string> op_role_vars = boost::get<std::vector<std::string>>(
@@ -294,10 +294,6 @@ void LockFreeOptimizeEmbeddingPass::ReplaceAllDownstreamNode(
   }
 }
 
-bool LockFreeOptimizeEmbeddingPass::ApplyImpl(ir::Graph* graph) const {
-  return true;
-}
-
 ir::Node* LockFreeOptimizeEmbeddingPass::FindForwardOpViaBackwardOp(
     ir::Graph* graph, ir::Node* backward_node) const {
   PADDLE_ENFORCE(graph);
@@ -313,8 +309,8 @@ ir::Node* LockFreeOptimizeEmbeddingPass::FindForwardOpViaBackwardOp(
     forward_op_name =
         forward_op_name.substr(0, forward_op_name.size() - suffix.size());
   } else {
-    LOG(WARN) << "Illegal backward node's name " << backward_node->Name()
-              << " id " << backward_node->id();
+    LOG(WARNING) << "Illegal backward node's name " << backward_node->Name()
+                 << " id " << backward_node->id();
 
     return nullptr;
   }
@@ -329,7 +325,7 @@ ir::Node* LockFreeOptimizeEmbeddingPass::FindForwardOpViaBackwardOp(
       // check whether all inputs of the backward_op that ends_with @GRAD
       // comes from the output of forward_op is the input of the backward_op
       bool is_related_forward_node = false;
-      for (ir::Node* backward_input : backward_op->inputs) {
+      for (ir::Node* backward_input : backward_node->inputs) {
         if (IsVarNameEndsWith(backward_input, kGradVarSuffix)) {
           bool meets_correct_output = false;
           for (ir::Node* forward_output : node->outputs) {
