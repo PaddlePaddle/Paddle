@@ -124,7 +124,7 @@ TEST(GraphTest, Basic) {
       ASSERT_EQ(n->outputs.size(), 0UL);
     }
   }
-  ASSERT_EQ(nodes.size(), 5);
+  ASSERT_EQ(nodes.size(), 5UL);
 }
 
 TEST(GraphTest, WriteAfterRead) {
