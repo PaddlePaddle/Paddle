@@ -35,6 +35,16 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   return it->second.get();
 }
 
+const std::vector<const DeviceContext*>
+DeviceContextPool::GetAllDeviceContexts() const {
+  std::vector<const DeviceContext*> all_device_ctx;
+  all_device_ctx.reserve(device_contexts_.size());
+  for (auto& dev_ctx : device_contexts_) {
+    all_device_ctx.emplace_back(dev_ctx.second.get());
+  }
+  return all_device_ctx;
+}
+
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
@@ -198,9 +208,9 @@ class CudnnHolder {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
   SetDeviceId(place_.device);
-  compute_capability = GetCUDAComputeCapability(place_.device);
-  multi_process = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  compute_capability_ = GetCUDAComputeCapability(place_.device);
+  multi_process_ = GetCUDAMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -210,6 +220,16 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
+
+  driver_version_ = GetCUDADriverVersion(place_.device);
+  runtime_version_ = GetCUDARuntimeVersion(place_.device);
+
+  LOG(INFO) << "device: " << place_.device
+            << ", CUDA Capability: " << compute_capability_
+            << ", Driver Version: " << driver_version_ / 1000 << "."
+            << (driver_version_ % 100) / 10
+            << ", Runtime Version: " << runtime_version_ / 1000 << "."
+            << (runtime_version_ % 100) / 10;
 
   callback_manager_.reset(new StreamCallbackManager(stream_));
 }
@@ -232,11 +252,11 @@ void CUDADeviceContext::Wait() const {
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
-  return compute_capability;
+  return compute_capability_;
 }
 
 int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
-  return multi_process * max_threads_per_mp;
+  return multi_process_ * max_threads_per_mp_;
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {

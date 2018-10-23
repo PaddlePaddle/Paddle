@@ -135,9 +135,11 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
   cublasHandle_t cublas_handle_;
 
-  int compute_capability;
-  int multi_process;
-  int max_threads_per_mp;
+  int compute_capability_;
+  int runtime_version_;
+  int driver_version_;
+  int multi_process_;
+  int max_threads_per_mp_;
 
   mutable std::mutex mtx_;
 
@@ -214,6 +216,9 @@ class DeviceContextPool {
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
+
+  /*! \brief  Return all the device contexts. */
+  const std::vector<const DeviceContext*> GetAllDeviceContexts() const;
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
