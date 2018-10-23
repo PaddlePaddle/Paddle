@@ -17,8 +17,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-
-constexpr char Node::kControlDepVarName[];
+#if !defined(_WIN32)
+constexpr char Node::kControlDepVarName[] =  "__control_var";
+#else
+const char Node::kControlDepVarName[] = "__control_var";
+#endif
 int Node::count_ = 0;
 }  // namespace ir
 }  // namespace framework
