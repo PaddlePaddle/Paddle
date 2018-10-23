@@ -129,6 +129,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
               << dst_place;
       return;
     }
+    LOG(ERROR) << "DO COPY";
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }

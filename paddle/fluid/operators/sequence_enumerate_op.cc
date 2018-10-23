@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_enumerate_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -30,15 +31,24 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
         "Output(X) of SequenceEnumerate operator should not be null.");
 
     const auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_GE(
         x_dims.size(), 2UL,
         "Input(X) of SequenceEnumerate operator's rank should be 2.");
-    PADDLE_ENFORCE_EQ(
-        x_dims[1], 1UL,
-        "Input(X) of SequenceEnumerate operator's 2nd dimension should be 1.");
+    for (size_t i = 1u; i != x_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[i], 1UL,
+                        "Input(X) of SequenceEnumerate operator's all "
+                        "dimensions should be 1.");
+    }
 
     const auto win_size = ctx->Attrs().Get<int>("win_size");
-    ctx->SetOutputDim("Out", {x_dims[0], win_size});
+    std::vector<int> out_dims;
+    out_dims.reserve(x_dims.size());
+    out_dims.emplace_back(x_dims[0]);
+    out_dims.emplace_back(win_size);
+    for (size_t i = 2u; i != x_dims.size(); ++i) {
+      out_dims.emplace_back(x_dims[i]);
+    }
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     ctx->ShareLoD("X", "Out");
   }
 };
@@ -63,10 +73,10 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Enumerate Operator.
 
 Generate a new sequence for the input index sequence, which enumerates all the
-sub-sequences with length `win_size` of the input. 
+sub-sequences with length `win_size` of the input.
 The enumerated sequence has the same 1st dimension with variable `input`, and
 the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
-    
+
 Examples:
 Case 1:
   Input:

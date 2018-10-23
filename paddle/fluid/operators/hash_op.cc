@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/hash_op.h"
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -32,11 +33,20 @@ class HashOp : public framework::OperatorWithKernel {
                    "Output(Out) of HashOp should not be null.");
 
     auto dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_EQ(dims.size(), 2UL,
+                      "The input of hash_op's dimensions must be 2");
+    std::vector<int64_t> out_dims;
+    out_dims.reserve(dims.size() + 1);
+    // copy all dims except the last one
+    for (size_t i = 0u; i != dims.size() - 1; ++i) {
+      out_dims.emplace_back(dims[i]);
+    }
     int num_hash = ctx->Attrs().Get<int>("num_hash");
-    int ids_rank = dims.size();
-    dims[ids_rank - 1] = num_hash;
+    out_dims.emplace_back(num_hash);
+    // keep the last dim to 1
+    out_dims.emplace_back(1);
 
-    ctx->SetOutputDim("Out", dims);
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
