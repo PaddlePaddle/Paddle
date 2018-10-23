@@ -168,6 +168,8 @@ class Graph {
     return nullptr;
   }
 
+  const ProgramDesc &program() { return program_; }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {

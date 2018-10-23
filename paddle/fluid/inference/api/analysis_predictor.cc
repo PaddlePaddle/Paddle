@@ -197,7 +197,9 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   return true;
 }
 
+// NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
+  argument_.SetUseGPU(config_.use_gpu);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -208,6 +210,13 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     PADDLE_ENFORCE(!config_.prog_file.empty());
     argument_.SetModelProgramPath(config_.prog_file);
     argument_.SetModelParamsPath(config_.param_file);
+  }
+
+  if (config_.use_gpu && config_.use_tensorrt_) {
+    LOG(INFO) << "argument_ set TensorRT true";
+    argument_.SetUseTensorRT(true);
+    argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
+    argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();

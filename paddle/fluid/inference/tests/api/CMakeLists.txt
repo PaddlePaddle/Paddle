@@ -76,7 +76,7 @@ if (NOT EXISTS ${RESNET50_INSTALL_DIR})
     inference_download_and_uncompress(${RESNET50_INSTALL_DIR} ${INFERENCE_URL} "resnet50_model.tar.gz")
 endif()
 inference_analysis_test(test_analyzer_resnet50 SRCS analyzer_resnet50_tester.cc
-    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS --infer_model=${RESNET50_INSTALL_DIR}/model)
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ARGS --infer_model=${RESNET50_INSTALL_DIR}/model)
 
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
@@ -106,7 +106,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
    endif()
 
    inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
-      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_tensorrt_subgraph_engine
+      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager paddle_inference_tensorrt_subgraph_engine
         ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
 
 endif()

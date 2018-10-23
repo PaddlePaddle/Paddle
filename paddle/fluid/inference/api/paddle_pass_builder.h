@@ -110,7 +110,8 @@ class GpuPassStrategy : public PassStrategy {
     LOG(INFO) << "Using GPU pass strategy";
     passes_.assign({
         "infer_clean_graph_pass",  //
-        "conv_bn_fuse_pass",       //
+        "tensorrt_subgraph_pass",  //
+                                   // "conv_bn_fuse_pass",       //
     });
   }
 

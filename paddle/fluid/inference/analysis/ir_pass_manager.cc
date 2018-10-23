@@ -63,6 +63,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass_num++;
     }
 
+    if (pass_name == "tensorrt_subgraph_pass") {
+      PADDLE_ENFORCE(argument->tensorrt_node_teller());
+      pass->SetNotOwned("tensorrt_node_teller",
+                        argument->tensorrt_node_teller());
+      pass->Set("workspace_size", argument->tensorrt_workspace_size());
+      pass->Set("max_batch_size", argument->tensorrt_max_batch_size());
+    }
+
     // graph_ = pass->Apply(std::move(graph_));
     pre_pass = pass_name;
 

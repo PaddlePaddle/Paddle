@@ -13,16 +13,22 @@
 // limitations under the License.
 
 #pragma once
+#include <paddle/fluid/framework/ir/fuse_pass_base.h>
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class TensorRtSubgraphPass : public framework::ir::Pass {
+class TensorRtSubgraphPass : public framework::ir::FusePassBase {
  public:
   std::unique_ptr<framework::ir::Graph> ApplyImpl(
       std::unique_ptr<framework::ir::Graph> graph) const override;
+
+ private:
+  void CreateTensorRTOp(framework::ir::Node *x,
+                        framework::ir::Graph *graph) const;
+  void CleanIntermediateOutputs(framework::ir::Node *node);
 };
 
 }  // namespace analysis

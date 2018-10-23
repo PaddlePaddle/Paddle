@@ -1,6 +1,8 @@
 unset(analysis_deps CACHE)
 set(analysis_deps # analysis_deps can be extended accross the project
-        framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log CACHE INTERNAL "")
+        framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log
+        ir_pass_manager
+        CACHE INTERNAL "")
 
 add_subdirectory(ir_passes)
 add_subdirectory(passes)
@@ -11,11 +13,12 @@ cc_library(argument SRCS argument.cc DEPS scope proto_desc)
 #cc_library(tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass.cc DEPS ${inference_analyzer} DEPS subgraph_splitter)
 cc_library(analysis_pass SRCS analysis_pass.cc)
 
-cc_library(analysis SRCS graph_traits.cc
+message("analysis_deps: ${analysis_deps}")
+cc_library(analysis SRCS
   analyzer.cc
   helper.cc
-  DEPS ${analysis_deps}
   analysis_pass
+  DEPS ${analysis_deps}
   )
 
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)

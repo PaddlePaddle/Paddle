@@ -19,8 +19,8 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 
@@ -64,19 +64,18 @@ class SubgraphDetector {
 };
 
 /*
- * SubGraphFuse - Replace some nodes with the sub-graph node they are inside. To
- * some extent, the TensorRT engine is just a fusion op for a model.
+ * SubGraphFuser - Replace some nodes with the sub-graph node they are inside.
+ * To some extent, the TensorRT engine is just a fusion op for a model.
  */
-/*
-class SubGraphFuse {
+class SubGraphFuser {
  public:
   using NodeInsideSubgraphTeller = SubgraphDetector::NodeInsideSubgraphTeller;
 
-  SubGraphFuse(Graph *graph, const NodeInsideSubgraphTeller &teller,
-               Argument *argument)
+  SubGraphFuser(Graph *graph, const NodeInsideSubgraphTeller &teller,
+                int min_subgraph_size)
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
-        argument_(argument) {}
+        min_subgraph_size_{min_subgraph_size} {}
 
   // The main method which run all the logic.
   void operator()();
@@ -88,9 +87,56 @@ class SubGraphFuse {
  private:
   Graph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
-  Argument *argument_;
+  int min_subgraph_size_;
 };
+
+const char kUnionFindParent[] = "_sub_graph_splitter_union_find_parent_";
+const char kDetectedSubgraph[] = "_detected_sub_graph_";
+const char kSubgraph[] = "_subgraph_";
+/*
+ * ir::Node agent for subgraph detector.
  */
+struct Agent {
+  Agent(framework::ir::Node *x) : x_(x) {}
+
+  bool deleted() { return GetBool(framework::ir::kNodeDeleted); }
+  void set_deleted(bool x) { SetBool(framework::ir::kNodeDeleted, x); }
+
+  bool marked() { return GetBool(kSubgraphSplitterMarkerAttrName); }
+  void set_marked(bool x) { SetBool(kSubgraphSplitterMarkerAttrName, x); }
+
+  void set_subgraph(const std::vector<framework::ir::Node *> &x) {
+    if (!x_->Has(kSubgraph)) {
+      x_->Set(kSubgraph, new std::vector<framework::ir::Node *>(x));
+    } else {
+      x_->Get<std::vector<framework::ir::Node *>>(kSubgraph) = x;
+    }
+  }
+
+  std::vector<framework::ir::Node *> *subgraph() {
+    if (!x_->Has(kSubgraph)) return nullptr;
+    return &x_->Get<std::vector<framework::ir::Node *>>(kSubgraph);
+  }
+
+  std::vector<framework::ir::Node *> &inputs() { return x_->inputs; }
+  std::vector<framework::ir::Node *> &outputs() { return x_->outputs; }
+
+ private:
+  void SetBool(const std::string &key, bool x) {
+    if (x_->Has(key)) {
+      x_->Get<bool>(key) = x;
+    } else {
+      x_->Set(key, new bool(x));
+    }
+  }
+
+  bool GetBool(const std::string &key) {
+    return x_->Has(key) && x_->Get<bool>(key);
+  }
+
+ private:
+  framework::ir::Node *x_;
+};
 
 }  // namespace analysis
 }  // namespace inference

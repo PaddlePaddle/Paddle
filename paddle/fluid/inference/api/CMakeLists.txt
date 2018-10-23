@@ -62,7 +62,7 @@ cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
-        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter zero_copy_tensor_dummy)
+        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter zero_copy_tensor_dummy ${analysis_deps})
 
 inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()

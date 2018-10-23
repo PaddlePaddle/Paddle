@@ -225,9 +225,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_rnn1, profile) {
-  contrib::AnalysisConfig cfg;
+  contrib::AnalysisConfig cfg(false);
   SetConfig(&cfg);
-  cfg.use_gpu = false;
+  // cfg.use_gpu = true;
+  cfg.fraction_of_gpu_memory = 0.1;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

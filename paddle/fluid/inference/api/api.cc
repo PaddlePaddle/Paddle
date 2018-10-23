@@ -127,6 +127,9 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   enable_ir_optim = other.enable_ir_optim;
   use_feed_fetch_ops = other.use_feed_fetch_ops;
   _use_mkldnn = other._use_mkldnn;
+  use_tensorrt_ = other.use_tensorrt_;
+  tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
+  tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
 
   if (use_gpu) {
     pass_builder_.reset(new GpuPassStrategy(

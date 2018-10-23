@@ -33,7 +33,6 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
-    FLAGS_IA_enable_tensorrt_subgraph_engine = true;
     VLOG(3) << "Predictor::init()";
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
@@ -99,25 +98,20 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
                               new std::string(config_.precision_mode));
 
     if (!config_.model_dir.empty()) {
-      argument.model_dir.reset(new std::string(config_.model_dir));
+      argument.SetModelDir(config_.model_dir);
     } else {
       PADDLE_ENFORCE(
           !config_.param_file.empty(),
           "Either model_dir or (param_file, prog_file) should be set.");
       PADDLE_ENFORCE(!config_.prog_file.empty());
-      argument.model_program_path.reset(new std::string(config_.prog_file));
-      argument.model_param_path.reset(new std::string(config_.param_file));
+      argument.SetModelProgramPath(config_.prog_file);
+      argument.SetModelParamsPath(config_.param_file);
     }
-    argument.original_program_desc.reset(
-        new ProgramDesc(*inference_program_->Proto()));
     Analyzer analyzer;
     analyzer.Run(&argument);
-    CHECK(argument.transformed_program_desc);
+    CHECK(argument.ir_analyzed_program());
     VLOG(5) << "transformed program:\n"
-            << argument.transformed_program_desc->SerializeAsString();
-    VLOG(5) << "to prepare executor";
-    inference_program_.reset(
-        new framework::ProgramDesc(*argument.transformed_program_desc));
+            << argument.ir_analyzed_program()->SerializeAsString();
   }
 
  private:

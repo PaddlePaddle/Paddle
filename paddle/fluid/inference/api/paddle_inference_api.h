@@ -230,6 +230,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 // -----------------------------------------------------------------------------------
 // NOTE: The following APIs are not mature yet, we are still working on them.
 
+class AnalysisPredictor;
+
 namespace contrib {
 
 // Accelerate GPU computation with TensorRT engine.
@@ -268,11 +270,22 @@ struct AnalysisConfig : public NativeConfig {
   // NOTE this is just for internal development, please not use it.
   // NOT stable yet.
   bool _use_mkldnn{false};
+  void EnableTensorRtEngine(int workspace_size = 1 << 30,
+                            int max_batch_size = 1) {
+    use_tensorrt_ = true;
+    tensorrt_workspace_size_ = workspace_size;
+    tensorrt_max_batchsize_ = max_batch_size;
+  }
 
   explicit AnalysisConfig(bool use_gpu = false);
   explicit AnalysisConfig(const AnalysisConfig& other);
 
- private:
+  friend class ::paddle::AnalysisPredictor;
+
+ protected:
+  bool use_tensorrt_{false};
+  int tensorrt_workspace_size_;
+  int tensorrt_max_batchsize_;
   std::unique_ptr<PaddlePassBuilder> pass_builder_;
 };
 
