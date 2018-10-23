@@ -256,7 +256,7 @@ class TestBook(unittest.TestCase):
                 shape=[32, 9, 6, 6],
                 append_batch_size=False,
                 dtype='float32')
-            self.assertIsNotNone(layers.reorg(data, long(3)))
+            self.assertIsNotNone(layers.reorg(data, 3))
         print(str(program))
 
     def test_sequence_unsqueeze(self):
