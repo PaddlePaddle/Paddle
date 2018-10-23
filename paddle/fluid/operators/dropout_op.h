@@ -36,7 +36,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    auto div_prob_in_train = context.Attr<bool>("div_prob_in_train");
+    auto dropout_implementation = context.Attr<bool>("dropout_implementation");
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
@@ -57,7 +57,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {
-          if (div_prob_in_train) {
+          if (dropout_implementation) {
             mask_data[i] = 1.0f / static_cast<T>(1.0f - dropout_prob);
             y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
           } else {
@@ -71,7 +71,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      if (div_prob_in_train) {
+      if (dropout_implementation) {
         Y.device(place) = X;
       } else {
         Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);

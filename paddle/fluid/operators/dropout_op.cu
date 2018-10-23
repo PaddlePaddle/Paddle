@@ -26,7 +26,8 @@ namespace operators {
 template <typename T>
 __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T* src,
-                                T* mask_data, T* dst, bool div_prob_in_train) {
+                                T* mask_data, T* dst,
+                                bool dropout_implementation) {
   thrust::minstd_rand rng;
   rng.seed(seed);
   thrust::uniform_real_distribution<float> dist(0, 1);
@@ -47,7 +48,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
     if (dist(rng) < dropout_prob) {
       mask = static_cast<T>(0);
     } else {
-      if (div_prob_in_train) {
+      if (dropout_implementation) {
         mask = static_cast<T>(1.0f / (1.0f - dropout_prob));
       } else {
         mask = static_cast<T>(1);
@@ -71,8 +72,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    auto div_prob_in_train = context.Attr<bool>("div_prob_in_train");
-    VLOG(10) << "div prob in tain" << div_prob_in_train;
+    auto dropout_implementation = context.Attr<bool>("dropout_implementation");
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
@@ -90,11 +90,11 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       RandomGenerator<
           T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
-          div_prob_in_train);
+          dropout_implementation);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      if (div_prob_in_train) {
+      if (dropout_implementation) {
         Y.device(place) = X;
       } else {
         Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);

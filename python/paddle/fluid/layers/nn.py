@@ -979,7 +979,7 @@ def dropout(x,
             is_test=False,
             seed=None,
             name=None,
-            div_prob_in_train=False):
+            dropout_implementation=False):
     """
     Computes dropout.
 
@@ -999,6 +999,14 @@ def dropout(x,
                     units will be dropped. DO NOT use a fixed seed in training.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
+        dropout_implementation(bool): A Flag indicating whether divide (1-dropout_prob). 
+                                      When it's True, all the units will divide (1-dropout_prob)
+                                      after set some units to zero in the train program.
+                                      And do nothing in the inference program.
+                                      The dropout op can be removed in the inference program.
+                                      The inference program will be more efficient
+                                      When it's False, same as original
+
 
     Returns:
         Variable: A tensor variable is the shape with `x`.
@@ -1028,7 +1036,7 @@ def dropout(x,
             'is_test': is_test,
             'fix_seed': seed is not None,
             'seed': seed if seed is not None else 0,
-            'div_prob_in_train': div_prob_in_train,
+            'dropout_implementation': dropout_implementation,
         })
     return out
 
