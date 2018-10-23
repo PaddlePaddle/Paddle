@@ -63,7 +63,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "all the value will divide (1-dropout_prob)"
                   "By using this way, will do nothing in the inference program"
                   "The dropout op can be removed in the inference program."
-                  "The inference program will be more efficient")
+                  "The inference program will be more efficient"
+                  "When it's False, same as original")
         .SetDefault(false);
 
     AddComment(R"DOC(
