@@ -150,22 +150,27 @@ def execute_strategy_block(main_program,
     yield
     cur_op_idx = len(main_program.current_block().ops)
 
+    # By default, the type of the scale, bias, mean,
+    # and var tensors should both be float. (For float or float16 input tensor)
+    # or double (For double input tensor).
+    not_cast_param_ops = ["batch_norm"]
+
     cur_block = main_program.current_block()
     ops = [
         cur_block.ops[i + pre_op_idx] for i in range(cur_op_idx - pre_op_idx)
     ]
 
+    avoid_convert_var = set()
     inner_inputs = set()
     inner_outputs = set()
-    itermediate_out = set()
     for op in ops:
         for iname in op.input_names:
             for in_var_name in op.input(iname):
                 if in_var_name not in inner_outputs:
                     inner_inputs.add(in_var_name)
-                else:
-                    itermediate_out.add(in_var_name)
-
+                    if op.type in not_cast_param_ops and cur_block.var(
+                            in_var_name).persistable:
+                        avoid_convert_var.add(in_var_name)
         for oname in op.output_names:
             for out_var_name in op.output(oname):
                 inner_outputs.add(out_var_name)
@@ -193,13 +198,16 @@ def execute_strategy_block(main_program,
             persistable=False,
             stop_gradient=stop_gradient)
 
-    # TODO(zcd): insert cast_op to the current block
     # reset the argument of cur_block.ops and insert them to the current block
     next_op_idx = pre_op_idx
     for in_var_name in inner_inputs:
+        if in_var_name in avoid_convert_var:
+            continue
         in_var = cur_block.var(in_var_name)
-        out_var = _create_tmp_variable("casted_" + in_var.name, dtype)
         out_var_dtype = convert_np_dtype_to_dtype_(dtype)
+        if in_var.dtype == out_var_dtype:
+            continue
+        out_var = _create_tmp_variable("casted_" + in_var.name, out_var_dtype)
         cur_block._insert_op(
             next_op_idx,
             type="cast",
@@ -211,7 +219,6 @@ def execute_strategy_block(main_program,
         _rename_arg_(in_var.name, out_var.name, next_op_idx)
         # The output's dtype might be changed too.
 
-    # TODO(zcd): insert cast_op to the current block
     # Node: Some output doesn't need convert data type
     # Temporally doesn't cast data to origin type, because some
     # output may be not used.

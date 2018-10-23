@@ -98,14 +98,15 @@ def train(nn_type, use_cuda):
 
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
-
         for batch_id, data in enumerate(train_reader()):
             # train a mini-batch, fetch nothing
             acc_np, avg_loss_np = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[acc, avg_loss])
             print("acc: {}, avg_loss: {}".format(
-                float(acc_np), loat(avg_loss_np)))
+                float(acc_np), float(avg_loss_np)))
+
+            return
 
     train_loop(fluid.default_main_program())
 
@@ -136,11 +137,11 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
 
 
 def inject_all_tests():
-    for use_cuda in (False, True):
+    for use_cuda in (True, ):
         if use_cuda and not core.is_compiled_with_cuda():
             continue
         for parallel in (False, ):
-            for nn_type in ('mlp', ):  # ('mlp', 'conv'):
+            for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)
 
 
