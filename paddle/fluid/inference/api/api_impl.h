@@ -26,10 +26,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/io.h"
@@ -77,6 +76,13 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetchs_;
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
+  // Used to fix the TensorArray not clear in inference.
+  std::vector<framework::LoDTensorArray *> tensor_arrays_;
 };
+
+// Fix the tensor array not clear in the inference scenarios.
+void CollectTensorArrays(framework::Scope *scope,
+                         std::vector<framework::LoDTensorArray *> *arrays);
+void ResetTensorArray(const std::vector<framework::LoDTensorArray *> &vars);
 
 }  // namespace paddle

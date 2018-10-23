@@ -18,6 +18,63 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-using LoDTensorArray = std::vector<LoDTensor>;
-}
+/*
+ * A LoDTensorArray which will not deallocate buffer when resized. More
+ * performance friendly in the concurrency scenerios.
+ */
+class LoDTensorArray {
+ public:
+  LoDTensorArray() = default;
+
+  using iterator = std::vector<LoDTensor>::iterator;
+  using const_iterator = std::vector<LoDTensor>::const_iterator;
+
+  const_iterator begin() const { return array_.begin(); }
+  const_iterator end() const { return array_.begin() + size_; }
+  iterator begin() { return array_.begin(); }
+  iterator end() { return array_.begin() + size_; }
+
+  void push_back(const LoDTensor& x) {
+    if (size_ < array_.size()) {
+      array_[size_++] = x;
+    } else {
+      array_.push_back(x);
+      ++size_;
+    }
+  }
+  void resize(size_t size) {
+    if (array_.size() < size) {
+      array_.resize(size);
+    }
+    size_ = size;
+  }
+
+  size_t space() const { return array_.size(); }
+
+  void reserve(size_t size) {
+    // Naive warning to tell user this array might be to large. The memory and
+    // buffer used by this TensorArray will not be deleted during the training
+    // and inference phase, so attention not to make it expand too long.
+    if (size > 800UL) {
+      LOG(WARNING) << "TensorArray has more than 800 items";
+    }
+    array_.reserve(size);
+  }
+
+  bool empty() const { return size_ == 0UL; }
+  void clear() { size_ = 0UL; }
+
+  LoDTensor& operator[](size_t id) { return array_[id]; }
+  const LoDTensor& operator[](size_t id) const { return array_[id]; }
+  LoDTensor& at(size_t id) { return array_.at(id); }
+  const LoDTensor& at(size_t id) const { return array_.at(id); }
+
+  size_t size() const { return size_; }
+
+ private:
+  size_t size_{0};
+  std::vector<LoDTensor> array_;
+};
+
+}  // namespace framework
 }  // namespace paddle

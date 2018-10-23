@@ -88,6 +88,8 @@ class AnalysisPredictor : public PaddlePredictor {
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
+  // Used to fix the TensorArray not clear in inference.
+  std::vector<framework::LoDTensorArray *> tensor_arrays_;
 };
 
 }  // namespace paddle

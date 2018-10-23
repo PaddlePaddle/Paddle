@@ -82,6 +82,9 @@ bool AnalysisPredictor::Init(
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
+
+  // Used to fix TensorArray not clear in inference.
+  CollectTensorArrays(scope(), &tensor_arrays_);
   return true;
 }
 
@@ -109,6 +112,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // Used to fix TensorArray not clear in inference.
+  ResetTensorArray(tensor_arrays_);
   return true;
 }
 
