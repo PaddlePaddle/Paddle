@@ -124,7 +124,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'enable_cublas_tensor_op_math'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
