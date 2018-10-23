@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/string/printf.h"
 
+DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
+
 namespace paddle {
 namespace platform {
 
@@ -191,6 +193,13 @@ RecordEvent::~RecordEvent() {
   }
   ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
+}
+
+RecordRPCEvent::RecordRPCEvent(const std::string& name,
+                               const DeviceContext* dev_ctx) {
+  if (FLAGS_enable_rpc_profiler) {
+    event_.reset(new platform::RecordEvent(name, dev_ctx));
+  }
 }
 
 RecordBlock::RecordBlock(int block_id)
