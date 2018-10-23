@@ -104,7 +104,17 @@ DoubleQueueThreadedSSAGraphExecutor::DoubleQueueThreadedSSAGraphExecutor(
                     }
                   }
                 }
-                ++run_op_num_;
+
+                // NOTE(zjl): not quite sure, but using fetch_and_add may be
+                // faster than add_and_fetch
+                // Fetch_and_add is usually an atomic instruction in some CPUs,
+                // (see: https://en.wikipedia.org/wiki/Fetch-and-add)
+                // while add_and_fetch may be implemented by CAS and while-loop
+                // (see: https://en.wikipedia.org/wiki/Compare-and-swap).
+                if (++run_op_num_ >= op_deps.size()) {
+                  is_ended = true;
+                  break;
+                }
               } catch (...) {
                 VLOG(5) << thread_id
                         << "raise exception when running op: " << op->Name();
@@ -113,24 +123,24 @@ DoubleQueueThreadedSSAGraphExecutor::DoubleQueueThreadedSSAGraphExecutor(
                   exception_ptr_ = std::current_exception();
                 }
                 run_op_num_ += (op_deps.size() + 1);
-              }
-
-              if (run_op_num_ >= op_deps.size()) {
-                control_flag_.Pause();
-                {
-                  std::lock_guard<std::mutex> lock(queue_mutex_);
-                  queue_cv_.notify_all();
-                }
-                VLOG(10) << thread_id << "queue_cv_.notify_all() is called";
                 is_ended = true;
                 break;
               }
             }
 
-            if (is_ended) break;
+            if (is_ended) {
+              control_flag_.Pause();
+              {
+                std::lock_guard<std::mutex> lock(queue_mutex_);
+                queue_cv_.notify_all();
+              }
+              VLOG(10) << thread_id << "queue_cv_.notify_all() is called";
+              break;
+            }
+
             local_queue.tail_ = cur_tail;
             if (!tmp.empty()) {
-              // TODO(zjl): this can be done async
+              // NOTE(zjl): This can be done async
               std::lock_guard<std::mutex> lock(queue_mutex_);
               global_queue_.PushAll(tmp);
               if (global_queue_.size() <= strategy_.max_queue_size_) {
@@ -157,8 +167,7 @@ DoubleQueueThreadedSSAGraphExecutor::DoubleQueueThreadedSSAGraphExecutor(
           local_queue.Push(global_queue_, pop_head, pop_head + pop_num);
         }
 
-        --running_threads_;
-        if (running_threads_ == 0) {
+        if (running_threads_.fetch_sub(1) == 1) {
           std::lock_guard<std::mutex> lock(exit_mutex_);
           exit_cv_.notify_one();
         }
