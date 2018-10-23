@@ -299,6 +299,12 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 }
 
 ParallelExecutor::~ParallelExecutor() {
+  const auto dev_ctxs =
+      platform::DeviceContextPool::Instance().GetAllDeviceContexts();
+  for (auto &dev_ctx : dev_ctxs) {
+    dev_ctx->Wait();
+  }
+
   if (member_->own_local_scope_) {
     for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
       Scope *local_scope = member_->local_scopes_[i];
