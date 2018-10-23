@@ -15,7 +15,7 @@
 from __future__ import print_function
 import re
 from collections import defaultdict
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
+from paddle.fluid.framework import Program, Variable, name_scope
 from . import framework
 from . import layers
 from .backward import append_backward
@@ -111,8 +111,7 @@ class Optimizer(object):
             if param_lr == 1.0:
                 return self._global_learning_rate()
             else:
-                with default_main_program()._lr_schedule_guard():
-                    return self._global_learning_rate() * param_lr
+                return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
