@@ -71,8 +71,8 @@ link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/paddle/fluid/inference")
 
-add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
-
+# add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
+add_library(${DEMO_NAME} ${DEMO_NAME}.cc)
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX} 
