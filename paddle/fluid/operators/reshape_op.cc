@@ -198,6 +198,7 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+    auto start = std::chrono::system_clock::now();
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
 
@@ -230,6 +231,11 @@ class ReshapeKernel {
     out->mutable_data(ctx.GetPlace(), in->type());
     framework::TensorCopySync(*in, ctx.GetPlace(), out);
     out->Resize(out_dims);
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(ERROR) << "run reshape run end, cost: " << diff.count() << " "
+               << x_dims.size();
   }
 };
 
@@ -259,6 +265,7 @@ class Reshape2Op : public ReshapeOp {
       : ReshapeOp(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    auto start = std::chrono::system_clock::now();
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) of ReshapeOp should not be null.");
     const auto &x_dims = ctx->GetInputDim("X");
@@ -271,6 +278,10 @@ class Reshape2Op : public ReshapeOp {
     ctx->ShareLoD("X", /*->*/ "XShape");
 
     ReshapeOp::InferShape(ctx);
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(ERROR) << "run reshape infer shape end, cost: " << diff.count() << " "
+               << x_dims.size();
   }
 };
 
