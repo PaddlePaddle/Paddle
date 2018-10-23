@@ -91,8 +91,8 @@ class ReorgOpMaker : public framework::OpProtoAndCheckerMaker {
 
         Examples:
 
-            1. Given a 3-D tensor Input(X) with a shape [2048, 26, 26], and the stride is 2, the reorg operator will transform Input(X)
-            into a 3-D tensor with shape [2048, 13, 13] and leaving Input(X)'s data unchanged.
+            1. Given a 4-D tensor Input(X) with a shape [128, 2048, 26, 26], and the stride is 2, the reorg operator will transform Input(X)
+            into a 4-D tensor with shape [128, 2048, 13, 13] and leaving Input(X)'s data unchanged.
 
     )DOC");
   }

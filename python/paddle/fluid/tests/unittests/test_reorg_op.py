@@ -22,16 +22,16 @@ from op_test import OpTest
 class TestReorgOp(OpTest):
     @staticmethod
     def helper(in_, width, height, channel, batch, stride, forward, out_):
-        channel_out = channel / (stride * stride)
+        channel_out = channel // (stride * stride)
         for b in range(batch):
             for k in range(channel):
                 for j in range(height):
                     for i in range(width):
                         in_index = i + width * (j + height * (k + channel * b))
                         channel2 = k % channel_out
-                        offset = k / channel_out
+                        offset = k // channel_out
                         width2 = i * stride + offset % stride
-                        height2 = j * stride + offset / stride
+                        height2 = j * stride + offset // stride
                         out_index = width2 + width * stride * (
                             height2 + height * stride *
                             (channel2 + channel_out * b))

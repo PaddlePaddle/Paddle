@@ -7470,8 +7470,8 @@ def reorg(x, stride, name=None):
                 x=data, stride=2)
     """
 
-    if not (isinstance(stride, long)):
-        raise ValueError("stride must be a python long")
+    if not (isinstance(stride, int)):
+        raise ValueError("stride must be a python Int")
 
     helper = LayerHelper("reorg", **locals())
     if name is None:
