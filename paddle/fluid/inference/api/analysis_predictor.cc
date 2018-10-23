@@ -77,10 +77,6 @@ bool AnalysisPredictor::Init(
     inference_program_ = program;
   }
 
-  if (config_._use_mkldnn) {
-    executor_->EnableMKLDNN(*inference_program_);
-  }
-
   executor_->Prepare(scope_.get(), *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
