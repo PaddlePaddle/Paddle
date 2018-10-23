@@ -7470,10 +7470,11 @@ def reorg(x, stride, name=None):
                 x=data, stride=2)
     """
 
+    helper = LayerHelper("reorg", **locals())
+
     if not (isinstance(stride, int)):
         raise ValueError("stride must be a python Int")
 
-    helper = LayerHelper("reorg", **locals())
     if name is None:
         out = helper.create_tmp_variable(dtype=x.dtype)
     else:
