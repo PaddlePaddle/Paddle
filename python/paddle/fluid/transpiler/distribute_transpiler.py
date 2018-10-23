@@ -1194,9 +1194,7 @@ to transpile() call.")
         origin_param_var = self.origin_program.global_block().vars[
             self.table_name]
 
-        zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / float(
-                len(self.pserver_endpoints))))
+        zero_dim = int(math.ceil(origin_param_var.shape[0] * 100 / float(len(self.pserver_endpoints))))
         table_shape = list(origin_param_var.shape)
         table_shape[0] = zero_dim
 
