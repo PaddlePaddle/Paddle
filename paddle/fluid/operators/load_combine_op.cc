@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
+#include <vector>
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -34,6 +35,7 @@ class LoadCombineOp : public framework::OperatorBase {
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
 
     std::ifstream fin(filename, std::ios_base::in | std::ios_base::binary);
+    //std::ifstream fin(filename, std::ios_base::in);
     PADDLE_ENFORCE(!fin.bad(),
                    "Cannot open file %s for load_combine op", filename);
 
@@ -46,7 +48,7 @@ class LoadCombineOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(place);
 
     for (size_t i = 0; i < out_var_names.size(); i++) {
-      VLOG(3) << "load " << out_var_names[i];
+      VLOG(3) << "load variable " << out_var_names[i];
       auto *out_var = scope.FindVar(out_var_names[i]);
 
       PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
@@ -61,6 +63,13 @@ class LoadCombineOp : public framework::OperatorBase {
       // Get data from fin to tensor
       DeserializeFromStream(fin, tensor, dev_ctx); 
       VLOG(3) << "after deserialization";
+      framework::Tensor check;
+      framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
+      float sum = .0;
+      for(size_t i=0; i < check.numel(); ++i) {
+          sum += check.data<float>()[i];
+      }
+      VLOG(3) << "sum result" << sum;
       auto in_dtype = framework::ToDataType(tensor->type());
       auto out_dtype =
           load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
@@ -80,6 +89,7 @@ class LoadCombineOp : public framework::OperatorBase {
         tensor = out_var->GetMutable<framework::LoDTensor>();
         tensor->set_lod(fp16_tensor.lod());
         tensor->ShareDataWith(fp16_tensor);
+
       }
       VLOG(3) << "load " << out_var_names[i] << " finished";
     }

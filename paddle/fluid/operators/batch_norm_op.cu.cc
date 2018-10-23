@@ -141,6 +141,27 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           bias->template data<BatchNormParamType<T>>(),
           est_mean->template data<BatchNormParamType<T>>(),
           est_var->template data<BatchNormParamType<T>>(), epsilon));
+
+      VLOG(3) << "before tensor copy";
+      Tensor mean_, var_, x_, y_;
+      framework::TensorCopy(*est_mean, platform::CPUPlace(), dev_ctx, &mean_);
+      framework::TensorCopy(*est_var, platform::CPUPlace(), dev_ctx, &var_);
+      framework::TensorCopy(*x, platform::CPUPlace(), dev_ctx, &x_);
+      framework::TensorCopy(*y, platform::CPUPlace(), dev_ctx, &y_);
+      VLOG(3) << "after tensor copy";
+      auto check_tensor = [&](const Tensor& check) {
+      float sum = .0;
+      for(size_t i=0; i < check.numel(); ++i) {
+          sum += check.data<float>()[i];
+      }
+      return sum;
+      };
+      VLOG(3) << "BatchNormKernel";
+      VLOG(3) << "mean" << check_tensor(mean_);
+      VLOG(3) << "var" << check_tensor(var_);
+      VLOG(3) << "x" << check_tensor(x_);
+      VLOG(3) << "y" << check_tensor(y_);
+      
     } else {
       // Run training mode.
       // obtain running mean and running inv var, and see if we need to
