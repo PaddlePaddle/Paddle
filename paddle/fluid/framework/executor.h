@@ -32,38 +32,32 @@ template <typename T>
 std::unordered_map<std::string, T> GetNonPersistableReferenceCount(
     const ProgramDesc& prog, size_t block_id) {
   auto& block = prog.Block(block_id);
-  std::unordered_set<std::string> ignored_vars;
   std::unordered_map<std::string, T> ref_cnts;
 
-  for (auto var_desc : block.AllVars()) {
-    auto type = var_desc->Proto()->type().type();
-    if (type != proto::VarType::LOD_TENSOR || var_desc->Persistable()) {
-      ignored_vars.insert(var_desc->Name());  // ignore persistable vars
+  auto update_ref_cnts = [&](OpDesc* op_desc, const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto* var_desc = block.FindVar(name);
+        if (var_desc == nullptr || var_desc->Persistable()) continue;
+        auto type = var_desc->Proto()->type().type();
+        if (type != proto::VarType::LOD_TENSOR &&
+            type != proto::VarType::SELECTED_ROWS) {
+          continue;
+        }
+
+        auto it = ref_cnts.find(name);
+        if (it != ref_cnts.end()) {
+          ++it->second;
+        } else {
+          ref_cnts[name] = 1;
+        }
+      }
     }
-  }
+  };
 
   for (auto op_desc : block.AllOps()) {
-    for (auto& input : op_desc->Inputs()) {
-      for (auto& input_name : input.second) {
-        if (!ignored_vars.count(input_name)) {
-          if (ref_cnts.count(input_name))
-            ++ref_cnts[input_name];
-          else
-            ref_cnts[input_name] = 1;
-        }
-      }
-    }
-
-    for (auto& output : op_desc->Outputs()) {
-      for (auto output_name : output.second) {
-        if (!ignored_vars.count(output_name)) {
-          if (ref_cnts.count(output_name))
-            ++ref_cnts[output_name];
-          else
-            ref_cnts[output_name] = 1;
-        }
-      }
-    }
+    update_ref_cnts(op_desc, op_desc->Inputs());
+    update_ref_cnts(op_desc, op_desc->Outputs());
   }
   return ref_cnts;
 }
