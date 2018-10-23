@@ -7494,7 +7494,8 @@ def reorg(x, stride, name=None):
         raise ValueError("stride must be a python Int")
 
     if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(
+            dtype=x.dtype)  #fix create
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
