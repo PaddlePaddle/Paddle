@@ -24,6 +24,7 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
+import numpy as np
 from paddle.fluid.layers.device import get_places
 from paddle.fluid.layers.control_flow import ParallelDo
 
@@ -77,6 +78,7 @@ def train(nn_type, use_cuda):
     with fluid.execute_strategy_block(fluid.default_main_program()):
         hidden, label = net_conf(img, label)
 
+    hidden = fluid.layers.cast(hidden, np.float32)
     prediction, avg_loss, acc = loss_net(hidden, label)
     # test_program = fluid.default_main_program().clone(for_test=True)
     # optimizer = fluid.optimizer.Adam(learning_rate=0.001)
