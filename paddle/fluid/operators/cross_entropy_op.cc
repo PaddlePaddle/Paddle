@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cross_entropy_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -179,6 +180,14 @@ or not. But the output only shares the LoD information with input X.
 )DOC");
   }
 };
+
+class CrossEntropyOpInferVarType : public framework::InferVarTypeHelper {
+ protected:
+  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -186,6 +195,7 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
+                  ops::CrossEntropyOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,

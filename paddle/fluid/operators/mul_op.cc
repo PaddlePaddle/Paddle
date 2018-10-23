@@ -126,6 +126,14 @@ or not. But the output only shares the LoD information with input $X$.
   }
 };
 
+class MulOpInferVarType : public framework::InferVarTypeHelper {
+ protected:
+  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+  }
+};
+
 class MulGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -178,7 +186,8 @@ class MulOpGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGradMaker);
+REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
+                  ops::MulOpGradMaker);
 REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
