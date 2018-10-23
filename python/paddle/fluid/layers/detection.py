@@ -167,7 +167,7 @@ def rpn_target_assign(bbox_pred,
             'ScoreIndex': score_index,
             'TargetLabel': target_label,
             'TargetBBox': target_bbox,
-            'BBox_inside_weight': bbox_inside_weight
+            'BBoxInsideWeight': bbox_inside_weight
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,

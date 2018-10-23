@@ -324,6 +324,7 @@ class TestRpnTargetAssign(unittest.TestCase):
             assert pred_scores.shape[1] == 1
             assert pred_loc.shape[1] == 4
             assert pred_loc.shape[1] == tgt_bbox.shape[1]
+            print(str(program))
 
 
 class TestGenerateProposals(unittest.TestCase):

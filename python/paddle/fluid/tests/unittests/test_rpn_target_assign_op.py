@@ -227,7 +227,7 @@ class TestRpnTargetAssignOp(OpTest):
             'ScoreIndex': score_index.astype('int32'),
             'TargetBBox': tgt_bbox.astype('float32'),
             'TargetLabel': labels.astype('int32'),
-            'BBox_inside_weight': bbox_inside_weights.astype('float32')
+            'BBoxInsideWeight': bbox_inside_weights.astype('float32')
         }
 
     def test_check_output(self):
