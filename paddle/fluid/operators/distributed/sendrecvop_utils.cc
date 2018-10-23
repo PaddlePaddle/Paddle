@@ -42,8 +42,7 @@ static std::shared_ptr<memory::Allocation> GetCommunicationAllocationFromTensor(
 
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),
-                 reinterpret_cast<const void*>(tensor.data<void>()), copy_size,
-                 gpu_dev_ctx.stream());
+                 tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
 
     ctx.Wait();
     return result;
