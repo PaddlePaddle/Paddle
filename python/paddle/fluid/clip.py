@@ -272,7 +272,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                 )
 
         square = grad * grad
-        local_norm_var = layers.cast(layers.reduce_sum(input=square), 'float64')
+        local_norm_var = layers.reduce_sum(input=square)
         context[self.group_name].append(local_norm_var)
 
         self.context = context
@@ -282,7 +282,6 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
             group_norm_var = layers.sqrt(x=group_norm_var)
-            group_norm_var = layers.cast(group_norm_var, 'float32')
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,
