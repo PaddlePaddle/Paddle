@@ -147,10 +147,11 @@ def rpn_target_assign(bbox_pred,
 
     helper = LayerHelper('rpn_target_assign', **locals())
     # Assign target label to anchors
-    loc_index = helper.create_tmp_variable(dtype='int32')
-    score_index = helper.create_tmp_variable(dtype='int32')
-    target_label = helper.create_tmp_variable(dtype='int32')
-    target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    loc_index = helper.create_variable_for_type_inference(dtype='int32')
+    score_index = helper.create_variable_for_type_inference(dtype='int32')
+    target_label = helper.create_variable_for_type_inference(dtype='int32')
+    target_bbox = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
         inputs={
@@ -282,7 +283,8 @@ def detection_output(loc,
     scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
-    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    nmsed_outs = helper.create_variable_for_type_inference(
+        dtype=decoded_box.dtype)
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -314,7 +316,7 @@ def iou_similarity(x, y, name=None):
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -351,7 +353,8 @@ def box_coder(prior_box,
     helper = LayerHelper("box_coder", **locals())
 
     if name is None:
-        output_box = helper.create_tmp_variable(dtype=prior_box.dtype)
+        output_box = helper.create_variable_for_type_inference(
+            dtype=prior_box.dtype)
     else:
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
@@ -382,7 +385,7 @@ def polygon_box_transform(input, name=None):
     """
     helper = LayerHelper("polygon_box_transform", **locals())
     if name is None:
-        output = helper.create_tmp_variable(dtype=input.dtype)
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     else:
         output = helper.create_variable(
             name=name, dtype=prior_box.input, persistable=False)
@@ -450,7 +453,7 @@ def detection_map(detect_res,
     helper = LayerHelper("detection_map", **locals())
 
     def __create_var(type):
-        return helper.create_tmp_variable(dtype=type)
+        return helper.create_variable_for_type_inference(dtype=type)
 
     map_out = __create_var('float32')
     accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
@@ -557,8 +560,9 @@ def bipartite_match(dist_matrix,
         >>> matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
     """
     helper = LayerHelper('bipartite_match', **locals())
-    match_indices = helper.create_tmp_variable(dtype='int32')
-    match_distance = helper.create_tmp_variable(dtype=dist_matrix.dtype)
+    match_indices = helper.create_variable_for_type_inference(dtype='int32')
+    match_distance = helper.create_variable_for_type_inference(
+        dtype=dist_matrix.dtype)
     helper.append_op(
         type='bipartite_match',
         inputs={'DistMat': dist_matrix},
@@ -644,8 +648,8 @@ def target_assign(input,
                             gt, matched_indices, mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
-    out_weight = helper.create_tmp_variable(dtype='float32')
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out_weight = helper.create_variable_for_type_inference(dtype='float32')
     helper.append_op(
         type='target_assign',
         inputs={
@@ -816,9 +820,10 @@ def ssd_loss(location,
     conf_loss = nn.reshape(
         x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
-    neg_indices = helper.create_tmp_variable(dtype='int32')
+    neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
-    updated_matched_indices = helper.create_tmp_variable(dtype=dtype)
+    updated_matched_indices = helper.create_variable_for_type_inference(
+        dtype=dtype)
     helper.append_op(
         type='mine_hard_examples',
         inputs={
@@ -998,8 +1003,8 @@ def prior_box(input,
             max_sizes = [max_sizes]
         attrs['max_sizes'] = max_sizes
 
-    box = helper.create_tmp_variable(dtype)
-    var = helper.create_tmp_variable(dtype)
+    box = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="prior_box",
         inputs={"Input": input,
@@ -1337,8 +1342,8 @@ def anchor_generator(input,
         'offset': offset
     }
 
-    anchor = helper.create_tmp_variable(dtype)
-    var = helper.create_tmp_variable(dtype)
+    anchor = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="anchor_generator",
         inputs={"Input": input},
@@ -1384,7 +1389,7 @@ def roi_perspective_transform(input,
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="roi_perspective_transform",
         inputs={"X": input,
@@ -1418,11 +1423,15 @@ def generate_proposal_labels(rpn_rois,
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
-    rois = helper.create_tmp_variable(dtype=rpn_rois.dtype)
-    labels_int32 = helper.create_tmp_variable(dtype=gt_classes.dtype)
-    bbox_targets = helper.create_tmp_variable(dtype=rpn_rois.dtype)
-    bbox_inside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
-    bbox_outside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
+    labels_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+    bbox_targets = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
+    bbox_inside_weights = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
+    bbox_outside_weights = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
 
     helper.append_op(
         type="generate_proposal_labels",
@@ -1504,8 +1513,10 @@ def generate_proposals(scores,
     """
     helper = LayerHelper('generate_proposals', **locals())
 
-    rpn_rois = helper.create_tmp_variable(dtype=bbox_deltas.dtype)
-    rpn_roi_probs = helper.create_tmp_variable(dtype=scores.dtype)
+    rpn_rois = helper.create_variable_for_type_inference(
+        dtype=bbox_deltas.dtype)
+    rpn_roi_probs = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
     helper.append_op(
         type="generate_proposals",
         inputs={
