@@ -49,7 +49,7 @@ class TestReorgOp(OpTest):
                     self.x.shape[1], self.x.shape[0], self.stride, self.forward,
                     self.out_1d)
         self.out = np.reshape(self.out_1d, self.infered_shape)
-        self.attrs = {"stride": long(self.stride)}
+        self.attrs = {"stride": self.stride}
         self.outputs = {"Out": self.out}
 
     def init_data(self):
