@@ -889,7 +889,7 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
         orig_var = var_tuple[0]
         start = var_tuple[1]
         slice_var = var_tuple[2]
-        end = start + reduce(lambda x, y: x * y, slice_var.shape)
+        end = start + slice_var.shape[0]
 
         clone_orig_var = load_block.create_var(
             name=orig_var.name,
