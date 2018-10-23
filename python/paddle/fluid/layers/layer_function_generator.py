@@ -202,10 +202,12 @@ def generate_layer_fn(op_type):
             out_var = out[0] if (isinstance(out, list) or
                                  isinstance(out, tuple)) else out
         else:
-            out_var = helper.create_tmp_variable(dtype=dtype)
+            out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]
         for name in intermediate_output_names:
-            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
+            outputs[name] = [
+                helper.create_variable_for_type_inference(dtype=dtype)
+            ]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return helper.append_activation(out_var)
@@ -229,7 +231,7 @@ def generate_layer_fn_noattr(op_type):
 
     def func(x, name=None):
         helper = LayerHelper(op_type, **locals())
-        output = helper.create_tmp_variable(dtype=x.dtype)
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
         return output
 

@@ -1522,13 +1522,17 @@ class Program(object):
             >>> with program.lr_schedule_guard():
             >>>     lr = lr * decay
         """
+
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.LRSched
         # TODO(typhoonzero): how to set target learning rate var
         self._op_role_var = []
         yield
-        self._op_role_var = []
-        self._current_role = OpRole.Forward
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
 
     def __str__(self):
         """
