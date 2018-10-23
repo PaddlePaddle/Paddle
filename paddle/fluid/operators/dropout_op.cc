@@ -57,6 +57,15 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<bool>("dropout_implementation",
+                  "When it's True, In the training, after set some value"
+                  "to 0 (probability is dropout_prob),"
+                  "all the value will divide (1-dropout_prob)"
+                  "By using this way, will do nothing in the inference program"
+                  "The dropout op can be removed in the inference program."
+                  "The inference program will be more efficient"
+                  "When it's False, same as original")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Dropout Operator.
@@ -104,7 +113,9 @@ REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>);
+    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad,
-    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, double>);
