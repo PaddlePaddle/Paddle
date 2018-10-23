@@ -275,6 +275,8 @@ struct AnalysisConfig : public NativeConfig {
     use_tensorrt_ = true;
     tensorrt_workspace_size_ = workspace_size;
     tensorrt_max_batchsize_ = max_batch_size;
+    // Append after the infer_clean pass.
+    pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
   }
 
   explicit AnalysisConfig(bool use_gpu = false);

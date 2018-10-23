@@ -111,14 +111,13 @@ TEST(trt_models_test, main) {
 }
 
 TEST(Analyzer, use_gpu) {
-  AnalysisConfig config(true);
+  AnalysisConfig config(false);
   config.model_dir = FLAGS_dirname + "/" + "mobilenet";
   config.fraction_of_gpu_memory = 0.1;
   config.device = 0;
   config.enable_ir_optim = true;
   config.pass_builder()->TurnOnDebug();
-  config.use_gpu = true;
-  config.EnableTensorRtEngine();
+  //config.EnableTensorRtEngine();
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   // auto base_predictor = CreatePaddlePredictor<NativeConfig>(config);

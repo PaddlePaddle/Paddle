@@ -227,12 +227,12 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_rnn1, profile) {
   contrib::AnalysisConfig cfg(false);
   SetConfig(&cfg);
-  // cfg.use_gpu = true;
   cfg.fraction_of_gpu_memory = 0.1;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
+  LOG(INFO) << "to test prediction";
   TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
 }
 
