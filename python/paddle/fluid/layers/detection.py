@@ -116,8 +116,8 @@ def rpn_target_assign(bbox_pred,
     Returns:
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox) is returned. The predicted_scores and
-               predicted_location is the predicted result of the RPN.
+               target_bbox, bbox_inside_weight) is returned. The predicted_scores 
+               and predicted_location is the predicted result of the RPN.
                The target_label and target_bbox is the ground truth,
                respectively. The predicted_location is a 2D Tensor with shape
                [F, 4], and the shape of target_bbox is same as the shape of
@@ -126,6 +126,8 @@ def rpn_target_assign(bbox_pred,
                [F + B, 1], and the shape of target_label is same as the shape
                of the predicted_scores, B is the number of the background
                anchors, the F and B is depends on the input of this operator.
+               Bbox_inside_weight represents whether the predicted loc is fake_fg
+               or not and the shape is [F, 4].
 
     Examples:
         .. code-block:: python
@@ -138,7 +140,7 @@ def rpn_target_assign(bbox_pred,
                           append_batch_size=False, dtype='float32')
         gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-        loc_pred, score_pred, loc_target, score_target =
+        loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
             fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
                                           cls_logits=cls_logits,
                                           anchor_box=anchor_box,
@@ -151,6 +153,7 @@ def rpn_target_assign(bbox_pred,
     score_index = helper.create_tmp_variable(dtype='int32')
     target_label = helper.create_tmp_variable(dtype='int32')
     target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    bbox_inside_weight = helper.create_tmp_variable(dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
         inputs={
@@ -163,7 +166,8 @@ def rpn_target_assign(bbox_pred,
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
             'TargetLabel': target_label,
-            'TargetBBox': target_bbox
+            'TargetBBox': target_bbox,
+            'BBox_inside_weight': bbox_inside_weight
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
@@ -178,13 +182,14 @@ def rpn_target_assign(bbox_pred,
     score_index.stop_gradient = True
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
+    bbox_inside_weight.stop_gradient = True
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
     predicted_cls_logits = nn.gather(cls_logits, score_index)
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
 def detection_output(loc,
