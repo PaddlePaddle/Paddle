@@ -24,7 +24,7 @@
 
 namespace paddle {
 
-std::string DIRNAME = "./Release/infer_model";
+std::string DIRNAME = "./infer_model";
 std::string DATA = "./test-image.txt"; 
 const int C = 3; // image channel
 const int H = 449; // image height
