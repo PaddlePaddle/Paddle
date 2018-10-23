@@ -42,12 +42,10 @@ if(WITH_MKLDNN)
     pass_library(mkldnn_placement_pass base)
     pass_library(conv_bias_mkldnn_fuse_pass inference)
     pass_library(conv_relu_mkldnn_fuse_pass inference)
+    pass_library(conv_elementwise_add_mkldnn_fuse_pass inference)
 endif()
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
-if(WITH_MKLDNN)
-  pass_library(conv_elementwise_add_mkldnn_fuse_pass inference)
-endif()
 
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
