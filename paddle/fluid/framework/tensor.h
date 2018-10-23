@@ -155,6 +155,8 @@ class Tensor {
 
   void clear() { holder_ = nullptr; }
 
+  const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
+
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;
