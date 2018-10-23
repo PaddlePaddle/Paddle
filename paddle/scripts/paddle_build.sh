@@ -654,11 +654,21 @@ function gen_fluid_inference_lib() {
     if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
-    Deploying fluid inference library ...
+    Generating fluid inference library ...
     ========================================
 EOF
         cmake .. -DWITH_DISTRIBUTE=OFF
         make -j `nproc` inference_lib_dist
+      fi
+}
+
+function tar_fluid_inference_lib() {
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+        cat <<EOF
+    ========================================
+    Taring fluid inference library ...
+    ========================================
+EOF
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
         tar -czf fluid.tgz fluid
@@ -673,7 +683,7 @@ function test_fluid_inference_lib() {
     ========================================
 EOF
         cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
         ./clean.sh
       fi
 }
@@ -722,6 +732,7 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        tar_fluid_inference_lib
         test_fluid_inference_lib
         ;;
       check_style)

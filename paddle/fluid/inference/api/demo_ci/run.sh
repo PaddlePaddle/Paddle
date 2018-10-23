@@ -2,6 +2,12 @@ set -x
 PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
+DATA_DIR=$4 # dataset
+TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, defalut to /usr/local/TensorRT/include
+TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
+
+cd `dirname $0`
+current_dir=`pwd`
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${PADDLE_ROOT}/build/fluid_install_dir/third_party/install/mklml/lib
@@ -11,6 +17,11 @@ if [ $3 == ON ]; then
   use_gpu_list='true false'
 else    
   use_gpu_list='false'
+fi
+
+USE_TENSORRT=OFF
+if [ [-d"$TENSORRT_INCLUDE_DIR"] -a [-d"$TENSORRT_LIB_DIR"] ]; then
+  USE_TENSORRT=ON
 fi
 
 PREFIX=inference-vis-demos%2F
@@ -29,15 +40,15 @@ function download() {
   fi
   cd ..
 }
-mkdir -p data
-cd data
+mkdir -p $DATA_DIR
+cd $DATA_DIR
 vis_demo_list='se_resnext50 ocr mobilenet'
 for vis_demo_name in $vis_demo_list; do
   download $vis_demo_name
 done
-cd ..
 
 # compile and test the demo
+cd $current_dir
 mkdir -p build
 cd build
 
@@ -73,9 +84,9 @@ for WITH_STATIC_LIB in ON OFF; do
   for use_gpu in $use_gpu_list; do
     for vis_demo_name in $vis_demo_list; do 
       ./vis_demo \
-        --modeldir=../data/$vis_demo_name/model \
-        --data=../data/$vis_demo_name/data.txt \
-        --refer=../data/$vis_demo_name/result.txt \
+        --modeldir=$DATA_DIR/$vis_demo_name/model \
+        --data=$DATA_DIR/$vis_demo_name/data.txt \
+        --refer=$DATA_DIR/$vis_demo_name/result.txt \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
         echo "vis demo $vis_demo_name runs fail."
@@ -83,5 +94,25 @@ for WITH_STATIC_LIB in ON OFF; do
       fi
     done
   done
+  
+  # --------tensorrt mobilenet------
+  if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+    rm -rf *
+    cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
+      -DWITH_MKL=$TURN_ON_MKL \
+      -DDEMO_NAME=vis_demo \
+      -DWITH_GPU=$TEST_GPU_CPU \
+      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+      -DUSE_TENSORRT=$USE_TENSORRT \
+      -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
+      -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
+    make -j 
+    ./vis_demo \
+      --modeldir=$DATA_DIR/mobilenet/model \
+      --data=$DATA_DIR/mobilenet/data.txt \
+      --refer=$DATA_DIR/mobilenet/result.txt \
+      --use_gpu=true \
+      --use_trt=true
+  fi
 done
 set +x
