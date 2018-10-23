@@ -131,6 +131,44 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
 #endif
   }
+
+// Throw some informations when CPU instructions mismatch.
+#define AVX_GUIDE(compiletime, runtime)                                     \
+  LOG(FATAL)                                                                \
+      << "This version is compiled on higher instruction(" #compiletime     \
+         ") system, you may encounter illegal instruction error running on" \
+         " your local CPU machine. Please reinstall the " #runtime          \
+         " version or compile from source code."
+
+#ifdef __AVX512F__
+  if (!platform::jit::MayIUse(platform::jit::avx512f)) {
+    if (platform::jit::MayIUse(platform::jit::avx2)) {
+      AVX_GUIDE(AVX512, AVX2);
+    } else if (platform::jit::MayIUse(platform::jit::avx)) {
+      AVX_GUIDE(AVX512, AVX);
+    } else {
+      AVX_GUIDE(AVX512, NonAVX);
+    }
+  }
+#endif
+
+#ifdef __AVX2__
+  if (!platform::jit::MayIUse(platform::jit::avx2)) {
+    if (platform::jit::MayIUse(platform::jit::avx)) {
+      AVX_GUIDE(AVX2, AVX);
+    } else {
+      AVX_GUIDE(AVX2, NonAVX);
+    }
+  }
+#endif
+
+#ifdef __AVX__
+  if (!platform::jit::MayIUse(platform::jit::avx)) {
+    AVX_GUIDE(AVX, NonAVX);
+  }
+#endif
+
+#undef AVX_GUIDE
 }
 
 void InitGLOG(const std::string &prog_name) {
