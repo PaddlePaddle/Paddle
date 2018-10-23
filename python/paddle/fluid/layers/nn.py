@@ -96,6 +96,7 @@ __all__ = [
     'pad_constant_like',
     'label_smooth',
     'roi_pool',
+    'roi_align',
     'dice_loss',
     'image_resize',
     'image_resize_short',
@@ -5433,6 +5434,54 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+@templatedoc()
+def roi_align(input,
+              rois,
+              pooled_height=1,
+              pooled_width=1,
+              spatial_scale=1.0,
+              sampling_ratio=-1,
+              name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        sampling_ratio(intger): ${sampling_ratio_comment} Default: -1
+
+    Returns:
+        Variable: ${out_comment}.
+    Examples:
+        .. code-block:: python
+
+            align_out = fluid.layers.roi_align(input=x, 
+                                               rois=rois, 
+                                               pooled_height=7, 
+                                               pooled_width=7,
+                                               spatial_scale=0.5,
+                                               sampling_ratio=-1)
+    """
+    helper = LayerHelper('roi_align', **locals())
+    dtype = helper.input_dtype()
+    align_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="roi_align",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": align_out},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale,
+            "sampling_ratio": sampling_ratio
+        })
+    return align_out
 
 
 def dice_loss(input, label, epsilon=0.00001):
