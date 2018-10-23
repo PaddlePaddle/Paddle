@@ -161,8 +161,6 @@ class Graph {
     return nullptr;
   }
 
-  void ResetNodeId() { Node::ResetId(); }
-
   void InitFromProgram(const ProgramDesc &program);
 
   void ResolveHazard(

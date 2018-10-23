@@ -52,11 +52,12 @@ VarDesc CopyVarDesc(VarDesc* var_desc) {
   return repeated_var;
 }
 
-VarDesc UpdateGradVarDesc(VarDesc* var_desc, int repeat,
-                          const std::unordered_set<std::string> grad_names) {
-  if (grad_names.find(var_desc->Name()) != grad_names.end()) {
-    // NOTE: create var in the program, parallel_executor will use program to
-    // init vars in scope.
+VarDesc UpdateGradVarDesc(
+    VarDesc* var_desc, int repeat,
+    const std::unordered_set<std::string>& grad_names,
+    const std::unordered_set<std::string>& bn_vars_need_rename) {
+  if (grad_names.find(var_desc->Name()) != grad_names.end() ||
+      bn_vars_need_rename.find(var_desc->Name()) != bn_vars_need_rename.end()) {
     std::string new_gname =
         string::Sprintf("%s.repeat.%d", var_desc->Name(), repeat);
     VarDesc repeated_var = CopyVarDesc(var_desc);
@@ -79,7 +80,6 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
   auto origin_nodes = graph->ReleaseNodes();
   VLOG(3) << "origin nodes count: " << origin_nodes.size();
   ir::Graph& result = *graph;
-  result.ResetNodeId();
 
   // 1. record op nodes of different roles
   for (auto node : nodes) {
@@ -114,6 +114,7 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
   // record origin_grad -> repeated grad list map.
   std::map<ir::Node*, std::vector<ir::Node*>> grad_repeated_map;
   std::map<std::string, std::vector<ir::Node*>> created;
+  std::unordered_set<std::string> bn_vars_need_rename;
   for (int i = 0; i < num_repeats; ++i) {
     std::unordered_set<ir::Node*> copied;
     for (size_t node_idx = 0; node_idx < forward_backward_ops.size();
@@ -127,6 +128,28 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
           repeated_op.RenameOutput(outname, new_gname);
         }
       }
+      // 3.5 let batch_norm ops use independent vars, note batch_norm_grad do
+      // not need this update
+      if (node->Name() == "batch_norm") {
+        // NOTE: assume bn op created by layers use save var as output mean and
+        // variance
+        std::string new_mean_name =
+            string::Sprintf("%s.repeat.%d", repeated_op.Input("Mean")[0], i);
+        std::string new_var_name = string::Sprintf(
+            "%s.repeat.%d", repeated_op.Input("Variance")[0], i);
+        bn_vars_need_rename.insert(repeated_op.Input("Mean")[0]);
+        bn_vars_need_rename.insert(repeated_op.Input("Variance")[0]);
+        VLOG(3) << "renaming " << repeated_op.Input("Mean")[0] << " to "
+                << new_mean_name;
+        repeated_op.RenameInput(repeated_op.Input("Mean")[0], new_mean_name);
+        repeated_op.RenameInput(repeated_op.Input("Variance")[0], new_var_name);
+        repeated_op.RenameOutput(repeated_op.Output("MeanOut")[0],
+                                 new_mean_name);
+        repeated_op.RenameOutput(repeated_op.Output("VarianceOut")[0],
+                                 new_var_name);
+      }
+
+      // 3.9 do copy
       auto repeated_node = result.CreateOpNode(&repeated_op);
       copied.insert(node);
 
@@ -147,7 +170,23 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
           continue;
         }
         ir::Node* var = nullptr;
-        auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names);
+        auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names,
+                                             bn_vars_need_rename);
+        // should be initialized by startup, how to initilize tensor in the
+        // scope?
+        if (node->Name() == "batch_norm" &&
+            bn_vars_need_rename.find(in_node->Name()) !=
+                bn_vars_need_rename.end()) {
+          // Create bn mean/variance for each repeat
+          var = result.CreateVarNode(&updated_var);
+          created[updated_var.Name()].push_back(var);
+          copied.insert(in_node);
+          repeated_node->inputs.push_back(var);
+          var->outputs.push_back(repeated_node);
+          continue;
+        }
+
+        // for other ops
         if (in_node->inputs.empty() && i > 0) {
           // do not copy head vars (inputs, params) in repeats > 0
           var = created.at(in_node->Name()).back();
@@ -171,7 +210,8 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
           continue;
         }
         ir::Node* var = nullptr;
-        auto updated_var = UpdateGradVarDesc(out_node->Var(), i, grad_names);
+        auto updated_var = UpdateGradVarDesc(out_node->Var(), i, grad_names,
+                                             bn_vars_need_rename);
         if (copied.find(out_node) == copied.end()) {
           var = result.CreateVarNode(&updated_var);
           if (grad_names.find(out_node->Var()->Name()) != grad_names.end()) {
