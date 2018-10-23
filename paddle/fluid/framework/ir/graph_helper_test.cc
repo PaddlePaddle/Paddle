@@ -200,15 +200,15 @@ TEST(GraphHelperTest, GraphNum) {
 
   Graph g(prog);
   BuildZeroGraph(&g);
-  ASSERT_EQ(GraphNum(g), 0);
+  ASSERT_EQ(GraphNum(g), 0UL);
 
   Graph g2(prog);
   BuildOneGraph(&g2);
-  ASSERT_EQ(GraphNum(g2), 1);
+  ASSERT_EQ(GraphNum(g2), 1UL);
 
   Graph g3(prog);
   BuildTwoGraphs(&g3);
-  ASSERT_EQ(GraphNum(g3), 2);
+  ASSERT_EQ(GraphNum(g3), 2UL);
 }
 
 }  // namespace ir
