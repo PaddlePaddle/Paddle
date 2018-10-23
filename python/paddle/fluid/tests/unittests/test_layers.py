@@ -252,7 +252,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             data = layers.data(
-                name="data",
+                name='data',
                 shape=[32, 9, 6, 6],
                 append_batch_size=False,
                 dtype='float32')
