@@ -149,11 +149,13 @@ def rpn_target_assign(bbox_pred,
 
     helper = LayerHelper('rpn_target_assign', **locals())
     # Assign target label to anchors
-    loc_index = helper.create_tmp_variable(dtype='int32')
-    score_index = helper.create_tmp_variable(dtype='int32')
-    target_label = helper.create_tmp_variable(dtype='int32')
-    target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
-    bbox_inside_weight = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    loc_index = helper.create_variable_for_type_inference(dtype='int32')
+    score_index = helper.create_variable_for_type_inference(dtype='int32')
+    target_label = helper.create_variable_for_type_inference(dtype='int32')
+    target_bbox = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
+    bbox_inside_weight = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
         inputs={
