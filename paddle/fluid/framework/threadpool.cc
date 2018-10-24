@@ -34,6 +34,11 @@ ThreadPool* ThreadPool::GetInstance() {
   return threadpool_.get();
 }
 
+void ThreadPool::Reset() {
+  threadpool_.reset(nullptr);
+  ThreadPool::Init();
+}
+
 void ThreadPool::Init() {
   if (threadpool_.get() == nullptr) {
     // TODO(Yancey1989): specify the max threads number
@@ -59,6 +64,7 @@ ThreadPool::ThreadPool(int num_threads)
 ThreadPool::~ThreadPool() {
   {
     // notify all threads to stop running
+    std::lock_guard<std::mutex> l(mutex_);
     running_ = false;
     scheduled_.notify_all();
   }
@@ -69,19 +75,18 @@ ThreadPool::~ThreadPool() {
   }
 }
 
-void ThreadPool::Wait() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  completed_.wait(lock, [=] { return Done() == true; });
-}
-
 void ThreadPool::TaskLoop() {
-  while (running_) {
+  while (true) {
     std::unique_lock<std::mutex> lock(mutex_);
-    scheduled_.wait(lock, [=] { return !tasks_.empty() || !running_; });
 
-    if (!running_) {
-      break;
+    scheduled_.wait(
+        lock, [this] { return !this->tasks_.empty() || !this->running_; });
+
+    std::lock_guard<std::mutex> l(mutex_);
+    if (!running_ || tasks_.empty()) {
+      return;
     }
+
     // pop a task from the task queue
     auto task = std::move(tasks_.front());
     tasks_.pop();
@@ -91,14 +96,6 @@ void ThreadPool::TaskLoop() {
 
     // run the task
     task();
-
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      ++idle_threads_;
-      if (Done()) {
-        completed_.notify_all();
-      }
-    }
   }
 }
 

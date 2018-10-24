@@ -55,16 +55,10 @@ class ThreadPool {
   // Returns the singleton of ThreadPool.
   static ThreadPool* GetInstance();
 
+  // delete current thread pool and create a new one.
+  static void Reset();
+
   ~ThreadPool();
-
-  // Returns the number of threads created by the constructor.
-  size_t Threads() const { return total_threads_; }
-
-  // Returns the number of currently idle threads.
-  size_t IdleThreads() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return idle_threads_;
-  }
 
   // Run pushes a function to the task queue and returns a std::future
   // object.  To wait for the completion of the task, call
@@ -94,24 +88,12 @@ class ThreadPool {
     });
     std::future<std::unique_ptr<platform::EnforceNotMet>> f = task.get_future();
     tasks_.push(std::move(task));
-    lock.unlock();
     scheduled_.notify_one();
     return f;
   }
 
-  // Wait until all the tasks are completed.
-  void Wait();
-
  private:
   DISABLE_COPY_AND_ASSIGN(ThreadPool);
-
-  // If the task queue is empty and avaialbe is equal to the number of
-  // threads, means that all tasks are completed.  Note: this function
-  // is not thread-safe.  Returns true if all tasks are completed.
-  // Note: don't delete the data member total_threads_ and use
-  // threads_.size() instead; because you'd need to lock the mutex
-  // before accessing threads_.
-  bool Done() { return tasks_.empty() && idle_threads_ == total_threads_; }
 
   // The constructor starts threads to run TaskLoop, which retrieves
   // and runs tasks from the queue.
