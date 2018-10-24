@@ -19,6 +19,7 @@
 #include <iostream>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
+
 namespace paddle {
 
 // DEFINE_string(dirname, "./lb",
@@ -27,8 +28,8 @@ namespace paddle {
 NativeConfig GetConfig() {
   NativeConfig config;
   // config.model_dir = FLAGS_dirname;
-  config.prog_file= "lb/__model__";
-  config.param_file= "lb/__params__";
+  config.prog_file= "hs_lb_without_bn/__model__";
+  config.param_file= "hs_lb_without_bn/__params__";
   config.fraction_of_gpu_memory = 0.8;
   config.use_gpu = true;
   config.device = 0;
@@ -43,6 +44,7 @@ double time_diff(Time t1, Time t2) {
   ms counter = std::chrono::duration_cast<ms>(diff);
   return counter.count() / 1000.0;
 }
+
 
 void test_naive(int batch_size){
   NativeConfig config = GetConfig();
@@ -88,10 +90,9 @@ void test_naive(int batch_size){
 	  PaddleTensor tensor_out;
 
 	  std::vector<PaddleTensor> outputs(1, tensor_out);
-	  predictor->Run(paddle_tensor_feeds, &outputs, batch_size);
+	  // predictor->Run(paddle_tensor_feeds, &outputs, batch_size);
 	  std::cout << "start predict123:" << std::endl;
 	  auto time1 = time(); 
-
 	  
 	  for(size_t i = 0; i < 1; i++) {
 	    predictor->Run(paddle_tensor_feeds, &outputs, batch_size);

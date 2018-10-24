@@ -67,7 +67,11 @@ class LoadCombineOp : public framework::OperatorBase {
       framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
       float sum = .0;
       for(size_t i=0; i < check.numel(); ++i) {
+        if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+          sum += static_cast<float>(check.data<int64_t>()[i]);
+        } else {
           sum += check.data<float>()[i];
+        }
       }
       VLOG(3) << "sum result" << sum;
       auto in_dtype = framework::ToDataType(tensor->type());

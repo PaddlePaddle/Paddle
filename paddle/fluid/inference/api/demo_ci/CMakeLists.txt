@@ -73,10 +73,11 @@ link_directories("${PADDLE_LIB}/paddle/fluid/inference")
 
 # add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
  # add_library(${DEMO_NAME} ${DEMO_NAME}.cc)
- add_library(${DEMO_NAME} SHARED  ${DEMO_NAME}.cc)
 add_executable(real_data_icnet_tester real_data_icnet_tester.cc)
-add_executable(test test.cc)
-add_executable(thread_icnet_test thread_icnet_test.cc)
+
+# add_library(${DEMO_NAME} SHARED  ${DEMO_NAME}.cc)
+# add_executable(test test.cc)
+# add_executable(thread_icnet_test thread_icnet_test.cc)
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
@@ -94,11 +95,7 @@ endif()
 # Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
 if(WITH_STATIC_LIB)
   set(DEPS
-#  	   ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX}
-	  D:/Paddle/bazel-dll/fluid_install_dir/paddle/fluid/inference/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX}
-	#       E:/Paddle/build/paddle/fluid/inference/api/Release/libpaddle_inference_api${CMAKE_STATIC_LIBRARY_SUFFIX}
-	  	  D:/Paddle/bazel-dll/paddle/fluid/inference/api/Release/libpaddle_inference_api${CMAKE_STATIC_LIBRARY_SUFFIX}
-   )
+	  ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   set(DEPS
       ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
@@ -129,10 +126,10 @@ if(WITH_GPU)
   endif()
 endif()
 
-target_link_libraries(${DEMO_NAME} ${DEPS})
-target_link_libraries(test ${DEMO_NAME} )
-target_link_libraries(thread_icnet_test ${DEPS})
 target_link_libraries(real_data_icnet_tester ${DEPS})
 
-target_compile_definitions(${DEMO_NAME} PRIVATE "API_DEFINITION")
+# target_link_libraries(${DEMO_NAME} ${DEPS})
+# target_link_libraries(test ${DEMO_NAME} )
+# target_link_libraries(thread_icnet_test ${DEPS})
+# target_compile_definitions(${DEMO_NAME} PRIVATE "API_DEFINITION")
 
