@@ -4904,8 +4904,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: The reshaped tensor variable. It is a new tensor variable if \
-                  if :attr:`inplace` is :attr:`False`, otherwise it is :attr:`x`.
+        Variable: The reshaped tensor variable if :attr:`act` is None. It is a \
+                  new tensor variable if :attr:`inplace` is :attr:`False`, \
+                  otherwise it is :attr:`x`. If :attr:`act` is not None, return \
+                  the activated tensor variable.
 
     Raises:
         TypeError: if actual_shape is neither Variable nor None.
