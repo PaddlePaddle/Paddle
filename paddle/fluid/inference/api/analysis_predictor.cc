@@ -83,8 +83,6 @@ bool AnalysisPredictor::Init(
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
 
-  // Used to fix TensorArray not clear in inference.
-  CollectTensorArrays(scope(), &tensor_arrays_);
   return true;
 }
 
@@ -113,8 +111,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
-  // Used to fix TensorArray not clear in inference.
-  ResetTensorArray(tensor_arrays_);
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 
@@ -328,6 +327,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 

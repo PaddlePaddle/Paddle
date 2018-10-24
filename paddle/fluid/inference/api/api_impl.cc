@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -110,9 +111,6 @@ bool NativePaddlePredictor::Init(
     return false;
   }
 
-  // Used to fix TensorArray not clear in inference.
-  CollectTensorArrays(scope(), &tensor_arrays_);
-
   ctx_ = executor_->Prepare(*inference_program_, 0);
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
@@ -161,8 +159,9 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
-  // Used to fix TensorArray not clear in inference.
-  ResetTensorArray(tensor_arrays_);
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 
@@ -305,30 +304,6 @@ template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
     const NativeConfig &config) {
   return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-}
-
-// Should be called after the parameters are loaded.
-void CollectTensorArrays(framework::Scope *scope,
-                         std::vector<framework::LoDTensorArray *> *arrays) {
-  for (auto &var_name : scope->LocalVarNames()) {
-    auto *var = scope->FindVar(var_name);
-    // TODO(Superjomn) should avoid the case when a TensorArray is a parameter.
-    if (var->Type() == typeid(framework::LoDTensorArray)) {
-      arrays->push_back(var->GetMutable<framework::LoDTensorArray>());
-    }
-  }
-  for (auto *kid : scope->kids()) {
-    CollectTensorArrays(kid, arrays);
-  }
-
-  VLOG(3) << "Collect " << arrays->size() << " arrays";
-}
-
-// Should be called when `Run` finished.
-void ResetTensorArray(const std::vector<framework::LoDTensorArray *> &vars) {
-  for (auto *arr : vars) {
-    arr->clear();
-  }
 }
 
 }  // namespace paddle
