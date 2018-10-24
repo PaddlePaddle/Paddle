@@ -91,7 +91,7 @@ class InferenceTranspiler(object):
             current_op = self.block.ops[i]
             if current_op.type in ['conv2d']:
                 next_op = self.block.ops[i + 1]
-                if next_op.type == 'elementwise_add':
+                if next_op.type == 'elementwise_add' and 'elementwise_mul' not in next_op.input("Y")[0]:
                     self._fuse_conv_eltwise(i, current_op, next_op)
                     self.block._remove_op(i + 1)  # Remove old conv
                     self.block._remove_op(i + 1)  # Remove elementwise_add
