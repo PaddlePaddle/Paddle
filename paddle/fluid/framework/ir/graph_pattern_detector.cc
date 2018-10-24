@@ -263,22 +263,24 @@ GraphPatternDetector::DetectPatterns() {
 // see https://github.com/PaddlePaddle/Paddle/issues/13550
 void GraphPatternDetector::UniquePatterns(
     std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
-  if (subgraphs->empty()) return;
-  std::vector<GraphPatternDetector::subgraph_t> result;
-
-  std::unordered_set<size_t> set;
-  for (auto &g : *subgraphs) {
-    size_t key = 0;
-    for (auto &item : g) {
-      key ^= std::hash<void *>{}(item.first);
-      key ^= std::hash<void *>{}(item.second);
-    }
-    if (!set.count(key)) {
-      result.emplace_back(g);
-      set.insert(key);
-    }
-  }
-  *subgraphs = result;
+  /*
+   *   if (subgraphs->empty()) return;
+   *   std::vector<GraphPatternDetector::subgraph_t> result;
+   *
+   *   std::unordered_set<size_t> set;
+   *   for (auto &g : *subgraphs) {
+   *     size_t key = 0;
+   *     for (auto &item : g) {
+   *       key ^= std::hash<void *>{}(item.first);
+   *       key ^= std::hash<void *>{}(item.second);
+   *     }
+   *     if (!set.count(key)) {
+   *       result.emplace_back(g);
+   *       set.insert(key);
+   *     }
+   *   }
+   *   *subgraphs = result;
+   */
 }
 
 void GraphPatternDetector::RemoveOverlappedMatch(
