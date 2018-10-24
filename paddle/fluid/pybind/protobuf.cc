@@ -259,6 +259,8 @@ void BindOpDesc(pybind11::module *m) {
   pybind11::enum_<pd::proto::AttrType>(*m, "AttrType", "")
       .value("INT", pd::proto::AttrType::INT)
       .value("INTS", pd::proto::AttrType::INTS)
+      .value("LONG", pd::proto::AttrType::FLOAT)
+      .value("LONGS", pd::proto::AttrType::FLOAT)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
       .value("STRING", pd::proto::AttrType::STRING)
