@@ -39,12 +39,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
-using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
-
-void set_cur_thread_id(int);
-int get_cur_thread_id(void);
-
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
@@ -182,6 +176,12 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
+using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
+using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+
+void set_cur_thread_id(int);
+int get_cur_thread_id(void);
+
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
