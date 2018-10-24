@@ -7496,6 +7496,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
         outputs={"Out": out})
     return out
 
+
 def hash(input, hash_size, num_hash=1, name=None):
     """
     hash the input
