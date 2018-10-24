@@ -50,7 +50,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
     auto &ref_out = ref_outputs[i];
     size_t size = VecReduceToInt(out.shape);
     size_t ref_size = VecReduceToInt(ref_out.shape);
-    EXPECT_GT(size, 0);
+    EXPECT_GT(size, 0UL);
     EXPECT_EQ(size, ref_size);
     EXPECT_EQ(out.dtype, ref_out.dtype);
     switch (out.dtype) {
