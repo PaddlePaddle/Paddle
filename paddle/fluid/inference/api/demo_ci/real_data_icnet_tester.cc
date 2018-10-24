@@ -19,9 +19,7 @@
 #include <iostream>
 #include "paddle/fluid/inference/paddle_inference_api.h"
 
-
 namespace paddle {
-
 // DEFINE_string(dirname, "./lb",
 //               "Directory of the inference model.");
 
