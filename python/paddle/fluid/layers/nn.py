@@ -151,6 +151,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'hash',
 ]
 
 
@@ -7133,4 +7134,30 @@ def maxout(x, groups, name=None):
         inputs={"X": x},
         attrs={"groups": groups},
         outputs={"Out": out})
+    return out
+
+
+def hash(input, hash_size, num_hash=1, name=None):
+    """
+    hash the input
+     Args:
+        input (Variable): The input variable which is a one-hot word.
+        hash_size (int): The space size for hash algorithm.
+        num_hash (int): The times of hash, default 1.
+     Returns:
+        Variable: The hash result variable which is a LoDTensor.
+     Examples:
+        .. code-block:: python
+             word_dict = paddle.dataset.imdb.word_dict()
+            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+            out = fluid.layers.hash(input=x, len(word_dict))
+    """
+    helper = LayerHelper('hash', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='hash',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'num_hash': num_hash,
+               'mod_by': hash_size})
     return out
