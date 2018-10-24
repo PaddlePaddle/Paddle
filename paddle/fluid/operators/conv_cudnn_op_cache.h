@@ -26,78 +26,60 @@ class AlgorithmsCache {
  public:
   // Caches the best algorithm for a given
   // combination of tensor dimensions & compute data type.
-  //
-  TAlgorithm getAlgorithm(
-      const std::vector<int64_t>& tensorDimensions1,
-      const std::vector<int64_t>& tensorDimensions2,
+  TAlgorithm GetAlgorithm(
+      const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
       const std::vector<int>& strides, const std::vector<int>& paddings,
       const std::vector<int>& dilations,
-      int algorithmFlags,  // Differentiate between algorithms with different
-                           // parameters in a generic way
-      std::function<TAlgorithm()> generatingFunc);
+      int algorithmFlags,  // can set for different data type
+      std::function<TAlgorithm()> gen_func);
 
  private:
   std::unordered_map<int64_t, TAlgorithm> hash_;
+  std::mutex mutex_;
 };
 
 template <typename TAlgorithm>
-TAlgorithm AlgorithmsCache<TAlgorithm>::getAlgorithm(
-    const std::vector<int64_t>& tensorDimensions1,
-    const std::vector<int64_t>& tensorDimensions2,
+TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
+    const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
     const std::vector<int>& strides, const std::vector<int>& paddings,
     const std::vector<int>& dilations, int algorithmFlags,
-    std::function<TAlgorithm()> generatingFunc) {
+    std::function<TAlgorithm()> gen_func) {
+  std::lock_guard<std::mutex> lock(mutex_);
   int64_t seed = 0;
   // Hash all of the inputs, which we wiill then use to try and look up
   // a previously discovered algorithm, or fall back to generating a new one.
   std::hash<int64_t> hashFn;
-  for (const auto num : tensorDimensions1) {
-    // Copied from boost::hash_combine.
+  for (const auto num : dims1) {
     seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   }
 
-  for (const auto num : tensorDimensions2) {
-    // Copied from boost::hash_combine.
-    // Adding 1 to differentiate between first and second vector.
+  for (const auto num : dims2) {
     seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2) + 1;
   }
 
   for (const auto num : strides) {
-    // Copied from boost::hash_combine.
-    // Adding 1 to differentiate between first and second vector.
     seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
             (seed >> 2) + 2;
   }
 
   for (const auto num : paddings) {
-    // Copied from boost::hash_combine.
-    // Adding 1 to differentiate between first and second vector.
     seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
             (seed >> 2) + 3;
   }
 
   for (const auto num : dilations) {
-    // Copied from boost::hash_combine.
-    // Adding 1 to differentiate between first and second vector.
     seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
             (seed >> 2) + 4;
   }
 
-  // Adding 2 to differentiate from previous vectors
   seed ^= hashFn(static_cast<int64_t>(algorithmFlags)) + 0x9e3779b9 +
           (seed << 6) + (seed >> 2) + 5;
 
-  if (seed == 0) {
-    LOG(ERROR) << "==== get func====";
-    return generatingFunc();
-  }
+  if (seed == 0) return gen_func();
 
   if (hash_.find(seed) == hash_.end()) {
-    LOG(ERROR) << "==== get func====";
-    TAlgorithm value = generatingFunc();
+    TAlgorithm value = gen_func();
     hash_[seed] = value;
-  } else {
-    LOG(ERROR) << "=== use cache func====";
   }
   return hash_[seed];
 }

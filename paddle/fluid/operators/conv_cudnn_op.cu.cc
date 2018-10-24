@@ -27,8 +27,10 @@ DEFINE_bool(cudnn_deterministic, false,
             "operator. The autotuning algorithm may be non-deterministic. If "
             "true, the algorithm is deterministic.");
 DEFINE_uint64(conv_workspace_size_limit, 4096,
-              "cuDNN conv workspace limit in MB unit.");
-DEFINE_bool(cudnn_exhaustive_search, false, "exhaustive_search");
+              "cuDNN convolution workspace limit in MB unit.");
+DEFINE_bool(cudnn_exhaustive_search, false,
+            "Whether enable exhaustive search for cuDNN convolution or "
+            "not, defalut is False.");
 
 namespace paddle {
 namespace operators {
@@ -45,6 +47,10 @@ using ConvBwdFilterAlgorithmWithCost =
     std::tuple<cudnnConvolutionBwdFilterAlgo_t, float>;
 using ConvBwdDataAlgorithmWithCost =
     std::tuple<cudnnConvolutionBwdDataAlgo_t, float>;
+
+static constexpr char kCUDNNFwdAlgoCache[] = "kCUDNNFwdAlgoCache";
+static constexpr char kCUDNNBwdDataAlgoCache[] = "kCUDNNBwdDataAlgoCache";
+static constexpr char kCUDNNBwdFilterAlgoCache[] = "kCUDNNBwdFilterAlgoCache";
 
 static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
     static_cast<size_t>(1024) * 1024 * 1024;
@@ -89,8 +95,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    // int64_t user_workspace_size =
-    //     static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
+    int64_t user_workspace_size =
+        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
+    bool exhaustive_search = ctx.Attr<bool>("exhaustive_search");
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -156,9 +163,11 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size_in_bytes;  // final workspace to allocate.
     size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
-    // if (user_workspace_size > 0) {
-    if (FLAGS_conv_workspace_size_limit > 0) {
-      workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
+    if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
+      int64_t max_user_size =
+          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+                   user_workspace_size);
+      workspace_size_limit = max_user_size * 1024 * 1024;
     }
 
     // ------------------- cudnn conv algorithm ---------------------
@@ -183,54 +192,41 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
-    PushEvent("conv_cudnn_get_algo", &dev_ctx);
-    if (!FLAGS_cudnn_exhaustive_search) {
+    if (!(FLAGS_cudnn_exhaustive_search || exhaustive_search)) {
       CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
           cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
           workspace_size_limit, &algo));
-      VLOG(2) << "choose algo " << algo;
+      VLOG(3) << "cuDNN forward algo " << algo;
     } else {
-      auto* algo_cache =
-          const_cast<framework::Scope&>(ctx.scope())
-              .Var("CUDNN_FWD_ALGO_CACHE")
-              ->GetMutable<AlgorithmsCache<ConvFwdAlgorithmWithCost>>();
-      ConvFwdAlgorithmWithCost sel_algo = algo_cache->getAlgorithm(
+      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* algo_cache = nullptr;
+      if (ctx.scope().FindVar(kCUDNNFwdAlgoCache)) {
+        algo_cache =
+            ctx.scope()
+                .FindVar(kCUDNNFwdAlgoCache)
+                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
+      } else {
+        algo_cache =
+            const_cast<framework::Scope&>(ctx.scope())
+                .Var(kCUDNNFwdAlgoCache)
+                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
+      }
+      algo = algo_cache->GetAlgorithm(
           x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
-            // When we do an exhaustive search, we will ignore the workspace
-            // size limit and simply go for the fastest algorithm. If you
-            // happen to run out of memory later, you will be on your own...
-            static constexpr int num_algos = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
-            static_assert(sizeof(algos) / sizeof(algos[0]) == num_algos,
-                          "Missing cuDNN convolution forward algorithms");
-            size_t max_ws_size = 0;
-            cudnnStatus_t err;
-            for (int i = 0; i < num_algos; i++) {
-              size_t sz;
-              err = platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-                  handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-                  cudnn_output_desc, algos[i], &sz);
-              if (err != CUDNN_STATUS_SUCCESS || sz == 0 || sz < max_ws_size) {
-                continue;
-              }
-              max_ws_size = sz;
-            }
-            max_ws_size = max_ws_size < workspace_size_limit
-                              ? max_ws_size
-                              : workspace_size_limit;
             int returned_algo_count;
-            std::array<cudnnConvolutionFwdAlgoPerf_t, num_algos> fwd_perf_stat;
-            // no need to clean up workspace,
-            // Actually run the search.
+            std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
+                fwd_perf_stat;
             auto cudnn_find_func = [&](void* cudnn_workspace) {
               CUDNN_ENFORCE(
                   platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
                       handle, cudnn_input_desc, input_data, cudnn_filter_desc,
                       filter_data, cudnn_conv_desc, cudnn_output_desc,
-                      output_data, num_algos, &returned_algo_count,
-                      fwd_perf_stat.data(), cudnn_workspace, max_ws_size));
+                      output_data, kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
+                      fwd_perf_stat.data(), cudnn_workspace,
+                      workspace_size_limit));
             };
-            dev_ctx.RunCudnnFuncWithWorkspace(cudnn_find_func, max_ws_size);
+            dev_ctx.RunCudnnFuncWithWorkspace(cudnn_find_func,
+                                              workspace_size_limit);
 
             VLOG(3) << "Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -238,15 +234,10 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
               VLOG(3) << stat.algo << ": " << stat.status << " " << stat.time
                       << " " << stat.memory;
             }
-            float algo_time = fwd_perf_stat[0].status == CUDNN_STATUS_SUCCESS
-                                  ? fwd_perf_stat[0].time
-                                  : 1e10;
-            return ConvFwdAlgorithmWithCost(fwd_perf_stat[0].algo, algo_time);
+            return fwd_perf_stat[0].algo;
           });
-      algo = std::get<0>(sel_algo);
-      VLOG(2) << "choose algo " << algo;
+      VLOG(3) << "choose algo " << algo;
     }
-    PopEvent("conv_cudnn_get_algo", &dev_ctx);
 
     // get workspace size able to allocate
     CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
@@ -293,8 +284,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    // int64_t user_workspace_size =
-    //     static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
+    int64_t user_workspace_size =
+        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
+    bool exhaustive_search = ctx.Attr<bool>("exhaustive_search");
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
@@ -362,25 +354,34 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
     size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
-    // if (user_workspace_size > 0) {
-    //   workspace_size_limit = user_workspace_size * 1024 * 1024;
-    // }
-    if (FLAGS_conv_workspace_size_limit > 0) {
-      workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
+    if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
+      int64_t max_user_size =
+          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+                   user_workspace_size);
+      workspace_size_limit = max_user_size * 1024 * 1024;
     }
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
     auto handle = dev_ctx.cudnn_handle();
-    PushEvent("conv_grad_cudnn_get_algo", &dev_ctx);
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      if (FLAGS_cudnn_exhaustive_search) {
-        auto* data_algo_cache =
-            const_cast<framework::Scope&>(ctx.scope())
-                .Var("CUDNN_BWD_DATA_ALGO_CACHE")
-                ->GetMutable<AlgorithmsCache<ConvBwdDataAlgorithmWithCost>>();
-        ConvBwdDataAlgorithmWithCost sel_algo = data_algo_cache->getAlgorithm(
+      if (FLAGS_cudnn_exhaustive_search || exhaustive_search) {
+        AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>* data_algo_cache;
+        if (ctx.scope().FindVar(kCUDNNBwdDataAlgoCache)) {
+          data_algo_cache =
+              ctx.scope()
+                  .FindVar(kCUDNNBwdDataAlgoCache)
+                  ->GetMutable<
+                      AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>();
+        } else {
+          data_algo_cache =
+              const_cast<framework::Scope&>(ctx.scope())
+                  .Var(kCUDNNBwdDataAlgoCache)
+                  ->GetMutable<
+                      AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>();
+        }
+        data_algo = data_algo_cache->GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
               int returned_algo_count;
               std::array<cudnnConvolutionBwdDataAlgoPerf_t,
@@ -406,14 +407,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                 VLOG(3) << stat.algo << ": " << stat.status << " " << stat.time
                         << " " << stat.memory;
               }
-              float algo_time = data_perf_stat[0].status == CUDNN_STATUS_SUCCESS
-                                    ? data_perf_stat[0].time
-                                    : 1e10;
-              return ConvBwdDataAlgorithmWithCost(data_perf_stat[0].algo,
-                                                  algo_time);
+              return data_perf_stat[0].algo;
             });
-        data_algo = std::get<0>(sel_algo);
-        VLOG(2) << "choose data algo " << data_algo;
+        VLOG(3) << "cuDNN backward data algo " << data_algo;
       } else if (FLAGS_cudnn_deterministic) {
         CUDNN_ENFORCE(
             platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
@@ -439,12 +435,22 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
-      if (FLAGS_cudnn_exhaustive_search) {
-        auto* f_algo_cache =
-            const_cast<framework::Scope&>(ctx.scope())
-                .Var("CUDNN_BWD_FILTER_ALGO_CACHE")
-                ->GetMutable<AlgorithmsCache<ConvBwdFilterAlgorithmWithCost>>();
-        ConvBwdFilterAlgorithmWithCost sel_f_algo = f_algo_cache->getAlgorithm(
+      if (FLAGS_cudnn_exhaustive_search || exhaustive_search) {
+        AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>* f_algo_cache;
+        if (ctx.scope().FindVar(kCUDNNBwdFilterAlgoCache)) {
+          f_algo_cache =
+              ctx.scope()
+                  .FindVar(kCUDNNBwdFilterAlgoCache)
+                  ->GetMutable<
+                      AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>();
+        } else {
+          f_algo_cache =
+              const_cast<framework::Scope&>(ctx.scope())
+                  .Var(kCUDNNBwdFilterAlgoCache)
+                  ->GetMutable<
+                      AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>();
+        }
+        filter_algo = f_algo_cache->GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
               int returned_algo_count;
               std::array<cudnnConvolutionBwdFilterAlgoPerf_t,
@@ -463,15 +469,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               };
               dev_ctx.RunCudnnFuncWithWorkspace(cudnn_find_f_func,
                                                 workspace_size_limit);
-              float algo_time =
-                  filter_perf_stat[0].status == CUDNN_STATUS_SUCCESS
-                      ? filter_perf_stat[0].time
-                      : 1e10;
-              return ConvBwdFilterAlgorithmWithCost(filter_perf_stat[0].algo,
-                                                    algo_time);
+              return filter_perf_stat[0].algo;
             });
-        filter_algo = std::get<0>(sel_f_algo);
-        VLOG(2) << "choose filter algo " << filter_algo;
+        VLOG(3) << "cuDNN backward filter algo " << filter_algo;
       } else if (FLAGS_cudnn_deterministic) {
         CUDNN_ENFORCE(
             platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
@@ -488,7 +488,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               cudnn_filter_desc, filter_algo, &tmp_size));
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
-    PopEvent("conv_grad_cudnn_get_algo", &dev_ctx);
 
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
