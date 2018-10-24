@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <map>
 #include <set>
 #include <vector>
 
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
@@ -245,40 +247,42 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
                   const framework::SelectedRows& input,
                   framework::SelectedRows* output) {
     framework::SelectedRows& out = *output;
-    auto input_rows = input.rows();
-    std::vector<int64_t> merge_rows;
-    merge_rows.reserve(input_rows.size());
-    std::unordered_map<int64_t, size_t> rows_pos_map;
-    rows_pos_map.reserve(input_rows.size());
-    size_t idx = 0u;
-    for (std::vector<int64_t>::iterator iter = input_rows.begin();
-         iter != input_rows.end(); ++iter) {
-      if (rows_pos_map.find(*iter) == rows_pos_map.end()) {
-        rows_pos_map[*iter] = idx++;
-        merge_rows.emplace_back(*iter);
-      }
+    std::vector<int64_t> input_rows(input.rows());
+
+    std::map<int64_t, std::vector<int64_t>> merge_row_map;
+    for (size_t i = 0; i < input_rows.size(); ++i) {
+      merge_row_map[input_rows[i]].push_back(i);
     }
 
-    auto input_width = input.value().dims()[1];
-    out.set_rows(merge_rows);
+    std::vector<int64_t> merge_rows(merge_row_map.size());
+    size_t idx = 0;
+    int64_t input_width = input.value().dims()[1];
     out.set_height(input.height());
-    out.mutable_value()->mutable_data<T>(
+
+    T* out_data = out.mutable_value()->mutable_data<T>(
         framework::make_ddim(
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
+    const T* in_data = input.value().data<T>();
 
-    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
-    constant_functor(context, out.mutable_value(), 0.0);
+    for (auto& row_pair : merge_row_map) {
+      auto* out_ptr = out_data + idx * input_width;
+      auto& rows = row_pair.second;
+      merge_rows[idx] = row_pair.first;
+      ++idx;
+      // rows.size() is always larger than 0
+      std::memcpy(out_ptr, in_data + rows[0] * input_width,
+                  sizeof(T) * input_width);
 
-    auto* out_data = out.mutable_value()->data<T>();
-    auto* input_data = input.value().data<T>();
-
-    for (size_t i = 0; i < input_rows.size(); i++) {
-      size_t out_i = rows_pos_map[input_rows[i]];
-      for (int64_t j = 0; j < input_width; j++) {
-        out_data[out_i * input_width + j] += input_data[i * input_width + j];
+      for (size_t i = 1; i < rows.size(); ++i) {
+        auto* in_ptr = in_data + rows[i] * input_width;
+        for (int64_t j = 0; j < input_width; ++j) {
+          out_ptr[j] += in_ptr[j];
+        }
       }
     }
+
+    out.set_rows(merge_rows);
   }
 };
 

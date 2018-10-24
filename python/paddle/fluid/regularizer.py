@@ -151,7 +151,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
+                type=core.VarDesc.VarType.LOD_TENSOR)
             block.append_op(
                 type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
             block.append_op(
@@ -228,7 +228,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
+                type=core.VarDesc.VarType.LOD_TENSOR)
             block.append_op(
                 type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
             block.append_op(
@@ -237,6 +237,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                         'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
+            param = decay
 
         # Append sign op
         block.append_op(
