@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+
 #include "paddle/fluid/framework/executor.h"
 
 #include "paddle/fluid/framework/channel.h"
@@ -384,6 +386,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
+  VLOG(3) << "Scope ptr " << local_scope;
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
    // CheckResult(op->Type(), ctx, local_scope);
@@ -445,7 +448,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       VLOG(3) << "after tensor copy";
       float sum = .0;
       for(size_t i=0; i < check.numel(); ++i) {
+        if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+          sum += static_cast<float>(check.data<int64_t>()[i]);
+        } else {
           sum += check.data<float>()[i];
+        }
       }
       VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum " << sum;
     }

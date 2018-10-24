@@ -62,7 +62,7 @@ static DDim GetDims(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (!tensor.IsInitialized()) {
       return DDim({-1});
     }
     return tensor.dims();
@@ -91,13 +91,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (!tensor.IsInitialized()) {
       return "";
     }
     return DataTypeToString(ToDataType(tensor.type()));
   } else if (var->IsType<SelectedRows>()) {
     auto tensor = var->Get<SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (!tensor.IsInitialized()) {
       return "uninited";
     } else {
       return DataTypeToString(ToDataType(tensor.type()));
@@ -130,7 +130,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (!tensor.IsInitialized()) {
       return default_lod;
     }
     return tensor.lod();
@@ -206,6 +206,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
 }
 
 std::string OperatorBase::DebugStringEx(const Scope* scope) const {
+  VLOG(3) << this->Type() << " scope ptr " << scope;
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
   for (auto it = inputs_.begin(); it != inputs_.end();) {
