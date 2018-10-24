@@ -174,6 +174,11 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         fast_threaded_ssa_graph_executor)
 endif() # NOT WIN32
 
+cc_library(async_executor
+          SRCS async_executor.cc data_feed.cc datafeed_creator.cc
+          DEPS op_registry device_context scope framework_proto glog
+              lod_rank_table feed_fetch_method graph_to_program_pass)
+
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry

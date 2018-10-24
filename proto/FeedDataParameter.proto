@@ -1,0 +1,48 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+syntax = "proto2";
+package datafeed;
+
+message DataFeedParameter {
+  optional FeedDataParameter feed_data_param = 1;
+  optional JointOneHotParameter joint_onehot_data_param = 2;
+  optional ACDXParameter acdx_data_param = 3;
+}
+
+message FeedDataParameter {
+  repeated int32 slot_id = 1;
+  repeated int32 use_slot_id = 2;
+  repeated string use_slot_alias = 3;
+  repeated uint64 use_slot_mod = 4;
+  repeated int32 use_slot_type = 5;
+  optional int32 max_batch_num = 6 [default = 128];
+  optional int32 max_feasign_num = 7 [default = 1000];
+}
+
+message JointOneHotParameter {
+  optional int32 max_batch_num = 1 [default = 128];
+  optional int32 max_title_num = 2 [default = 400];
+  optional int32 max_term_num = 3 [default = 1024];
+  required float sampling_rate = 4;
+  repeated int32 slot_id = 5;
+  repeated int32 use_slot_id = 6;
+  repeated string use_slot_alias = 7;
+  repeated uint64 use_slot_mod = 8;
+  repeated int32 use_slot_type = 9;
+}
+
+message ACDXParameter {
+  optional int32 max_batch_num = 1 [default = 128];
+  optional int32 max_term_num = 3 [default = 512];
+}
