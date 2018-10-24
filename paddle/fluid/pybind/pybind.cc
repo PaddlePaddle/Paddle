@@ -48,6 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/pybind/async_executor_py.h"
 
 #include "paddle/fluid/string/to_string.h"
 
@@ -907,6 +908,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
+  BindAsyncExecutor(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
