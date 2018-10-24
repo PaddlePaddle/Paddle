@@ -712,7 +712,7 @@ class DetectionMAP(object):
         reset metric states at the begin of each pass/user specified batch.
 
         Args:
-            executor(Executor|ParallelExecutor): a executor for executing
+            executor(Executor): a executor for executing
                 the reset_program.
             reset_program(Program|None): a single Program for reset process.
                 If None, will create a Program.
