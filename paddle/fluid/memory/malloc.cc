@@ -29,7 +29,7 @@ DEFINE_bool(init_allocated_mem, false,
             "To find this error in time, we use init_allocated_mem to indicate "
             "that initializing the allocated memory with a small value "
             "during unit testing.");
-DEFINE_bool(je_malloc, true, "if use je_malloc");
+DEFINE_bool(je_malloc, false, "if use je_malloc");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
@@ -78,7 +78,6 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   if (FLAGS_je_malloc) {
     p = je_malloc(size);
   } else {
-    LOG(ERROR) << "buddy_malloc";
     p = GetCPUBuddyAllocator()->Alloc(size);
   }
   if (FLAGS_init_allocated_mem) {
