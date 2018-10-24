@@ -6178,7 +6178,7 @@ def affine_grid_generator(theta, out_shape, name=None):
     if not isinstance(theta, Variable):
         raise ValueError("The theta should be a Variable.")
 
-    out = helper.create_tmp_variable(theta.dtype)
+    out = helper.create_variable_for_type_inference(theta.dtype)
     ipts = {'Theta': theta}
     attrs = {}
     if isinstance(out_shape, Variable):
