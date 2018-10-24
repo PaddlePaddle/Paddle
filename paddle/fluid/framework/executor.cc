@@ -411,7 +411,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     // }
      
      //VLOG(3) << "start op output" << op->Type();
-        for(auto var_name: op->InputArgumentNames()) {
+      for(auto var_name: op->InputArgumentNames()) {
       auto* var = local_scope->Var(var_name);
       auto* var_desc = block.FindVar(var_name);
       if (var_desc->Persistable()) continue;
@@ -424,7 +424,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       VLOG(3) << "after tensor copy";
       float sum = .0;
       for(size_t i=0; i < check.numel(); ++i) {
+        if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+          sum += static_cast<float>(check.data<int64_t>()[i]);
+        } else {
           sum += check.data<float>()[i];
+        }
       }
       VLOG(3) << "op " << op->Type() << " input var " << var_name << " sum " << sum;
     }
