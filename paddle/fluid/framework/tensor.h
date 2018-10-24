@@ -67,7 +67,7 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : offset_(0) {}
+  Tensor() : offset_(0) { LOG(INFO) << "new tensor " << this; }
 
   /*! Constructor with place should only be used in pybind. */
   explicit Tensor(const platform::Place& place) : offset_(0) {

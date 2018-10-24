@@ -72,6 +72,7 @@ void NaiveExecutor::Prepare(Scope *parent_scope,
 void NaiveExecutor::Run() {
   for (auto &op : ops_) {
     VLOG(4) << "run " << op->Type();
+    LOG(INFO) << "run " << op->Type();
     op->Run(*scope_, place_);
   }
 }
