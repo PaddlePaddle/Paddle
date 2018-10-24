@@ -156,12 +156,10 @@ ParallelExecutor::ParallelExecutor(
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
 
-  if (VLOG_IS_ON(5)) {
-    // If the loss_var_name is given, the number of graph should be only one.
-    if (loss_var_name.size()) {
-      PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                        "The number of graph should be only one");
-    }
+  // If the loss_var_name is given, the number of graph should be only one.
+  if (loss_var_name.size()) {
+    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                      "The number of graph should be only one");
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {

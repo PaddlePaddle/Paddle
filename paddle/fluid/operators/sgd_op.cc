@@ -77,8 +77,7 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
-              "Output parameter, should share the same memory with Param")
-        .Reuse("Param");
+              "Output parameter, should share the same memory with Param");
     AddComment(R"DOC(
 
 SGD operator
