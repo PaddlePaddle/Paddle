@@ -4894,13 +4894,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
-        inplace(bool): If this flag is set true, reuse input :attr:`x` to reshape,
-                       which will change the shape of tensor variable :attr:`x`.
-                       Otherwise, preserve the shape :attr:`x` and create a new
-                       output tensor variable whose data is copied from input x
-                       but reshaped. Though setting to :attr:`True` will be more
-                       efficient, :attr:`False` is suggested when :attr:`x` are
-                       used in multiple operators.
+        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
+                       operators. If this flag is set :attr:`True`, reuse input
+                       :attr:`x` to reshape, which will change the shape of
+                       tensor variable :attr:`x` and might cause errors when
+                       :attr:`x` is used in multiple operators. If :attr:`False`,
+                       preserve the shape :attr:`x` and create a new output tensor
+                       variable whose data is copied from input x but reshaped.
         name (str): The name of this layer. It is optional.
 
     Returns:
