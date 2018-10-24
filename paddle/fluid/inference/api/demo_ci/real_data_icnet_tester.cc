@@ -17,7 +17,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/paddle_inference_api.h"
 
 
 namespace paddle {
