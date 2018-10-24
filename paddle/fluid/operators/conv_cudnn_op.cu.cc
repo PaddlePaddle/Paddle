@@ -42,11 +42,6 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-using ConvFwdAlgorithmWithCost = std::tuple<cudnnConvolutionFwdAlgo_t, float>;
-using ConvBwdFilterAlgorithmWithCost =
-    std::tuple<cudnnConvolutionBwdFilterAlgo_t, float>;
-using ConvBwdDataAlgorithmWithCost =
-    std::tuple<cudnnConvolutionBwdDataAlgo_t, float>;
 
 static constexpr char kCUDNNFwdAlgoCache[] = "kCUDNNFwdAlgoCache";
 static constexpr char kCUDNNBwdDataAlgoCache[] = "kCUDNNBwdDataAlgoCache";
@@ -68,18 +63,6 @@ static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 4;
 static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 5;
 #endif
 
-using algo_t = cudnnConvolutionFwdAlgo_t;
-static const algo_t algos[] = {
-    CUDNN_CONVOLUTION_FWD_ALGO_GEMM,
-    CUDNN_CONVOLUTION_FWD_ALGO_FFT,
-    CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING,
-    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
-    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
-    CUDNN_CONVOLUTION_FWD_ALGO_DIRECT,
-    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD,
-    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED,
-};
-
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
@@ -97,7 +80,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     int64_t user_workspace_size =
         static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
-    bool exhaustive_search = ctx.Attr<bool>("exhaustive_search");
+    bool exhaustive_search =
+        FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -174,6 +158,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionFwdAlgo_t algo;
     auto handle = dev_ctx.cudnn_handle();
 
+    bool half_float = false;
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     // Tensor core is supported since the volta GPU and
     // is only enabled when input and filter data are float16
@@ -184,6 +169,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
       // Currently tensor core is only enabled using this algo
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      half_float = true;
     } else {
       CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_DEFAULT_MATH));
@@ -192,13 +178,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
-    if (!(FLAGS_cudnn_exhaustive_search || exhaustive_search)) {
+    if ((!exhaustive_search) && (!half_float)) {
       CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
           cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
           workspace_size_limit, &algo));
       VLOG(3) << "cuDNN forward algo " << algo;
-    } else {
+    } else if (exhaustive_search && (!half_float)) {
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* algo_cache = nullptr;
       if (ctx.scope().FindVar(kCUDNNFwdAlgoCache)) {
         algo_cache =
@@ -237,6 +223,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
             return fwd_perf_stat[0].algo;
           });
       VLOG(3) << "choose algo " << algo;
+    } else {
+      PADDLE_ENFORCE(half_float,
+                     "cuDNN exhaustive search doesn't support half float.");
     }
 
     // get workspace size able to allocate
@@ -286,7 +275,13 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     int64_t user_workspace_size =
         static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
-    bool exhaustive_search = ctx.Attr<bool>("exhaustive_search");
+    bool exhaustive_search =
+        FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
+    if (exhaustive_search && FLAGS_cudnn_deterministic) {
+      PADDLE_THROW(
+          "Cann't set exhaustive_search True and "
+          "FLAGS_cudnn_deterministic True at same time.");
+    }
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
@@ -366,7 +361,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      if (FLAGS_cudnn_exhaustive_search || exhaustive_search) {
+      if (exhaustive_search) {
         AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>* data_algo_cache;
         if (ctx.scope().FindVar(kCUDNNBwdDataAlgoCache)) {
           data_algo_cache =
@@ -411,6 +406,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             });
         VLOG(3) << "cuDNN backward data algo " << data_algo;
       } else if (FLAGS_cudnn_deterministic) {
+        data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+      } else {
         CUDNN_ENFORCE(
             platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
                 handle, cudnn_filter_desc,
@@ -423,8 +420,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                 cudnn_input_desc,
                 CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
                 workspace_size_limit, &data_algo));
-      } else {
-        data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
       }
       CUDNN_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
@@ -435,7 +430,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
-      if (FLAGS_cudnn_exhaustive_search || exhaustive_search) {
+      if (exhaustive_search) {
         AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>* f_algo_cache;
         if (ctx.scope().FindVar(kCUDNNBwdFilterAlgoCache)) {
           f_algo_cache =
@@ -473,14 +468,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             });
         VLOG(3) << "cuDNN backward filter algo " << filter_algo;
       } else if (FLAGS_cudnn_deterministic) {
+        filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+      } else {
         CUDNN_ENFORCE(
             platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
                 handle, cudnn_input_desc, cudnn_output_grad_desc,
                 cudnn_conv_desc, cudnn_filter_desc,
                 CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
                 workspace_size_limit, &filter_algo));
-      } else {
-        filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
       }
       CUDNN_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
