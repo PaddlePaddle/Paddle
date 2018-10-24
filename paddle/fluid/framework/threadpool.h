@@ -107,14 +107,11 @@ class ThreadPool {
   static std::once_flag init_flag_;
 
   std::vector<std::unique_ptr<std::thread>> threads_;
-  const size_t total_threads_;
-  size_t idle_threads_;
 
   std::queue<Task> tasks_;
   std::mutex mutex_;
   bool running_;
   std::condition_variable scheduled_;
-  std::condition_variable completed_;
 };
 
 class ThreadPoolIO : ThreadPool {

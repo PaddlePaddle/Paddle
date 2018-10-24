@@ -52,8 +52,7 @@ void ThreadPool::Init() {
   }
 }
 
-ThreadPool::ThreadPool(int num_threads)
-    : total_threads_(num_threads), idle_threads_(num_threads), running_(true) {
+ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU number
@@ -82,7 +81,6 @@ void ThreadPool::TaskLoop() {
     scheduled_.wait(
         lock, [this] { return !this->tasks_.empty() || !this->running_; });
 
-    std::lock_guard<std::mutex> l(mutex_);
     if (!running_ || tasks_.empty()) {
       return;
     }
@@ -90,8 +88,6 @@ void ThreadPool::TaskLoop() {
     // pop a task from the task queue
     auto task = std::move(tasks_.front());
     tasks_.pop();
-
-    --idle_threads_;
     lock.unlock();
 
     // run the task
