@@ -95,9 +95,9 @@ function cmake_gen() {
                 exit 1
             fi
         fi
-    else 
+    else
         if [ "$1" != "" ]; then
-            echo "using python abi: $1"     
+            echo "using python abi: $1"
             if [ "$1" == "cp27-cp27m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
                 export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
@@ -119,7 +119,7 @@ function cmake_gen() {
            fi
         fi
     fi
-    
+
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
         WITH_AVX=${WITH_AVX:-ON}
@@ -127,7 +127,7 @@ function cmake_gen() {
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
-    
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -394,8 +394,8 @@ EOF
         export http_proxy=
         export https_proxy=
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $1     
-        # make install should also be test when unittest 
+        ctest --output-on-failure -j $1
+        # make install should also be test when unittest
         make install -j 8
         pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
