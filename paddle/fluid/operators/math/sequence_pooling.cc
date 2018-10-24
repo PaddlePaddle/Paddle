@@ -242,7 +242,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-        int64_t in_offset = lod[i];
+        int64_t in_offset = lod[i] * in_w;
         const T* out_pos = out_g_data + i * out_w;
         T* in_pos = in_g_data + in_offset;
         for (int r = 0; r != h; ++r) {

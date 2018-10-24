@@ -70,7 +70,7 @@ void TestSequencePoolingSum(const paddle::framework::LoD& lod) {
   EXPECT_EQ(in_grad.lod(), lod);
 
   if (paddle::platform::is_cpu_place(*place)) {
-    for (int64_t i = 0; i < cpu_in_grad.lod()[0].size() - 1; ++i) {
+    for (int64_t i = 0; i < in_grad.lod()[0].size() - 1; ++i) {
       int64_t begin = in_grad.lod()[0][i];
       int64_t end = in_grad.lod()[0][i + 1];
       paddle::framework::Tensor tmp = in_grad.Slice(begin, end);
