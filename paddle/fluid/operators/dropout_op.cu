@@ -17,6 +17,7 @@ limitations under the License. */
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include <string>
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -27,7 +28,7 @@ template <typename T>
 __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T* src,
                                 T* mask_data, T* dst,
-                                bool dropout_implementation) {
+                                bool is_upscale_in_train) {
   thrust::minstd_rand rng;
   rng.seed(seed);
   thrust::uniform_real_distribution<float> dist(0, 1);
@@ -48,7 +49,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
     if (dist(rng) < dropout_prob) {
       mask = static_cast<T>(0);
     } else {
-      if (dropout_implementation) {
+      if (is_upscale_in_train) {
         mask = static_cast<T>(1.0f / (1.0f - dropout_prob));
       } else {
         mask = static_cast<T>(1);
@@ -72,7 +73,8 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    auto dropout_implementation = context.Attr<bool>("dropout_implementation");
+    auto dropout_implementation =
+        context.Attr<std::string>("dropout_implementation");
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
@@ -90,11 +92,11 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       RandomGenerator<
           T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
-          dropout_implementation);
+          (dropout_implementation == "upscale_in_train"));
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      if (dropout_implementation) {
+      if (dropout_implementation == "upscale_in_train") {
         Y.device(place) = X;
       } else {
         Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dropout_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -57,15 +58,29 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
-    AddAttr<bool>("dropout_implementation",
-                  "When it's True, In the training, after set some value"
-                  "to 0 (probability is dropout_prob),"
-                  "all the value will divide (1-dropout_prob)"
-                  "By using this way, will do nothing in the inference program"
-                  "The dropout op can be removed in the inference program."
-                  "The inference program will be more efficient"
-                  "When it's False, same as original")
-        .SetDefault(false);
+    AddAttr<std::string>(
+        "dropout_implementation",
+        "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
+        "There are two kinds of ways to implement dropout"
+        "(the mask below is a tensor have the same shape with input"
+        "the value of mask is 0 or 1, the ratio of 0 is dropout_prob)"
+        "1. downgrade_in_infer(default), downgrade the outcome at inference "
+        "time"
+        "   train: out = input * mask"
+        "   inference: out = input * dropout_prob"
+        "2. upscale_in_train, upscale the outcome at training time, do nothing "
+        "in inference"
+        "   train: out = input * mask / ( 1.0 - dropout_prob )"
+        "   inference: out = input"
+        "   dropout op can be removed from the program. the program will be "
+        "efficient")
+        .SetDefault("downgrade_in_infer")
+        .AddCustomChecker([](const std::string& type) {
+          PADDLE_ENFORCE(
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              "dropout_implementation can only be downgrade_in_infer or "
+              "upscale_in_train");
+        });
 
     AddComment(R"DOC(
 Dropout Operator.
