@@ -93,7 +93,7 @@ class TestDropoutOp6(TestDropoutOp):
             'dropout_prob': 1.0,
             'fix_seed': True,
             'is_test': False,
-            'div_prob_in_train': True
+            'dropout_implementation': 'upscale_in_train'
         }
         self.outputs = {
             'Out': np.zeros((32, 64)).astype('float32'),
@@ -109,7 +109,7 @@ class TestDropoutOp7(TestDropoutOp):
             'dropout_prob': 0.0,
             'fix_seed': True,
             'is_test': False,
-            'div_prob_in_train': True
+            'dropout_implementation': 'upscale_in_train'
         }
         self.outputs = {
             'Out': self.inputs['X'],
@@ -125,7 +125,7 @@ class TestDropoutOp8(OpTest):
             'dropout_prob': 0.35,
             'fix_seed': True,
             'is_test': True,
-            'div_prob_in_train': True
+            'dropout_implementation': 'upscale_in_train'
         }
         self.outputs = {'Out': self.inputs['X']}
 
@@ -140,7 +140,7 @@ class TestDropoutOp9(OpTest):
         self.attrs = {
             'dropout_prob': 0.75,
             'is_test': True,
-            'div_prob_in_train': True
+            'dropout_implementation': 'upscale_in_train'
         }
         self.outputs = {'Out': self.inputs['X']}
 
