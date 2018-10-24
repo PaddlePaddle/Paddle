@@ -46,7 +46,7 @@ class HashOp : public framework::OperatorWithKernel {
     // keep the last dim to 1
     out_dims.emplace_back(1);
 
-    ctx->SetOutputDim("Out", dims);
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
