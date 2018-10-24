@@ -25,14 +25,6 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-namespace {
-// Current thread's id.
-thread_local int cur_thread_id = 0;
-}
-
-void set_cur_thread_id(int tid) { cur_thread_id = tid; }
-int get_cur_thread_id(void) { return cur_thread_id; }
-
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
@@ -308,6 +300,14 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
 }
+
+namespace {
+// Current thread's id.
+thread_local int cur_thread_id = 0;
+}
+
+void set_cur_thread_id(int tid) { cur_thread_id = tid; }
+int get_cur_thread_id(void) { return cur_thread_id; }
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
