@@ -5,12 +5,13 @@ TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
 TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, defalut to /usr/local/TensorRT/include
 TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
+inference_install_dir=${PADDLE_ROOT}/build/fluid_inference_install_dir
 
 cd `dirname $0`
 current_dir=`pwd`
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
-  MKL_LIB=${PADDLE_ROOT}/build/fluid_install_dir/third_party/install/mklml/lib
+  MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
 fi
 if [ $3 == ON ]; then
@@ -20,7 +21,7 @@ else
 fi
 
 USE_TENSORRT=OFF
-if [ [-d"$TENSORRT_INCLUDE_DIR"] -a [-d"$TENSORRT_LIB_DIR"] ]; then
+if [ -d "$TENSORRT_INCLUDE_DIR" -a -d "$TENSORRT_LIB_DIR" ]; then
   USE_TENSORRT=ON
 fi
 
@@ -55,7 +56,7 @@ cd build
 for WITH_STATIC_LIB in ON OFF; do
   # -----simple_on_word2vec-----
   rm -rf *
-  cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
+  cmake .. -DPADDLE_LIB=${inference_install_dir} \
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=simple_on_word2vec \
     -DWITH_GPU=$TEST_GPU_CPU \
@@ -75,7 +76,7 @@ for WITH_STATIC_LIB in ON OFF; do
   fi
   # ---------vis_demo---------
   rm -rf *
-  cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
+  cmake .. -DPADDLE_LIB=${inference_install_dir} \
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=vis_demo \
     -DWITH_GPU=$TEST_GPU_CPU \
@@ -98,21 +99,19 @@ for WITH_STATIC_LIB in ON OFF; do
   # --------tensorrt mobilenet------
   if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
     rm -rf *
-    cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
+    cmake .. -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
-      -DDEMO_NAME=vis_demo \
+      -DDEMO_NAME=trt_mobilenet_demo \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DUSE_TENSORRT=$USE_TENSORRT \
       -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
       -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
     make -j 
-    ./vis_demo \
+    ./trt_mobilenet_demo \
       --modeldir=$DATA_DIR/mobilenet/model \
       --data=$DATA_DIR/mobilenet/data.txt \
-      --refer=$DATA_DIR/mobilenet/result.txt \
-      --use_gpu=true \
-      --use_trt=true
+      --refer=$DATA_DIR/mobilenet/result.txt 
   fi
 done
 set +x

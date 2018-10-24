@@ -1,4 +1,5 @@
-set(PYTHON_TESTS_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "python tests directory")
+set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests CACHE INTERNAL "python tests directory")
+
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 

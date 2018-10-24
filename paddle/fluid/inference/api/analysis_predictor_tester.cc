@@ -27,9 +27,7 @@ TEST(AnalysisPredictor, ZeroCopy) {
   config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
   config.use_feed_fetch_ops = false;
 
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   auto w0 = predictor->GetInputTensor("firstw");
   auto w1 = predictor->GetInputTensor("secondw");

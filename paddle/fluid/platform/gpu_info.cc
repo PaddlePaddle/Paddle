@@ -46,6 +46,24 @@ int GetCUDAComputeCapability(int id) {
   return device_prop.major * 10 + device_prop.minor;
 }
 
+int GetCUDARuntimeVersion(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  int runtime_version = 0;
+  PADDLE_ENFORCE(cudaRuntimeGetVersion(&runtime_version),
+                 "cudaRuntimeGetVersion failed in "
+                 "paddle::platform::cudaRuntimeGetVersion");
+  return runtime_version;
+}
+
+int GetCUDADriverVersion(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  int driver_version = 0;
+  PADDLE_ENFORCE(cudaDriverGetVersion(&driver_version),
+                 "cudaDriverGetVersion failed in "
+                 "paddle::platform::GetCUDADriverVersion");
+  return driver_version;
+}
+
 int GetCUDAMultiProcessors(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
