@@ -13,8 +13,6 @@
 # limitations under the License.
 """
 Fluid Metrics
-
-The metrics are accomplished via Python natively.
 """
 
 from __future__ import print_function
@@ -23,6 +21,12 @@ import numpy as np
 import copy
 import warnings
 import six
+
+from .layer_helper import LayerHelper
+from .initializer import Constant
+from . import unique_name
+from .framework import Program, Variable, program_guard
+from . import layers
 
 __all__ = [
     'MetricBase',
@@ -598,7 +602,7 @@ class DetectionMAP(object):
     Examples:
         .. code-block:: python
 
-            exe = fluid.executor(place)
+            exe = fluid.Executor(place)
             map_evaluator = fluid.Evaluator.DetectionMAP(input,
                 gt_label, gt_box, gt_difficult)
             cur_map, accum_map = map_evaluator.get_map_var()
@@ -624,9 +628,6 @@ class DetectionMAP(object):
                  overlap_threshold=0.5,
                  evaluate_difficult=True,
                  ap_version='integral'):
-        from . import layers
-        from .layer_helper import LayerHelper
-        from .initializer import Constant
 
         self.helper = LayerHelper('map_eval')
         gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
@@ -692,7 +693,6 @@ class DetectionMAP(object):
             shape(tuple|list): the shape of state
         Returns: State variable
         """
-        from . import unique_name
         state = self.helper.create_variable(
             name="_".join([unique_name.generate(self.helper.name), suffix]),
             persistable=True,
@@ -717,8 +717,6 @@ class DetectionMAP(object):
             reset_program(Program|None): a single Program for reset process.
                 If None, will create a Program.
         """
-        from .framework import Program, Variable, program_guard
-        from . import layers
 
         def _clone_var_(block, var):
             assert isinstance(var, Variable)
