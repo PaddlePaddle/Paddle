@@ -7472,7 +7472,7 @@ def space_to_depth(x, stride, name=None):
 
     Args:
         x(variable): The input LoDtensor.
-        stride(variable): The stride to space_to_depth
+        stride(variable): The stride to select the element on each feature map
 
     Returns:
         Variable: The output LoDtensor.
