@@ -35,9 +35,9 @@ class SimilarityFocusOpMaker : public framework::OpProtoAndCheckerMaker {
 SimilarityFocus Operator.
 
 Generate a similarity focus mask with the same shape of input using the following method:
-1. Extract the 3-D matrix(here the first dimension is BatchSize) corresponding
+1. Extract the 4-D matrix(here the first dimension is BatchSize) corresponding
    to the axis according to the indexes. For example, if axis=1 and indexes=[a],
-   it will get the matrix T=X[:, a, :, :]. In this casr, if the shape of input X
+   it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
    is (BatchSize, A, B, C), the shape of matrix T is (BatchSize, B, C).
 2. For each index, find the largest numbers in the matrix T, so that the same
    row and same column has at most one number(obviously there will be min(B, C)

@@ -7502,9 +7502,9 @@ def similarity_focus(input, axis, indexes, name=None):
     **SimilarityFocus Operator**
 
     Generate a similarity focus mask with the same shape of input using the following method:
-    1. Extract the 3-D matrix(here the first dimension is BatchSize) corresponding 
+    1. Extract the 4-D matrix(here the first dimension is BatchSize) corresponding 
        to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
-       it will get the matrix T=X[:, a, :, :]. In this casr, if the shape of input X 
+       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
        is (BatchSize, A, B, C), the shape of matrix T is (BatchSize, B, C).
     2. For each index, find the largest numbers in the matrix T, so that the same 
        row and same column has at most one number(obviously there will be min(B, C) 
@@ -7513,6 +7513,55 @@ def similarity_focus(input, axis, indexes, name=None):
     3. Broadcast the 3-D similarity focus mask to the same shape of input X.
 
     Refer to `Similarity Focus Layer <http://www.aclweb.org/anthology/N16-1108>`_
+
+    .. code-block:: text
+
+        * Example :
+
+            Given a 4-D tensor x with the shape (BatchSize, C, A, B), where C is
+            the number of channels and the shape of feature map is (A, B):
+                x.shape = (2, 3, 2, 2)
+                x.data = [[[[0.8, 0.1],
+                            [0.4, 0.5]],
+
+                           [[0.9, 0.7],
+                            [0.9, 0.9]],
+
+                           [[0.8, 0.9],
+                            [0.1, 0.2]]],
+
+
+                          [[[0.2, 0.5],
+                            [0.3, 0.4]],
+
+                           [[0.9, 0.7],
+                            [0.8, 0.4]],
+
+                           [[0.0, 0.2],
+                            [0.4, 0.7]]]]
+
+            Given axis: 1 (the axis of the channel)
+            Given indexes: [0]
+
+            then we get a 4-D tensor out with the same shape of input x:
+                out.shape = (2, 3, 2, 2)
+                out.data = [[[[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]]],
+
+                            [[[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]]]]
 
     Args:
         input(Variable): The input tensor variable(default float). It should 
@@ -7528,8 +7577,8 @@ def similarity_focus(input, axis, indexes, name=None):
     Examples:
         .. code-block:: python
             data = fluid.layers.data(
-              name='data', shape=[128, 13, 48, 48], dtype='float32')
-            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[9, 10])
+              name='data', shape=[2, 3, 2, 2], dtype='float32')
+            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[0])
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
