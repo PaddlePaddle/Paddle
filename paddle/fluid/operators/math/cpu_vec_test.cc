@@ -110,7 +110,7 @@ TEST(CpuVecTest, sigmoid) {
     TestAndBench<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
     TestAndBench<float>(sz, vec_sigmoid<float, jit::avx>, ref_sigmoid<float>);
     TestAndBench<float>(sz, vec_sigmoid<float, jit::avx2>, ref_sigmoid<float>);
-    TestAndBench<float>(sz, vec_sigmoid<float, jit::avx512_common>,
+    TestAndBench<float>(sz, vec_sigmoid<float, jit::avx512f>,
                         ref_sigmoid<float>);
   }
   TestAndBench<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
@@ -123,8 +123,7 @@ TEST(CpuVecTest, tanh) {
     TestAndBench<float>(sz, vec_tanh<float>, ref_tanh<float>);
     TestAndBench<float>(sz, vec_tanh<float, jit::avx>, ref_tanh<float>);
     TestAndBench<float>(sz, vec_tanh<float, jit::avx2>, ref_tanh<float>);
-    TestAndBench<float>(sz, vec_tanh<float, jit::avx512_common>,
-                        ref_tanh<float>);
+    TestAndBench<float>(sz, vec_tanh<float, jit::avx512f>, ref_tanh<float>);
   }
   TestAndBench<double>(30, vec_tanh<double>, ref_tanh<double>);
 }
@@ -136,8 +135,7 @@ TEST(CpuVecTest, relu) {
     TestAndBench<float>(sz, vec_relu<float>, ref_relu<float>);
     TestAndBench<float>(sz, vec_relu<float, jit::avx>, ref_relu<float>);
     TestAndBench<float>(sz, vec_relu<float, jit::avx2>, ref_relu<float>);
-    TestAndBench<float>(sz, vec_relu<float, jit::avx512_common>,
-                        ref_relu<float>);
+    TestAndBench<float>(sz, vec_relu<float, jit::avx512f>, ref_relu<float>);
   }
   TestAndBench<double>(30, vec_relu<double>, ref_relu<double>);
 }
@@ -170,7 +168,7 @@ TEST(CpuVecTest, inplace_sigmoid) {
     TestInplace<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
     TestInplace<float>(sz, vec_sigmoid<float, jit::avx>, ref_sigmoid<float>);
     TestInplace<float>(sz, vec_sigmoid<float, jit::avx2>, ref_sigmoid<float>);
-    TestInplace<float>(sz, vec_sigmoid<float, jit::avx512_common>,
+    TestInplace<float>(sz, vec_sigmoid<float, jit::avx512f>,
                        ref_sigmoid<float>);
   }
   TestInplace<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
@@ -183,8 +181,7 @@ TEST(CpuVecTest, inplace_tanh) {
     TestInplace<float>(sz, vec_tanh<float>, ref_tanh<float>);
     TestInplace<float>(sz, vec_tanh<float, jit::avx>, ref_tanh<float>);
     TestInplace<float>(sz, vec_tanh<float, jit::avx2>, ref_tanh<float>);
-    TestInplace<float>(sz, vec_tanh<float, jit::avx512_common>,
-                       ref_tanh<float>);
+    TestInplace<float>(sz, vec_tanh<float, jit::avx512f>, ref_tanh<float>);
   }
   TestInplace<double>(30, vec_tanh<double>, ref_tanh<double>);
 }
@@ -196,8 +193,7 @@ TEST(CpuVecTest, inplace_relu) {
     TestInplace<float>(sz, vec_relu<float>, ref_relu<float>);
     TestInplace<float>(sz, vec_relu<float, jit::avx>, ref_relu<float>);
     TestInplace<float>(sz, vec_relu<float, jit::avx2>, ref_relu<float>);
-    TestInplace<float>(sz, vec_relu<float, jit::avx512_common>,
-                       ref_relu<float>);
+    TestInplace<float>(sz, vec_relu<float, jit::avx512f>, ref_relu<float>);
   }
   TestInplace<double>(30, vec_relu<double>, ref_relu<double>);
 }

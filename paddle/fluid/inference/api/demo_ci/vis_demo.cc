@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
-#include "paddle/fluid/inference/demo_ci/utils.h"
+#include "utils.h"  // NOLINT
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -34,12 +34,13 @@ DEFINE_bool(use_gpu, false, "Whether use gpu.");
 namespace paddle {
 namespace demo {
 
+using contrib::AnalysisConfig;
 /*
- * Use the native fluid engine to inference the demo.
+ * Use the native and analysis fluid engine to inference the demo.
  */
 void Main(bool use_gpu) {
-  std::unique_ptr<PaddlePredictor> predictor;
-  NativeConfig config;
+  std::unique_ptr<PaddlePredictor> predictor, analysis_predictor;
+  AnalysisConfig config;
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
   config.use_gpu = use_gpu;
@@ -49,8 +50,8 @@ void Main(bool use_gpu) {
   }
 
   VLOG(3) << "init predictor";
-  predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  predictor = CreatePaddlePredictor<NativeConfig>(config);
+  analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   VLOG(3) << "begin to process data";
   // Just a single batch of data.
@@ -68,7 +69,7 @@ void Main(bool use_gpu) {
   input.dtype = PaddleDType::FLOAT32;
 
   VLOG(3) << "run executor";
-  std::vector<PaddleTensor> output;
+  std::vector<PaddleTensor> output, analysis_output;
   predictor->Run({input}, &output, 1);
 
   VLOG(3) << "output.size " << output.size();
@@ -77,6 +78,10 @@ void Main(bool use_gpu) {
 
   // compare with reference result
   CheckOutput(FLAGS_refer, tensor);
+
+  // the analysis_output has some diff with native_output,
+  // TODO(luotao): add CheckOutput for analysis_output later.
+  analysis_predictor->Run({input}, &analysis_output, 1);
 }
 
 }  // namespace demo
