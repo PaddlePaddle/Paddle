@@ -158,6 +158,31 @@ class FirstSeqPoolFunctor {
 };
 
 template <typename T>
+class SumSeqPoolGradFunctor {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& out_grad,
+                  framework::LoDTensor* in_grad) {
+    auto lod = in_grad->lod()[0];
+    int64_t out_w = out_grad.numel() / out_grad.dims()[0];
+    int64_t in_w = in_grad->numel() / in_grad->dims()[0];
+    PADDLE_ENFORCE(in_w == out_w);
+    const T* out_g_data = out_grad.data<T>();
+    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      int64_t in_offset = lod[i] * in_w;
+      const T* out_pos = out_g_data + i * out_w;
+      T* in_pos = in_g_data + in_offset;
+      for (int r = 0; r != h; ++r) {
+        blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
+      }
+    }
+  }
+};
+
+template <typename T>
 class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
   /* max pool has index output */
@@ -233,35 +258,8 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
     }
 
     if (pooltype == "SUM") {
-      auto lod = in_grad->lod()[0];
-
-      int64_t out_w = out_grad.numel() / out_grad.dims()[0];
-      int64_t in_w = in_grad->numel() / in_grad->dims()[0];
-      PADDLE_ENFORCE(in_w == out_w);
-
-      const T* out_g_data = out_grad.data<T>();
-      T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
-
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-      for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-        int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-        int64_t in_offset = lod[i];
-        const T* out_pos = out_g_data + i * out_w;
-        T* in_pos = in_g_data + in_offset;
-        for (int r = 0; r != h; ++r) {
-          blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
-        }
-      }
-
-      // for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      // int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      // T* in_pos = in_g_data + lod[i];
-      // LOG(ERROR) << lod[i] << " " << lod.size();
-      // if (h >= 2) {
-      // PADDLE_ENFORCE(*in_pos == *(in_pos + in_w));
-      // }
-      // }
-
+      math::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      sum_pool_grad(context, out_grad, in_grad);
       return;
     }
 
