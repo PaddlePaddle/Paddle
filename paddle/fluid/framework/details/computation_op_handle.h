@@ -54,7 +54,7 @@ struct ComputationOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
   platform::Place place_;
-  size_t scope_idx_{0};
+  size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
 };
 }  // namespace details

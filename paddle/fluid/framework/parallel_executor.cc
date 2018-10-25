@@ -127,6 +127,10 @@ ParallelExecutor::ParallelExecutor(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
 
+  graph = ir::PassRegistry::Instance()
+              .Get("modify_op_lock_and_record_event_pass")
+              ->Apply(std::move(graph));
+
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
     for (auto &place : member_->places_) {
@@ -154,17 +158,11 @@ ParallelExecutor::ParallelExecutor(
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
-#endif
 
   graph = ir::PassRegistry::Instance()
               .Get("modify_op_lock_and_record_event_pass")
               ->Apply(std::move(graph));
-
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                      "The number of graph should be only one");
-  }
+#endif
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
