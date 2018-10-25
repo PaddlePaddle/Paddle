@@ -193,7 +193,7 @@ class DefaultValueSetter {
  public:
   explicit DefaultValueSetter(T default_value)
       : default_value_(default_value) {}
-  void operator()(T& value) const { value = default_value_; }  // NOLINT
+  void operator()(const T& value) const { value = default_value_; }
 
  private:
   T default_value_;
@@ -268,7 +268,7 @@ class TypedAttrChecker {
     return *this;
   }
 
-  void operator()(AttributeMap& attr_map) const {  // NOLINT
+  void operator()(const AttributeMap& attr_map) const {
     if (!attr_map.count(attr_name_)) {
       // user do not set this attr
       PADDLE_ENFORCE(!default_value_setter_.empty(),
@@ -294,7 +294,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap&)> AttrChecker;
+  typedef std::function<void(const AttributeMap&)> AttrChecker;
 
  public:
   template <typename T>
@@ -304,7 +304,7 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap& attr_map) const {  // NOLINT
+  void Check(const AttributeMap& attr_map) const {
     for (const auto& checker : attr_checkers_) {
       checker(attr_map);
     }
