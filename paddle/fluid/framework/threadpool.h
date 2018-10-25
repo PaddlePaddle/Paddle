@@ -55,10 +55,6 @@ class ThreadPool {
   // Returns the singleton of ThreadPool.
   static ThreadPool* GetInstance();
 
-  // delete current thread pool and create a new one.
-  // Only used by test cases to reset the threadpool.
-  static void TestReset();
-
   ~ThreadPool();
 
   // Run pushes a function to the task queue and returns a std::future
