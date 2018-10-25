@@ -709,7 +709,7 @@ class DetectionMAP(object):
 
     def reset(self, executor, reset_program=None):
         """
-        reset metric states at the begin of each pass/user specified batch.
+        Reset metric states at the begin of each pass/user specified batch.
 
         Args:
             executor(Executor): a executor for executing
