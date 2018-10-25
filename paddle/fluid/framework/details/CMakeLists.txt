@@ -42,7 +42,7 @@ cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_
 if(WITH_GPU)
   cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto reference_count_pass modify_op_lock_and_record_event_pass)
 else()
-  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto modify_op_lock_and_wait_pass)
+  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto modify_op_lock_and_record_event_pass)
 endif()
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
