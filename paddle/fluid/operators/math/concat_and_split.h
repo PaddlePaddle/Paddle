@@ -54,7 +54,7 @@ class ConcatFunctor {
  *     Output[1] = [[5,6]]
  */
 template <typename DeviceContext, typename T>
-class ConcatGradFunctor {
+class SplitFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
