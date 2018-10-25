@@ -161,7 +161,7 @@ ParallelExecutor::ParallelExecutor(
     switch (build_strategy.optimize_strategy_) {
       case BuildStrategy::OptimizeStrategy::kNoLock:
         PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), places.size(),
-                          "The number of graph should be only one");
+                          "The number of graph should be the same with place");
         break;
       default:
         PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1u,

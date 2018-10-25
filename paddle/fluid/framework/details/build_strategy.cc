@@ -92,6 +92,16 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     CreatePassesFromStrategy();
   }
 
+  if (optimize_strategy_ == BuildStrategy::OptimizeStrategy::kNoLock) {
+    PADDLE_ENFORCE(
+        places.size() >= 2u,
+        "NoLock optimize strategy should be applied in more than 2 devices");
+    PADDLE_ENFORCE(paddle::platform::is_cpu_place(places[0]),
+                   "NoLock optimize strategy is only supported in CPU");
+    PADDLE_ENFORCE(reduce_ == BuildStrategy::ReduceStrategy::kReduce,
+                   "NoLock optimize strategy is only supported with Reduce");
+  }
+
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {

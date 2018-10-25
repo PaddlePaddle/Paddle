@@ -396,17 +396,12 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                 switch (strategy_.reduce_) {
                   case BuildStrategy::ReduceStrategy::kReduce:
                     cur_device_id = GetAppropriateDeviceID({g_name});
-                    switch (strategy_.emb_opt_) {
-                      case BuildStrategy::EmbeddingOptimizeStrategy::kNoLock:
-                        if (node->Op()->Type() != "lookup_table_grad" &&
-                            node->Op()->Type() != "sum" &&
-                            node->Op()->Type() != "elementwise_add_grad" &&
-                            node->Op()->Type() != "mul_grad") {
-                          LOG(ERROR) << "Add ReduceOp " << g_name;
-                          LOG(ERROR) << "Node Op type " << node->Op()->Type();
-                          CreateReduceOp(&result, g_name, cur_device_id);
-                        }
+                    switch (strategy_.optimize_strategy_) {
+                      case BuildStrategy::OptimizeStrategy::kNoLock:
+                        VLOG(10) << "Reduce Op of " << g_name
+                                 << " will NOT created in NoLock mode";
                         break;
+                      case BuildStrategy::OptimizeStrategy::kMerge:
                       default:
                         CreateReduceOp(&result, g_name, cur_device_id);
                         break;

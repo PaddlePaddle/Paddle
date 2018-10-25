@@ -776,6 +776,9 @@ All parameter, weight, gradient are variables in Paddle.
              BuildStrategy::GradientScaleStrategy::kCoeffNumDevice)
       .value("One", BuildStrategy::GradientScaleStrategy::kOne)
       .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
+  py::enum_<BuildStrategy::OptimizeStrategy>(build_strategy, "OptimizeStrategy")
+      .value("NoLock", BuildStrategy::OptimizeStrategy::kNoLock)
+      .value("Merge", BuildStrategy::OptimizeStrategy::kMerge);
 
   build_strategy.def(py::init())
       .def_property(
@@ -797,11 +800,12 @@ All parameter, weight, gradient are variables in Paddle.
             self.optimize_strategy_ = strategy;
           },
           R"DOC(The type is STR, there are two optimize strategies in ParallelExecutor,
-                  'Merge' and 'NoLock'. If you want that all the parameters'
-                  optimization are done on all devices independently, you should choose 'AllReduce';
-                  if you choose 'Reduce', all the parameters' optimization will be evenly distributed
-                  to different devices, and then broadcast the optimized parameter to other devices.
-                  In some models, `Reduce` is faster. Default 'AllReduce'. )DOC")
+                  'Merge' and 'NoLock'. If you want that all the parameters' optimization
+                  are done asynchronously without merging gradients of all devices, you
+                  should choose 'NoLock'; if you choose 'Merge', all the parameters'
+                  optimization will be done after merging all gradients of the all devices.
+                  In most cases, 'NoLock' will be faster than 'Merge', however, 'Merge'
+                  will get better auccracy. Default 'Merge'. )DOC")
       .def_property(
           "gradient_scale_strategy",
           [](const BuildStrategy &self) { return self.gradient_scale_; },
