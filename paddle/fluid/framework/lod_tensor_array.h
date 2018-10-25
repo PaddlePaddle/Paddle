@@ -49,6 +49,12 @@ class LoDTensorArray {
     size_ = size;
   }
 
+  void emplace_back() { array_.emplace_back(); }
+
+  void emplace_back(LoDTensor&& x) { array_.emplace_back(std::move(x)); }
+
+  LoDTensor& back() { return array_.back(); }
+
   size_t space() const { return array_.size(); }
 
   void reserve(size_t size) {
