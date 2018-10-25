@@ -28,7 +28,7 @@ namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
 
-static std::shared_ptr<memory::Allocation> GetCommunicationAllocationFromTensor(
+static TensorPayload GetCommunicationAllocationFromTensor(
     const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
   if (is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
@@ -45,17 +45,17 @@ static std::shared_ptr<memory::Allocation> GetCommunicationAllocationFromTensor(
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
 
     ctx.Wait();
-    return result;
+    return TensorPayload(result);
 #else
-    return nullptr;  // THIS SHOULD NOT HAPPENED.
+    PADDLE_THROW("This situation should not be happened");
 #endif
   } else {
-    return tensor.Holder();
+    return TensorPayload(tensor);
   }
 }
-std::shared_ptr<memory::Allocation> GetTensorPayload(
-    framework::Variable* var, const platform::DeviceContext& ctx,
-    VarMsg* request) {
+TensorPayload GetTensorPayload(framework::Variable* var,
+                               const platform::DeviceContext& ctx,
+                               VarMsg* request) {
   auto tensor = var->Get<framework::LoDTensor>();
   // FIXME(wuyi): data types in send_recv.proto is copied from
   // framework.proto
@@ -77,9 +77,9 @@ std::shared_ptr<memory::Allocation> GetTensorPayload(
   return GetCommunicationAllocationFromTensor(ctx, tensor);
 }
 
-std::shared_ptr<memory::Allocation> GetSelectedRowsPayload(
-    framework::Variable* var, const platform::DeviceContext& ctx,
-    VarMsg* request) {
+TensorPayload GetSelectedRowsPayload(framework::Variable* var,
+                                     const platform::DeviceContext& ctx,
+                                     VarMsg* request) {
   auto* slr = var->GetMutable<framework::SelectedRows>();
   request->set_data_type(
       static_cast<VarMsg::Type>(framework::ToDataType(slr->value().type())));
@@ -94,6 +94,17 @@ std::shared_ptr<memory::Allocation> GetSelectedRowsPayload(
   return GetCommunicationAllocationFromTensor(ctx, *tensor);
 }
 
+TensorPayload::TensorPayload(std::shared_ptr<memory::Allocation> allocation)
+    : allocation_(allocation), offset_(0), memory_size_(allocation->size()) {}
+TensorPayload::TensorPayload(const framework::Tensor& tensor)
+    : allocation_(tensor.Holder()),
+      offset_(tensor.offset()),
+      memory_size_(tensor.numel() * framework::SizeOfType(tensor.type())) {}
+void* TensorPayload::ptr() const {
+  return reinterpret_cast<void*>(
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + offset_);
+}
+size_t TensorPayload::memory_size() const { return memory_size_; }
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

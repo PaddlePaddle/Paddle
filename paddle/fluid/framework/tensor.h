@@ -156,6 +156,7 @@ class Tensor {
   void clear() { holder_ = nullptr; }
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
+  size_t offset() const { return offset_; }
 
  private:
   /*! holds the memory block if allocated. */
