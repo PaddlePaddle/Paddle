@@ -212,16 +212,18 @@ class MKLDNNHandler {
       std::shared_ptr<mkldnn::primitive> reorder_p;
       if (mpd != user_mpd) {
         target_memory_p = std::make_shared<mkldnn::memory>(mpd);
-        auto reorder_p =
-            std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+        std::shared_ptr<mkldnn::reorder> reorder_p;// =
+            //std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
         if(is_INT8){
             mkldnn::primitive_attr attri;
             attri.set_output_scales(mask, scale_data);
 
             auto reorder_pd = std::shared_ptr<mkldnn::reorder::primitive_desc>(
-                    new mkldnn::reorder::primitive_desc(mpd, user_mpd, attri));
-            auto reorder_p =
+                    new mkldnn::reorder::primitive_desc(user_mpd, mpd, attri));
+            reorder_p =
                 std::shared_ptr<mkldnn::reorder>(new mkldnn::reorder(*reorder_pd, *user_memory_p, *target_memory_p));
+        } else{
+            reorder_p = std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
         }
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
         pipeline.push_back(*reorder_p);
