@@ -659,7 +659,7 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
-        cmake .. -DWITH_DISTRIBUTE=OFF
+        cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
         make -j `nproc` fluid_lib_dist
         make -j `nproc` inference_lib_dist
       fi

@@ -18,9 +18,21 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+// NOTE The vector<LoDTensor> can't be replaced with the class LoDTensorArray
+// directly, because there are many vector<LoDTensor> used accross the project,
+// and some of them are treated as LoDTensorArray.
+#if !defined(PADDLE_ON_INFERENCE)
+
+using LoDTensorArray = std::vector<LoDTensor>;
+
+#else  // !PADDLE_ON_INFERENCE
+
+#pragma message "LoDTensorArray is replaced with the inference one."
 /*
- * A LoDTensorArray which will not deallocate buffer when resized. More
- * performance friendly in the concurrency scenerios.
+ * A LoDTensorArray which will not deallocate buffer when resized, fix the data
+ * diff in inference, and more performance friendly in the concurrency
+ * scenerios.
  */
 class LoDTensorArray {
  public:
@@ -81,6 +93,7 @@ class LoDTensorArray {
   size_t size_{0};
   std::vector<LoDTensor> array_;
 };
+#endif  // !PADDLE_ON_INFERENCE
 
 }  // namespace framework
 }  // namespace paddle
