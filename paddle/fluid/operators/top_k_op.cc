@@ -50,7 +50,7 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) The input of Topk op");
-    AddOutput("Out", "(Tensor) The output tensor of Topk op").Reuse("X");
+    AddOutput("Out", "(Tensor) The output tensor of Topk op");
     AddOutput("Indices", "(Tensor) The indices of Topk elements of input");
     AddComment(R"DOC(
 Top K operator

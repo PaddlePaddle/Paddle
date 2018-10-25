@@ -41,11 +41,8 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   config1.device = 0;
   config1.max_batch_size = 10;
 
-  auto predictor0 =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
-  auto predictor1 =
-      CreatePaddlePredictor<MixedRTConfig,
-                            PaddleEngineKind::kAutoMixedTensorRT>(config1);
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
 
   for (int batch_id = 0; batch_id < 1; batch_id++) {
     //# 2. Prepare input.
