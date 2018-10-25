@@ -87,6 +87,12 @@ class VAddBiasKernel : public Kernel {
 };
 
 template <typename T>
+class VAddReluKernel : public Kernel {
+ public:
+  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+};
+
+template <typename T>
 class VActKernel : public Kernel {
  public:
   virtual void Compute(const T *x, T *y) const = 0;
