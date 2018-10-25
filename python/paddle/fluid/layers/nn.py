@@ -96,6 +96,7 @@ __all__ = [
     'pad_constant_like',
     'label_smooth',
     'roi_pool',
+    'roi_align',
     'dice_loss',
     'image_resize',
     'image_resize_short',
@@ -153,6 +154,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'affine_channel',
 ]
 
 
@@ -240,7 +242,7 @@ def fc(input,
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-        tmp = helper.create_tmp_variable(dtype)
+        tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type="mul",
             inputs={"X": input_var,
@@ -253,7 +255,7 @@ def fc(input,
     if len(mul_results) == 1:
         pre_bias = mul_results[0]
     else:
-        pre_bias = helper.create_tmp_variable(dtype)
+        pre_bias = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type="sum",
             inputs={"X": mul_results},
@@ -312,7 +314,7 @@ def embedding(input,
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
-    tmp = helper.create_tmp_variable(dtype)
+    tmp = helper.create_variable_for_type_inference(dtype)
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
     helper.append_op(
@@ -354,7 +356,6 @@ def dynamic_lstm(input,
         c_0(Variable): The initial cell state is an optional input, default is zero.
                        This is a tensor with shape (N x D), where N is the
                        batch size. `h_0` and `c_0` can be NULL but only at the same time.
-
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
@@ -362,6 +363,11 @@ def dynamic_lstm(input,
                                                 W_{fh}, W_{oh}`}
                                - The shape is (D x 4D), where D is the hidden
                                  size.
+
+                               If it is set to None or one attribute of ParamAttr,
+                               dynamic_lstm will create ParamAttr as param_attr.
+                               If the Initializer of the param_attr is not set, the
+                               parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
@@ -374,6 +380,11 @@ def dynamic_lstm(input,
                                  - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
                                  - The shape is (1 x 7D).
+
+                              If it is set to None or one attribute of ParamAttr,
+                              dynamic_lstm will create ParamAttr as bias_attr.
+                              If the Initializer of the bias_attr is not set,
+                              the bias is initialized zero. Default: None.
         use_peepholes (bool): ${use_peepholes_comment}
         is_reverse (bool): ${is_reverse_comment}
         gate_activation (str): ${gate_activation_comment}
@@ -392,11 +403,11 @@ def dynamic_lstm(input,
 
             hidden_dim = 512
             forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
-                                           act=None, bias_attr=None)
+                                           bias_attr=False)
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
-
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
     helper = LayerHelper('lstm', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -407,10 +418,10 @@ def dynamic_lstm(input,
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
-    hidden = helper.create_tmp_variable(dtype)
-    cell = helper.create_tmp_variable(dtype)
-    batch_gate = helper.create_tmp_variable(dtype)
-    batch_cell_pre_act = helper.create_tmp_variable(dtype)
+    hidden = helper.create_variable_for_type_inference(dtype)
+    cell = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     batch_size = input.shape[0]
     if h_0:
@@ -531,6 +542,11 @@ def dynamic_lstmp(input,
                                  size.
                                - Projection weight = {:math:`W_{rh}`}.
                                - The shape of projection weight is (D x P).
+
+                               If it is set to None or one attribute of ParamAttr,
+                               dynamic_lstm will create ParamAttr as param_attr.
+                               If the Initializer of the param_attr is not set, the
+                               parameter is initialized with Xavier. Default: None.
         bias_attr(ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
@@ -543,6 +559,11 @@ def dynamic_lstmp(input,
                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
                                 - The shape is (1 x 7D).
+
+                              If it is set to None or one attribute of ParamAttr,
+                              dynamic_lstm will create ParamAttr as bias_attr.
+                              If the Initializer of the bias_attr is not set,
+                              the bias is initialized zero. Default: None.
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
@@ -587,6 +608,7 @@ def dynamic_lstmp(input,
                                                      proj_activation="tanh")
     """
 
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -599,12 +621,12 @@ def dynamic_lstmp(input,
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
-    projection = helper.create_tmp_variable(dtype)
-    cell = helper.create_tmp_variable(dtype)
-    ordered_proj0 = helper.create_tmp_variable(dtype)
-    batch_hidden = helper.create_tmp_variable(dtype)
-    batch_gate = helper.create_tmp_variable(dtype)
-    batch_cell_pre_act = helper.create_tmp_variable(dtype)
+    projection = helper.create_variable_for_type_inference(dtype)
+    cell = helper.create_variable_for_type_inference(dtype)
+    ordered_proj0 = helper.create_variable_for_type_inference(dtype)
+    batch_hidden = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type='lstmp',
@@ -729,10 +751,10 @@ def dynamic_gru(input,
         ), 'The shape of h0 should be(batch_size, %d)' % size
         inputs['H0'] = h_0
 
-    hidden = helper.create_tmp_variable(dtype)
-    batch_gate = helper.create_tmp_variable(dtype)
-    batch_reset_hidden_prev = helper.create_tmp_variable(dtype)
-    batch_hidden = helper.create_tmp_variable(dtype)
+    hidden = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_reset_hidden_prev = helper.create_variable_for_type_inference(dtype)
+    batch_hidden = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type='gru',
@@ -822,9 +844,9 @@ def gru_unit(input,
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
 
-    gate = helper.create_tmp_variable(dtype)
-    reset_hidden_pre = helper.create_tmp_variable(dtype)
-    updated_hidden = helper.create_tmp_variable(dtype)
+    gate = helper.create_variable_for_type_inference(dtype)
+    reset_hidden_pre = helper.create_variable_for_type_inference(dtype)
+    updated_hidden = helper.create_variable_for_type_inference(dtype)
     inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
     # create bias
     if helper.bias_attr:
@@ -874,10 +896,14 @@ def linear_chain_crf(input, label, param_attr=None):
         attr=helper.param_attr,
         shape=[size + 2, size],
         dtype=helper.input_dtype())
-    alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
-    emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
-    transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
-    log_likelihood = helper.create_tmp_variable(dtype=helper.input_dtype())
+    alpha = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
+    emission_exps = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
+    transition_exps = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
+    log_likelihood = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
     helper.append_op(
         type='linear_chain_crf',
         inputs={"Emission": [input],
@@ -916,7 +942,8 @@ def crf_decoding(input, param_attr, label=None):
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
-    viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
+    viterbi_path = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
     helper.append_op(
         type='crf_decoding',
         inputs={"Emission": [input],
@@ -940,9 +967,9 @@ def cos_sim(X, Y):
         Variable: the output of cosine(X, Y).
     """
     helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_tmp_variable(dtype=X.dtype)
-    xnorm = helper.create_tmp_variable(dtype=X.dtype)
-    ynorm = helper.create_tmp_variable(dtype=X.dtype)
+    out = helper.create_variable_for_type_inference(dtype=X.dtype)
+    xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
+    ynorm = helper.create_variable_for_type_inference(dtype=X.dtype)
     helper.append_op(
         type='cos_sim',
         inputs={'X': [X],
@@ -986,8 +1013,9 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     """
 
     helper = LayerHelper('dropout', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
-    mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    mask = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
@@ -1072,7 +1100,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=-100):
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     helper = LayerHelper('cross_entropy', **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='cross_entropy',
         inputs={'X': [input],
@@ -1119,14 +1147,14 @@ def square_error_cost(input, label):
 
     """
     helper = LayerHelper('square_error_cost', **locals())
-    minus_out = helper.create_tmp_variable(dtype=input.dtype)
+    minus_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='elementwise_sub',
         inputs={'X': [input],
                 'Y': [label]},
         outputs={'Out': [minus_out]})
 
-    square_out = helper.create_tmp_variable(dtype=input.dtype)
+    square_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='square', inputs={'X': [minus_out]},
         outputs={'Out': [square_out]})
@@ -1232,12 +1260,13 @@ def chunk_eval(input,
     helper = LayerHelper("chunk_eval", **locals())
 
     # prepare output
-    precision = helper.create_tmp_variable(dtype="float32")
-    recall = helper.create_tmp_variable(dtype="float32")
-    f1_score = helper.create_tmp_variable(dtype="float32")
-    num_infer_chunks = helper.create_tmp_variable(dtype="int64")
-    num_label_chunks = helper.create_tmp_variable(dtype="int64")
-    num_correct_chunks = helper.create_tmp_variable(dtype="int64")
+    precision = helper.create_variable_for_type_inference(dtype="float32")
+    recall = helper.create_variable_for_type_inference(dtype="float32")
+    f1_score = helper.create_variable_for_type_inference(dtype="float32")
+    num_infer_chunks = helper.create_variable_for_type_inference(dtype="int64")
+    num_label_chunks = helper.create_variable_for_type_inference(dtype="int64")
+    num_correct_chunks = helper.create_variable_for_type_inference(
+        dtype="int64")
 
     helper.append_op(
         type="chunk_eval",
@@ -1268,7 +1297,8 @@ def sequence_conv(input,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
-                  act=None):
+                  act=None,
+                  name=None):
     """
     This function creates the op for sequence_conv, using the inputs and
     other convolutional configurations for the filters and stride as given
@@ -1280,9 +1310,19 @@ def sequence_conv(input,
         filter_size (int): the filter size (H and W).
         filter_stride (int): stride of the filter.
         padding (bool): if True, add paddings.
-        bias_attr (ParamAttr|None): attributes for bias
-        param_attr (ParamAttr|None): attributes for parameter
-        act (str): the activation type
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, sequence_conv
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of sequence_conv. If it is set to None or one attribute of ParamAttr, sequence_conv
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
 
     Returns:
         Variable: output of sequence_conv
@@ -1293,7 +1333,7 @@ def sequence_conv(input,
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
-    pre_bias = helper.create_tmp_variable(dtype)
+    pre_bias = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type='sequence_conv',
@@ -1311,7 +1351,7 @@ def sequence_conv(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
+def sequence_softmax(input, use_cudnn=False, name=None):
     """
     This function computes the softmax activation among all time-steps for each
     sequence. The dimension of each time-step should be 1. Thus, the shape of
@@ -1331,10 +1371,10 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
 
     Args:
         input (Variable): The input variable which is a LoDTensor.
-        bias_attr (ParamAttr|None): attributes for bias
-        param_attr (ParamAttr|None): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-        library is installed. Default: False
+            library is installed. Default: False.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
 
     Returns:
         Variable: output of sequence_softmax
@@ -1349,7 +1389,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
     """
     helper = LayerHelper('sequence_softmax', **locals())
     dtype = helper.input_dtype()
-    softmax_out = helper.create_tmp_variable(dtype)
+    softmax_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="sequence_softmax",
         inputs={"X": input},
@@ -1358,7 +1398,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
     return softmax_out
 
 
-def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
+def softmax(input, use_cudnn=True, name=None):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
@@ -1385,10 +1425,10 @@ def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
 
     Args:
         input (Variable): The input variable.
-        bias_attr (ParamAttr): attributes for bias
-        param_attr (ParamAttr): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-        library is installed.
+            library is installed.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
 
     Returns:
         Variable: output of softmax
@@ -1403,7 +1443,7 @@ def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     """
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
-    softmax_out = helper.create_tmp_variable(dtype)
+    softmax_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="softmax",
         inputs={"X": input},
@@ -1494,14 +1534,23 @@ def conv2d(input,
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
-        bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
+            connected to the second half of the input channels. Default: groups=1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act (str): Activation type. Default: None
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            will be named automatically. Default: None
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1519,7 +1568,7 @@ def conv2d(input,
     """
 
     num_channels = input.shape[1]
-
+    assert param_attr is not False, "param_attr should not be False here."
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
@@ -1547,7 +1596,8 @@ def conv2d(input,
     filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
-        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
     filter_param = helper.create_parameter(
@@ -1556,7 +1606,7 @@ def conv2d(input,
         dtype=dtype,
         default_initializer=_get_default_param_initializer())
 
-    pre_bias = helper.create_tmp_variable(dtype)
+    pre_bias = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type=l_type,
@@ -1658,13 +1708,22 @@ def conv3d(input,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameters to the Conv3d Layer. Default: None
-        bias_attr (ParamAttr): Bias parameter for the Conv3d layer. Default: None
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as param_attr. If it is set to None, the parameter
+            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
+            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act (str): Activation type. Default: None
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            will be named automatically. Default: None.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1682,7 +1741,7 @@ def conv3d(input,
     """
 
     l_type = 'conv3d'
-
+    assert param_attr is not False, "param_attr should not be False here."
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -1707,7 +1766,9 @@ def conv3d(input,
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
     def _get_default_param_initializer():
-        std = (2.0 / (filter_size[0]**3 * num_channels))**0.5
+        filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
+            2] * num_channels
+        std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
     filter_param = helper.create_parameter(
@@ -1716,7 +1777,7 @@ def conv3d(input,
         dtype=dtype,
         default_initializer=_get_default_param_initializer())
 
-    pre_bias = helper.create_tmp_variable(dtype)
+    pre_bias = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type=l_type,
@@ -1795,8 +1856,8 @@ def sequence_pool(input, pool_type):
     """
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
-    pool_out = helper.create_tmp_variable(dtype)
-    max_index = helper.create_tmp_variable(dtype)
+    pool_out = helper.create_variable_for_type_inference(dtype)
+    max_index = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="sequence_pool",
@@ -1832,7 +1893,7 @@ def sequence_concat(input, name=None):
            out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
     """
     helper = LayerHelper('sequence_concat', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
     return out
@@ -1959,7 +2020,7 @@ def sequence_slice(input, offset, length, name=None):
     """
     helper = LayerHelper("sequence_slice", **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
 
     offset.stop_gradient = True
     length.stop_gradient = True
@@ -2045,7 +2106,7 @@ def pool2d(input,
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
-    pool_out = helper.create_tmp_variable(dtype)
+    pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type=l_type,
@@ -2113,7 +2174,7 @@ def pool3d(input,
     l_type = "pool3d"
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
-    pool_out = helper.create_tmp_variable(dtype)
+    pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type=l_type,
@@ -2179,8 +2240,14 @@ def batch_norm(input,
         is_test(bool, Default False): Used for training or training.
         momentum(float, Default 0.9):
         epsilon(float, Default 1e-05):
-        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
-        bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
@@ -2200,6 +2267,7 @@ def batch_norm(input,
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
+    assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -2249,10 +2317,13 @@ def batch_norm(input,
     mean_out = mean
     # variance and variance out share the same memory
     variance_out = variance
-    saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
+    batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
+        dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -2316,19 +2387,28 @@ def layer_norm(input,
     Args:
         input(Variable): The input tensor variable.
         scale(bool): Whether to learn the adaptive gain :math:`g` after
-            normalization.
+            normalization. Default True.
         shift(bool): Whether to learn the adaptive bias :math:`b` after
-            normalization.
-        begin_norm_axis(bool): The normalization will be performed along
+            normalization. Default True.
+        begin_norm_axis(int): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+            Default 1.
         epsilon(float): The small value added to the variance to prevent
-            division by zero.
+            division by zero. Default 1e-05.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-            gain :math:`g`.
+            gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+            omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as scale. The 
+            :attr:`param_attr` is initialized as 1 if it is added. Default None. 
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
-            bias :math:`b`.
+            bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+            omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as bias. The 
+            :attr:`bias_attr` is initialized as 0 if it is added. Default None.
         act(str): Activation to be applied to the output of layer normalizaiton.
-        name (str): The name of this layer. It is optional.
+                  Default None.
+        name(str): The name of this layer. It is optional. Default None, and a
+                   unique name would be generated automatically.
 
     Returns:
         ${y_comment}
@@ -2360,9 +2440,11 @@ def layer_norm(input,
         inputs['Bias'] = bias
 
     # create output
-    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    layer_norm_out = helper.create_tmp_variable(dtype)
+    mean_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="layer_norm",
@@ -2469,15 +2551,22 @@ def conv2d_transpose(input,
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
-            Default: groups=1
-        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
-                               Default: None
-        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+            Default: groups = 1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d_transpose.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv2d_transpose
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act(str): Activation type. Default: None
+            library is installed. Default: True.
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            will be named automatically. Default: True.
 
     Returns:
         Variable: The tensor variable storing the convolution transpose result.
@@ -2492,7 +2581,7 @@ def conv2d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
-
+    assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
     input_channel = input.shape[1]
 
     op_type = 'conv2d_transpose'
@@ -2528,6 +2617,7 @@ def conv2d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
+
     if output_size is None:
         output_size = []
     elif isinstance(output_size, list) or isinstance(output_size, int):
@@ -2537,10 +2627,11 @@ def conv2d_transpose(input,
     padding = utils.convert_to_list(padding, 2, 'padding')
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
+
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
-    pre_bias = helper.create_tmp_variable(dtype=input.dtype)
+    pre_bias = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type=op_type,
         inputs={'Input': [input],
@@ -2649,12 +2740,19 @@ def conv3d_transpose(input,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups=1
-        param_attr(ParamAttr): The parameters to the Conv3d_transpose Layer.
-            Default: None
-        bias_attr(ParamAttr): Bias parameter for the Conv3d layer. Default: None
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d_transpose.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
         use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act(str): Activation type. Default: None
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -2671,6 +2769,7 @@ def conv3d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
+    assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
@@ -2710,7 +2809,7 @@ def conv3d_transpose(input,
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
-    pre_bias = helper.create_tmp_variable(dtype=input.dtype)
+    pre_bias = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type=l_type,
         inputs={'Input': [input],
@@ -2789,7 +2888,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     """
     helper = LayerHelper('sequence_expand', input=x, **locals())
     dtype = helper.input_dtype()
-    tmp = helper.create_tmp_variable(dtype)
+    tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand',
         inputs={'X': x,
@@ -2855,7 +2954,7 @@ def sequence_expand_as(x, y, name=None):
     """
     helper = LayerHelper('sequence_expand_as', input=x, **locals())
     dtype = helper.input_dtype()
-    tmp = helper.create_tmp_variable(dtype)
+    tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand_as',
         inputs={'X': x,
@@ -2900,8 +2999,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     helper = LayerHelper('sequence_pad', input=x, **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
-    length = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
+    length = helper.create_variable_for_type_inference(dtype)
 
     pad_value.stop_gradient = True
     length.stop_gradient = True
@@ -2966,7 +3065,7 @@ def sequence_unpad(x, length, name=None):
 
     helper = LayerHelper('sequence_unpad', input=x, **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
 
     length.stop_gradient = True
 
@@ -3065,8 +3164,9 @@ def beam_search(pre_ids,
     score_type = scores.dtype
     id_type = ids.dtype
 
-    selected_scores = helper.create_tmp_variable(dtype=score_type)
-    selected_ids = helper.create_tmp_variable(dtype=id_type)
+    selected_scores = helper.create_variable_for_type_inference(
+        dtype=score_type)
+    selected_ids = helper.create_variable_for_type_inference(dtype=id_type)
 
     helper.append_op(
         type='beam_search',
@@ -3123,8 +3223,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
                 ids, scores, beam_size=5, end_id=0)
     """
     helper = LayerHelper('beam_search_decode', **locals())
-    sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
-    sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
+    sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
+    sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
     helper.append_op(
         type="beam_search_decode",
@@ -3189,10 +3289,18 @@ def lstm_unit(x_t,
         cell_t_prev (Variable): The cell value of lstm unit, a 2-D tensor with
             shape M x S, M for batch size and S for size of lstm unit.
         forget_bias (float): The forget bias of lstm unit.
-        param_attr (ParamAttr): The attributes of parameter weights, used to set
-            initializer, name etc.
-        bias_attr (ParamAttr): The attributes of bias weights, if not False,
-            bias weights will be created and be set to default value.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                               hidden-hidden weights.
+                               If it is set to None or one attribute of ParamAttr,
+                               lstm_unit will create ParamAttr as param_attr.
+                               If the Initializer of the param_attr is not set, the
+                               parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
+                              weights. If it is set to False, no bias will be added
+                              to the output units. If it is set to None or one attribute of ParamAttr,
+                              lstm_unit will create ParamAttr as bias_attr.
+                              If the Initializer of the bias_attr is not set,
+                              the bias is initialized zero. Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
 
@@ -3246,8 +3354,8 @@ def lstm_unit(x_t,
                 param_attr=param_attr,
                 bias_attr=bias_attr)
     dtype = x_t.dtype
-    c = helper.create_tmp_variable(dtype)
-    h = helper.create_tmp_variable(dtype)
+    c = helper.create_variable_for_type_inference(dtype)
+    h = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type='lstm_unit',
@@ -3301,7 +3409,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     """
     helper = LayerHelper('reduce_sum', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     helper.append_op(
@@ -3358,7 +3466,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(x, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     helper.append_op(
@@ -3413,7 +3521,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(x, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('reduce_max', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     helper.append_op(
@@ -3468,7 +3576,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_min(x, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('reduce_min', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     helper.append_op(
@@ -3524,7 +3632,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(x, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     helper.append_op(
@@ -3584,7 +3692,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
     outs = [
-        helper.create_tmp_variable(dtype=helper.input_dtype())
+        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
     helper.append_op(
@@ -3641,8 +3749,8 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         axis = 0
     helper = LayerHelper("l2_normalize", **locals())
 
-    out = helper.create_tmp_variable(dtype=x.dtype)
-    norm = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    norm = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="norm",
         inputs={"X": x},
@@ -3751,7 +3859,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     __check_input(x, y)
 
     helper = LayerHelper('matmul', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='matmul',
         inputs={'X': x,
@@ -3822,8 +3930,8 @@ def topk(input, k, name=None):
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     helper = LayerHelper("top_k", **locals())
-    values = helper.create_tmp_variable(dtype=input.dtype)
-    indices = helper.create_tmp_variable(dtype="int64")
+    values = helper.create_variable_for_type_inference(dtype=input.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="top_k",
         inputs={"X": [input]},
@@ -3881,8 +3989,8 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
 
     # remove some tokens from input and labels
     if ignored_tokens is not None and len(ignored_tokens) > 0:
-        erased_input = helper.create_tmp_variable(dtype="int64")
-        erased_label = helper.create_tmp_variable(dtype="int64")
+        erased_input = helper.create_variable_for_type_inference(dtype="int64")
+        erased_label = helper.create_variable_for_type_inference(dtype="int64")
 
         helper.append_op(
             type="sequence_erase",
@@ -3899,8 +4007,8 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
         label = erased_label
 
     # edit distance op
-    edit_distance_out = helper.create_tmp_variable(dtype="int64")
-    sequence_num = helper.create_tmp_variable(dtype="int64")
+    edit_distance_out = helper.create_variable_for_type_inference(dtype="int64")
+    sequence_num = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="edit_distance",
         inputs={"Hyps": [input],
@@ -3975,7 +4083,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     _, topk_indices = topk(input, k=1)
 
     # ctc align op
-    ctc_out = helper.create_tmp_variable(dtype="int64")
+    ctc_out = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="ctc_align",
         inputs={"Input": [topk_indices]},
@@ -4025,8 +4133,8 @@ def warpctc(input, label, blank=0, norm_by_times=False):
 
     """
     helper = LayerHelper('warpctc', **locals())
-    loss_out = helper.create_tmp_variable(dtype=input.dtype)
-    grad_out = helper.create_tmp_variable(dtype=input.dtype)
+    loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='warpctc',
         inputs={'Logits': [input],
@@ -4087,7 +4195,7 @@ def sequence_reshape(input, new_dim):
             x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
     helper = LayerHelper('sequence_reshape', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
+    out = helper.create_variable_for_type_inference(helper.input_dtype())
     helper.append_op(
         type='sequence_reshape',
         inputs={'X': [input]},
@@ -4106,7 +4214,8 @@ def nce(input,
         sample_weight=None,
         param_attr=None,
         bias_attr=None,
-        num_neg_samples=None):
+        num_neg_samples=None,
+        name=None):
     """
     ${comment}
 
@@ -4117,9 +4226,18 @@ def nce(input,
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
-        param_attr (ParamAttr|None): attributes for parameter
-        bias_attr (ParamAttr|None): attributes for bias
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+             of nce. If it is set to None or one attribute of ParamAttr, nce
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of nce.
+             If it is set to False, no bias will be added to the output units.
+             If it is set to None or one attribute of ParamAttr, nce
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
         num_neg_samples (int): ${num_neg_samples_comment}
+        name (str|None): A name for this layer(optional). If set None, the layer
+             will be named automatically. Default: None.
 
     Returns:
         Variable: The output nce loss.
@@ -4152,22 +4270,31 @@ def nce(input,
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
-    dim = input.shape[1]
     assert isinstance(label, Variable)
+
+    dim = input.shape[1]
     num_true_class = label.shape[1]
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=[num_total_classes, dim],
         is_bias=False,
         dtype=input.dtype)
-    b = helper.create_parameter(
-        attr=helper.bias_attr,
-        shape=[num_total_classes, 1],
-        is_bias=True,
-        dtype=input.dtype)
-    cost = helper.create_tmp_variable(dtype=input.dtype)
-    sample_logits = helper.create_tmp_variable(dtype=input.dtype)
-    sample_labels = helper.create_tmp_variable(dtype=label.dtype)
+    inputs = {
+        'Input': input,
+        'Label': label,
+        'Weight': w,
+        'SampleWeight': sample_weight if sample_weight is not None else []
+    }
+    if helper.bias_attr:
+        b = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=[num_total_classes, 1],
+            is_bias=True,
+            dtype=input.dtype)
+        inputs['Bias'] = b
+    cost = helper.create_variable_for_type_inference(dtype=input.dtype)
+    sample_logits = helper.create_variable_for_type_inference(dtype=input.dtype)
+    sample_labels = helper.create_variable_for_type_inference(dtype=label.dtype)
 
     if num_neg_samples is None:
         num_neg_samples = 10
@@ -4181,13 +4308,7 @@ def nce(input,
 
     helper.append_op(
         type='nce',
-        inputs={
-            'Input': input,
-            'Label': label,
-            'Weight': w,
-            'Bias': b,
-            'SampleWeight': sample_weight if sample_weight is not None else []
-        },
+        inputs=inputs,
         outputs={
             'Cost': cost,
             'SampleLogits': sample_logits,
@@ -4197,7 +4318,12 @@ def nce(input,
     return cost / (num_neg_samples + 1)
 
 
-def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
+def hsigmoid(input,
+             label,
+             num_classes,
+             param_attr=None,
+             bias_attr=None,
+             name=None):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
@@ -4218,11 +4344,17 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
         num_classes: (int), The number of classes, must not be less than 2.
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter
-             attribute for learnable parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter
-             attribute for the bias of this layer. If it is set to False, no
-             bias will be applied.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+             of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of hsigmoid.
+             If it is set to False, no bias will be added to the output units.
+             If it is set to None or one attribute of ParamAttr, hsigmoid
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
+        name (str|None): A name for this layer(optional). If set None, the layer
+             will be named automatically. Default: None.
 
     Returns:
         Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
@@ -4238,8 +4370,8 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
-    pre_out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
+    pre_out = helper.create_variable_for_type_inference(dtype)
     dim = input.shape[1]
     if num_classes < 2:
         raise ValueError("num_classes must not be less than 2.")
@@ -4299,8 +4431,8 @@ def transpose(x, perm, name=None):
                 (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
-    out = helper.create_tmp_variable(x.dtype)
-    x_shape = helper.create_tmp_variable(x.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='transpose2',
         inputs={'X': [x]},
@@ -4442,7 +4574,7 @@ def im2sequence(input,
         inputs["Y"] = input_image_size
         attrs["out_stride"] = out_stride
     helper = LayerHelper('im2sequence', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='im2sequence', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
@@ -4475,7 +4607,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     filter_shape = [future_context_size + 1, input.shape[1]]
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='row_conv',
         inputs={'X': [input],
@@ -4508,7 +4640,7 @@ def multiplex(inputs, index):
         raise ValueError("inputs should be a list object and contains at least "
                          "2 elements.")
 
-    out = helper.create_tmp_variable(inputs[0].dtype)
+    out = helper.create_variable_for_type_inference(inputs[0].dtype)
     helper.append_op(
         type='multiplex',
         inputs={'X': inputs,
@@ -4579,8 +4711,8 @@ def softmax_with_cross_entropy(logits,
                 logits=fc, label=label)
     """
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
-    softmax = helper.create_tmp_variable(dtype=logits.dtype)
-    loss = helper.create_tmp_variable(dtype=logits.dtype)
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
     helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': logits,
@@ -4630,8 +4762,8 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
 
     helper = LayerHelper('smooth_l1_loss', **locals())
-    diff = helper.create_tmp_variable(dtype=x.dtype)
-    loss = helper.create_tmp_variable(dtype=x.dtype)
+    diff = helper.create_variable_for_type_inference(dtype=x.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='smooth_l1_loss',
         inputs={
@@ -4664,7 +4796,7 @@ def one_hot(input, depth):
             one_hot_label = layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
-    one_hot_out = helper.create_tmp_variable(dtype='float32')
+    one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
     helper.append_op(
         type="one_hot",
         inputs={'X': input},
@@ -4806,8 +4938,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
-    x_shape = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
@@ -4856,8 +4988,8 @@ def squeeze(input, axes, name=None):
             y = layers.sequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("squeeze", **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
-    x_shape = helper.create_tmp_variable(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type="squeeze2",
         inputs={"X": input},
@@ -4893,8 +5025,8 @@ def unsqueeze(input, axes, name=None):
             y = layers.unsequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
-    x_shape = helper.create_tmp_variable(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type="unsqueeze2",
         inputs={"X": input},
@@ -4984,7 +5116,7 @@ def lod_reset(x, y=None, target_lod=None):
             out = layers.lod_reset(x=x, y=y)
     """
     helper = LayerHelper("lod_reset", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
         helper.append_op(
             type="lod_reset", inputs={'X': x,
@@ -5053,8 +5185,9 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
             "dims of input must be 4(not %d), and it's order must be NCHW" %
             (dims))
 
-    mid_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    lrn_out = helper.create_tmp_variable(dtype)
+    mid_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    lrn_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="lrn",
         inputs={"X": input},
@@ -5119,7 +5252,7 @@ def pad(x, paddings, pad_value=0., name=None):
     """
     helper = LayerHelper('pad', input=x, **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad',
         inputs={'X': x},
@@ -5199,7 +5332,7 @@ def pad_constant_like(x, y, pad_value=0., name=None):
     """
     helper = LayerHelper('pad_constant_like', input=x, **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad_constant_like',
         inputs={'X': x,
@@ -5264,7 +5397,7 @@ def label_smooth(label,
         raise ValueError("The value of epsilon must be between 0 and 1.")
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
-    smooth_label = helper.create_tmp_variable(dtype)
+    smooth_label = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="label_smooth",
         inputs={"X": label,
@@ -5296,8 +5429,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
-    pool_out = helper.create_tmp_variable(dtype)
-    argmaxes = helper.create_tmp_variable(dtype='int32')
+    pool_out = helper.create_variable_for_type_inference(dtype)
+    argmaxes = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
         type="roi_pool",
         inputs={"X": input,
@@ -5310,6 +5443,54 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+@templatedoc()
+def roi_align(input,
+              rois,
+              pooled_height=1,
+              pooled_width=1,
+              spatial_scale=1.0,
+              sampling_ratio=-1,
+              name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        sampling_ratio(intger): ${sampling_ratio_comment} Default: -1
+
+    Returns:
+        Variable: ${out_comment}.
+    Examples:
+        .. code-block:: python
+
+            align_out = fluid.layers.roi_align(input=x, 
+                                               rois=rois, 
+                                               pooled_height=7, 
+                                               pooled_width=7,
+                                               spatial_scale=0.5,
+                                               sampling_ratio=-1)
+    """
+    helper = LayerHelper('roi_align', **locals())
+    dtype = helper.input_dtype()
+    align_out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="roi_align",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": align_out},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale,
+            "sampling_ratio": sampling_ratio
+        })
+    return align_out
 
 
 def dice_loss(input, label, epsilon=0.00001):
@@ -5422,7 +5603,7 @@ def image_resize(input,
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
 
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type=resample_methods[resample],
         inputs=inputs,
@@ -5531,7 +5712,7 @@ def gather(input, index):
     """
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
         inputs={"X": input,
@@ -5571,7 +5752,7 @@ def scatter(input, index, updates, name=None):
     """
     helper = LayerHelper('scatter', **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="scatter",
         inputs={"X": input,
@@ -5631,7 +5812,7 @@ def sequence_scatter(input, index, updates, name=None):
     """
     helper = LayerHelper('sequence_scatter', **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="sequence_scatter",
         inputs={"X": input,
@@ -5661,7 +5842,7 @@ def random_crop(x, shape, seed=None):
     """
     helper = LayerHelper("random_crop", **locals())
     dtype = x.dtype
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     if seed is None:
         seed = np.random.randint(-65536, 65536)
     op_attrs = {"shape": shape}
@@ -5707,7 +5888,7 @@ def log(x, name=None):
     """
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
     return out
 
@@ -5738,7 +5919,7 @@ def relu(x, name=None):
     """
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
     return out
 
@@ -5777,9 +5958,9 @@ def mean_iou(input, label, num_classes):
     """
     helper = LayerHelper('mean_iou', **locals())
     dtype = helper.input_dtype()
-    out_mean_iou = helper.create_tmp_variable(dtype='float32')
-    out_wrong = helper.create_tmp_variable(dtype='int32')
-    out_correct = helper.create_tmp_variable(dtype='int32')
+    out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
+    out_wrong = helper.create_variable_for_type_inference(dtype='int32')
+    out_correct = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
         type="mean_iou",
         inputs={"Predictions": input,
@@ -5871,7 +6052,7 @@ def crop(x, shape=None, offsets=None, name=None):
     if offsets is None:
         offsets = [0] * len(x.shape)
 
-    out = helper.create_tmp_variable(x.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
     attrs = {}
     if isinstance(shape, Variable):
@@ -5951,7 +6132,7 @@ def rank_loss(label, left, right, name=None):
     if not (isinstance(right, Variable)):
         raise ValueError("The right should be a Variable")
 
-    out = helper.create_tmp_variable("float32")
+    out = helper.create_variable_for_type_inference("float32")
 
     helper.append_op(
         type='rank_loss',
@@ -5997,8 +6178,8 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
         raise ValueError("The left should be a Variable.")
     if not isinstance(right, Variable):
         raise ValueError("The right should be a Variable.")
-    out = helper.create_tmp_variable(left.dtype)
-    act = helper.create_tmp_variable(left.dtype)
+    out = helper.create_variable_for_type_inference(left.dtype)
+    act = helper.create_variable_for_type_inference(left.dtype)
     helper.append_op(
         type='margin_rank_loss',
         inputs={"Label": label,
@@ -6083,7 +6264,7 @@ def pad2d(input,
 
     helper = LayerHelper('pad2d', **locals())
     dtype = helper.input_dtype(input_param_name='input')
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad2d',
         inputs={'X': input},
@@ -6112,7 +6293,7 @@ def elu(x, alpha=1.0, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('elu', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='elu',
         inputs={'X': x},
@@ -6135,7 +6316,7 @@ def relu6(x, threshold=6.0, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('relu6', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='relu6',
         inputs={'X': x},
@@ -6158,7 +6339,7 @@ def pow(x, factor=1.0, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('pow', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='pow',
         inputs={'X': x},
@@ -6182,7 +6363,7 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('stanh', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='stanh',
         inputs={'X': x},
@@ -6207,7 +6388,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('hard_sigmoid', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='hard_sigmoid',
         inputs={'X': x},
@@ -6231,7 +6412,7 @@ def swish(x, beta=1.0, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('swish', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='swish',
         inputs={'X': x},
@@ -6283,7 +6464,7 @@ def prelu(x, mode, param_attr=None, name=None):
         dtype='float32',
         is_bias=False,
         default_initializer=Constant(1.0))
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="prelu",
         inputs={"X": x,
@@ -6307,7 +6488,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('brelu', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='brelu',
         inputs={'X': x},
@@ -6330,7 +6511,7 @@ def leaky_relu(x, alpha=0.02, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('leaky_relu', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='leaky_relu',
         inputs={'X': x},
@@ -6352,7 +6533,7 @@ def soft_relu(x, threshold=40.0, name=None):
         output(${out_type}): ${out_comment}
     """
     helper = LayerHelper('soft_relu', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='soft_relu',
         inputs={'X': x},
@@ -6419,8 +6600,8 @@ def flatten(x, axis=1, name=None):
     if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
-    out = helper.create_tmp_variable(x.dtype)
-    x_shape = helper.create_tmp_variable(x.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='flatten2',
         inputs={"X": x},
@@ -6466,7 +6647,8 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     helper = LayerHelper('sequence_enumerate', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    out = helper.create_variable_for_type_inference(
+        helper.input_dtype(), stop_gradient=True)
     helper.append_op(
         type='sequence_enumerate',
         inputs={'X': input},
@@ -6506,9 +6688,9 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     helper = LayerHelper('sequence_mask', **locals())
     if name is None:
-        out = helper.create_tmp_variable(dtype=dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
     else:
-        out = helper.create_tmp_variable(dtype=dtype, name=name)
+        out = helper.create_variable_for_type_inference(dtype=dtype, name=name)
 
     helper.append_op(
         type='sequence_mask',
@@ -6551,7 +6733,7 @@ def stack(x, axis=0):
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
 
-    out = helper.create_tmp_variable(x[0].dtype)
+    out = helper.create_variable_for_type_inference(x[0].dtype)
     helper.append_op(
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
@@ -6589,7 +6771,7 @@ def unstack(x, axis=0, num=None):
 
     outs = []
     for _ in num:
-        outs.append(helper.create_tmp_variable(x.dtype))
+        outs.append(helper.create_variable_for_type_inference(x.dtype))
 
     helper.append_op(
         type='unstack',
@@ -6641,7 +6823,7 @@ def expand(x, expand_times, name=None):
     """
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='expand',
         inputs={'X': x},
@@ -6680,7 +6862,7 @@ def uniform_random_batch_size_like(input,
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
         type='uniform_random_batch_size_like',
@@ -6717,7 +6899,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
         type='gaussian_random',
@@ -6752,7 +6934,7 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('sampling_id', **locals())
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sampling_id',
         inputs={'X': x},
@@ -6791,7 +6973,7 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
         type='gaussian_random_batch_size_like',
@@ -6823,7 +7005,8 @@ def sum(x):
     """
 
     helper = LayerHelper('sum', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype('x'))
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('x'))
     helper.append_op(
         type='sum',
         inputs={'X': x},
@@ -6850,7 +7033,8 @@ def slice(input, axes, starts, ends):
     """
 
     helper = LayerHelper('slice', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
     helper.append_op(
         type='slice',
         inputs={'Input': input},
@@ -6876,7 +7060,8 @@ def shape(input):
     """
 
     helper = LayerHelper('shape', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
     helper.append_op(
         type='shape', inputs={'Input': input}, outputs={'Out': out})
 
@@ -6893,7 +7078,7 @@ def _elementwise_op(helper):
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -6927,7 +7112,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     helper = LayerHelper('scale', **locals())
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -6993,7 +7178,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 
     if out is None:
         if name is None:
-            out = helper.create_tmp_variable(dtype=x.dtype)
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
         else:
             out = helper.create_variable(
                 name=name, dtype=x.dtype, persistable=False)
@@ -7101,7 +7286,7 @@ def clip(x, min, max, name=None):
     helper = LayerHelper("clip", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -7133,7 +7318,7 @@ def clip_by_norm(x, max_norm, name=None):
     helper = LayerHelper("clip_by_norm", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -7163,7 +7348,7 @@ def mean(x, name=None):
     helper = LayerHelper("mean", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -7193,7 +7378,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     helper = LayerHelper("mul", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -7227,7 +7412,7 @@ def sigmoid_cross_entropy_with_logits(x, label, name=None):
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -7257,7 +7442,7 @@ def maxout(x, groups, name=None):
     helper = LayerHelper("maxout", **locals())
 
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -7266,5 +7451,46 @@ def maxout(x, groups, name=None):
         type="maxout",
         inputs={"X": x},
         attrs={"groups": groups},
+        outputs={"Out": out})
+    return out
+
+
+def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
+    """
+    Applies a separate affine transformation to each channel of the input.
+    Useful for replacing spatial batch norm with its equivalent fixed
+    transformation. The input also can be 2D tensor and applies a affine
+    transformation in second dimension.
+    
+    Args:
+        x (Variable): Feature map input can be a 4D tensor with order NCHW
+            or NHWC. It also can be a 2D tensor and the affine transformation
+            is applied in the second dimension.
+        scale (Variable): 1D input of shape (C), the c-th element is the scale
+            factor of the affine transformation for the c-th channel of
+            the input.
+        bias (Variable): 1D input of shape (C), the c-th element is the bias
+            of the affine transformation for the c-th channel of the input.
+        data_layout (string, default NCHW): NCHW or NHWC. If input is 2D
+            tensor, you can ignore data_layout.
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out (Variable): A tensor of the same shape and data layout with x.
+    """
+    helper = LayerHelper("affine_channel", **locals())
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="affine_channel",
+        inputs={"X": x,
+                'Scale': scale,
+                'Bias': bias},
+        attrs={"data_layout": data_layout},
         outputs={"Out": out})
     return out

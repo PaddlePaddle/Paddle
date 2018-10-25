@@ -20,7 +20,7 @@ if(WITH_GRPC)
     DEPS grpc++_unsecure grpc_unsecure gpr cares zlib protobuf sendrecvop_grpc scope profiler math_function SERIAL)
   cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor  proto_desc lookup_sparse_table_op SERIAL)
-  cc_test(varhandle_test SRCS varhandle_test.cc)
+  cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
   return()
 endif()
 
