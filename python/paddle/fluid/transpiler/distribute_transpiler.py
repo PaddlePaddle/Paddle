@@ -1717,8 +1717,8 @@ to transpile() call.")
         lr_ops = []
         block = self.origin_program.global_block()
         for op in block.ops:
-            if int(op.attr(RPC_OP_ROLE_ATTR_NAME)) == int(
-                    LR_SCHED_OP_ROLE_ATTR_VALUE):
+            if int(op.attr(RPC_OP_ROLE_ATTR_NAME)) | int(
+                    LR_SCHED_OP_ROLE_ATTR_VALUE) > 0:
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
         return lr_ops
