@@ -16,6 +16,7 @@ limitations under the License. */
 #include "mkldnn.hpp"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -131,6 +132,13 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     const T* input_data = flattened_input.data<T>();
     T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
+printf("this is softmax!!!!!!!!!!!!!!\n");
+for(int i=0; i<50; i++){
+    printf("%f ", (float)*(input_data+i));
+}
+printf("\n");fflush(stdout);
+
+std::cout<<"input fmt = "<<input->format()<<"   input dt = "<<paddle::framework::ToMKLDNNDataType(input->type())<<"  output fmt = "<<output->format()<<"   output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
 
     std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
     std::vector<int> dst_tz = src_tz;
@@ -162,7 +170,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     std::vector<primitive> pipeline{
         *(static_cast<softmax_forward::primitive*>(softmax_p.get()))};
     stream(stream::kind::eager).submit(pipeline).wait();
-
+std::cout<<"input fmt = "<<input->format()<<"   input dt = "<<paddle::framework::ToMKLDNNDataType(input->type())<<"  output fmt = "<<output->format()<<"   output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
     const bool is_test = ctx.Attr<bool>("is_test");
     if (!is_test) {
       T threshold = exp(-64);

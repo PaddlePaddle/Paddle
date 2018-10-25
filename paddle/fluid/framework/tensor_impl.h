@@ -25,8 +25,8 @@ inline const T* Tensor::data() const {
   check_memory_size();
   bool valid = std::is_same<T, void>::value ||
                holder_->type() == std::type_index(typeid(T));
-  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %s",
-                 this->holder_->type().name());
+  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %d",
+                 this->holder_->type());
 
   return reinterpret_cast<const T*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);

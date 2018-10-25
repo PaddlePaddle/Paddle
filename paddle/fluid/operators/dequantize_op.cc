@@ -49,6 +49,17 @@ std::cout<<"this is dequant op ***********"<<std::endl;
     float* output_data = output->mutable_data<float>(ctx.GetPlace());
     //T scale_data = *(scale->data<T>());
     std::vector<float> scale_data = {*(scale->data<float>())};
+    std::vector<float> reorder_scale = {1.0f / scale_data[0]};
+
+for(int i=0; i<50; i++){
+    printf("%d ", *(input_data+i));
+}
+printf("\n");fflush(stdout);
+for(int i=0; i<50; i++){
+    printf("%f ", *(input_data+i)/scale_data[0]);
+}
+printf("\n");fflush(stdout);
+std::cout<<"scale = "<<scale_data[0]<<std::endl;
 
     std::vector<primitive> pipeline;
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
@@ -58,7 +69,7 @@ std::cout<<"this is dequant op ***********"<<std::endl;
 
     mkldnn::primitive_attr attri;
     int mask = 0;
-    attri.set_output_scales(mask, scale_data);
+    attri.set_output_scales(mask, reorder_scale);
 
     auto src_md = platform::MKLDNNMemDesc(
             {src_tz}, src_dt, src_fmt); 
@@ -75,6 +86,10 @@ std::cout<<"this is dequant op ***********"<<std::endl;
         new reorder::primitive_desc(src_pd, dst_pd, attri));    
     auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
     pipeline.push_back(*reorder_p);
+    stream(stream::kind::eager).submit(pipeline).wait(); 
+
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(GetMKLDNNFormat(dst_memory));
 
   }
 };

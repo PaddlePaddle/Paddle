@@ -36,9 +36,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
-    auto* scale = ctx.Input<Tensor>("Scale");
+    //auto* scale = ctx.Input<Tensor>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
-
+std::cout<<"this is requantize op!!!!!!!!!!"<<std::endl;
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
@@ -47,18 +47,18 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
     mkldnn::memory::data_type src_dt = paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::data_type dst_dt = paddle::framework::ToMKLDNNDataType(output->type());
+    mkldnn::memory::data_type dst_dt = mkldnn::memory::data_type::u8;//paddle::framework::ToMKLDNNDataType(output->type());
     mkldnn::memory::format src_fmt = memory::format::nhwc;//input->format();
     mkldnn::memory::format dst_fmt = memory::format::nhwc;//output->format();
 
     const T* input_data = input->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
     //T scale_data = *(scale->data<T>());
-    std::vector<T> scale_data = {*(scale->data<T>())};
+    std::vector<float> scale_data = {0.9999999}; //{*(scale->data<float>())};
 
     mkldnn::primitive_attr attri;
     int mask = 0;
-    attri.set_output_scales(mask, scale_data);
+    attri.set_output_scales(mask,scale_data);// scale_data);
     //attri.set_int_output_round_mode(round_nearest); //FIX ME
 
     auto src_md = platform::MKLDNNMemDesc(
@@ -70,13 +70,54 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto dst_md = platform::MKLDNNMemDesc(
             {dst_tz}, dst_dt, dst_fmt);
     auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<T>(output_data));
+    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<uint8_t>(output_data));
     
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-        new reorder::primitive_desc(dst_pd, src_pd, attri));    
-    auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
-    pipeline.push_back(*reorder_p);
+        new reorder::primitive_desc(src_pd, dst_pd, attri));   
 
+for(int i=0; i<50; i++){
+    printf("%d ", *(input_data+i));
+}
+printf("\n");fflush(stdout);
+//for(int i=0; i<50; i++){
+//    printf("%f ", *(input_data+i)/107.426);
+//}
+//printf("\n");fflush(stdout);
+std::cout<<"scale = "<<scale_data[0]<<std::endl;
+//for(int i=0; i<50; i++){
+//    printf("%f ", *(output_data+i)/107.426);
+//}
+//printf("\n");fflush(stdout);
+
+//    int is_sum = false;//ctx.Attr<int>("is_sum");
+//    if(is_sum){
+//std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
+//        output_data = (uint8_t*)input_data;
+//std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
+//
+//printf("after*************\n");
+//for(int i=0; i<50; i++){
+//    printf("%f ", *(output_data+i)/107.426);
+//}
+//printf("\n");fflush(stdout);
+//
+//    } else{
+        auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
+        pipeline.push_back(*reorder_p);
+        stream(stream::kind::eager).submit(pipeline).wait();
+//    }
+//uint8_t* output_data_2 = output->mutable_data<uint8_t>(ctx.GetPlace());
+//for(int i=0; i<50; i++){
+//    printf("%f ", *(output_data_2+i)/107.426);
+//}
+//printf("\n");fflush(stdout);
+for(int i=0; i<50; i++){
+    printf("%d ", *(output_data+i));
+}
+printf("\n");fflush(stdout);
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(GetMKLDNNFormat(dst_memory));
+std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
   }
 };
 
@@ -113,4 +154,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace, ops::ReQuantOpKernel<float>);
+REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace, ops::ReQuantOpKernel<int8_t>);
