@@ -75,7 +75,7 @@ RUN pip3 install -U wheel && \
     pip3 install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
     easy_install -U pip && \
-    pip install -U wheel && \
+    pip install -U pip setuptools wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
 
