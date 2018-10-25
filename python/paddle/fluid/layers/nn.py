@@ -7513,7 +7513,8 @@ def hash(input, hash_size, num_hash=1, name=None):
             out = fluid.layers.hash(input=x, len(word_dict))
     """
     helper = LayerHelper('hash', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    out = helper.create_variable_for_type_inference(
+        helper.input_dtype(), stop_gradient=True)
     helper.append_op(
         type='hash',
         inputs={'X': input},

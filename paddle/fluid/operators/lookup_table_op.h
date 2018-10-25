@@ -120,8 +120,8 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       // auto copy_start = std::chrono::system_clock::now();
       std::vector<int64_t> new_rows;
-      new_rows.reserve(ids_num);
-      std::memcpy(new_rows.data(), ids_data, ids_num * sizeof(int64_t));
+      new_rows.resize(ids_num);
+      std::memcpy(&new_rows[0], ids_data, ids_num * sizeof(int64_t));
       // for (int64_t i = 0; i < ids_num; i++) {
       // new_rows.push_back(ids_data[i]);
       // }

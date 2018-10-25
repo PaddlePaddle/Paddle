@@ -1,6 +1,6 @@
 add_subdirectory(detail)
 
-cc_library(malloc SRCS malloc.cc DEPS buddy_allocator place enforce jemalloc)
+cc_library(malloc SRCS malloc.cc DEPS buddy_allocator place enforce)
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
 cc_library(memory
@@ -9,7 +9,6 @@ cc_library(memory
         memcpy)
 
 cc_test(malloc_test SRCS malloc_test.cc DEPS malloc)
-cc_test(jemalloc_test SRCS jemalloc_test.cc DEPS jemalloc)
 
 #if (WITH_GPU)
 #   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <jemalloc/jemalloc.h>
 #include <vector>
 
 #include "paddle/fluid/memory/malloc.h"
@@ -29,7 +28,6 @@ DEFINE_bool(init_allocated_mem, false,
             "To find this error in time, we use init_allocated_mem to indicate "
             "that initializing the allocated memory with a small value "
             "during unit testing.");
-DEFINE_bool(je_malloc, false, "if use je_malloc");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
@@ -75,11 +73,7 @@ template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = nullptr;
-  if (FLAGS_je_malloc) {
-    p = je_malloc(size);
-  } else {
-    p = GetCPUBuddyAllocator()->Alloc(size);
-  }
+  p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -90,17 +84,12 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  if (FLAGS_je_malloc) {
-    je_free(p);
-  } else {
-    GetCPUBuddyAllocator()->Free(p);
-  }
+  GetCPUBuddyAllocator()->Free(p);
 }
 
 template <>
 size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
-  // return GetCPUBuddyAllocator()->Used();
-  return 0u;
+  return GetCPUBuddyAllocator()->Used();
 }
 
 #ifdef PADDLE_WITH_CUDA
