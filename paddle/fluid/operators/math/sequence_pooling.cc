@@ -158,6 +158,31 @@ class FirstSeqPoolFunctor {
 };
 
 template <typename T>
+class SumSeqPoolGradFunctor {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& out_grad,
+                  framework::LoDTensor* in_grad) {
+    auto lod = in_grad->lod()[0];
+    int64_t out_w = out_grad.numel() / out_grad.dims()[0];
+    int64_t in_w = in_grad->numel() / in_grad->dims()[0];
+    PADDLE_ENFORCE(in_w == out_w);
+    const T* out_g_data = out_grad.data<T>();
+    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      int64_t in_offset = lod[i] * in_w;
+      const T* out_pos = out_g_data + i * out_w;
+      T* in_pos = in_g_data + in_offset;
+      for (int r = 0; r != h; ++r) {
+        blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
+      }
+    }
+  }
+};
+
+template <typename T>
 class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
   /* max pool has index output */
@@ -231,9 +256,15 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(context, in_grad, 0);
     }
+
+    if (pooltype == "SUM") {
+      math::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      sum_pool_grad(context, out_grad, in_grad);
+      return;
+    }
+
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       auto in_g_t = in_grad->Slice(static_cast<int>(lod[i]),
                                    static_cast<int>(lod[i + 1]));
@@ -247,12 +278,6 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
       if (pooltype == "AVERAGE") {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
-      } else if (pooltype == "SUM") {
-        const T* out_g_data = out_g_t.data<T>();
-        T* in_g_data = in_g_t.mutable_data<T>(context.GetPlace());
-        for (int r = 0; r != h; ++r) {
-          blas.VCOPY(w, out_g_data, in_g_data + r * w);
-        }
       } else if (pooltype == "SQRT") {
         in_g_e.device(place) =
             (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);

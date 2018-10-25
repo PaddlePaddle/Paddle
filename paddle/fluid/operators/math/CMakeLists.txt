@@ -68,6 +68,7 @@ cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selec
 cc_test(im2col_test SRCS im2col_test.cc DEPS im2col)
 cc_test(vol2col_test SRCS vol2col_test.cc DEPS vol2col)
 cc_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS sequence_padding)
+cc_test(sequence_pooling_test SRCS sequence_pooling_test.cc DEPS sequence_pooling)
 if(WITH_GPU)
     nv_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function)
     nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu DEPS selected_rows_functor math_function)
