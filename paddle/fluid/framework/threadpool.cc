@@ -25,16 +25,18 @@ DEFINE_int32(dist_threadpool_size, 0,
 
 namespace paddle {
 namespace framework {
-
+std::mutex threadpool_mu;
 std::unique_ptr<ThreadPool> ThreadPool::threadpool_(nullptr);
 std::once_flag ThreadPool::init_flag_;
 
 ThreadPool* ThreadPool::GetInstance() {
+  std::lock_guard<std::mutex> l(threadpool_mu);
   std::call_once(init_flag_, &ThreadPool::Init);
   return threadpool_.get();
 }
 
-void ThreadPool::Reset() {
+void ThreadPool::TestReset() {
+  std::lock_guard<std::mutex> l(threadpool_mu);
   threadpool_.reset(nullptr);
   ThreadPool::Init();
 }

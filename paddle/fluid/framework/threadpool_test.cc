@@ -52,6 +52,6 @@ TEST(ThreadPool, ConcurrentRun) {
   for (auto& t : threads) {
     t.join();
   }
-  framework::ThreadPool::Reset();
+  framework::ThreadPool::TestReset();
   EXPECT_EQ(sum, ((n + 1) * n) / 2);
 }
