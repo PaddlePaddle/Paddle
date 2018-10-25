@@ -171,6 +171,8 @@ class PaddlePredictor {
   // be thread-safe.
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
+  virtual void ResetProfiler() {}
+
   // Destroy the Predictor.
   virtual ~PaddlePredictor() = default;
 

@@ -19,6 +19,8 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 
+DECLARE_bool(profile);
+
 namespace paddle {
 
 using inference::analysis::Argument;
@@ -35,6 +37,17 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
     FLAGS_IA_enable_tensorrt_subgraph_engine = true;
     VLOG(3) << "Predictor::init()";
+#if !defined(_WIN32)
+    if (FLAGS_profile) {
+      LOG(WARNING) << "Profiler is actived, might affect the performance";
+      LOG(INFO) << "You can turn off by set gflags '-profile false'";
+
+      auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
+                                             : platform::ProfilerState::kCPU;
+      platform::EnableProfiler(tracking_device);
+    }
+#endif
+
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
     } else {

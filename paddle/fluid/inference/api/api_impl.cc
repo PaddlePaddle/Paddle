@@ -31,7 +31,6 @@ DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace {
-using paddle::inference::Timer;
 
 template <class T>
 std::string num2str(T a) {
@@ -119,11 +118,24 @@ bool NativePaddlePredictor::Init(
   return true;
 }
 
+void NativePaddlePredictor::ResetProfiler() {
+#if !defined(_WIN32)
+  if (FLAGS_profile) {
+    paddle::platform::ResetProfiler();
+
+    auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
+                                           : platform::ProfilerState::kCPU;
+    platform::EnableProfiler(tracking_device);
+  }
+#endif
+}
+
 NativePaddlePredictor::~NativePaddlePredictor() {
 #if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
+    paddle::platform::ResetProfiler();
   }
 #endif
   if (sub_scope_) {
@@ -134,9 +146,12 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
+#if !defined(_WIN32)
+  paddle::platform::RecordEvent record_event(
+      "run_predictor", platform::DeviceContextPool::Instance().Get(place_));
+#endif
+
   VLOG(3) << "Predictor::predict";
-  Timer timer;
-  timer.tic();
   // set feed variable
   std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
@@ -147,16 +162,23 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Run the inference program
   // if share variables, we need not create variables
   VLOG(4) << "Run prepared context";
-  executor_->RunPreparedContext(ctx_.get(), scope,
-                                false, /* don't create local scope each time*/
-                                false /* don't create variable each time */);
+  {
+#if !defined(_WIN32)
+    paddle::platform::RecordEvent record_event(
+        "run_prepared_context",
+        platform::DeviceContextPool::Instance().Get(place_));
+#endif
+
+    executor_->RunPreparedContext(ctx_.get(), scope,
+                                  false, /* don't create local scope each time*/
+                                  false /* don't create variable each time */);
+  }
   VLOG(4) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
   return true;
 }
 

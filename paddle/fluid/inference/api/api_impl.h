@@ -52,6 +52,8 @@ class NativePaddlePredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
+  void ResetProfiler() override;
+
   ~NativePaddlePredictor() override;
 
   framework::Scope *scope() { return sub_scope_ ? sub_scope_ : scope_.get(); }
