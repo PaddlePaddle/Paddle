@@ -174,4 +174,4 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);

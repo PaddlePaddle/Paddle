@@ -130,8 +130,12 @@ void Conv2DOpMaker::Make() {
       .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCHW.");
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
+           "Used with fuse_residual_connection fusion.")
+      .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -164,10 +168,10 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("fuse_eltwise",
+  AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
-                "whenever convolution output is connected via skip connection "
-                "to a previous layer.")
+                "whenever convolution output is as an input to residual "
+                "connection.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -233,8 +237,7 @@ void Conv3DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "
