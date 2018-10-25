@@ -217,6 +217,9 @@ class DeviceContextPool {
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
 
+  /*! \brief  Return all the device contexts. */
+  const std::vector<const DeviceContext*> GetAllDeviceContexts() const;
+
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
       const Place& place) {
