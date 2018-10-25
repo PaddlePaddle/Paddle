@@ -112,11 +112,11 @@ bool VariableResponse::CopyLodTensorData(
 
   void* tensor_data =
       tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
-  if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
-    return false;
-  }
 
-  return true;
+  VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
+          << ", Buffer Size = " << length;
+  PADDLE_ENFORCE_EQ(tensor->memory_size(), length);
+  return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
 inline framework::DDim GetDims(

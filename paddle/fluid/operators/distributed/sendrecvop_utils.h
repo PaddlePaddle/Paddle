@@ -33,13 +33,30 @@ namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
 
-std::shared_ptr<memory::Allocation> GetTensorPayload(
-    framework::Variable* var, const platform::DeviceContext& ctx,
-    VarMsg* request);
+class TensorPayload final {
+ public:
+  explicit TensorPayload(const framework::Tensor& tensor);
+  explicit TensorPayload(std::shared_ptr<memory::Allocation> allocation);
 
-std::shared_ptr<memory::Allocation> GetSelectedRowsPayload(
-    framework::Variable* var, const platform::DeviceContext& ctx,
-    VarMsg* request);
+  TensorPayload(const TensorPayload& o) = default;
+  TensorPayload& operator=(const TensorPayload& o) = default;
+
+  void* ptr() const;
+  size_t memory_size() const;
+
+ private:
+  std::shared_ptr<memory::Allocation> allocation_;
+  size_t offset_;
+  size_t memory_size_;
+};
+
+TensorPayload GetTensorPayload(framework::Variable* var,
+                               const platform::DeviceContext& ctx,
+                               VarMsg* request);
+
+TensorPayload GetSelectedRowsPayload(framework::Variable* var,
+                                     const platform::DeviceContext& ctx,
+                                     VarMsg* request);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {
