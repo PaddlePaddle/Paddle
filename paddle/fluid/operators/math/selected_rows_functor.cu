@@ -319,7 +319,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
     std::vector<int64_t> merge_rows_cpu(merged_row_set.begin(),
-                                    merged_row_set.end());
+                                        merged_row_set.end());
     framework::Vector<int64_t> merge_rows(merge_rows_cpu);
 
     out.set_rows(merge_rows);
