@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 from op_test import OpTest
 
 
-class TestReorgOp(OpTest):
+class TestSpaceToDepthOp(OpTest):
     @staticmethod
     def helper(in_, width, height, channel, batch, stride, forward, out_):
         channel_out = channel // (stride * stride)
@@ -43,7 +43,7 @@ class TestReorgOp(OpTest):
     def setUp(self):
         self.init_data()
 
-        self.op_type = "reorg"
+        self.op_type = "space_to_depth"
         self.inputs = {"X": self.x}
         self.helper(self.x_1d, self.x.shape[3], self.x.shape[2],
                     self.x.shape[1], self.x.shape[0], self.stride, self.forward,
@@ -75,11 +75,53 @@ class TestReorgOp(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out')
 
 
-class TestReorgOp2(TestReorgOp):
+class TestSpaceToDepthOpBasic(TestSpaceToDepthOp):
+    def init_data(self):
+        self.ori_shape = (32, 8, 6, 6)
+        self.infered_shape = (32, 32, 3, 3)
+        self.one_d_len = 32 * 32 * 3 * 3
+
+        self.stride = 2
+        self.x = np.random.random(self.ori_shape).astype('float32')
+        self.x_1d = np.reshape(self.x, self.one_d_len)
+        self.out = np.zeros(self.infered_shape).astype('float32')
+        self.out_1d = np.reshape(self.out, self.one_d_len)
+        self.forward = 1
+
+
+class TestSpaceToDepthOpDoubleBasic(TestSpaceToDepthOp):
+    def init_data(self):
+        self.ori_shape = (32, 8, 6, 6)
+        self.infered_shape = (32, 32, 3, 3)
+        self.one_d_len = 32 * 32 * 3 * 3
+
+        self.stride = 2
+        self.x = np.random.random(self.ori_shape).astype('float64')
+        self.x_1d = np.reshape(self.x, self.one_d_len)
+        self.out = np.zeros(self.infered_shape).astype('float64')
+        self.out_1d = np.reshape(self.out, self.one_d_len)
+        self.forward = 1
+
+
+class TestSpaceToDepthOpWithStride3(TestSpaceToDepthOp):
     def init_data(self):
         self.ori_shape = (32, 9, 6, 6)
         self.infered_shape = (32, 81, 2, 2)
         self.one_d_len = 32 * 81 * 2 * 2
+
+        self.stride = 3
+        self.x = np.random.random(self.ori_shape).astype('float32')
+        self.x_1d = np.reshape(self.x, self.one_d_len)
+        self.out = np.zeros(self.infered_shape).astype('float32')
+        self.out_1d = np.reshape(self.out, self.one_d_len)
+        self.forward = 1
+
+
+class TestSpaceToDepthOpWithNotSquare(TestSpaceToDepthOp):
+    def init_data(self):
+        self.ori_shape = (32, 9, 9, 6)
+        self.infered_shape = (32, 81, 3, 2)
+        self.one_d_len = 32 * 81 * 3 * 2
 
         self.stride = 3
         self.x = np.random.random(self.ori_shape).astype('float32')

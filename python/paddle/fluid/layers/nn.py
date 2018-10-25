@@ -154,7 +154,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
-    'reorg',
+    'space_to_depth',
     'affine_channel',
 ]
 
@@ -7456,25 +7456,26 @@ def maxout(x, groups, name=None):
     return out
 
 
-def reorg(x, stride, name=None):
+def space_to_depth(x, stride, name=None):
     """
-    Gives a stride to reorg the input tensor
-
-    Here are some example:
-
-    input is 4D LoDtensor with shape [batch, channel, height, width] and has an attrs stride = 2
-
-    reorg will do some math work to reorder the elements of input according to stride to construt
-    put with shape [batch, channel * stride * stride, height/stride, width/stride]
-
-    reorg is used to reorgnization the output of pre_layer and change the tensor to fit the shape
+    Gives a stride to space_to_depth the input LoDtensor
+    
+    Rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the 
+    input LoDtensor where values from the height and width dimensions are moved to the channel dimension. 
+    The attr stride indicates the input block size.
+    
+    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according 
+    to stride to construct output with shape [batch, channel * stride * stride, height/stride, width/stride]:
+    
+    space_to_depth is used to This operation is useful for resizing the activations between convolutions 
+    (but keeping all data)
 
     Args:
-        x(variable): The input tensor.
-        stride(variable): The stride to reorg
+        x(variable): The input LoDtensor.
+        stride(variable): The stride to space_to_depth
 
     Returns:
-        Variable: The output tensor.
+        Variable: The output LoDtensor.
 
     Raises:
         TypeError: stride type must be a long.
@@ -7484,11 +7485,11 @@ def reorg(x, stride, name=None):
 
             data = fluid.layers.data(
                 name='data', shape=[1, 4, 2, 2], dtype='float32')
-            reorged = fluid.layers.reorged(
+            space_to_depthed = fluid.layers.space_to_depth(
                 x=data, stride=2)
     """
 
-    helper = LayerHelper("reorg", **locals())
+    helper = LayerHelper("space_to_depth", **locals())
 
     if not (isinstance(stride, int)):
         raise ValueError("stride must be a python Int")
@@ -7501,7 +7502,7 @@ def reorg(x, stride, name=None):
             name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
-        type="reorg",
+        type="space_to_depth",
         inputs={"X": x},
         attrs={"stride": stride},
         outputs={"Out": out})

@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reorg_op.h"
+#include "paddle/fluid/operators/space_to_depth_op.h"
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    reorg, ops::ReorgKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ReorgKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ReorgKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    space_to_depth,
+    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(
-    reorg_grad,
-    ops::ReorgGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ReorgGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ReorgGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    space_to_depth_grad,
+    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
