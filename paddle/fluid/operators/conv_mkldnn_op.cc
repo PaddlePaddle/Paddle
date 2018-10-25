@@ -350,59 +350,27 @@ std::cout<<"fuse_relu = "<<fuse_relu<<"  fuse_residual_conn = "<<fuse_residual_c
 
     std::vector<float> output_shift_scale;
     float sum_scale = 1.0f;
-
-for(int i=0; i<50; i++){
-    printf("%f ", (float)*(input_data+i));
-}
-printf("\n");fflush(stdout);
-
     if(is_INT8){
 std::cout<<"this is conv int8 op .............."<<std::endl;
-
-unsigned char* a = (unsigned char*)(input_data);
-for(int i=0; i<50; i++){
-    printf("%d ", a[i]);
-}
-printf("\n");
-
         int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
         float scale_in_data = *(scale_in->data<float>());
-
-for(int i=0; i<50; i++){
-    printf("%f ", (float)(input_data[i])/scale_in_data);
-}
-printf("\n");fflush(stdout);
-
-std::cout<<"scale_in_data = "<<scale_in_data<<std::endl;
-
         std::vector<float> scale_weights_data(count);
-std::cout<<"scale_weights_data = ";
         for(int i=0; i<count; i++){
             scale_weights_data[i] =*(scale_weights->data<float>() + i);
-std::cout<<scale_weights_data[i]<<" ";
         }
-std::cout<<std::endl;
-
         float scale_out_data = *(scale_out->data<float>());
 
-std::cout<<"scale_out_data = "<<scale_out_data<<std::endl;
-
         output_shift_scale.resize(count);
-std::cout<<"output_shift_scale = ";
         for(int i=0; i<count; i++){
             if(scale_weights_data[i] == 0.0)
                 output_shift_scale[i] = scale_out_data;
             else 
                 output_shift_scale[i] = scale_out_data / (scale_in_data * scale_weights_data[i]);
-std::cout<<output_shift_scale[i]<<" ";
         }
-std::cout<<std::endl;
         if(fuse_residual_conn){
             float scale_in_eltwise_data = *(scale_in_eltwise->data<float>());
-std::cout<<"scale_in_eltwise_data = "<<scale_in_eltwise_data<<std::endl;
             sum_scale = scale_out_data / scale_in_eltwise_data;
         }
-std::cout<<"  sum_scale = "<<sum_scale<<std::endl;
     }
 
     // Get unique name for storing MKLDNN primitives
@@ -411,7 +379,7 @@ std::cout<<"  sum_scale = "<<sum_scale<<std::endl;
         ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
 
-std::cout<<"current op is = "<<key_conv_pd<<std::endl;
+std::cout<<key_conv_pd<<std::endl;
 
     std::vector<primitive> pipeline;
     auto user_src_md = platform::MKLDNNMemDesc(
@@ -444,7 +412,7 @@ std::cout<<"current op is = "<<key_conv_pd<<std::endl;
             weights_tz, memory::data_type::s8,
             (g == 1) ? chosen_memory_format : mkldnn::memory::format::goihw);
         dst_md = platform::MKLDNNMemDesc(
-            dst_tz,// memory::data_type::f32, chosen_memory_format);
+            dst_tz,
             fuse_relu? paddle::framework::ToMKLDNNDataType(std::type_index(typeid(unsigned char))) : 
             paddle::framework::ToMKLDNNDataType(std::type_index(typeid(char))),
             chosen_memory_format);
@@ -499,7 +467,7 @@ std::cout<<"current op is = "<<key_conv_pd<<std::endl;
     std::shared_ptr<mkldnn::memory> weights_memory_p;// = handler.AcquireWeightsMemoryFromPrimitive(
         //user_weights_memory_p, pipeline, is_test);
     if(is_INT8){
-        int mask_reorder = is_multi_channel? ((g!= 1) ? (1<<1)+(1<<0) : 1<<0) : 0;
+        int mask_reorder = is_multi_channel? 0 : ((g!= 1) ? (1<<1)+(1<<0) : 1<<0);
         int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
         std::vector<float> scale_weights_data(count);
         for(int i=0; i<count; i++){
@@ -511,6 +479,7 @@ std::cout<<"current op is = "<<key_conv_pd<<std::endl;
         weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
             user_weights_memory_p, pipeline, is_test);
     }
+ 
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
     if(is_INT8){
@@ -541,7 +510,7 @@ std::cout<<"current op is = "<<key_conv_pd<<std::endl;
                   handler.AcquireDstMemoryFromPrimitive(to_void_cast<int8_t>(output_data));
           }
         }
-std::cout<<"input fmt = "<<input->format()<<"   input dt = "<<paddle::framework::ToMKLDNNDataType(input->type())<<"  output fmt = "<<output->format()<<"   output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<"  dst dt = "<<dst_memory_p->get_primitive_desc().desc().data.data_type<<std::endl;
+std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"   dst fmt = "<<dst_memory_p->get_primitive_desc().desc().data.format<<std::endl;
     } else{
         T* output_data = nullptr;
         if (fuse_residual_conn) {
@@ -576,7 +545,7 @@ std::cout<<"input fmt = "<<input->format()<<"   input dt = "<<paddle::framework:
       std::shared_ptr<mkldnn::memory>  bias_memory_p;// =
           //handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
       if(is_INT8){
-          int mask_reorder = is_multi_channel? 1<<0 : 1;
+          int mask_reorder = is_multi_channel? 0 : 1<<0;
           int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
           std::vector<float> scale_bias_data(count);
           for(int i=0; i<count; i++){
@@ -625,7 +594,7 @@ std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<
       if (fuse_relu) {
         constexpr float scale = 1.0f;
         constexpr float negative_slope = 0.0f;
-        constexpr float placeholder = 1.0f; //beta
+        constexpr float placeholder = 0.0f; //beta
         post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                        negative_slope, placeholder);
       }

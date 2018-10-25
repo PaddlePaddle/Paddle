@@ -72,7 +72,7 @@ std::cout<<"this is dequant op ***********"<<std::endl;
     auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<float>(output_data));
     
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-        new reorder::primitive_desc(src_pd, dst_pd, attri));    
+        new reorder::primitive_desc(dst_pd, src_pd, attri));    
     auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
     pipeline.push_back(*reorder_p);
 
