@@ -155,6 +155,7 @@ __all__ = [
     'sigmoid_cross_entropy_with_logits',
     'maxout',
     'affine_channel',
+    'similarity_focus',
 ]
 
 
@@ -7493,4 +7494,59 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
+    return out
+
+
+def similarity_focus(input, axis, indexes, name=None):
+    """  
+    **SimilarityFocus Operator**
+
+    Generate a similarity focus mask with the same shape of input using the following method:
+    1. Extract the 3-D matrix(here the first dimension is BatchSize) corresponding 
+       to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
+       it will get the matrix T=X[:, a, :, :]. In this casr, if the shape of input X 
+       is (BatchSize, A, B, C), the shape of matrix T is (BatchSize, B, C).
+    2. For each index, find the largest numbers in the matrix T, so that the same 
+       row and same column has at most one number(obviously there will be min(B, C) 
+       numbers), and mark the corresponding position of the 3-D similarity focus mask 
+       as 1, otherwise as 0. Do elementwise-or for each index.
+    3. Broadcast the 3-D similarity focus mask to the same shape of input X.
+
+    Refer to `Similarity Focus Layer <http://www.aclweb.org/anthology/N16-1108>`_
+
+    Args:
+        input(Variable): The input tensor variable(default float). It should 
+            be a 4-D tensor with shape [BatchSize, A, B, C].
+        axis(int): Indicating the dimension to be select. It can only be
+            1, 2, or 3.
+        indexes(list): indicating the indexes of the selected dimension.
+
+    Returns:
+        Variable: A tensor variable with the same shape and same type 
+            as the input.
+        
+    Examples:
+        .. code-block:: python
+            data = fluid.layers.data(
+              name='data', shape=[128, 13, 48, 48], dtype='float32')
+            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[9, 10])
+    """
+    helper = LayerHelper('similarity_focus', **locals())
+    # check attrs
+    if isinstance(axis, int) is False:
+        raise TypeError("axis must be int type.")
+    if isinstance(indexes, list) is False:
+        raise TypeError("indexes must be list type.")
+    if axis != 1 and axis != 2 and axis != 3:
+        raise ValueError("axis must be 1, 2 or 3.")
+    if len(indexes) == 0:
+        raise ValueError("indexes can not be empty.")
+
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='similarity_focus',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={"axis": axis,
+               "indexes": indexes})
     return out
