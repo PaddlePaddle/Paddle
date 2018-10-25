@@ -415,13 +415,13 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<BlockDesc *> &v) const {
     std::vector<int> blocks_idx;
     for (auto blk : v) {
-      blocks_idx.push_sback(blk->ID());
+      blocks_idx.push_back(blk->ID());
     }
     VectorToRepeated(blocks_idx, attr_->mutable_blocks_idx());
   }
-  void operator()(BlockDesapply_visitorc *desc) const {
-    attr_->set_block_idx(desc->ID());
-  }
+
+  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
+
   void operator()(int64_t v) const { attr_->set_l(v); }
 
   void operator()(const std::vector<int64_t> &v) const {
