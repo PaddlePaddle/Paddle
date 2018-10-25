@@ -116,7 +116,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
-  if (platform::jit::MayIUse(platform::jit::avx512_common)) {
+  if (platform::jit::MayIUse(platform::jit::avx512f)) {
 #ifndef __AVX512F__
     LOG(WARNING) << "AVX512F is available, Please re-compile on local machine";
 #endif
