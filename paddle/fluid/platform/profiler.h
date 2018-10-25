@@ -71,6 +71,7 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 #if !defined(_WIN32)
 struct RecordEvent {
+  // dev_ctx can be set to nullptr if device is cpu.
   RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();
@@ -84,6 +85,16 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
+};
+
+class RecordRPCEvent {
+ public:
+  // dev_ctx can be set to nullptr if device is cpu.
+  RecordRPCEvent(const std::string& name, const DeviceContext* dev_ctx);
+  ~RecordRPCEvent() {}
+
+ private:
+  std::unique_ptr<RecordEvent> event_;
 };
 
 struct RecordBlock {

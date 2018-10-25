@@ -43,17 +43,31 @@ class SumKernel : public framework::OpKernel<T> {
         out->mutable_data<T>(context.GetPlace());
       }
       auto result = EigenVector<T>::Flatten(*out);
+      auto &place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      int start = in_place ? 1 : 0;
       if (!in_place) {
-        math::SetConstant<DeviceContext, T> constant_functor;
-        constant_functor(context.template device_context<DeviceContext>(), out,
-                         0.0);
+        if ((in_num >= 2) && in_vars[0]->IsType<framework::LoDTensor>() &&
+            in_vars[1]->IsType<framework::LoDTensor>()) {
+          auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
+          auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
+          if (in_0.numel() && in_1.numel()) {
+            auto in_0_e = EigenVector<T>::Flatten(in_0);
+            auto in_1_e = EigenVector<T>::Flatten(in_1);
+            result.device(place) = in_0_e + in_1_e;
+            start = 2;
+          }
+        }
+        if (start != 2) {
+          math::SetConstant<DeviceContext, T> constant_functor;
+          constant_functor(context.template device_context<DeviceContext>(),
+                           out, 0.0);
+        }
       }
 
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;
-      auto &place =
-          *context.template device_context<DeviceContext>().eigen_device();
       // If in_place, just skip the first tensor
-      for (size_t i = in_place ? 1 : 0; i < in_num; i++) {
+      for (size_t i = start; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
           if (in_t.numel() == 0) {
