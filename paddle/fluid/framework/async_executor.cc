@@ -397,25 +397,25 @@ void ExecutorThreadWorker::SetMaxTrainingEpoch(int max_epoch) {
   max_epoch_ = max_epoch;
 }
 
-MultiExecutor::MultiExecutor(const platform::Place& place) : place_(place) {}
+AsyncExecutor::AsyncExecutor(const platform::Place& place) : place_(place) {}
 
-void MultiExecutor::InitRootScope(Scope* scope) {
+void AsyncExecutor::InitRootScope(Scope* scope) {
   root_scope_ = scope;
 }
 
-void MultiExecutor::SetMaxTrainingEpoch(int max_epoch) {
+void AsyncExecutor::SetMaxTrainingEpoch(int max_epoch) {
   max_epoch_ = max_epoch;
 }
 
-void MultiExecutor::SetDataFeedName(const char* feedname) {
+void AsyncExecutor::SetDataFeedName(const char* feedname) {
   feed_name_ = std::string(feedname);
 }
 
-void MultiExecutor::SetModelPrefix(const std::string& model_prefix) {
+void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
   model_prefix_ = model_prefix;
 }
 
-void MultiExecutor::RunStartupProgram(const ProgramDesc& program,
+void AsyncExecutor::RunStartupProgram(const ProgramDesc& program,
                                         Scope* scope) {
   auto& block = program.Block(0);
   for (auto& var : block.AllVars()) {
@@ -456,7 +456,7 @@ void MultiExecutor::RunStartupProgram(const ProgramDesc& program,
   // LOGERR("run startup program done.");
 }
 
-std::unique_ptr<ProgramDesc> MultiExecutor::LoadDescFromFile(
+std::unique_ptr<ProgramDesc> AsyncExecutor::LoadDescFromFile(
     const std::string& f) {
   std::string program_desc_str;
   read_binary_file(f, &program_desc_str);
@@ -464,7 +464,7 @@ std::unique_ptr<ProgramDesc> MultiExecutor::LoadDescFromFile(
   return program;
 }
 
-void MultiExecutor::SetDenseCommTensor(
+void AsyncExecutor::SetDenseCommTensor(
     const std::vector<std::string>& dense_comm_tensor) {
   dense_comm_tensor_.resize(dense_comm_tensor.size());
   for (unsigned int i = 0; i < dense_comm_tensor.size(); ++i) {
@@ -472,7 +472,7 @@ void MultiExecutor::SetDenseCommTensor(
   }
 }
 
-void MultiExecutor::SetSparseCommTensor(
+void AsyncExecutor::SetSparseCommTensor(
     const std::vector<std::string>& sparse_comm_tensor) {
   sparse_comm_tensor_.resize(sparse_comm_tensor.size());
   for (unsigned int i = 0; i < sparse_comm_tensor.size(); ++i) {
@@ -480,13 +480,13 @@ void MultiExecutor::SetSparseCommTensor(
   }
 }
 
-void MultiExecutor::SetSparseCommData(
+void AsyncExecutor::SetSparseCommData(
     const std::map<std::string, int>& sparse_comm_data) {
   sparse_comm_data_ = sparse_comm_data;
   LOG(INFO) << "Sparse comm data: " << sparse_comm_data_.size();
 }
 
-void MultiExecutor::SetFileList(const char* filelist) {
+void AsyncExecutor::SetFileList(const char* filelist) {
   filelist_.clear();
   std::ifstream fin(filelist);
   std::string filename;
@@ -497,25 +497,25 @@ void MultiExecutor::SetFileList(const char* filelist) {
   fin.close();
 }
 
-void MultiExecutor::SetFileList(std::vector<std::string> tfiles) {
+void AsyncExecutor::SetFileList(std::vector<std::string> tfiles) {
   filelist_.clear();
   filelist_.insert(filelist_.end(), tfiles.begin(), tfiles.end());
   return;
 }
 
-void MultiExecutor::SetInspectVarName(const std::string& inspect_var_name) {
+void AsyncExecutor::SetInspectVarName(const std::string& inspect_var_name) {
   inspect_var_name_ = inspect_var_name;
 }
 
-void MultiExecutor::SetParamNames(const std::vector<std::string>& param_names) {
+void AsyncExecutor::SetParamNames(const std::vector<std::string>& param_names) {
   model_param_names_ = param_names;
 }
 
-void MultiExecutor::SetThreadNum(const int thread_num) {
+void AsyncExecutor::SetThreadNum(const int thread_num) {
   thread_num_ = thread_num;
 }
 
-void MultiExecutor::PrepareThreads(const ProgramDesc& host_program) {
+void AsyncExecutor::PrepareThreads(const ProgramDesc& host_program) {
   workers_.resize(thread_num_);
   for (unsigned i = 0; i < thread_num_; ++i) {
     workers_[i].reset(new ExecutorThreadWorker);
@@ -551,7 +551,7 @@ void MultiExecutor::PrepareThreads(const ProgramDesc& host_program) {
   }
 }
 
-void MultiExecutor::RunMultiExecutor(const ProgramDesc& host_program) {
+void AsyncExecutor::RunAsyncExecutor(const ProgramDesc& host_program) {
   // thread binding here?
   PrepareThreads(host_program);
   for (unsigned i = 0; i < thread_num_; ++i) {

@@ -106,10 +106,10 @@ class ExecutorThreadWorker {
   Scope* thread_scope_;
 };
 
-class MultiExecutor {
+class AsyncExecutor {
  public:
-  explicit MultiExecutor(const platform::Place& place);
-  virtual ~MultiExecutor() {}
+  explicit AsyncExecutor(const platform::Place& place);
+  virtual ~AsyncExecutor() {}
   static std::unique_ptr<ProgramDesc> LoadDescFromFile(
                                           const std::string& filename);
   void InitRootScope(Scope* scope);
@@ -139,7 +139,7 @@ class MultiExecutor {
   virtual void PrepareThreads(const framework::ProgramDesc& host_program);
   void RunStartupProgram(const framework::ProgramDesc& program,
       framework::Scope* scope);
-  void RunMultiExecutor(const ProgramDesc& host_program);
+  void RunAsyncExecutor(const ProgramDesc& host_program);
 
  public:
   unsigned int thread_num_;
