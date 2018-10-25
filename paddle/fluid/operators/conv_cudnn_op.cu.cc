@@ -50,18 +50,12 @@ static constexpr char kCUDNNBwdFilterAlgoCache[] = "kCUDNNBwdFilterAlgoCache";
 static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
     static_cast<size_t>(1024) * 1024 * 1024;
 
-#if CUDNN_VERSION_MIN(7, 0, 0)
 static constexpr size_t kNUM_CUDNN_FWD_ALGS =
-    2 * CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =
-    2 * CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS =
-    2 * CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
-#else
-static constexpr size_t kNUM_CUDNN_FWD_ALGS = 7;
-static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 4;
-static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 5;
-#endif
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
 
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {

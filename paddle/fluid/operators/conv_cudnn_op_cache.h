@@ -46,9 +46,11 @@ TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     std::function<TAlgorithm()> gen_func) {
   std::lock_guard<std::mutex> lock(mutex_);
   int64_t seed = 0;
-  // Hash all of the inputs, which we wiill then use to try and look up
-  // a previously discovered algorithm, or fall back to generating a new one.
+  // Hash all of the inputs, use to try and look up a previously
+  // discovered algorithm, or fall back to generating a new one.
   std::hash<int64_t> hashFn;
+  // do hash like boost
+  // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
   for (const auto num : dims1) {
     seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   }

@@ -1464,8 +1464,7 @@ def conv2d(input,
            bias_attr=None,
            use_cudnn=True,
            act=None,
-           name=None,
-           exhaustive_search=False):
+           name=None):
     """
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
@@ -1551,11 +1550,6 @@ def conv2d(input,
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
-        exhaustive_search (bool): cuDNN has many algorithm to calculation
-            convolution, whether enable exhaustive search for cuDNN convolution
-            or not. Users also can enable by set environment 
-            `export FLAGS_cudnn_exhaustive_search=True`. Both of the two ways
-            can enable exhaustive search. Defalut is False.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
 
@@ -1643,7 +1637,6 @@ def conv2d(input,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': False,
-            'exhaustive_search': exhaustive_search,
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
