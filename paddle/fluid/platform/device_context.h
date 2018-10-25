@@ -74,6 +74,33 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 class EigenCudaStreamDevice;
 class CudnnHolder;
 
+class CudnnWorkspaceHandle {
+ public:
+  /*! \brief The lock would not be acquired when constructor calls.
+   *  The lock would be acquired when RunFunc() is called first time. */
+  explicit CudnnWorkspaceHandle(CudnnHolder* holder);
+
+  /*! \brief Thread which call RunFunc() would acquire the lock first
+   *  before invoking cudnn functions. */
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_len);
+
+  /*! \brief User can call this method to acquire the lock manually,
+   *  But it is usually unnecessary, because RunFunc() would
+   *  acquire the lock first before invoking cudnn functions. */
+  void BeginCallGuard();
+
+  /*! \brief User can call this method to release the lock manually,
+   *  But it is usually unnecssary, because the lock would be
+   *  release once the handle is destructed. But it can be used
+   *  to manually release the lock as soon as possible. */
+  void EndCallGuard();
+
+ private:
+  CudnnHolder* holder_;  // not own
+  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
+};
+
 class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
@@ -99,6 +126,15 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
+
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
+   *  sequential cudnn function calls. */
+  CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Run a cudnn function with the workspace provided by
    * CUDADeviceContext */

@@ -156,6 +156,10 @@ ParallelExecutor::ParallelExecutor(
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
 
+  graph = ir::PassRegistry::Instance()
+              .Get("modify_op_lock_and_record_event_pass")
+              ->Apply(std::move(graph));
+
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
     PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
@@ -319,6 +323,8 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
+
+USE_PASS(modify_op_lock_and_record_event_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 #endif
