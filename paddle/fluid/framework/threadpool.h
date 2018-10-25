@@ -56,7 +56,8 @@ class ThreadPool {
   static ThreadPool* GetInstance();
 
   // delete current thread pool and create a new one.
-  static void Reset();
+  // Only used by test cases to reset the threadpool.
+  static void TestReset();
 
   ~ThreadPool();
 
