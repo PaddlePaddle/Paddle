@@ -11,9 +11,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#ifndef PADDLE_FLUID_OPERATORS_REORG_OP_H_
-#define PADDLE_FLUID_OPERATORS_REORG_OP_H_
-#endif  // PADDLE_FLUID_OPERATORS_REORG_OP_H_
+#ifndef PADDLE_FLUID_OPERATORS_SPACE_TO_DEPTH_OP_H_
+#define PADDLE_FLUID_OPERATORS_SPACE_TO_DEPTH_OP_H_
+#endif  // PADDLE_FLUID_OPERATORS_SPACE_TO_DEPTH_OP_H_
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -22,10 +22,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class reorg_cpu {
+class space_to_depth_compute {
  public:
-  HOSTDEVICE reorg_cpu(const T *x, int64_t w, int64_t h, int64_t c,
-                       int64_t batch, int64_t stride, int64_t forward, T *out)
+  HOSTDEVICE space_to_depth_compute(const T *x, int64_t w, int64_t h, int64_t c,
+                                    int64_t batch, int64_t stride,
+                                    int64_t forward, T *out)
       : x_(x),
         w_(w),
         h_(h),
@@ -62,7 +63,7 @@ class reorg_cpu {
 };
 
 template <typename DeviceContext, typename T>
-class ReorgKernel : public framework::OpKernel<T> {
+class SpaceToDepthKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *out = context.Output<framework::LoDTensor>("Out");
@@ -82,16 +83,16 @@ class ReorgKernel : public framework::OpKernel<T> {
 
     auto *x_data = x->data<T>();
     auto *out_data = out->data<T>();
-    paddle::operators::reorg_cpu<T> reorg(x_data, W, H, C, B, stride, 1,
-                                          out_data);
-    for_range(reorg);
+    paddle::operators::space_to_depth_compute<T> computer(x_data, W, H, C, B,
+                                                          stride, 1, out_data);
+    for_range(computer);
 
     out->Resize(out_dims);
   }
 };
 
 template <typename DeviceContext, typename T>
-class ReorgGradKernel : public framework::OpKernel<T> {
+class SpaceToDepthGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *d_out =
@@ -114,9 +115,9 @@ class ReorgGradKernel : public framework::OpKernel<T> {
     auto *dx_data = d_x->data<T>();
     auto *dout_data = d_out->data<T>();
 
-    paddle::operators::reorg_cpu<T> reorg(dout_data, W, H, C, B, stride, 0,
-                                          dx_data);
-    for_range(reorg);
+    paddle::operators::space_to_depth_compute<T> computer(dout_data, W, H, C, B,
+                                                          stride, 0, dx_data);
+    for_range(computer);
 
     d_x->Resize(in_dims);
   }

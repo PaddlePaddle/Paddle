@@ -248,7 +248,7 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.softmax(hid))
         print(str(program))
 
-    def test_reorg(self):
+    def test_space_to_depth(self):
         program = Program()
         with program_guard(program):
             data = layers.data(
@@ -256,7 +256,7 @@ class TestBook(unittest.TestCase):
                 shape=[32, 9, 6, 6],
                 append_batch_size=False,
                 dtype='float32')
-            self.assertIsNotNone(layers.reorg(data, 3))
+            self.assertIsNotNone(layers.space_to_depth(data, 3))
         print(str(program))
 
     def test_sequence_unsqueeze(self):
