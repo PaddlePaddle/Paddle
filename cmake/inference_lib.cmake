@@ -15,7 +15,7 @@
 # make package for paddle fluid shared and static library
 function(copy TARGET)
     if (NOT ON_INFER)
-      message(FATAL_ERROR "Turn on the ON_INFER flag when build inference_lib please.")
+      message(WARNING "Turn on the ON_INFER flag when building inference_lib only.")
     endif()
     set(options "")
     set(oneValueArgs "")
