@@ -114,8 +114,8 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       int64_t ids_num = ids->numel();
 
       std::vector<int64_t> new_rows;
-      new_rows.reserve(ids_num);
-      std::memcpy(new_rows.data(), ids_data, ids_num * sizeof(int64_t));
+      new_rows.resize(ids_num);
+      std::memcpy(&new_rows[0], ids_data, ids_num * sizeof(int64_t));
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
