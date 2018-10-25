@@ -168,10 +168,7 @@ class CudnnHolder {
   void RunFunc(const std::function<void(void*)>& cudnn_func,
                size_t required_workspace_len) {
     std::lock_guard<std::mutex> lock(mtx_);
-    if (required_workspace_len > workspace_len_) {
-      ReallocateWorkspace(required_workspace_len);
-    }
-    cudnn_func(workspace_);
+    RunFuncImpl(cudnn_func, required_workspace_len);
   }
 
   ~CudnnHolder() {
@@ -182,6 +179,16 @@ class CudnnHolder {
   }
 
  private:
+  std::mutex& Mutex() { return mtx_; }
+
+  void RunFuncImpl(const std::function<void(void*)>& cudnn_func,
+                   size_t required_workspace_len) {
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
   void ReallocateWorkspace(size_t required_workspace_len) {
     if (required_workspace_len <= workspace_len_) {
       return;
@@ -195,6 +202,8 @@ class CudnnHolder {
     workspace_len_ = required_workspace_len;
   }
 
+  friend class CudnnWorkspaceHandle;
+
   cudnnHandle_t cudnn_handle_;
   void* workspace_;
   size_t workspace_len_;
@@ -204,6 +213,24 @@ class CudnnHolder {
 
   std::mutex mtx_;
 };
+
+CudnnWorkspaceHandle::CudnnWorkspaceHandle(CudnnHolder* holder)
+    : holder_(holder) {}
+
+void CudnnWorkspaceHandle::RunFunc(const std::function<void(void*)>& cudnn_func,
+                                   size_t required_workspace_len) {
+  // defer lock when the function is invoked first time
+  BeginCallGuard();
+  holder_->RunFuncImpl(cudnn_func, required_workspace_len);
+}
+
+void CudnnWorkspaceHandle::BeginCallGuard() {
+  if (!guard_) {
+    guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+  }
+}
+
+void CudnnWorkspaceHandle::EndCallGuard() { guard_.reset(); }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
@@ -269,6 +296,10 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   return cudnn_holder_->cudnn_handle();
+}
+
+CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
+  return CudnnWorkspaceHandle(cudnn_holder_.get());
 }
 
 void CUDADeviceContext::RunCudnnFuncWithWorkspace(
