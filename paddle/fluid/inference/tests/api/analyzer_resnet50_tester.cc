@@ -71,7 +71,7 @@ void profile(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_resnet50, profile) { profile(); }
-#ifndef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
