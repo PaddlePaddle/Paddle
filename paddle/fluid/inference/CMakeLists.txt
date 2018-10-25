@@ -1,3 +1,4 @@
+cc_library(inference_io SRCS io.cc)
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.
 add_subdirectory(analysis)

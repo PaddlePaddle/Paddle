@@ -35,32 +35,33 @@ void CreateTensor(Variable* var, proto::VarType::Type var_type);
 class ExecutorThreadWorker {
  public:
   ExecutorThreadWorker() {}
-  virtual ~ExecutorThreadWorker() {}
+  ~ExecutorThreadWorker() {}
   void CreateThreadScope(const framework::ProgramDesc& program);
   void SetDataFeed(const DataFeed& datafeed);
   void SetThreadId(int tid);
   void CreateThreadOperators(const framework::ProgramDesc& program);
   void SetRootScope(Scope* g_scope);
   void SetDevice();
-  virtual void AddFidSet();
+  void AddFidSet();
   void SetCommBatch(int comm_batch) { comm_batch_ = comm_batch; }
   void AddTrainFile(const std::string& filename);
   void SetMainProgram(const ProgramDesc& main_program_desc);
   void SetPlace(const paddle::platform::Place& place);
   void SetMaxTrainingEpoch(const int max_epoch);
   void BindingDataFeedMemory();
+
   void SetModelPrefix(const std::string& prefix) { model_prefix_ = prefix; }
+
   void SetInspectVarName(const std::string& inspect_var_name);
   void SetModelParamNames(const std::vector<std::string>& param_names);
   void SetSparseCommData(const std::map<std::string, int>& param_names);
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
   void Train();
-  virtual const char* PickOneFile();
+  const char* PickOneFile();
   void UpdateEpochNum();
 
-  virtual void SetDenseCommTensor(
-      const std::vector<std::string>& param_names) {}
-  virtual void Initialize() {}
+  void SetDenseCommTensor(const std::vector<std::string>& param_names) {}
+  void Initialize() {}
 
  public:
   static std::mutex s_locker_for_pick_file_;
@@ -122,13 +123,20 @@ class AsyncExecutor {
   void SetFileList(const char* filelist);
   void SetFileList(const std::vector<std::string> filelist);
   void SetDataFeedName(const char* feedname);
-
-  void SetDataFeedParam(const datafeed::DataFeedParameter& feed_param) {
-    data_feed_param_ = feed_param;
-  }
-
   void SetCommBatch(int comm_batch) {
     comm_batch_ = comm_batch;
+  }
+
+  void SetModelPath(const std::string& model_path) {
+    model_path_ = model_path;
+  }
+
+  void SetInitProgFile(const std::string& init_prog_file) {
+    init_prog_file_ = init_prog_file;
+  }
+
+  void SetInitModelFile(const std::string& init_model_file) {
+    init_model_file_ = init_model_file;
   }
 
   void SetModelPrefix(const std::string& model_prefix);
@@ -141,9 +149,10 @@ class AsyncExecutor {
       framework::Scope* scope);
   void RunAsyncExecutor(const ProgramDesc& host_program);
 
+  void LoadInitModel();
+
  public:
   unsigned int thread_num_;
-  datafeed::DataFeedParameter data_feed_param_;
   int max_epoch_;
   int batch_size_;
   int comm_batch_;
@@ -156,6 +165,9 @@ class AsyncExecutor {
   std::vector<std::string> sparse_comm_tensor_;
   std::map<std::string, int> sparse_comm_data_;
   std::string model_prefix_;
+  std::string model_path_;
+  std::string init_prog_file_;
+  std::string init_model_file_;
   std::string feed_name_;
   Scope* root_scope_;
   platform::Place place_;

@@ -19,6 +19,10 @@ from .framework import *
 # import all class inside executor into fluid module
 from . import executor
 from .executor import *
+
+from . import async_executor
+from .async_executor import *
+
 from . import trainer
 from . import inferencer
 
@@ -52,7 +56,8 @@ Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-    parallel_executor.__all__ + lod_tensor.__all__ + [
+    parallel_executor.__all__ + lod_tensor.__all__ + \
+    async_executor.__all__ + [
         'io',
         'initializer',
         'layers',

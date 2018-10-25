@@ -1,6 +1,7 @@
 
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune  feed_fetch_method pass_builder)
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc)
+set(PYBIND_DEPS pybind python proto_desc memory executor async_executor
+inference_io prune feed_fetch_method pass_builder)
+set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc async_executor_py.cc)
 if(NOT WIN32)
 list(APPEND PYBIND_DEPS parallel_executor profiler)
 list(APPEND PYBIND_SRCS recordio.cc)

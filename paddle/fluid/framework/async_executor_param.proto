@@ -1,0 +1,85 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+syntax = "proto2";
+package paddle;
+
+message AsyncExecutorParameter {
+  optional BaseParameter base_param = 1;
+  repeated AucCalculatorParameter auc_calculator_parameter = 5;
+  repeated PnCalculatorParameter pn_calculator_parameter = 6;
+}
+
+message JobParameter {
+  optional string job_name = 1;
+  optional string startup_prog_file = 2;
+  optional string main_prog_file = 3;
+
+  repeated int32 push_sparse_table_id = 4;
+  repeated int32 push_dense_table_id = 5;
+  repeated int32 pull_sparse_table_id = 6;
+  repeated int32 pull_dense_table_id = 7;
+
+  optional int32 slot_dim = 8;
+  optional int32 fea_dim = 9;
+  optional bool use_cvm_feature = 10;
+
+  optional string inspect_var_name = 20;
+  optional string auc_calculator_name = 21;
+  optional string mean_var_name = 22;
+  optional string pn_calculator_name = 23;
+
+  repeated string debug_layer_name = 24;
+}
+
+message BaseParameter {
+  optional int32 thread_num = 1 [default = 1];
+  optional string datafeed_class = 2;
+  optional string startup_prog_file =  3;
+  optional string main_prog_file = 4;
+  optional string filelist = 5;
+  repeated string model_param_names = 6;
+  optional int32 max_epoch = 7;
+  optional string model_path = 8;
+  optional string model_prefix = 9;
+  optional int32 batch_size = 10;
+  optional string training_dir = 11;  //local data path
+  optional string data_feed_param = 12;
+  optional string init_prog_file = 13;
+  optional string init_model_file = 14;
+  optional string inspect_var_name = 15;
+  repeated string input_variable_name = 16;
+  optional int32  download_thread_num = 17 [default = 12];
+
+  repeated JobParameter train_job = 19;
+
+  optional bool save_by_hour = 20 [default = true];
+
+  optional bool need_global_shuffle = 21 [default = true];
+
+  optional string converter_name = 22;
+  optional string data_converter = 23;
+  optional int32 checkpoint_per_pass = 24;
+}
+
+message AucCalculatorParameter {
+  optional string name    = 1;
+  optional string output  = 2;
+}
+
+message PnCalculatorParameter {
+  optional string name    = 1;
+  optional string output_1  = 2;
+  optional string output_2  = 3;
+}
+

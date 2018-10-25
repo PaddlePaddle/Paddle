@@ -31,7 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "proto/FeedDataParameter.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -52,7 +51,7 @@ class DataFeed {
  public:
   DataFeed() {}
   virtual ~DataFeed() {}
-  virtual void Init(const datafeed::DataFeedParameter& feed_param) = 0;
+  virtual void Init() = 0;
   /*
   * This function will be used to check file format.
   * Considering that this function may be used alone,
@@ -101,7 +100,7 @@ class DataFeed {
 class TextClassDataFeed : public DataFeed {
  public:
   virtual ~TextClassDataFeed() {}
-  virtual void Init(const datafeed::DataFeedParameter& feed_param);
+  virtual void Init();
   virtual bool ReadBatch();
   virtual void AddFeedVar(Variable* feed, const std::string& name);
   virtual void BindScope(Scope* scope) {}

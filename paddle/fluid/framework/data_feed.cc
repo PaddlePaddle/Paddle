@@ -38,7 +38,7 @@ DEFINE_bool(is_text_feed, false, "is_text_feed");
 
 namespace paddle {
 namespace framework {
-void TextClassDataFeed::Init(const datafeed::DataFeedParameter& feed_param) {
+void TextClassDataFeed::Init() {
   // hard coding for a specific datafeed
   feed_vec_.resize(2);
   // feed_vec_[0].reset(new LoDTensor);

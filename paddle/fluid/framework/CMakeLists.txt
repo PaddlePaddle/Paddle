@@ -36,6 +36,7 @@ add_subdirectory(details)
 endif (NOT WIN32)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
+proto_library(async_executor_param SRCS async_executor_param.proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
@@ -177,7 +178,8 @@ endif() # NOT WIN32
 cc_library(async_executor
           SRCS async_executor.cc data_feed.cc datafeed_creator.cc
           DEPS op_registry device_context scope framework_proto glog
-              lod_rank_table feed_fetch_method graph_to_program_pass)
+              lod_rank_table feed_fetch_method graph_to_program_pass
+              async_executor_param)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

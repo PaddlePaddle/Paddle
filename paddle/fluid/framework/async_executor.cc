@@ -16,6 +16,8 @@ limitations under the License. */
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
@@ -33,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
@@ -543,7 +546,7 @@ void AsyncExecutor::PrepareThreads(const ProgramDesc& host_program) {
   for (unsigned i = 0; i < thread_num_; ++i) {
     // new a datafeed here
     std::shared_ptr<DataFeed> local_feed = CreateDataFeed(feed_name_.c_str());
-    local_feed->Init(data_feed_param_);
+    local_feed->Init();
     local_feed->SetBatchSize(batch_size_);
     workers_[i]->SetDataFeed(local_feed);
     workers_[i]->BindingDataFeedMemory();
@@ -564,7 +567,26 @@ void AsyncExecutor::RunAsyncExecutor(const ProgramDesc& host_program) {
   }
 }
 
-}   // end namespace framework
+void AsyncExecutor::LoadInitModel() {
+  auto place = paddle::platform::CPUPlace();
+  auto* executor = new paddle::framework::Executor(place);
+
+  std::string init_prog_file = model_path_ + "/" + init_prog_file_;
+  std::string init_model_file = model_path_ + "/" + init_model_file_;
+
+  struct stat stat_buf;
+
+  if (stat(init_prog_file.c_str(), &stat_buf) == 0 &&
+      S_ISREG(stat_buf.st_mode) &&
+      stat(init_model_file.c_str(), &stat_buf) == 0 &&
+      S_ISREG(stat_buf.st_mode)) {
+    paddle::inference::Load(executor,
+                          GetRootScope(),
+                          model_path_ + "/" + init_prog_file_,
+                          model_path_ + "/" + init_model_file_);
+  }
+}
+}   // einit_modelnd namespace framework
 }   // end namespace paddle
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
