@@ -158,8 +158,16 @@ ParallelExecutor::ParallelExecutor(
 
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
-    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                      "The number of graph should be only one");
+    switch (build_strategy.optimize_strategy_) {
+      case BuildStrategy::OptimizeStrategy::kNoLock:
+        PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), places.size(),
+                          "The number of graph should be only one");
+        break;
+      default:
+        PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1u,
+                          "The number of graph should be only one");
+        break;
+    }
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {

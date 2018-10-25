@@ -791,6 +791,18 @@ All parameter, weight, gradient are variables in Paddle.
                   to different devices, and then broadcast the optimized parameter to other devices.
                   In some models, `Reduce` is faster. Default 'AllReduce'. )DOC")
       .def_property(
+          "optimize_strategy",
+          [](const BuildStrategy &self) { return self.optimize_strategy_; },
+          [](BuildStrategy &self, BuildStrategy::OptimizeStrategy strategy) {
+            self.optimize_strategy_ = strategy;
+          },
+          R"DOC(The type is STR, there are two optimize strategies in ParallelExecutor,
+                  'Merge' and 'NoLock'. If you want that all the parameters'
+                  optimization are done on all devices independently, you should choose 'AllReduce';
+                  if you choose 'Reduce', all the parameters' optimization will be evenly distributed
+                  to different devices, and then broadcast the optimized parameter to other devices.
+                  In some models, `Reduce` is faster. Default 'AllReduce'. )DOC")
+      .def_property(
           "gradient_scale_strategy",
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,

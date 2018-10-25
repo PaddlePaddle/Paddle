@@ -60,14 +60,14 @@ struct BuildStrategy {
     kCustomized = 2,
   };
 
-  enum class EmbeddingOptimizeStrategy {
+  enum class OptimizeStrategy {
     kMerge = 0,
     kNoLock = 1,
   };
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-  EmbeddingOptimizeStrategy emb_opt_{EmbeddingOptimizeStrategy::kNoLock};
+  OptimizeStrategy optimize_strategy_{OptimizeStrategy::kMerge};
 
   std::string debug_graphviz_path_{""};
 
