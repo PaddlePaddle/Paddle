@@ -36,137 +36,129 @@ class ExecutorThreadWorker {
  public:
   ExecutorThreadWorker() {}
   virtual ~ExecutorThreadWorker() {}
-  void create_thread_scope(const framework::ProgramDesc& program);
-  void set_datafeed(const DataFeed& datafeed);
-  void set_thread_id(int tid);
-  void create_thread_operators(const framework::ProgramDesc& program);
-  void set_root_scope(Scope* g_scope);
-  void set_device();
-  virtual void add_fid_set();
-  void set_comm_batch(int comm_batch) { _comm_batch = comm_batch; }
-  void add_train_file(const std::string& filename);
-  void set_main_program(const ProgramDesc& main_program_desc);
-  void set_place(const paddle::platform::Place& place);
-  void set_max_training_epoch(const int max_epoch);
-  void binding_datafeed_memory();
-  void set_model_prefix(const std::string& prefix) { _model_prefix = prefix; }
-  void set_inspect_var_name(const std::string& inspect_var_name);
-  void set_model_param_names(const std::vector<std::string>& param_names);
-  void set_sparse_comm_data(const std::map<std::string, int>& param_names);
-  void set_datafeed(const std::shared_ptr<DataFeed>& datafeed);
-  virtual void mpi_train();
-  void gpu_train();
-  void train();
-  virtual const char* pick_one_file();
-  void update_epoch_num();
+  void CreateThreadScope(const framework::ProgramDesc& program);
+  void SetDataFeed(const DataFeed& datafeed);
+  void SetThreadId(int tid);
+  void CreateThreadOperators(const framework::ProgramDesc& program);
+  void SetRootScope(Scope* g_scope);
+  void SetDevice();
+  virtual void AddFidSet();
+  void SetCommBatch(int comm_batch) { comm_batch_ = comm_batch; }
+  void AddTrainFile(const std::string& filename);
+  void SetMainProgram(const ProgramDesc& main_program_desc);
+  void SetPlace(const paddle::platform::Place& place);
+  void SetMaxTrainingEpoch(const int max_epoch);
+  void BindingDataFeedMemory();
+  void SetModelPrefix(const std::string& prefix) { model_prefix_ = prefix; }
+  void SetInspectVarName(const std::string& inspect_var_name);
+  void SetModelParamNames(const std::vector<std::string>& param_names);
+  void SetSparseCommData(const std::map<std::string, int>& param_names);
+  void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
+  void Train();
+  virtual const char* PickOneFile();
+  void UpdateEpochNum();
 
-  virtual void set_dense_comm_tensor(
+  virtual void SetDenseCommTensor(
       const std::vector<std::string>& param_names) {}
-  virtual void initialize() {}
+  virtual void Initialize() {}
 
  public:
-  static std::mutex _s_locker_for_pick_file;
-  static unsigned int _s_current_file_idx;
-  static size_t _s_current_finished_file_cnt;
-  static unsigned int _s_current_epoch;
-  static int _s_current_save_epoch;
-  static std::vector<std::string> _s_thread_filelist;   // filelist
-  static bool _s_is_first_worker;
+  static std::mutex s_locker_for_pick_file_;
+  static unsigned int s_current_file_idx_;
+  static size_t s_current_finished_file_cnt_;
+  static unsigned int s_current_epoch_;
+  static int s_current_save_epoch_;
+  static std::vector<std::string> s_thread_filelist_;   // filelist
+  static bool s_is_first_worker_;
 
  protected:
   // thread index
-  int _thread_id;
-
-  // current training file
-  int _cur_fileidx;
+  int thread_id_;
 
   // max epoch for each thread
-  unsigned int _max_epoch;
+  unsigned int max_epoch_;
 
   // instances learned currently
-  int _comm_batch;
-  std::string _model_prefix;
-  std::vector<std::string> _op_names;
+  int comm_batch_;
+  std::string model_prefix_;
+  std::vector<std::string> op_names_;
 
   // local ops for forward and backward
-  std::vector<OperatorBase *> _ops;
+  std::vector<OperatorBase *> ops_;
 
   // main program for training
-  std::unique_ptr<framework::ProgramDesc> _main_program;
+  std::unique_ptr<framework::ProgramDesc> main_program_;
 
   // binary data reader
-  std::shared_ptr<DataFeed> _local_reader;
+  std::shared_ptr<DataFeed> local_reader_;
 
-  std::string _inspect_var_name;
-  std::vector<std::string> _model_param_names;
-  std::map<std::string, int> _sparse_comm_data;
-  std::vector<int> _ids_buffer;
+  std::string inspect_var_name_;
+  std::vector<std::string> model_param_names_;
+  std::map<std::string, int> sparse_comm_data_;
 
   // execution place
-  platform::Place _place;
+  platform::Place place_;
 
   // root scope for model parameters
-  Scope* _root_scope;
+  Scope* root_scope_;
 
   // a thread scope, father scope is global score which is shared
-  Scope* _thread_scope;
+  Scope* thread_scope_;
 };
 
 class MultiExecutor {
  public:
   explicit MultiExecutor(const platform::Place& place);
   virtual ~MultiExecutor() {}
-  static std::unique_ptr<ProgramDesc> load_desc_from_file(
+  static std::unique_ptr<ProgramDesc> LoadDescFromFile(
                                           const std::string& filename);
-  void init_root_scope(Scope* scope);
-  void set_inspect_var_name(const std::string& inspect_var_name);
-  void set_param_names(const std::vector<std::string>& param_names);
-  void set_max_training_epoch(const int max_epoch);
-  Scope* get_root_scope() { return _root_scope; }
-  void set_thread_num(const int thread_num);
-  void set_batch_size(const int batch_size) { _batch_size = batch_size; }
-  void set_filelist(const char* filelist);
-  void set_filelist(const std::vector<std::string> filelist);
-  void set_datafeed_name(const char* feedname);
+  void InitRootScope(Scope* scope);
+  void SetInspectVarName(const std::string& inspect_var_name);
+  void SetParamNames(const std::vector<std::string>& param_names);
+  void SetMaxTrainingEpoch(const int max_epoch);
+  Scope* GetRootScope() { return root_scope_; }
+  void SetThreadNum(const int thread_num);
+  void SetBatchSize(const int batch_size) { batch_size_ = batch_size; }
+  void SetFileList(const char* filelist);
+  void SetFileList(const std::vector<std::string> filelist);
+  void SetDataFeedName(const char* feedname);
 
-  void set_data_feed_param(const datafeed::DataFeedParameter& feed_param) {
-    _data_feed_param = feed_param;
+  void SetDataFeedParam(const datafeed::DataFeedParameter& feed_param) {
+    data_feed_param_ = feed_param;
   }
 
-  void set_comm_batch(int comm_batch) {
-    _comm_batch = comm_batch;
+  void SetCommBatch(int comm_batch) {
+    comm_batch_ = comm_batch;
   }
 
-  void set_model_prefix(const std::string& model_prefix);
-  void set_dense_comm_tensor(const std::vector<std::string>& dense_comm_tensor);
-  void set_sparse_comm_tensor(
+  void SetModelPrefix(const std::string& model_prefix);
+  void SetDenseCommTensor(const std::vector<std::string>& dense_comm_tensor);
+  void SetSparseCommTensor(
       const std::vector<std::string>& sparse_comm_tensor);
-  void set_sparse_comm_data(const std::map<std::string, int>& sparse_comm_data);
-  virtual void prepare_threads(const framework::ProgramDesc& host_program);
-  void run_startup_program(const framework::ProgramDesc& program,
+  void SetSparseCommData(const std::map<std::string, int>& sparse_comm_data);
+  virtual void PrepareThreads(const framework::ProgramDesc& host_program);
+  void RunStartupProgram(const framework::ProgramDesc& program,
       framework::Scope* scope);
-  void run_multi_executor(const ProgramDesc& host_program);
+  void RunMultiExecutor(const ProgramDesc& host_program);
 
  public:
-  unsigned int _thread_num;
-  datafeed::DataFeedParameter _data_feed_param;
-  int _max_epoch;
-  int _batch_size;
-  int _comm_batch;
-  std::vector<std::shared_ptr<ExecutorThreadWorker> > _workers;
-  std::vector<std::thread> _threads;
-  std::vector<std::string> _filelist;
-  std::string _inspect_var_name;
-  std::vector<std::string> _model_param_names;
-  std::vector<std::string> _dense_comm_tensor;
-  std::vector<std::string> _sparse_comm_tensor;
-  std::map<std::string, int> _sparse_comm_data;
-  int node_num;
-  std::string _model_prefix;
-  ProgramDesc _host_program;
-  std::string _feed_name;
-  Scope* _root_scope;
-  platform::Place _place;
+  unsigned int thread_num_;
+  datafeed::DataFeedParameter data_feed_param_;
+  int max_epoch_;
+  int batch_size_;
+  int comm_batch_;
+  std::vector<std::shared_ptr<ExecutorThreadWorker> > workers_;
+  std::vector<std::thread> threads_;
+  std::vector<std::string> filelist_;
+  std::string inspect_var_name_;
+  std::vector<std::string> model_param_names_;
+  std::vector<std::string> dense_comm_tensor_;
+  std::vector<std::string> sparse_comm_tensor_;
+  std::map<std::string, int> sparse_comm_data_;
+  std::string model_prefix_;
+  std::string feed_name_;
+  Scope* root_scope_;
+  platform::Place place_;
 };
 
 }  // namespace framework

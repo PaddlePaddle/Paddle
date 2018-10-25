@@ -37,13 +37,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-std::mutex ExecutorThreadWorker::_s_locker_for_pick_file;
-unsigned int ExecutorThreadWorker::_s_current_file_idx = 0;
-size_t ExecutorThreadWorker::_s_current_finished_file_cnt = 0;
-unsigned int ExecutorThreadWorker::_s_current_epoch = 0;
-int ExecutorThreadWorker::_s_current_save_epoch = 0;
-bool ExecutorThreadWorker::_s_is_first_worker = false;
-std::vector<std::string> ExecutorThreadWorker::_s_thread_filelist;
+std::mutex ExecutorThreadWorker::s_locker_for_pick_file_;
+unsigned int ExecutorThreadWorker::s_current_file_idx_ = 0;
+size_t ExecutorThreadWorker::s_current_finished_file_cnt_ = 0;
+unsigned int ExecutorThreadWorker::s_current_epoch_ = 0;
+int ExecutorThreadWorker::s_current_save_epoch_ = 0;
+bool ExecutorThreadWorker::s_is_first_worker_ = false;
+std::vector<std::string> ExecutorThreadWorker::s_thread_filelist_;
 
 void CreateTensor(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -142,33 +142,33 @@ static void save_model(
 }   // end save_model
 
 
-void ExecutorThreadWorker::add_train_file(const std::string& file) {
-  _s_thread_filelist.push_back(file);
+void ExecutorThreadWorker::AddTrainFile(const std::string& file) {
+  s_thread_filelist_.push_back(file);
 }
 
-void ExecutorThreadWorker::create_thread_operators(const ProgramDesc& program) {
+void ExecutorThreadWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
-  _op_names.clear();
+  op_names_.clear();
   for (auto& op_desc : block.AllOps()) {
     std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
-    _op_names.push_back(op_desc->Type());
+    op_names_.push_back(op_desc->Type());
     OperatorBase* local_op_ptr = local_op.release();
-    _ops.push_back(local_op_ptr);
+    ops_.push_back(local_op_ptr);
     continue;
   }
 }
 
-void ExecutorThreadWorker::create_thread_scope(const ProgramDesc& program) {
+void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   auto& block = program.Block(0);
-  _thread_scope = &_root_scope->NewScope();
+  thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
-      auto* ptr = _root_scope->Var(var->Name());
+      auto* ptr = root_scope_->Var(var->Name());
       CreateTensor(ptr, var->GetType());
       // LOGERR("create Persistable var[%s] finished",
       //      var->Name().c_str());
     } else {
-      auto* ptr = _thread_scope->Var(var->Name());
+      auto* ptr = thread_scope_->Var(var->Name());
       CreateTensor(ptr, var->GetType());
       // LOGERR("create unpersistable var[%s] finished",
       //      var->Name().c_str());
@@ -176,33 +176,33 @@ void ExecutorThreadWorker::create_thread_scope(const ProgramDesc& program) {
   }
 }
 
-void ExecutorThreadWorker::set_datafeed(const std::shared_ptr<DataFeed>& datafeed) {
-  _local_reader = datafeed;
+void ExecutorThreadWorker::SetDataFeed(const std::shared_ptr<DataFeed>& datafeed) {
+  local_reader_ = datafeed;
 }
 
-void ExecutorThreadWorker::binding_datafeed_memory() {
-  const std::vector<std::string>& input_feed = _local_reader->get_use_slot_alias();
+void ExecutorThreadWorker::BindingDataFeedMemory() {
+  const std::vector<std::string>& input_feed = local_reader_->GetUseSlotAlias();
   for (auto name : input_feed) {
-    _local_reader->add_feed_var(_thread_scope->Var(name), name);
+    local_reader_->AddFeedVar(thread_scope_->Var(name), name);
   }
 }
 
-void ExecutorThreadWorker::set_inspect_var_name(
+void ExecutorThreadWorker::SetInspectVarName(
     const std::string& inspect_var_name) {
-  _inspect_var_name = inspect_var_name;
+  inspect_var_name_ = inspect_var_name;
 }
 
-void ExecutorThreadWorker::set_model_param_names(
+void ExecutorThreadWorker::SetModelParamNames(
     const std::vector<std::string>& param_names) {
-  _model_param_names = param_names;
+  model_param_names_ = param_names;
 }
 
-void ExecutorThreadWorker::set_sparse_comm_data(
+void ExecutorThreadWorker::SetSparseCommData(
     const std::map<std::string, int>& param_names) {
-  _sparse_comm_data = param_names;
+  sparse_comm_data_ = param_names;
 }
 
-void ExecutorThreadWorker::set_device() {
+void ExecutorThreadWorker::SetDevice() {
   static unsigned priority[] = {
     0, 1, 2, 3, 4, 5,
     6, 7, 8, 9, 10, 11,
@@ -214,7 +214,7 @@ void ExecutorThreadWorker::set_device() {
     42, 43, 44, 45, 46, 47
   };
 
-  unsigned int i = this->_thread_id;
+  unsigned int i = this->thread_id_;
 
   if (i < sizeof(priority) / sizeof(unsigned)) {
     unsigned proc = priority[i];
@@ -235,55 +235,55 @@ void ExecutorThreadWorker::set_device() {
   }
 }
 
-void ExecutorThreadWorker::update_epoch_num() {
-  _s_current_finished_file_cnt++;
+void ExecutorThreadWorker::UpdateEpochNum() {
+  s_current_finished_file_cnt_++;
 
-  if (_s_current_finished_file_cnt >= _s_thread_filelist.size()) {
-    _s_current_finished_file_cnt = 0;
-    _s_current_epoch++;
+  if (s_current_finished_file_cnt_ >= s_thread_filelist_.size()) {
+    s_current_finished_file_cnt_ = 0;
+    s_current_epoch_++;
   }
 }
 
-const char* ExecutorThreadWorker::pick_one_file() {
+const char* ExecutorThreadWorker::PickOneFile() {
   std::string file_to_be_preocessed;
-  std::lock_guard<std::mutex> lock(_s_locker_for_pick_file);
+  std::lock_guard<std::mutex> lock(s_locker_for_pick_file_);
 
-  if (_s_current_file_idx >= _s_thread_filelist.size()) {
-    std::random_shuffle(_s_thread_filelist.begin(),
-    _s_thread_filelist.end());
-    _s_current_file_idx = 0;
-    // _s_current_epoch++; //example: when one file, one thread, it's bug
-    LOG(ERROR) << "thread " << _thread_id
-               << ": finish traing for epoch " << _s_current_epoch + 1;
+  if (s_current_file_idx_ >= s_thread_filelist_.size()) {
+    std::random_shuffle(s_thread_filelist_.begin(),
+    s_thread_filelist_.end());
+    s_current_file_idx_ = 0;
+    // s_current_epoch_++; //example: when one file, one thread, it's bug
+    LOG(ERROR) << "thread " << thread_id_
+               << ": finish traing for epoch " << s_current_epoch_ + 1;
   }
-  file_to_be_preocessed = _s_thread_filelist[_s_current_file_idx];
+  file_to_be_preocessed = s_thread_filelist_[s_current_file_idx_];
 
-  _s_current_file_idx++;
+  s_current_file_idx_++;
   return file_to_be_preocessed.c_str();
 }
 
-void ExecutorThreadWorker::train() {
+void ExecutorThreadWorker::Train() {
   LOG(ERROR) << "begin to train";
-  set_device();
+  SetDevice();
 #ifdef LOCAL_PROF
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   // int total_batch = 0;
-  for (auto& op : _ops) {
+  for (auto& op : ops_) {
     op_name.push_back(op->Type());
   }
-  op_total_time.resize(_ops.size());
+  op_total_time.resize(ops_.size());
   for (int i = 0; i < op_total_time.size(); ++i) {
     op_total_time[i] = 0.0;
   }
 #endif
   std::string inspect_key = "inspect";
-  if (!_inspect_var_name.empty()) {
-    inspect_key = _inspect_var_name.substr(0,
-                                          _inspect_var_name.find_first_of('_'));
+  if (!inspect_var_name_.empty()) {
+    inspect_key = inspect_var_name_.substr(0,
+                                          inspect_var_name_.find_first_of('_'));
   }
 
-  for (unsigned i = 0; i < _max_epoch; ++i) {
+  for (unsigned i = 0; i < max_epoch_; ++i) {
     LOG(ERROR) << "epoch: " << i;
 #ifdef LOCAL_PROF
     Timer timeline;
@@ -292,14 +292,14 @@ void ExecutorThreadWorker::train() {
 #endif
     float total_inspect = 0;
     int batch_num = 1;
-    while (i == _s_current_epoch) {
-      const char* filename = pick_one_file();
-      _local_reader->set_file(filename);
+    while (i == s_current_epoch_) {
+      const char* filename = PickOneFile();
+      local_reader_->SetFile(filename);
       while (true) {
 #ifdef LOCAL_PROF
         timeline.start();
 #endif
-        bool flag = _local_reader->read_batch();
+        bool flag = local_reader_->ReadBatch();
         if (!flag) {
           break;
         }
@@ -312,11 +312,11 @@ void ExecutorThreadWorker::train() {
           break;
         }
 
-        for (unsigned int i = 0; i < _ops.size(); ++i) {
+        for (unsigned int i = 0; i < ops_.size(); ++i) {
 #ifdef LOCAL_PROF
           timeline.start();
 #endif
-          _ops[i]->Run(*_thread_scope, _place);
+          ops_[i]->Run(*thread_scope_, place_);
 #ifdef LOCAL_PROF
           timeline.pause();
           op_total_time[i] += timeline.elapsed_sec();
@@ -325,17 +325,17 @@ void ExecutorThreadWorker::train() {
         }
         batch_num++;
         float avg_inspect = 0.0;
-        if (!_inspect_var_name.empty()) {
-          avg_inspect = _thread_scope->FindVar(_inspect_var_name)
+        if (!inspect_var_name_.empty()) {
+          avg_inspect = thread_scope_->FindVar(inspect_var_name_)
                                      ->GetMutable<LoDTensor>()
                                      ->data<float>()[0];
         }
         total_inspect += avg_inspect;
-        _thread_scope->DropKids();
+        thread_scope_->DropKids();
       }
-      update_epoch_num();
+      UpdateEpochNum();
       LOG(ERROR) << "memory used after epoch " << i + 1
-                 << " called: " << memory::memory_usage(_place);
+                 << " called: " << memory::memory_usage(place_);
 
 #ifdef LOCAL_PROF
       for (int i = 0; i < op_total_time.size(); ++i) {
@@ -354,12 +354,12 @@ void ExecutorThreadWorker::train() {
     LOG(ERROR) << "mean " << inspect_key.c_str()
                << " of epoch " << i + 1 << ": " << total_inspect / batch_num;
 #endif
-    if (_thread_id == 0) {
+    if (thread_id_ == 0) {
       char modelfile[1024];
       snprintf(&modelfile[0],
               sizeof(modelfile),
               "%s_epoch%d.model",
-              _model_prefix.c_str(),
+              model_prefix_.c_str(),
               i);
       std::string model_filename = std::string(modelfile);
       // this save_inference_model can only save imdbtask, should make this
@@ -367,55 +367,55 @@ void ExecutorThreadWorker::train() {
       //
       // currently comment it
       LOG(ERROR) << "Going to save model " << modelfile;
-      save_model(_main_program,
-          _thread_scope,
-          _model_param_names,
+      save_model(main_program_,
+          thread_scope_,
+          model_param_names_,
           model_filename,
           true);
     }
   }
 }
 
-void ExecutorThreadWorker::set_thread_id(int tid) {
-  _thread_id = tid;
+void ExecutorThreadWorker::SetThreadId(int tid) {
+  thread_id_ = tid;
 }
 
-void ExecutorThreadWorker::set_place(const platform::Place& place) {
-  _place = place;
+void ExecutorThreadWorker::SetPlace(const platform::Place& place) {
+  place_ = place;
 }
 
-void ExecutorThreadWorker::set_main_program(
+void ExecutorThreadWorker::SetMainProgram(
     const ProgramDesc& main_program_desc) {
-  _main_program.reset(new ProgramDesc(main_program_desc));
+  main_program_.reset(new ProgramDesc(main_program_desc));
 }
 
-void ExecutorThreadWorker::set_root_scope(Scope* g_scope) {
-  _root_scope = g_scope;
+void ExecutorThreadWorker::SetRootScope(Scope* g_scope) {
+  root_scope_ = g_scope;
 }
 
-void ExecutorThreadWorker::set_max_training_epoch(int max_epoch) {
-  _max_epoch = max_epoch;
+void ExecutorThreadWorker::SetMaxTrainingEpoch(int max_epoch) {
+  max_epoch_ = max_epoch;
 }
 
-MultiExecutor::MultiExecutor(const platform::Place& place) : _place(place) {}
+MultiExecutor::MultiExecutor(const platform::Place& place) : place_(place) {}
 
-void MultiExecutor::init_root_scope(Scope* scope) {
-  _root_scope = scope;
+void MultiExecutor::InitRootScope(Scope* scope) {
+  root_scope_ = scope;
 }
 
-void MultiExecutor::set_max_training_epoch(int max_epoch) {
-  _max_epoch = max_epoch;
+void MultiExecutor::SetMaxTrainingEpoch(int max_epoch) {
+  max_epoch_ = max_epoch;
 }
 
-void MultiExecutor::set_datafeed_name(const char* feedname) {
-  _feed_name = std::string(feedname);
+void MultiExecutor::SetDataFeedName(const char* feedname) {
+  feed_name_ = std::string(feedname);
 }
 
-void MultiExecutor::set_model_prefix(const std::string& model_prefix) {
-  _model_prefix = model_prefix;
+void MultiExecutor::SetModelPrefix(const std::string& model_prefix) {
+  model_prefix_ = model_prefix;
 }
 
-void MultiExecutor::run_startup_program(const ProgramDesc& program,
+void MultiExecutor::RunStartupProgram(const ProgramDesc& program,
                                         Scope* scope) {
   auto& block = program.Block(0);
   for (auto& var : block.AllVars()) {
@@ -447,7 +447,7 @@ void MultiExecutor::run_startup_program(const ProgramDesc& program,
   //        param_dict.size(), ops.size());
 
   for (auto& op : ops) {
-    op->Run(*scope, _place);
+    op->Run(*scope, place_);
   }
   // LOGERR("total time for startup program: %fs", timeline.elapsed_sec());
   for (auto& op : ops) {
@@ -456,7 +456,7 @@ void MultiExecutor::run_startup_program(const ProgramDesc& program,
   // LOGERR("run startup program done.");
 }
 
-std::unique_ptr<ProgramDesc> MultiExecutor::load_desc_from_file(
+std::unique_ptr<ProgramDesc> MultiExecutor::LoadDescFromFile(
     const std::string& f) {
   std::string program_desc_str;
   read_binary_file(f, &program_desc_str);
@@ -464,102 +464,102 @@ std::unique_ptr<ProgramDesc> MultiExecutor::load_desc_from_file(
   return program;
 }
 
-void MultiExecutor::set_dense_comm_tensor(
+void MultiExecutor::SetDenseCommTensor(
     const std::vector<std::string>& dense_comm_tensor) {
-  _dense_comm_tensor.resize(dense_comm_tensor.size());
+  dense_comm_tensor_.resize(dense_comm_tensor.size());
   for (unsigned int i = 0; i < dense_comm_tensor.size(); ++i) {
-    _dense_comm_tensor[i] = dense_comm_tensor[i];
+    dense_comm_tensor_[i] = dense_comm_tensor[i];
   }
 }
 
-void MultiExecutor::set_sparse_comm_tensor(
+void MultiExecutor::SetSparseCommTensor(
     const std::vector<std::string>& sparse_comm_tensor) {
-  _sparse_comm_tensor.resize(sparse_comm_tensor.size());
+  sparse_comm_tensor_.resize(sparse_comm_tensor.size());
   for (unsigned int i = 0; i < sparse_comm_tensor.size(); ++i) {
-    _sparse_comm_tensor[i] = sparse_comm_tensor[i];
+    sparse_comm_tensor_[i] = sparse_comm_tensor[i];
   }
 }
 
-void MultiExecutor::set_sparse_comm_data(
+void MultiExecutor::SetSparseCommData(
     const std::map<std::string, int>& sparse_comm_data) {
-  _sparse_comm_data = sparse_comm_data;
-  LOG(INFO) << "Sparse comm data: " << _sparse_comm_data.size();
+  sparse_comm_data_ = sparse_comm_data;
+  LOG(INFO) << "Sparse comm data: " << sparse_comm_data_.size();
 }
 
-void MultiExecutor::set_filelist(const char* filelist) {
-  _filelist.clear();
+void MultiExecutor::SetFileList(const char* filelist) {
+  filelist_.clear();
   std::ifstream fin(filelist);
   std::string filename;
   while (fin >> filename) {
     LOG(ERROR) << "add " << filename.c_str() << " to filelist";
-    _filelist.push_back(filename);
+    filelist_.push_back(filename);
   }
   fin.close();
 }
 
-void MultiExecutor::set_filelist(std::vector<std::string> tfiles) {
-  _filelist.clear();
-  _filelist.insert(_filelist.end(), tfiles.begin(), tfiles.end());
+void MultiExecutor::SetFileList(std::vector<std::string> tfiles) {
+  filelist_.clear();
+  filelist_.insert(filelist_.end(), tfiles.begin(), tfiles.end());
   return;
 }
 
-void MultiExecutor::set_inspect_var_name(const std::string& inspect_var_name) {
-  _inspect_var_name = inspect_var_name;
+void MultiExecutor::SetInspectVarName(const std::string& inspect_var_name) {
+  inspect_var_name_ = inspect_var_name;
 }
 
-void MultiExecutor::set_param_names(const std::vector<std::string>& param_names) {
-  _model_param_names = param_names;
+void MultiExecutor::SetParamNames(const std::vector<std::string>& param_names) {
+  model_param_names_ = param_names;
 }
 
-void MultiExecutor::set_thread_num(const int thread_num) {
-  _thread_num = thread_num;
+void MultiExecutor::SetThreadNum(const int thread_num) {
+  thread_num_ = thread_num;
 }
 
-void MultiExecutor::prepare_threads(const ProgramDesc& host_program) {
-  _workers.resize(_thread_num);
-  for (unsigned i = 0; i < _thread_num; ++i) {
-    _workers[i].reset(new ExecutorThreadWorker);
-    _workers[i]->set_thread_id(i);
-    _workers[i]->create_thread_operators(host_program);
-    _workers[i]->set_root_scope(_root_scope);
-    _workers[i]->set_place(_place);
-    _workers[i]->set_max_training_epoch(_max_epoch);
-    _workers[i]->create_thread_scope(host_program);
-    _workers[i]->set_inspect_var_name(_inspect_var_name);
-    _workers[i]->set_model_param_names(_model_param_names);
-    _workers[i]->set_sparse_comm_data(_sparse_comm_data);
-    _workers[i]->set_main_program(host_program);
-    _workers[i]->set_model_prefix(_model_prefix);
+void MultiExecutor::PrepareThreads(const ProgramDesc& host_program) {
+  workers_.resize(thread_num_);
+  for (unsigned i = 0; i < thread_num_; ++i) {
+    workers_[i].reset(new ExecutorThreadWorker);
+    workers_[i]->SetThreadId(i);
+    workers_[i]->CreateThreadOperators(host_program);
+    workers_[i]->SetRootScope(root_scope_);
+    workers_[i]->SetPlace(place_);
+    workers_[i]->SetMaxTrainingEpoch(max_epoch_);
+    workers_[i]->CreateThreadScope(host_program);
+    workers_[i]->SetInspectVarName(inspect_var_name_);
+    workers_[i]->SetModelParamNames(model_param_names_);
+    workers_[i]->SetSparseCommData(sparse_comm_data_);
+    workers_[i]->SetMainProgram(host_program);
+    workers_[i]->SetModelPrefix(model_prefix_);
   }
 
-  for (unsigned i = 0; i < _filelist.size(); ++i) {
+  for (unsigned i = 0; i < filelist_.size(); ++i) {
     // suppose at least one trainer thread here, and
     // filelist is static so that we only add filelist once
-    _workers[0]->add_train_file(_filelist[i]);
+    workers_[0]->AddTrainFile(filelist_[i]);
   }
   // mpi_wrapper::ModelParam model_param(true);
-  // _workers[0]->register_parallel_training_param(model_param);
+  // workers_[0]->register_parallel_training_param(model_param);
 
-  for (unsigned i = 0; i < _thread_num; ++i) {
+  for (unsigned i = 0; i < thread_num_; ++i) {
     // new a datafeed here
-    std::shared_ptr<DataFeed> local_feed = create_datafeed(_feed_name.c_str());
-    local_feed->init(_data_feed_param);
-    local_feed->set_batch_size(_batch_size);
-    _workers[i]->set_datafeed(local_feed);
-    _workers[i]->binding_datafeed_memory();
-    _workers[i]->set_thread_id(i);
+    std::shared_ptr<DataFeed> local_feed = CreateDataFeed(feed_name_.c_str());
+    local_feed->Init(data_feed_param_);
+    local_feed->SetBatchSize(batch_size_);
+    workers_[i]->SetDataFeed(local_feed);
+    workers_[i]->BindingDataFeedMemory();
+    workers_[i]->SetThreadId(i);
   }
 }
 
-void MultiExecutor::run_multi_executor(const ProgramDesc& host_program) {
+void MultiExecutor::RunMultiExecutor(const ProgramDesc& host_program) {
   // thread binding here?
-  prepare_threads(host_program);
-  for (unsigned i = 0; i < _thread_num; ++i) {
-    _threads.push_back(std::thread(&ExecutorThreadWorker::train,
-                      _workers[i].get()));
+  PrepareThreads(host_program);
+  for (unsigned i = 0; i < thread_num_; ++i) {
+    threads_.push_back(std::thread(&ExecutorThreadWorker::Train,
+                      workers_[i].get()));
   }
 
-  for (auto& th : _threads) {
+  for (auto& th : threads_) {
     th.join();
   }
 }

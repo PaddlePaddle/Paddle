@@ -17,6 +17,6 @@ limitations under the License. */
 #include <memory>
 #include "paddle/fluid/framework/data_feed.h"
 
-std::shared_ptr<paddle::framework::DataFeed> create_datafeed(
+std::shared_ptr<paddle::framework::DataFeed> CreateDataFeed(
     const char* datafeed_class);
 #endif  // PADDLE_FLUID_FRAMEWORK_DATAFEED_CREATOR_H_

@@ -38,111 +38,114 @@ DEFINE_bool(is_text_feed, false, "is_text_feed");
 
 namespace paddle {
 namespace framework {
-void TextClassDataFeed::init(const datafeed::DataFeedParameter& feed_param) {
+void TextClassDataFeed::Init(const datafeed::DataFeedParameter& feed_param) {
   // hard coding for a specific datafeed
-  _feed_vec.resize(2);
-  // _feed_vec[0].reset(new LoDTensor);
-  // _feed_vec[1].reset(new LoDTensor);
-  _all_slot_ids = {0, 1};
-  _use_slot_ids = {0, 1};
-  _use_slot_alias = {"words", "label"};
-  _file_content_buffer_host.reset(new char[200*1024*1024],
+  feed_vec_.resize(2);
+  // feed_vec_[0].reset(new LoDTensor);
+  // feed_vec_[1].reset(new LoDTensor);
+  all_slot_ids_ = {0, 1};
+  use_slot_ids_ = {0, 1};
+  use_slot_alias_ = {"words", "label"};
+
+  file_content_buffer_host_.reset(new char[200*1024*1024],
                                   [](char *p) {delete[] p;});
-  _file_content_buffer = _file_content_buffer_host.get();
-  _file_content_buffer_ptr = _file_content_buffer;
-  _batch_id_host.reset(new int[10240*1024],
+  file_content_buffer_ = file_content_buffer_host_.get();
+  file_content_buffer_ptr_ = file_content_buffer_;
+
+  batch_id_host_.reset(new int[10240*1024],
                       [](int *p) {delete[] p;});  // max word num in a batch
-  _label_host.reset(new int[10240],
+  batch_id_buffer_ = batch_id_host_.get();
+
+  label_host_.reset(new int[10240],
                     [](int *p) {delete[] p;});    // max label in a batch
-  _batch_id_buffer = _batch_id_host.get();
-  _label_ptr = _label_host.get();
+  label_ptr_ = label_host_.get();
 }
 
   // todo: use elegant implemention for this function
-bool TextClassDataFeed::read_batch() {
+bool TextClassDataFeed::ReadBatch() {
   paddle::framework::Vector<size_t> offset;
   int tlen = 0;
   int llen = 0;
   int inst_idx = 0;
-  offset.resize(_batch_size + 1);
+  offset.resize(batch_size_ + 1);
   offset[0] = 0;
-  while (inst_idx < _batch_size) {
+  while (inst_idx < batch_size_) {
     int ptr_offset = 0;
-    if (_file_content_buffer_ptr - _file_content_buffer >= _file_size) {
+    if (file_content_buffer_ptr_ - file_content_buffer_ >= file_size_) {
       break;
     }
 
     memcpy(reinterpret_cast<char *>(&llen),
-          _file_content_buffer_ptr + ptr_offset,
+          file_content_buffer_ptr_ + ptr_offset,
           sizeof(int));
     ptr_offset += sizeof(int);
 
-    memcpy(reinterpret_cast<char *>(_batch_id_buffer + tlen),
-          _file_content_buffer_ptr + ptr_offset,
+    memcpy(reinterpret_cast<char *>(batch_id_buffer_ + tlen),
+          file_content_buffer_ptr_ + ptr_offset,
           llen * sizeof(int));
     tlen += llen;
 
     offset[inst_idx + 1] = offset[inst_idx] + llen;
     ptr_offset += sizeof(int) * llen;
 
-    memcpy(reinterpret_cast<char *>(_label_ptr + inst_idx),
-          _file_content_buffer_ptr + ptr_offset,
+    memcpy(reinterpret_cast<char *>(label_ptr_ + inst_idx),
+          file_content_buffer_ptr_ + ptr_offset,
           sizeof(int));
     ptr_offset += sizeof(int);
 
-    _file_content_buffer_ptr += ptr_offset;
+    file_content_buffer_ptr_ += ptr_offset;
     inst_idx++;
   }
 
-  if (inst_idx != _batch_size) {
+  if (inst_idx != batch_size_) {
     return false;
   }
 
   LoD input_lod{offset};
   paddle::framework::Vector<size_t> label_offset;
-  label_offset.resize(_batch_size + 1);
-  for (int i = 0; i <= _batch_size; ++i) {
+  label_offset.resize(batch_size_ + 1);
+  for (int i = 0; i <= batch_size_; ++i) {
     label_offset[i] = i;
   }
 
   LoD label_lod{label_offset};
-  int64_t* input_ptr = _feed_vec[0]->mutable_data<int64_t>(
+  int64_t* input_ptr = feed_vec_[0]->mutable_data<int64_t>(
       {static_cast<int64_t>(offset.back()), 1},
       platform::CPUPlace());
-  int64_t* label_ptr = _feed_vec[1]->mutable_data<int64_t>({_batch_size, 1},
+  int64_t* label_ptr = feed_vec_[1]->mutable_data<int64_t>({batch_size_, 1},
                                                           platform::CPUPlace());
   for (unsigned int i = 0; i < offset.back(); ++i) {
-    input_ptr[i] = static_cast<int64_t>(_batch_id_buffer[i]);
+    input_ptr[i] = static_cast<int64_t>(batch_id_buffer_[i]);
   }
-  for (int i = 0; i < _batch_size; ++i) {
-    label_ptr[i] = static_cast<int64_t>(_label_ptr[i]);
+  for (int i = 0; i < batch_size_; ++i) {
+    label_ptr[i] = static_cast<int64_t>(label_ptr_[i]);
   }
-  _feed_vec[0]->set_lod(input_lod);
-  _feed_vec[1]->set_lod(label_lod);
+  feed_vec_[0]->set_lod(input_lod);
+  feed_vec_[1]->set_lod(label_lod);
   return true;
 }
 
-void TextClassDataFeed::add_feed_var(Variable* feed, const std::string& name) {
-  for (unsigned int i = 0; i < _use_slot_alias.size(); ++i) {
-    if (name == _use_slot_alias[i]) {
-      _feed_vec[i] = feed->GetMutable<LoDTensor>();
+void TextClassDataFeed::AddFeedVar(Variable* feed, const std::string& name) {
+  for (unsigned int i = 0; i < use_slot_alias_.size(); ++i) {
+    if (name == use_slot_alias_[i]) {
+      feed_vec_[i] = feed->GetMutable<LoDTensor>();
     }
   }
 }
 
-bool TextClassDataFeed::set_file(const char* filename) {
+bool TextClassDataFeed::SetFile(const char* filename) {
   // termnum termid termid ... termid label
-  int filesize = read_whole_file(filename, _file_content_buffer);
+  int filesize = ReadWholeFile(filename, file_content_buffer_);
   // todo , remove magic number
   if (filesize < 0 || filesize >= 1024 * 1024 * 1024) {
     return false;
   }
-  _file_content_buffer_ptr = _file_content_buffer;
-  _file_size = filesize;
+  file_content_buffer_ptr_ = file_content_buffer_;
+  file_size_ = filesize;
   return true;
 }
 
-int TextClassDataFeed::read_whole_file(const std::string& filename,
+int TextClassDataFeed::ReadWholeFile(const std::string& filename,
                                        char* buffer) {
   std::ifstream ifs(filename.c_str(), std::ios::binary);
   if (ifs.fail()) {
