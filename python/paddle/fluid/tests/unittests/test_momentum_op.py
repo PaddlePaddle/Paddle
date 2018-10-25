@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 from op_test import OpTest
 
 
@@ -86,6 +88,98 @@ class TestMomentumOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestSparseMomentumOp(unittest.TestCase):
+    def setUp(self):
+        self.use_nesterov = False
+
+    def check_with_place(self, place):
+        self.init_kernel()
+        scope = core.Scope()
+        # create and initialize Grad Variable
+        height = 10
+        rows = [0, 4, 7]
+        row_numel = 12
+        mu = 1.0
+        use_nesterov = self.use_nesterov
+
+        # create and initialize Param Variable
+        param = scope.var('Param').get_tensor()
+        param_array = np.full((height, row_numel), 5.0).astype("float32")
+        param.set(param_array, place)
+        param_out = scope.var("ParamOut").get_tensor()
+        param_out_array = np.full((height, row_numel), 0.0).astype("float32")
+        param_out.set(param_out_array, place)
+
+        grad_selected_rows = scope.var('Grad').get_selected_rows()
+        grad_selected_rows.set_height(height)
+        grad_selected_rows.set_rows(rows)
+        grad_np_array = np.ones((len(rows), row_numel)).astype("float32")
+        grad_np_array[0, 0] = 2.0
+        grad_np_array[2, 8] = 4.0
+        grad_tensor = grad_selected_rows.get_tensor()
+        grad_tensor.set(grad_np_array, place)
+
+        velocity = scope.var('Velocity').get_tensor()
+        velocity_np_array = np.ones((height, row_numel)).astype("float32")
+        velocity.set(velocity_np_array, place)
+        velocity_out = scope.var('VelocityOut').get_tensor()
+        velocity_out_np_array = np.full((height, row_numel),
+                                        0.0).astype("float32")
+        velocity_out.set(velocity_out_np_array, place)
+
+        # create and initialize LeraningRate Variable
+        lr = scope.var('LearningRate').get_tensor()
+        lr_array = np.full((1), 2.0).astype("float32")
+        lr.set(lr_array, place)
+
+        # create and run operator
+        op = Operator(
+            "momentum",
+            Param='Param',
+            Grad='Grad',
+            Velocity='Velocity',
+            ParamOut='ParamOut',
+            VelocityOut='VelocityOut',
+            LearningRate='LearningRate',
+            mu=mu,
+            use_nesterov=use_nesterov)
+        op.run(scope, place)
+
+        # get and compare result
+        param_out_np_array = np.array(param_out)
+        velocity_out_np_array = np.array(velocity_out)
+
+        # TODO(dzh): add a more suitable general numpy interface
+        # for sparse update.
+        _grad_np_array = np.full((height, row_numel), 0.0).astype("float32")
+        for i in range(len(rows)):
+            _grad_np_array[rows[i]] = grad_np_array[i]
+        _velocity_out = mu * velocity_np_array + _grad_np_array
+        _param = param_array
+        if use_nesterov:
+            _param_out = _param - (_grad_np_array + _velocity_out * mu
+                                   ) * lr_array
+        else:
+            _param_out = _param - lr_array * _velocity_out
+        self.assertTrue((_velocity_out == velocity_out_np_array).all())
+        self.assertTrue((_param_out == param_out_np_array).all())
+
+    def init_kernel(self):
+        pass
+
+    def test_sparse_momentum(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_with_place(place)
+
+
+class TestSparseMomentumOp2(TestSparseMomentumOp):
+    def init_kernel(self):
+        self.use_nesterov = True
 
 
 if __name__ == "__main__":
