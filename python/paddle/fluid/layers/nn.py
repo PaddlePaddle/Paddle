@@ -4652,7 +4652,8 @@ def multiplex(inputs, index):
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=-100):
+                               ignore_index=-100,
+                               numeric_stable_mode=False):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4686,6 +4687,18 @@ def softmax_with_cross_entropy(logits,
         \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
+    3) If numeric_stable_mode is True, softmax is calculated first by:
+
+    .. math::
+        
+        max_j = \\max_{i=0}^{K}{\\text{logit}_i}
+
+        log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
+
+        softmax_j = \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
+
+    and then cross entropy loss is calculated by softmax and label.
+
     Args:
         logits (Variable): The unscaled log probabilities, which is a 2-D tensor
             with shape [N x K]. N is the batch_size, and K is the class number.
@@ -4697,6 +4710,13 @@ def softmax_with_cross_entropy(logits,
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
                             if soft_label is set to False. Default: -100
+        numeric_stable_mode (bool): A flag to indicate whether to use a more
+                                    numerically stable algorithm. Only valid
+                                    when soft_label is False and GPU is used.
+                                    When soft_label is True or CPU is used, 
+                                    the algorithm is always numerically stable. 
+                                    Note that the speed may be slower when use 
+                                    stable algorithm. Default: False
 
     Returns:
         Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
@@ -4719,8 +4739,11 @@ def softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label,
-               'ignore_index': ignore_index})
+        attrs={
+            'soft_label': soft_label,
+            'ignore_index': ignore_index,
+            'numeric_stable_mode': numeric_stable_mode
+        })
     return loss
 
 
