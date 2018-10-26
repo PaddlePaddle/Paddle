@@ -89,13 +89,16 @@ bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   // Make the nodes id start from 0.
   Node::ResetId();
-  InitFromProgram(program_);
-  ResolveHazard(var_nodes_);
+  auto var_nodes = InitFromProgram(program_);
+  ResolveHazard(var_nodes);
 }
 
-void Graph::InitFromProgram(const ProgramDesc &program) {
+std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
+    const ProgramDesc &program) {
   VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
+  // var nodes for each var name, will have multiple versions in SSA
+  std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *var : program.Block(0).AllVars()) {
     all_vars.emplace(var->Name(), var);
   }
@@ -106,17 +109,17 @@ void Graph::InitFromProgram(const ProgramDesc &program) {
     // Otherwise, create a new one.
     for (auto &each_var_name : op->InputArgumentNames()) {
       ir::Node *var = nullptr;
-      if (var_nodes_.find(each_var_name) != var_nodes_.end()) {
-        var = var_nodes_.at(each_var_name).back();
+      if (var_nodes.find(each_var_name) != var_nodes.end()) {
+        var = var_nodes.at(each_var_name).back();
       } else if (all_vars.count(each_var_name) != 0) {
         var = CreateVarNode(all_vars.at(each_var_name));
-        var_nodes_[each_var_name].push_back(var);
+        var_nodes[each_var_name].push_back(var);
       } else {
         // Operation input var can be optional (dispensable). Which means
         // the operation doesn't really need the var at runtime. In this
         // case, the no-existed var is ready at the beginning.
         var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
-        var_nodes_[each_var_name].push_back(var);
+        var_nodes[each_var_name].push_back(var);
       }
       node->inputs.push_back(var);
       var->outputs.push_back(node);
@@ -132,11 +135,12 @@ void Graph::InitFromProgram(const ProgramDesc &program) {
         // TODO(panyx0718): Add a test.
         var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
       }
-      var_nodes_[each_var_name].push_back(var);
+      var_nodes[each_var_name].push_back(var);
       node->outputs.push_back(var);
       var->inputs.push_back(node);
     }
   }
+  return std::move(var_nodes);
 }
 
 void Graph::ResolveHazard(
@@ -204,17 +208,6 @@ void Graph::ResolveHazard(
       }
     }
   }
-}
-
-std::vector<VarDesc *> Graph::AllVars() {
-  std::vector<VarDesc *> all_vars;
-  for (auto &node : Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && !node->Name().empty() &&
-        node->Var()) {
-      all_vars.push_back(node->Var());
-    }
-  }
-  return all_vars;
 }
 
 bool IsControlDepVar(const ir::Node &var) {

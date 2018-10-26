@@ -1441,6 +1441,10 @@ to transpile() call.")
                 return param_shape
         elif op_type == "sgd":
             pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
         return orig_shape
 
     def _get_varname_parts(self, varname):

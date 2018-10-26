@@ -86,17 +86,13 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     if (node->IsVar()) continue;
     int op_role = boost::get<int>(node->Op()->GetAttr(
         framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
-    if (op_role == static_cast<int>(framework::OpRole::kForward) ||
-        op_role == static_cast<int>(framework::OpRole::kBackward) ||
-        op_role == static_cast<int>(framework::OpRole::kLoss) ||
-        op_role == (static_cast<int>(framework::OpRole::kForward) |
-                    static_cast<int>(framework::OpRole::kLoss)) ||
-        op_role == (static_cast<int>(framework::OpRole::kBackward) |
-                    static_cast<int>(framework::OpRole::kLoss))) {
+    if ((op_role & framework::OpRole::kForward) ||
+        (op_role & framework::OpRole::kBackward) ||
+        (op_role & framework::OpRole::kLoss)) {
       forward_backward_ops.push_back(node);
-    } else if (op_role == static_cast<int>(framework::OpRole::kOptimize) ||
-               op_role == static_cast<int>(framework::OpRole::kDist) ||
-               op_role == static_cast<int>(framework::OpRole::kRPC)) {
+    } else if ((op_role & framework::OpRole::kOptimize) ||
+               (op_role & framework::OpRole::kDist) ||
+               (op_role & framework::OpRole::kRPC)) {
       optimize_ops.push_back(node);
       auto op_role_var = node->Op()->GetNullableAttr(
           OpProtoAndCheckerMaker::OpRoleVarAttrName());
@@ -104,8 +100,11 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
       for (size_t i = 0; i < op_role_vars.size(); i += 2) {
         grad_names.insert(op_role_vars[i + 1]);
       }
-    } else if (op_role == static_cast<int>(framework::OpRole::kLRSched)) {
+    } else if (op_role & framework::OpRole::kLRSched)) {
       lr_ops.push_back(node);
+    }
+    else {  // NOLINT
+      PADDLE_THROW("Invalid op_role: %d", static_cast<int>(op_role));
     }
   }
 

@@ -22,6 +22,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+// BatchMergePass is used to copy forward and backward ops for several
+// times to run several batches to simulate large batch size training
+// as if we have more than 1 GPUs.
+// User can define how many batches to run, gradients will be merged
+// through those repeats, and then do optimization using merged gradients.
+// This pass is extremely useful when doing large batch-size distributed
+// sync training, we can simulate even large batch size as if we have more
+// GPUs.
+
 class BatchMergePass : public Pass {
  public:
   virtual ~BatchMergePass() {}
