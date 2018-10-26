@@ -78,8 +78,6 @@ endif()
 inference_analysis_test(test_analyzer_resnet50 SRCS analyzer_resnet50_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS --infer_model=${RESNET50_INSTALL_DIR}/model)
 
-cc_test(ocr_debug SRCS ocr_debug.cc DEPS paddle_fluid)
-
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    # anakin rnn1
