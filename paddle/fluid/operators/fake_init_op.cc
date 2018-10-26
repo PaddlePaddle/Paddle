@@ -68,9 +68,10 @@ class FakeInitOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
     AddComment(R"DOC(
-FakeInitBatchSizeLike Operator.
+FakeInit Operator.
 
-Init an op but not alloc tensor for it, it is used for distributed lookup table.
+Init an variable but not alloc memory for it, it is used for init the
+table parameter at trainer side in distributed lookup table.
 
 )DOC");
   }
