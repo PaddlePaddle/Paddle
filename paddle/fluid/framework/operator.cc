@@ -62,7 +62,7 @@ static DDim GetDims(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (!tensor.IsInitialized()) {
+    if (UNLIKELY(!tensor.IsInitialized())) {
       return DDim({-1});
     }
     return tensor.dims();
@@ -91,13 +91,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (!tensor.IsInitialized()) {
+    if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
     return DataTypeToString(ToDataType(tensor.type()));
   } else if (var->IsType<SelectedRows>()) {
     auto tensor = var->Get<SelectedRows>().value();
-    if (!tensor.IsInitialized()) {
+    if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
       return DataTypeToString(ToDataType(tensor.type()));
@@ -130,7 +130,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (!tensor.IsInitialized()) {
+    if (UNLIKELY(!tensor.IsInitialized())) {
       return default_lod;
     }
     return tensor.lod();
@@ -149,11 +149,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
-  VLOG(3) << "start pool";
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::RecordEvent record_event(Type(), pool.Get(place));
-  VLOG(3) << "start RunImpl";
+
+  // The profile has a process-wide mutex, results in serious performance issue
+  // in concurrency scenerio. Here use an `if` to fix this issue.
+  // Please not remove the `if`, ask @Superjomn if there are any concern.
+
   RunImpl(scope, place);
+
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
@@ -206,7 +208,6 @@ const std::vector<std::string>& OperatorBase::Outputs(
 }
 
 std::string OperatorBase::DebugStringEx(const Scope* scope) const {
-  VLOG(3) << this->Type() << " scope ptr " << scope;
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
   for (auto it = inputs_.begin(); it != inputs_.end();) {
@@ -470,35 +471,35 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
-    if (!op_.HasInputs(name)) {
+    // has only one input
+    const auto& ins = op_.Inputs();
+    auto it = ins.find(name);
+    if (it == ins.end()) {
       return false;
     }
-    auto& ins = Inputs(name);
-    size_t length = ins.size();
-    if (length == 0) {
+    const auto& in = it->second;
+    if (in.size() == 0 || in[0] == kEmptyVarName) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
+    PADDLE_ENFORCE_EQ(in.size(), 1UL,
                       "Input %s should not have more than one inputs", name);
-    auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    return scope_.FindVar(in[0]) != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
-    if (!op_.HasOutputs(name)) {
+    // has only one output
+    const auto& outs = op_.Outputs();
+    auto it = outs.find(name);
+    if (it == outs.end()) {
       return false;
     }
-    auto& outs = Outputs(name);
-    size_t length = outs.size();
-    if (length == 0) {
+    const auto& out = it->second;
+    if (out.size() == 0 || out[0] == kEmptyVarName) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output %s should not have more than one inputs", name);
-    auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    PADDLE_ENFORCE_EQ(out.size(), 1UL,
+                      "Output %s should not have more than one outputs", name);
+    return scope_.FindVar(out[0]) != nullptr;
   }
 
   bool HasInputs(const std::string& name) const override {
@@ -545,13 +546,45 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const override {
+  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    const std::string& input_n = Inputs(in)[i];
+    const std::string& output_n = Outputs(out)[j];
+
+    Variable* in_var = scope_.FindVar(input_n);
+    Variable* out_var = scope_.FindVar(output_n);
+    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
+                   "The type of %s and %s is not the same.", output_n,
+                   GetDim(input_n));
+
+    if (in_var->IsType<framework::SelectedRows>()) {
+      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
+      out_sele_rows->set_rows(in_sele_rows.rows());
+      out_sele_rows->set_height(in_sele_rows.height());
+    } else if (in_var->IsType<framework::LoDTensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+      out_lod_tensor->Resize(in_lod_tensor.dims());
+    } else {
+      PADDLE_THROW(
+          "Currently, the input type of ShareDim only can be LoDTensor "
+          "or SelectedRows.");
+    }
+  }
+
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const override {
+    const std::vector<std::string>& inputs = Inputs(in);
+    const std::vector<std::string>& outputs = Outputs(out);
+    PADDLE_ENFORCE_LT(i, inputs.size());
+    PADDLE_ENFORCE_LT(j, outputs.size());
+    Variable* in_var = scope_.FindVar(inputs.at(i));
     if (!in_var->IsType<LoDTensor>()) return;
+    Variable* out_var = scope_.FindVar(outputs.at(j));
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
@@ -577,20 +610,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     if (in_tensor.layout() != DataLayout::kMKLDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
-  }
-
-  void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
-                   size_t j = 0) const {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
-    if (!in_var->IsType<LoDTensor>()) return;
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_layout(in_tensor.layout());
   }
 
   bool IsRuntime() const override { return true; }
@@ -663,16 +682,12 @@ static void CheckTensorNANOrInf(const std::string& name,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
-  VLOG(3) << "start Infershape";
   this->InferShape(&infer_shape_ctx);
-  VLOG(3) << "Infershape Pass";
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
-  VLOG(3) << "Start Kernels";
   auto& all_op_kernels = AllOpKernels();
-  VLOG(3) << "Kernel map finish";
   auto kernels_iter = all_op_kernels.find(type_);
   if (kernels_iter == all_op_kernels.end()) {
     PADDLE_THROW(
@@ -690,7 +705,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto expected_kernel_key =
       this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
-  VLOG(3) << "expected_kernel_key: " << expected_kernel_key;
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN

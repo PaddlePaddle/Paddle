@@ -112,11 +112,11 @@ bool NativePaddlePredictor::Init(
 
     auto &block = inference_program_->Block(0);
     for (auto *op_desc : block.AllOps()) {
-      if (op_desc->HasAttr("use_cudnn")) {
-        op_desc->SetAttr("use_cudnn", false);
-      }
+      // if (op_desc->HasAttr("use_cudnn")) {
+      //   op_desc->SetAttr("use_cudnn", false);
+      // }
       if (op_desc->HasAttr("workspace_size_MB")) {
-        op_desc->SetAttr("workspace_size_MB", 0);
+        op_desc->SetAttr("workspace_size_MB", 1024);
       }
     }
 

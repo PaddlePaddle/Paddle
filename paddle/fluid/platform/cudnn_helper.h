@@ -68,7 +68,14 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     }                                                                \
   } while (false)
 #else
-#define CUDNN_ENFORCE(condition)
+// windows
+#define CUDNN_ENFORCE(condition)                                    \
+  do {                                                              \
+    cudnnStatus_t status = condition;                               \
+    if (status != CUDNN_STATUS_SUCCESS) {                           \
+      std::cerr << ::paddle::platform::cudnnGetErrorString(status); \
+    }                                                               \
+  } while (false)
 #endif
 
 enum class DataLayout {  // Not use

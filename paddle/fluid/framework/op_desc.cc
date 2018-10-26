@@ -50,19 +50,41 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
 
+  void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    const std::string &input_n = Inputs(in)[i];
+    const std::string &output_n = Outputs(out)[j];
+
+    PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
+                   in, i);
+    PADDLE_ENFORCE(output_n != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
+
+    auto *in_var = block_.FindVarRecursive(input_n);
+    auto *out_var = block_.FindVarRecursive(output_n);
+
+    PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
+                   "The type of %s and %s is not the same.", input_n, output_n);
+
+    SetDim(output_n, GetDim(input_n));
+  }
+
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", in, i);
+    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
       VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The %d-th output of Output(%s) must be LoDTensor.", j,
-                      out);
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
@@ -441,7 +463,10 @@ static void InitInferShapeFuncs() {
 
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
-      auto &op_info = info_map.at(op_type);
+      auto it = info_map.find(op_type);
+      PADDLE_ENFORCE(it != info_map.end(), "%s has not been registered",
+                     op_type);
+      auto &op_info = it->second;
       auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
           "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
@@ -490,20 +515,14 @@ void OpDesc::InferShape(const BlockDesc &block) const {
 }
 
 void OpDesc::InferVarType(BlockDesc *block) const {
+  // There are a few places that var type can be set.
+  // When VarDesc is created, default set to LOD_TENSOR.
+  // When output variable is created, default is defaut set to LOD_TENSOR.
+  // We limit here to be the only place that operator defines its customized
+  // var type inference. Hence, we don't do any "default" setting here.
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     info.infer_var_type_(*this, block);
-  } else {
-    // all output type is LoDTensor by default
-    VLOG(10) << this->Type()
-             << " has not registered InferVarType. Set output variables to "
-                "LOD_TENSOR";
-    for (auto &out_pair : this->outputs_) {
-      for (auto &out_var_name : out_pair.second) {
-        block->FindRecursiveOrCreateVar(out_var_name)
-            .SetType(proto::VarType::LOD_TENSOR);
-      }
-    }
   }
 }
 
