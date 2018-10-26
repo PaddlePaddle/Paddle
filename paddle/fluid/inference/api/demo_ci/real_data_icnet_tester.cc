@@ -27,8 +27,8 @@ NativeConfig GetConfig() {
   NativeConfig config;
 
   // config.model_dir = FLAGS_dirname;
-  config.prog_file = "hs_lb_without_bn/__model__";
-  config.param_file = "hs_lb_without_bn/__params__";
+  config.prog_file = "hs_lb_without_bn_cudnn/__model__";
+  config.param_file = "hs_lb_without_bn_cudnn/__params__";
   // config.prog_file = "hs_lb_without_bn_cuda/__model__";
   // config.param_file = "hs_lb_without_bn_cuda/__params__";
   config.fraction_of_gpu_memory = 0.0;
@@ -106,7 +106,7 @@ void test_naive(int batch_size) {
     std::cout << "batch: " << batch_size
               << " predict cost: " << time_diff(time1, time2) / steps << "ms"
               << std::endl;
-    std::cout << outputs.size() << std::endl; 
+    std::cout << outputs.size() << std::endl;
     int64_t* data_o = static_cast<int64_t*>(outputs[0].data.data());
     int64_t sum_out = 0;
     for (size_t j = 0; j < outputs[0].data.length() / sizeof(int64_t); ++j) {

@@ -21,11 +21,11 @@
 #include <fstream>
 #include <iostream>
 #include <thread>  // NOLINT
+#include <utility>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 #define ASSERT_TRUE(x) x
 #define ASSERT_EQ(x, y) assert(x == y)
-
 
 // DEFINE_string(dirname, "./LB_icnet_model",
 //               "Directory of the inference model.");
@@ -34,7 +34,7 @@ NativeConfig GetConfig() {
   NativeConfig config;
   config.prog_file = "./hs_lb_without_bn_cuda/__model__";
   config.param_file = "./hs_lb_without_bn_cuda/__params__";
-  config.fraction_of_gpu_memory = 0.5;
+  config.fraction_of_gpu_memory = 0.0;
   config.use_gpu = true;
   config.device = 0;
   return config;
@@ -54,7 +54,7 @@ void test_naive(int batch_size, std::string model_path) {
   int height = 449;
   int width = 581;
   std::vector<float> data;
-  for(int i=0; i < 3 * height * width; ++i) {
+  for (int i = 0; i < 3 * height * width; ++i) {
     data.push_back(0.0);
   }
 
@@ -86,47 +86,61 @@ void test_naive(int batch_size, std::string model_path) {
   //   in_img.close();
   //   std::cout << "sum: " << sum_n << std::endl;
 
-    PaddleTensor tensor;
-    tensor.shape = std::vector<int>({batch_size, 3, height, width});
-    tensor.data.Resize(sizeof(float) * batch_size * 3 * height * width);
-    std::copy(data.begin(), data.end(),
-              static_cast<float*>(tensor.data.data()));
-    tensor.dtype = PaddleDType::FLOAT32;
-    std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({batch_size, 3, height, width});
+  tensor.data.Resize(sizeof(float) * batch_size * 3 * height * width);
+  std::copy(data.begin(), data.end(), static_cast<float*>(tensor.data.data()));
+  tensor.dtype = PaddleDType::FLOAT32;
+  std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
 
-    constexpr int num_jobs = 2;  // each job run 1 batch
-    std::vector<std::thread> threads;
+  constexpr int num_jobs = 5;  // each job run 1 batch
+  std::vector<std::thread> threads;
+  // using PtrPred = std::vector<std::unique_ptr<PaddlePredictor>>;
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  for (int tid = 0; tid < num_jobs; ++tid) {
+    auto& pred = CreatePaddlePredictor<NativeConfig>(config);
+    predictors.emplace_back(std::move(pred));
+  }
 
+  using namespace std::chrono_literals;
+  // std::this_thread::sleep_for(std::chrono::seconds(20));
+  std::cout << "before start predict";
 
-    for (int tid = 0; tid < num_jobs; ++tid) {
-      threads.emplace_back([&, tid]() {
+  int epoches = 100000;
+  for (int tid = 0; tid < num_jobs; ++tid) {
+    threads.emplace_back([&, tid]() {
+      // auto predictor = CreatePaddlePredictor<NativeConfig>(config);
+      auto& predictor = predictors[tid];
+      // auto& predictor = predictors[tid];
+      // auto predictor = preds[tid];
+      // std::this_thread::sleep_for(std::chrono::seconds(20));
       PaddleTensor tensor_out;
       std::vector<PaddleTensor> outputs(1, tensor_out);
-        auto predictor = CreatePaddlePredictor<NativeConfig>(config);
-        for (size_t i = 0; i < 1000; i++) {
-          ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
-          VLOG(0) << "tid : " << tid << " run: " << i << "finished";
-          //std::cout <<"tid : " << tid << " run: " << i << "finished" << std::endl;
-          ASSERT_EQ(outputs.size(), 1UL);
-          // int64_t* data_o = static_cast<int64_t*>(outputs[0].data.data());
-          // int64_t sum_out = 0;
-          // for (size_t j = 0; j < outputs[0].data.length() / sizeof(int64_t);
-          //      ++j) {
-          //   sum_out += data_o[j];
-          // }
-          // std::cout << "tid : " << tid << "pass : " << i << " " << sum_out
-          //           << std::endl;
-        }
-      });
-    }
-    for (int i = 0; i < num_jobs; ++i) {
-      threads[i].join();
-    }
+      for (size_t i = 0; i < epoches; i++) {
+        ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
+        VLOG(0) << "tid : " << tid << " run: " << i << "finished";
+        // std::cout <<"tid : " << tid << " run: " << i << "finished" <<
+        // std::endl;
+        ASSERT_EQ(outputs.size(), 1UL);
+        // int64_t* data_o = static_cast<int64_t*>(outputs[0].data.data());
+        // int64_t sum_out = 0;
+        // for (size_t j = 0; j < outputs[0].data.length() / sizeof(int64_t);
+        //      ++j) {
+        //   sum_out += data_o[j];
+        // }
+        // std::cout << "tid : " << tid << "pass : " << i << " " << sum_out
+        //           << std::endl;
+      }
+    });
   }
+  for (int i = 0; i < num_jobs; ++i) {
+    threads[i].join();
+  }
+}
 // }
-} // namespace paddle
+}  // namespace paddle
 
-  int main(int argc, char** argv) { 
-    paddle::test_naive(1 << 0, ""); 
-    return 0;
+int main(int argc, char** argv) {
+  paddle::test_naive(1 << 0, "");
+  return 0;
 }

@@ -299,16 +299,19 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   std::unique_ptr<ExecutorPrepareContext> ctx(
       new ExecutorPrepareContext(program, block_id));
   VLOG(3) << "after create prepare";
- // PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
+  // PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   VLOG(3) << "before create op_desc";
   auto& block = program.Block(block_id);
-  VLOG(3) << "create before" << ctx->ops_.size() << " " << block.AllOps().size();
+  VLOG(3) << "create before" << ctx->ops_.size() << " "
+          << block.AllOps().size();
   int counter = 0;
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
-      VLOG(3) << "create op " << "index " << ++counter << " type " << op_desc->Type();
+    VLOG(3) << "create op "
+            << "index " << ++counter << " type " << op_desc->Type();
   }
-  VLOG(3) << "create finished" << ctx->ops_.size() << " " << block.AllOps().size();
+  VLOG(3) << "create finished" << ctx->ops_.size() << " "
+          << block.AllOps().size();
   return ctx;
 }
 
@@ -320,22 +323,25 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   for (auto& bid : block_ids) {
     VLOG(3) << "block id" << bid;
     auto* ctx = new ExecutorPrepareContext(program, bid);
-    //PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
+    // PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
     auto& block = program.Block(bid);
     int counter = 0;
-    VLOG(3) << "create before" << ctx->ops_.size() << " " << block.AllOps().size();
+    VLOG(3) << "create before" << ctx->ops_.size() << " "
+            << block.AllOps().size();
     for (auto& op_desc : block.AllOps()) {
-
       ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
-      VLOG(3) << "create op " << "index " << ++counter << " type " << op_desc->Type();
+      VLOG(3) << "create op "
+              << "index " << ++counter << " type " << op_desc->Type();
     }
-    VLOG(3) << "create finished" << ctx->ops_.size() << " " << block.AllOps().size();
+    VLOG(3) << "create finished" << ctx->ops_.size() << " "
+            << block.AllOps().size();
     result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
   }
   return result;
 }
 
-// void CheckResult(const std::string op_type, ExecutorPrepareContext* ctx, Scope* local_scope) {
+// void CheckResult(const std::string op_type, ExecutorPrepareContext* ctx,
+// Scope* local_scope) {
 //     VLOG(3) << "before checking result";
 //   auto& dev_ctx = *platform::DeviceContextPool::Instance().Get(place_);
 //   std::vector<std::string> outputs;
@@ -343,7 +349,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 //   bool found = false;
 //   framework::OpDesc* myop = nullptr;
 //   for(auto& op : block.AllOps()) {
-//     if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() == "feed") return;
+//     if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() ==
+//     "feed") return;
 //     if (op->Type() == op_type) {
 //         found = true;
 //         myop = op;
@@ -370,7 +377,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 //       for(size_t i=0; i < check.numel(); ++i) {
 //           sum += check.data<float>()[i];
 //       }
-//       VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum " << sum;
+//       VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum "
+//       << sum;
 //   VLOG(3) << "after checking result";
 // }
 
@@ -389,11 +397,14 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   VLOG(3) << "Scope ptr " << local_scope;
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
-   // CheckResult(op->Type(), ctx, local_scope);
-    if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
-    }
+    // CheckResult(op->Type(), ctx, local_scope);
+    // if (FLAGS_benchmark) {
+    //   VLOG(2) << "Memory used after operator " + op->Type() + " running: "
+    //           << memory::memory_usage(place_);
+    // }
+    VLOG(2) << "Memory used after operator " + op->Type() + " running: "
+            << memory::memory_usage(place_);
+    // platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
@@ -403,13 +414,15 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   // auto& block = ctx->prog_.Block(0);
 
   // for(auto& op : block.AllOps()) {
-  //   if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() == "feed") continue;
+  //   if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() ==
+  //   "feed") continue;
   //   // for(auto& real_op : ctx->ops_) {
   //   //   if(real_op->Type() == op->Type()) {
-  //   //     VLOG(3) << real_op->Type() << " " <<place_ << " " << real_op->DebugStringEx(local_scope);
+  //   //     VLOG(3) << real_op->Type() << " " <<place_ << " " <<
+  //   real_op->DebugStringEx(local_scope);
   //   //   }
   //   // }
-     
+
   //    //VLOG(3) << "start op output" << op->Type();
   //     for(auto var_name: op->InputArgumentNames()) {
   //     auto* var = local_scope->Var(var_name);
@@ -418,19 +431,21 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   //     auto* tensor = var->GetMutable<framework::LoDTensor>();
   //     framework::Tensor check;
   //     VLOG(3) << "before tensor copy";
-   
+
   //     framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
-      
+
   //     VLOG(3) << "after tensor copy";
   //     float sum = .0;
   //     for(size_t i=0; i < check.numel(); ++i) {
-  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t)))
+  //       {
   //         sum += static_cast<float>(check.data<int64_t>()[i]);
   //       } else {
   //         sum += check.data<float>()[i];
   //       }
   //     }
-  //     VLOG(3) << "op " << op->Type() << " input var " << var_name << " sum " << sum;
+  //     VLOG(3) << "op " << op->Type() << " input var " << var_name << " sum "
+  //     << sum;
   //   }
 
   //   VLOG(3) << "op " << op->Type() << "input finished";
@@ -442,23 +457,28 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   //     framework::Tensor check;
   //     VLOG(3) << "before tensor copy";
   //     if(op->Type() == "batch_norm" && platform::is_gpu_place(place_)) {
-  //       VLOG(3) << "op " << op->Type() << " output var " << var_name << " " << tensor->numel();
+  //       VLOG(3) << "op " << op->Type() << " output var " << var_name << " "
+  //       << tensor->numel();
   //       tensor->mutable_data<float>(place_);
-  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
+  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx,
+  //        &check);
   //     } else {
-  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
+  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx,
+  //        &check);
   //     }
-      
+
   //     VLOG(3) << "after tensor copy";
   //     float sum = .0;
   //     for(size_t i=0; i < check.numel(); ++i) {
-  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t)))
+  //       {
   //         sum += static_cast<float>(check.data<int64_t>()[i]);
   //       } else {
   //         sum += check.data<float>()[i];
   //       }
   //     }
-  //     VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum " << sum;
+  //     VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum "
+  //     << sum;
   //   }
   // }
 

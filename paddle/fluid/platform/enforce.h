@@ -127,7 +127,7 @@ struct EOFException : public std::exception {
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #else
 // there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition == 0)
+#define UNLIKELY(condition) ((condition) == 0)
 #endif
 
 template <typename... Args>
@@ -309,7 +309,6 @@ inline void throw_on_error(T e) {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
-
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
   do {                                                       \
     if (UNLIKELY(nullptr == (__VAL))) {                      \
@@ -330,26 +329,26 @@ inline void throw_on_error(T e) {
     }                                                                   \
   } while (0)
 #else
-#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) ((__VAL0)==(__VAL1))
-#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) ((__VAL0)!=(__VAL1))
-#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) ((__VAL0)>(__VAL1))
-#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) ((__VAL0)>=(__VAL1))
-#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) ((__VAL0)<(__VAL1))
-#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) ((__VAL0)<=(__VAL1))
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) ((__VAL0) == (__VAL1))
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) ((__VAL0) != (__VAL1))
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) ((__VAL0) > (__VAL1))
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) ((__VAL0) >= (__VAL1))
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) ((__VAL0) < (__VAL1))
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) ((__VAL0) <= (__VAL1))
 
-#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
-  do {  \
-    if (!((__VAL0)__CMP(__VAL1))) { \
-      PADDLE_THROW("Windows disable the enforce. Enforce failed."); \
-    }  \
-  } while(0) 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL1, ...) \
-    do {  \
-    if (nullptr == (__VAL1)) { \
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...) \
+  do {                                                                 \
+    if (!((__VAL0)__CMP(__VAL1))) {                                    \
+      PADDLE_THROW("Windows disable the enforce. Enforce failed.");    \
+    }                                                                  \
+  } while (0)
+#define PADDLE_ENFORCE_NOT_NULL(__VAL1, ...)                       \
+  do {                                                             \
+    if (nullptr == (__VAL1)) {                                     \
       PADDLE_THROW("Windows disable the enforce. Enforce failed"); \
-    }  \
-  } while(0) 
-#endif // !_WIN32
+    }                                                              \
+  } while (0)
+#endif  // !_WIN32
 
 }  // namespace platform
 }  // namespace paddle
