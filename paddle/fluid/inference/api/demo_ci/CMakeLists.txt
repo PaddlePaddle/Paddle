@@ -77,7 +77,7 @@ add_executable(real_data_icnet_tester real_data_icnet_tester.cc)
 
 # add_library(${DEMO_NAME} SHARED  ${DEMO_NAME}.cc)
 # add_executable(test test.cc)
-# add_executable(thread_icnet_test thread_icnet_test.cc)
+add_executable(thread_icnet_test thread_icnet_test.cc)
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
@@ -130,6 +130,5 @@ target_link_libraries(real_data_icnet_tester ${DEPS})
 
 # target_link_libraries(${DEMO_NAME} ${DEPS})
 # target_link_libraries(test ${DEMO_NAME} )
-# target_link_libraries(thread_icnet_test ${DEPS})
+target_link_libraries(thread_icnet_test ${DEPS})
 # target_compile_definitions(${DEMO_NAME} PRIVATE "API_DEFINITION")
-

@@ -397,72 +397,72 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
-  VLOG(3) << "start checking";
-    auto& dev_ctx = *platform::DeviceContextPool::Instance().Get(place_);
-  std::vector<std::string> outputs;
-  auto& block = ctx->prog_.Block(0);
+  // VLOG(3) << "start checking";
+  //   auto& dev_ctx = *platform::DeviceContextPool::Instance().Get(place_);
+  // std::vector<std::string> outputs;
+  // auto& block = ctx->prog_.Block(0);
 
-  for(auto& op : block.AllOps()) {
-    if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() == "feed") continue;
-    // for(auto& real_op : ctx->ops_) {
-    //   if(real_op->Type() == op->Type()) {
-    //     VLOG(3) << real_op->Type() << " " <<place_ << " " << real_op->DebugStringEx(local_scope);
-    //   }
-    // }
+  // for(auto& op : block.AllOps()) {
+  //   if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() == "feed") continue;
+  //   // for(auto& real_op : ctx->ops_) {
+  //   //   if(real_op->Type() == op->Type()) {
+  //   //     VLOG(3) << real_op->Type() << " " <<place_ << " " << real_op->DebugStringEx(local_scope);
+  //   //   }
+  //   // }
      
-     //VLOG(3) << "start op output" << op->Type();
-      for(auto var_name: op->InputArgumentNames()) {
-      auto* var = local_scope->Var(var_name);
-      auto* var_desc = block.FindVar(var_name);
-      if (var_desc->Persistable()) continue;
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
-      framework::Tensor check;
-      VLOG(3) << "before tensor copy";
+  //    //VLOG(3) << "start op output" << op->Type();
+  //     for(auto var_name: op->InputArgumentNames()) {
+  //     auto* var = local_scope->Var(var_name);
+  //     auto* var_desc = block.FindVar(var_name);
+  //     if (var_desc->Persistable()) continue;
+  //     auto* tensor = var->GetMutable<framework::LoDTensor>();
+  //     framework::Tensor check;
+  //     VLOG(3) << "before tensor copy";
    
-      framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
+  //     framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
       
-      VLOG(3) << "after tensor copy";
-      float sum = .0;
-      for(size_t i=0; i < check.numel(); ++i) {
-        if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
-          sum += static_cast<float>(check.data<int64_t>()[i]);
-        } else {
-          sum += check.data<float>()[i];
-        }
-      }
-      VLOG(3) << "op " << op->Type() << " input var " << var_name << " sum " << sum;
-    }
+  //     VLOG(3) << "after tensor copy";
+  //     float sum = .0;
+  //     for(size_t i=0; i < check.numel(); ++i) {
+  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+  //         sum += static_cast<float>(check.data<int64_t>()[i]);
+  //       } else {
+  //         sum += check.data<float>()[i];
+  //       }
+  //     }
+  //     VLOG(3) << "op " << op->Type() << " input var " << var_name << " sum " << sum;
+  //   }
 
-    VLOG(3) << "op " << op->Type() << "input finished";
-    for(auto var_name: op->OutputArgumentNames()) {
-      auto* var = local_scope->Var(var_name);
-      auto* var_desc = block.FindVar(var_name);
-      if (var_desc->Persistable()) continue;
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
-      framework::Tensor check;
-      VLOG(3) << "before tensor copy";
-      if(op->Type() == "batch_norm" && platform::is_gpu_place(place_)) {
-        VLOG(3) << "op " << op->Type() << " output var " << var_name << " " << tensor->numel();
-        tensor->mutable_data<float>(place_);
-         framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
-      } else {
-         framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
-      }
+  //   VLOG(3) << "op " << op->Type() << "input finished";
+  //   for(auto var_name: op->OutputArgumentNames()) {
+  //     auto* var = local_scope->Var(var_name);
+  //     auto* var_desc = block.FindVar(var_name);
+  //     if (var_desc->Persistable()) continue;
+  //     auto* tensor = var->GetMutable<framework::LoDTensor>();
+  //     framework::Tensor check;
+  //     VLOG(3) << "before tensor copy";
+  //     if(op->Type() == "batch_norm" && platform::is_gpu_place(place_)) {
+  //       VLOG(3) << "op " << op->Type() << " output var " << var_name << " " << tensor->numel();
+  //       tensor->mutable_data<float>(place_);
+  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
+  //     } else {
+  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
+  //     }
       
-      VLOG(3) << "after tensor copy";
-      float sum = .0;
-      for(size_t i=0; i < check.numel(); ++i) {
-        if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
-          sum += static_cast<float>(check.data<int64_t>()[i]);
-        } else {
-          sum += check.data<float>()[i];
-        }
-      }
-      VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum " << sum;
-    }
-  }
+  //     VLOG(3) << "after tensor copy";
+  //     float sum = .0;
+  //     for(size_t i=0; i < check.numel(); ++i) {
+  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t))) {
+  //         sum += static_cast<float>(check.data<int64_t>()[i]);
+  //       } else {
+  //         sum += check.data<float>()[i];
+  //       }
+  //     }
+  //     VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum " << sum;
+  //   }
+  // }
 
-  VLOG(3) << "after checking result";
+  // VLOG(3) << "after checking result";
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);

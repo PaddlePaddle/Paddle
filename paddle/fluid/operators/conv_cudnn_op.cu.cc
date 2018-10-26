@@ -163,7 +163,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     VLOG(3) << "after get workspace";
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    workspace_size_in_bytes = 1024;
+    // workspace_size_in_bytes = 1024;
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     VLOG(3) << "allocate memory";
     // ------------------- cudnn conv forward ---------------------
@@ -324,7 +324,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // Already on GPU
     void* cudnn_workspace = nullptr;
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    workspace_size_in_bytes = 1024;
+    //workspace_size_in_bytes = 1024;
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
