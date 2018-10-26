@@ -39,7 +39,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare", nullptr));
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
-  BlockingQueue<VarHandleBase *> ready_vars;
+  //  BlockingQueue<VarHandleBase *> ready_vars;
+  bool time_out;
+  ready_vars_.PopAll(1, &time_out);
   std::unordered_set<OpHandleBase *> ready_ops;
   // For ops (e.g. nccl_all_reduce) that need to coordinate multiple
   // streams from multiple GPUs, it's faster to buffer them and schedule
@@ -51,12 +53,12 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        InsertPendingVar(&pending_vars, &ready_vars, version_pair.get());
+        InsertPendingVar(&pending_vars, &ready_vars_, version_pair.get());
       }
     }
   }
   for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
-    InsertPendingVar(&pending_vars, &ready_vars, var.get());
+    InsertPendingVar(&pending_vars, &ready_vars_, var.get());
   }
 
   for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
@@ -73,12 +75,12 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   FeedFetchList fetch_data(fetch_tensors.size());
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
-                 &pending_vars, &ready_vars, &fetch_data);
+                 &pending_vars, &ready_vars_, &fetch_data);
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
       running_ops_++;
-      RunOp(&ready_vars, op);
+      RunOp(&ready_vars_, op);
     }
     set.clear();
   };
@@ -103,7 +105,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     // 2. Find ready variable
     bool timeout;
-    auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
+    auto cur_ready_vars = ready_vars_.PopAll(1, &timeout);
 
     if (timeout) {
       if (exception_holder_.IsCaught()) {

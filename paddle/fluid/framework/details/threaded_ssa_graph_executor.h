@@ -62,6 +62,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   platform::DeviceContextPool fetch_ctxs_;
   ExceptionHolder exception_holder_;
   std::atomic<int> running_ops_;
+  // FIXME(zcd): temporally fix parallel_exe
+  BlockingQueue<VarHandleBase *> ready_vars_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
