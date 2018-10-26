@@ -72,8 +72,7 @@ struct NaiveAllocator {
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-  void* p = nullptr;
-  p = GetCPUBuddyAllocator()->Alloc(size);
+  void* p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
