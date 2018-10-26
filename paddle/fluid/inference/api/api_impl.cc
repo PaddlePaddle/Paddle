@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <fstream>
 #include <map>
 #include <set>
 #include <sstream>
@@ -88,6 +89,7 @@ bool NativePaddlePredictor::Init(
     VLOG(3) << config_.model_dir;
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
+
     VLOG(3) << "load model finish";
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
@@ -100,6 +102,31 @@ bool NativePaddlePredictor::Init(
     VLOG(3) << "scope_";
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
+    // VLOG(3) << "modify the program!";
+    // {
+    //   std::ofstream ofs("program.txt", std::ios::out);
+    //   std::string s = inference_program_->Proto()->SerializeAsString();
+    //   ofs.write(s.data(), s.size());
+    //   ofs.close();
+    // }
+
+    auto &block = inference_program_->Block(0);
+    for (auto *op_desc : block.AllOps()) {
+      if (op_desc->HasAttr("use_cudnn")) {
+        op_desc->SetAttr("use_cudnn", false);
+      }
+      if (op_desc->HasAttr("workspace_size_MB")) {
+        op_desc->SetAttr("workspace_size_MB", 0);
+      }
+    }
+
+    // {
+    //   std::ofstream ofs("after_program.txt", std::ios::out);
+    //   std::string s = inference_program_->Proto()->SerializeAsString();
+    //   ofs.write(s.data(), s.size());
+    //   ofs.close();
+    // }
+
     VLOG(3) << "load program finish";
   } else {
     LOG(ERROR) << "fail to load inference model.";
@@ -306,9 +333,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (config.use_gpu) {
     // 1. GPU memeroy
     VLOG(3) << "before check";
-   // PADDLE_ENFORCE_GT(
+    // PADDLE_ENFORCE_GT(
     //    config.fraction_of_gpu_memory, 0.f,
-    //    "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+    //    "fraction_of_gpu_memory in the config should be set to range (0.,
+    //    1.]");
     VLOG(3) << "failed on first";
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     VLOG(3) << "after flags";
