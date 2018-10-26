@@ -980,7 +980,12 @@ def cos_sim(X, Y):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
+def dropout(x,
+            dropout_prob,
+            is_test=False,
+            seed=None,
+            name=None,
+            dropout_implementation="downgrade_in_infer"):
     """
     Computes dropout.
 
@@ -1000,6 +1005,21 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
                     units will be dropped. DO NOT use a fixed seed in training.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
+        dropout_implementation(string): ['downgrade_in_infer'(defauld)|'upscale_in_train']
+                                        1. downgrade_in_infer(default), downgrade the outcome at inference
+                                           train: out = input * mask
+                                           inference: out = input * dropout_prob
+                                           (make is a tensor same shape with input, value is 0 or 1
+                                            ratio of 0 is dropout_prob)
+                                        2. upscale_in_train, upscale the outcome at training time
+                                           train: out = input * mask / ( 1.0 - dropout_prob )
+                                           inference: out = input
+                                           (make is a tensor same shape with input, value is 0 or 1
+                                            ratio of 0 is dropout_prob)
+                                           dropout op can be removed from the program. 
+                                           the program will be efficient
+                                        
+
 
     Returns:
         Variable: A tensor variable is the shape with `x`.
@@ -1029,7 +1049,8 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
         })
     return out
 
