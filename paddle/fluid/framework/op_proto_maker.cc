@@ -71,6 +71,8 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
            static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kLoss) |
                static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize) |
+               static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kNotSpecified)})
       .SetDefault(static_cast<int>(OpRole::kNotSpecified));
   AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
