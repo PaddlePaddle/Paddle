@@ -2067,6 +2067,7 @@ def pool2d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
+           exclusive=True,
            name=None):
     """
     ${comment}
@@ -2081,9 +2082,11 @@ def pool2d(input,
         pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
-        global_pooling: ${global_pooling_comment}
-        use_cudnn: ${use_cudnn_comment}
-        ceil_mode: ${ceil_mode_comment}
+        global_pooling (bool): ${global_pooling_comment}
+        use_cudnn (bool): ${use_cudnn_comment}
+        ceil_mode (bool): ${ceil_mode_comment}
+        exclusive (bool): Whether to exclude padding points in average pooling 
+                          mode, default is true
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2143,7 +2146,8 @@ def pool2d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": False
+            "use_mkldnn": False,
+            "exclusive": exclusive,
         })
 
     return pool_out
@@ -2157,6 +2161,7 @@ def pool3d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
+           exclusive=True,
            name=None):
     """
     This function adds the operator for pooling in 3-dimensions, using the
@@ -2171,6 +2176,8 @@ def pool3d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
+        exclusive (bool): Whether to exclude padding points in average pooling 
+                          mode, default is true
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -2211,7 +2218,8 @@ def pool3d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": False
+            "use_mkldnn": False,
+            "exclusive": exclusive,
         })
 
     return pool_out

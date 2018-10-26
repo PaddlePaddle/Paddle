@@ -181,6 +181,12 @@ void Pool2dOpMaker::Make() {
       "If global_pooling = true, paddings and ksize will be ignored.")
       .SetDefault({0, 0});
   AddAttr<bool>(
+      "exclusive",
+      "(bool, default True) When true, will exclude the zero-padding in the "
+      "averaging calculating, otherwise, include the zero-padding. Note, it "
+      "is only used when pooling_type is avg. The defalut is True.")
+      .SetDefault(true);
+  AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
@@ -283,6 +289,12 @@ void Pool3dOpMaker::Make() {
       "If global_pooling = true, ksize and paddings will be ignored.")
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
+  AddAttr<bool>(
+      "exclusive",
+      "(bool, default True) When true, will exclude the zero-padding in the "
+      "averaging calculating, otherwise, include the zero-padding. Note, it "
+      "is only used when pooling_type is avg. The defalut is True.")
+      .SetDefault(true);
 
   AddAttr<bool>(
       "use_cudnn",
