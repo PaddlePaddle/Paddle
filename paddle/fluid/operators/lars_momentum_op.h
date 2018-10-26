@@ -30,7 +30,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     auto learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
     auto* grad_var = ctx.InputVar("Grad");
     // only support dense for now.
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>());
+    PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>());
     auto grad = ctx.Input<framework::LoDTensor>("Grad");
 
     param_out->mutable_data<T>(ctx.GetPlace());

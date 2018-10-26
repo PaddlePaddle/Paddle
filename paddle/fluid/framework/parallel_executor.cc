@@ -150,13 +150,13 @@ ParallelExecutor::ParallelExecutor(
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
-  for (auto &node : Nodes()) {
+  for (auto &node : graph->Nodes()) {
     if (node->IsVar() && !node->IsCtrlVar() && !node->Name().empty() &&
         node->Var()) {
       var_infos.emplace_back();
-      var_infos.back().name_ = var->Name();
-      var_infos.back().type_ = var->GetType();
-      var_infos.back().persistable_ = var->Persistable();
+      var_infos.back().name_ = node->Var()->Name();
+      var_infos.back().type_ = node->Var()->GetType();
+      var_infos.back().persistable_ = node->Var()->Persistable();
     }
   }
 

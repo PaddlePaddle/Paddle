@@ -38,7 +38,6 @@ class TestDistMnist2x2(TestDistBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1",
-            "http_proxy": ""
         }
 
         required_envs.update(need_envs)
