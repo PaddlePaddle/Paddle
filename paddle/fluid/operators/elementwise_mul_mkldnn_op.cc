@@ -85,8 +85,6 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
 
         mul_func_t mul_func = (mul_func_t)mul.getCode();
 
-        auto ptr_x = x_data;
-
         for (int ni = 0; ni < n; ni++) {
           for (int ci = 0; ci < C; ci++) {
             for (int hi = 0; hi < h; hi++) {

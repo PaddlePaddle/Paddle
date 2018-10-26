@@ -43,19 +43,13 @@ class TestElementwiseAddOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
