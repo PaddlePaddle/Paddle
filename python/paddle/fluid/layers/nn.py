@@ -7584,17 +7584,59 @@ def hash(input, hash_size, num_hash=1, name=None):
 
 
 @templatedoc()
-def grid_sampler(x, grid):
+def grid_sampler(x, grid, name=None):
     """
-    It sample data from input x by the given grid, insert data of each
-    point by bilinear interp.
+    It sample input X by grid gennerate by AffineGridOp. The grid of shape
+    [N, H, W, 2] is the concatenation of (x, y) coordinates with shape 
+    [N, H, W] each, with x indexing the 4th-D(W) of input feature map and y to 
+    indexng the 3rd-D(H), finally results is the bilinear interpolation value
+    of 4 nearest corner points.
+
+    Step 1:
+    Get (x, y) grid coordinates and scale to [0, H-1/W-1].
+
+    grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+    grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+
+    Step 2:
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear 
+    interpolate point value by 4 nearest points.
+
+      wn ------- y_n ------- en
+      |           |           |
+      |          d_n          |
+      |           |           |
+     x_w --d_w-- grid--d_e-- x_e
+      |           |           |
+      |          d_s          |
+      |           |           |
+      ws ------- y_s ------- wn
+
+    x_w = floor(x)              // west side x coord
+    x_e = x_w + 1               // east side x coord
+    y_n = floor(y)              // north side y coord
+    y_s = y_s + 1               // south side y coord
+
+    d_w = grid_x - x_w          // distance to west side
+    d_e = x_e - grid_x          // distance to east side
+    d_n = grid_y - y_n          // distance to north side
+    d_s = y_s - grid_y          // distance to south side
+
+    wn = X[:, :, y_n, x_w]      // north-west point value
+    en = X[:, :, y_n, x_e]      // north-east point value
+    ws = X[:, :, y_s, x_w]      // south-east point value
+    es = X[:, :, y_s, x_w]      // north-east point value
+
+    output = wn * d_e * d_s + en * d_w * d_s
+           + ws * d_e * d_n + es * d_w * d_n
 
     Args:
-        x(Variable): Input data of shape [N, H, W, C]
-        grid(Variable): Input grid tensor of shape [N, H, W, 2]
+        x(Variable): Input data of shape [N, C, H, W].
+        grid(Variable): Input grid tensor of shape [N, H, W, 2].
+        name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): Output data indices by grid from x of shape [N, H, W, C]
+        out(Variable): Output data indices by grid from x of shape [N, C, H, W].
     """
     helper = LayerHelper("grid_sampler", **locals())
 
@@ -7606,13 +7648,11 @@ def grid_sampler(x, grid):
 
     out = helper.create_tmp_variable(x.dtype)
     ipts = {'X': x, 'Grid': grid}
-    attrs = {}
 
     helper.apppend_op(
             type='grid_sampler',
             inputs=ipts,
-            outputs={'Output', out},
-            attrs = None if len(attrs) == 0 else attrs)
+            outputs={'Output', out})
 
-    return 0
+    return out
 
