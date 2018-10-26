@@ -57,15 +57,14 @@ static void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   }
 }
 
-void NaiveExecutor::Prepare(Scope *parent_scope,
-                            const ProgramDesc &program_desc, int block_id,
-                            bool with_feed_fetch_ops) {
-  if (!parent_scope) {
+void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
+                            int block_id, bool with_feed_fetch_ops) {
+  if (!scope) {
     scope_ = new framework::Scope;
   } else {
-    scope_ = &parent_scope->NewScope();
+    scope_ = scope;
   }
-  CreateVariables(program_desc, scope_, block_id);
+
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
@@ -76,40 +75,33 @@ void NaiveExecutor::Run() {
   }
 }
 
-void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
-                                    int block_id) {
-  PADDLE_ENFORCE(scope);
+void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
+                                    bool persistable, Scope *scope) {
   auto &global_block = desc.Block(block_id);
 
-  const Scope *ancestor_scope = scope;
-  while (ancestor_scope->parent()) {
-    ancestor_scope = ancestor_scope->parent();
+  PADDLE_ENFORCE(scope);
+  const auto *anc = scope;
+  while (anc->parent()) {
+    anc = anc->parent();
   }
 
-  if (ancestor_scope != scope) {
-    for (auto &var : global_block.AllVars()) {
-      if (var->Name() == framework::kEmptyVarName) {
-        continue;
-      }
-      // Create persistable vars in ancestor scope.
-      if (var->Persistable()) {
-        auto *ptr = const_cast<Scope *>(ancestor_scope)->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
-      } else {  // Create temporary variables in local scope.
-        auto *ptr = scope->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
-      }
+  for (auto &var : global_block.AllVars()) {
+    if (var->Name() == framework::kEmptyVarName) {
+      continue;
     }
-  } else {
-    for (auto &var : global_block.AllVars()) {
-      auto *ptr = scope->Var(var->Name());
+
+    if (persistable) {
+      if (!anc->FindVar(var->Name())) {
+        auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+        LOG(INFO) << scope << " Create Variable " << var->Name()
+                  << ", which pointer is " << ptr;
+      }
+    } else {
+      auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      LOG(INFO) << scope << " Create Variable " << var->Name()
+                << ", which pointer is " << ptr;
     }
   }
 }
@@ -158,8 +150,8 @@ void NaiveExecutor::EnableMKLDNN(const ProgramDesc &program) {
     }
   }
 #else
-  LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+  LOG(WARNING) << "'MKLDNN' is not supported, Please re-compile with "
+                  "WITH_MKLDNN option";
 #endif
 }
 

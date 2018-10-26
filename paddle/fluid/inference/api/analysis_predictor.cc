@@ -60,12 +60,18 @@ bool AnalysisPredictor::Init(
   } else {
     place_ = paddle::platform::CPUPlace();
   }
+
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
+    PADDLE_ENFORCE_EQ(scope_.get(), sub_scope_->parent());
+    LOG(INFO) << "parent scope create new scope " << sub_scope_;
   } else {
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
+    sub_scope_ = &(scope_->NewScope());
+    PADDLE_ENFORCE_EQ(scope_.get(), sub_scope_->parent());
+    LOG(INFO) << "self create scopes " << scope_.get() << " " << sub_scope_;
   }
 
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
@@ -74,11 +80,28 @@ bool AnalysisPredictor::Init(
     if (!LoadProgramDesc()) return false;
     OptimizeInferenceProgram();
   } else {
+    // If the program is passed from external, no need to optimize it, this
+    // logic is used in the clone scenario.
     inference_program_ = program;
   }
 
-  executor_->Prepare(scope_.get(), *inference_program_, 0,
+  executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops);
+  if (parent_scope) {
+    PADDLE_ENFORCE_EQ(parent_scope.get(), scope_.get());
+    LOG(INFO) << "create local vars";
+    // If the parent_scope is passed, we assert that the persistable variables
+    // are already created, so just create the no persistable variables.
+    executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
+  } else {
+    LOG(INFO) << "create parameters and local vars";
+    // Create all the variables no matter persistable or not.
+    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+    LOG(INFO) << "created parameters";
+    //PADDLE_ENFORCE_EQ(sub_scope_->parent(), scope_.get(), "%p != %p", sub_scope_->parent(), scope_.get());
+    //executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
+    LOG(INFO) << "created local variables";
+  }
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();

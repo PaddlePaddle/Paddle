@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <thread>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
@@ -59,6 +60,53 @@ TEST(AnalysisPredictor, ZeroCopy) {
   auto* out_data = out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
   LOG(INFO) << "output_data: " << out_data;
+}
+
+TEST(AnalysisPredictor, Clone) {
+  AnalysisConfig config;
+  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.use_feed_fetch_ops = true;
+
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  predictors.emplace_back(CreatePaddlePredictor(config));
+  const int num_threads = 3;
+  for (int i = 1; i < num_threads; i++)
+    predictors.emplace_back(predictors.front()->Clone());
+
+  // 2. Dummy Input Data
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> outputs;
+  predictors[0]->Run(inputs, &outputs);
+
+  LOG(INFO) << "Run with single thread";
+  for (int i = 0; i < num_threads; i++) {
+    LOG(INFO) << "run predictor " << i;
+    ASSERT_TRUE(predictors[i]->Run(inputs, &outputs));
+  }
+
+  /*
+  LOG(INFO) << "Run with multiple threads";
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back([&predictors, &inputs, i] {
+      LOG(INFO) << "thread #" << i << " running";
+      std::vector<PaddleTensor> outputs;
+      for (int j = 0; j < 10; j++) {
+        ASSERT_TRUE(predictors[i]->Run(inputs, &outputs));
+      }
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+   */
 }
 
 }  // namespace inference
