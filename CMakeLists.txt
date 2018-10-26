@@ -179,7 +179,6 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
-include(external/xxhash)    # download xxhash
 
 if (NOT WIN32)
 # there is no official support of snappystream, warpctc, nccl, cupti in windows
