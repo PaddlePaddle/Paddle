@@ -56,7 +56,7 @@ message OpDesc {
     optional int32 block_idx = 12;
     optional int64 l = 13;
     repeated int32 blocks_idx = 14;
-    optional int64 longs = 15;
+    repeated int64 longs = 15;
   };
 
   message Var {
