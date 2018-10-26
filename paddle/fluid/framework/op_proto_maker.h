@@ -25,12 +25,12 @@ enum class OpRole {
   kBackward = 0x0001,
   kOptimize = 0x0002,
   // RPC role is for send/recv releated op
-  kRPC = 0x0003,
+  kRPC = 0x0004,
   // Dist role is for split_byref/split_selected_rows/concat
   // used for distributed training.
-  kDist = 0x0004,
+  kDist = 0x0008,
   // Tag all learning rate scheduler operators.
-  kLRSched = 0x0005,
+  kLRSched = 0x0016,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and
