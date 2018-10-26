@@ -111,7 +111,9 @@ class Optimizer(object):
             if param_lr == 1.0:
                 return self._global_learning_rate()
             else:
-                with default_main_program()._lr_schedule_guard():
+                with default_main_program()._lr_schedule_guard(
+                        is_with_opt=True), framework.name_scope(
+                            'scale_with_param_lr'):
                     return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
@@ -602,7 +604,8 @@ class AdamOptimizer(Optimizer):
         for param, grad in param_and_grads:
             if grad is None:
                 continue
-            with param.block.program._optimized_guard([param, grad]):
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope("optimizer"):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
@@ -740,7 +743,8 @@ class AdamaxOptimizer(Optimizer):
         for param, grad in parameters_and_grads:
             if grad is None:
                 continue
-            with param.block.program._optimized_guard([param, grad]):
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope('adamx'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 main_block.append_op(
@@ -1279,7 +1283,8 @@ class ModelAverage(Optimizer):
         for param, grad in self.params_grads:
             if grad is None:
                 continue
-            with param.block.program._optimized_guard([param, grad]):
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope('move_average'):
                 self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
