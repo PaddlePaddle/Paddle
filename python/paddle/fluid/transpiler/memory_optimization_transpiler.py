@@ -321,8 +321,7 @@ class ControlFlowGraph(object):
 
                         if not compare_shape(x_shape, cache_shape, level):
                             continue
-                        # TODO(qijun): actually, we should compare
-                        # dtype_to_size[x_dtype] and dtype_to_size[cache_dtype]
+                        # TODO(qijun): dtype_to_size[x_dtype] and dtype_to_size[cache_dtype]
                         if x_dtype != cache_dtype:
                             continue
 
