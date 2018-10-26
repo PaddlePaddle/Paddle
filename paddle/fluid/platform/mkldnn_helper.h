@@ -70,7 +70,6 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
                                           mkldnn::memory::data_type data_type,
                                           mkldnn::memory::format format) {
   mkldnn::memory::dims tz = dims;
-std::cout<<"this is MKLDNNMemDesc"<<"   data_type"<<data_type<<"   format"<<format<<std::endl;
   return mkldnn::memory::desc({tz}, data_type, format);
 }
 

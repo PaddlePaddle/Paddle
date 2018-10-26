@@ -38,7 +38,6 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     //auto* scale = ctx.Input<Tensor>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
-std::cout<<"this is requantize op!!!!!!!!!!"<<std::endl;
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
@@ -75,49 +74,12 @@ std::cout<<"this is requantize op!!!!!!!!!!"<<std::endl;
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
         new reorder::primitive_desc(src_pd, dst_pd, attri));   
 
-for(int i=0; i<50; i++){
-    printf("%d ", *(input_data+i));
-}
-printf("\n");fflush(stdout);
-//for(int i=0; i<50; i++){
-//    printf("%f ", *(input_data+i)/107.426);
-//}
-//printf("\n");fflush(stdout);
-std::cout<<"scale = "<<scale_data[0]<<std::endl;
-//for(int i=0; i<50; i++){
-//    printf("%f ", *(output_data+i)/107.426);
-//}
-//printf("\n");fflush(stdout);
+    auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
+    pipeline.push_back(*reorder_p);
+    stream(stream::kind::eager).submit(pipeline).wait();
 
-//    int is_sum = false;//ctx.Attr<int>("is_sum");
-//    if(is_sum){
-//std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
-//        output_data = (uint8_t*)input_data;
-//std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
-//
-//printf("after*************\n");
-//for(int i=0; i<50; i++){
-//    printf("%f ", *(output_data+i)/107.426);
-//}
-//printf("\n");fflush(stdout);
-//
-//    } else{
-        auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
-        pipeline.push_back(*reorder_p);
-        stream(stream::kind::eager).submit(pipeline).wait();
-//    }
-//uint8_t* output_data_2 = output->mutable_data<uint8_t>(ctx.GetPlace());
-//for(int i=0; i<50; i++){
-//    printf("%f ", *(output_data_2+i)/107.426);
-//}
-//printf("\n");fflush(stdout);
-for(int i=0; i<50; i++){
-    printf("%d ", *(output_data+i));
-}
-printf("\n");fflush(stdout);
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(dst_memory));
-std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
   }
 };
 

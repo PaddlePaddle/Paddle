@@ -37,7 +37,6 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
-std::cout<<"this is quantize op!!!!!!!!!!!!!!"<<std::endl;
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
@@ -50,32 +49,6 @@ std::cout<<"this is quantize op!!!!!!!!!!!!!!"<<std::endl;
     uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
     std::vector<T> scale_data = {*(scale->data<T>())};
 
-FILE *fp = fopen("quant_input.txt","w");
-printf("quantize check!!!!\n");
-std::vector<int> tz = paddle::framework::vectorize2int(input->dims());
-int count=1;
-for(int i=0; i<tz.size(); i++){
-    count*=tz[i];
-    printf("%d ",tz[i]);
-}
-printf("\n");
-int num=0;
-for(int i=0; i<count; i++){
-    if(num==32){ fprintf(fp,"\n"); num=0;}
-    fprintf(fp,"%f ", *(input_data+i));
-    num ++;
-}
-fprintf(fp,"\n");
-fclose(fp);
-for(int i=0; i<scale_data.size(); i++){
-    printf("%f", scale_data[i]);
-}
-printf("\n");
-for(int i=0; i<50; i++){
-    printf("%f ", (*(input_data+i))*scale_data[0]);
-}
-printf("\n");
-fflush(stdout);
     mkldnn::primitive_attr attri;
     int mask = 0;
     attri.set_output_scales(mask, scale_data);

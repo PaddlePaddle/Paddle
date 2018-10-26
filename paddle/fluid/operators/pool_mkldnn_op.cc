@@ -72,7 +72,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-std::cout<<"this is pool op"<<std::endl;
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -105,16 +104,6 @@ std::cout<<"this is pool op"<<std::endl;
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-for(int i=0; i<50; i++){
-    printf("%f ",(float) *(input_data+i));
-}
-printf("\n");fflush(stdout);
-for(int i=0; i<50; i++){
-    printf("%f ", *(input_data+i)/14.4791);
-}
-printf("\n");fflush(stdout);
-
-
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
@@ -142,8 +131,6 @@ printf("\n");fflush(stdout);
       }
 
       mkldnn::memory::data_type dt = paddle::framework::ToMKLDNNDataType(input->type());
-
-std::cout<<"input type = "<<dt<<std::endl;
 
       auto src_md = platform::MKLDNNMemDesc(
           src_tz, dt, input_format);
@@ -203,25 +190,12 @@ std::cout<<"input type = "<<dt<<std::endl;
                           .data.format;
     }
 
-printf("befor submit!!!!!!!!!!!\n");
-for(int i=0; i<50; i++){
-    printf("%f ", *(output_data+i)/14.4791);
-}
-printf("\n");fflush(stdout);
-
     // push primitive to stream and wait until it's executed
     std::vector<mkldnn::primitive> pipeline{*(pool_p.get())};
     stream(stream::kind::eager).submit(pipeline).wait();
 
-printf("after submit!!!!!!!!!!!\n");
-for(int i=0; i<50; i++){
-    printf("%f ", *(output_data+i)/14.4791);
-}
-printf("\n");fflush(stdout);
-
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(output_format);
-std::cout<<"input fmt = "<<input->format()<<"  output fmt = "<<output->format()<<"output dt = "<<paddle::framework::ToMKLDNNDataType(output->type())<<std::endl;
   }
 
  private:

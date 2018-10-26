@@ -40,7 +40,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
-std::cout<<"this is dequant op ***********"<<std::endl;
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
@@ -50,16 +49,6 @@ std::cout<<"this is dequant op ***********"<<std::endl;
     //T scale_data = *(scale->data<T>());
     std::vector<float> scale_data = {*(scale->data<float>())};
     std::vector<float> reorder_scale = {1.0f / scale_data[0]};
-
-for(int i=0; i<50; i++){
-    printf("%d ", *(input_data+i));
-}
-printf("\n");fflush(stdout);
-for(int i=0; i<50; i++){
-    printf("%f ", *(input_data+i)/scale_data[0]);
-}
-printf("\n");fflush(stdout);
-std::cout<<"scale = "<<scale_data[0]<<std::endl;
 
     std::vector<primitive> pipeline;
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
