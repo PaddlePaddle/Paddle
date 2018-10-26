@@ -42,16 +42,22 @@ class Pool2dOpConverter : public OpConverter {
         boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
     std::vector<int> paddings =
         boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
+    bool ceil_mode = boost::get<bool>(op_desc.GetAttr("ceil_mode"));
 
+    nvinfer1::Dims input_shape = input1->getDimensions();
+    int nbDims = input_shape.nbDims;
     nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);
+    nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
+    nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
+
     if (global_pooling == true) {
-      nvinfer1::Dims input_shape = input1->getDimensions();
-      int nbDims = input_shape.nbDims;
       nv_ksize.d[0] = input_shape.d[nbDims - 2];
       nv_ksize.d[1] = input_shape.d[nbDims - 1];
+      nv_strides.h() = 1;
+      nv_strides.w() = 1;
+      nv_paddings.h() = 0;
+      nv_paddings.w() = 0;
     }
-    const nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
-    const nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
 
     PADDLE_ENFORCE_EQ(input1->getDimensions().nbDims, 3UL);
 
@@ -64,6 +70,36 @@ class Pool2dOpConverter : public OpConverter {
       PADDLE_THROW("TensorRT unsupported pooling type!");
     }
 
+    if (ceil_mode) {
+      nvinfer1::DimsHW pre_pad(0, 0);
+      nvinfer1::DimsHW post_pad(0, 0);
+      int input_height = input_shape.d[nbDims - 2];
+      int input_width = input_shape.d[nbDims - 1];
+      int floor_h_output_size =
+          (input_height - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
+      int ceil_h_output_size =
+          (input_height - ksize[0] + 2 * paddings[0] + strides[0] - 1) /
+              strides[0] +
+          1;
+
+      int floor_w_output_size =
+          (input_width - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
+      int ceil_w_output_size =
+          (input_width - ksize[1] + 2 * paddings[1] + strides[1] - 1) /
+              strides[1] +
+          1;
+      if (floor_h_output_size != ceil_h_output_size) {
+        post_pad.h() = strides[0] - 1;
+      }
+
+      if (floor_w_output_size != ceil_w_output_size) {
+        post_pad.w() = strides[1] - 1;
+      }
+      auto* layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Padding, *const_cast<nvinfer1::ITensor*>(input1), pre_pad,
+          post_pad);
+      input1 = layer->getOutput(0);
+    }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling,
                                        *const_cast<nvinfer1::ITensor*>(input1),
                                        nv_pool_type, nv_ksize);
