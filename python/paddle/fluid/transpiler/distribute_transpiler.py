@@ -487,7 +487,7 @@ class DistributeTranspiler(object):
             if init_op_num != 1:
                 raise ValueError("table init op num should be 1, now is " + str(
                     init_op_num))
-            table_init_op = table_param_init_op[1]
+            table_init_op = table_param_init_op[0]
             self.startup_program.global_block().append_op(
                 type="fake_init",
                 inputs={},
