@@ -18,6 +18,8 @@ import shutil
 import unittest
 import tempfile
 
+import numpy as np
+
 from test_dist_base import TestDistBase, RUN_STEP
 
 
@@ -62,6 +64,13 @@ class TestDistSaveLoadDense2x2(TestDistBase):
                                              check_error_log)
 
         shutil.rmtree(model_dir)
+
+        local_np = np.array(eval(local_var[0]))
+        train0_np = np.array(eval(tr0_var[0]))
+        train1_np = np.array(eval(tr1_var[0]))
+        self.assertAlmostEqual(local_np.all(), train0_np.all(), delta=delta)
+        self.assertAlmostEqual(local_np.all(), train1_np.all(), delta=delta)
+        self.assertAlmostEqual(train0_np.all(), train1_np.all(), delta=delta)
 
     def test_dist(self):
         need_envs = {

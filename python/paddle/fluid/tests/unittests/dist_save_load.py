@@ -39,7 +39,7 @@ from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
 
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
-    def _load_persistable_vars(executor, dirname, program):
+    def _load_persistable_vars(self, executor, dirname, program):
         def _is_checkpoint_var(var):
             """
             the checkpoint will not save or load all the variables.
@@ -60,6 +60,9 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
             # .block is named for distribute train variables, checkpoint will not save it.
             if ".block" in var.name:
+                return False
+
+            if "tmp_" in var.name:
                 return False
 
             return var.persistable
@@ -160,10 +163,10 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                 loss, = exe.run(fetch_list=[avg_cost.name],
                                 feed=feeder.feed(get_data()))
             if need_save and model_dir:
-                io.save_persistables(exe, model_dir, trainer_prog)
+                io.save_persistables(startup_exe, model_dir, trainer_prog)
 
-        var = np.array(fluid.global_scope().find_var('__q_fc__').get_tensor())
-        print(np.ravel(var))
+        var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor())
+        print(np.ravel(var).tolist())
 
 
 if __name__ == "__main__":
