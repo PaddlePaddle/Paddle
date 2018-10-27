@@ -99,11 +99,17 @@ class SumKernel : public framework::OpKernel<T> {
                               temp_in0.mutable_value());
         inputs.push_back(&temp_in0);
         for (size_t i = 1; i < in_vars.size(); ++i) {
-          inputs.push_back(&in_vars[i]->Get<SelectedRows>());
+          auto &in = in_vars[i]->Get<SelectedRows>();
+          if (!in.rows().empty()) {
+            inputs.push_back(&in);
+          }
         }
       } else {
         for (auto &in_var : in_vars) {
-          inputs.push_back(&in_var->Get<SelectedRows>());
+          auto &in = in_var->Get<SelectedRows>();
+          if (!in.rows().empty()) {
+            inputs.push_back(&in_var->Get<SelectedRows>());
+          }
         }
       }
 
