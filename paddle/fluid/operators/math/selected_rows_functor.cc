@@ -275,7 +275,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     }
     const framework::SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
-      if (!in->rows().empty()) {
+      if (in->rows().size() > 0) {
         has_value_input = in;
         break;
       }
@@ -289,7 +289,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     framework::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
     for (auto* input : inputs) {
-      if (input->rows().empty()) {
+      if (input->rows().size() == 0) {
         continue;
       }
       PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
@@ -319,7 +319,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (auto* input : inputs) {
-      if (input->rows().empty()) {
+      if (input->rows().size() == 0) {
         continue;
       }
       auto* input_data = input->value().data<T>();
