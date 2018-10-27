@@ -42,12 +42,12 @@ template <typename DeviceContext, typename T>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
-    auto param = ctx.Input<framework::Tensor>("Param");
-    auto velocity = ctx.Input<framework::Tensor>("Velocity");
-    auto grad = ctx.Input<framework::Tensor>("Grad");
-    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    auto param_out = ctx.Output<framework::LoDTensor>("ParamOut");
+    auto velocity_out = ctx.Output<framework::LoDTensor>("VelocityOut");
+    auto param = ctx.Input<framework::LoDTensor>("Param");
+    auto velocity = ctx.Input<framework::LoDTensor>("Velocity");
+    auto grad = ctx.Input<framework::LoDTensor>("Grad");
+    auto learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
 
     T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
     T* v_out = velocity_out->mutable_data<T>(ctx.GetPlace());
