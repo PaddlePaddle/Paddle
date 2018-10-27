@@ -25,17 +25,17 @@ message Version { optional int64 version = 1 [ default = 0 ]; }
 
 enum AttrType {
   INT = 0;
-  LONG = 1;
-  FLOAT = 2;
-  STRING = 3;
-  INTS = 4;
-  LONGS = 5;
-  FLOATS = 6;
-  STRINGS = 7;
-  BOOLEAN = 8;
-  BOOLEANS = 9;
-  BLOCK = 10;
-  BLOCKS = 11;
+  FLOAT = 1;
+  STRING = 2;
+  INTS = 3;
+  FLOATS = 4;
+  STRINGS = 5;
+  BOOLEAN = 6;
+  BOOLEANS = 7;
+  BLOCK = 8;
+  LONG = 9;
+  BLOCKS = 10;
+  LONGS = 11;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -46,17 +46,17 @@ message OpDesc {
     required string name = 1;
     required AttrType type = 2;
     optional int32 i = 3;
-    optional int64 l = 4;
-    optional float f = 5;
-    optional string s = 6;
-    repeated int32 ints = 7;
-    repeated int64 longs = 8;
-    repeated float floats = 9;
-    repeated string strings = 10;
-    optional bool b = 11;
-    repeated bool bools = 12;
-    optional int32 block_idx = 13;
+    optional float f = 4;
+    optional string s = 5;
+    repeated int32 ints = 6;
+    repeated float floats = 7;
+    repeated string strings = 8;
+    optional bool b = 10;
+    repeated bool bools = 11;
+    optional int32 block_idx = 12;
+    optional int64 l = 13;
     repeated int32 blocks_idx = 14;
+    repeated int64 longs = 15;
   };
 
   message Var {
