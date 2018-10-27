@@ -474,19 +474,6 @@ class DistributeTranspiler(object):
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
 
-        # delete table init op
-        if self.has_distributed_lookup_table:
-            trainer_table_param_init_op = []
-            for op in self.startup_program.global_block().ops:
-                if self.table_name in op.output_arg_names:
-                    trainer_table_param_init_op.append(op)
-            op_len = len(trainer_table_param_init_op)
-            if op_len != 1:
-                raise ValueError("trainer_table_param_init_op num is " + op_len
-                                 + " should be 1.")
-            delete_ops(self.startup_program.global_block(),
-                       trainer_table_param_init_op)
-
         self.origin_program.__str__()
 
         if wait_port:
