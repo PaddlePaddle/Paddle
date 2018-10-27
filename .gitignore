@@ -28,3 +28,4 @@ third_party/
 build_*
 # clion workspace.
 cmake-build-*
+model_test

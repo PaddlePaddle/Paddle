@@ -48,8 +48,6 @@ class NaiveExecutor {
 
   void CleanFeedFetchOps();
 
-  void EnableMKLDNN(const ProgramDesc& program);
-
  protected:
   void CreateVariables(const ProgramDesc& desc, Scope* scope, int block_id);
 
