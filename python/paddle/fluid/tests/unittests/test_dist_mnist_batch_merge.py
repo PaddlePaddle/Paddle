@@ -58,8 +58,9 @@ class TestDistMnist2x2(TestDistBase):
             check_error_log=check_error_log,
             batch_size=2,
             batch_merge_repeat=2)
-        print(no_merge_losses)
-        print(batch_merge_losses)
+        # Ensure both result have values.
+        self.assertGreater(len(no_merge_losses), 1)
+        self.assertEqual(len(no_merge_losses), len(batch_merge_losses))
 
 
 if __name__ == "__main__":
