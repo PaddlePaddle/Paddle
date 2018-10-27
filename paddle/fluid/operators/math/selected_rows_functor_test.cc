@@ -356,9 +356,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
   for (size_t i = 0; i < ret_rows.size(); ++i) {
     for (size_t j = 0; j < row_numel; ++j) {
       EXPECT_EQ(out_data[i * row_numel + j], ret_rows[i]);
-      std::cout << out_data[i * row_numel + j] << " ";
     }
-    std::cout << "\n";
   }
 }
 

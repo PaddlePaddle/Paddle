@@ -124,7 +124,8 @@ class TestSelectedRowsSumOp(OpTest):
 
     def test_w_is_selected_rows(self):
         places = [core.CPUPlace()]
-        # currently only support CPU
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
         for place in places:
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
