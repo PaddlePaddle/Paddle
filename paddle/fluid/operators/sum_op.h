@@ -107,7 +107,7 @@ class SumKernel : public framework::OpKernel<T> {
       } else {
         for (auto &in_var : in_vars) {
           auto &in = in_var->Get<SelectedRows>();
-          if (!in.rows().empty()) {
+          if (in.rows().size() > 0) {
             inputs.push_back(&in_var->Get<SelectedRows>());
           }
         }
