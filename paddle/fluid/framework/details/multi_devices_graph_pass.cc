@@ -252,9 +252,9 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
   std::vector<ir::Node *> sorted_ret;
   for (size_t i = 0; i < ret.size(); ++i) {
     if (i < last_backward) {
-      if (boost::get<int>(ret[i]->Op()->GetAttr(
-              OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-          static_cast<int>(OpRole::kOptimize)) {
+      if (static_cast<bool>(boost::get<int>(ret[i]->Op()->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kOptimize))) {
         optimize_ops.push_back(ret[i]);
       } else {
         sorted_ret.push_back(ret[i]);
