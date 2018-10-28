@@ -583,7 +583,6 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
             'sequence_pool_grad', 'lookup_table_grad', 'sum', 'split_ids',
             'send', 'recv', 'recv'
         ]
-
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
 
