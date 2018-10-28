@@ -7504,11 +7504,12 @@ def hash(input, hash_size, num_hash=1, name=None):
         input (Variable): The input variable which is a one-hot word.
         hash_size (int): The space size for hash algorithm.
         num_hash (int): The times of hash, default 1.
+        name (str, default None): The name of this layer.
      Returns:
         Variable: The hash result variable which is a LoDTensor.
      Examples:
         .. code-block:: python
-             word_dict = paddle.dataset.imdb.word_dict()
+            word_dict = paddle.dataset.imdb.word_dict()
             x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
             out = fluid.layers.hash(input=x, len(word_dict))
     """
