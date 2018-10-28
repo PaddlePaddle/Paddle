@@ -498,13 +498,12 @@ class TestDistLookupTable(TestDistLookupTableBase):
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
-            'sequence_pool', 'concat', 'mul',
-            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
-            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
-            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
-            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'sum', 'split_ids', 'send', 'send_barrier', 'recv', 'recv',
-            'fetch_barrier'
+            'sequence_pool', 'concat', 'mul', 'elementwise_add',
+            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sequence_pool_grad', 'lookup_table_grad', 'sum', 'split_ids',
+            'send', 'send_barrier', 'recv', 'recv', 'fetch_barrier'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
@@ -570,12 +569,12 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
-            'sequence_pool', 'concat', 'mul',
-            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
-            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
-            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
-            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'sum', 'split_ids', 'send', 'recv', 'recv'
+            'sequence_pool', 'concat', 'mul', 'elementwise_add',
+            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sequence_pool_grad', 'lookup_table_grad', 'sum', 'split_ids',
+            'send', 'recv', 'recv'
         ]
 
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
