@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/lock_free_optimize_embedding_pass.h"
+#include "paddle/fluid/framework/ir/lock_free_optimize_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -132,7 +132,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
-USE_PASS(lock_free_optimize_embedding_pass);
+USE_PASS(lock_free_optimize_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);

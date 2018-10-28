@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_EMBEDDING_PASS_H_
-#define PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_EMBEDDING_PASS_H_
+#ifndef PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_
+#define PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_
 
 #include <string>
 #include <vector>
@@ -30,9 +30,9 @@ namespace ir {
 class Node;
 
 /*
- * Remove the sum op of all gradients of embedding lookup table.
+ * Remove the sum op of all gradients of the backward op.
  * And remove the dependecies of the optimizer related to the
- * same embedding lookup table.
+ * same backward op.
  *
  * Before this pass:
  *
@@ -55,9 +55,9 @@ class Node;
  * sgd_op1 and sgd_op2 will update the same weight which holds the same
  * memory, so we could benefits from the acceleration
  */
-class LockFreeOptimizeEmbeddingPass : public Pass {
+class LockFreeOptimizePass : public Pass {
  public:
-  virtual ~LockFreeOptimizeEmbeddingPass() {}
+  virtual ~LockFreeOptimizePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
@@ -127,4 +127,4 @@ class LockFreeOptimizeEmbeddingPass : public Pass {
 }  // namespace framework
 }  // namespace paddle
 
-#endif  // PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_EMBEDDING_PASS_H_
+#endif  // PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_

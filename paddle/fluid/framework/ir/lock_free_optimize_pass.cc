@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/lock_free_optimize_embedding_pass.h"
+#include "paddle/fluid/framework/ir/lock_free_optimize_pass.h"
+
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,10 +31,8 @@ const char kSumGradOpName[] = "sum";
 // TODO(minqiyang): only support sgd at current time, please add
 // other optimizers later.
 const char kOptimizerType[] = "sgd";
-const char kEmbeddingGradOpType[] = "lookup_table_grad";
-const char kEmbeddingOpType[] = "lookup_table";
 
-std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
+std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
 
@@ -144,7 +144,7 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
   return graph;
 }
 
-ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewSGDNode(
+ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
     ir::Graph* graph, ir::Node* forward_node, ir::Node* backward_node,
     ir::Node* grad_sum_node, ir::Node* optimize_node) const {
   PADDLE_ENFORCE(graph);
@@ -229,7 +229,7 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewSGDNode(
   return sgd_node;
 }
 
-std::vector<ir::Node*> LockFreeOptimizeEmbeddingPass::FindConnectedNode(
+std::vector<ir::Node*> LockFreeOptimizePass::FindConnectedNode(
     ir::Node* upstream_node, ir::Node* downstream_node) const {
   std::vector<ir::Node*> result;
   for (ir::Node* out_node : upstream_node->outputs) {
@@ -243,7 +243,7 @@ std::vector<ir::Node*> LockFreeOptimizeEmbeddingPass::FindConnectedNode(
   return result;
 }
 
-void LockFreeOptimizeEmbeddingPass::ReplaceUpstreamNode(
+void LockFreeOptimizePass::ReplaceUpstreamNode(
     ir::Node* upstream_node, ir::Node* old_optimizer_node,
     ir::Node* new_optimizer_node) const {
   PADDLE_ENFORCE(upstream_node);
@@ -267,7 +267,7 @@ void LockFreeOptimizeEmbeddingPass::ReplaceUpstreamNode(
   new_optimizer_node->inputs.emplace_back(upstream_node);
 }
 
-void LockFreeOptimizeEmbeddingPass::ReplaceAllDownstreamNode(
+void LockFreeOptimizePass::ReplaceAllDownstreamNode(
     ir::Node* old_optimizer_node, ir::Node* new_optimizer_node) const {
   PADDLE_ENFORCE(old_optimizer_node);
   PADDLE_ENFORCE(new_optimizer_node);
@@ -291,7 +291,7 @@ void LockFreeOptimizeEmbeddingPass::ReplaceAllDownstreamNode(
   }
 }
 
-ir::Node* LockFreeOptimizeEmbeddingPass::FindForwardOpViaBackwardOp(
+ir::Node* LockFreeOptimizePass::FindForwardOpViaBackwardOp(
     ir::Graph* graph, ir::Node* backward_node) const {
   PADDLE_ENFORCE(graph);
   PADDLE_ENFORCE(backward_node);
@@ -353,5 +353,5 @@ ir::Node* LockFreeOptimizeEmbeddingPass::FindForwardOpViaBackwardOp(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(lock_free_optimize_embedding_pass,
-              paddle::framework::ir::LockFreeOptimizeEmbeddingPass);
+REGISTER_PASS(lock_free_optimize_pass,
+              paddle::framework::ir::LockFreeOptimizePass);
