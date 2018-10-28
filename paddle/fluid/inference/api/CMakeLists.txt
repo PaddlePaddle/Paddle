@@ -32,10 +32,17 @@ function(inference_api_test TARGET_NAME)
         set(multiValueArgs ARGS)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-        cc_test(${TARGET_NAME}
-                SRCS ${inference_test_SRC}
-                DEPS "${inference_deps}"
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+	if (WITH_GPU)
+		cc_test(${TARGET_NAME}
+			SRCS ${inference_test_SRC}
+			DEPS "${inference_deps}"
+			ARGS --dirname=${PYTHON_TESTS_DIR}/book/ --fraction_of_gpu_memory_to_use=0.15)
+        else()
+		cc_test(${TARGET_NAME}
+			SRCS ${inference_test_SRC}
+			DEPS "${inference_deps}"
+			ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+	endif()
         if(inference_test_ARGS)
             set_tests_properties(${TARGET_NAME}
                     PROPERTIES DEPENDS "${inference_test_ARGS}")
