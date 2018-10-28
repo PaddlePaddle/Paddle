@@ -52,7 +52,7 @@ include_directories("${PADDLE_LIB}")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")
 include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
-link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
+include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
 if (NOT WIN32)
 include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
 include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
@@ -78,6 +78,7 @@ endif(NOT WIN32)
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
+link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
@@ -108,7 +109,7 @@ if (NOT WIN32)
 set(EXTERNAL_LIB "-lrt -ldl -lpthread")
 set(DEPS ${DEPS}
     ${MATH_LIB} ${MKLDNN_LIB}
-    glog gflags protobuf snappystream snappy z
+    glog gflags protobuf snappystream snappy z xxhash
     ${EXTERNAL_LIB})
 else()
 set(DEPS ${DEPS}
