@@ -34,7 +34,6 @@ class TopkKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
-    // FIXME: only deal with matrix(2d tensor).
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
@@ -44,8 +43,6 @@ class TopkKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    auto eg_input = EigenMatrix<T>::From(*input);
-
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
     const size_t row = framework::product(
@@ -53,7 +50,7 @@ class TopkKernel : public framework::OpKernel<T> {
     const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
     // NOTE: eigen shape doesn't affect paddle tensor.
-    eg_input.reshape(flat2dims);
+    auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
