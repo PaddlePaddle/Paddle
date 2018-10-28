@@ -7501,8 +7501,8 @@ def hash(input, hash_size, num_hash=1, name=None):
     """
     Hash the input to an integer whose value is less than the given hash size.
 
-    The hash algorithm was implemented in here:
-    https://github.com/Cyan4973/xxHash/tree/v0.6.5
+    The hash algorithm we used was xxHash - Extremely fast hash algorithm
+    (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
 
     A simple example as below:
 
