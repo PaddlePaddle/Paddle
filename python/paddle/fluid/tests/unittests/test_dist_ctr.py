@@ -25,8 +25,7 @@ class TestDistCTR2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_dist_ctr(self):
-        pass
-        #self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
+        self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
 
 
 if __name__ == "__main__":
