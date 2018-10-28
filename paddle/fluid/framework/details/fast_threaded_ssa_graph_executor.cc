@@ -92,13 +92,16 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 
   size_t num_complete = 0;
   remaining_ = 0;
-  BlockingQueue<size_t> complete_q;
+  //  BlockingQueue<size_t> complete_q;
+  bool time_out;
+  complete_q_.PopAll(1, &time_out);
+
   for (auto op : bootstrap_ops_) {
-    RunOpAsync(op_deps.get(), op, &complete_q);
+    RunOpAsync(op_deps.get(), op, &complete_q_);
   }
 
   while (num_complete != op_deps->size()) {
-    size_t num_comp = complete_q.Pop();
+    size_t num_comp = complete_q_.Pop();
     if (num_comp == -1UL) {
       int remaining = 0;
       while (true) {
@@ -107,7 +110,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
           break;
         }
         for (int i = 0; i < remaining; ++i) {
-          complete_q.Pop();
+          complete_q_.Pop();
         }
       }
       exception_.ReThrow();

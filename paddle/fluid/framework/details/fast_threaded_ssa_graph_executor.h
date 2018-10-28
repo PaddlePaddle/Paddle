@@ -49,6 +49,9 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   platform::DeviceContextPool fetch_ctxs_;
   std::atomic<int> remaining_;
 
+  // FIXME(zcd): temporally fix fast_parallel_exe
+  BlockingQueue<size_t> complete_q_;
+
   void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
                   OpHandleBase *op, BlockingQueue<size_t> *complete_q);
 
