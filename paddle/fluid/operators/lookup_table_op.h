@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -69,7 +68,6 @@ class LookupTableKernel : public framework::OpKernel<T> {
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -77,10 +75,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(ids[i], 0);
           auto id_index = table_t.Index(ids[i]);
           PADDLE_ENFORCE_GE(id_index, 0, "the input key should be exists.");
-          // memcpy(output + i * row_width, table + id_index * row_width,
-          // row_width * sizeof(T));
-          blas.VCOPY(row_width, table + id_index * row_width,
-                     output + i * row_width);
+          memcpy(output + i * row_width, table + id_index * row_width,
+                 row_width * sizeof(T));
         }
       }
     }
@@ -108,75 +104,34 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      // auto start = std::chrono::system_clock::now();
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
-      // auto end = std::chrono::system_clock::now();
-      // std::chrono::duration<double> diff = end - start;
 
-      // auto copy_start = std::chrono::system_clock::now();
-      std::vector<int64_t> new_rows;
-      new_rows.resize(ids_num);
-      std::memcpy(&new_rows[0], ids_data, ids_num * sizeof(int64_t));
-      // for (int64_t i = 0; i < ids_num; i++) {
-      // new_rows.push_back(ids_data[i]);
-      // }
-      // auto copy_end = std::chrono::system_clock::now();
-      // std::chrono::duration<double> copy_diff = copy_end - copy_start;
-      // diff += copy_diff;
-      // LOG(ERROR) << "run emb_grad copy end, cost: " << copy_diff.count() << "
-      // " << ids_num;
-
-      // copy_start = std::chrono::system_clock::now();
+      framework::Vector<int64_t> new_rows;
+      new_rows.reserve(ids_num);
+      for (int64_t i = 0; i < ids_num; i++) {
+        new_rows.push_back(ids_data[i]);
+      }
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
-      d_table_value->ShareDataWith(*d_output);
-      // d_table_value->mutable_data<T>(context.GetPlace());
+      d_table_value->mutable_data<T>(context.GetPlace());
 
-      // // copy_end = std::chrono::system_clock::now();
-      // // copy_diff = copy_end - copy_start;
-      // // diff += copy_diff;
-      // // LOG(ERROR) << "run emb_grad resize table end, cost: " <<
-      // // copy_diff.count() << " " << ids_num;
+      d_table->set_height(table_dim[0]);
 
-      // // copy_start = std::chrono::system_clock::now();
-      // d_table->set_height(table_dim[0]);
+      auto *d_output_data = d_output->data<T>();
+      auto *d_table_data = d_table_value->data<T>();
 
-      // auto *d_output_data = d_output->data<T>();
-      // auto *d_table_data = d_table_value->data<T>();
-
-      // // copy_end = std::chrono::system_clock::now();
-      // // copy_diff = copy_end - copy_start;
-      // // diff += copy_diff;
-      // // LOG(ERROR) << "run emb_grad set height end, cost: " <<
-      // // copy_diff.count() << " " << ids_num;
-
-      // auto d_output_dims = d_output->dims();
-      // PADDLE_ENFORCE_EQ(
-      // d_table_value->dims(),
-      // framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
-      // // copy_start = std::chrono::system_clock::now();
-      // auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-      // blas.VCOPY(d_output->numel(), d_output_data, d_table_data);
-      // cblas_scopy(d_output->numel(), d_output_data, 1, d_table_data, 1);
-      // // for (int i = 0; i != d_output->numel(), ++i) {
-      // // *(d_table_data++) = *(d_output_data++);
-      // // }
-      // // memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
-      // // copy_end = std::chrono::system_clock::now();
-      // // copy_diff = copy_end - copy_start;
-      // // diff += copy_diff;
-      // // LOG(ERROR) << "run emb_grad core end, cost: " << copy_diff.count()
-      // << "
-      // // " << ids_num << " " << d_output->numel();
-
-      // // LOG(ERROR) << "run emb_grad end, cost: " << diff.count();
+      auto d_output_dims = d_output->dims();
+      PADDLE_ENFORCE_EQ(
+          d_table_value->dims(),
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
+      memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
