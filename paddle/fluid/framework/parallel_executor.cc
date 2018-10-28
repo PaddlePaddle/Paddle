@@ -157,168 +157,167 @@ ParallelExecutor::ParallelExecutor(
       var_infos.back().type_ = node->Var()->GetType();
       var_infos.back().persistable_ = node->Var()->Persistable();
     }
-    // If the loss_var_name is given, the number of graph should be only one.
-    if (loss_var_name.size()) {
-      PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                        "The number of graph should be only one");
-    }
-
-    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, places, std::move(graph)));
-    } else {
-      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, places, std::move(graph)));
-    }
-
-    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, std::move(var_infos),
-        member_->places_, std::move(member_->executor_)));
+  }
+  // If the loss_var_name is given, the number of graph should be only one.
+  if (loss_var_name.size()) {
+    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                      "The number of graph should be only one");
   }
 
-  void ParallelExecutor::BCastParamsToDevices(
-      const std::unordered_set<std::string> &vars) const {
-    // the initializing bcast, all vars would be bcast from device(0).
-    for (auto &var : vars) {
-      framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
-      if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
-        continue;
-      }
+  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  } else {
+    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  }
 
-      auto &main_tensor = main_var->Get<LoDTensor>();
-      auto &dims = main_tensor.dims();
-      if (paddle::platform::is_gpu_place(main_tensor.place())) {
+  member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+      exec_strategy, member_->local_scopes_, std::move(var_infos),
+      member_->places_, std::move(member_->executor_)));
+}
+
+void ParallelExecutor::BCastParamsToDevices(
+    const std::unordered_set<std::string> &vars) const {
+  // the initializing bcast, all vars would be bcast from device(0).
+  for (auto &var : vars) {
+    framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
+    if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
+      continue;
+    }
+
+    auto &main_tensor = main_var->Get<LoDTensor>();
+    auto &dims = main_tensor.dims();
+    if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
-        std::vector<void *> buffers;
-        size_t numel = main_tensor.numel();
-        ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
-        for (size_t i = 0; i < member_->places_.size(); ++i) {
-          auto place = member_->places_[i];
-          void *buffer;
+      std::vector<void *> buffers;
+      size_t numel = main_tensor.numel();
+      ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        auto place = member_->places_[i];
+        void *buffer;
 
-          if (i == 0) {
-            buffer = const_cast<void *>(main_tensor.data<void>());
-          } else {
-            auto local_scope = member_->local_scopes_[i];
-            auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-            t->Resize(dims);
-            buffer = t->mutable_data(place, main_tensor.type());
-          }
-          buffers.push_back(buffer);
-        }
-
-        PADDLE_ENFORCE_EQ(
-            member_->places_.size(), buffers.size(),
-            "variables' buffer size to bcast NOT equal to places");
-        {
-          platform::NCCLGroupGuard guard;
-          for (size_t i = 0; i < member_->places_.size(); ++i) {
-            auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
-            platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
-                                         nccl_ctx.comm_, nccl_ctx.stream());
-          }
-          member_->nccl_ctxs_->WaitAll();
-        }
-#else
-        PADDLE_THROW("Not compiled with CUDA");
-#endif
-      } else {
-        platform::CPUPlace cpu;
-        for (size_t i = 0; i < member_->places_.size(); ++i) {
-          if (i == 0) continue;
-
+        if (i == 0) {
+          buffer = const_cast<void *>(main_tensor.data<void>());
+        } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-
-          // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot
-          // fix.
-          if (member_->use_all_reduce_ || member_->use_cuda_ ||
-              var == "@LR_DECAY_COUNTER@") {
-            t->Resize(dims);
-            t->mutable_data(cpu, main_tensor.type());
-            paddle::framework::TensorCopy(main_tensor, cpu, t);
-          } else {
-            t->ShareDataWith(main_tensor);
-          }
+          t->Resize(dims);
+          buffer = t->mutable_data(place, main_tensor.type());
         }
+        buffers.push_back(buffer);
       }
-    }
-  }
 
-  void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
-                             const std::string &fetched_var_name) {
-    platform::RecordBlock b(0);
-#ifdef PADDLE_WITH_CUDA
-    if (!gcs_.empty()) {
-      ResetReferenceCount();
-      for (auto &pair : cur_ref_cnts_) {
-        auto &name_map = *(pair.second);
-        for (auto &fetch_name : fetch_tensors) {
-          name_map.erase(fetch_name);
+      PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
+                        "variables' buffer size to bcast NOT equal to places");
+      {
+        platform::NCCLGroupGuard guard;
+        for (size_t i = 0; i < member_->places_.size(); ++i) {
+          auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
+          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
         }
-        name_map.erase(fetched_var_name);
+        member_->nccl_ctxs_->WaitAll();
       }
-    }
+#else
+      PADDLE_THROW("Not compiled with CUDA");
 #endif
-    auto fetch_data = member_->executor_->Run(fetch_tensors);
-    *member_->global_scope_->Var(fetched_var_name)
-         ->GetMutable<FeedFetchList>() = fetch_data;
-  }
+    } else {
+      platform::CPUPlace cpu;
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        if (i == 0) continue;
 
-  void ParallelExecutor::FeedTensorsIntoLocalScopes(
-      const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
-    PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
+        auto local_scope = member_->local_scopes_[i];
+        auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
 
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      auto &map = tensors[i];
-      auto *scope = member_->local_scopes_[i];
-      for (auto &pair : map) {
-        auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
-        trg->ShareDataWith(pair.second);
-        trg->set_lod(pair.second.lod());
-      }
-    }
-  }
-
-  void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
-      const std::unordered_map<std::string, LoDTensor> &tensors) {
-    for (auto pair : tensors) {
-      auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
-      PADDLE_ENFORCE_EQ(
-          member_->places_.size(), lod_tensors.size(),
-          "The number of samples of current batch is less than the count of "
-          "devices, currently, it is not allowed. (%d vs %d)",
-          member_->places_.size(), lod_tensors.size());
-      for (size_t j = 0; j < member_->places_.size(); ++j) {
-        // TODO(panxy0718): Do I need to delete this var?
-        auto t =
-            member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
-        t->ShareDataWith(lod_tensors[j]);
-        t->set_lod(lod_tensors[j].lod());
-      }
-    }
-  }
-
-  ParallelExecutor::~ParallelExecutor() {
-    const auto dev_ctxs =
-        platform::DeviceContextPool::Instance().GetAllDeviceContexts();
-    for (auto &dev_ctx : dev_ctxs) {
-      dev_ctx->Wait();
-    }
-
-    if (member_->own_local_scope_) {
-      for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-        Scope *local_scope = member_->local_scopes_[i];
-        if (member_->global_scope_->HasKid(local_scope)) {
-          member_->global_scope_->DeleteScope(local_scope);
+        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        if (member_->use_all_reduce_ || member_->use_cuda_ ||
+            var == "@LR_DECAY_COUNTER@") {
+          t->Resize(dims);
+          t->mutable_data(cpu, main_tensor.type());
+          paddle::framework::TensorCopy(main_tensor, cpu, t);
+        } else {
+          t->ShareDataWith(main_tensor);
         }
       }
     }
-
-    // member_ must be destructed before gcs_ since the destructor of
-    // ReferenceCountOpHandle use raw pointers of gcs_ inside.
-    member_.reset();
   }
+}
+
+void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
+                           const std::string &fetched_var_name) {
+  platform::RecordBlock b(0);
+#ifdef PADDLE_WITH_CUDA
+  if (!gcs_.empty()) {
+    ResetReferenceCount();
+    for (auto &pair : cur_ref_cnts_) {
+      auto &name_map = *(pair.second);
+      for (auto &fetch_name : fetch_tensors) {
+        name_map.erase(fetch_name);
+      }
+      name_map.erase(fetched_var_name);
+    }
+  }
+#endif
+  auto fetch_data = member_->executor_->Run(fetch_tensors);
+  *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
+      fetch_data;
+}
+
+void ParallelExecutor::FeedTensorsIntoLocalScopes(
+    const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
+  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
+
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto &map = tensors[i];
+    auto *scope = member_->local_scopes_[i];
+    for (auto &pair : map) {
+      auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
+      trg->ShareDataWith(pair.second);
+      trg->set_lod(pair.second.lod());
+    }
+  }
+}
+
+void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
+    const std::unordered_map<std::string, LoDTensor> &tensors) {
+  for (auto pair : tensors) {
+    auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
+    PADDLE_ENFORCE_EQ(
+        member_->places_.size(), lod_tensors.size(),
+        "The number of samples of current batch is less than the count of "
+        "devices, currently, it is not allowed. (%d vs %d)",
+        member_->places_.size(), lod_tensors.size());
+    for (size_t j = 0; j < member_->places_.size(); ++j) {
+      // TODO(panxy0718): Do I need to delete this var?
+      auto t =
+          member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
+      t->ShareDataWith(lod_tensors[j]);
+      t->set_lod(lod_tensors[j].lod());
+    }
+  }
+}
+
+ParallelExecutor::~ParallelExecutor() {
+  const auto dev_ctxs =
+      platform::DeviceContextPool::Instance().GetAllDeviceContexts();
+  for (auto &dev_ctx : dev_ctxs) {
+    dev_ctx->Wait();
+  }
+
+  if (member_->own_local_scope_) {
+    for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
+      Scope *local_scope = member_->local_scopes_[i];
+      if (member_->global_scope_->HasKid(local_scope)) {
+        member_->global_scope_->DeleteScope(local_scope);
+      }
+    }
+  }
+
+  // member_ must be destructed before gcs_ since the destructor of
+  // ReferenceCountOpHandle use raw pointers of gcs_ inside.
+  member_.reset();
+}
 
 }  // namespace framework
 }  // namespace paddle
