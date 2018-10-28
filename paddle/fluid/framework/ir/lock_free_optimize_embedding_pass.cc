@@ -47,10 +47,6 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     }
   }
 
-  for (std::string weight : weight_var_set) {
-    LOG(ERROR) << "Found weight_var " << weight;
-  }
-
   // find all grad's merge op via weight name, where
   // Grad0 <- SUM(Grad1, Grad2, Grad3 ...)
   std::unordered_set<ir::Node*> grad_sum_op_set;
@@ -73,10 +69,6 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     }
   }
 
-  for (ir::Node* node : grad_sum_op_set) {
-    LOG(ERROR) << "Found grad sum op " << node->Name() << "_" << node->id();
-  }
-
   // get the forward op and backward op pairs, where
   // out <- forward(X, W)
   // Grad1 <- backward(out, X')
@@ -87,20 +79,22 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
       // find the optimizers connected with sum op
       if (IsVarNameEndsWith(merged_grad_var, kGradVarSuffix) &&
           merged_grad_var->outputs.size() == 1u) {
-        LOG(ERROR) << "Found merged gard var " << merged_grad_var->Name();
         ir::Node* opt_node = merged_grad_var->outputs[0];
-        LOG(ERROR) << "Found opt node " << opt_node->Name();
+        VLOG(10) << "Found opt node " << opt_node->Name();
 
         // find the backward op connected with sum op
         for (ir::Node* unmerged_grad_var : node->inputs) {
           if (IsVarNameContains(unmerged_grad_var, kGradVarSuffix) &&
               unmerged_grad_var->inputs.size() == 1u) {
             ir::Node* backward_op = unmerged_grad_var->inputs[0];
-            LOG(ERROR) << "Found backward_op " << backward_op->Name();
+
+            VLOG(10) << "Found backward_op " << backward_op->Name();
 
             // find the forward op related to the backward op
             ir::Node* forward_op =
                 FindForwardOpViaBackwardOp(graph.get(), backward_op);
+
+            VLOG(10) << "Found forward_op " << forward_op->Name();
 
             PADDLE_ENFORCE(forward_op);
 
@@ -120,29 +114,28 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
       for (Node* optimize_op : sum_op_output->outputs) {
         if (optimize_op->NodeType() == Node::Type::kOperation &&
             optimize_op->Name() == kOptimizerType) {
-          LOG(ERROR) << "remove optimize_op: " << optimize_op->Name() << "_"
-                     << optimize_op->id();
+          VLOG(10) << "remove optimize_op: " << optimize_op->Name() << "_"
+                   << optimize_op->id();
           graph->RemoveNode(optimize_op);
         }
       }
-      LOG(ERROR) << "remove sum_op_output: " << sum_op_output->Name() << "_"
-                 << sum_op_output->id();
+      VLOG(10) << "remove sum_op_output: " << sum_op_output->Name() << "_"
+               << sum_op_output->id();
       graph->RemoveNode(sum_op_output);
     }
-    LOG(ERROR) << "remove sum_op: " << sum_op->Name() << "_" << sum_op->id();
+    VLOG(10) << "remove sum_op: " << sum_op->Name() << "_" << sum_op->id();
     graph->RemoveNode(sum_op);
   }
 
   for (auto* node : graph->Nodes()) {
     for (Node* output_node : node->outputs) {
       if (output_node->Name() == "sgd") {
-        LOG(ERROR) << "Output link: " << node->Name() << "_" << node->id()
-                   << " --> " << output_node->Name() << "_"
-                   << output_node->id();
+        VLOG(10) << "Node link to SGD: " << node->Name() << "_" << node->id()
+                 << " --> " << output_node->Name() << "_" << output_node->id();
         for (Node* input_node : node->inputs) {
-          LOG(ERROR) << "Input link: " << input_node->Name() << "_"
-                     << input_node->id() << " --> " << node->Name() << "_"
-                     << node->id();
+          VLOG(10) << "SGD Input link: " << input_node->Name() << "_"
+                   << input_node->id() << " --> " << node->Name() << "_"
+                   << node->id();
         }
       }
     }
@@ -186,9 +179,6 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewSGDNode(
   // changed in new optimizer
   op_role_vars.pop_back();
   op_role_vars.push_back(grad_node->Name());
-  for (std::string x : op_role_vars) {
-    LOG(ERROR) << "set sgd attrs " << x;
-  }
   new_desc.SetAttr(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
                    op_role_vars);
   new_desc.SetType(kOptimizerType);
@@ -201,8 +191,6 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewSGDNode(
   // keep with the same output nodes between new optimizer and the
   // old one
   Node* sgd_node = graph->CreateOpNode(&new_desc);
-  LOG(ERROR) << "create new opt node" << sgd_node->Name() << "_"
-             << sgd_node->id();
 
   // change all outputs of the optimize_node to the new one
   ReplaceAllDownstreamNode(optimize_node, sgd_node);
@@ -235,6 +223,9 @@ ir::Node* LockFreeOptimizeEmbeddingPass::CreateNewSGDNode(
     }
   }
 
+  VLOG(10) << "Create new opt node" << sgd_node->Name() << "_"
+           << sgd_node->id();
+
   return sgd_node;
 }
 
@@ -264,9 +255,6 @@ void LockFreeOptimizeEmbeddingPass::ReplaceUpstreamNode(
   for (auto output_node_iter = output_node_vec.begin();
        output_node_iter != output_node_vec.end();) {
     if (*output_node_iter == old_optimizer_node) {
-      LOG(ERROR) << "Found old_optimizer_node and remove it "
-                 << (*output_node_iter)->Name();
-      LOG(ERROR) << "Replace upstream node " << upstream_node->Name();
       output_node_vec.erase(output_node_iter);
       break;
     } else {
@@ -290,8 +278,6 @@ void LockFreeOptimizeEmbeddingPass::ReplaceAllDownstreamNode(
     for (auto input_node_iter = input_node_vec.begin();
          input_node_iter != input_node_vec.end();) {
       if (*input_node_iter == old_optimizer_node) {
-        LOG(ERROR) << "Found old_optimizer_node and remove it "
-                   << (*input_node_iter)->Name();
         input_node_vec.erase(input_node_iter);
         break;
       } else {
