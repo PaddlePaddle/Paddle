@@ -35,13 +35,14 @@ class NaiveExecutor {
   // Create child scope.
   // Create variables.
   // @with_feed_fetch_ops: whether to work with the feed and fetch operators.
-  void Prepare(Scope *scope, const ProgramDesc &program_desc,
-               int block_id, bool with_feed_fetch_ops);
+  void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id,
+               bool with_feed_fetch_ops);
 
   // Create variables before head.
   // Create parameters if persistable is ture, or create the temporary variables
   // instead.
-  void CreateVariables(const ProgramDesc &desc, int block_id, bool persistable, Scope *scope);
+  void CreateVariables(const ProgramDesc& desc, int block_id, bool persistable,
+                       Scope* scope);
 
   // Run all the operators.
   void Run();

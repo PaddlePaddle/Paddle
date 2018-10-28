@@ -77,9 +77,10 @@ void NaiveExecutor::Run() {
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
                                     bool persistable, Scope *scope) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
+
   auto &global_block = desc.Block(block_id);
 
-  PADDLE_ENFORCE(scope);
   const auto *anc = scope;
   while (anc->parent()) {
     anc = anc->parent();
@@ -90,18 +91,20 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
       continue;
     }
 
-    if (persistable) {
-      if (!anc->FindVar(var->Name())) {
-        auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        LOG(INFO) << scope << " Create Variable " << var->Name()
+    if (persistable == var->Persistable()) {
+      if (persistable) {
+        if (!anc->FindVar(var->Name())) {
+          auto *ptr = const_cast<Scope *>(anc)->Var(var->Name());
+          VLOG(4) << scope << " Create persistable variable " << var->Name()
                   << ", which pointer is " << ptr;
-      }
-    } else {
-      auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      LOG(INFO) << scope << " Create Variable " << var->Name()
+          InitializeVariable(ptr, var->GetType());
+        }
+      } else {
+        auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
+        VLOG(4) << scope << " Create variable " << var->Name()
                 << ", which pointer is " << ptr;
+        InitializeVariable(ptr, var->GetType());
+      }
     }
   }
 }

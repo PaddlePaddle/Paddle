@@ -51,6 +51,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   bool ZeroCopyRun() override;
 
+  void CreateFeedFetchVar(framework::Scope *scope);
   void PrepareFeedFetch();
 
   void OptimizeInferenceProgram();
@@ -59,11 +60,12 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  framework::Scope *scope() { return executor_->scope(); }
+  framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
  protected:
   bool LoadProgramDesc();
+  bool LoadParameters();
 
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);

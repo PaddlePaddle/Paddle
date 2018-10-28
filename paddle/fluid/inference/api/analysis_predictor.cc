@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include <glog/logging.h>
 #include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/feed_fetch_method.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -34,6 +36,17 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 
 using contrib::AnalysisConfig;
+
+namespace {
+bool IsPersistable(const framework::VarDesc *var) {
+  if (var->Persistable() &&
+      var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
+      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+    return true;
+  }
+  return false;
+}
+}  // namespace
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
@@ -61,47 +74,54 @@ bool AnalysisPredictor::Init(
     place_ = paddle::platform::CPUPlace();
   }
 
-  if (parent_scope) {
+  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+
+  if (program) {
+    PADDLE_ENFORCE_NOT_NULL(
+        parent_scope,
+        "Both program and parent_scope should be set in Clone mode.");
     scope_ = parent_scope;
-    sub_scope_ = &(parent_scope->NewScope());
-    PADDLE_ENFORCE_EQ(scope_.get(), sub_scope_->parent());
-    LOG(INFO) << "parent scope create new scope " << sub_scope_;
   } else {
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
-    sub_scope_ = &(scope_->NewScope());
-    PADDLE_ENFORCE_EQ(scope_.get(), sub_scope_->parent());
-    LOG(INFO) << "self create scopes " << scope_.get() << " " << sub_scope_;
   }
-
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
 
   if (!program) {
     if (!LoadProgramDesc()) return false;
-    OptimizeInferenceProgram();
+
+    // Optimize the program, and load parameters and modify them in the
+    // scope_.
+    // This will change the scope_ address.
+    if (config_.enable_ir_optim)
+      OptimizeInferenceProgram();
+    else {
+      // Load parameters
+      LoadParameters();
+    }
+
+    // Create local variables
+    sub_scope_ = &(scope_->NewScope());
+
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
+    sub_scope_ = &(scope_->NewScope());
+    executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
   }
 
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops);
-  if (parent_scope) {
-    PADDLE_ENFORCE_EQ(parent_scope.get(), scope_.get());
-    LOG(INFO) << "create local vars";
-    // If the parent_scope is passed, we assert that the persistable variables
-    // are already created, so just create the no persistable variables.
-    executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-  } else {
-    LOG(INFO) << "create parameters and local vars";
-    // Create all the variables no matter persistable or not.
-    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
-    LOG(INFO) << "created parameters";
-    //PADDLE_ENFORCE_EQ(sub_scope_->parent(), scope_.get(), "%p != %p", sub_scope_->parent(), scope_.get());
-    //executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-    LOG(INFO) << "created local variables";
-  }
+
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_);
+
+  // If the parent_scope is passed, we assert that the persistable variables
+  // are already created, so just create the no persistable variables.
+
+  // If not cloned, the parameters should be loaded OptimizeInferenceProgram.
+  // So in both cases, just the local variables are needed to load, not the
+  // parematers.
+  executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
@@ -260,7 +280,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
           .Run(&argument_);
       break;
     default:
-      LOG(ERROR) << "Only kExclude and kInclude modes are supoorted yet.";
+      LOG(ERROR) << "Only kExclude and kInclude modes are support yet.";
   }
 
   CHECK(argument_.transformed_program_desc);
@@ -305,6 +325,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_);
+  CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       int idx = boost::get<int>(op->GetAttr("col"));
@@ -321,6 +343,14 @@ void AnalysisPredictor::PrepareFeedFetch() {
       fetchs_[idx] = op;
     }
   }
+}
+
+void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
+  auto *var = scope->Var("feed");
+  var->GetMutable<framework::FeedFetchList>();
+  var = scope->Var("fetch");
+  var->GetMutable<framework::FeedFetchList>();
 }
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
@@ -350,27 +380,92 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
 bool AnalysisPredictor::LoadProgramDesc() {
   // Initialize the inference program
-  std::unique_ptr<framework::Executor> tmp_exe(
-      new framework::Executor(platform::CPUPlace()));
+  std::string filename;
   if (!config_.model_dir.empty()) {
-    // Parameters are saved in separate files sited in
-    // the specified `dirname`.
-    inference_program_ = paddle::inference::Load(
-        static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
-        config_.model_dir);
+    filename = config_.model_dir + "/__model__";
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
-    inference_program_ = paddle::inference::Load(
-        static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
-        config_.prog_file, config_.param_file);
+    filename = config_.prog_file;
   } else {
     LOG(ERROR) << string::Sprintf(
         "not valid model path '%s' or program path '%s'.", config_.model_dir,
         config_.param_file);
     return false;
   }
+
+  std::string pb_content;
+  // Read binary
+  std::ifstream fin(filename, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  fin.seekg(0, std::ios::end);
+
+  pb_content.resize(fin.tellg());
+  fin.seekg(0, std::ios::beg);
+  fin.read(&(pb_content.at(0)), pb_content.size());
+  fin.close();
+
+  // Create ProgramDesc
+  framework::proto::ProgramDesc proto;
+  proto.ParseFromString(pb_content);
+  inference_program_.reset(new framework::ProgramDesc(proto));
+  return true;
+}
+
+bool AnalysisPredictor::LoadParameters() {
+  PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
+                          "The inference program should be loaded first.");
+  const auto &global_block = inference_program_->MutableBlock(0);
+
+  // create a temporary program to load parameters.
+
+  std::unique_ptr<framework::ProgramDesc> load_program(
+      new framework::ProgramDesc());
+  framework::BlockDesc *load_block = load_program->MutableBlock(0);
+  std::vector<std::string> params;
+
+  for (auto *var : global_block->AllVars()) {
+    if (IsPersistable(var)) {
+      VLOG(3) << "persistable variable's name: " << var->Name();
+
+      framework::VarDesc *new_var = load_block->Var(var->Name());
+      new_var->SetShape(var->GetShape());
+      new_var->SetDataType(var->GetDataType());
+      new_var->SetType(var->GetType());
+      new_var->SetLoDLevel(var->GetLoDLevel());
+      new_var->SetPersistable(true);
+
+      if (!config_.param_file.empty()) {
+        params.push_back(new_var->Name());
+      } else {
+        // append_op
+        framework::OpDesc *op = load_block->AppendOp();
+        op->SetType("load");
+        op->SetOutput("Out", {new_var->Name()});
+        op->SetAttr("file_path", {config_.model_dir + "/" + new_var->Name()});
+        op->CheckAttrs();
+      }
+    }
+  }
+
+  if (!config_.param_file.empty()) {
+    // sort paramlist to have consistent ordering
+    std::sort(params.begin(), params.end());
+    // append just the load_combine op
+    framework::OpDesc *op = load_block->AppendOp();
+    op->SetType("load_combine");
+    op->SetOutput("Out", params);
+    op->SetAttr("file_path", {config_.param_file});
+    op->CheckAttrs();
+  }
+
+  // Use NaiveExecutor to Load parameters.
+  platform::CPUPlace place;
+  framework::NaiveExecutor e(place);
+  e.Prepare(scope_.get(), *load_program, 0, false);
+  e.Run();
+
   return true;
 }
 

@@ -59,16 +59,18 @@ class FluidToIrPass final : public DataFlowGraphPass {
     argument->Set("ir_program_desc", new ProgramDesc(program));
 
     LOG(INFO) << "Loading parameters";
-    // Load parameters to argument if needed.
-    if (argument->fluid_model_dir || (argument->fluid_model_program_path &&
-                                      argument->fluid_model_param_path)) {
+    if (!argument->Has(framework::ir::kParamScopeAttr)) {
+      // Load parameters to argument if needed.
+      if (argument->fluid_model_dir || (argument->fluid_model_program_path &&
+                                        argument->fluid_model_param_path)) {
 #define SAFE_GET(ATTR) std::string ATTR = argument->ATTR ? *argument->ATTR : "";
-      SAFE_GET(fluid_model_dir);
-      SAFE_GET(fluid_model_program_path);
-      SAFE_GET(fluid_model_param_path);
+        SAFE_GET(fluid_model_dir);
+        SAFE_GET(fluid_model_program_path);
+        SAFE_GET(fluid_model_param_path);
 #undef SAFE_GET
-      EnableParamModify(fluid_model_dir, fluid_model_program_path,
-                        fluid_model_param_path);
+        EnableParamModify(fluid_model_dir, fluid_model_program_path,
+                          fluid_model_param_path);
+      }
     }
 
     return true;

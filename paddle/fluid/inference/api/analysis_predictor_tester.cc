@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>
@@ -69,9 +70,18 @@ TEST(AnalysisPredictor, Clone) {
 
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   predictors.emplace_back(CreatePaddlePredictor(config));
+
+  LOG(INFO) << "************** to clone ************************";
   const int num_threads = 3;
-  for (int i = 1; i < num_threads; i++)
+  for (int i = 1; i < num_threads; i++) {
     predictors.emplace_back(predictors.front()->Clone());
+  }
+
+  auto* root_scope =
+      static_cast<AnalysisPredictor*>(predictors[0].get())->scope();
+  ASSERT_FALSE(root_scope->kids().empty());
+  LOG(INFO) << "***** scope ******\n"
+            << framework::GenScopeTreeDebugInfo(root_scope);
 
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
@@ -90,7 +100,6 @@ TEST(AnalysisPredictor, Clone) {
     ASSERT_TRUE(predictors[i]->Run(inputs, &outputs));
   }
 
-  /*
   LOG(INFO) << "Run with multiple threads";
   std::vector<std::thread> threads;
   for (int i = 0; i < num_threads; i++) {
@@ -106,7 +115,6 @@ TEST(AnalysisPredictor, Clone) {
   for (auto& t : threads) {
     t.join();
   }
-   */
 }
 
 }  // namespace inference
