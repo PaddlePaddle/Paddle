@@ -1,5 +1,5 @@
 if (NOT WIN32)
-add_subdirectory(detail)
+    add_subdirectory(detail)
 endif(NOT WIN32)
 
 function(math_library TARGET)
@@ -35,7 +35,7 @@ function(math_library TARGET)
 endfunction()
 
 # please add new math_library in alphabetical order
-math_library(concat)
+math_library(concat_and_split)
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)
@@ -43,10 +43,8 @@ math_library(depthwise_conv)
 math_library(im2col)
 
 if (NOT WIN32) # windows do not support avx functions yet.
-math_library(gru_compute DEPS activation_functions math_function)
-math_library(lstm_compute DEPS activation_functions)
-# TODO(TJ): ugly workaround, clean me
-cc_library(cpu_lstm_compute SRCS cpu_lstm_compute.cc DEPS activation_functions cblas cpu_info)
+    math_library(gru_compute DEPS activation_functions math_function)
+    math_library(lstm_compute DEPS activation_functions)
 endif (NOT WIN32)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
@@ -60,7 +58,7 @@ math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function)
 if (NOT WIN32)
-math_library(matrix_bit_code)
+    math_library(matrix_bit_code)
 endif (NOT WIN32)
 math_library(unpooling)
 math_library(vol2col)
@@ -70,9 +68,14 @@ cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selec
 cc_test(im2col_test SRCS im2col_test.cc DEPS im2col)
 cc_test(vol2col_test SRCS vol2col_test.cc DEPS vol2col)
 cc_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS sequence_padding)
+cc_test(sequence_pooling_test SRCS sequence_pooling_test.cc DEPS sequence_pooling)
 if(WITH_GPU)
     nv_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function)
     nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu DEPS selected_rows_functor math_function)
 endif()
-cc_test(concat_test SRCS concat_test.cc DEPS concat)
+cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
+cc_library(jit_kernel 
+    SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_rnn.cc
+    DEPS cpu_info cblas)
+cc_test(jit_kernel_test SRCS jit_kernel_test.cc DEPS jit_kernel)
