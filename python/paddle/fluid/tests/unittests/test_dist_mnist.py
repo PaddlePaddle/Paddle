@@ -49,8 +49,7 @@ class TestDistMnistAsync(TestDistBase):
         self._sync_mode = False
         self._use_reduce = False
 
-    # FIXME(typhoonzero): fix async mode test later
-    def no_test_dist_train(self):
+    def test_dist_train(self):
         self.check_with_place("dist_mnist.py", delta=200)
 
 

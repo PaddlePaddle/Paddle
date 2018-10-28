@@ -85,6 +85,69 @@ class TestDropoutOp5(OpTest):
         self.check_output()
 
 
+class TestDropoutOp6(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 1.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': np.zeros((32, 64)).astype('float32'),
+            'Mask': np.zeros((32, 64)).astype('float32')
+        }
+
+
+class TestDropoutOp7(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64, 2)).astype('float32')
+        }
+
+
+class TestDropoutOp8(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.35,
+            'fix_seed': True,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestDropoutOp9(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.75,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"

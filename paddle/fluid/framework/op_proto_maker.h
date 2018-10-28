@@ -20,6 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+//////////////////////////
+// Don't add more roles to make this too complicated!
+//////////////////////////
 enum class OpRole {
   kForward = 0x0000,
   kBackward = 0x0001,
