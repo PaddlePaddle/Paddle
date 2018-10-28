@@ -407,12 +407,12 @@ class LarsMomentumOptimizer(Optimizer):
 
     .. math::
 
-        & learning\_rate = learning\_rate * lars\_coeff * \\
+        & local\_learning\_rate = learning\_rate * lars\_coeff * \\
           \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
 
-        & velocity = mu * velocity + (gradient + lars\_weight\_decay * param)
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
 
-        & param = param - learning\_rate * velocity
+        & param = param - velocity
 
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
@@ -428,7 +428,7 @@ class LarsMomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer = fluid.optimizer.LarsMomentum(learning_rate=0.2, momentum=0.1, lars_weight_decay=0.001)
             optimizer.minimize(cost)
     """
     _velocity_acc_str = "velocity"

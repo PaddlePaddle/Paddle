@@ -151,8 +151,7 @@ ParallelExecutor::ParallelExecutor(
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
   for (auto &node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && !node->Name().empty() &&
-        node->Var()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       var_infos.emplace_back();
       var_infos.back().name_ = node->Var()->Name();
       var_infos.back().type_ = node->Var()->GetType();

@@ -71,8 +71,6 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
-  int merge_batches_repeats_{1};
-
   // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
   // from python side.

@@ -63,7 +63,6 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
-  Graph() {}
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {

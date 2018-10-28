@@ -48,22 +48,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 
-    // merge multiple batches to form large batchsize
-    if (strategy.merge_batches_repeats_ > 1) {
-      auto merge_batch_pass = AppendPass("multi_batch_merge_pass");
-      merge_batch_pass->Set<const int>(
-          "num_repeats", new int(strategy.merge_batches_repeats_));
-      // Add a graph viz pass to record a graph.
-      if (!strategy.debug_graphviz_path_.empty()) {
-        auto viz_pass = AppendPass("graph_viz_pass");
-        const std::string graph_path =
-            string::Sprintf("%s%s", strategy.debug_graphviz_path_.c_str(),
-                            "_multi_batch_graph");
-        viz_pass->Set<std::string>("graph_viz_path",
-                                   new std::string(graph_path));
-      }
-    }
-
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",

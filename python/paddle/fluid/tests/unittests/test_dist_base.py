@@ -93,7 +93,10 @@ class TestDistRunnerBase(object):
 
         build_stra = fluid.BuildStrategy()
         if args.batch_merge_repeat > 1:
-            build_stra.multi_batch_merge_repeats = args.batch_merge_repeat
+            pass_builder = build_stra._create_passes_from_strategy()
+            mypass = pass_builder.insert_pass(
+                len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
+            mypass.set_int("num_repeats", args.batch_merge_repeat)
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
