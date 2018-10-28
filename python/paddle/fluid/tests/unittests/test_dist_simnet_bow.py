@@ -145,5 +145,6 @@ class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
             check_error_log=False,
             need_envs=need_envs)
 
+
 if __name__ == "__main__":
     unittest.main()
