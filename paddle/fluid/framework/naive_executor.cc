@@ -65,12 +65,14 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
     scope_ = scope;
   }
 
+  VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
 void NaiveExecutor::Run() {
   for (auto &op : ops_) {
-    VLOG(4) << "run " << op->Type();
+    VLOG(3) << std::this_thread::get_id() << " run " << op->Type()
+            << " on scope " << scope_;
     op->Run(*scope_, place_);
   }
 }

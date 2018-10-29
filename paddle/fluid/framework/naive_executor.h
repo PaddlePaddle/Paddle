@@ -54,6 +54,8 @@ class NaiveExecutor {
 
   void CleanFeedFetchOps();
 
+  void EnableMKLDNN(const ProgramDesc& program);
+
  protected:
   void CreateOps(const ProgramDesc& desc, int block_id,
                  bool with_feed_fetch_ops);

@@ -20,6 +20,7 @@
 #include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -133,34 +134,40 @@ void TestMultiThreadPrediction(
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
-  // because AttentionLSTM's hard code nodeid will be damanged.
+  // because AttentionLSTM's hard code nodeid will be damaged.
   predictors.emplace_back(CreateTestPredictor(config, use_analysis));
   for (int tid = 1; tid < num_threads; ++tid) {
     predictors.emplace_back(predictors.front()->Clone());
   }
+
+  size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
-      std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;
       std::vector<PaddleTensor> outputs_tid;
+      auto &predictor = predictors[tid];
+      LOG(INFO) << "running thread " << tid;
       Timer timer;
       timer.tic();
-      LOG(INFO) << "running thread " << tid;
       for (int i = 0; i < num_times; i++) {
-        auto &predictor = predictors[i];
-        for (const auto &input : inputs_tid) {
-          predictor->Run(input, &outputs_tid);
+        for (const auto &input : inputs) {
+          ASSERT_TRUE(predictor->Run(input, &outputs_tid));
         }
       }
-      LOG(INFO) << "thread " << tid << " finished";
-      PrintTime(batch_size, num_times, num_threads, tid,
-                timer.toc() / num_times, inputs_tid.size());
+
+      auto time = timer.toc();
+      total_time += time;
+      PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
+                inputs.size());
     });
   }
   for (int i = 0; i < num_threads; ++i) {
     threads[i].join();
   }
+
+  LOG(INFO) << "threads average time: "
+            << total_time / num_threads / batch_size / num_times << " ms";
 }
 
 void TestPrediction(const AnalysisConfig &config,

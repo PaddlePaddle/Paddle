@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 
 #include <memory>  // for unique_ptr
+#include <queue>
 #include <set>
+#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
@@ -199,6 +201,8 @@ std::string GenScopeTreeDebugInfo(Scope* root) {
   std::queue<Scope*> queue;
   queue.push(root);
 
+  std::vector<Scope*> scopes;
+
   while (!queue.empty()) {
     auto* end = queue.back();
     Scope* q = nullptr;
@@ -206,6 +210,7 @@ std::string GenScopeTreeDebugInfo(Scope* root) {
       q = queue.front();
       queue.pop();
       os << q << " ";
+      scopes.push_back(q);
 
       for (auto* c : q->kids()) {
         queue.push(c);
@@ -214,6 +219,17 @@ std::string GenScopeTreeDebugInfo(Scope* root) {
     // end of a level
     os << "\n------------------------------------------\n";
   }
+
+  os << "\nDetails:\n\n";
+
+  for (Scope* q : scopes) {
+    os << "====\n";
+    os << q << ":\n";
+    for (auto& var : q->LocalVarNames()) {
+      os << "  - " << var << "\n";
+    }
+  }
+
   return os.str();
 }
 

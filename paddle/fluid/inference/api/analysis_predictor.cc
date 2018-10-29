@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -92,9 +93,9 @@ bool AnalysisPredictor::Init(
     // Optimize the program, and load parameters and modify them in the
     // scope_.
     // This will change the scope_ address.
-    if (config_.enable_ir_optim)
+    if (config_.enable_ir_optim) {
       OptimizeInferenceProgram();
-    else {
+    } else {
       // Load parameters
       LoadParameters();
     }
@@ -107,7 +108,6 @@ bool AnalysisPredictor::Init(
     // logic is used in the clone scenario.
     inference_program_ = program;
     sub_scope_ = &(scope_->NewScope());
-    executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
   }
 
   executor_->Prepare(sub_scope_, *inference_program_, 0,
