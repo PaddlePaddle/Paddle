@@ -16,12 +16,12 @@ if [ $2 == ON ]; then
 fi
 if [ $3 == ON ]; then
   use_gpu_list='true false'
-else    
+else
   use_gpu_list='false'
 fi
 
 USE_TENSORRT=OFF
-if [ [-d"$TENSORRT_INCLUDE_DIR"] -a [-d"$TENSORRT_LIB_DIR"] ]; then
+if [ -d "$TENSORRT_INCLUDE_DIR" -a -d "$TENSORRT_LIB_DIR" ]; then
   USE_TENSORRT=ON
 fi
 
@@ -60,7 +60,8 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=simple_on_word2vec \
     -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
+    -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+    -DON_INFER=ON
   make -j
   word2vec_model=${PADDLE_ROOT}'/build/python/paddle/fluid/tests/book/word2vec.inference.model'
   if [ -d $word2vec_model ]; then
@@ -80,10 +81,11 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=vis_demo \
     -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
+    -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+    -DON_INFER=ON
   make -j
   for use_gpu in $use_gpu_list; do
-    for vis_demo_name in $vis_demo_list; do 
+    for vis_demo_name in $vis_demo_list; do
       ./vis_demo \
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
@@ -95,7 +97,7 @@ for WITH_STATIC_LIB in ON OFF; do
       fi
     done
   done
-  
+
   # --------tensorrt mobilenet------
   if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
     rm -rf *
@@ -106,8 +108,9 @@ for WITH_STATIC_LIB in ON OFF; do
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DUSE_TENSORRT=$USE_TENSORRT \
       -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
-      -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
-    make -j 
+      -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR \
+      -DON_INFER=ON
+    make -j
     ./trt_mobilenet_demo \
       --modeldir=$DATA_DIR/mobilenet/model \
       --data=$DATA_DIR/mobilenet/data.txt \
