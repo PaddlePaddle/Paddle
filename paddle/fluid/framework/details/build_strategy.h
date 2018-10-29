@@ -71,6 +71,8 @@ struct BuildStrategy {
 
   bool enable_sequential_execution_{true};
 
+  bool fuse_broadcast_op_{false};
+
   // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
   // from python side.
