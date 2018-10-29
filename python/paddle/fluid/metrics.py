@@ -478,7 +478,7 @@ class EditDistance(MetricBase):
                 "There is no data in EditDistance Metric. Please check layers.edit_distance output has been added to EditDistance."
             )
         avg_distance = self.total_distance / self.seq_num
-        avg_instance_error = self.instance_error / self.seq_num
+        avg_instance_error = self.instance_error / float(self.seq_num)
         return avg_distance, avg_instance_error
 
 
