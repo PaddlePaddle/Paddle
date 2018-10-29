@@ -14,6 +14,9 @@
 
 # make package for paddle fluid shared and static library
 function(copy TARGET)
+    if (NOT ON_INFER)
+      message(WARNING "Turn on the ON_INFER flag when building inference_lib only.")
+    endif()
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DSTS DEPS)
@@ -31,7 +34,7 @@ function(copy TARGET)
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
-        add_custom_command(TARGET ${TARGET} PRE_BUILD 
+        add_custom_command(TARGET ${TARGET} PRE_BUILD
           COMMAND mkdir -p "${dst}"
           COMMAND cp -r "${src}" "${dst}"
           COMMENT "copying ${src} -> ${dst}")
@@ -65,6 +68,13 @@ copy(boost_lib
   SRCS ${BOOST_INCLUDE_DIR}/boost
   DSTS ${dst_dir}
   DEPS boost
+)
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/xxhash")
+copy(xxhash_lib
+  SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
+  DSTS ${dst_dir} ${dst_dir}/lib
+  DEPS xxhash
 )
 
 if(NOT PROTOBUF_FOUND)
@@ -186,7 +196,7 @@ copy(cmake_cache
   DSTS ${FLUID_INSTALL_DIR})
 
 # This command generates a complete fluid library for both train and inference
-add_custom_target(fluid_lib_dist DEPENDS ${fluid_lib_dist_dep}) 
+add_custom_target(fluid_lib_dist DEPENDS ${fluid_lib_dist_dep})
 
 # Following commands generate a inference-only fluid library
 # third_party, version.txt and CMakeCache.txt are the same position with ${FLUID_INSTALL_DIR}
