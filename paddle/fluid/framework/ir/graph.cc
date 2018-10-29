@@ -27,14 +27,20 @@ namespace ir {
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   // Make the nodes id start from 0.
   Node::ResetId();
+  auto var_nodes = InitFromProgram(program_);
+  ResolveHazard(var_nodes);
+}
 
+std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
+    const ProgramDesc &program) {
   VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
+  // var nodes for each var name, will have multiple versions in SSA
+  std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *var : program.Block(0).AllVars()) {
     all_vars.emplace(var->Name(), var);
   }
 
-  std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *op : program.Block(0).AllOps()) {
     ir::Node *node = CreateOpNode(op);
     // For input args, reuse the same var name if it was created before.
@@ -72,7 +78,11 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       var->inputs.push_back(node);
     }
   }
+  return std::move(var_nodes);
+}
 
+void Graph::ResolveHazard(
+    const std::map<std::string, std::vector<ir::Node *>> &var_nodes) {
   /**
    * We should handle write after read(WAR) and write after write(WAW) here.
    * Because some of the operators of the program can be executed parallelly.
@@ -91,6 +101,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
     auto it_old = versions.rbegin();
     ++it_old;
     for (; it_old != versions.rend(); it_new = it_old, ++it_old) {
+      VLOG(3) << "deal with var: " << (*it_new)->Name();
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
