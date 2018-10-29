@@ -169,7 +169,7 @@ void TestMultiThreadPrediction(
   if (FLAGS_test_all_data) {
     LOG(INFO) << "threads average time: "
               << static_cast<double>(total_time) /
-                     (num_threads * inputs.size() * batch_size);
+                     (num_threads * inputs.size() * batch_size * num_times);
   } else {
     LOG(INFO) << "threads average time: "
               << static_cast<double>(total_time) /
