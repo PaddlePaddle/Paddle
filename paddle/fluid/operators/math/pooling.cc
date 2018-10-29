@@ -29,9 +29,9 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
-                  const std::vector<int>& strides, const std::vector<int>& paddings, 
-                  PoolProcess pool_process, bool exclusive,
-                  framework::Tensor* output) {
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, PoolProcess pool_process,
+                  bool exclusive, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -69,7 +69,7 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
               }
             }
             int pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                            : ksize_height * ksize_width;
+                                      : ksize_height * ksize_width;
             pool_process.finalize(static_cast<T>(pool_size), &ele);
             output_data[ph * output_width + pw] = ele;
           }
@@ -126,7 +126,7 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             int wend = std::min(wstart + ksize_width, input_width);
             wstart = std::max(wstart, 0);
             int pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                            : ksize_height * ksize_width;
+                                      : ksize_height * ksize_width;
             float scale = 1.0 / pool_size;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
@@ -249,8 +249,8 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
-                  const std::vector<int>& strides, const std::vector<int>& paddings, 
-                  PoolProcess pool_process,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, PoolProcess pool_process,
                   bool exclusive, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
@@ -301,9 +301,10 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   }
                 }
               }
-              int pool_size = exclusive ? 
-                  (dend - dstart) * (hend - hstart) * (wend - wstart)
-                  : ksize_depth * ksize_height * ksize_width;
+              int pool_size =
+                  exclusive
+                      ? (dend - dstart) * (hend - hstart) * (wend - wstart)
+                      : ksize_depth * ksize_height * ksize_width;
               pool_process.finalize(static_cast<T>(pool_size), &ele);
               output_data[output_idx] = ele;
             }
@@ -371,9 +372,10 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
               int wend = std::min(wstart + ksize_width, input_width);
               wstart = std::max(wstart, 0);
 
-              int pool_size = exclusive ?
-                  (dend - dstart) * (hend - hstart) * (wend - wstart)
-                  : ksize_depth * ksize_height * ksize_width;
+              int pool_size =
+                  exclusive
+                      ? (dend - dstart) * (hend - hstart) * (wend - wstart)
+                      : ksize_depth * ksize_height * ksize_width;
               float scale = 1.0 / pool_size;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {

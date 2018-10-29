@@ -73,7 +73,8 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     if (pooling_type == "max") {
       pooling_mode = PoolingMode::kMaximum;
     } else {
-      pooling_mode = exclusive ? PoolingMode::kAverageExclusive : PoolingMode::kAverageInclusive;
+      pooling_mode = exclusive ? PoolingMode::kAverageExclusive
+                               : PoolingMode::kAverageInclusive;
     }
 
     cudnnPoolingDescriptor_t cudnn_pool_desc =
@@ -143,7 +144,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
         pooling_mode = PoolingMode::kMaximum;
       }
     } else {
-      pooling_mode = exclusive ? PoolingMode::kAverageExclusive : PoolingMode::kAverageInclusive;
+      pooling_mode = exclusive ? PoolingMode::kAverageExclusive
+                               : PoolingMode::kAverageInclusive;
     }
 
     cudnnPoolingDescriptor_t cudnn_pool_desc =

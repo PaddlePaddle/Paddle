@@ -53,7 +53,7 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
       }
     }
     int pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                    : ksize_height * ksize_width;
+                              : ksize_height * ksize_width;
     pool_process.finalize(static_cast<T>(pool_size), &ele);
     output_data[index] = ele;
   }
@@ -97,7 +97,7 @@ __global__ void KernelPool2DGrad(
         hstart = max(hstart, 0);
         wstart = max(wstart, 0);
         int pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                        : ksize_height * ksize_width;
+                                  : ksize_height * ksize_width;
         int output_sub_idx = ph * output_width + pw;
         pool_process.compute(input, output_data[output_sub_idx],
                              output_grad[output_sub_idx],
@@ -191,7 +191,7 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
-        stride_width, padding_height, padding_width, pool_process, exclusive, 
+        stride_width, padding_height, padding_width, pool_process, exclusive,
         output_data);
   }
 };
@@ -317,11 +317,11 @@ template class Pool2dGradFunctor<platform::CUDADeviceContext,
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3D(
-    const int nthreads, const T* input_data, const int channels, 
-    const int input_depth, const int input_height, const int input_width, 
-    const int output_depth, const int output_height, const int output_width, 
+    const int nthreads, const T* input_data, const int channels,
+    const int input_depth, const int input_height, const int input_width,
+    const int output_depth, const int output_height, const int output_width,
     const int ksize_depth, const int ksize_height, const int ksize_width,
-    const int stride_depth, const int stride_height, const int stride_width, 
+    const int stride_depth, const int stride_height, const int stride_width,
     const int padding_depth, const int padding_height, const int padding_width,
     PoolProcess pool_process, bool exclusive, T* output_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
@@ -352,9 +352,9 @@ __global__ void KernelPool3D(
         }
       }
     }
-    int pool_size = exclusive ? 
-                    (dend - dstart) * (hend - hstart) * (wend - wstart)
-                    : ksize_depth * ksize_height * ksize_width;
+    int pool_size = exclusive
+                        ? (dend - dstart) * (hend - hstart) * (wend - wstart)
+                        : ksize_depth * ksize_height * ksize_width;
     pool_process.finalize(static_cast<T>(pool_size), &ele);
     output_data[index] = ele;
   }
@@ -412,9 +412,9 @@ __global__ void KernelPool3DGrad(
           dstart = max(dstart, 0);
           hstart = max(hstart, 0);
           wstart = max(wstart, 0);
-          int pool_size = exclusive ?
-                          (dend - dstart) * (hend - hstart) * (wend - wstart)
-                          : ksize_depth * ksize_height * ksize_width;
+          int pool_size =
+              exclusive ? (dend - dstart) * (hend - hstart) * (wend - wstart)
+                        : ksize_depth * ksize_height * ksize_width;
           int output_sub_idx = (pd * output_height + ph) * output_width + pw;
           pool_process.compute(input, output_data[output_sub_idx],
                                output_grad[output_sub_idx],
@@ -522,8 +522,8 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
         nthreads, input_data, input_channels, input_depth, input_height,
         input_width, output_depth, output_height, output_width, ksize_depth,
         ksize_height, ksize_width, stride_depth, stride_height, stride_width,
-        padding_depth, padding_height, padding_width, pool_process,
-        exclusive, output_data);
+        padding_depth, padding_height, padding_width, pool_process, exclusive,
+        output_data);
   }
 };
 
