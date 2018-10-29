@@ -49,6 +49,7 @@ LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
+OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
@@ -1430,7 +1431,7 @@ to transpile() call.")
         elif op_type == "adamax":
             if varkey in ["Moment", "InfNorm"]:
                 return param_shape
-        elif op_type == "momentum":
+        elif op_type in ["momentum", "lars_momentum"]:
             if varkey == "Velocity":
                 return param_shape
         elif op_type == "rmsprop":
@@ -1441,6 +1442,10 @@ to transpile() call.")
                 return param_shape
         elif op_type == "sgd":
             pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
         return orig_shape
 
     def _get_varname_parts(self, varname):
@@ -1717,8 +1722,10 @@ to transpile() call.")
         lr_ops = []
         block = self.origin_program.global_block()
         for op in block.ops:
-            if int(op.attr(RPC_OP_ROLE_ATTR_NAME)) == int(
-                    LR_SCHED_OP_ROLE_ATTR_VALUE):
+            role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
+            if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                    int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
         return lr_ops
