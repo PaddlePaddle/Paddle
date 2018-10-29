@@ -342,7 +342,7 @@ class ScopedPoolingDescriptor {
 };
 
 class ScopedSpatialTransformerDescriptor {
-  public:
+ public:
   ScopedSpatialTransformerDescriptor() {
     PADDLE_ENFORCE(dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
   }
@@ -354,13 +354,13 @@ class ScopedSpatialTransformerDescriptor {
   inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
                                                         const int dimA[]) {
     PADDLE_ENFORCE(dynload::cudnnSetSpatialTransformerNdDescriptor(
-          desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
+        desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
     return desc_;
   }
 
-   private:
-    cudnnSpatialTransformerDescriptor_t desc_;
-    DISABLE_COPY_AND_ASSIGN(ScopedSpatialTransformerDescriptor);
+ private:
+  cudnnSpatialTransformerDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedSpatialTransformerDescriptor);
 };
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
