@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +29,7 @@ static bool IsSameOpDesc(OpDesc *op1, OpDesc *op2) {
 
 std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  auto ops = this->Get<const std::vector<OpDesc *>>(kAllOpDescs);
+  auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
   std::vector<ir::Node *> op_node_list;
   op_node_list.reserve(ops.size());
 
@@ -39,7 +40,6 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
   for (ir::Node *node : graph->Nodes()) {
     if (!node->IsOp()) continue;
     std::unordered_set<ir::Node *> preceding_ops;
-    pending_ops[node];
     for (auto *in : node->inputs) {
       PADDLE_ENFORCE(in->IsVar(),
                      "Preceding Node of Op Nodes must be Var Node");
@@ -66,8 +66,8 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
     }
 
     PADDLE_ENFORCE_NOT_NULL(found_node, "Cannot find op_desc in graph: %s",
-                            found_node->Op()->Type());
-    for (auto *pending_op : pending_ops.at(found_node)) {
+                            op_desc->Type());
+    for (auto *pending_op : pending_ops[found_node]) {
       if (--op_deps.at(pending_op) == 0) {
         ready_ops.insert(pending_op);
       }
