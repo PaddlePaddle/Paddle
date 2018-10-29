@@ -60,8 +60,7 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=simple_on_word2vec \
     -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-    -DON_INFER=ON
+    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
   word2vec_model=${PADDLE_ROOT}'/build/python/paddle/fluid/tests/book/word2vec.inference.model'
   if [ -d $word2vec_model ]; then
@@ -81,8 +80,7 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=vis_demo \
     -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-    -DON_INFER=ON
+    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
   for use_gpu in $use_gpu_list; do
     for vis_demo_name in $vis_demo_list; do
@@ -108,8 +106,7 @@ for WITH_STATIC_LIB in ON OFF; do
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DUSE_TENSORRT=$USE_TENSORRT \
       -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
-      -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR \
-      -DON_INFER=ON
+      -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
     make -j
     ./trt_mobilenet_demo \
       --modeldir=$DATA_DIR/mobilenet/model \
