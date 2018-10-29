@@ -24,12 +24,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace {
+
 void CheckProgram(const ProgramDesc &program) {
   std::map<int, bool> visit;
 #define _INT(role) static_cast<int>(role)
 
   for (size_t i = 0; i < program.Size(); ++i) {
     for (OpDesc *op : program.Block(i).AllOps()) {
+      // For backward compatibility, some program doesn't have role added.
+      if (!op->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) continue;
       int role_id = boost::get<int>(
           op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
       visit[role_id] = true;
