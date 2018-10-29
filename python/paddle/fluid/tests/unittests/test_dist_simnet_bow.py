@@ -79,8 +79,7 @@ class TestDistSimnetBow2x2SparseAsync(TestDistBase):
         self._sync_mode = False
         self._enforce_place = "CPU"
 
-    #FIXME(typhoonzero): fix async tests later
-    def no_test_simnet_bow(self):
+    def test_simnet_bow(self):
         need_envs = {
             "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '1',

@@ -155,7 +155,9 @@ __all__ = [
     'sigmoid_cross_entropy_with_logits',
     'maxout',
     'space_to_depth',
+    'sequence_reverse',
     'affine_channel',
+    'hash',
 ]
 
 
@@ -1991,17 +1993,17 @@ def sequence_slice(input, offset, length, name=None):
     """
     **Sequence Slice Layer**
 
-    The layer crops a subsequence from given sequence with given start 
+    The layer crops a subsequence from given sequence with given start
     offset and subsequence length.
 
     It only supports sequence data (LoDTensor with lod_level equal to 1).
 
     .. code-block:: text
-    
+
 	- Case:
 
             Given the input Variable **input**:
-                
+
                 input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
                 input.lod = [[3, 2]],
                 input.dims = (5, 2),
@@ -2009,16 +2011,16 @@ def sequence_slice(input, offset, length, name=None):
             with offset.data = [[0], [1]] and length.data = [[2], [1]],
 
             the output Variable will be
-                
+
                 out.data = [[a1, a2], [b1, b2], [e1, e2]],
                 out.lod = [[2, 1]],
                 out.dims = (3, 2).
-	
-    NOTE: The first dimension size of **input**, **offset** and **length** 
+
+    NOTE: The first dimension size of **input**, **offset** and **length**
           should be equal. The **offset** should start from 0.
-    
+
     Args:
-        input(Variable): The input Variable which consists of the complete 
+        input(Variable): The input Variable which consists of the complete
                          sequences.
         offset(Variable): The offset to slice each sequence.
         length(Variable): The length of each subsequence.
@@ -2037,7 +2039,7 @@ def sequence_slice(input, offset, length, name=None):
                               dtype='float32', lod_level=1)
              offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
              length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
-             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset, 
+             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
     helper = LayerHelper("sequence_slice", **locals())
@@ -2420,12 +2422,12 @@ def layer_norm(input,
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
-            a default :code:`ParamAttr` would be added as scale. The 
-            :attr:`param_attr` is initialized as 1 if it is added. Default None. 
+            a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default None.
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
-            a default :code:`ParamAttr` would be added as bias. The 
+            a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default None.
         act(str): Activation to be applied to the output of layer normalizaiton.
                   Default None.
@@ -3043,8 +3045,8 @@ def sequence_unpad(x, length, name=None):
     """
     **Sequence Unpad Layer**
 
-    This layer removes the padding data in the input sequences and convert 
-    them into sequences with actual length as output, identitied by lod 
+    This layer removes the padding data in the input sequences and convert
+    them into sequences with actual length as output, identitied by lod
     information.
 
     .. code-block:: text
@@ -3054,9 +3056,9 @@ def sequence_unpad(x, length, name=None):
 	Given input Variable **x**:
 	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
 		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
-		      [11.0, 12.0, 13.0, 14.0, 15.0]], 
-     
-	in which there are 3 sequences padded to length 5, and the acutal length 
+		      [11.0, 12.0, 13.0, 14.0, 15.0]],
+
+	in which there are 3 sequences padded to length 5, and the acutal length
 	specified by input Variable **length**:
 
 	    length.data = [[2], [3], [4]],
@@ -3064,7 +3066,7 @@ def sequence_unpad(x, length, name=None):
 	after unpadding, the output Variable will be:
 
 	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[2, 3, 4]]      
+	    out.lod = [[2, 3, 4]]
 
     Args:
         x(Variable): Input Variable which contains the padded sequences with
@@ -5499,9 +5501,9 @@ def roi_align(input,
     Examples:
         .. code-block:: python
 
-            align_out = fluid.layers.roi_align(input=x, 
-                                               rois=rois, 
-                                               pooled_height=7, 
+            align_out = fluid.layers.roi_align(input=x,
+                                               rois=rois,
+                                               pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
                                                sampling_ratio=-1)
@@ -7538,13 +7540,40 @@ def space_to_depth(x, blocksize, name=None):
     return out
 
 
+@templatedoc()
+def sequence_reverse(x, name=None):
+    """ 
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${y_type}): ${y_comment}
+    """
+    helper = LayerHelper("sequence_reverse", **locals())
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="sequence_reverse",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs=dict())
+    return out
+
+
 def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
     """
     Applies a separate affine transformation to each channel of the input.
     Useful for replacing spatial batch norm with its equivalent fixed
     transformation. The input also can be 2D tensor and applies a affine
     transformation in second dimension.
-    
+
     Args:
         x (Variable): Feature map input can be a 4D tensor with order NCHW
             or NHWC. It also can be a 2D tensor and the affine transformation
@@ -7576,4 +7605,32 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
+    return out
+
+
+def hash(input, hash_size, num_hash=1, name=None):
+    """
+    hash the input
+     Args:
+        input (Variable): The input variable which is a one-hot word.
+        hash_size (int): The space size for hash algorithm.
+        num_hash (int): The times of hash, default 1.
+        name (str, default None): The name of this layer.
+     Returns:
+        Variable: The hash result variable which is a LoDTensor.
+     Examples:
+        .. code-block:: python
+            word_dict = paddle.dataset.imdb.word_dict()
+            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+            out = fluid.layers.hash(input=x, len(word_dict))
+    """
+    helper = LayerHelper('hash', **locals())
+    out = helper.create_variable_for_type_inference(
+        helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='hash',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'num_hash': num_hash,
+               'mod_by': hash_size})
     return out
