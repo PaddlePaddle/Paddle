@@ -6080,9 +6080,6 @@ def affine_grid_generator(theta, out_shape, name=None):
     the input feature map should be sampled to produce the transformed
     output feature map.
 
-
-    Crop input into output, as specified by offsets and shape.
-
     .. code-block:: text
 
         * Case 1:
@@ -6098,9 +6095,9 @@ def affine_grid_generator(theta, out_shape, name=None):
       
           Step 1:
       
-              Generate relative coordinates according to Size.
-              The values of relative coordinates are in the interval between -1 and 1.
-              The shape of the relative coordinates is [2, H, W] as below:
+              Generate normalized coordinates according to out_shape.
+              The values of the normalized coordinates are in the interval between -1 and 1.
+              The shape of the normalized coordinates is [2, H, W] as below:
       
               C = [[[-1.  -1.  -1.  -1.  -1. ]
                     [-0.5 -0.5 -0.5 -0.5 -0.5]
