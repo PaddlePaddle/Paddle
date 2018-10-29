@@ -77,7 +77,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     pipeline.push_back(*reorder_p);
     stream(stream::kind::eager).submit(pipeline).wait(); 
 
-    output->set_layout(DataLayout::kMKLDNN);
+    //output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(dst_memory));
 
   }
