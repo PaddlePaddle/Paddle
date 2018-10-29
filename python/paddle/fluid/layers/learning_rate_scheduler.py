@@ -27,7 +27,7 @@ from . import nn
 from . import ops
 from . import tensor
 from ..initializer import init_on_cpu
-from ..framework import default_main_program, Parameter, unique_name
+from ..framework import default_main_program, Parameter, unique_name, name_scope
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -332,14 +332,16 @@ def append_LARS(params_grads, learning_rate, weight_decay):
             return grad_norm + weight_decay * param_norm
 
     for param, grad in params_grads:
-        param_lr = param.optimize_attr['learning_rate']
-        param_norm = ops.sqrt(nn.reduce_sum(input=ops.square(param)))
-        grad_norm = ops.sqrt(nn.reduce_sum(input=ops.square(grad)))
-        if type(param_lr) == float and param_lr == 1.0:
-            decayed_lr = learning_rate * param_norm \
-                / _balanced_weight(param_norm, grad_norm)
-        else:
-            decayed_lr = learning_rate * param_lr * param_norm \
-                / _balanced_weight(param_norm, grad_norm)
-        # set back param local learning rate
-        param.optimize_attr['learning_rate'] = decayed_lr
+        with param.block.program.optimized_guard(
+            [param, grad]), name_scope("optimizer"):
+            param_lr = param.optimize_attr['learning_rate']
+            param_norm = ops.sqrt(nn.reduce_sum(input=ops.square(param)))
+            grad_norm = ops.sqrt(nn.reduce_sum(input=ops.square(grad)))
+            if type(param_lr) == float and param_lr == 1.0:
+                decayed_lr = learning_rate * param_norm \
+                    / _balanced_weight(param_norm, grad_norm)
+            else:
+                decayed_lr = learning_rate * param_lr * param_norm \
+                    / _balanced_weight(param_norm, grad_norm)
+            # set back param local learning rate
+            param.optimize_attr['learning_rate'] = decayed_lr
