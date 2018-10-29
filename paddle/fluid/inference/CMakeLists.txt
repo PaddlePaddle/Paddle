@@ -30,7 +30,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor)
+cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
@@ -40,7 +40,7 @@ endif()
 
 # Create shared library
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-    DEPS ${fluid_modules} paddle_fluid_api)
+    DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE)
