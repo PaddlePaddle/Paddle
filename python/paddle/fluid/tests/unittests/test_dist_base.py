@@ -22,6 +22,8 @@ import signal
 import subprocess
 import six
 import argparse
+import pickle
+import numpy as np
 
 import paddle.fluid as fluid
 
@@ -128,10 +130,12 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
+        out_losses = []
         for _ in six.moves.xrange(RUN_STEP):
             loss, = exe.run(fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
-            print(loss)
+            out_losses.append(loss[0])
+        print(pickle.dumps(out_losses))
 
 
 def runtime_main(test_class):
@@ -237,21 +241,6 @@ class TestDistBase(unittest.TestCase):
 
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
-    def _wait_ps_ready(self, pid):
-        retry_times = 50
-        while True:
-            assert retry_times >= 0, "wait ps ready failed"
-            time.sleep(3)
-            try:
-                # the listen_and_serv_op would touch a file which contains the listen port
-                # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
-                return
-            except os.error as e:
-                sys.stderr.write('waiting for pserver: %s, left retry %d\n' %
-                                 (e, retry_times))
-                retry_times -= 1
-
     def _run_local(self,
                    model,
                    envs,
@@ -293,18 +282,17 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stdout: %s\n' % local_ret)
+        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_ret))
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        local_losses = local_ret.split("\n")
-        return local_losses
+        # local_losses = local_ret.split("\n")
+        return pickle.loads(local_ret)
 
     def _run_cluster(self, model, envs, check_error_log):
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
                                                           check_error_log, envs)
-        self._wait_ps_ready(ps0.pid)
-        self._wait_ps_ready(ps1.pid)
+
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
         tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist"
@@ -339,8 +327,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print("tr0_cmd:{}, env0: {}".format(tr0_cmd, env0))
-        print("tr1_cmd:{}, env1: {}".format(tr1_cmd, env1))
+        print("tr0_cmd:{}".format(tr0_cmd))
+        print("tr1_cmd:{}".format(tr1_cmd))
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
@@ -373,15 +361,17 @@ class TestDistBase(unittest.TestCase):
         ps1.terminate()
 
         # print log
-        sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
+        sys.stderr.write('trainer 0 stdout:\n %s\n' %
+                         pickle.loads(tr0_loss_text))
         sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_loss_text)
+        sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_loss_text))
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
 
-        tr0_losses = tr0_loss_text.split("\n")
-        tr1_losses = tr1_loss_text.split("\n")
+        # tr0_losses = tr0_loss_text.split("\n")
+        # tr1_losses = tr1_loss_text.split("\n")
 
-        return tr0_losses, tr1_losses
+        # return tr0_losses, tr1_losses
+        return pickle.loads(tr0_loss_text), pickle.loads(tr1_loss_text)
 
     def check_with_place(self,
                          model_file,
@@ -411,9 +401,9 @@ class TestDistBase(unittest.TestCase):
                                                    check_error_log)
 
         for step_id in range(RUN_STEP):
-            local_loss = eval(local_losses[step_id])[0]
-            tr0_loss = eval(tr0_losses[step_id])[0]
-            tr1_loss = eval(tr1_losses[step_id])[0]
-            dist_loss = (tr0_loss + tr1_loss) / 2
-            print(str(local_loss) + ":" + str(dist_loss))
-            self.assertAlmostEqual(local_loss, dist_loss, delta=delta)
+            local_loss = local_losses[step_id]
+            tr0_loss = tr0_losses[step_id]
+            tr1_loss = tr1_losses[step_id]
+            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
+            print("=======", local_loss, ":", dist_loss[0], "=======")
+            self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
