@@ -149,7 +149,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument(
-        '--use_reader_alloc', action='store_true', required=False, default=True)
+        '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
     parser.add_argument(
         '--batch_merge_repeat', required=False, type=int, default=1)
