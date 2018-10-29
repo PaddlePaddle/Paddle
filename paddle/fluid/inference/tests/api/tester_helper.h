@@ -167,7 +167,9 @@ void TestMultiThreadPrediction(
   }
 
   LOG(INFO) << "threads average time: "
-            << total_time / num_threads / batch_size / num_times << " ms";
+            << static_cast<double>(total_time) /
+                   (num_threads * batch_size * num_times)
+            << " ms";
 }
 
 void TestPrediction(const AnalysisConfig &config,
