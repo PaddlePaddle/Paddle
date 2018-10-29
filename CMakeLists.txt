@@ -305,6 +305,6 @@ if(WITH_DOC)
 endif()
 
 if (ON_INFER)
-    message(WARNING "On inference mode, will take place some specific optimization.")
+    message(STATUS "On inference mode, will take place some specific optimization.")
     add_definitions(-DPADDLE_ON_INFERENCE)
 endif()
