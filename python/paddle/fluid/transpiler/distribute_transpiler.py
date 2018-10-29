@@ -1431,7 +1431,7 @@ to transpile() call.")
         elif op_type == "adamax":
             if varkey in ["Moment", "InfNorm"]:
                 return param_shape
-        elif op_type == "momentum":
+        elif op_type in ["momentum", "lars_momentum"]:
             if varkey == "Velocity":
                 return param_shape
         elif op_type == "rmsprop":
@@ -1442,6 +1442,10 @@ to transpile() call.")
                 return param_shape
         elif op_type == "sgd":
             pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
         return orig_shape
 
     def _get_varname_parts(self, varname):
