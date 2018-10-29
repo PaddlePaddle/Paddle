@@ -285,7 +285,6 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_ret))
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        # local_losses = local_ret.split("\n")
         return pickle.loads(local_ret)
 
     def _run_cluster(self, model, envs, check_error_log):
@@ -366,9 +365,6 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_loss_text))
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
-
-        # tr0_losses = tr0_loss_text.split("\n")
-        # tr1_losses = tr1_loss_text.split("\n")
 
         # return tr0_losses, tr1_losses
         return pickle.loads(tr0_loss_text), pickle.loads(tr1_loss_text)
