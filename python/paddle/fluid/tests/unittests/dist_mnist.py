@@ -95,7 +95,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         opt.minimize(avg_cost)
