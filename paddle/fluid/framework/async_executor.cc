@@ -78,7 +78,7 @@ void CreateTensor(Variable* var, proto::VarType::Type var_type) {
   }
 }
 
-static void read_binary_file(const std::string& filename,
+static void ReadBinaryFile(const std::string& filename,
                              std::string* content) {
   std::string &contents = *content;
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
@@ -93,7 +93,7 @@ static void read_binary_file(const std::string& filename,
   fin.close();
 }
 
-static void save_model(
+static void SaveModel(
     const std::unique_ptr<ProgramDesc> & main_program,
     Scope* scope,
     const std::vector<std::string> & param_names,
@@ -142,7 +142,7 @@ static void save_model(
                                                       attrs);
     save_op->Run(*scope, place);
   }
-}   // end save_model
+}   // end SaveModel
 
 
 void ExecutorThreadWorker::AddTrainFile(const std::string& file) {
@@ -370,11 +370,11 @@ void ExecutorThreadWorker::Train() {
       //
       // currently comment it
       LOG(ERROR) << "Going to save model " << modelfile;
-      save_model(main_program_,
-          thread_scope_,
-          model_param_names_,
-          model_filename,
-          true);
+      SaveModel(main_program_,
+                thread_scope_,
+                model_param_names_,
+                model_filename,
+                true);
     }
   }
 }
@@ -462,7 +462,7 @@ void AsyncExecutor::RunStartupProgram(const ProgramDesc& program,
 std::unique_ptr<ProgramDesc> AsyncExecutor::LoadDescFromFile(
     const std::string& f) {
   std::string program_desc_str;
-  read_binary_file(f, &program_desc_str);
+  ReadBinaryFile(f, &program_desc_str);
   std::unique_ptr<ProgramDesc> program(new ProgramDesc(program_desc_str));
   return program;
 }
