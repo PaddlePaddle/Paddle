@@ -31,72 +31,81 @@ namespace platform {
 
 int GetCUDADeviceCount() {
   int count;
+  cudaError_t err = cudaGetDeviceCount(&count);
   PADDLE_ENFORCE(
-      cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
+      err == cudaSuccess,
+      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount: %s",
+      cudaGetErrorString(err));
   return count;
 }
 
 int GetCUDAComputeCapability(int id) {
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   cudaDeviceProp device_prop;
-  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id),
+  cudaError_t err = cudaGetDeviceProperties(&device_prop, id);
+  PADDLE_ENFORCE(err == cudaSuccess,
                  "cudaGetDeviceProperties failed in "
-                 "paddle::platform::GetCUDAComputeCapability");
+                 "paddle::platform::GetCUDAComputeCapability: %s",
+                 cudaGetErrorString(err));
   return device_prop.major * 10 + device_prop.minor;
 }
 
 int GetCUDARuntimeVersion(int id) {
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int runtime_version = 0;
-  PADDLE_ENFORCE(cudaRuntimeGetVersion(&runtime_version),
+  cudaError_t err = cudaRuntimeGetVersion(&runtime_version);
+  PADDLE_ENFORCE(err == cudaSuccess,
                  "cudaRuntimeGetVersion failed in "
-                 "paddle::platform::cudaRuntimeGetVersion");
+                 "paddle::platform::GetCUDARuntimeVersion: %s",
+                 cudaGetErrorString(err));
   return runtime_version;
 }
 
 int GetCUDADriverVersion(int id) {
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int driver_version = 0;
-  PADDLE_ENFORCE(cudaDriverGetVersion(&driver_version),
+  cudaError_t err = cudaDriverGetVersion(&driver_version);
+  PADDLE_ENFORCE(err == cudaSuccess,
                  "cudaDriverGetVersion failed in "
-                 "paddle::platform::GetCUDADriverVersion");
+                 "paddle::platform::GetCUDADriverVersion: %s",
+                 cudaGetErrorString(err));
   return driver_version;
 }
 
 int GetCUDAMultiProcessors(int id) {
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
-  PADDLE_ENFORCE(
-      cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id),
-      "cudaDeviceGetAttribute failed in "
-      "paddle::platform::GetCUDAMultiProcessors");
+  cudaError_t err =
+      cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id);
+  PADDLE_ENFORCE(err == cudaSuccess,
+                 "cudaDeviceGetAttribute failed in "
+                 "paddle::platform::GetCUDAMultiProcessors:%s",
+                 cudaGetErrorString(err));
   return count;
 }
 
 int GetCUDAMaxThreadsPerMultiProcessor(int id) {
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
-  PADDLE_ENFORCE(cudaDeviceGetAttribute(
-                     &count, cudaDevAttrMaxThreadsPerMultiProcessor, id),
+  cudaError_t err = cudaDeviceGetAttribute(
+      &count, cudaDevAttrMaxThreadsPerMultiProcessor, id);
+  PADDLE_ENFORCE(err == cudaSuccess,
                  "cudaDeviceGetAttribute failed in "
-                 "paddle::platform::GetCUDAMaxThreadsPerMultiProcessor");
+                 "paddle::platform::GetCUDAMaxThreadsPerMultiProcessor:%s",
+                 cudaGetErrorString(err));
   return count;
 }
 
 int GetCurrentDeviceId() {
   int device_id;
-  PADDLE_ENFORCE(
-      cudaGetDevice(&device_id),
-      "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
+  cudaError_t err = cudaGetDevice(&device_id);
+  PADDLE_ENFORCE(err == cudaSuccess,
+                 "cudaGetDevice failed in "
+                 "paddle::platform::GetCurrentDeviceId:%s",
+                 cudaGetErrorString(err));
   return device_id;
 }
 
 void SetDeviceId(int id) {
-  // TODO(qijun): find a better way to cache the cuda device count
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
-  PADDLE_ENFORCE(cudaSetDevice(id),
-                 "cudaSetDevice failed in paddle::platform::SetDeviceId");
+  cudaError_t err = cudaSetDevice(id);
+  PADDLE_ENFORCE(err == cudaSuccess,
+                 "cudaSetDevice failed in paddle::platform::SetDeviceId: %s",
+                 cudaGetErrorString(err));
 }
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
