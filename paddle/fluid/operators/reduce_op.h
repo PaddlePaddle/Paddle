@@ -256,6 +256,19 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetOpType() const = 0;
 };
 
+class ReduceOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    auto& x = block->FindRecursiveOrCreateVar(x_name);
+    auto& out = block->FindRecursiveOrCreateVar(out_name);
+    out.SetType(x.GetType());
+    out.SetDataType(x.GetDataType());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -268,5 +281,6 @@ namespace ops = paddle::operators;
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \
   };                                                                     \
   REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
+                    paddle::operators::ReduceOpInferVarType,             \
                     paddle::framework::DefaultGradOpDescMaker<true>);    \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
