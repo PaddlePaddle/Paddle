@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -23,11 +22,11 @@ def AffineGrid(theta, size):
     h = size[2]
     w = size[3]
     h_idx = np.repeat(
-            np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[:, :, np.newaxis]
+        np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[:, :, np.newaxis]
     w_idx = np.repeat(
-            np.linspace(-1, 1, w)[np.newaxis, :], h, axis=0)[:, :, np.newaxis]
+        np.linspace(-1, 1, w)[np.newaxis, :], h, axis=0)[:, :, np.newaxis]
     grid = np.concatenate(
-            [w_idx, h_idx, np.ones([h, w, 1])], axis=2)  # h * w * 3
+        [w_idx, h_idx, np.ones([h, w, 1])], axis=2)  # h * w * 3
     grid = np.repeat(grid[np.newaxis, :], size[0], axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
@@ -36,6 +35,7 @@ def AffineGrid(theta, size):
         ret[i] = np.dot(grid[i].reshape([h * w, 3]), theta[i])
 
     return ret.reshape([n, h, w, 2]).astype("float32")
+
 
 def getGridPointValue(data, x, y):
     data_shape = data.shape
@@ -47,12 +47,14 @@ def getGridPointValue(data, x, y):
     for i in range(N):
         for j in range(H):
             for k in range(W):
-                if y[i, j, k] < 0 or y[i, j, k] > H - 1 or x[i, j, k] < 0 or x[i, j, k] > W - 1:
+                if y[i, j, k] < 0 or y[i, j, k] > H - 1 or x[i, j, k] < 0 or x[
+                        i, j, k] > W - 1:
                     out[i, :, j, k] = 0
                 else:
                     out[i, :, j, k] = data[i, :, y[i, j, k], x[i, j, k]]
 
     return out
+
 
 def GridSampler(data, grid):
     dims = data.shape
@@ -71,7 +73,7 @@ def GridSampler(data, grid):
 
     x0 = np.floor(x).astype('int32')
     x1 = x0 + 1
-    y0 = np.floor(y).astype('int32') 
+    y0 = np.floor(y).astype('int32')
     y1 = y0 + 1
 
     wa = np.tile(((x1 - x) * (y1 - y)).reshape((N, 1, H, W)), (1, C, 1, 1))
@@ -86,6 +88,7 @@ def GridSampler(data, grid):
 
     out = (wa * va + wb * vb + wc * vc + wd * vd).astype('float32')
     return out
+
 
 class TestGridSamplerOp(OpTest):
     def setUp(self):
@@ -114,6 +117,7 @@ class TestGridSamplerOp(OpTest):
         self.x_shape = (2, 5, 7, 3)
         self.grid_shape = (2, 7, 3, 2)
         self.theta_shape = (2, 2, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

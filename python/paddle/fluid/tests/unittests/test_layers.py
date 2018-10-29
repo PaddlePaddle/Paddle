@@ -868,12 +868,11 @@ class TestBook(unittest.TestCase):
     def test_affine_grid_gen(self):
         program = Program()
         with program_guard(program):
-            x = layers.data(name='x', shape=[2, 5, 7, 3 ], dtype='float32')
-            grid = layers.data(name='grid', shape=[2, 5, 7, 2], dtype='float32' )
+            x = layers.data(name='x', shape=[2, 5, 7, 3], dtype='float32')
+            grid = layers.data(name='grid', shape=[2, 5, 7, 2], dtype='float32')
             out = layers.grid_sampler(x, grid)
             self.assertIsNotNone(out)
         print(str(program))
-
 
 
 if __name__ == '__main__':

@@ -7586,11 +7586,13 @@ def hash(input, hash_size, num_hash=1, name=None):
 @templatedoc()
 def grid_sampler(x, grid, name=None):
     """
-    It sample input X by grid gennerate by AffineGridOp. The grid of shape
-    [N, H, W, 2] is the concatenation of (x, y) coordinates with shape 
-    [N, H, W] each, with x indexing the 4th-D(W) of input feature map and y to 
-    indexng the 3rd-D(H), finally results is the bilinear interpolation value
-    of 4 nearest corner points.
+    This operation samples input X by using bilinear interpolation based on 
+    flow field grid, which is usually gennerated by affine_grid. The grid of
+    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates 
+    with shape [N, H, W] each, where grid_x is indexing the 4th dimension 
+    (in width dimension) of input data x and grid_y is indexng the 3rd 
+    dimention (in height dimension), finally results is the bilinear 
+    interpolation value of 4 nearest corner points.
 
     Step 1:
     Get (x, y) grid coordinates and scale to [0, H-1/W-1].
@@ -7636,7 +7638,16 @@ def grid_sampler(x, grid, name=None):
         name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): Output data indices by grid from x of shape [N, C, H, W].
+        out(Variable): Output of shape [N, C, H, W] data samples input X 
+        using bilnear interpolation based on input grid.
+
+    Exmples:
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
+        theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
+        grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
+        out = fluid.layers.grid_sampler(x=x, grid=grid)
     """
     helper = LayerHelper("grid_sampler", **locals())
 
@@ -7649,10 +7660,6 @@ def grid_sampler(x, grid, name=None):
     out = helper.create_tmp_variable(x.dtype)
     ipts = {'X': x, 'Grid': grid}
 
-    helper.apppend_op(
-            type='grid_sampler',
-            inputs=ipts,
-            outputs={'Output', out})
+    helper.apppend_op(type='grid_sampler', inputs=ipts, outputs={'Output', out})
 
     return out
-
