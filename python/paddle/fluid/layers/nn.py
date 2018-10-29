@@ -7557,7 +7557,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
 
 def similarity_focus(input, axis, indexes, name=None):
     """  
-    **SimilarityFocus Operator**
+    SimilarityFocus Operator
 
     Generate a similarity focus mask with the same shape of input using the following method:
     1. Extract the 4-D matrix(here the first dimension is BatchSize) corresponding 
@@ -7625,7 +7625,7 @@ def similarity_focus(input, axis, indexes, name=None):
         input(Variable): The input tensor variable(default float). It should 
             be a 4-D tensor with shape [BatchSize, A, B, C].
         axis(int): Indicating the dimension to be select. It can only be
-            1, 2, or 3.
+            1, 2 or 3.
         indexes(list): indicating the indexes of the selected dimension.
 
     Returns:

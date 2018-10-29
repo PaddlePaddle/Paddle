@@ -160,7 +160,8 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
-            << ", latency: " << latency << "ms ======";
+            << ", latency: " << latency << "ms, fps: " << 1 / (latency / 1000.f)
+            << " ======";
   if (epoch > 1) {
     int samples = batch_size * epoch;
     LOG(INFO) << "====== sample number: " << samples
