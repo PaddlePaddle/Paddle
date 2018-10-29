@@ -95,9 +95,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
-      pass->Erase("enable_sequence_execution");
-      if (enable_sequence_execution_) {
-        pass->Set("enable_sequence_execution", new bool(true));
+      pass->Erase("enable_sequential_execution");
+      if (enable_sequential_execution_) {
+        pass->Set("enable_sequential_execution", new bool(true));
       }
 
       pass->Erase("places");

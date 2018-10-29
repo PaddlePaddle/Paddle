@@ -81,6 +81,12 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
+    // NOTE(minqiyang): grad_inplace is an temporal attribute,
+    // please do NOT set this attribute in python layer.
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -137,6 +143,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
               << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
+    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
   }
 };
 
