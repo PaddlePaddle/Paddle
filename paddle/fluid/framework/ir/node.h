@@ -44,6 +44,7 @@ class Node {
     return op_desc_.get();
   }
 
+  // Please don't use this API!
   int id() const { return id_; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
@@ -92,6 +93,7 @@ class Node {
   Node() = delete;
 
   static int count_;
+  // Please don't use this API or make this public.
   static void ResetId() { count_ = 0; }
   DISABLE_COPY_AND_ASSIGN(Node);
 };
