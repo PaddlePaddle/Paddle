@@ -116,12 +116,13 @@ class ZeroCopyTensor {
   // Get the memory directly, will return the place and memory size by pointer.
   // This is for reading the output tensor.
   template <typename T>
-  T* data(PaddlePlace* place, int* size);
+  T* data(PaddlePlace* place, int* size) const;
 
-  std::vector<int64_t> shape();
+  std::vector<int64_t> shape() const;
 
   void SetLoD(const std::vector<std::vector<size_t>>& x);
   std::vector<std::vector<size_t>> lod() const;
+  const std::string& name() const { return name_; }
 
  protected:
   explicit ZeroCopyTensor(void* scope) : scope_{scope} {}

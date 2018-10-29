@@ -24,7 +24,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
 }
 
 template <typename T>
-T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
+T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   return nullptr;
 }
 
@@ -35,7 +35,7 @@ template int64_t *ZeroCopyTensor::mutable_data(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const { return nullptr; }
 
-std::vector<int64_t> ZeroCopyTensor::shape() { return {}; }
+std::vector<int64_t> ZeroCopyTensor::shape() const { return {}; }
 
 void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {}
 
