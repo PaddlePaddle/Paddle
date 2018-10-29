@@ -121,10 +121,6 @@ class OpDesc {
 
   BlockDesc *Block() { return this->block_; }
 
-  const BlockDesc &BlockRef() const { return *this->block_; }
-
-  void SetBlock(BlockDesc *block) { this->block_ = block; }
-
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {

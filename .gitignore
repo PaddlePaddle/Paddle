@@ -30,3 +30,4 @@ build_*
 # clion workspace.
 cmake-build-*
 paddle/fluid/operators/distributed/send_recv.proto
+model_test

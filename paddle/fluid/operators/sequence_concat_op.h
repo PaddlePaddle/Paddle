@@ -17,7 +17,7 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 
 namespace paddle {
 namespace operators {
@@ -106,7 +106,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    math::ConcatGradFunctor<DeviceContext, T> functor;
+    math::SplitFunctor<DeviceContext, T> functor;
     std::vector<const framework::Tensor *> sliced_x_ptr;
     std::vector<framework::Tensor *> sliced_dx_ptr;
     for (auto &x : sliced_x) {

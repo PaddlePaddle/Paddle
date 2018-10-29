@@ -26,10 +26,11 @@ import argparse
 import paddle.fluid as fluid
 
 RUN_STEP = 10
+DEFAULT_BATCH_SIZE = 2
 
 
 class TestDistRunnerBase(object):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=DEFAULT_BATCH_SIZE):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -48,8 +49,7 @@ class TestDistRunnerBase(object):
         return t
 
     def run_pserver(self, args):
-
-        self.get_model(batch_size=2)
+        self.get_model(batch_size=args.batch_size)
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
@@ -65,7 +65,7 @@ class TestDistRunnerBase(object):
 
     def run_trainer(self, args):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-            self.get_model(batch_size=2)
+            self.get_model(batch_size=args.batch_size)
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
@@ -92,6 +92,11 @@ class TestDistRunnerBase(object):
         strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
+        if args.batch_merge_repeat > 1:
+            pass_builder = build_stra._create_passes_from_strategy()
+            mypass = pass_builder.insert_pass(
+                len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
+            mypass.set_int("num_repeats", args.batch_merge_repeat)
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
@@ -145,6 +150,9 @@ def runtime_main(test_class):
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False, default=True)
+    parser.add_argument('--batch_size', required=False, type=int, default=2)
+    parser.add_argument(
+        '--batch_merge_repeat', required=False, type=int, default=1)
 
     args = parser.parse_args()
 
@@ -244,9 +252,18 @@ class TestDistBase(unittest.TestCase):
                                  (e, retry_times))
                 retry_times -= 1
 
-    def _run_local(self, model, envs, check_error_log):
+    def _run_local(self,
+                   model,
+                   envs,
+                   check_error_log=False,
+                   batch_size=DEFAULT_BATCH_SIZE,
+                   batch_merge_repeat=1):
 
         cmd = "%s %s --role trainer" % (self._python_interp, model)
+        if batch_size != DEFAULT_BATCH_SIZE:
+            cmd += " --batch_size %d" % batch_size
+        if batch_merge_repeat > 1:
+            cmd += " --batch_merge_repeat %d" % batch_merge_repeat
 
         if self.__use_cuda:
             cmd += " --use_cuda"

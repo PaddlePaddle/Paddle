@@ -50,7 +50,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
     auto &ref_out = ref_outputs[i];
     size_t size = VecReduceToInt(out.shape);
     size_t ref_size = VecReduceToInt(ref_out.shape);
-    EXPECT_GT(size, 0);
+    EXPECT_GT(size, 0UL);
     EXPECT_EQ(size, ref_size);
     EXPECT_EQ(out.dtype, ref_out.dtype);
     switch (out.dtype) {
@@ -139,6 +139,9 @@ void TestMultiThreadPrediction(
   }
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
+#ifdef PADDLE_WITH_MKLDNN
+      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
+#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;
