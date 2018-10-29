@@ -86,8 +86,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
 
-  void InsertSequenceDependenciesBetweenComputationOps(ir::Graph *graph) const;
-
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
