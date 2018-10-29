@@ -157,6 +157,7 @@ __all__ = [
     'sequence_reverse',
     'affine_channel',
     'hash',
+    'mask_lm',
 ]
 
 
@@ -7580,3 +7581,39 @@ def hash(input, hash_size, num_hash=1, name=None):
         attrs={'num_hash': num_hash,
                'mod_by': hash_size})
     return out
+
+
+def mask_lm(x, mask_id, voc_size, masked_prob, is_test=False, seed=None, name=None):
+    """
+    Computes dropout.
+    
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            droped = fluid.layers.dropout(x, dropout_prob=0.5)
+    """
+
+    helper = LayerHelper('mask_lm', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    mask = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
+    helper.append_op(
+        type='mask_lm',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'Mask': [mask]},
+        attrs={
+            'mask_id': mask_id,
+            'voc_size': voc_size,
+            'masked_prob': masked_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0
+        })
+    return out, mask
