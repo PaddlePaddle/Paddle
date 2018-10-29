@@ -29,47 +29,23 @@ import os
 import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
+from dist_mnist import cnn_model
 
 DTYPE = "float32"
-paddle.dataset.mnist.fetch()
-
-# Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
 
 
-def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
-        input=data,
-        filter_size=5,
-        num_filters=20,
-        pool_size=2,
-        pool_stride=2,
-        act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
-        input=conv_pool_1,
-        filter_size=5,
-        num_filters=50,
-        pool_size=2,
-        pool_stride=2,
-        act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
-
-    SIZE = 10
-    input_shape = conv_pool_2.shape
-    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
-    scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
-
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
-        size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)))
-    return predict
+def test_merge_reader(repeat_batch_size=8):
+    orig_reader = paddle.dataset.mnist.test()
+    record_batch = []
+    b = 0
+    for d in orig_reader():
+        if b >= repeat_batch_size:
+            break
+        record_batch.append(d)
+        b += 1
+    while True:
+        for d in record_batch:
+            yield d
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
@@ -90,12 +66,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.001, beta1=0.9, beta2=0.999)
+        opt = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 
         # Reader
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        train_reader = paddle.batch(test_merge_reader, batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         opt.minimize(avg_cost)
