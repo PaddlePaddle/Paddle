@@ -239,9 +239,9 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
 // optimizer nodes after last backward nodes.
 // However, the assumption by SSAGraphBuilder should be relaxed in the future.
 std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(
-    const ir::Graph &graph, bool enable_sequence_execution = false) {
+    const ir::Graph &graph, bool enable_sequential_execution = false) {
   std::vector<ir::Node *> ret;
-  if (enable_sequence_execution) {
+  if (enable_sequential_execution) {
     VLOG(10) << "sequential execution mode is enabled";
     for (auto *node : graph.Nodes()) {
       if (node->IsOp()) {
@@ -269,9 +269,9 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(
   std::vector<ir::Node *> sorted_ret;
   for (size_t i = 0; i < ret.size(); ++i) {
     if (i < last_backward) {
-      if (boost::get<int>(ret[i]->Op()->GetAttr(
-              OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-          static_cast<int>(OpRole::kOptimize)) {
+      if (static_cast<bool>(boost::get<int>(ret[i]->Op()->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kOptimize))) {
         optimize_ops.push_back(ret[i]);
       } else {
         sorted_ret.push_back(ret[i]);
@@ -304,10 +304,10 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
   // Give the topology sort order and rebuild the graph structure.
-  bool enable_sequence_execution = Has("enable_sequence_execution") &&
-                                   Get<bool>("enable_sequence_execution");
+  bool enable_sequential_execution = Has("enable_sequential_execution") &&
+                                     Get<bool>("enable_sequential_execution");
   std::vector<ir::Node *> sorted_ops =
-      SortOpsAndDelayOptimizeOp(*graph, enable_sequence_execution);
+      SortOpsAndDelayOptimizeOp(*graph, enable_sequential_execution);
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
@@ -465,7 +465,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   }
 
   // Insert dependencies between computation_ops
-  if (enable_sequence_execution) {
+  if (enable_sequential_execution) {
     InsertSequenceDependenciesBetweenComputationOps(graph.get());
   }
 
