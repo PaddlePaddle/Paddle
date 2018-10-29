@@ -47,7 +47,7 @@ class TestSimilarityFocusOp(OpTest):
                 cnt = 0
                 for i in range(channel.size):
                     index = channel.argmax()
-                    idx1 = index / z_dim
+                    idx1 = index // z_dim
                     idx2 = index % z_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
@@ -95,7 +95,7 @@ class TestSimilarityFocusOp_axis1(OpTest):
                 cnt = 0
                 for i in range(channel.size):
                     index = channel.argmax()
-                    idx1 = index / z_dim
+                    idx1 = index // z_dim
                     idx2 = index % z_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
@@ -143,7 +143,7 @@ class TestSimilarityFocusOp_axis2(OpTest):
                 cnt = 0
                 for i in range(channel.size):
                     index = channel.argmax()
-                    idx1 = index / z_dim
+                    idx1 = index // z_dim
                     idx2 = index % z_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
@@ -191,7 +191,7 @@ class TestSimilarityFocusOp_axis3(OpTest):
                 cnt = 0
                 for i in range(channel.size):
                     index = channel.argmax()
-                    idx1 = index / y_dim
+                    idx1 = index // y_dim
                     idx2 = index % y_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
