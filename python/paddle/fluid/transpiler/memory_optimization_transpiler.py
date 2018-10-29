@@ -486,7 +486,6 @@ def memory_optimize(input_program,
             skip_opt_set = grad_set
         else:
             skip_opt_set.update(grad_set)
-
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
