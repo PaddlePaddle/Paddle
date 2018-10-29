@@ -96,9 +96,9 @@ class TestPool2d_Op(OpTest):
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype(self.dtype)
-        output = self.pool2D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings, self.global_pool,
-                                           self.ceil_mode, self.exclusive).astype(self.dtype)
+        output = self.pool2D_forward_naive(
+            input, self.ksize, self.strides, self.paddings, self.global_pool,
+            self.ceil_mode, self.exclusive).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -110,7 +110,8 @@ class TestPool2d_Op(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
             'ceil_mode': self.ceil_mode,
-            'data_format': 'AnyLayout',  # TODO(dzhwinter) : should be fix latter
+            'data_format':
+            'AnyLayout',  # TODO(dzhwinter) : should be fix latter
             'exclusive': self.exclusive
         }
 
@@ -329,9 +330,11 @@ class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
 
+
 class TestAvgInclude(TestCase2):
     def init_exclusive(self):
         self.exclusive = False
+
 
 class TestCUDNNAvgInclude(TestCUDNNCase3):
     def init_exclusive(self):

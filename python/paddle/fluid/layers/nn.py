@@ -2067,8 +2067,8 @@ def pool2d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           exclusive=True,
-           name=None):
+           name=None,
+           exclusive=True):
     """
     ${comment}
 
@@ -2085,10 +2085,10 @@ def pool2d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-        exclusive (bool): Whether to exclude padding points in average pooling 
-                          mode, default is true
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
+        exclusive (bool): Whether to exclude padding points in average pooling 
+                          mode, default is true
 
     Returns:
         Variable: The pooling result.
@@ -2161,8 +2161,8 @@ def pool3d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           exclusive=True,
-           name=None):
+           name=None,
+           exclusive=True):
     """
     This function adds the operator for pooling in 3-dimensions, using the
     pooling configurations mentioned in input parameters.
@@ -2176,10 +2176,10 @@ def pool3d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-        exclusive (bool): Whether to exclude padding points in average pooling 
-                          mode, default is true
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
+        exclusive (bool): Whether to exclude padding points in average pooling 
+                          mode, default is true
 
     Returns:
         Variable: output of pool3d layer.

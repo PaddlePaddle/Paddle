@@ -89,7 +89,8 @@ def avg_pool3D_forward_naive(x,
 
                 field_size = (d_end - d_start) * (h_end - h_start) * (w_end - w_start) \
                              if exclusive else ksize[0] * ksize[1] * ksize[2]
-                out[:, :, k, i, j] = np.sum(x_masked, axis=(2, 3, 4)) / field_size
+                out[:, :, k, i, j] = np.sum(x_masked, axis=(2, 3,
+                                                            4)) / field_size
     return out
 
 
@@ -108,9 +109,9 @@ class TestPool3d_Op(OpTest):
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype(self.dtype)
-        output = self.pool3D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings, self.global_pool,
-                                           self.ceil_mode, self.exclusive).astype(self.dtype)
+        output = self.pool3D_forward_naive(
+            input, self.ksize, self.strides, self.paddings, self.global_pool,
+            self.ceil_mode, self.exclusive).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -121,8 +122,9 @@ class TestPool3d_Op(OpTest):
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
             'ceil_mode': self.ceil_mode,
-            'data_format': 'AnyLayout',  # TODO(dzhwinter) : should be fix latter
-            'exclusive': self.exclusive 
+            'data_format':
+            'AnyLayout',  # TODO(dzhwinter) : should be fix latter
+            'exclusive': self.exclusive
         }
 
         self.outputs = {'Out': output}
@@ -167,7 +169,7 @@ class TestPool3d_Op(OpTest):
         self.ceil_mode = False
 
     def init_exclusive(self):
-        self.exclusive = True 
+        self.exclusive = True
 
 
 class TestCase1(TestPool3d_Op):
@@ -340,9 +342,11 @@ class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
 
+
 class TestAvgInclude(TestCase2):
     def init_exclusive(self):
         self.exclusive = False
+
 
 class TestCUDNNAvgInclude(TestCUDNNCase3):
     def init_exclusive(self):
