@@ -120,19 +120,25 @@ size_t GraphNum(const Graph &graph) {
   std::deque<ir::Node *> q_nodes;
   std::vector<std::unordered_set<ir::Node *>> graph_nodes;
   std::unordered_set<ir::Node *> g_nodes;
+  // q_set used to record records in the queue.
+  std::unordered_set<ir::Node *> q_set;
   size_t graph_count = 0;
 
-  auto traverse_nodes = [&visited_nodes,
-                         &q_nodes](const std::vector<ir::Node *> &nodes) {
-    std::copy_if(
-        nodes.begin(), nodes.end(), std::back_inserter(q_nodes),
-        [&visited_nodes](Node *node) { return !visited_nodes.count(node); });
+  auto traverse_nodes = [&visited_nodes, &q_nodes,
+                         &q_set](const std::vector<ir::Node *> &nodes) {
+    for (auto n : nodes) {
+      if (visited_nodes.count(n) == 0 && q_set.count(n) == 0) {
+        q_nodes.push_back(n);
+        q_set.insert(n);
+      }
+    }
   };
 
   while (visited_nodes.size() != nodes.size()) {
     if (!q_nodes.empty()) {
       auto cur_node = q_nodes.front();
       q_nodes.pop_front();
+      q_set.erase(cur_node);
       visited_nodes.insert(cur_node);
       g_nodes.insert(cur_node);
       traverse_nodes(cur_node->inputs);
@@ -146,6 +152,7 @@ size_t GraphNum(const Graph &graph) {
       for (auto &n : nodes) {
         if (visited_nodes.count(n) == 0) {
           q_nodes.push_back(n);
+          q_set.insert(n);
           break;
         }
       }

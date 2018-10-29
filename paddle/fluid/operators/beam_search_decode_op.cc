@@ -79,6 +79,9 @@ struct BeamSearchDecodeFunctor {
   bool tensor_on_gpu_;
   size_t beam_size_;
   int end_id_;
+  // TODO(Superjomn) Here might result serious performance issue in the
+  // concurrency
+  // scenarios.
   const LoDTensorArray& step_ids_origin_;
   const LoDTensorArray& step_scores_origin_;
   LoDTensorArray step_ids_ = LoDTensorArray();
