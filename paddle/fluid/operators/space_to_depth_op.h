@@ -25,19 +25,19 @@ template <typename T>
 class space_to_depth_compute {
  public:
   HOSTDEVICE space_to_depth_compute(const T *x, int64_t w, int64_t h, int64_t c,
-                                    int64_t batch, int64_t stride,
+                                    int64_t batch, int64_t blocksize,
                                     int64_t forward, T *out)
       : x_(x),
         w_(w),
         h_(h),
         c_(c),
         batch_(batch),
-        stride_(stride),
+        blocksize_(blocksize),
         forward_(forward),
         out_(out) {}
 
   HOSTDEVICE void operator()(int64_t in_index) {
-    int64_t out_c = c_ / (stride_ * stride_);
+    int64_t out_c = c_ / (blocksize_ * blocksize_);
     // calculate each dim position with index of tensor
     int64_t b = in_index / (c_ * h_ * w_);
     int64_t k = (in_index % (c_ * h_ * w_)) / (h_ * w_);
@@ -46,10 +46,10 @@ class space_to_depth_compute {
 
     int64_t c2 = k % out_c;
     int64_t offset = k / out_c;
-    int64_t w2 = i * stride_ + offset % stride_;
-    int64_t h2 = j * stride_ + offset / stride_;
+    int64_t w2 = i * blocksize_ + offset % blocksize_;
+    int64_t h2 = j * blocksize_ + offset / blocksize_;
     int64_t out_index =
-        w2 + w_ * stride_ * (h2 + h_ * stride_ * (c2 + out_c * b));
+        w2 + w_ * blocksize_ * (h2 + h_ * blocksize_ * (c2 + out_c * b));
     if (forward_)
       out_[out_index] = x_[in_index];
     else
@@ -58,7 +58,7 @@ class space_to_depth_compute {
 
  private:
   const T *x_;
-  int64_t w_, h_, c_, batch_, stride_, forward_;
+  int64_t w_, h_, c_, batch_, blocksize_, forward_;
   T *out_;
 };
 
@@ -68,7 +68,7 @@ class SpaceToDepthKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *out = context.Output<framework::LoDTensor>("Out");
     auto *x = context.Input<framework::LoDTensor>("X");
-    auto stride = context.Attr<int64_t>("stride");
+    auto blocksize = context.Attr<int64_t>("blocksize");
     auto in_dims = x->dims();
     out->mutable_data(context.GetPlace(), x->type());
 
@@ -83,8 +83,8 @@ class SpaceToDepthKernel : public framework::OpKernel<T> {
 
     auto *x_data = x->data<T>();
     auto *out_data = out->data<T>();
-    paddle::operators::space_to_depth_compute<T> computer(x_data, W, H, C, B,
-                                                          stride, 1, out_data);
+    paddle::operators::space_to_depth_compute<T> computer(
+        x_data, W, H, C, B, blocksize, 1, out_data);
     for_range(computer);
 
     out->Resize(out_dims);
@@ -99,7 +99,7 @@ class SpaceToDepthGradKernel : public framework::OpKernel<T> {
         context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *d_x =
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto stride = context.Attr<int64_t>("stride");
+    auto blocksize = context.Attr<int64_t>("blocksize");
     auto in_dims = d_x->dims();
     d_x->mutable_data(context.GetPlace(), d_out->type());
 
@@ -115,8 +115,8 @@ class SpaceToDepthGradKernel : public framework::OpKernel<T> {
     auto *dx_data = d_x->data<T>();
     auto *dout_data = d_out->data<T>();
 
-    paddle::operators::space_to_depth_compute<T> computer(dout_data, W, H, C, B,
-                                                          stride, 0, dx_data);
+    paddle::operators::space_to_depth_compute<T> computer(
+        dout_data, W, H, C, B, blocksize, 0, dx_data);
     for_range(computer);
 
     d_x->Resize(in_dims);

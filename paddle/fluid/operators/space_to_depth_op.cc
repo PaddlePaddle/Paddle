@@ -31,31 +31,31 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(x_dims.size(), 4, "input should be a 4D tensor");
-    auto stride = ctx->Attrs().Get<int64_t>("stride");
+    auto blocksize = ctx->Attrs().Get<int64_t>("blocksize");
 
-    PADDLE_ENFORCE_GT(stride, 1, "The stride should be Greater than 1");
+    PADDLE_ENFORCE_GT(blocksize, 1, "The blocksize should be Greater than 1");
     PADDLE_ENFORCE_GT(x_dims[1], 0, "input channel should be Greater than 0");
     PADDLE_ENFORCE_GT(x_dims[2], 0, "input Height should be Greater than 0");
     PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width should be Greater than 0");
 
-    PADDLE_ENFORCE_EQ(x_dims[1] % (stride * stride), 0,
+    PADDLE_ENFORCE_EQ(x_dims[1] % (blocksize * blocksize), 0,
                       "input channel should be divisible of the square of "
-                      "SpaceToDepthOp stride");
-    PADDLE_ENFORCE_EQ(x_dims[2] % (stride), 0,
+                      "SpaceToDepthOp blocksize");
+    PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
                       "input Height should be divisible of the square of "
-                      "SpaceToDepthOp stride");
-    PADDLE_ENFORCE_EQ(x_dims[3] % (stride), 0,
+                      "SpaceToDepthOp blocksize");
+    PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
                       "input Width should be divisible of the square of "
-                      "SpaceToDepthOp stride");
+                      "SpaceToDepthOp blocksize");
 
     VLOG(3) << "SpaceToDepthOp operator x.shape=" << x_dims
-            << "Attribute stride" << stride << std::endl;
+            << "Attribute blocksize" << blocksize << std::endl;
 
     std::vector<int64_t> output_shape(4, 0);  // [B,C,H,W]
     output_shape[0] = x_dims[0];
-    output_shape[1] = x_dims[1] * stride * stride;
-    output_shape[2] = x_dims[2] / stride;
-    output_shape[3] = x_dims[3] / stride;
+    output_shape[1] = x_dims[1] * blocksize * blocksize;
+    output_shape[2] = x_dims[2] / blocksize;
+    output_shape[3] = x_dims[3] / blocksize;
 
     auto out_dims = framework::make_ddim(output_shape);
 
@@ -80,20 +80,20 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), The output should be a 4D tensor B * C2 * W2 * H2 of "
               "SpaceToDepthOp operator.");
     AddAttr<int64_t>(
-        "stride",
-        "(int64_t, default 2) stride used to do change Space To Depth.")
+        "blocksize",
+        "(int64_t, default 2) blocksize used to do change Space To Depth.")
         .SetDefault(2)
         .GreaterThan(1);
     AddComment(R"DOC(
         reorg operator used in Yolo v2.
-        The equation is: C2 = C1/stride * stride, W2 = W1 ∗ stride + offset % stride, H2 = H1 ∗ stride + offset / stride, 
+        The equation is: C2 = C1/blocksize * blocksize, W2 = W1 ∗ blocksize + offset % blocksize, H2 = H1 ∗ blocksize + offset / blocksize, 
 
-        Reshape Input(X) into the shape according to Attr(stride). The
+        Reshape Input(X) into the shape according to Attr(blocksize). The
         data in Input(X) are unchanged.
 
         Examples:
 
-            1. Given a 4-D tensor Input(X) with a shape [128, 2048, 26, 26], and the stride is 2, the reorg operator will transform Input(X)
+            1. Given a 4-D tensor Input(X) with a shape [128, 2048, 26, 26], and the blocksize is 2, the reorg operator will transform Input(X)
             into a 4-D tensor with shape [128, 2048, 13, 13] and leaving Input(X)'s data unchanged.
 
     )DOC");
