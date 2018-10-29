@@ -1159,6 +1159,7 @@ def prepare_encoder(src_word,
             name=pos_enc_param_name,
             trainable=False,
             initializer=fluid.initializer.ConstantInitializer(0.001)))
+    src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
     return layers.dropout(
         enc_input,
