@@ -166,10 +166,16 @@ void TestMultiThreadPrediction(
     threads[i].join();
   }
 
-  LOG(INFO) << "threads average time: "
-            << static_cast<double>(total_time) /
-                   (num_threads * batch_size * num_times)
-            << " ms";
+  if (FLAGS_test_all_data) {
+    LOG(INFO) << "threads average time: "
+              << static_cast<double>(total_time) /
+                     (num_threads * inputs.size() * batch_size);
+  } else {
+    LOG(INFO) << "threads average time: "
+              << static_cast<double>(total_time) /
+                     (num_threads * batch_size * num_times)
+              << " ms";
+  }
 }
 
 void TestPrediction(const AnalysisConfig &config,
