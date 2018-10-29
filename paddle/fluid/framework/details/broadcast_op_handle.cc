@@ -59,8 +59,8 @@ void BroadcastOpHandle::BroadcastOneVar(
       var_scopes.at(in_var_handle.scope_idx_)->FindVar(in_var_handle.name_);
   PADDLE_ENFORCE_NOT_NULL(in_var);
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
-  if (!in_tensor.IsInitialized()) {
-    VLOG(3) << "in var " << in_var_handle->name_ << "not inited, return!";
+  if (UNLIKELY(!in_tensor.IsInitialized())) {
+    VLOG(3) << "in var " << in_var_handle.name_ << "not inited, return!";
     return;
   }
 
