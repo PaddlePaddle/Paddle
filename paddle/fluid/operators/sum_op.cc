@@ -81,10 +81,10 @@ class SumOp : public framework::OperatorWithKernel {
 
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
-      auto x_var_names = ctx.Inputs("X");
-      for (auto& x_var_n : x_var_names) {
+      for (auto& x_var : x_vars) {
         // FIXME(zcd): The input x_var may be SelectedRows or LoDTensor.
-        auto tensor = ctx.Input<Tensor>(x_var_n);
+        auto tensor = framework::GetTensorFromVar(
+            const_cast<framework::Variable*>(x_var));
         if (tensor->numel() == 0) {
           continue;
         }
