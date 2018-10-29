@@ -82,6 +82,7 @@ bool AnalysisPredictor::Init(
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
+
   return true;
 }
 
@@ -109,6 +110,10 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 
@@ -322,6 +327,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 

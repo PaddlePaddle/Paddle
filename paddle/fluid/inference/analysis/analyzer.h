@@ -67,7 +67,6 @@ class Analyzer : public OrderedRegistry<PassManager> {
   // larger fusion.
   const std::vector<std::string> all_ir_passes_{{
       // Manual update the passes here.
-      "infer_clean_graph_pass",         //
       "attention_lstm_fuse_pass",       //
       "seqconv_eltadd_relu_fuse_pass",  //
       "embedding_fc_lstm_fuse_pass",    //
