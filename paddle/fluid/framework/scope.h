@@ -78,6 +78,8 @@ class Scope {
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
 
+  std::list<Scope*>& kids() const { return kids_; }
+
   /// Find if a scope exists in the kid scopes
   bool HasKid(const Scope* scope) const;
 
