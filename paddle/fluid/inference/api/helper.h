@@ -14,8 +14,9 @@
 
 #pragma once
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
 #include <glog/logging.h>
-
 #include <algorithm>
 #include <chrono>  // NOLINT
 #include <iterator>
@@ -23,9 +24,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/string/printf.h"
-#include "paddle_inference_api.h"
-#include "timer.h"
+#include "paddle_inference_api.h"  //NOLINT
 
 namespace paddle {
 namespace inference {
@@ -97,7 +96,7 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
-static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+static int ZeroCopyTensorAssignData(paddle::ZeroCopyTensor *tensor,
                                     const std::vector<std::vector<T>> &data) {
   int size{0};
   auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);

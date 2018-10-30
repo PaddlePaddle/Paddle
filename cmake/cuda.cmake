@@ -173,6 +173,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 if (NOT WIN32) # windows msvc2015 support c++11 natively. 
 # -std=c++11 -fPIC not recoginize by msvc
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+# in cuda9, suppress cuda warning on eigen with "-w"
 list(APPEND CUDA_NVCC_FLAGS "-w" "-Xcompiler -fPIC")
 else(NOT WIN32)
 list(APPEND CUDA_NVCC_FLAGS "-w" "-Xcompiler -fPIC" "-Xcompiler /w")
@@ -181,7 +182,7 @@ endif(NOT WIN32)
 if(WITH_FAST_MATH)
   # Make use of fast math library. https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
   list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
-# in cuda9, suppress cuda warning on eigen 
+endif(WITH_FAST_MATH)
 
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
