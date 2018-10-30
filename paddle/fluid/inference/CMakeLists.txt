@@ -35,9 +35,10 @@ endif()
 
 # Create static library
 if (WIN32)
-cc_library(paddle_fluid DEPS ${fluid_modules} ${fluid_thirdpa} paddle_fluid_api paddle_inference_api)
+cc_library(paddle_fluid DEPS ${fluid_modules} ${fluid_third_partys} paddle_fluid_api paddle_inference_api)
 else(WIND32)
 cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+endif(WIN32)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.

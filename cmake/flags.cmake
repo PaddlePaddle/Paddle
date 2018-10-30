@@ -143,26 +143,14 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-set(COMMON_FLAGS 
-    -fPIC
-    -fno-omit-frame-pointer)
-set(GPU_COMMON_FLAGS
-    -fPIC
-    -fno-omit-frame-pointer)
-
 else(NOT WIN32)
 set(COMMON_FLAGS
-    "/w") #disable all warnings.
-
-set(GPU_COMMON_FLAGS
-    "/w") #disable all warnings
-
-endif(NOT WIN32)
-
-else(NOT WIN32)
-set(COMMON_FLAGS
+    -fPIC
+    -fno-omit-frame-pointer
     "/w") #disable all warnings.
 set(GPU_COMMON_FLAGS
+    -fPIC
+    -fno-omit-frame-pointer
     "/w") #disable all warnings
 endif(NOT WIN32)
 

@@ -48,6 +48,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
+#ifndef _WIN32
 template <typename RefCntMap>
 static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
                                 GarbageCollector<Tensor>* gc,
@@ -82,6 +83,7 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
     gc->Add(erase_tensors);
   }
 }
+#endif
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -331,97 +333,35 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id) {
-  VLOG(3) << "before create prepare" << block_id << " " << program.Size();
   std::unique_ptr<ExecutorPrepareContext> ctx(
       new ExecutorPrepareContext(program, block_id));
-  VLOG(3) << "after create prepare";
-  // PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
-  VLOG(3) << "before create op_desc";
+  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
-  VLOG(3) << "create before" << ctx->ops_.size() << " "
-          << block.AllOps().size();
   int counter = 0;
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
-    VLOG(3) << "create op "
-            << "index " << ++counter << " type " << op_desc->Type();
   }
-  VLOG(3) << "create finished" << ctx->ops_.size() << " "
-          << block.AllOps().size();
   return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     const ProgramDesc& program, const std::vector<int>& block_ids) {
-  VLOG(3) << "inside prepare";
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
-  VLOG(3) << "before go through block_ids";
   for (auto& bid : block_ids) {
-    VLOG(3) << "block id" << bid;
     auto* ctx = new ExecutorPrepareContext(program, bid);
-    // PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
+    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
     auto& block = program.Block(bid);
-    int counter = 0;
-    VLOG(3) << "create before" << ctx->ops_.size() << " "
-            << block.AllOps().size();
     for (auto& op_desc : block.AllOps()) {
       ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
-      VLOG(3) << "create op "
-              << "index " << ++counter << " type " << op_desc->Type();
     }
-    VLOG(3) << "create finished" << ctx->ops_.size() << " "
-            << block.AllOps().size();
     result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
   }
   return result;
 }
 
-// void CheckResult(const std::string op_type, ExecutorPrepareContext* ctx,
-// Scope* local_scope) {
-//     VLOG(3) << "before checking result";
-//   auto& dev_ctx = *platform::DeviceContextPool::Instance().Get(place_);
-//   std::vector<std::string> outputs;
-//   auto& block = ctx->prog_.Block(0);
-//   bool found = false;
-//   framework::OpDesc* myop = nullptr;
-//   for(auto& op : block.AllOps()) {
-//     if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() ==
-//     "feed") return;
-//     if (op->Type() == op_type) {
-//         found = true;
-//         myop = op;
-//         break;
-//       }
-//     }
-//   }
-//   if(!found) {
-//     VLOG(3) << "not found op!";
-//     return;
-//   }
-//     auto* op = myop;
-//      VLOG(3) << "start op output" << op->Type();
-//     for(auto var_name: op->OutputArgumentNames()) {
-//       auto* var = local_scope->Var(var_name);
-//       auto* var_desc = block.FindVar(var_name);
-//       if (var_desc->Persistable()) continue;
-//       auto* tensor = var->GetMutable<framework::LoDTensor>();
-//       framework::Tensor check;
-//       VLOG(3) << "before tensor copy";
-//       framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
-//       VLOG(3) << "after tensor copy";
-//       float sum = .0;
-//       for(size_t i=0; i < check.numel(); ++i) {
-//           sum += check.data<float>()[i];
-//       }
-//       VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum "
-//       << sum;
-//   VLOG(3) << "after checking result";
-// }
-
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
-  VLOG(3) << "RunPreparedContext inside";
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -430,6 +370,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
+#ifndef _WIN32
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector<Tensor>> gc;
   // WhileOp would set keep_kids to false
@@ -471,6 +412,16 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   } else {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
+#else   // WIN32
+  for (auto& op : ctx->ops_) {
+    op->Run(*local_scope, place_);
+    if (FLAGS_benchmark) {
+      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
+              << memory::memory_usage(place_);
+    }
+  }
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+#endif  // NOT WIN32
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);
