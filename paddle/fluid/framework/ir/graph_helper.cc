@@ -16,6 +16,9 @@ limitations under the License. */
 #include <algorithm>
 #include <deque>
 #include <unordered_set>
+DEFINE_int64(display_n_nodes_of_sub_graph, 0,
+             "FLAGS_display_n_nodes_of_sub_graph is used "
+             "to specify the number of nodes to display.");
 
 namespace paddle {
 namespace framework {
@@ -163,12 +166,13 @@ size_t GraphNum(const Graph &graph) {
     graph_nodes.emplace_back(g_nodes);
   }
 
-  if (VLOG_IS_ON(10)) {
-    VLOG(10) << "graph_num: " << graph_nodes.size();
+  if (FLAGS_display_n_nodes_of_sub_graph) {
+    LOG(INFO) << "graph_num: " << graph_nodes.size();
     for (auto &g_n : graph_nodes) {
-      VLOG(10) << "graph_nodes: " << g_n.size();
-      if (g_n.size() < 10) {
-        std::stringstream out;
+      LOG(INFO) << "graph_nodes: " << g_n.size();
+      std::stringstream out;
+      if (g_n.size() <
+          static_cast<size_t>(FLAGS_display_n_nodes_of_sub_graph)) {
         for (auto &node : g_n) {
           out << "\nNode: " << node->Name() << " in [";
           for (auto &n : node->inputs) {
@@ -180,7 +184,7 @@ size_t GraphNum(const Graph &graph) {
           }
           out << "]";
         }
-        VLOG(10) << out.str();
+        LOG(INFO) << out.str();
       }
     }
   }

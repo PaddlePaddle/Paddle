@@ -158,8 +158,10 @@ ParallelExecutor::ParallelExecutor(
 
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
-    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                      "The number of graph should be only one");
+    PADDLE_ENFORCE_EQ(
+        ir::GraphNum(*graph), 1,
+        "The number of graph should be only one. You can set "
+        "FLAGS_display_n_nodes_of_sub_graph to see the subgraph nodes.");
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
