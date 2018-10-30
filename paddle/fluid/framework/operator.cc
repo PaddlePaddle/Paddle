@@ -358,7 +358,7 @@ static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
 
-static const Tensor* GetTensorFromVar(Variable* var) {
+const Tensor* GetTensorFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
