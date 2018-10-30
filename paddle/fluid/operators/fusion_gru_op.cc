@@ -123,20 +123,16 @@ void FusionGRUOpMaker::Make() {
            "Almost same as GRUOp."
            "Note: if have FC bias it should be added on this bias.")
       .AsDispensable();
-  AddOutput("ReorderedH0", "(Tensor) (N x D), which N is the min-batch size.")
-      .AsIntermediate();
+  AddOutput("ReorderedH0", "(Tensor) (N x D), which N is the min-batch size.");
   AddOutput("XX",
             "(LoDTensor) the result after X * WeightX (size is T x 3D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
-            " D is the hidden size, M is the dim size of x input.")
-      .AsIntermediate();
+            " D is the hidden size, M is the dim size of x input.");
   AddOutput("BatchedInput",
             "(LoDTensor) This is the batched result of input X"
-            "or the batched result after fc, shape (T x 3D)")
-      .AsIntermediate();
-  AddOutput("BatchedOut", "(LoDTensor) (T X D) save batched hidden.")
-      .AsIntermediate();
+            "or the batched result after fc, shape (T x 3D)");
+  AddOutput("BatchedOut", "(LoDTensor) (T X D) save batched hidden.");
   AddOutput("Hidden", "(LoDTensor) (T x D) Same as GRUOp");
   AddAttr<std::string>("activation",
                        "(string, default tanh) "

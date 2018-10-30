@@ -295,27 +295,12 @@ std::vector<std::string> OperatorBase::InputVars() const {
   return ret_val;
 }
 
-std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
+std::vector<std::string> OperatorBase::OutputVars() const {
   std::vector<std::string> ret_val;
-  if (has_intermediate) {
-    // push all outputs into ret_val
-    for (auto& o : outputs_) {
-      ret_val.reserve(ret_val.size() + o.second.size());
-      ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
-    }
-    return ret_val;
-  }
-  auto& info = OpInfoMap::Instance().Get(Type());
-
-  // get all OpProto::Var for outputs
-  for (auto& o : info.Proto().outputs()) {
-    // ignore all intermediate output
-    if (o.intermediate()) continue;
-    auto out = outputs_.find(o.name());
-    if (out != outputs_.end()) {
-      ret_val.reserve(ret_val.size() + out->second.size());
-      ret_val.insert(ret_val.end(), out->second.begin(), out->second.end());
-    }
+  // push all outputs into ret_val
+  for (auto& o : outputs_) {
+    ret_val.reserve(ret_val.size() + o.second.size());
+    ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
   }
   return ret_val;
 }
@@ -753,7 +738,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
+    for (auto& vname : OutputVars()) {
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
@@ -800,7 +785,7 @@ Scope* OperatorWithKernel::TryTransferData(
         continue;
       }
 
-      auto out_var_names = OutputVars(true);
+      auto out_var_names = OutputVars();
       if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
           out_var_names.end()) {
         transfered_inplace_vars->emplace_back(var_name);

@@ -89,8 +89,7 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
       "total time steps in this mini-batch, N is the output feature size.");
   AddOutput("ColMat",
             "(Tensor) (T, K), where T is where T is the "
-            "total time steps in this mini-batch, K is height of Filter")
-      .AsIntermediate();
+            "total time steps in this mini-batch, K is height of Filter");
   AddAttr<int>("contextLength",
                "(int) the contextLength of FusionSeqConvEltAddReluOp is the "
                "height of the convolution kernel.")

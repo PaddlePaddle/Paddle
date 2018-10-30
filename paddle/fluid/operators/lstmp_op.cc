@@ -169,23 +169,19 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
               "same shape as the reorganized input, which is also be called "
               "batch input. The LoD size is 2. The first-level LoD is the "
               "batch offsets and the second contains the indices, which "
-              "denotes the position of reorganized sequence in the raw input.")
-        .AsIntermediate();
+              "denotes the position of reorganized sequence in the raw input.");
     AddOutput("BatchCellPreAct",
               "(LoDTensor) the pre-activation cell state reorganized in batch. "
               "This LoDTensor is obtained in the forward and used in the "
-              "backward.")
-        .AsIntermediate();
+              "backward.");
     AddOutput("BatchHidden",
               "(LoDTensor) the hidden state reorganized in batch. "
               "This LoDTensor is obtained in the forward and used in the "
-              "backward.")
-        .AsIntermediate();
+              "backward.");
     AddOutput("OrderedP0",
               "(Tensor) the projection of the initial hidden state "
               "H0. This is a tensor with shape (N x P), where N is the "
-              "batch size and P is the hidden size.")
-        .AsIntermediate();
+              "batch size and P is the hidden size.");
     AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "
                   "whether to enable diagonal/peephole connections.")

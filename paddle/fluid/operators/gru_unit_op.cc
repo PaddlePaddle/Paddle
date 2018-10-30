@@ -92,12 +92,10 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Gate",
               "(Tensor) Matrix with shape [batch_size, frame_size * 3] for the "
-              "output of update gate, reset gate and output candidate.")
-        .AsIntermediate();
+              "output of update gate, reset gate and output candidate.");
     AddOutput("ResetHiddenPrev",
               "(Tensor) Matrix with shape [batch_size, frame_size] for the "
-              "reseted hidden state of previous time step.")
-        .AsIntermediate();
+              "reseted hidden state of previous time step.");
     AddOutput("Hidden",
               "(Tensor) The GRU hidden state of the current time step "
               "with shape [batch_size, frame_size].");

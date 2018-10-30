@@ -56,7 +56,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("input", "input of cosine op").AsDuplicable();
-    AddOutput("output", "output of cosine op").AsIntermediate();
+    AddOutput("output", "output of cosine op");
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };

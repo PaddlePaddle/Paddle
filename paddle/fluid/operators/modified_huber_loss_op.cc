@@ -48,8 +48,7 @@ class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "The shape of Y is the same as X. Values of Y must be 0 or 1.");
     AddOutput("IntermediateVal",
               "Variable to save intermediate result which will be reused in "
-              "backward processing.")
-        .AsIntermediate();
+              "backward processing.");
     AddOutput("Out", "Classification loss for X.");
     AddComment(R"DOC(
 Modified Huber Loss Operator.

@@ -104,8 +104,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("PreOut",
               "(Tensor, required) A intermedia 2-D tensor with shape "
               "[batch_size, code_length], where code_length represents the "
-              "maximum path length from root to leaf nodes.")
-        .AsIntermediate();
+              "maximum path length from root to leaf nodes.");
     AddAttr<AttrType>("num_classes", "(int, required), The number of classes")
         .SetDefault(2);
     AddComment(R"DOC(

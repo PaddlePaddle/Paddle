@@ -122,7 +122,7 @@ class OperatorBase {
   //! TODO add a vector_view to prevent memory copy.
   const std::vector<std::string>& Outputs(const std::string& name) const;
   //! Get all outputs variable names
-  virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
+  virtual std::vector<std::string> OutputVars() const;
 
  protected:
   std::string type_;

@@ -66,8 +66,7 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "If provided, the out smooth l1 loss will be multiplied by this "
              "tensor element by element.")
         .AsDispensable();
-    AddOutput("Diff", "Intermediate variable to cache InsideWeight * (X - Y).")
-        .AsIntermediate();
+    AddOutput("Diff", "Intermediate variable to cache InsideWeight * (X - Y).");
     AddOutput("Out",
               "(Tensor, default Tensor<float>) A tensor with rank be 2. "
               "The output smooth l1 loss with shape [batch_size, 1].");

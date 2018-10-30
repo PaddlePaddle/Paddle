@@ -54,8 +54,7 @@ class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "Y is a 2-D tensor with shape [batch_size, 1].");
     AddOutput("Residual",
               "Intermediate tensor to cache residual value between Y and X."
-              "The shape is same as Input(X) and will be reused in backward.")
-        .AsIntermediate();
+              "The shape is same as Input(X) and will be reused in backward.");
     AddOutput("Out",
               "The output tensor with shape [batch_size, 1] "
               "which represents the huber loss.");

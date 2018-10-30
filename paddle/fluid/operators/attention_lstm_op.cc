@@ -178,20 +178,16 @@ void AttentionLSTMOpMaker::Make() {
   AddOutput("AttentionedX",
             "(Tensor) shape is (T x 1), the result after X * AttentionWeight,"
             " where T is the total time steps in this mini-batch,"
-            " D is the hidden size.")
-      .AsIntermediate();
+            " D is the hidden size.");
   AddOutput("AttentionFCOut",
-            "(Tensor) (max_seq_len, 1), compute at each step.")
-      .AsIntermediate();
+            "(Tensor) (max_seq_len, 1), compute at each step.");
   AddOutput("LSTMX",
             "(Tensor) the input X of LSTM for each step."
-            "Shape is (1 x M), where M is the x frame size")
-      .AsIntermediate();
+            "Shape is (1 x M), where M is the x frame size");
   AddOutput(
       "LSTMOUT",
       "(Tensor) the output of LSTM X(1*(D+M))* weight((D+M)*4D) for each step."
-      "Shape is (1 x 4D), where M is the x frame size")
-      .AsIntermediate();
+      "Shape is (1 x 4D), where M is the x frame size");
   AddAttr<std::string>("gate_activation",
                        "(string, default: sigmoid)"
                        "The activation for input gate, forget gate and output "

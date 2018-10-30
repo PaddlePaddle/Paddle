@@ -80,7 +80,6 @@ message OpProto {
     required string comment = 2;
 
     optional bool duplicable = 3 [ default = false ];
-    optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
   }
 

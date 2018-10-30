@@ -41,7 +41,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
-    AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddOutput("Mask", "The random sampled dropout mask.");
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)

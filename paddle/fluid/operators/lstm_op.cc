@@ -146,12 +146,10 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "is also be called batch input. The LoD size is 2. The first "
               "LoD is the batch offsets and the second LoD contains the "
               "indexes, which denote the position of reorganized sequence "
-              "in the raw input.")
-        .AsIntermediate();
+              "in the raw input.");
     AddOutput("BatchCellPreAct",
               "(LoDTensor) This LoDTensor is obtained in the forward and used "
-              "in the backward.")
-        .AsIntermediate();
+              "in the backward.");
     AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "
                   "whether to enable diagonal/peephole connections.")

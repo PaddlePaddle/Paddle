@@ -280,8 +280,7 @@ class Reshape2OpMaker : public ReshapeOpMaker {
     ReshapeOpMaker::Make();
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
-              "be used in FlattenGradOp.")
-        .AsIntermediate();
+              "be used in FlattenGradOp.");
   }
 };
 

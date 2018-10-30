@@ -65,11 +65,6 @@ class OpProtoAndCheckerMaker {
       return *this;
     }
 
-    VariableBuilder &AsIntermediate() {
-      var_->set_intermediate(true);
-      return *this;
-    }
-
     VariableBuilder &AsDispensable() {
       var_->set_dispensable(true);
       return *this;

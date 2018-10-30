@@ -107,15 +107,13 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
               "kernel to compute grads."
               "Given X is  the dot product of input tensor and sampled labels' "
               "weights."
-              "Then 'SampleLogits' is sigmoid(X).")
-        .AsIntermediate();
+              "Then 'SampleLogits' is sigmoid(X).");
     AddOutput("SampleLabels",
               "An intermediate tensor of shape[batch_size, num_neg_samples + "
               "num_pos_samples]."
               "This tensor is output of forward kernel and used in backward "
               "kernel to compute grads."
-              "")
-        .AsIntermediate();
+              "");
     AddAttr<int>("num_total_classes",
                  "Total number of classes in all samples.");
     AddAttr<int>("num_neg_samples",

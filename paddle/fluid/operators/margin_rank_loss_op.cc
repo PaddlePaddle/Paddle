@@ -55,8 +55,7 @@ class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "can only be +1 or -1.");
     AddOutput("Activated",
               "(2-D tensor with shape [batch_size x 1]) Intermediate tensor "
-              "to indicate whether each element of Output(Out) is activated.")
-        .AsIntermediate();
+              "to indicate whether each element of Output(Out) is activated.");
     AddOutput("Out",
               "(2-D tensor with shape [batch_size x 1]) "
               "The output loss of MarginRankLoss operator.");

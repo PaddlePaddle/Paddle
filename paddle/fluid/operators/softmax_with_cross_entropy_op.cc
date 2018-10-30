@@ -34,8 +34,7 @@ class SoftmaxWithCrossEntropyOpMaker
         "Softmax",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N x K]. "
         "The outputs value of softmax activation by given the input batch, "
-        "which will be used in backward calculation.")
-        .AsIntermediate();
+        "which will be used in backward calculation.");
     AddOutput("Loss",
               "(Tensor, default: Tensor<float>), A 2-D tensor. The cross "
               "entropy loss with shape [N x 1].");

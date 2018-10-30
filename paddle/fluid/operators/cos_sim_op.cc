@@ -68,12 +68,10 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of cos_sim op.");
     AddOutput("XNorm",
               "Norm of the first input, reduced along the 1st "
-              "dimension.")
-        .AsIntermediate();
+              "dimension.");
     AddOutput("YNorm",
               "Norm of the second input, reduced along the 1st "
-              "dimension.")
-        .AsIntermediate();
+              "dimension.");
 
     AddComment(R"DOC(
 **Cosine Similarity Operator**

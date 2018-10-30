@@ -167,13 +167,12 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
             "(LoDTensor) the result after X * WeightX (size is T x 4D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
-            " D is the hidden size, M is the dim size of x input.")
-      .AsIntermediate();
-  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).").AsIntermediate();
-  AddOutput("BatchedHidden", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
+            " D is the hidden size, M is the dim size of x input.");
+  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).");
+  AddOutput("BatchedHidden", "(LoDTensor) (T x D).");
+  AddOutput("BatchedCell", "(LoDTensor) (T x D).");
+  AddOutput("ReorderedH0", "(LoDTensor) (N x D).");
+  AddOutput("ReorderedC0", "(LoDTensor) (N x D).");
   AddAttr<bool>("use_peepholes",
                 "(bool, defalut: True) "
                 "whether to enable diagonal/peephole connections.")

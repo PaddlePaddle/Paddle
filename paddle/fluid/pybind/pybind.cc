@@ -540,12 +540,10 @@ All parameter, weight, gradient are variables in Paddle.
                  return op.Outputs();
                })
       .def("output_vars",
-           [](const OperatorBase &op) { return op.OutputVars(true); })
+           [](const OperatorBase &op) { return op.OutputVars(); })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
       .def("input_vars", [](const OperatorBase &op) { return op.InputVars(); })
       .def("__str__", &OperatorBase::DebugString)
-      .def("no_intermediate_outputs",
-           [](const OperatorBase &op) { return op.OutputVars(false); })
       .def("support_gpu", &OperatorBase::SupportGPU);
 
   py::class_<framework::Executor>(m, "Executor")

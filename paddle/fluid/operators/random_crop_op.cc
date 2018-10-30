@@ -34,8 +34,7 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "A batch of instances to random crop.");
     AddInput("Seed", "The random seed.");
     AddOutput("Out", "The cropped instance batch.");
-    AddOutput("SeedOut", "The random seed after random cropping.")
-        .AsIntermediate();
+    AddOutput("SeedOut", "The random seed after random cropping.");
     AddAttr<std::vector<int>>("shape", "The shape of a cropped instance.");
     AddAttr<int>("startup_seed",
                  "If the input 'Seed' is not initialized, the 'startup_seed' "

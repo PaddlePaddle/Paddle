@@ -122,8 +122,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
-              "if arg “is_test” is false.")
-        .AsIntermediate();
+              "if arg “is_test” is false.");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "

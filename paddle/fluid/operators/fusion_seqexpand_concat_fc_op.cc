@@ -83,8 +83,7 @@ void FusionSeqExpandConcatFCOpMaker::Make() {
   AddOutput(
       "FCOut",
       "(Tensor) the intermediate tensor to keep the result of fc."
-      "Shape is (N x D), where N is the batch size, D is the output dim of fc")
-      .AsIntermediate();
+      "Shape is (N x D), where N is the batch size, D is the output dim of fc");
   AddAttr<std::string>("fc_activation",
                        "(string, default: identity)"
                        "The activation for the result of fc."

@@ -154,7 +154,7 @@ class Transpose2OpMaker : public TransposeOpMaker {
  public:
   void Make() override {
     TransposeOpMaker::Make();
-    AddOutput("XShape", "(Tensor)The output tensor.").AsIntermediate();
+    AddOutput("XShape", "(Tensor)The output tensor.");
   }
 };
 

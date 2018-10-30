@@ -45,8 +45,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "infomation.");
     AddOutput("MaxIndex",
               "(Tensor<int>) This tensor is used for the sequence max-pooling "
-              "to record the max indexes.")
-        .AsIntermediate();
+              "to record the max indexes.");
     AddAttr<std::string>(
         "pooltype",
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")

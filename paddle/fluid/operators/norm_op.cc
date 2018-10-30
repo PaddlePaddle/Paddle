@@ -30,8 +30,7 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0e-10f);
     AddOutput("Norm",
               "(Tensor) A tensor saved the `sqrt(sum(x) + epsion)` will "
-              "be used in backward kernel.")
-        .AsIntermediate();
+              "be used in backward kernel.");
     AddOutput("Out", "(Tensor) A tensor of the same shape as X.");
     AddComment(R"DOC(
 

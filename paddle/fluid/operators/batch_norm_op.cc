@@ -144,12 +144,10 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Store the global Variance when training");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
-              "will apply to output when training")
-        .AsIntermediate();
+              "will apply to output when training");
     AddOutput("SavedVariance",
               "Variance of the current mini batch, "
-              "will apply to output when training")
-        .AsIntermediate();
+              "will apply to output when training");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);

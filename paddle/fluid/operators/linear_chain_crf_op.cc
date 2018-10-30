@@ -43,22 +43,19 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "position $k$ with tag $v$. For each $k$, "
         "$\alpha[k, v]$ is a vector of length $D$ with a component for "
         "each tag value $v$. This vector is called a forward vecotr and "
-        "will also be used in backward computations.")
-        .AsIntermediate();
+        "will also be used in backward computations.");
     AddOutput(
         "EmissionExps",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
-        "backward computation.")
-        .AsIntermediate();
+        "backward computation.");
     AddOutput(
         "TransitionExps",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
-        "will be reused in backward computation.")
-        .AsIntermediate();
+        "will be reused in backward computation.");
     AddOutput(
         "LogLikelihood",
         "(Tensor, default Tensor<float>) The logarithm of the conditional "

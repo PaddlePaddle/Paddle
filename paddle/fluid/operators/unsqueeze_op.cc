@@ -196,8 +196,7 @@ class Unsqueeze2OpMaker : public UnsqueezeOpMaker {
     UnsqueezeOpMaker::Make();
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
-              "be used in UnsqueezeGradOp.")
-        .AsIntermediate();
+              "be used in UnsqueezeGradOp.");
   }
 };
 

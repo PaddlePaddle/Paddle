@@ -105,20 +105,17 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
               "the update gate, reset gate and output candidate values "
               "organized in batches. The LoD size is 2. The first LoD contains "
               "the batch offsets and the second LoD contains the indexes in "
-              "the raw sequence data.")
-        .AsIntermediate();
+              "the raw sequence data.");
     AddOutput(
         "BatchResetHiddenPrev",
         "(LoDTensor) The reseted hidden state LoDTensor organized in batches. "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.")
-        .AsIntermediate();
+        "with `BatchGate`.");
     AddOutput(
         "BatchHidden",
         "(LoDTensor) The hidden state LoDTensor organized in batches.  "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.")
-        .AsIntermediate();
+        "with `BatchGate`.");
     AddOutput(
         "Hidden",
         "(LoDTensor) the hidden state LoDTensor organized in sequences. "

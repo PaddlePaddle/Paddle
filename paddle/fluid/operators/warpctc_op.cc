@@ -70,8 +70,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor, default: Tensor<float>), a temporary "
               "output Tensor to store the gradients of warp-ctc, which is "
               "computed with loss together in one call. It is a 3-D Tensor of "
-              "the shape [max_sequence_length, batch_size, num_classes + 1].")
-        .AsIntermediate();
+              "the shape [max_sequence_length, batch_size, num_classes + 1].");
     AddOutput("Loss",
               "(Tensor, default: Tensor<float>), the Connectionist "
               "Temporal Classification (CTC) loss, which is a 2-D Tensor of "
