@@ -954,7 +954,7 @@ def read_file(reader):
     """
     helper = LayerHelper('read_file')
     out = [
-        helper.create_tmp_variable(
+        helper.create_variable_for_type_inference(
             stop_gradient=True, dtype='float32')
         for _ in range(len(reader.desc.shapes()))
     ]
