@@ -188,7 +188,7 @@ class TestDistBase(unittest.TestCase):
         self._pservers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
             self._find_free_port(), self._find_free_port())
-        self._python_interp = "python"
+        self._python_interp = sys.executable
         self._sync_mode = True
         self._enforce_place = None
         self._mem_opt = False
@@ -221,8 +221,12 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        ps0_pipe = open("/tmp/ps0_err.log", "wb")
-        ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        if check_error_log:
+            ps0_pipe = open("/tmp/ps0_err.log", "wb")
+            ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        else:
+            ps0_pipe = subprocess.PIPE
+            ps1_pipe = subprocess.PIPE
 
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
