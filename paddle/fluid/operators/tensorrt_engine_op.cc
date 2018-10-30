@@ -22,8 +22,6 @@
 namespace paddle {
 
 DEFINE_int32(tensorrt_engine_batch_size, 1, "the batch_size of TensorRT");
-DEFINE_int32(tensorrt_max_batch_size, 1, "TensorRT maximum batch size");
-DEFINE_int32(tensorrt_workspace_size, 16 << 20, "TensorRT workspace size");
 
 namespace operators {
 
@@ -34,6 +32,8 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph.");
     AddAttr<std::string>("engine_uniq_key", "unique key for the TRT engine.");
+    AddAttr<int>("max_batch_size", "the maximum batch size.");
+    AddAttr<int>("workspace_size", "the workspace size.");
     AddComment("TensorRT engine operator.");
   }
 };

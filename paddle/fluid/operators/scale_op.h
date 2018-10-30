@@ -34,6 +34,8 @@ class ScaleKernel : public framework::OpKernel<T> {
                       "in and out should have the same dim");
 
     auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+    auto bias = static_cast<T>(ctx.Attr<float>("bias"));
+    auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
 
     if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
       auto& in_slr = in_var->Get<framework::SelectedRows>();
@@ -45,7 +47,11 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    eigen_out.device(dev) = scale * eigen_in;
+    if (bias_after_scale) {
+      eigen_out.device(dev) = scale * eigen_in + bias;
+    } else {
+      eigen_out.device(dev) = scale * (eigen_in + bias);
+    }
   }
 };
 

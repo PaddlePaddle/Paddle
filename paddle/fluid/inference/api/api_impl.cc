@@ -23,10 +23,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 
@@ -34,14 +38,14 @@ void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (feeds_.size() <= (size_t)idx) {
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (fetchs_.size() <= (size_t)idx) {
+      if (fetchs_.size() <= static_cast<size_t>(idx)) {
         fetchs_.resize(idx + 1);
       }
       fetchs_[idx] = op;
@@ -51,7 +55,6 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
-  VLOG(3) << "Predictor::init()";
 #if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
@@ -62,88 +65,51 @@ bool NativePaddlePredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 #endif
-  VLOG(3) << "before Place";
+
+  // no matter with or without MKLDNN
+  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  VLOG(3) << "before scope";
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
     PADDLE_ENFORCE_NOT_NULL(sub_scope_, "create sub scope fail");
   } else {
-    VLOG(3) << "Before InitDevices";
     paddle::framework::InitDevices(false);
-    VLOG(3) << "after InitDevices";
     scope_.reset(new paddle::framework::Scope());
   }
-  VLOG(3) << "after scope";
   executor_.reset(new paddle::framework::Executor(place_));
-  VLOG(3) << "executor";
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
-    VLOG(3) << config_.model_dir;
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
 
-    VLOG(3) << "load model finish";
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
-    VLOG(3) << "load program before";
     auto exe = executor_.get();
-    VLOG(3) << "executor_";
     auto sc = scope_.get();
-    VLOG(3) << "scope_";
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
-    // VLOG(3) << "modify the program!";
-    // {
-    //   std::ofstream ofs("program.txt", std::ios::out);
-    //   std::string s = inference_program_->Proto()->SerializeAsString();
-    //   ofs.write(s.data(), s.size());
-    //   ofs.close();
-    // }
 
-    auto &block = inference_program_->Block(0);
-    for (auto *op_desc : block.AllOps()) {
-      // if (op_desc->HasAttr("use_cudnn")) {
-      //   op_desc->SetAttr("use_cudnn", false);
-      // }
-      if (op_desc->HasAttr("workspace_size_MB")) {
-        op_desc->SetAttr("workspace_size_MB", 1024);
-      }
-    }
-
-    // {
-    //   std::ofstream ofs("after_program.txt", std::ios::out);
-    //   std::string s = inference_program_->Proto()->SerializeAsString();
-    //   ofs.write(s.data(), s.size());
-    //   ofs.close();
-    // }
-
-    VLOG(3) << "load program finish";
   } else {
-    LOG(ERROR) << "fail to load inference model.";
+    LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
     return false;
   }
-  VLOG(3) << "pointer" << inference_program_.get();
 
-  VLOG(3) << "prepare before";
   ctx_ = executor_->Prepare(*inference_program_, 0);
-  VLOG(3) << "prepare finished";
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
-  VLOG(3) << "create variables";
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
-  VLOG(3) << "feed fetch";
   return true;
 }
 
@@ -162,7 +128,6 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
-  VLOG(3) << "Predictor::predict";
   using Timer = paddle::inference::Timer;
   Timer timer;
   timer.tic();
@@ -175,22 +140,23 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
-  VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
-                                false /* don't create variable eatch time */);
-  VLOG(4) << "Finish prepared context";
+                                false /* don't create variable each time */);
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
-  VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
 
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
@@ -208,9 +174,9 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     framework::Scope *scope) {
-  VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
+               << inputs.size();
     return false;
   }
   for (size_t i = 0; i < inputs.size(); ++i) {
@@ -248,63 +214,25 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 template <typename T>
 void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                         PaddleTensor *output) {
-  std::vector<int> shape;
-  auto dims_i = fetch.dims();
-  auto lod = fetch.lod();
-  const T *output_ptr = fetch.data<T>();
-  auto num = fetch.numel();
-  std::vector<T> data;
-  if (0 == lod.size()) {
-    std::copy(output_ptr, output_ptr + num, std::back_inserter(data));
-    for (int j = 0; j < dims_i.size(); ++j) {
-      shape.push_back(dims_i[j]);
-    }
-  } else {
-    // for batch detection
-    // image[0] -> output[0] shape {145, 6}
-    // image[1] -> output[1] shape {176, 6}
-    // then,
-    // the batch output shape {321, 6}
-    // the lod {{0, 145, 321}}
-    // so we should append output[0] to {176, 6}
-    size_t max_dim = 0;
-    for (size_t j = 1; j < lod[0].size(); j++) {
-      max_dim = std::max(max_dim, lod[0][j] - lod[0][j - 1]);
-    }
-    size_t common_dim = lod[0].back() == 0 ? 0 : num / lod[0].back();
-    if (max_dim > 0) {
-      data.resize((lod[0].size() - 1) * max_dim * common_dim, 0);
-    }
-    for (size_t j = 1; j < lod[0].size(); j++) {
-      size_t start = lod[0][j - 1] * common_dim;
-      size_t end = lod[0][j] * common_dim;
-      if (end > start) {
-        std::copy(output_ptr + start, output_ptr + end,
-                  data.begin() + (j - 1) * max_dim * common_dim);
-      }
-    }
-    shape.push_back(lod[0].size() - 1);
-    shape.push_back(max_dim);
-    for (int j = 1; j < dims_i.size(); ++j) {
-      shape.push_back(dims_i[j]);
-    }
-  }
-
-  output->shape = shape;
-  auto &buffer = output->data;
-  if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
-    buffer.Resize(sizeof(T) * data.size());
-  }
-  std::memcpy(buffer.data(), data.data(), buffer.length());
-  // copy LoD
-  for (const auto &level : fetch.lod()) {
-    output->lod.emplace_back(level);
+  // set shape.
+  auto shape = framework::vectorize(fetch.dims());
+  output->shape.assign(shape.begin(), shape.end());
+  // set data.
+  const T *data = fetch.data<T>();
+  int num_elems = inference::VecReduceToInt(shape);
+  output->data.Resize(num_elems * sizeof(T));
+  // The fetched tensor output by fetch op, should always in CPU memory, so just
+  // copy.
+  memcpy(output->data.data(), data, num_elems * sizeof(T));
+  // set lod
+  output->lod.clear();
+  for (auto &level : fetch.lod()) {
+    output->lod.emplace_back(level.begin(), level.end());
   }
 }
 
 bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                      framework::Scope *scope) {
-  VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
@@ -329,17 +257,13 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
-  VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
-    VLOG(3) << "before check";
-    // PADDLE_ENFORCE_GT(
-    //    config.fraction_of_gpu_memory, 0.f,
-    //    "fraction_of_gpu_memory in the config should be set to range (0.,
-    //    1.]");
-    VLOG(3) << "failed on first";
+    PADDLE_ENFORCE_GT(
+       config.fraction_of_gpu_memory, 0.f,
+       "fraction_of_gpu_memory in the config should be set to range (0.,
+       1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
-    VLOG(3) << "after flags";
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
@@ -347,12 +271,9 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
-      VLOG(3) << "flags setting";
     }
   }
-  VLOG(3) << "Init flags Done";
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
@@ -363,6 +284,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 #else
   return std::move(predictor);
 #endif
+}
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
+    const NativeConfig &config) {
+  return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 }
 
 }  // namespace paddle

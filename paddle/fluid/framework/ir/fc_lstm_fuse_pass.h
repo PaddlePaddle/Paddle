@@ -12,20 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class FCLstmFusePass : public Pass {
+// The MulLstmFusePass and MulLstmFusePass will fuse to the same FusionLstm op.
+
+// Just FC without bias
+class FCLstmFusePass : public FusePassBase {
  public:
   virtual ~FCLstmFusePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+
+  const std::string name_scope_{"fc_lstm_fuse"};
+};
+
+class MulLstmFusePass : public FusePassBase {
+ public:
+  virtual ~MulLstmFusePass() {}
+
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  const std::string name_scope_{"fc_nobias_lstm_fuse"};
 };
 
 }  // namespace ir

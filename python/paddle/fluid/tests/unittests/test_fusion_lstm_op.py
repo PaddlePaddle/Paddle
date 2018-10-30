@@ -53,11 +53,11 @@ class TestFusionLSTMOp(OpTest):
         self.M = 8
         self.D = 16
         self.has_initial_state = False
+        self.use_peepholes = False
         self.is_reverse = False
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
-        self.use_peepholes = False
         self.set_conf()
 
         T = sum(self.lod[0])
@@ -114,7 +114,9 @@ class TestFusionLSTMOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        for use_seq in {True, False}:
+            self.attrs['use_seq'] = use_seq
+            self.check_output()
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):
@@ -155,6 +157,37 @@ class TestFusionLSTMOpBS1(TestFusionLSTMOp):
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
+
+
+class TestFusionLSTMOpPeepholes(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+
+
+class TestFusionLSTMOpPeepholesInit(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.has_initial_state = True
+
+
+class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.is_reverse = True
+
+
+class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.has_initial_state = True
+        self.is_reverse = True
+
+
+class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.lod = [[2]]
+        self.D = 8
 
 
 if __name__ == '__main__':

@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -23,106 +23,136 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class AucKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* predict = ctx.Input<Tensor>("Predict");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* auc = ctx.Output<Tensor>("AUC");
-    // Only use output var for now, make sure it's persistable and
-    // not cleaned up for each batch.
-    auto* true_positive = ctx.Output<Tensor>("TPOut");
-    auto* false_positive = ctx.Output<Tensor>("FPOut");
-    auto* true_negative = ctx.Output<Tensor>("TNOut");
-    auto* false_negative = ctx.Output<Tensor>("FNOut");
-
-    auto* auc_data = auc->mutable_data<double>(ctx.GetPlace());
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *predict = ctx.Input<Tensor>("Predict");
+    auto *label = ctx.Input<Tensor>("Label");
 
     std::string curve = ctx.Attr<std::string>("curve");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
-    std::vector<double> thresholds_list;
-    thresholds_list.reserve(num_thresholds);
-    for (int i = 1; i < num_thresholds - 1; i++) {
-      thresholds_list[i] = static_cast<double>(i) / (num_thresholds - 1);
-    }
-    const double kEpsilon = 1e-7;
-    thresholds_list[0] = 0.0f - kEpsilon;
-    thresholds_list[num_thresholds - 1] = 1.0f + kEpsilon;
+    // buckets contain numbers from 0 to num_thresholds
+    int num_pred_buckets = num_thresholds + 1;
+    int slide_steps = ctx.Attr<int>("slide_steps");
 
+    // Only use output var for now, make sure it's persistable and
+    // not cleaned up for each batch.
+    auto *auc = ctx.Output<Tensor>("AUC");
+    auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
+    auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
+
+    auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
+    auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
+
+    std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
+    std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
+
+    auto stat_pos_calc = stat_pos_data.data();
+    auto stat_neg_calc = stat_neg_data.data();
+
+    statAuc(label, predict, num_pred_buckets, num_thresholds, slide_steps,
+            origin_stat_pos, origin_stat_neg, &stat_pos_calc, &stat_neg_calc);
+
+    calcAuc(ctx, stat_pos_calc, stat_neg_calc, num_thresholds, auc);
+  }
+
+ private:
+  inline static double trapezoidArea(double X1, double X2, double Y1,
+                                     double Y2) {
+    return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
+  }
+
+  inline static void statAuc(const framework::Tensor *label,
+                             const framework::Tensor *predict,
+                             const int num_pred_buckets,
+                             const int num_thresholds, const int slide_steps,
+                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
+                             int64_t **stat_pos, int64_t **stat_neg) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
+    const T *inference_data = predict->data<T>();
+    const auto *label_data = label->data<int64_t>();
 
-    const T* inference_data = predict->data<T>();
-    const auto* label_data = label->data<int64_t>();
+    for (size_t i = 0; i < batch_size; i++) {
+      uint32_t binIdx = static_cast<uint32_t>(
+          inference_data[i * inference_width + 1] * num_thresholds);
+      if (label_data[i]) {
+        (*stat_pos)[binIdx] += 1.0;
+      } else {
+        (*stat_neg)[binIdx] += 1.0;
+      }
+    }
 
-    auto* tp_data = true_positive->mutable_data<int64_t>(ctx.GetPlace());
-    auto* fn_data = false_negative->mutable_data<int64_t>(ctx.GetPlace());
-    auto* tn_data = true_negative->mutable_data<int64_t>(ctx.GetPlace());
-    auto* fp_data = false_positive->mutable_data<int64_t>(ctx.GetPlace());
+    int bucket_length = num_pred_buckets * sizeof(int64_t);
 
-    for (int idx_thresh = 0; idx_thresh < num_thresholds; idx_thresh++) {
-      // calculate TP, FN, TN, FP for current thresh
-      int64_t tp = 0, fn = 0, tn = 0, fp = 0;
-      for (size_t i = 0; i < batch_size; i++) {
-        // NOTE: label_data used as bool, labels > 0 will be treated as true.
-        if (label_data[i]) {
-          if (inference_data[i * inference_width + 1] >=
-              (thresholds_list[idx_thresh])) {
-            tp++;
-          } else {
-            fn++;
-          }
-        } else {
-          if (inference_data[i * inference_width + 1] >=
-              (thresholds_list[idx_thresh])) {
-            fp++;
-          } else {
-            tn++;
-          }
+    // will stat auc unlimited.
+    if (slide_steps == 0) {
+      for (int slide = 0; slide < num_pred_buckets; ++slide) {
+        origin_stat_pos[slide] += (*stat_pos)[slide];
+        origin_stat_neg[slide] += (*stat_neg)[slide];
+      }
+
+      *stat_pos = origin_stat_pos;
+      *stat_neg = origin_stat_neg;
+
+    } else {
+      for (int slide = 1; slide < slide_steps; ++slide) {
+        int dst_idx = (slide - 1) * num_pred_buckets;
+        int src_inx = slide * num_pred_buckets;
+        std::memcpy(origin_stat_pos + dst_idx, origin_stat_pos + src_inx,
+                    bucket_length);
+        std::memcpy(origin_stat_neg + dst_idx, origin_stat_neg + src_inx,
+                    bucket_length);
+      }
+
+      std::memcpy(origin_stat_pos + (slide_steps - 1) * num_pred_buckets,
+                  *stat_pos, bucket_length);
+      std::memcpy(origin_stat_neg + (slide_steps - 1) * num_pred_buckets,
+                  *stat_neg, bucket_length);
+
+      std::memset(*stat_pos, 0, bucket_length);
+      std::memset(*stat_neg, 0, bucket_length);
+
+      for (int slide = 0; slide < num_pred_buckets; ++slide) {
+        int stat_pos_steps = 0;
+        int stat_neg_steps = 0;
+        for (int step = 0; step < slide_steps; ++step) {
+          stat_pos_steps += origin_stat_pos[slide + step * num_pred_buckets];
+          stat_neg_steps += origin_stat_neg[slide + step * num_pred_buckets];
         }
+        (*stat_pos)[slide] += stat_pos_steps;
+        (*stat_neg)[slide] += stat_neg_steps;
       }
-      // store rates
-      tp_data[idx_thresh] += tp;
-      fn_data[idx_thresh] += fn;
-      tn_data[idx_thresh] += tn;
-      fp_data[idx_thresh] += fp;
     }
-    // epsilon to avoid divide by zero.
-    double epsilon = 1e-6;
-    // Riemann sum to caculate auc.
-    Tensor tp_rate, fp_rate, rec_rate;
-    tp_rate.Resize({num_thresholds});
-    fp_rate.Resize({num_thresholds});
-    rec_rate.Resize({num_thresholds});
-    auto* tp_rate_data = tp_rate.mutable_data<double>(ctx.GetPlace());
-    auto* fp_rate_data = fp_rate.mutable_data<double>(ctx.GetPlace());
-    auto* rec_rate_data = rec_rate.mutable_data<double>(ctx.GetPlace());
-    for (int i = 0; i < num_thresholds; i++) {
-      tp_rate_data[i] = (static_cast<double>(tp_data[i]) + epsilon) /
-                        (tp_data[i] + fn_data[i] + epsilon);
-      fp_rate_data[i] =
-          static_cast<double>(fp_data[i]) / (fp_data[i] + tn_data[i] + epsilon);
-      rec_rate_data[i] = (static_cast<double>(tp_data[i]) + epsilon) /
-                         (tp_data[i] + fp_data[i] + epsilon);
+  }
+
+  inline static void calcAuc(const framework::ExecutionContext &ctx,
+                             int64_t *stat_pos, int64_t *stat_neg,
+                             int num_thresholds,
+                             framework::Tensor *auc_tensor) {
+    auto *auc = auc_tensor->mutable_data<double>(ctx.GetPlace());
+
+    *auc = 0.0f;
+
+    double totPos = 0.0;
+    double totNeg = 0.0;
+    double totPosPrev = 0.0;
+    double totNegPrev = 0.0;
+
+    int idx = num_thresholds;
+
+    while (idx >= 0) {
+      totPosPrev = totPos;
+      totNegPrev = totNeg;
+      totPos += stat_pos[idx];
+      totNeg += stat_neg[idx];
+      *auc += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
+      --idx;
     }
-    *auc_data = 0.0f;
-    if (curve == "ROC") {
-      for (int i = 0; i < num_thresholds - 1; i++) {
-        auto dx = fp_rate_data[i] - fp_rate_data[i + 1];
-        auto y = (tp_rate_data[i] + tp_rate_data[i + 1]) / 2.0f;
-        *auc_data = *auc_data + dx * y;
-      }
-    } else if (curve == "PR") {
-      for (int i = 1; i < num_thresholds; i++) {
-        auto dx = tp_rate_data[i] - tp_rate_data[i - 1];
-        auto y = (rec_rate_data[i] + rec_rate_data[i - 1]) / 2.0f;
-        *auc_data = *auc_data + dx * y;
-      }
+
+    if (totPos > 0.0 && totNeg > 0.0) {
+      *auc = *auc / totPos / totNeg;
     }
   }
 };

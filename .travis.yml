@@ -12,7 +12,6 @@ services:
 os:
   - linux
 env:
-  - JOB=doc
   - JOB=check_style
   - JOB=build_android
 addons:

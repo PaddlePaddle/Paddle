@@ -70,8 +70,11 @@ option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(WITH_INFERENCE    "Compile fluid inference library"              ON)
+option(ON_INFER         "Turn on inference optimization."               OFF)
+option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
+option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -126,6 +129,9 @@ set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
 set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
   "A path setting fluid shared and static libraries")
 
+set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
+  "A path setting fluid inference shared and static libraries")
+
 if (WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "
     "when using C-API. It will give an unpredictable behavior when using a "
@@ -175,6 +181,7 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
+include(external/xxhash)    # download xxhash
 
 if (NOT WIN32)
 # there is no official support of snappystream, warpctc, nccl, cupti in windows
@@ -213,9 +220,11 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+endif()
+if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
+    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
 include(flags)              # set paddle compile flags
@@ -296,4 +305,12 @@ if(WITH_DOC)
     find_package(Sphinx REQUIRED)
     find_python_module(recommonmark REQUIRED)
     add_subdirectory(doc)
+endif()
+
+if (ON_INFER)
+    message(STATUS "On inference mode, will take place some specific optimization.")
+    add_definitions(-DPADDLE_ON_INFERENCE)
+else()
+    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
+    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
 endif()

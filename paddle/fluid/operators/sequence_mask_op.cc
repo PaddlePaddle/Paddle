@@ -23,4 +23,8 @@ REGISTER_OP_CPU_KERNEL(
     paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
                                           int>,
     paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          int64_t>);
+                                          int64_t>,
+    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
+                                          float>,
+    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
+                                          double>);

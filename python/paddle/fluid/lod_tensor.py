@@ -74,7 +74,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         assert [
             new_recursive_seq_lens
         ] == recursive_seq_lens, "data and recursive_seq_lens do not match"
-        flattened_data = np.concatenate(data, axis=0).astype("int64")
+        flattened_data = np.concatenate(data, axis=0)
         flattened_data = flattened_data.reshape([len(flattened_data), 1])
         return create_lod_tensor(flattened_data, recursive_seq_lens, place)
     elif isinstance(data, np.ndarray):

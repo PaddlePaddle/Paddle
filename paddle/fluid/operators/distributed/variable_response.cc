@@ -92,9 +92,14 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
+  auto server_var = GetVar();
+  if (!server_var) {
+    LOG(ERROR) << "recved var should not on current server: "
+               << meta_.varname();
+    return false;
+  }
   auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
-
   framework::LoD lod;
   for (int i = 0; i < meta_.lod_level(); ++i) {
     framework::Vector<size_t> v;
@@ -107,7 +112,6 @@ bool VariableResponse::CopyLodTensorData(
 
   void* tensor_data =
       tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
-
   if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
     return false;
   }

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
+#include <vector>
+
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
@@ -41,27 +43,23 @@ class DfgPassManagerImpl final : public DfgPassManager {
  public:
   DfgPassManagerImpl() {
     // TODO(Superjomn) set the key with pass reprs.
-    LOG(INFO)
-        << "-----------------------------------------------------------------";
-    if (FLAGS_IA_enable_ir) {
-      AddPass("fluid-to-ir-pass", new FluidToIrPass);
-    } else {
+    if (!FLAGS_IA_enable_ir) {
       AddPass("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
+    } else {
+      AddPass("fluid-to-ir-pass", new FluidToIrPass);
     }
     TryAddTensorRtPass();
     AddPass("data-flow-graph-to-fluid", new DataFlowGraphToFluidPass);
     if (!FLAGS_IA_output_storage_path.empty()) {
       AddPass("model-store-pass", new ModelStorePass);
     }
-    LOG(INFO)
-        << "-----------------------------------------------------------------";
   }
 
   std::string repr() const override { return "dfg-pass-manager"; }
   std::string description() const override { return "DFG pass manager."; }
 
  private:
-  void AddPass(const std::string& name, Pass* pass) {
+  void AddPass(const std::string& name, AnalysisPass* pass) {
     VLOG(3) << "Adding pass " << name;
     Register(name, pass);
     AddGraphvizDebugerPass(pass);
@@ -71,8 +69,9 @@ class DfgPassManagerImpl final : public DfgPassManager {
     if (FLAGS_IA_enable_tensorrt_subgraph_engine) {
       auto trt_teller = [&](const Node* node) {
         std::unordered_set<std::string> teller_set(
-            {"elementwise_add", "mul", "conv2d", "pool2d", "relu", "softmax",
-             "depthwise_conv2d", "batch_norm", "concat"});
+            {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
+             "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
+             "elementwise_add", "dropout"});
         if (!node->IsFunction()) return false;
 
         const auto* func = static_cast<const Function*>(node);
@@ -90,7 +89,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
   }
 
   // Add the graphviz debuger pass if the parent pass has one.
-  void AddGraphvizDebugerPass(Pass* pass) {
+  void AddGraphvizDebugerPass(AnalysisPass* pass) {
     auto* debuger_pass = pass->CreateGraphvizDebugerPass();
     if (debuger_pass) {
       Register(debuger_pass->repr(), debuger_pass);
@@ -101,24 +100,50 @@ class DfgPassManagerImpl final : public DfgPassManager {
 Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
 
 void Analyzer::Run(Argument* argument) {
-  // Ugly support fluid-to-ir-pass
-  argument->Set(kFluidToIrPassesAttr,
-                new std::vector<std::string>({
-                    // Manual update the passes here.
-                    "graph_viz_pass",                              //
-                    "infer_clean_graph_pass", "graph_viz_pass",    //
-                    "attention_lstm_fuse_pass", "graph_viz_pass",  //
-                    "fc_lstm_fuse_pass", "graph_viz_pass",         //
-                    "seq_concat_fc_fuse_pass", "graph_viz_pass",   //
-                    "fc_fuse_pass", "graph_viz_pass"               //
-
-                }));
+  std::vector<std::string> passes;
+#ifdef PADDLE_WITH_MKLDNN
+  if (use_mkldnn_) {
+    VLOG(3) << "Adding MKL-DNN placement pass";
+    passes.push_back("mkldnn_placement_pass");
+  }
+#endif
+  // infer_clean_graph_pass should be the first default pass
+  // after mkldnn_placement_pass.
+  passes.push_back("infer_clean_graph_pass");
+  for (auto& pass : ir_passes_) {
+    if (!disabled_ir_passes_.count(pass)) {
+      passes.push_back(pass);
+      passes.push_back("graph_viz_pass");  // add graphviz for debug.
+    }
+  }
+  passes.push_back("graph_viz_pass");
+  argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(passes));
 
   for (auto& x : data_) {
     PADDLE_ENFORCE(x->Initialize(argument));
     x->RunAll();
     PADDLE_ENFORCE(x->Finalize());
   }
+}
+
+Analyzer& Analyzer::IncludeAllIrPasses() {
+  ir_passes_ = all_ir_passes_;
+  return *this;
+}
+
+Analyzer& Analyzer::DisableIrPasses(const std::vector<std::string>& passes) {
+  disabled_ir_passes_.insert(passes.begin(), passes.end());
+  return *this;
+}
+
+Analyzer& Analyzer::IncludeIrPasses(const std::vector<std::string>& passes) {
+  ir_passes_ = passes;
+  return *this;
+}
+
+Analyzer& Analyzer::SetUseMkldnn(bool use_mkldnn) {
+  use_mkldnn_ = use_mkldnn;
+  return *this;
 }
 
 }  // namespace analysis

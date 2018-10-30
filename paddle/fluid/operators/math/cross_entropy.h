@@ -38,7 +38,8 @@ class CrossEntropyFunctor {
  public:
   void operator()(const DeviceContext& context, framework::Tensor* out,
                   const framework::Tensor* prob,
-                  const framework::Tensor* labels, const bool softLabel);
+                  const framework::Tensor* labels, const bool softLabel,
+                  const int ignore_index);
 };
 }  // namespace math
 }  // namespace operators

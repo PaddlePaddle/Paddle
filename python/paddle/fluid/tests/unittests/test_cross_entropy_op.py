@@ -209,5 +209,34 @@ class TestCrossEntropyOp6(OpTest):
             ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001)
 
 
+class TestCrossEntropyOp7(OpTest):
+    """Test cross-entropy with ignore index.
+    """
+
+    def setUp(self):
+        self.op_type = "cross_entropy"
+        batch_size = 30
+        class_num = 10
+        ignore_index = 3
+
+        X = randomize_probability(batch_size, class_num, dtype='float64')
+
+        label = np.random.randint(0, class_num, (batch_size, 1), dtype="int64")
+        cross_entropy = np.asmatrix(
+            [[-np.log(X[i][label[i][0]])]
+             if label[i][0] != ignore_index else [0]
+             for i in range(X.shape[0])],
+            dtype="float64")
+        self.inputs = {"X": X, "Label": label}
+        self.outputs = {"Y": cross_entropy}
+        self.attrs = {"soft_label": False, "ignore_index": ignore_index}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
+
+
 if __name__ == "__main__":
     unittest.main()

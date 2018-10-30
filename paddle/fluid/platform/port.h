@@ -15,10 +15,10 @@
 #pragma once
 
 #include <cstdio>
+#include <memory>
+#include <memory>  // NOLINT
 #include <stdexcept>
-
 #include <string>
-#include <memory> // NOLINT
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #define GOOGLE_GLOG_DLL_DECL

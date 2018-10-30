@@ -46,6 +46,25 @@ static std::string gethash(const memory::dims& input_dims,
          dims2str(paddings) + pooling_type + suffix;
 }
 
+static inline int ComputeCeiledOutput(int input_size, int kernel_size,
+                                      int padding, int stride) {
+  return (input_size - kernel_size + 2 * padding) / stride + 1;
+}
+
+static inline void CorrectOutputSize(
+    const std::vector<int>& src_tz, const std::vector<int>& dst_tz,
+    const std::vector<int>& kernel_size, const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    std::vector<int>& right_bot_padding) {  // NOLINT
+  for (size_t i = 0; i < right_bot_padding.size(); i++) {
+    int desired_size = ComputeCeiledOutput(src_tz[i + 2], kernel_size[i],
+                                           paddings[i], strides[i]);
+    if (desired_size != dst_tz[i + 2]) {
+      right_bot_padding[i] += strides[i];
+    }
+  }
+}
+
 template <typename T>
 class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
@@ -103,6 +122,13 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto pool_p =
         std::static_pointer_cast<pooling_forward>(dev_ctx.GetBlob(key_pool_p));
     if (pool_p == nullptr) {
+      const std::vector<int>& padding_left_top(paddings);
+      std::vector<int> padding_right_bottom(paddings);
+      bool ceil_mode = ctx.Attr<bool>("ceil_mode");
+      if (ceil_mode) {
+        CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
+                          padding_right_bottom);
+      }
       auto src_md = platform::MKLDNNMemDesc(
           src_tz, platform::MKLDNNGetDataType<T>(), input_format);
 
@@ -114,8 +140,9 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                             mkldnn::memory::format::any);
 
       std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
-          CreatePrimitiveDesc(src_md, dst_md, strides, paddings, ksize,
-                              pooling_type, mkldnn_engine);
+          CreatePrimitiveDesc(src_md, dst_md, strides, padding_left_top,
+                              padding_right_bottom, ksize, pooling_type,
+                              mkldnn_engine, ceil_mode);
 
       // save pool_pd into global device context to be referred in backward path
       dev_ctx.SetBlob(key_pool_pd, pool_pd);
@@ -171,14 +198,16 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  private:
   std::unique_ptr<mkldnn::pooling_forward::primitive_desc> CreatePrimitiveDesc(
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& dst,
-      const std::vector<int>& stride, const std::vector<int>& padding,
-      const std::vector<int>& kernel, const std::string& pooling_type,
-      const mkldnn::engine& engine) const {
+      const std::vector<int>& stride, const std::vector<int>& padding_left_top,
+      const std::vector<int>& padding_right_bot, const std::vector<int>& kernel,
+      const std::string& pooling_type, const mkldnn::engine& engine,
+      bool ceil_mode) const {
     auto pool_desc = mkldnn::pooling_forward::desc(
         mkldnn::prop_kind::forward,
         pooling_type == "max" ? mkldnn::algorithm::pooling_max
                               : mkldnn::algorithm::pooling_avg,
-        src, dst, stride, kernel, padding, padding, mkldnn::padding_kind::zero);
+        src, dst, stride, kernel, padding_left_top, padding_right_bot,
+        mkldnn::padding_kind::zero);
 
     auto p_pool_pd =
         new mkldnn::pooling_forward::primitive_desc(pool_desc, engine);

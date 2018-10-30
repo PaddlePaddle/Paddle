@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import paddle
 from test_dist_base import TestDistBase
@@ -44,26 +45,34 @@ def download_files():
     test_url = url_prefix + 'newstest2013.tok.bpe.32000.en-de'
     test_md5 = '9dd74a266dbdb25314183899f269b4a2'
     paddle.dataset.common.download(test_url, 'test_dist_transformer', test_md5)
+    # cut test data for faster CI
+    orig_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                             "test_dist_transformer",
+                             "newstest2013.tok.bpe.32000.en-de")
+    head_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                             "test_dist_transformer",
+                             "newstest2013.tok.bpe.32000.en-de.cut")
+    os.system("head -n10 %s > %s" % (orig_path, head_path))
 
 
 class TestDistTransformer2x2Sync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
-    def test_transformer(self):
+    def test_dist_train(self):
         download_files()
-        #Note: loss on test dataset of the first 5 batch are:
-        # 10.518872, 10.518871, 10.518868, 10.518862, 10.518855
-        self.check_with_place("dist_transformer.py", delta=1e-7)
+        self.check_with_place(
+            "dist_transformer.py", delta=1e-5, check_error_log=False)
 
 
 class TestDistTransformer2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
 
-    def test_transformer(self):
+    def test_dist_train(self):
         download_files()
-        self.check_with_place("dist_transformer.py", delta=1.0)
+        self.check_with_place(
+            "dist_transformer.py", delta=1.0, check_error_log=False)
 
 
 if __name__ == "__main__":

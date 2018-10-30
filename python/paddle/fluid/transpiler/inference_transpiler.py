@@ -60,13 +60,82 @@ class InferenceTranspiler(object):
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
-        if use_mkldnn:
-            self._fuse_relu_mkldnn(program)
-            self._fuse_conv_bias_mkldnn(program)
-        else:
-            self._fuse_batch_norm(program, place, scope)
 
-    def _fuse_relu_mkldnn(self, program):
+        self._fuse_batch_norm(program, place, scope)
+        if use_mkldnn:
+            self._fuse_conv_bias_mkldnn(program)
+            self._fuse_conv_relu_mkldnn(program)
+            self._fuse_conv_eltwise_mkldnn(program)
+            self._fuse_conv_relu_mkldnn(
+                program)  # ResNet residual block merging
+            self._fuse_bn_relu_mkldnn(program)
+
+    def _fuse_conv_eltwise_mkldnn(self, program):
+        '''
+        Transpile the program fusing elementwise_add into conv for MKLDNN
+        program. Elementwise add following convolution OP can be fused by adding
+        'fuse_residual_connection' attribute to convolution OP and replacing its output
+        Tensor with second parameter of elementwise_add.
+        The result of fuse is:
+            - before:
+                - conv->elementwise_add->any_other_op
+            - after:
+                - conv->any_other_op
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type in ['conv2d']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'elementwise_add':
+                    self._fuse_conv_eltwise(i, current_op, next_op)
+                    self.block._remove_op(i + 1)  # Remove old conv
+                    self.block._remove_op(i + 1)  # Remove elementwise_add
+            i = i + 1
+        self._adjust_input()
+        self._remove_unused_var()
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
+
+    def _fuse_conv_relu_mkldnn(self, program):
+        '''
+        Transpile the program by fused relu activation for MKLDNN program.
+        Relu activation following convolution OP can be fused by adding
+        'fuse_relu' attribute to convolution OP.
+        The result of fuse is:
+            - before:
+                - conv->relu->any_other_op
+            - after:
+                - conv->any_other_op
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type in ['conv2d']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'relu':
+                    # modify bnorm OP to include relu
+                    current_op._set_attr("fuse_relu", True)
+                    # remove relu OP
+                    self.block._remove_op(i + 1)
+            i = i + 1
+
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
+
+    def _fuse_bn_relu_mkldnn(self, program):
         '''
         Transpile the program by fused relu activation for MKLDNN program.
 
@@ -95,7 +164,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op.set_attr("fuse_with_relu", True)
+                    current_op._set_attr("fuse_with_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
@@ -160,7 +229,6 @@ class InferenceTranspiler(object):
                 self._fuse_conv_bias(i, current_op, next_op)
                 self.block._remove_op(i + 1)  # Remove old conv
                 self.block._remove_op(i + 1)  # Remove elementwise_add
-                i = i + 1
             i = i + 1
 
         self._remove_unused_var()
@@ -310,7 +378,7 @@ class InferenceTranspiler(object):
                 type=old_var.type,
                 dtype=old_var.dtype,
                 shape=old_var.shape)
-            op.rename_input(old_param_name, new_param_name)
+            op._rename_input(old_param_name, new_param_name)
             self.scope.var(new_param_name)
 
             tensor = self.scope.find_var(new_param_name).get_tensor()
@@ -377,13 +445,48 @@ class InferenceTranspiler(object):
             outputs={"Output": out_var},
             attrs=attrs)
 
+    def _fuse_conv_eltwise(self, index, conv_op, eltwise_op):
+        '''
+        fuse the conv op with elementwise_add
+
+        :param conv_op: convolution operator
+        :type conv_op: Operator
+        :param eltwise_op: operator adding data from skip connection
+        :type eltwise_op: Operator
+        '''
+
+        eltwise_input = "X"
+        if eltwise_op.input("X")[0] == conv_op.output("Output")[0]:
+            eltwise_input = "Y"
+
+        residual_var = self.block.vars[eltwise_op.input(eltwise_input)[0]]
+        out_var = self.block.vars[eltwise_op.output("Out")[0]]
+        filter_var = self.block.vars[conv_op.input("Filter")[0]]
+        in_var = self.block.vars[conv_op.input("Input")[0]]
+        bias_var = self.block.vars[conv_op.input("Bias")[0]]
+
+        conv_op._set_attr("fuse_residual_connection", True)
+        attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
+
+        self.block._insert_op(
+            index,
+            type="conv2d",
+            inputs={
+                "Input": in_var,
+                "Filter": filter_var,
+                "Bias": bias_var,
+                "ResidualData": residual_var
+            },
+            outputs={"Output": out_var},
+            attrs=attrs)
+
     def _adjust_input(self):
         for i in range(len(self.block.ops)):
             current_op = self.block.ops[i]
             for input_arg in current_op.input_arg_names:
                 if input_arg in self.input_map:
-                    current_op.rename_input(input_arg,
-                                            self.input_map[input_arg])
+                    current_op._rename_input(input_arg,
+                                             self.input_map[input_arg])
 
     def _remove_unused_var(self):
         '''

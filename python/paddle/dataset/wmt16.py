@@ -64,7 +64,8 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
-            line_split = line.strip().split(six.b("\t"))
+            line = cpt.to_text(line)
+            line_split = line.strip().split("\t")
             if len(line_split) != 2: continue
             sen = line_split[0] if lang == "en" else line_split[1]
             for w in sen.split():
@@ -77,7 +78,7 @@ def __build_dict(tar_file, dict_size, save_path, lang):
                     six.iteritems(word_dict), key=lambda x: x[1],
                     reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write("%s\n" % (word[0]))
+            fout.write("%s\n" % (cpt.to_bytes(word[0])))
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
@@ -123,7 +124,8 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
 
         with tarfile.open(tar_file, mode="r") as f:
             for line in f.extractfile(file_name):
-                line_split = line.strip().split(six.b("\t"))
+                line = cpt.to_text(line)
+                line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue
                 src_words = line_split[src_col].split()

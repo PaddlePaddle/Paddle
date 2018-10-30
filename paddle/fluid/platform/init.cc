@@ -94,7 +94,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   int count = 0;
 #ifdef PADDLE_WITH_CUDA
   try {
-    VLOG(3) << "get cuda count";   
+    VLOG(3) << "get cuda count";
     count = platform::GetCUDADeviceCount();
     VLOG(3) << "get cuda pass";
   } catch (const std::exception &exp) {
@@ -121,7 +121,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
-  if (platform::jit::MayIUse(platform::jit::avx512_common)) {
+  if (platform::jit::MayIUse(platform::jit::avx512f)) {
 #ifndef __AVX512F__
     LOG(WARNING) << "AVX512F is available, Please re-compile on local machine";
 #endif

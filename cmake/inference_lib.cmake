@@ -18,7 +18,7 @@ function(copy TARGET)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DSTS DEPS)
     cmake_parse_arguments(copy_lib "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    set(inference_lib_dist_dep ${TARGET} ${inference_lib_dist_dep} PARENT_SCOPE)
+    set(fluid_lib_dist_dep ${TARGET} ${fluid_lib_dist_dep} PARENT_SCOPE)
 
     list(LENGTH copy_lib_SRCS copy_lib_SRCS_len)
     list(LENGTH copy_lib_DSTS copy_lib_DSTS_len)
@@ -31,7 +31,6 @@ function(copy TARGET)
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
-        
         if (WIN32) 
         # windows cmd shell will not expand wildcard automatically.
         # below expand the files,libs and copy them by rules.
@@ -52,17 +51,10 @@ function(copy TARGET)
           COMMENT "copying ${src_file} -> ${dst}")
         endforeach()
         else(WIN32) # not windows
-	add_custom_command(TARGET ${TARGET} PRE_BUILD 
+          add_custom_command(TARGET ${TARGET} PRE_BUILD 
           COMMAND mkdir -p "${dst}"
           COMMAND cp -r "${src}" "${dst}"
           COMMENT "copying ${src} -> ${dst}")
-        #add_custom_command(TARGET ${TARGET} PRE_BUILD 
-        #  COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}")
-	#message("mkdir " ${TARGET})
-        #add_custom_command(TARGET ${TARGET} PRE_BUILD 
-        #  COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
-        #  COMMAND ${CMAKE_COMMAND} -E copy_directory "${src_files}" "${dst}"
-        #  COMMENT "copying ${src} -> ${dst}")
         endif(WIN32)
     endforeach()
 endfunction()
@@ -94,6 +86,13 @@ copy(boost_lib
   SRCS ${BOOST_INCLUDE_DIR}/boost
   DSTS ${dst_dir}
   DEPS boost
+)
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/xxhash")
+copy(xxhash_lib
+  SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
+  DSTS ${dst_dir} ${dst_dir}/lib
+  DEPS xxhash
 )
 
 if(NOT PROTOBUF_FOUND)
@@ -157,16 +156,13 @@ set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
 if (NOT WIN32)
-copy(framework_lib DEPS framework_py_proto 
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
-)
-else()
-copy(framework_lib
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
-)
+set(framework_lib_deps framework_py_proto)
 endif(NOT WIN32)
+copy(framework_lib DEPS ${framework_lib_deps}
+  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+       ${src_dir}/${module}/ir/*.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}/ir
+)
 
 set(module "memory")
 copy(memory_lib
@@ -177,19 +173,20 @@ copy(memory_lib
 set(inference_deps paddle_fluid_shared paddle_fluid)
 
 set(module "inference/api")
-if (WITH_ANAKIN AND WITH_GPU)
+if (WITH_ANAKIN AND WITH_MKL)
     copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
         SRCS
         ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
         ${ANAKIN_INSTALL_DIR} # anakin release
-        DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
+        DSTS ${FLUID_INSTALL_DIR}/third_party/install/anakin ${FLUID_INSTALL_DIR}/third_party/install/anakin)
      list(APPEND inference_deps anakin_inference_lib)
 endif()
 
 set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-       ${src_dir}/${module}/api/paddle_inference_api.h ${src_dir}/${module}/api/demo_ci
+       ${src_dir}/${module}/api/paddle_inference_api.h
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
@@ -216,20 +213,41 @@ copy(cmake_cache
   SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
   DSTS ${FLUID_INSTALL_DIR})
 
-add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 
+# This command generates a complete fluid library for both train and inference
+add_custom_target(fluid_lib_dist DEPENDS ${fluid_lib_dist_dep})
+
+# Following commands generate a inference-only fluid library
+# third_party, version.txt and CMakeCache.txt are the same position with ${FLUID_INSTALL_DIR}
+copy(third_party DEPS fluid_lib_dist
+  SRCS ${FLUID_INSTALL_DIR}/third_party ${FLUID_INSTALL_DIR}/CMakeCache.txt
+  DSTS ${FLUID_INFERENCE_INSTALL_DIR} ${FLUID_INFERENCE_INSTALL_DIR}
+)
+
+# only need libpaddle_fluid.so/a and paddle_inference_api.h for inference-only library
+copy(inference_api_lib DEPS fluid_lib_dist
+  SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+       ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_inference_api.h
+  DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
+)
+
+add_custom_target(inference_lib_dist DEPENDS third_party inference_api_lib)
 
 # paddle fluid version
-execute_process(
-  COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
-  WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
-  OUTPUT_VARIABLE PADDLE_GIT_COMMIT)
-set(version_file ${FLUID_INSTALL_DIR}/version.txt)
-file(WRITE ${version_file}
-  "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
-  "WITH_MKL: ${WITH_MKL}\n"
-  "WITH_GPU: ${WITH_GPU}\n")
-if(WITH_GPU)
-  file(APPEND ${version_file}
-    "CUDA version: ${CUDA_VERSION}\n"
-    "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
-endif()
+function(version version_file)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+    OUTPUT_VARIABLE PADDLE_GIT_COMMIT)
+  file(WRITE ${version_file}
+    "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
+    "WITH_MKL: ${WITH_MKL}\n"
+    "WITH_MKLDNN: ${WITH_MKLDNN}\n"
+    "WITH_GPU: ${WITH_GPU}\n")
+  if(WITH_GPU)
+    file(APPEND ${version_file}
+      "CUDA version: ${CUDA_VERSION}\n"
+      "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
+  endif()
+endfunction()
+version(${FLUID_INSTALL_DIR}/version.txt)
+version(${FLUID_INFERENCE_INSTALL_DIR}/version.txt)

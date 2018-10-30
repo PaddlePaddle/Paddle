@@ -16,16 +16,6 @@ set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
 set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
 set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 
-# TODO(luotao): ANAKIN_MODLE_URL etc will move to demo ci later.
-set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
-set(ANAKIN_MODLE_URL "${INFERENCE_URL}/mobilenet_v2.anakin.bin")
-set(ANAKIN_RNN_MODLE_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn.anakin2.model.bin")
-set(ANAKIN_RNN_DATA_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn_data.txt")
-execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_SOURCE_DIR}")
-execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL} -N")
-execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_MODLE_URL} -N")
-execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_DATA_URL} -N")
-
 include_directories(${ANAKIN_INCLUDE})
 include_directories(${ANAKIN_INCLUDE}/saber/)
 include_directories(${ANAKIN_INCLUDE}/saber/core/)
@@ -48,21 +38,25 @@ set(ANAKIN_COMPILE_EXTRA_FLAGS
     -Wno-reorder
     -Wno-error=cpp)
 
+if(WITH_GPU)
+    set(CMAKE_ARGS_PREFIX -DUSE_GPU_PLACE=YES -DCUDNN_ROOT=${CUDNN_ROOT} -DCUDNN_INCLUDE_DIR=${CUDNN_INCLUDE_DIR})
+else()
+    set(CMAKE_ARGS_PREFIX -DUSE_GPU_PLACE=NO)
+endif()
 ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLML_PROJECT}
     GIT_REPOSITORY      "https://github.com/PaddlePaddle/Anakin"
-    GIT_TAG             "9424277cf9ae180a14aff09560d3cd60a49c76d2"
+    GIT_TAG             "3c8554f4978628183566ab7dd6c1e7e66493c7cd"
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
-    CMAKE_ARGS          -DUSE_GPU_PLACE=YES
+    CMAKE_ARGS          ${CMAKE_ARGS_PREFIX}
+                        -DUSE_LOGGER=YES
                         -DUSE_X86_PLACE=YES
                         -DBUILD_WITH_UNIT_TEST=NO
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
                         -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
-                        -DCUDNN_ROOT=${CUDNN_ROOT}
-                        -DCUDNN_INCLUDE_DIR=${CUDNN_INCLUDE_DIR}
                         -DENABLE_OP_TIMER=${ANAKIN_ENABLE_OP_TIMER}
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}

@@ -192,7 +192,8 @@ class MKLDNNHandler {
       mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       const std::string& suffix,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
+      bool is_persistent = false) {
     // create reorder primitive if the input format is not the preferred one
     auto local_key = key_ + suffix;
     auto key_reorder_p = key_ + suffix + "reorder_p";
@@ -213,7 +214,7 @@ class MKLDNNHandler {
         pipeline.push_back(*reorder_p);
       }
       dev_ctx_.SetBlob(local_key, target_memory_p);
-    } else {
+    } else if (!is_persistent) {
       // Make reorder if needed
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));

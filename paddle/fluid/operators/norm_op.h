@@ -65,14 +65,17 @@ class NormKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 1> rdim(1);
     // y = x / sqrt((sum(x * x) + epsilon))
     // norm = sqrt(sum(x * x) + epsilon)
-    auto sum = x.pow(2).sum(rdim) + eps;
+    auto x2 = x * x;
+    auto sum = x2.sum(rdim) + eps;
     norm.device(*place) = sum.sqrt();
+
     // y = x / norm
     Eigen::DSizes<int, 3> rshape(pre, 1, post);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
     y.device(*place) = x / norm.reshape(rshape).broadcast(bcast);
   }
 };
+
 template <typename DeviceContext, typename T, typename AttrType = T>
 class NormGradKernel : public framework::OpKernel<T> {
  public:

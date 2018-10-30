@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/version.h"
 
 namespace paddle {
 namespace framework {
@@ -38,7 +39,10 @@ proto::ProgramDesc *ProgramDesc::Proto() {
   return &desc_;
 }
 
+int64_t ProgramDesc::Version() const { return desc_.version().version(); }
+
 ProgramDesc::ProgramDesc() {
+  desc_.mutable_version()->set_version(kCurProgramVersion);
   auto *block = desc_.mutable_blocks()->Add();
   block->set_idx(kRootBlockIndex);
   block->set_parent_idx(kNoneBlockIndex);
@@ -122,7 +126,7 @@ const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
   std::vector<std::string> feed_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
-      int col = boost::get<int>(op->GetAttr("col"));
+      size_t col = boost::get<int>(op->GetAttr("col"));
       if (col >= feed_target_names.size()) {
         feed_target_names.resize(col + 1);
       }
@@ -139,7 +143,7 @@ const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
   std::vector<std::string> fetch_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
-      int col = boost::get<int>(op->GetAttr("col"));
+      size_t col = boost::get<int>(op->GetAttr("col"));
       if (col >= fetch_target_names.size()) {
         fetch_target_names.resize(col + 1);
       }

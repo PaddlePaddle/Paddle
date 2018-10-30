@@ -20,6 +20,8 @@
 
 namespace paddle {
 
+using contrib::MixedRTConfig;
+
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 void CompareTensorRTWithFluid(bool enable_tensorrt) {
@@ -32,18 +34,15 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   config0.fraction_of_gpu_memory = 0.3;
   config0.device = 0;
 
-  TensorRTConfig config1;
+  MixedRTConfig config1;
   config1.model_dir = FLAGS_dirname + "word2vec.inference.model";
   config1.use_gpu = true;
   config1.fraction_of_gpu_memory = 0.3;
   config1.device = 0;
   config1.max_batch_size = 10;
 
-  auto predictor0 =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
-  auto predictor1 =
-      CreatePaddlePredictor<TensorRTConfig,
-                            PaddleEngineKind::kAutoMixedTensorRT>(config1);
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
 
   for (int batch_id = 0; batch_id < 1; batch_id++) {
     //# 2. Prepare input.

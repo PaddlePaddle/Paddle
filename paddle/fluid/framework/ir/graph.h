@@ -94,6 +94,14 @@ class Graph {
     };
   }
 
+  template <typename AttrType>
+  void SetNotOwned(const std::string &attr_name, AttrType *attr) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
+                   attr_name);
+    attrs_[attr_name] = attr;
+    attr_dels_[attr_name] = []() {};
+  }
+
   const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
 
   // Create a normal variable with non-null VarDesc.
@@ -152,6 +160,12 @@ class Graph {
     return nullptr;
   }
 
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
+
+  void ResolveHazard(
+      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -167,7 +181,6 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
-  int node_count_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

@@ -25,17 +25,16 @@ using inference::analysis::Argument;
 using inference::Singleton;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
+using paddle::contrib::MixedRTConfig;
 
 class TensorRTSubgraphPredictor : public NativePaddlePredictor {
  public:
-  explicit TensorRTSubgraphPredictor(const TensorRTConfig& config)
+  explicit TensorRTSubgraphPredictor(const MixedRTConfig& config)
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
     FLAGS_IA_enable_tensorrt_subgraph_engine = true;
     VLOG(3) << "Predictor::init()";
-    FLAGS_tensorrt_max_batch_size = config_.max_batch_size;
-    FLAGS_tensorrt_workspace_size = config_.workspace_size;
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
     } else {
@@ -91,6 +90,14 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   void OptimizeInferenceProgram() {
     // Analyze inference_program
     Argument argument;
+
+    argument.Set<int>("minimum_subgraph_size",
+                      new int(config_.minimum_subgraph_size));
+    argument.Set<int>("max_batch_size", new int(config_.max_batch_size));
+    argument.Set<int>("workspace_size", new int(config_.workspace_size));
+    argument.Set<std::string>("precision_mode",
+                              new std::string(config_.precision_mode));
+
     if (!config_.model_dir.empty()) {
       argument.fluid_model_dir.reset(new std::string(config_.model_dir));
     } else {
@@ -115,13 +122,13 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   }
 
  private:
-  TensorRTConfig config_;
+  MixedRTConfig config_;
 };
 
 template <>
 std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
-    const TensorRTConfig& config) {
+CreatePaddlePredictor<MixedRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
+    const MixedRTConfig& config) {
   VLOG(3) << "create TensorRTSubgraphPredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
@@ -150,14 +157,32 @@ CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
   return std::move(predictor);
 }
 
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<MixedRTConfig>(
+    const MixedRTConfig& config) {
+  return CreatePaddlePredictor<MixedRTConfig,
+                               PaddleEngineKind::kAutoMixedTensorRT>(config);
+}
+
 }  // namespace paddle
 
 USE_TRT_CONVERTER(elementwise_add_weight);
+USE_TRT_CONVERTER(elementwise_add_tensor);
+USE_TRT_CONVERTER(elementwise_sub_tensor);
+USE_TRT_CONVERTER(elementwise_div_tensor);
+USE_TRT_CONVERTER(elementwise_mul_tensor);
+USE_TRT_CONVERTER(elementwise_max_tensor);
+USE_TRT_CONVERTER(elementwise_min_tensor);
+USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(mul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
+USE_TRT_CONVERTER(sigmoid);
+USE_TRT_CONVERTER(tanh);
 USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
+USE_TRT_CONVERTER(dropout);
+USE_TRT_CONVERTER(pad);

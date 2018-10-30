@@ -130,12 +130,13 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
+      bool is_persistent = false) {
     auto user_weights_pd = user_weights_memory_p->get_primitive_desc();
     auto weights_pd = conv_pd_->weights_primitive_desc();
     return this->AcquireMemory(weights_pd, user_weights_pd,
                                user_weights_memory_p, "@weights_mem_p",
-                               pipeline);
+                               pipeline, is_persistent);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryFromPrimitive(
@@ -266,6 +267,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
 
+    const bool is_test = ctx.Attr<bool>("is_test");
+
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -296,10 +299,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
 
-    // TODO(pzelazko-intel) add support for group convolution and dilation
-    PADDLE_ENFORCE(groups == 1, "group convolution is not implemented yet");
+    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
@@ -310,6 +314,19 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> weights_tz =
         paddle::framework::vectorize2int(filter->dims());
+    int g = std::max(groups, 1);
+    if (g > 1) {
+      int o = weights_tz[0];
+      int i = weights_tz[1];
+      int h = weights_tz[2];
+      int w = weights_tz[3];
+      weights_tz.resize(5);
+      weights_tz[0] = g;
+      weights_tz[1] = o / g;
+      weights_tz[2] = i;
+      weights_tz[3] = h;
+      weights_tz[4] = w;
+    }
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get unique name for storing MKLDNN primitives
@@ -323,7 +340,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_src_md = platform::MKLDNNMemDesc(
         {src_tz}, platform::MKLDNNGetDataType<T>(), input->format());
     auto user_weights_md = platform::MKLDNNMemDesc(
-        {weights_tz}, platform::MKLDNNGetDataType<T>(), filter->format());
+        {weights_tz}, platform::MKLDNNGetDataType<T>(),
+        (g == 1) ? filter->format() : mkldnn::memory::format::goihw);
 
     /* create memory descriptor for convolution without specified format
      * ('any') which lets a primitive (convolution in this case) choose
@@ -336,7 +354,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_md = platform::MKLDNNMemDesc(
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+        weights_tz, platform::MKLDNNGetDataType<T>(),
+        (g == 1) ? chosen_memory_format : mkldnn::memory::format::goihw);
     std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
                                // Currently used whenever bias is != nullptr.
     auto dst_md = platform::MKLDNNMemDesc(
@@ -349,10 +368,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
       conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
-                                     strides, paddings, mkldnn_engine);
+                                     strides, paddings, mkldnn_engine,
+                                     fuse_relu, fuse_residual_conn);
     } else {
-      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
-                                     paddings, mkldnn_engine);
+      conv_pd =
+          ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
+                               mkldnn_engine, fuse_relu, fuse_residual_conn);
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -365,13 +386,31 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_weights_memory_p = handler.AcquireWeightsMemory(
         user_weights_md, to_void_cast<T>(filter_data));
 
-    T* output_data =
-        output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+    T* output_data = nullptr;
+
+    if (fuse_residual_conn) {
+      auto residual_param = ctx.Input<Tensor>("ResidualData");
+      auto residual_param_data = residual_param->data<T>();
+
+      PADDLE_ENFORCE(
+          residual_param_data != nullptr,
+          "Provide data if you want MKLDNN conv+elementwise_add fusion");
+      PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
+                        "Output and elementwise parameter need to have the "
+                        "same dimension sizes");
+
+      output->ShareDataWith(*residual_param);
+      output_data = output->mutable_data<T>(ctx.GetPlace());
+    } else {
+      output_data =
+          output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+    }
+
     // create reorder primitive if the input format is not the preferred one
     auto src_memory_p =
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
-        user_weights_memory_p, pipeline);
+        user_weights_memory_p, pipeline, is_test);
     auto dst_memory_p =
         handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
 
@@ -402,11 +441,37 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu,
+                                       bool fuse_residual_conn) const {
+    mkldnn::primitive_attr conv_attr;
+    mkldnn::post_ops post_operations;
+    // Fusion with Elementwise layer relies on adding a sum post-operation with
+    // the scale parameter. It is assumed that when fuse_residual_connection is
+    // true, the output tensor contains the data coming from residual
+    // connection. The result of this post_op is:
+    // Output = scale * Output + Conv_Out.
+    if (fuse_residual_conn) {
+      post_operations.append_sum(1.0f);
+    }
+    // Fusion with ReLU layer is executed through the PostOps feature. Create a
+    // PostOps object and configure it to execute an eltwise relu operation.
+    if (fuse_relu) {
+      constexpr float scale = 1.0f;
+      constexpr float negative_slope = 0.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                     negative_slope, placeholder);
+    }
+    conv_attr.set_post_ops(post_operations);
+    return conv_attr;
+  }
+
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
                        const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine& engine) const {
+                       const mkldnn::engine& engine, const bool fuse_relu,
+                       const bool fuse_residual_conn) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
@@ -415,8 +480,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
-    auto p_conv_pd =
-        new mkldnn::convolution_forward::primitive_desc(conv_desc, engine);
+    mkldnn::primitive_attr conv_attr =
+        CreatePostOps(fuse_relu, fuse_residual_conn);
+
+    auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+        conv_desc, conv_attr, engine);
 
     return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
         p_conv_pd);
@@ -427,7 +495,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const memory::desc& bias, const memory::desc& dst,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine& engine) const {
+                       const mkldnn::engine& engine, const bool fuse_relu,
+                       const bool fuse_residual_conn) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
@@ -436,8 +505,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         bias, dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
-    auto p_conv_pd =
-        new mkldnn::convolution_forward::primitive_desc(conv_desc, engine);
+    mkldnn::primitive_attr conv_attr =
+        CreatePostOps(fuse_relu, fuse_residual_conn);
+
+    auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+        conv_desc, conv_attr, engine);
 
     return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
         p_conv_pd);

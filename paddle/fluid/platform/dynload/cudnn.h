@@ -50,14 +50,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                  \
-  struct DynLoad__##__name {                         \
-    template <typename... Args>                      \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)     \
+  struct DynLoad__##__name {                        \
+    template <typename... Args>                     \
     inline cudnnStatus_t operator()(Args... args) { \
-      VLOG(3) << "cudnn call"; \
-      return ::__name(args...);                        \
-    }                                                \
-  };                                                 \
+      return ::__name(args...);                     \
+    }                                               \
+  };                                                \
   extern DynLoad__##__name __name
 
 #endif

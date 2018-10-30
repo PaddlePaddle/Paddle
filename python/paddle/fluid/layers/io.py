@@ -29,9 +29,8 @@ from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 __all__ = [
-    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
-    'load'
+    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
+    'random_data_generator', 'py_reader', 'Preprocessor', 'load'
 ]
 
 
@@ -56,7 +55,11 @@ def data(name,
     Args:
        name(str): The name/alias of the function
        shape(list): Tuple declaring the shape.
-       append_batch_size(bool): Whether or not to append the data as a batch.
+       append_batch_size(bool):
+          1. If true, it prepends -1 to the shape.
+            For example if shape=[1], the resulting shape is [-1, 1].
+          2. If shape contains -1, such as shape=[1, -1],
+            append_batch_size will be enforced to be be False (ineffective).
        dtype(int|float): The type of data : float32, float_16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
@@ -508,7 +511,6 @@ def py_reader(capacity,
 
         1. The basic usage of :code:`py_reader` is as follows:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
@@ -516,7 +518,7 @@ def py_reader(capacity,
         >>>                                 shapes=[(-1,3,224,224), (-1,1)],
         >>>                                 dtypes=['float32', 'int64'])
         >>> reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> img, label = fluid.layers.read_file(reader)
         >>> loss = network(img, label) # some network definition
@@ -535,7 +537,6 @@ def py_reader(capacity,
         2. When training and testing are both performed, two different
         :code:`py_reader` should be created with different names, e.g.:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
@@ -549,7 +550,7 @@ def py_reader(capacity,
         >>>                                       dtypes=['float32', 'int64'],
         >>>                                       name='train_reader')
         >>> train_reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> test_reader = fluid.layers.py_reader(capacity=32,
         >>>                                      shapes=[(-1,3,224,224), (-1,1)],
@@ -953,7 +954,7 @@ def read_file(reader):
     """
     helper = LayerHelper('read_file')
     out = [
-        helper.create_tmp_variable(
+        helper.create_variable_for_type_inference(
             stop_gradient=True, dtype='float32')
         for _ in range(len(reader.desc.shapes()))
     ]
@@ -1008,9 +1009,9 @@ class Preprocessor(object):
     @contextlib.contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
-        self.sub_block = self.main_prog.create_block()
+        self.sub_block = self.main_prog._create_block()
         yield
-        self.main_prog.rollback()
+        self.main_prog._rollback()
         self.status = Preprocessor.AFTER_SUB_BLOCK
         if not self._is_completed():
             raise RuntimeError(

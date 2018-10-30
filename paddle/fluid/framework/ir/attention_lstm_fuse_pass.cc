@@ -13,11 +13,11 @@
 // limitations under the License.
 #include <string>
 
+#include <string>
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/api/helper.h"
 
 namespace paddle {
 namespace framework {
@@ -97,17 +97,13 @@ void FindWhileOp(Graph* graph) {
   auto* cell_init = graph->RetriveNode(6);
   auto* hidden_init = graph->RetriveNode(8);
 
-#define LINK_TO(node0, node1)      \
-  node0->outputs.push_back(node1); \
-  node1->inputs.push_back(node0);
-
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
 
-  LINK_TO(X, lstm_op);
-  LINK_TO(cell_init, lstm_op);
-  LINK_TO(hidden_init, lstm_op);
-  LINK_TO(lstm_op, LSTMOUT);
+  IR_NODE_LINK_TO(X, lstm_op);
+  IR_NODE_LINK_TO(cell_init, lstm_op);
+  IR_NODE_LINK_TO(hidden_init, lstm_op);
+  IR_NODE_LINK_TO(lstm_op, LSTMOUT);
 
   GraphSafeRemoveNodes(graph, marked_nodes);
 }
@@ -262,6 +258,22 @@ std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PDPattern external_pattern, subblock_pattern;
 
+  // Use the following variables to tell whether this model is RNN1.
+  // This fuse can only works on the RNN1 model.
+  std::unordered_set<std::string> specified_vars({"data_lod_attention",
+                                                  "cell_init", "hidden_init",
+                                                  "data", "week", "minute"});
+  size_t count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsVar() && specified_vars.count(node->Name())) {
+      ++count;
+    }
+  }
+  if (count < specified_vars.size()) {
+    return graph;
+  }
+
+  // Continue to fuse.
   FindWhileOp(graph.get());
   return graph;
 }

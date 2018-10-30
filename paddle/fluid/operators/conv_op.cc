@@ -48,11 +48,11 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
   VLOG(3) << "Conv op Before check";
   in_dims.size() == 4 || in_dims.size() == 5;
-  //PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
+  // PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
   //               "Conv intput should be 4-D or 5-D tensor.");
   VLOG(3) << "check0";
 
-  //PADDLE_ENFORCE_EQ(
+  // PADDLE_ENFORCE_EQ(
   //    in_dims.size(), filter_dims.size(),
   //    "Conv input dimension and filter dimension should be the same.");
   in_dims.size() == filter_dims.size();
@@ -60,23 +60,23 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(
       in_dims.size() - strides.size() == 2U,
       "Conv input dimension and strides dimension should be consistent.");
-    VLOG(3) << "check1";
+  VLOG(3) << "check1";
   PADDLE_ENFORCE_EQ(
       paddings.size(), strides.size(),
       "Conv paddings dimension and Conv strides dimension should be the same.");
-  
+
   VLOG(3) << "check2";
-  //in_dims[1] == filter_dims[1] * groups;
-  //PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
+  // in_dims[1] == filter_dims[1] * groups;
+  // PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
   //                  "The number of input channels should be equal to filter "
   //                  "channels * groups.");
-    VLOG(3) << "check3";
-    //filter_dims[0] % groups == 0 ;
-  //PADDLE_ENFORCE_EQ(
+  VLOG(3) << "check3";
+  // filter_dims[0] % groups == 0 ;
+  // PADDLE_ENFORCE_EQ(
   //    filter_dims[0] % groups, 0,
   //    "The number of output channels should be divided by groups.");
-    VLOG(3) << "filter" << filter_dims.size();
-    VLOG(3) << "filter" << filter_dims[0];
+  VLOG(3) << "filter" << filter_dims.size();
+  VLOG(3) << "filter" << filter_dims[0];
   VLOG(3) << "check4";
   VLOG(3) << "filter" << filter_dims[1];
   VLOG(3) << "dims" << in_dims[0];
@@ -84,11 +84,11 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   VLOG(3) << "output shape";
   for (size_t i = 0; i < strides.size(); ++i) {
-      VLOG(3) << "check5";
+    VLOG(3) << "check5";
     output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
                                           dilations[i], paddings[i],
                                           strides[i]));
-      VLOG(3) << "check pass";
+    VLOG(3) << "check pass";
   }
   VLOG(3) << "Conv InferShape Pass";
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
@@ -132,6 +132,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
+  AddAttr<bool>("is_test", "").SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -152,8 +153,12 @@ void Conv2DOpMaker::Make() {
       .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCHW.");
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
+           "Used with fuse_residual_connection fusion.")
+      .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -183,6 +188,13 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_residual_connection",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever convolution output is as an input to residual "
+                "connection.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -248,8 +260,7 @@ void Conv3DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "

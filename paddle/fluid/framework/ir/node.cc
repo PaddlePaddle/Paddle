@@ -24,6 +24,11 @@ constexpr char Node::kControlDepVarName[];
 const char Node::kControlDepVarName[] = "__control_var";
 #endif
 int Node::count_ = 0;
+
+std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+                                        Node::Type type) {
+  return std::unique_ptr<Node>(new Node(name, type));
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

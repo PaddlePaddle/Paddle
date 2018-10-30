@@ -13,42 +13,41 @@
 // limitations under the License.
 
 #include <algorithm>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class InferCleanGraphPass : public Pass {
+class InferCleanGraphPass : public FusePassBase {
  public:
   virtual ~InferCleanGraphPass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const {
+    FusePassBase::Init("original_graph", graph.get());
     PADDLE_ENFORCE(graph.get());
 
     auto is_valid_node = [](Node* x) {
       return x && IsControlDepVar(*x) && x->IsVar() && !x->Var();
     };
 
-    std::unordered_set<Node*> invalid_nodes;
+    std::unordered_set<const Node*> invalid_nodes;
+    int valid_op = 0;
     for (auto* node : graph->Nodes()) {
       if (is_valid_node(node)) {
         invalid_nodes.insert(node);
+      } else if (node->IsOp()) {
+        // Collect all the operators to help tracking number of operators.
+        ++valid_op;
       }
     }
 
-    // remove nodes from the graph.
-    for (auto* node : invalid_nodes) {
-      graph->RemoveNode(node);
-    }
+    GraphSafeRemoveNodes(graph.get(), invalid_nodes);
 
-    // clean edges.
-    for (auto* node : graph->Nodes()) {
-      CleanEdges(&node->inputs, invalid_nodes);
-      CleanEdges(&node->outputs, invalid_nodes);
-    }
+    AddStatis(valid_op);
 
     return graph;
   }

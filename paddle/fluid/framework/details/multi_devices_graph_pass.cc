@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/data_balance_op_handle.h"
+#include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -127,6 +128,9 @@ static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
 
 void MultiDevSSAGraphBuilder::Init() const {
+  all_vars_.clear();
+  balance_vars_.clear();
+
   loss_var_name_ = Get<const std::string>(kLossVarName);
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
@@ -207,43 +211,6 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainRecvVars(
   return recv_vars;
 }
 
-bool MultiDevSSAGraphBuilder::IsDistTrainOp(
-    ir::Node *node, const std::vector<std::string> &send_vars,
-    const std::vector<std::string> &recv_vars) const {
-  if (send_vars.size() == 0 || recv_vars.size() == 0) {
-    return false;
-  }
-
-  /**
-   * Check any of opvars contains `.block` and in sendvars
-   */
-  auto checker = [](const std::vector<std::string> &opvars,
-                    const std::vector<std::string> &rpc_vars) -> bool {
-    for (auto &var : opvars) {
-      // a variable name with the suffix `.block` means it's a splited
-      // variable by (DistributeTranspiler)
-      // [python/paddle/fluid/transpiler/distribute_transpiler.py]
-      if (var.find(".block") != std::string::npos &&
-          std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  std::vector<std::string> input_var_names;
-  std::vector<std::string> output_var_names;
-  for (ir::Node *input : node->inputs) {
-    input_var_names.push_back(input->Name());
-  }
-  for (ir::Node *output : node->outputs) {
-    output_var_names.push_back(output->Name());
-  }
-
-  return checker(output_var_names, send_vars) ||
-         checker(input_var_names, recv_vars);
-}
-
 size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
     const std::vector<std::string> &var_names) const {
   int64_t numel_sum = 0;
@@ -286,9 +253,9 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
   std::vector<ir::Node *> sorted_ret;
   for (size_t i = 0; i < ret.size(); ++i) {
     if (i < last_backward) {
-      if (boost::get<int>(ret[i]->Op()->GetAttr(
-              OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-          static_cast<int>(OpRole::kOptimize)) {
+      if (static_cast<bool>(boost::get<int>(ret[i]->Op()->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kOptimize))) {
         optimize_ops.push_back(ret[i]);
       } else {
         sorted_ret.push_back(ret[i]);
@@ -326,7 +293,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   ir::Graph &result = *graph;
 
   for (auto &node : nodes) {
-    if (node->NodeType() == ir::Node::Type::kVariable && node->Var()) {
+    if (node->IsVar() && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
     }
   }
@@ -348,21 +315,40 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
 
   size_t cur_device_id = 0;
   bool is_forwarding = true;
+  bool is_dist_train = false;
 
   for (ir::Node *node : sorted_ops) {
     if (boost::get<int>(
             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
         static_cast<int>(OpRole::kRPC)) {
-      CreateRPCOp(&result, node);
-    } else if (IsDistTrainOp(node, send_vars, recv_vars)) {
-      CreateDistTrainOp(&result, node);
+      int op_dev_id = CreateRPCOp(&result, node);
+      PADDLE_ENFORCE(op_dev_id != -1,
+                     "Can not schedule the RPC operator to the right place.");
+      if (node->Op()->Type() == "recv") {
+        auto recv_vars_attr =
+            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
+                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+        PADDLE_ENFORCE(recv_vars_attr.size() == 2UL);  // [parameter, gradient]
+        if (recv_vars_attr[0].find(".block") == std::string::npos) {
+          bcast_var_name_set[op_dev_id].emplace(recv_vars_attr[0]);
+        }
+      }
+      is_dist_train = true;
+    } else if (boost::get<int>(node->Op()->GetAttr(
+                   OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+               static_cast<int>(OpRole::kDist)) {
+      int op_dev_id = CreateDistTrainOp(&result, node);
+      if (node->Op()->Type() == "concat") {
+        auto origin_param_name = node->Op()->OutputArgumentNames()[0];
+        bcast_var_name_set[op_dev_id].emplace(origin_param_name);
+      }
     } else if (IsScaleLossOp(node)) {
       // user can customize loss@grad if not use_default_grad_scale_
       if (strategy_.gradient_scale_ !=
           BuildStrategy::GradientScaleStrategy::kCustomized) {
         // TODO(paddle-dev): Why is there no input for this op_handle?
         auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
-        CreateScaleLossGradOp(&result, loss_grad_name);
+        CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0]);
       }
       // This assumes the backward generating code will ensure IsScaleLossOp
       // is true only for the op that scale the final scalar loss.
@@ -414,7 +400,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                     CreateReduceOp(&result, g_name, cur_device_id);
                     graph->Get<ShardedVarDevice>(kShardedVarDevice)
                         .emplace(g_name, cur_device_id);
-                    bcast_var_name_set[cur_device_id].emplace(p_name);
+                    if (!is_dist_train) {
+                      bcast_var_name_set[cur_device_id].emplace(p_name);
+                    }
                     break;
                   case BuildStrategy::ReduceStrategy::kAllReduce:
                     if (IsSparseGradient(g_name)) {
@@ -436,19 +424,27 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
       }
     }
   }
-
   bool use_gpu = false;
 #ifdef PADDLE_WITH_CUDA
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
 
-  if (use_gpu ||
-      strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
-    // Insert BCast Ops
-    for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
-      auto &to_bcast_set = bcast_var_name_set[dev_id];
-      for (auto &bcast_name : to_bcast_set) {
-        CreateBroadcastOp(&result, bcast_name, dev_id);
+  // Insert broadcast operators principle:
+  // 1. Broadcast optimized parameters in Reduce strategy;
+  // 2. No need broadcast optimized parameters in AllReduce strategy because of
+  //    the optimization sub-graph would be run on every GPU;
+  // 3. Allways broadcast received parameters in Distribute Training.
+  if ((use_gpu &&
+       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) ||
+      is_dist_train) {
+    if (strategy_.fuse_broadcast_op_) {
+      CreateFusedBroadcastOp(&result, bcast_var_name_set);
+    } else {
+      for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
+        auto &to_bcast_set = bcast_var_name_set[dev_id];
+        for (auto &bcast_name : to_bcast_set) {
+          CreateBroadcastOp(&result, bcast_name, dev_id);
+        }
       }
     }
   }
@@ -514,6 +510,44 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(ir::Graph *result,
         i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateFusedBroadcastOp(
+    ir::Graph *result,
+    const std::vector<std::unordered_set<std::string>> &bcast_varnames) const {
+#ifdef PADDLE_WITH_CUDA
+  auto *op_handle = new FusedBroadcastOpHandle(
+      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
+      local_scopes_, places_, nccl_ctxs_);
+#else
+  auto *op_handle = new FusedBroadcastOpHandle(
+      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
+      local_scopes_, places_);
+#endif
+  result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+  }
+
+  for (size_t dev_id = 0; dev_id < bcast_varnames.size(); ++dev_id) {
+    for (auto &p_name : bcast_varnames[dev_id]) {
+      auto *in =
+          result->Get<GraphVars>(kGraphVars).at(dev_id).at(p_name).back().get();
+      op_handle->AddInput(in);
+      for (size_t out_dev_id = 0; out_dev_id < places_.size(); ++out_dev_id) {
+        auto &p = places_[out_dev_id];
+        auto &vars =
+            result->Get<GraphVars>(kGraphVars).at(out_dev_id).at(p_name);
+        auto *out_var = new VarHandle(
+            result->CreateEmptyNode(p_name, ir::Node::Type::kVariable),
+            vars.size(), out_dev_id, p_name, p);
+        vars.emplace_back(out_var);
+        op_handle->AddOutput(out_var);
+      }
+    }
   }
 }
 
@@ -583,18 +617,6 @@ void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
   }
 }
 
-bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
-    const std::string &og,
-    std::unordered_set<std::string> *og_has_been_broadcast) const {
-  bool is_pg_once =
-      grad_names_.count(og) != 0 && og_has_been_broadcast->count(og) == 0;
-  if (is_pg_once) {
-    // Insert NCCL AllReduce Op
-    og_has_been_broadcast->insert(og);
-  }
-  return is_pg_once;
-}
-
 int MultiDevSSAGraphBuilder::GetOpDeviceID(const ir::Graph &graph,
                                            ir::Node *node) const {
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
@@ -623,7 +645,8 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
 }
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
-    ir::Graph *result, const std::string &loss_grad_name) const {
+    ir::Graph *result, const std::string &loss_grad_name,
+    ir::Node *out_var_node) const {
   for (size_t i = 0; i < places_.size(); ++i) {
     // Insert ScaleCost OpHandle
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
@@ -638,10 +661,8 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     // loss->pending_ops_.emplace_back(op_handle);
     // op_handle->inputs_.emplace_back(loss);
 
-    CreateOpOutput(
-        result, op_handle,
-        result->CreateEmptyNode(loss_grad_name, ir::Node::Type::kVariable),
-        places_[i], i);
+    CreateOpOutput(result, op_handle,
+                   result->CreateVarNode(out_var_node->Var()), places_[i], i);
   }
 }
 
@@ -688,22 +709,8 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
   return var;
 }
 
-// Find the first occurence of `prev_op_name` and make current `op` depend
-// on it.
-void MultiDevSSAGraphBuilder::ConnectOp(ir::Graph *result, OpHandleBase *op,
-                                        const std::string &prev_op_name) const {
-  for (auto &prev_op : result->Get<GraphOps>(kGraphOps)) {
-    if (prev_op->Name() == prev_op_name) {
-      auto *dep_var = new DummyVarHandle(result->CreateControlDepVar());
-      prev_op->AddOutput(dep_var);
-      result->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-      op->AddInput(dep_var);
-    }
-  }
-}
-
-void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
-                                                ir::Node *node) const {
+int MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
+                                               ir::Node *node) const {
   int op_dev_id = -1;
   std::vector<std::string> input_var_names;
   std::vector<std::string> output_var_names;
@@ -715,7 +722,8 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   }
 
   if (node->Op()->Type() == "split_byref" ||
-      node->Op()->Type() == "split_selected_rows") {
+      node->Op()->Type() == "split_selected_rows" ||
+      node->Op()->Type() == "split_ids") {
     // TODO(paddle-dev): getting the first var is not safe.
     op_dev_id = GetVarDeviceID(*result, input_var_names[0]);
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
@@ -736,6 +744,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
+    LOG(ERROR) << "got unexpected dist op: " << node->Op()->Type();
     PADDLE_THROW(
         "the distribute training related op should be in [split_byref, "
         "concat].");
@@ -746,6 +755,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
                  node->Op()->Type());
 
   CreateComputationalOp(result, node, op_dev_id);
+  return op_dev_id;
 }
 
 void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
@@ -764,8 +774,8 @@ void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
 }
 
 // Create RPC related op handles that connects its in ops and out ops.
-void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
-                                          ir::Node *node) const {
+int MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
+                                         ir::Node *node) const {
   int op_dev_id = -1;
   if (node->Op()->Type() == "send") {
     // TODO(paddle-dev): getting the first var is not safe.
@@ -851,6 +861,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
       CreateOpOutput(result, op_handle, new_node, p, outvar_dev_id);
     }
   }
+  return op_dev_id;
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(ir::Node *node) const {

@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
@@ -24,11 +23,75 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
+struct SequenceSoftmaxFunctor {
+  void operator()(
+      const DeviceContext &ctx, const LoDTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *out);
+};
+
+template <typename DeviceContext, typename T>
+struct SequenceSoftmaxGradFunctor {
+  void operator()(const DeviceContext &ctx, const LoDTensor &dout,
+                  const LoDTensor &out,
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  LoDTensor *dx);
+};
+
+template <typename T>
+struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext &ctx, const LoDTensor &x,
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  LoDTensor *out) {
+    size_t hight = ref_lod.size() - 1;
+    const T *in_data = x.data<T>();
+    T *out_data = out->mutable_data<T>(ctx.GetPlace());
+    for (size_t i = 0; i < hight; ++i) {
+      size_t span = ref_lod[i + 1] - ref_lod[i];
+      T result = 0;
+      for (size_t j = 0; j < span; ++j) {
+        result += exp(in_data[ref_lod[i] + j]);
+      }
+      for (size_t j = 0; j < span; ++j) {
+        out_data[ref_lod[i] + j] = exp(in_data[ref_lod[i] + j]) / result;
+      }
+    }
+  }
+};
+
+template <typename T>
+struct SequenceSoftmaxGradFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext &ctx, const LoDTensor &dout,
+                  const LoDTensor &out,
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  LoDTensor *dx) {
+    size_t hight = ref_lod.size() - 1;
+
+    const T *softmax_grad_data = dout.data<T>();
+    const T *softmax = out.data<T>();
+    T *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+
+    for (size_t i = 0; i < hight; ++i) {
+      size_t span = ref_lod[i + 1] - ref_lod[i];
+      T result = 0;
+      for (size_t j = 0; j < span; ++j) {
+        result += softmax_grad_data[ref_lod[i] + j] * softmax[ref_lod[i] + j];
+      }
+
+      for (size_t j = 0; j < span; ++j) {
+        dx_data[ref_lod[i] + j] = (softmax_grad_data[ref_lod[i] + j] - result) *
+                                  softmax[ref_lod[i] + j];
+      }
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *x = ctx.Input<LoDTensor>("X");
+    auto *out = ctx.Output<LoDTensor>("Out");
 
     auto lod = x->lod();
     auto dims = x->dims();
@@ -42,55 +105,33 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
                       "SequenceSoftmaxOp should be 1.");
 
     out->mutable_data<T>(ctx.GetPlace());
-    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
-      Tensor x_i = x->Slice(start_pos, end_pos);
-      Tensor out_i = out->Slice(start_pos, end_pos);
 
-      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
-      x_i.Resize(dims_i);
-      out_i.Resize(dims_i);
-      math::SoftmaxFunctor<DeviceContext, T>()(
-          ctx.template device_context<DeviceContext>(), &x_i, &out_i);
-    }
+    SequenceSoftmaxFunctor<DeviceContext, T> seq_softmax_functor;
+    seq_softmax_functor(ctx.template device_context<DeviceContext>(), *x,
+                        lod[level], out);
   }
 };
 
 template <typename DeviceContext, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<LoDTensor>("Out");
-    auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    if (x_grad) {
-      x_grad->set_lod(x->lod());
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *out = ctx.Input<LoDTensor>("Out");
+    auto *out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *x = ctx.Input<LoDTensor>("X");
+    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    if (!x_grad) {
+      return;
     }
 
+    x_grad->set_lod(x->lod());
     auto lod = x->lod();
     const size_t level = lod.size() - 1;
-
     x_grad->mutable_data<T>(ctx.GetPlace());
-    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
 
-      Tensor out_i = out->Slice(start_pos, end_pos);
-      Tensor out_grad_i = out_grad->Slice(start_pos, end_pos);
-      Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
-
-      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
-      out_i.Resize(dims_i);
-      out_grad_i.Resize(dims_i);
-      x_grad_i.Resize(dims_i);
-      math::SoftmaxGradFunctor<DeviceContext, T>()(
-          ctx.template device_context<DeviceContext>(), &out_i, &out_grad_i,
-          &x_grad_i);
-    }
+    SequenceSoftmaxGradFunctor<DeviceContext, T> seq_softmax_grad_functor;
+    seq_softmax_grad_functor(ctx.template device_context<DeviceContext>(),
+                             *out_grad, *out, lod[level], x_grad);
   }
 };
 

@@ -63,5 +63,27 @@ class TestNormOp3(TestNormOp):
         self.epsilon = 1e-8
 
 
+class TestNormOp4(TestNormOp):
+    def init_test_case(self):
+        self.shape = [128, 1024, 14, 14]
+        self.axis = 2
+        self.epsilon = 1e-8
+
+    def test_check_grad(self):
+        # since the gradient check is very slow in large shape, so skip check_grad
+        pass
+
+
+class TestNormOp5(TestNormOp):
+    def init_test_case(self):
+        self.shape = [2048, 2048]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+    def test_check_grad(self):
+        # since the gradient check is very slow in large shape, so skip check_grad
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()
