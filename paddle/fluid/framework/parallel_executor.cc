@@ -158,14 +158,17 @@ ParallelExecutor::ParallelExecutor(
       var_infos.back().persistable_ = node->Var()->Persistable();
     }
   }
-  // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
     switch (build_strategy.optimize_strategy_) {
       case BuildStrategy::OptimizeStrategy::kNoLock:
+        // If the loss_var_name is given, the number of graph should be
+        // euqal to the places' number.
         PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), places.size(),
                           "The number of graph should be the same with place");
         break;
       default:
+        // If the loss_var_name is given, the number of graph should be only
+        // one.
         PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1u,
                           "The number of graph should be only one");
         break;

@@ -187,6 +187,8 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
   // set device_id in multi_device_pass
   backward_node->Op()->SetAttr(
       framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(), op_role_vars);
+  // backward_node->Op()->SetAttr(
+  // framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(), {});
 
   // keep with the same output nodes between new optimizer and the
   // old one
