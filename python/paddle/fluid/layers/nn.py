@@ -747,7 +747,7 @@ def dynamic_gru(input,
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
     batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    if h_0 != None:
+    if h_0:
         assert h_0.shape == (
             batch_size, size
         ), 'The shape of h0 should be(batch_size, %d)' % size
