@@ -126,6 +126,21 @@ or not. But the output only shares the LoD information with input $X$.
   }
 };
 
+class MulOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto x_name = op_desc.Input("X")[0];
+    //    auto filter_name = op_desc.Input("Filter")[0];
+    auto out_name = op_desc.Output("Out")[0];
+
+    auto& x = block->FindRecursiveOrCreateVar(x_name);
+    auto& out = block->FindRecursiveOrCreateVar(out_name);
+    out.SetType(x.GetType());
+    out.SetDataType(x.GetDataType());
+  }
+};
+
 class MulGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -178,7 +193,8 @@ class MulOpGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGradMaker);
+REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
+                  ops::MulOpGradMaker);
 REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,

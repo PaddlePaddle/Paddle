@@ -172,6 +172,21 @@ The required data format for this layer is one of the following:
   }
 };
 
+class BatchNormOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto x_name = op_desc.Input("X")[0];
+    //    auto filter_name = op_desc.Input("Filter")[0];
+    auto out_name = op_desc.Output("Y")[0];
+
+    auto &x = block->FindRecursiveOrCreateVar(x_name);
+    auto &out = block->FindRecursiveOrCreateVar(out_name);
+    out.SetType(x.GetType());
+    out.SetDataType(x.GetDataType());
+  }
+};
+
 template <typename T>
 class BatchNormKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
@@ -527,7 +542,7 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormGradMaker);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

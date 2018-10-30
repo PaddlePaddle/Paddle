@@ -20,11 +20,11 @@ import os
 import sys
 import unittest
 
-import numpy
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import numpy as np
+
 from paddle.fluid.layers.device import get_places
 from paddle.fluid.layers.control_flow import ParallelDo
 
@@ -75,9 +75,12 @@ def train(nn_type, use_cuda):
 
     net_conf = mlp if nn_type == 'mlp' else conv_net
 
-    with fluid.execute_strategy_block(fluid.default_main_program()):
+    switch_dtype = fluid.contrib.SwitchDataType(fluid.default_main_program())
+    with switch_dtype.block():
         hidden, label = net_conf(img, label)
+        # switch_dtype.output(hidden)
 
+    # hidden = switch_dtype()
     hidden = fluid.layers.cast(hidden, np.float32)
     prediction, avg_loss, acc = loss_net(hidden, label)
     # test_program = fluid.default_main_program().clone(for_test=True)
