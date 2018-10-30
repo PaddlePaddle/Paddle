@@ -116,8 +116,8 @@ def rpn_target_assign(bbox_pred,
     Returns:
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox) is returned. The predicted_scores and
-               predicted_location is the predicted result of the RPN.
+               target_bbox, bbox_inside_weight) is returned. The predicted_scores 
+               and predicted_location is the predicted result of the RPN.
                The target_label and target_bbox is the ground truth,
                respectively. The predicted_location is a 2D Tensor with shape
                [F, 4], and the shape of target_bbox is same as the shape of
@@ -126,6 +126,8 @@ def rpn_target_assign(bbox_pred,
                [F + B, 1], and the shape of target_label is same as the shape
                of the predicted_scores, B is the number of the background
                anchors, the F and B is depends on the input of this operator.
+               Bbox_inside_weight represents whether the predicted loc is fake_fg
+               or not and the shape is [F, 4].
 
     Examples:
         .. code-block:: python
@@ -138,7 +140,7 @@ def rpn_target_assign(bbox_pred,
                           append_batch_size=False, dtype='float32')
         gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-        loc_pred, score_pred, loc_target, score_target =
+        loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
             fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
                                           cls_logits=cls_logits,
                                           anchor_box=anchor_box,
@@ -152,6 +154,8 @@ def rpn_target_assign(bbox_pred,
     target_label = helper.create_variable_for_type_inference(dtype='int32')
     target_bbox = helper.create_variable_for_type_inference(
         dtype=anchor_box.dtype)
+    bbox_inside_weight = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
         inputs={
@@ -164,7 +168,8 @@ def rpn_target_assign(bbox_pred,
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
             'TargetLabel': target_label,
-            'TargetBBox': target_bbox
+            'TargetBBox': target_bbox,
+            'BBoxInsideWeight': bbox_inside_weight
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
@@ -179,13 +184,14 @@ def rpn_target_assign(bbox_pred,
     score_index.stop_gradient = True
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
+    bbox_inside_weight.stop_gradient = True
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
     predicted_cls_logits = nn.gather(cls_logits, score_index)
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
 def detection_output(loc,
@@ -1418,7 +1424,36 @@ def generate_proposal_labels(rpn_rois,
                              use_random=True):
     """
     ** Generate proposal labels Faster-RCNN **
-    TODO(buxingyuan): Add Document
+    This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
+    to sample foreground boxes and background boxes, and compute loss target.
+
+    RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
+    were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
+    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
+    If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
+    then it was considered as a background sample.
+    After all foreground and background boxes are chosen (so called Rois),
+    then we apply random sampling to make sure
+    the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
+
+    For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
+    Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+
+    Args:
+        rpn_rois(Variable): A 2-D LoDTensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth.
+        is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd.
+        gt_boxes(Variable): A 2-D LoDTensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
+
+        batch_size_per_im(int): Batch size of rois per images.
+        fg_fraction(float): Foreground fraction in total batch_size_per_im.
+        fg_thresh(float): Overlap threshold which is used to chose foreground sample.
+        bg_thresh_hi(float): Overlap threshold upper bound which is used to chose background sample.
+        bg_thresh_lo(float): Overlap threshold lower bound which is used to chose background sample.
+        bbox_reg_weights(list|tuple): Box regression weights.
+        class_nums(int): Class number.
+        use_random(bool): Use random sampling to choose foreground and background boxes.
     """
 
     helper = LayerHelper('generate_proposal_labels', **locals())
@@ -1481,7 +1516,7 @@ def generate_proposals(scores,
                        eta=1.0,
                        name=None):
     """
-    ** Generate proposal labels Faster-RCNN **
+    ** Generate proposal Faster-RCNN **
 	
 	This operation proposes RoIs according to each box with their probability to be a foreground object and 
 	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals

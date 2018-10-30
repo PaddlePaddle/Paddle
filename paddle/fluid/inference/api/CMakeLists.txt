@@ -18,7 +18,8 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager naive_executor ${GLOB_PASS_LIB})
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager naive_executor ${GLOB_PASS_LIB}
+        )
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine analysis_predictor)
@@ -31,10 +32,17 @@ function(inference_api_test TARGET_NAME)
         set(multiValueArgs ARGS)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-        cc_test(${TARGET_NAME}
-                SRCS ${inference_test_SRC}
-                DEPS "${inference_deps}"
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+	if (WITH_GPU)
+		cc_test(${TARGET_NAME}
+			SRCS ${inference_test_SRC}
+			DEPS "${inference_deps}"
+			ARGS --dirname=${PYTHON_TESTS_DIR}/book/ --fraction_of_gpu_memory_to_use=0.15)
+        else()
+		cc_test(${TARGET_NAME}
+			SRCS ${inference_test_SRC}
+			DEPS "${inference_deps}"
+			ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+	endif()
         if(inference_test_ARGS)
             set_tests_properties(${TARGET_NAME}
                     PROPERTIES DEPENDS "${inference_test_ARGS}")
@@ -42,7 +50,8 @@ function(inference_api_test TARGET_NAME)
     endif(WITH_TESTING)
 endfunction(inference_api_test)
 
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope)
+cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS reset_tensor_array lod_tensor scope)
 cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor)
 cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS paddle_inference_api)
 cc_library(zero_copy_tensor_dummy SRCS details/zero_copy_tensor_dummy.cc DEPS paddle_inference_api)
