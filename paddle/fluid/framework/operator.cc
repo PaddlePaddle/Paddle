@@ -358,11 +358,11 @@ static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
 
-const Tensor* GetTensorFromVar(Variable* var) {
+const Tensor* GetTensorFromVar(const Variable* var) {
   if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
+    return static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
   } else if (var->IsType<SelectedRows>()) {
-    return var->GetMutable<SelectedRows>()->mutable_value();
+    return &(var->Get<SelectedRows>().value());
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
@@ -415,8 +415,7 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
-  return var == nullptr ? nullptr
-                        : GetTensorFromVar(const_cast<Variable*>(var));
+  return var == nullptr ? nullptr : GetTensorFromVar(var);
 }
 
 template <>
