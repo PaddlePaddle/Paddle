@@ -80,34 +80,26 @@ class GPUMaskLMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
+    auto* x_data = x->data<T>();
     auto* y = context.Output<Tensor>("Out");
-    y->mutable_data<T>(context.GetPlace());
+    auto* y_data = y->mutable_data<T>(context.GetPlace());
+    auto* mask = context.Output<Tensor>("Mask");
+    auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+    
     T mask_id = static_cast<T>(context.Attr<int>("mask_id"));
     float masked_prob = context.Attr<float>("masked_prob");
     int voc_size = context.Attr<int>("voc_size");
 
-    auto& place = *context.template device_context<Place>().eigen_device();
-    if (!context.Attr<bool>("is_test")) {
-      auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-      size_t size = framework::product(mask->dims());
-      auto* x_data = x->data<T>();
-      auto* y_data = y->mutable_data<T>(context.GetPlace());
+    std::random_device rnd;
+    int seed =
+        context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
-      std::random_device rnd;
-      int seed =
-          context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-
-      int threads = 512;
-      int grid = (x->numel() + threads - 1) / threads;
-      RandomGenerator<
-          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, seed, voc_size, masked_prob, mask_id, x_data, mask_data, y_data);
-    } else {
-      auto X = EigenMatrix<T>::Reshape(*x, 1);
-      auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      Y.device(place) = X;
-    }
+    size_t size = framework::product(mask->dims());
+    int threads = 512;
+    int grid = (x->numel() + threads - 1) / threads;
+    RandomGenerator<
+        T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+        size, seed, voc_size, masked_prob, mask_id, x_data, mask_data, y_data);
   }
 };
 
@@ -120,4 +112,6 @@ REGISTER_OP_CUDA_KERNEL(
     mask_lm, ops::GPUMaskLMKernel<plat::CUDADeviceContext, float>,
     ops::GPUMaskLMKernel<plat::CUDADeviceContext, plat::float16>,
     ops::GPUMaskLMKernel<plat::CUDADeviceContext, double>,
-    ops::GPUMaskLMKernel<plat::CUDADeviceContext, int>);
+    ops::GPUMaskLMKernel<plat::CUDADeviceContext, uint8_t>,
+    ops::GPUMaskLMKernel<plat::CUDADeviceContext, int>,
+    ops::GPUMaskLMKernel<plat::CUDADeviceContext, int64_t>);

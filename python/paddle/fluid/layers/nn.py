@@ -7583,7 +7583,7 @@ def hash(input, hash_size, num_hash=1, name=None):
     return out
 
 
-def mask_lm(x, mask_id, voc_size, masked_prob, is_test=False, seed=None, name=None):
+def mask_lm(x, mask_id, voc_size, masked_prob, seed=None, name=None, fix_seed=False):
     """
     Computes dropout.
     
@@ -7596,9 +7596,10 @@ def mask_lm(x, mask_id, voc_size, masked_prob, is_test=False, seed=None, name=No
     """
 
     helper = LayerHelper('mask_lm', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    mask = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype, 
+            stop_gradient=True)
+    mask = helper.create_variable_for_type_inference(dtype=x.dtype, 
+            stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
@@ -7612,8 +7613,7 @@ def mask_lm(x, mask_id, voc_size, masked_prob, is_test=False, seed=None, name=No
             'mask_id': mask_id,
             'voc_size': voc_size,
             'masked_prob': masked_prob,
-            'is_test': is_test,
-            'fix_seed': seed is not None,
+            'fix_seed': fix_seed,
             'seed': seed if seed is not None else 0
         })
     return out, mask

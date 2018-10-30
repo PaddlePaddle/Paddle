@@ -28,10 +28,9 @@ class MaskLMOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
-      ctx->SetOutputDim("Mask", x_dims);
-    }
+    ctx->SetOutputDim("Mask", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Mask");
   }
 };
 
@@ -57,7 +56,6 @@ class MaskLMOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(masked_p >= 0.0f && masked_p <= 1.0f,
                          "'masked_prob' must be between 0.0 and 1.0.");
         });
-    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<bool>("fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
@@ -86,4 +84,6 @@ REGISTER_OP_CPU_KERNEL(
     mask_lm, ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, paddle::platform::float16>,
     ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, int>);
+    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, int64_t>);
