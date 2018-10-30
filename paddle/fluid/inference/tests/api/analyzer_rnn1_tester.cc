@@ -274,32 +274,6 @@ TEST(Analyzer_rnn1, multi_thread) {
   TestPrediction(cfg, input_slots_all, &outputs, 4 /* multi_thread */);
 }
 
-bool CompareTensors(const framework::Scope &a_scope,
-                    const framework::Scope &b_scope,
-                    const std::vector<std::string> &tensors) {
-  for (auto &x : tensors) {
-    LOG(INFO) << "checking " << x;
-    auto *a_var = a_scope.FindVar(x);
-    auto *b_var = b_scope.FindVar(x);
-    if (a_var && b_var) {
-      if (a_var->Type() == typeid(framework::LoDTensor) ||
-          a_var->Type() == typeid(framework::Tensor)) {
-        LOG(INFO) << "comparing tensor " << x;
-        auto &a_t = a_var->Get<framework::LoDTensor>();
-        auto &b_t = b_var->Get<framework::LoDTensor>();
-        if (!inference::CompareTensor(a_t, b_t)) {
-          LOG(ERROR) << string::Sprintf("tensor %s not match in two scopes", x);
-        }
-      } else {
-        LOG(INFO) << "skip no tensor " << x;
-      }
-    } else {
-      LOG(INFO) << "skip tensor " << x;
-    }
-  }
-  return true;
-}
-
 // Validate that the AnalysisPredictor + ZeroCopyTensor really works by testing
 // on the complex RNN1 model.
 TEST(Analyzer_rnn1, ZeroCopy) {
