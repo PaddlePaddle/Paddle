@@ -57,8 +57,7 @@ class TestSimilarityFocusOp(OpTest):
                         if cnt == min(y_dim, z_dim):
                             break
                     channel[index] = -1
-            res = res.reshape(1, y_dim, z_dim)
-            res = res.repeat([x_dim], axis=0)
+            res = res.reshape(1, y_dim, z_dim).repeat([x_dim], axis=0)
             res = res.reshape(1, x_dim, y_dim, z_dim)
             if output is not None:
                 output = np.concatenate((output, res), axis=0)
