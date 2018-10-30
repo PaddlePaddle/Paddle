@@ -119,5 +119,5 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     mask_lm, ops::GPUMaskLMKernel<plat::CUDADeviceContext, float>,
     ops::GPUMaskLMKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::GPUMaskLMKernel<plat::CPUDeviceContext, double>,
-    ops::GPUMaskLMKernel<plat::CPUDeviceContext, int>);
+    ops::GPUMaskLMKernel<plat::CUDADeviceContext, double>,
+    ops::GPUMaskLMKernel<plat::CUDADeviceContext, int>);

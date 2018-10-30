@@ -82,3 +82,8 @@ to do.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mask_lm, ops::MaskLMOp, ops::MaskLMOpMaker,
                   paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    mask_lm, ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, paddle::platform::float16>,
+    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUMaskLMKernel<paddle::platform::CPUDeviceContext, int>);

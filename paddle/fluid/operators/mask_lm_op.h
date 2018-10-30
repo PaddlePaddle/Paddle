@@ -26,5 +26,14 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+
+template <typename Place, typename T>
+class CPUMaskLMKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+      std::cout << "temporarily empty" << std::endl;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
