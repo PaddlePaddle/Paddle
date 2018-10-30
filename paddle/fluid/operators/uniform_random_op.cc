@@ -29,7 +29,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      auto shape = ctx.Attr<std::vector<int>>("shape");
+      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
       tensor = selected_rows->mutable_value();
       tensor->Resize(framework::make_ddim(shape));
@@ -67,7 +67,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
-    auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
@@ -94,7 +94,7 @@ This operator initializes a tensor with random values sampled from a
 uniform distribution. The random result is in set [min, max].
 
 )DOC");
-    AddAttr<std::vector<int>>("shape", "The shape of the output tensor");
+    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor");
     AddAttr<float>("min", "Minimum value of uniform random. [default -1.0].")
         .SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random. [default 1.0].")
