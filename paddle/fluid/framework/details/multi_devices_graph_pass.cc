@@ -249,12 +249,17 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
   }
 
   std::vector<ir::Node *> optimize_ops;
+  // FIXME(paddle-dev): sorted_ret is used to ensure the order of operators,
+  // the correct order should be forward, loss, backward, opt_or_lr_sched,
+  // this order is important for kReduce mode.
   std::vector<ir::Node *> sorted_ret;
+  int opt_or_lr_sched = (static_cast<int>(OpRole::kOptimize) |
+                         static_cast<int>(OpRole::kLRSched));
   for (size_t i = 0; i < ret.size(); ++i) {
     if (i < last_backward) {
       if (static_cast<bool>(boost::get<int>(ret[i]->Op()->GetAttr(
                                 OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kOptimize))) {
+                            opt_or_lr_sched)) {
         optimize_ops.push_back(ret[i]);
       } else {
         sorted_ret.push_back(ret[i]);
@@ -280,6 +285,17 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
       sorted_ret.push_back(ret[i]);
     }
   }
+
+  // TODO(paddle-dev): check the order (forward, loss, backward,
+  // opt_or_lr_sched)
+  if (VLOG_IS_ON(4)) {
+    for (auto &op : sorted_ret) {
+      VLOG(4) << op->Name() << "  "
+              << boost::get<int>(op->Op()->GetAttr(
+                     OpProtoAndCheckerMaker::OpRoleAttrName()));
+    }
+  }
+
   return sorted_ret;
 }
 
@@ -627,7 +643,30 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
 void MultiDevSSAGraphBuilder::CreateComputationalOps(ir::Graph *result,
                                                      ir::Node *node,
                                                      size_t num_places) const {
-  for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
+  // FIXME(paddle-dev): In kReduce mode, some device may not need update
+  // parameter, so those devices doesn't need learning rate schedule operator.
+  bool is_lr_schedule =
+      static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                            OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                        static_cast<int>(OpRole::kLRSched));
+  bool not_all_need_lr_schedule =
+      is_lr_schedule &&
+      (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) &&
+      (result->Get<ShardedVarDevice>(kShardedVarDevice).size() < num_places);
+
+  std::unordered_set<size_t> device_ids;
+  if (not_all_need_lr_schedule) {
+    auto &shared_var_device = result->Get<ShardedVarDevice>(kShardedVarDevice);
+    for (auto var_dev : shared_var_device) {
+      device_ids.insert(static_cast<size_t>(var_dev.second));
+    }
+  } else {
+    for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
+      device_ids.insert(scope_idx);
+    }
+  }
+
+  for (auto &scope_idx : device_ids) {
     auto p = places_[scope_idx];
     auto s = local_scopes_[scope_idx];
     result->Get<GraphOps>(kGraphOps).emplace_back(
