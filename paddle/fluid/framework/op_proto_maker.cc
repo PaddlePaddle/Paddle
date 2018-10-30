@@ -85,5 +85,10 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   Validate();
 }
 
+int GetOpRole(const framework::OpDesc& op_desc) {
+  return boost::get<int>(
+      op_desc.GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
+}
+
 }  // namespace framework
 }  // namespace paddle

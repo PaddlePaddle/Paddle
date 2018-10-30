@@ -241,8 +241,7 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
   std::vector<ir::Node *> ret = ir::TopologySortOperations(graph);
   size_t last_backward = 0;
   for (size_t i = 0; i < ret.size(); ++i) {
-    if (boost::get<int>(
-            ret[i]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+    if (framework::GetOpRole(*(ret[i]->Op())) ==
         static_cast<int>(OpRole::kBackward)) {
       last_backward = i;
     }
@@ -257,8 +256,7 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
                          static_cast<int>(OpRole::kLRSched));
   for (size_t i = 0; i < ret.size(); ++i) {
     if (i < last_backward) {
-      if (static_cast<bool>(boost::get<int>(ret[i]->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+      if (static_cast<bool>(framework::GetOpRole(*(ret[i]->Op())) &
                             opt_or_lr_sched)) {
         optimize_ops.push_back(ret[i]);
       } else {
@@ -290,9 +288,7 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
   // opt_or_lr_sched)
   if (VLOG_IS_ON(4)) {
     for (auto &op : sorted_ret) {
-      VLOG(4) << op->Name() << "  "
-              << boost::get<int>(op->Op()->GetAttr(
-                     OpProtoAndCheckerMaker::OpRoleAttrName()));
+      VLOG(4) << op->Name() << "  " << framework::GetOpRole(*op->Op());
     }
   }
 
@@ -333,9 +329,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   bool is_dist_train = false;
 
   for (ir::Node *node : sorted_ops) {
-    if (boost::get<int>(
-            node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-        static_cast<int>(OpRole::kRPC)) {
+    if (framework::GetOpRole(*node->Op()) == static_cast<int>(OpRole::kRPC)) {
       int op_dev_id = CreateRPCOp(&result, node);
       PADDLE_ENFORCE(op_dev_id != -1,
                      "Can not schedule the RPC operator to the right place.");
@@ -349,9 +343,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         }
       }
       is_dist_train = true;
-    } else if (boost::get<int>(node->Op()->GetAttr(
-                   OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-               static_cast<int>(OpRole::kDist)) {
+    } else if (static_cast<bool>(framework::GetOpRole(*(node->Op())) ==
+                                 static_cast<int>(OpRole::kDist))) {
       int op_dev_id = CreateDistTrainOp(&result, node);
       if (node->Op()->Type() == "concat") {
         auto origin_param_name = node->Op()->OutputArgumentNames()[0];
@@ -394,8 +387,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         if (!is_forwarding && places_.size() > 1) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
-          if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                    OpProtoAndCheckerMaker::OpRoleAttrName())) &
+          if (static_cast<bool>(framework::GetOpRole(*(node->Op())) &
                                 static_cast<int>(OpRole::kBackward))) {
             try {
               auto backward_vars = boost::get<std::vector<std::string>>(
@@ -595,8 +587,7 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(const ir::Graph &graph,
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
-  int op_role = boost::get<int>(
-      node->Op()->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+  int op_role = framework::GetOpRole(*(node->Op()));
   if (op_role != static_cast<int>(framework::OpRole::kOptimize)) {
     return -1;
   }
@@ -645,10 +636,8 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(ir::Graph *result,
                                                      size_t num_places) const {
   // FIXME(paddle-dev): In kReduce mode, some device may not need update
   // parameter, so those devices doesn't need learning rate schedule operator.
-  bool is_lr_schedule =
-      static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                        static_cast<int>(OpRole::kLRSched));
+  bool is_lr_schedule = static_cast<bool>(framework::GetOpRole(*(node->Op())) &
+                                          static_cast<int>(OpRole::kLRSched));
   bool not_all_need_lr_schedule =
       is_lr_schedule &&
       (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) &&
@@ -861,8 +850,7 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(ir::Node *node) const {
-  return boost::get<int>(
-             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+  return framework::GetOpRole(*(node->Op())) ==
              (static_cast<int>(OpRole::kBackward) |
               static_cast<int>(OpRole::kLoss)) &&
          !loss_var_name_.empty();  // If loss_var is empty. This is test mode

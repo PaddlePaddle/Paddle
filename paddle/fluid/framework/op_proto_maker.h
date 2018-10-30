@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/op_desc.h"
 namespace paddle {
 namespace framework {
 
@@ -103,5 +104,7 @@ class OpProtoAndCheckerMaker {
   OpAttrChecker *op_checker_;
   bool validated_{false};
 };
+
+int GetOpRole(const framework::OpDesc &op_desc);
 }  // namespace framework
 }  // namespace paddle
