@@ -316,7 +316,7 @@ class DetectionMAP(Evaluator):
         gt_label (Variable): The ground truth label index, which is a LoDTensor
             with shape [N, 1].
         gt_box (Variable): The ground truth bounding box (bbox), which is a
-            LoDTensor with shape [N, 6]. The layout is [xmin, ymin, xmax, ymax].
+            LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
         gt_difficult (Variable|None): Whether this ground truth is a difficult
             bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
             it means all the ground truth labels are not difficult bbox.

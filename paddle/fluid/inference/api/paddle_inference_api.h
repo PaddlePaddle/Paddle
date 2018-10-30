@@ -124,7 +124,7 @@ class ZeroCopyTensor {
   std::vector<std::vector<size_t>> lod() const;
 
  protected:
-  ZeroCopyTensor(void* scope) : scope_{scope} {}
+  explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
   void SetName(const std::string& name) { name_ = name; }
   void* FindTensor() const;
 
@@ -258,12 +258,6 @@ struct AnalysisConfig : public NativeConfig {
     kInclude,  // Specify the passes in `ir_passes`.
     kExclude   // Specify the disabled passes in `ir_passes`.
   };
-
-  void SetIncludeMode() {
-    ir_mode = IrPassMode::kInclude;
-    // this pass has to be run at the beginning of all fuse passes
-    ir_passes = {"infer_clean_graph_pass"};
-  }
 
   // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;

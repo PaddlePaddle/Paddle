@@ -136,6 +136,7 @@ static std::shared_ptr<const VActKernel<T>> GetActKernel(
   return nullptr;
 }
 
+#ifdef __AVX__
 template <jit::cpu_isa_t isa>
 static std::unique_ptr<AVXAct> GetAVXAct(const std::string& type) {
   if (type == "sigmoid") {
@@ -150,6 +151,7 @@ static std::unique_ptr<AVXAct> GetAVXAct(const std::string& type) {
   PADDLE_THROW("Not support type: %s", type);
   return nullptr;
 }
+#endif
 
 /* LSTM JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
