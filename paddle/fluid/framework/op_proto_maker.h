@@ -20,17 +20,20 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+//////////////////////////
+// Don't add more roles to make this too complicated!
+//////////////////////////
 enum class OpRole {
   kForward = 0x0000,
   kBackward = 0x0001,
   kOptimize = 0x0002,
   // RPC role is for send/recv releated op
-  kRPC = 0x0003,
+  kRPC = 0x0004,
   // Dist role is for split_byref/split_selected_rows/concat
   // used for distributed training.
-  kDist = 0x0004,
+  kDist = 0x0008,
   // Tag all learning rate scheduler operators.
-  kLRSched = 0x0005,
+  kLRSched = 0x0010,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and
