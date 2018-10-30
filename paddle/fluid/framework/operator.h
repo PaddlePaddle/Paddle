@@ -63,6 +63,7 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
+const Tensor* GetTensorFromVar(Variable* var);
 
 class OperatorBase;
 class ExecutionContext;
