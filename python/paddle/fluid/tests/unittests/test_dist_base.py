@@ -135,7 +135,10 @@ class TestDistRunnerBase(object):
             loss, = exe.run(fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
-        print(pickle.dumps(out_losses))
+        if six.PY2:
+            print(pickle.dumps(out_losses))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 def runtime_main(test_class):
@@ -277,15 +280,14 @@ class TestDistBase(unittest.TestCase):
                 env=envs)
 
         local_out, local_err = local_proc.communicate()
-        local_ret = cpt.to_text(local_out)
 
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_ret))
+        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        return pickle.loads(local_ret)
+        return pickle.loads(local_out)
 
     def _run_cluster(self, model, envs, check_error_log):
         # Run dist train to compare with local results
@@ -343,9 +345,7 @@ class TestDistBase(unittest.TestCase):
             env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
-        tr0_loss_text = cpt.to_text(tr0_out)
         tr1_out, tr1_err = tr1_proc.communicate()
-        tr1_loss_text = cpt.to_text(tr1_out)
 
         # close trainer file
         tr0_pipe.close()
@@ -360,14 +360,13 @@ class TestDistBase(unittest.TestCase):
         ps1.terminate()
 
         # print log
-        sys.stderr.write('trainer 0 stdout:\n %s\n' %
-                         pickle.loads(tr0_loss_text))
-        sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_loss_text))
+        sys.stderr.write('trainer 0 stdout: %s\n' % pickle.loads(tr0_out))
+        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
+        sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_out))
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
 
         # return tr0_losses, tr1_losses
-        return pickle.loads(tr0_loss_text), pickle.loads(tr1_loss_text)
+        return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
     def check_with_place(self,
                          model_file,
