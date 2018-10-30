@@ -83,8 +83,7 @@ class SumOp : public framework::OperatorWithKernel {
       int dtype = -1;
       for (auto& x_var : x_vars) {
         // FIXME(zcd): The input x_var may be SelectedRows or LoDTensor.
-        auto tensor = framework::GetTensorFromVar(
-            const_cast<framework::Variable*>(x_var));
+        auto tensor = framework::GetTensorFromVar(x_var);
         if (tensor->numel() == 0) {
           continue;
         }
