@@ -71,7 +71,7 @@ inline constexpr size_t FindLastSet(size_t x) {
 #else
 // windows don't have built-in clz, ctz function
 template <typename T>
-inline int  ctz(const T& value) {
+inline int ctz(const T& value) {
   DWORD trailing_zero = 0;
   if (_BitScanForward(&trailing_zero, value)) {
     return static_cast<int>(trailing_zero);
@@ -81,7 +81,7 @@ inline int  ctz(const T& value) {
 }
 
 template <typename T>
-inline int  clz(const T& value) {
+inline int clz(const T& value) {
   DWORD leadning_zero = 0;
   if (_BitScanReverse(&leadning_zero, value)) {
     return static_cast<int>(sizeof(T) * 8 - leadning_zero);
@@ -90,9 +90,7 @@ inline int  clz(const T& value) {
   }
 }
 
-inline size_t FindLastSet(size_t x) {
-  return sizeof(size_t) * 8 - clz(x);
-}
+inline size_t FindLastSet(size_t x) { return sizeof(size_t) * 8 - clz(x); }
 #endif  // !_WIN32
 }
 

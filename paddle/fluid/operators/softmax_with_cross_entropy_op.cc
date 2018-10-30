@@ -44,6 +44,12 @@ class SoftmaxWithCrossEntropyOpMaker
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<int>(
+        "ignore_index",
+        "(int, default -100), Specifies a target value that is ignored and"
+        "does not contribute to the input gradient. Only valid if soft_label"
+        "is set to False")
+        .SetDefault(-100);
     AddComment(R"DOC(
 Softmax With Cross Entropy Operator.
 

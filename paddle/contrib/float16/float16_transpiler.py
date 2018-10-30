@@ -102,8 +102,8 @@ class Float16Transpiler:
                 continue
             for input_arg in current_op.input_arg_names:
                 if input_arg in self.input_map:
-                    current_op.rename_input(input_arg,
-                                            self.input_map[input_arg])
+                    current_op._rename_input(input_arg,
+                                             self.input_map[input_arg])
 
     def _remove_unused_var(self):
         '''
@@ -187,7 +187,7 @@ class Float16Transpiler:
                     shape=var.shape,
                     persistable=var.persistable)
                 find_op(var)
-                var.op.rename_output(var_name, tmp_var_name)
+                var.op._rename_output(var_name, tmp_var_name)
                 self.block._insert_op(
                     i,
                     type="cast",

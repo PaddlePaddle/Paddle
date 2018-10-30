@@ -88,5 +88,40 @@ class TestSoftmaxWithCrossEntropyOp2(OpTest):
         self.check_grad(["Logits"], "Loss")
 
 
+class TestSoftmaxWithCrossEntropyOp3(OpTest):
+    """
+    Test softmax with cross entropy operator with ignore_index.
+    """
+
+    def setUp(self):
+        self.op_type = "softmax_with_cross_entropy"
+        batch_size = 41
+        class_num = 37
+
+        logits = np.random.uniform(0.1, 1.0,
+                                   [batch_size, class_num]).astype("float64")
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        labels = np.random.randint(0, class_num, [batch_size, 1], dtype="int64")
+        ignore_index = 7
+        cross_entropy = np.asmatrix(
+            [[-np.log(softmax[i][labels[i][0]])]
+             if labels[i] != ignore_index else [0]
+             for i in range(softmax.shape[0])],
+            dtype="float64")
+
+        self.inputs = {"Logits": logits, "Label": labels}
+        self.outputs = {
+            "Softmax": softmax.astype("float64"),
+            "Loss": cross_entropy.astype("float64")
+        }
+        self.attrs = {"ignore_index": ignore_index}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["Logits"], "Loss")
+
+
 if __name__ == "__main__":
     unittest.main()

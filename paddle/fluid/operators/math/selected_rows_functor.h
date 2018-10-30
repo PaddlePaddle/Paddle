@@ -12,8 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+
+#include <map>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #define INLINE_FOR2(sizei, sizej)     \
@@ -49,6 +55,15 @@ struct SelectedRowsAddTo {
                   const int64_t input2_offset, framework::SelectedRows* input2);
 };
 
+// input2 = [all input in input1] + input2
+template <typename DeviceContext, typename T>
+struct SelectedRowsSumTo {
+  void operator()(const DeviceContext& context,
+                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<int64_t>& input2_offsets,
+                  framework::SelectedRows* input2);
+};
+
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
@@ -65,6 +80,12 @@ struct MergeAdd {
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
                                      const framework::SelectedRows& input);
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output);
+  void operator()(const DeviceContext& context,
+                  const std::vector<const framework::SelectedRows*>& inputs,
+                  framework::SelectedRows* output);
 };
 
 template <typename DeviceContext, typename T>

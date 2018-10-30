@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/auc_op.h"
-#include <string>
 
 namespace paddle {
 namespace operators {
@@ -36,15 +35,17 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(predict_height, label_height,
                       "Out and Label should have same height.");
 
-    int num_thres = ctx->Attrs().Get<int>("num_thresholds");
+    int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
+    int slide_steps = ctx->Attrs().Get<int>("slide_steps");
+
+    PADDLE_ENFORCE_GE(num_pred_buckets, 1, "num_thresholds must larger than 1");
+    PADDLE_ENFORCE_GE(slide_steps, 0, "slide_steps must be natural number");
 
     ctx->SetOutputDim("AUC", {1});
-    ctx->SetOutputDim("TPOut", {num_thres});
-    ctx->SetOutputDim("TNOut", {num_thres});
-    ctx->SetOutputDim("FPOut", {num_thres});
-    ctx->SetOutputDim("FNOut", {num_thres});
 
-    ctx->ShareLoD("Predict", /*->*/ "AUC");
+    slide_steps = slide_steps == 0 ? 1 : slide_steps;
+    ctx->SetOutputDim("StatPosOut", {slide_steps, num_pred_buckets});
+    ctx->SetOutputDim("StatNegOut", {slide_steps, num_pred_buckets});
   }
 
  protected:
@@ -66,26 +67,27 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
-    AddInput("TP", "True-Positive value.");
-    AddInput("FP", "False-Positive value.");
-    AddInput("TN", "True-Negative value.");
-    AddInput("FN", "False-Negative value.");
+
     // TODO(typhoonzero): support weight input
+    AddInput("StatPos", "Statistic value when label = 1");
+    AddInput("StatNeg", "Statistic value when label = 0");
+
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
-    AddOutput("TPOut", "True-Positive value.");
-    AddOutput("FPOut", "False-Positive value.");
-    AddOutput("TNOut", "True-Negative value.");
-    AddOutput("FNOut", "False-Negative value.");
+
+    AddOutput("StatPosOut", "Statistic value when label = 1");
+    AddOutput("StatNegOut", "Statistic value when label = 0");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
-    AddAttr<int>("num_thresholds",
-                 "The number of thresholds to use when discretizing the"
-                 " roc curve.")
-        .SetDefault(200);
 
+    AddAttr<int>(
+        "num_thresholds",
+        "The number of thresholds to use when discretizing the roc curve.")
+        .SetDefault((2 << 12) - 1);
+    AddAttr<int>("slide_steps", "Use slide steps to calc batch auc.")
+        .SetDefault(1);
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.
 

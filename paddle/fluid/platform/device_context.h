@@ -31,6 +31,9 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/stream_callback_manager.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -69,6 +72,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
+class CudnnHolder;
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -96,6 +100,11 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
+  /*! \brief  Run a cudnn function with the workspace provided by
+   * CUDADeviceContext */
+  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
+                                 size_t workspace_len) const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
@@ -106,20 +115,38 @@ class CUDADeviceContext : public DeviceContext {
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
 
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    std::lock_guard<std::mutex> guard(callback_mtx_);
+    callback_manager_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const {
+    std::lock_guard<std::mutex> guard(callback_mtx_);
+    callback_manager_->Wait();
+  }
+
  private:
   CUDAPlace place_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
+  std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
 
-  int compute_capability;
-  int multi_process;
-  int max_threads_per_mp;
+  int compute_capability_;
+  int runtime_version_;
+  int driver_version_;
+  int multi_process_;
+  int max_threads_per_mp_;
 
-  std::mutex mtx_;
+  mutable std::mutex mtx_;
+
+  // This lock is only used by callback
+  // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
+  mutable std::mutex callback_mtx_;
+  std::unique_ptr<StreamCallbackManager> callback_manager_;
 };
 
 template <>
@@ -149,6 +176,12 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
+using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
+using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+
+void set_cur_thread_id(int);
+int get_cur_thread_id(void);
+
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
@@ -164,8 +197,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
  private:
   mkldnn::engine engine_;
-  std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<void>>>
-      p_blobs_;
+  std::shared_ptr<BlobMap> p_blobmap_;
+  std::shared_ptr<std::mutex> p_mutex_;
 };
 #endif
 
@@ -189,6 +222,9 @@ class DeviceContextPool {
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
+
+  /*! \brief  Return all the device contexts. */
+  const std::vector<const DeviceContext*> GetAllDeviceContexts() const;
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(

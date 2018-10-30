@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -39,10 +38,49 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog), block_id_(block_id) {
+  if (GetEagerDeletionThreshold() >= 0) {
+    ref_cnts_ = GetNonPersistableReferenceCount<int>(prog_, block_id_);
+  }
+}
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
+}
+
+template <typename RefCntMap>
+static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
+                                GarbageCollector<Tensor>* gc,
+                                RefCntMap* ref_cnts) {
+  std::unordered_set<Tensor*> erase_tensors;
+
+  auto handler = [&](const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto it = ref_cnts->find(name);
+        if (it == ref_cnts->end()) continue;
+        if ((it->second)-- == 1) {
+          auto* var = scope.FindVar(name);
+          if (var != nullptr) {
+            VLOG(10) << "Erase tensor \'" << name << "\'";
+            if (var->IsType<LoDTensor>()) {
+              erase_tensors.insert(var->GetMutable<LoDTensor>());
+            } else if (var->IsType<SelectedRows>()) {
+              erase_tensors.insert(
+                  var->GetMutable<SelectedRows>()->mutable_value());
+            }
+          }
+        }
+      }
+    }
+  };
+
+  handler(op->Inputs());
+  handler(op->Outputs());
+
+  if (!erase_tensors.empty()) {
+    gc->Add(erase_tensors);
+  }
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
@@ -65,7 +103,7 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope*>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -74,15 +112,13 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::CHANNEL) {
-    var->GetMutable<ChannelHolder>();
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
         var_type);
   }
 }
@@ -394,95 +430,47 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
-  VLOG(3) << "Scope ptr " << local_scope;
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+  std::unique_ptr<GarbageCollector<Tensor>> gc;
+  // WhileOp would set keep_kids to false
+  // WhileGradOp would need the scopes created in WhileOp
+  // Perhaps, we should not perform eager deletion in WhileOp
+  // The scopes and variables created by WhileOp would be deleted
+  // in WhileGradOp.
+  if (max_memory_size >= 0 && !keep_kids) {
+    ctx->ResetReferenceCount();
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(place_)) {
+      gc.reset(new DefaultStreamGarbageCollector<Tensor>(
+          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+    } else {
+#endif
+      gc.reset(new CPUGarbageCollector<Tensor>(
+          boost::get<platform::CPUPlace>(place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
+    }
+#endif
+  }
+
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
-    // CheckResult(op->Type(), ctx, local_scope);
-    // if (FLAGS_benchmark) {
-    //   VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-    //           << memory::memory_usage(place_);
-    // }
-    VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-            << memory::memory_usage(place_);
-    // platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+    if (gc != nullptr) {
+      DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
+                          &(ctx->cur_ref_cnts_));
+    }
+
+    if (FLAGS_benchmark) {
+      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
+              << memory::memory_usage(place_);
+    }
   }
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
-  // VLOG(3) << "start checking";
-  //   auto& dev_ctx = *platform::DeviceContextPool::Instance().Get(place_);
-  // std::vector<std::string> outputs;
-  // auto& block = ctx->prog_.Block(0);
-
-  // for(auto& op : block.AllOps()) {
-  //   if(op->Type() == "load_combine" || op->Type() == "fetch" || op->Type() ==
-  //   "feed") continue;
-  //   // for(auto& real_op : ctx->ops_) {
-  //   //   if(real_op->Type() == op->Type()) {
-  //   //     VLOG(3) << real_op->Type() << " " <<place_ << " " <<
-  //   real_op->DebugStringEx(local_scope);
-  //   //   }
-  //   // }
-
-  //    //VLOG(3) << "start op output" << op->Type();
-  //     for(auto var_name: op->InputArgumentNames()) {
-  //     auto* var = local_scope->Var(var_name);
-  //     auto* var_desc = block.FindVar(var_name);
-  //     if (var_desc->Persistable()) continue;
-  //     auto* tensor = var->GetMutable<framework::LoDTensor>();
-  //     framework::Tensor check;
-  //     VLOG(3) << "before tensor copy";
-
-  //     framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &check);
-
-  //     VLOG(3) << "after tensor copy";
-  //     float sum = .0;
-  //     for(size_t i=0; i < check.numel(); ++i) {
-  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t)))
-  //       {
-  //         sum += static_cast<float>(check.data<int64_t>()[i]);
-  //       } else {
-  //         sum += check.data<float>()[i];
-  //       }
-  //     }
-  //     VLOG(3) << "op " << op->Type() << " input var " << var_name << " sum "
-  //     << sum;
-  //   }
-
-  //   VLOG(3) << "op " << op->Type() << "input finished";
-  //   for(auto var_name: op->OutputArgumentNames()) {
-  //     auto* var = local_scope->Var(var_name);
-  //     auto* var_desc = block.FindVar(var_name);
-  //     if (var_desc->Persistable()) continue;
-  //     auto* tensor = var->GetMutable<framework::LoDTensor>();
-  //     framework::Tensor check;
-  //     VLOG(3) << "before tensor copy";
-  //     if(op->Type() == "batch_norm" && platform::is_gpu_place(place_)) {
-  //       VLOG(3) << "op " << op->Type() << " output var " << var_name << " "
-  //       << tensor->numel();
-  //       tensor->mutable_data<float>(place_);
-  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx,
-  //        &check);
-  //     } else {
-  //        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx,
-  //        &check);
-  //     }
-
-  //     VLOG(3) << "after tensor copy";
-  //     float sum = .0;
-  //     for(size_t i=0; i < check.numel(); ++i) {
-  //       if(std::type_index(check.type()) == std::type_index(typeid(int64_t)))
-  //       {
-  //         sum += static_cast<float>(check.data<int64_t>()[i]);
-  //       } else {
-  //         sum += check.data<float>()[i];
-  //       }
-  //     }
-  //     VLOG(3) << "op " << op->Type() << " output var " << var_name << " sum "
-  //     << sum;
-  //   }
-  // }
-
-  // VLOG(3) << "after checking result";
+  if (gc != nullptr) {
+    gc->Wait();
+  } else {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);

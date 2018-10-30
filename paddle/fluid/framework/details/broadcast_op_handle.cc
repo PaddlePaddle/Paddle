@@ -15,12 +15,15 @@
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
+
   if (places_.size() == 1) return;
 
   // The input and output may have dummy vars.
@@ -45,16 +48,27 @@ void BroadcastOpHandle::RunImpl() {
     var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
 
+  BroadcastOneVar(*in_var_handle, out_var_handles, var_scopes);
+}
+
+void BroadcastOpHandle::BroadcastOneVar(
+    const VarHandle &in_var_handle,
+    const std::vector<VarHandle *> &out_var_handles,
+    const std::vector<const Scope *> &var_scopes) {
   auto *in_var =
-      var_scopes.at(in_var_handle->scope_idx_)->FindVar(in_var_handle->name_);
+      var_scopes.at(in_var_handle.scope_idx_)->FindVar(in_var_handle.name_);
   PADDLE_ENFORCE_NOT_NULL(in_var);
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
+  if (UNLIKELY(!in_tensor.IsInitialized())) {
+    VLOG(3) << "in var " << in_var_handle.name_ << "not inited, return!";
+    return;
+  }
 
-  InitOutputValue(*in_var_handle, out_var_handles);
+  InitOutputValue(in_var_handle, out_var_handles);
 
   if (platform::is_cpu_place(in_tensor.place())) {
     for (auto *out_var_handle : out_var_handles) {
-      if (out_var_handle->IsTheSameVar(*in_var_handle)) {
+      if (out_var_handle->IsTheSameVar(in_var_handle)) {
         continue;
       }
       auto &out_p = out_var_handle->place_;
@@ -111,12 +125,12 @@ void BroadcastOpHandle::RunImpl() {
         }
       }
 
-      if (!out_handle->IsTheSameVar(*in_var_handle)) {
-        auto out_var = var_scopes.at(in_var_handle->scope_idx_)
+      if (!out_handle->IsTheSameVar(in_var_handle)) {
+        auto out_var = var_scopes.at(in_var_handle.scope_idx_)
                            ->FindVar(out_var_handles[0]->name_);
         paddle::framework::TensorCopy(
-            in_tensor, in_var_handle->place_,
-            *(dev_ctxes_.at(in_var_handle->place_)),
+            in_tensor, in_var_handle.place_,
+            *(dev_ctxes_.at(in_var_handle.place_)),
             &VariableVisitor::GetMutableTensor(out_var));
       }
     });

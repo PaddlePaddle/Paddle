@@ -71,7 +71,7 @@ class DataToLoDTensorConverter(object):
 
     def done(self):
         arr = numpy.array(self.data, dtype=self.dtype)
-        if self.shape:
+        if self.shape and len(arr.shape) != len(self.shape):
             arr = arr.reshape(self.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)

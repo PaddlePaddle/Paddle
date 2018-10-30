@@ -13,5 +13,6 @@
 # limitations under the License.
 
 __all__ = [
-    "machine_translation", "resnet", "vgg", "mnist", "stacked_dynamic_lstm"
+    "machine_translation", "resnet", "vgg", "mnist", "stacked_dynamic_lstm",
+    "resnet_with_preprocess"
 ]

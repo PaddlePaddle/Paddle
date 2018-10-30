@@ -223,7 +223,7 @@ def infer(use_cuda, save_dirname=None):
 
         # Use inference_transpiler to speedup
         inference_transpiler_program = inference_program.clone()
-        t = fluid.InferenceTranspiler()
+        t = fluid.transpiler.InferenceTranspiler()
         t.transpile(inference_transpiler_program, place)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}

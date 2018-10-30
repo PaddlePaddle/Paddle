@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 import unittest
 import os
 import numpy as np
@@ -84,7 +85,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
             [first_word, second_word, third_word, forth_word, next_word])
     else:
         places = get_places()
-        pd = fluid.layers.ParallelDo(places)
+        pd = ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
                 list(

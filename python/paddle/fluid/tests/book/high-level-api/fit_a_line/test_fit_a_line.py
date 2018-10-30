@@ -16,6 +16,16 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import sys
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import contextlib
 import numpy
 import unittest
@@ -47,21 +57,21 @@ def train_program():
     loss = fluid.layers.square_error_cost(input=y_predict, label=y)
     avg_loss = fluid.layers.mean(loss)
 
-    return avg_loss
+    return [avg_loss, y_predict]
 
 
 def optimizer_func():
     return fluid.optimizer.SGD(learning_rate=0.001)
 
 
-def train(use_cuda, train_program, params_dirname):
+def train(use_cuda, train_program, params_dirname, inference_model_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, EndStepEvent):
             if event.step == 10:
                 test_metrics = trainer.test(
                     reader=test_reader, feed_order=['x', 'y'])
@@ -74,6 +84,8 @@ def train(use_cuda, train_program, params_dirname):
                 '''
                 if params_dirname is not None:
                     trainer.save_params(params_dirname)
+                    trainer.save_inference_model(inference_model_dirname,
+                                                 ['x'], [1])
                 trainer.stop()
 
     trainer.train(
@@ -89,7 +101,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         infer_func=inference_program, param_path=params_dirname, place=place)
 
     batch_size = 10
@@ -99,15 +111,55 @@ def infer(use_cuda, inference_program, params_dirname=None):
     print("infer results: ", results[0])
 
 
+def infer_by_saved_model(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+        # The input's dimension should be 2-D and the second dim is 13
+        # The input data should be >= 0
+        batch_size = 10
+
+        test_reader = paddle.batch(
+            paddle.dataset.uci_housing.test(), batch_size=batch_size)
+
+        test_data = next(test_reader())
+        test_feat = numpy.array(
+            [data[0] for data in test_data]).astype("float32")
+        test_label = numpy.array(
+            [data[1] for data in test_data]).astype("float32")
+
+        assert feed_target_names[0] == 'x'
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: numpy.array(test_feat)},
+                          fetch_list=fetch_targets)
+        print("infer shape: ", results[0].shape)
+        print("infer results: ", results[0])
+        print("ground truth: ", test_label)
+
+
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
-    params_dirname = "fit_a_line.inference.model"
+    params_dirname = "fit_a_line.model"
+    inference_model_dirname = "fit_a_line.inference_model"
 
-    train(use_cuda, train_program, params_dirname)
+    train(use_cuda, train_program, params_dirname, inference_model_dirname)
     infer(use_cuda, inference_program, params_dirname)
+    infer_by_saved_model(use_cuda, inference_model_dirname)
 
 
 class TestFitALine(unittest.TestCase):

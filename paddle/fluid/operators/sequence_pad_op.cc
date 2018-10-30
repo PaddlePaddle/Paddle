@@ -29,10 +29,12 @@ class SequencePadOp : public framework::OperatorWithKernel {
                    "Input(PadValue) of SequencePadOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequencePadOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Length"),
+                   "Output(Length) of SequencePadOp should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The rank of Input(x) can't be less than 2.");
+                      "The rank of Input(X) can't be less than 2.");
     auto time_step_dims = framework::slice_ddim(x_dims, 1, x_dims.size());
     auto pad_value_dims = ctx->GetInputDim("PadValue");
     PADDLE_ENFORCE(pad_value_dims == framework::make_ddim({1}) ||
@@ -41,8 +43,8 @@ class SequencePadOp : public framework::OperatorWithKernel {
                    "shape equals to time steps in sequences");
 
     int out_dim_0 = -1;
-    int out_dim_1 = -1;
 
+    int padded_length = ctx->Attrs().Get<int>("padded_length");
     if (ctx->IsRuntime()) {
       // run time
       framework::Variable* x_var =
@@ -58,7 +60,6 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
       int seq_num = x_lod_0.size() - 1;
       int max_seq_len = math::MaximumSequenceLength(x_lod_0);
-      int padded_length = ctx->Attrs().Get<int>("padded_length");
       if (padded_length == -1) {
         padded_length = max_seq_len;
       }
@@ -66,19 +67,30 @@ class SequencePadOp : public framework::OperatorWithKernel {
                         "The Attr(padded_length) must be -1 or an int greater "
                         "than the length of the longest original sequence.");
       out_dim_0 = seq_num;
-      out_dim_1 = padded_length;
     } else {
       // compile time
+      if (padded_length == -1) {
+        padded_length = 1;
+      }
       framework::VarDesc* x_desc =
           boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
       PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
     }
 
-    std::vector<int> out_dims_vec{out_dim_0, out_dim_1};
+    std::vector<int> out_dims_vec{out_dim_0, padded_length};
+    std::vector<int> len_dims_vec{out_dim_0, 1};
     auto time_step_dims_vec = framework::vectorize2int(time_step_dims);
     out_dims_vec.insert(out_dims_vec.end(), time_step_dims_vec.begin(),
                         time_step_dims_vec.end());
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Length", framework::make_ddim(len_dims_vec));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -96,6 +108,10 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Out",
         "(LoDTensor) The output vairable, which contains padded sequences.");
+    AddOutput(
+        "Length",
+        "(LoDTensor) The output vairable, which contains the actual length of "
+        "sequences before padding.");
     AddAttr<int>(
         "padded_length",
         "The length of padded sequences. It can be setted to -1 or "
@@ -125,6 +141,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
       then we get LoDTensor:
           Out.data = [[a, b, 0, 0], 
                       [c, d, e, 0]]
+          Length.data = [[2], [3]]
       
       Case 2:
 
@@ -138,7 +155,8 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
       then we get LoDTensor:
           Out.data = [[[a1, a2], [b1, b2], [0, 0]], 
                       [[c1, c2], [d1, d2], [e1, e2]]]
-
+          Length.data = [[2], [3]]
+ 
       Case 3:
 
       Given a 1-level LoDTensor input(X):
@@ -151,6 +169,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
       then we get LoDTensor:
           Out.data = [[[a1, a2], [b1, b2], [p1, p2]], 
                       [[c1, c2], [d1, d2], [e1, e2]]]
+          Length.data = [[2], [3]]
 
     )DOC");
   }
@@ -170,6 +189,13 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
       ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 

@@ -76,8 +76,8 @@ class TestInferShape(unittest.TestCase):
         mul_op_desc.set_input("X", ["x"])
         mul_op_desc.set_input("Y", ["y"])
         mul_op_desc.set_output("Out", ["out"])
-        mul_op_desc.set_attr("x_num_col_dims", 1)
-        mul_op_desc.set_attr("y_num_col_dims", 1)
+        mul_op_desc._set_attr("x_num_col_dims", 1)
+        mul_op_desc._set_attr("y_num_col_dims", 1)
 
         mul_op_desc.check_attrs()
         mul_op_desc.infer_shape(block)

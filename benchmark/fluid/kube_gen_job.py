@@ -163,6 +163,19 @@ def gen_job():
         volumes.append({"name": "dshm", "emptyDir": {"medium": "Memory"}})
         volumeMounts.append({"mountPath": "/dev/shm", "name": "dshm"})
 
+    # add ceph volumes
+    volumes.append({
+        "name": "ceph-data",
+        "cephfs": {
+            "monitors": ["192.168.16.23:6789"],
+            "secretRef": {
+                "name": "ceph-secret"
+            },
+            "user": "admin",
+        }
+    })
+    volumeMounts.append({"mountPath": "/mnt/data", "name": "ceph-data"})
+
     tn["spec"]["template"]["spec"]["volumes"] = volumes
     tn_container["volumeMounts"] = volumeMounts
 

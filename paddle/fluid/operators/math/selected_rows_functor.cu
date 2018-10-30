@@ -61,11 +61,9 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     auto out_place = context.GetPlace();
     PADDLE_ENFORCE(platform::is_gpu_place(out_place));
 
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(out_place), out_data,
-        boost::get<platform::CUDAPlace>(in1_place), in1_data,
-        in1_value.numel() * sizeof(T),
-        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream());
+    memory::Copy(boost::get<platform::CUDAPlace>(out_place), out_data,
+                 boost::get<platform::CUDAPlace>(in1_place), in1_data,
+                 in1_value.numel() * sizeof(T), context.stream());
 
     auto* in2_data = in2_value.data<T>();
     memory::Copy(boost::get<platform::CUDAPlace>(out_place),
@@ -110,7 +108,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, out_dims[0]);
 
     auto& in1_value = input1.value();
-    framework::Vector<int64_t> in1_rows(input1.rows());
+    auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2.numel() / in1_height);
@@ -149,7 +147,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
 
-    framework::Vector<int64_t> in1_rows(input1.rows());
+    auto& in1_rows = input1.rows();
     auto& in2_rows = *(input2->mutable_rows());
 
     auto& in1_value = input1.value();
@@ -209,7 +207,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, in2_dims[0]);
 
     auto& in1_value = input1.value();
-    framework::Vector<int64_t> in1_rows(input1.rows());
+    auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height);
@@ -237,7 +235,7 @@ template <typename T, int block_size>
 __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
                                T* out, const int64_t* out_rows,
                                size_t out_rows_size, int64_t row_numel) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
   __shared__ size_t out_idx;
 
@@ -263,9 +261,22 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
   framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
+    (*this)(context, input, &out);
+    return out;
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output) {
     framework::Vector<int64_t> input_rows(input.rows());
+    if (input_rows.size() == 0) {
+      return;
+    }
+
+    framework::SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
-    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+    std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
+    framework::Vector<int64_t> merge_rows(merge_rows_cpu);
 
     auto input_width = input.value().dims()[1];
 
@@ -284,16 +295,79 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid1(1, input_rows.size());
+    dim3 grid1(input_rows.size(), 1);
 
-    MergeAddKernel<
-        T, 256><<<grid1, threads, 0,
-                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(
+    MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
         input_data, input_rows.CUDAData(context.GetPlace()), out_data,
         out.mutable_rows()->CUDAMutableData(context.GetPlace()),
         out.rows().size(), input_width);
-    return out;
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const std::vector<const framework::SelectedRows*>& inputs,
+                  framework::SelectedRows* output) {
+    if (inputs.size() == 0) {
+      VLOG(3) << "no input! return";
+      return;
+    }
+    const framework::SelectedRows* has_value_input = nullptr;
+    for (auto* in : inputs) {
+      if (in->rows().size() > 0) {
+        has_value_input = in;
+        break;
+      }
+    }
+    if (has_value_input == nullptr) {
+      VLOG(3) << "no input has value! just return" << std::endl;
+      return;
+    }
+    auto input_width = has_value_input->value().dims()[1];
+    auto input_height = has_value_input->height();
+    framework::SelectedRows& out = *output;
+    std::set<int64_t> merged_row_set;
+    for (auto* input : inputs) {
+      if (input->rows().size() == 0) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
+                        "all input should have same "
+                        "dimension except for the first one");
+      PADDLE_ENFORCE_EQ(input_height, input->height(),
+                        "all input should have same height");
+      merged_row_set.insert(input->rows().begin(), input->rows().end());
+    }
+    std::vector<int64_t> merge_rows_cpu(merged_row_set.begin(),
+                                        merged_row_set.end());
+    framework::Vector<int64_t> merge_rows(merge_rows_cpu);
+
+    out.set_rows(merge_rows);
+    out.set_height(input_height);
+    out.mutable_value()->mutable_data<T>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    constant_functor(context, out.mutable_value(), 0.0);
+
+    auto* out_data = out.mutable_value()->data<T>();
+
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
+
+    for (auto* input : inputs) {
+      if (input->rows().size() == 0) {
+        continue;
+      }
+      auto* input_data = input->value().data<T>();
+      auto& input_rows = input->rows();
+      dim3 grid1(input_rows.size(), 1);
+
+      MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
+          input_data, input_rows.CUDAData(context.GetPlace()), out_data,
+          out.mutable_rows()->CUDAMutableData(context.GetPlace()),
+          out.rows().size(), input_width);
+    }
   }
 };
 

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <typeindex>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
-
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {

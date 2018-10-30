@@ -14,14 +14,18 @@
 
 #pragma once
 
+#include <glog/logging.h>
+
 #include <algorithm>
+#include <chrono>  // NOLINT
 #include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle_inference_api.h"
+#include "timer.h"
 
 namespace paddle {
 namespace inference {
@@ -74,17 +78,81 @@ std::string to_string<std::vector<std::vector<float>>>(
     const std::vector<std::vector<std::vector<float>>> &vec);
 
 template <typename T>
+int VecReduceToInt(const std::vector<T> &v) {
+  return std::accumulate(v.begin(), v.end(), 1, [](T a, T b) { return a * b; });
+}
+
+template <typename T>
 static void TensorAssignData(PaddleTensor *tensor,
                              const std::vector<std::vector<T>> &data) {
   // Assign buffer
-  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1,
-                            [](int a, int b) { return a * b; });
-  tensor->data.Resize(sizeof(T) * dim);
+  int num_elems = VecReduceToInt(tensor->shape);
+  tensor->data.Resize(sizeof(T) * num_elems);
   int c = 0;
   for (const auto &f : data) {
     for (T v : f) {
       static_cast<T *>(tensor->data.data())[c++] = v;
     }
+  }
+}
+
+template <typename T>
+static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                    const std::vector<std::vector<T>> &data) {
+  int size{0};
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  int c = 0;
+  for (const auto &f : data) {
+    for (T v : f) {
+      ptr[c++] = v;
+    }
+  }
+  return size;
+}
+
+static std::string DescribeTensor(const PaddleTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name << "]\n";
+  os << " - type: ";
+  switch (tensor.dtype) {
+    case PaddleDType::FLOAT32:
+      os << "float32";
+      break;
+    case PaddleDType::INT64:
+      os << "int64";
+      break;
+    default:
+      os << "unset";
+  }
+  os << '\n';
+
+  os << " - shape: " << to_string(tensor.shape) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+
+  int dim = VecReduceToInt(tensor.shape);
+  for (int i = 0; i < dim; i++) {
+    os << static_cast<float *>(tensor.data.data())[i] << " ";
+  }
+  os << '\n';
+  return os.str();
+}
+
+static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+                      double latency, int epoch = 1) {
+  LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
+            << ", threads: " << num_threads << ", thread id: " << tid
+            << ", latency: " << latency << "ms, fps: " << 1 / (latency / 1000.f)
+            << " ======";
+  if (epoch > 1) {
+    int samples = batch_size * epoch;
+    LOG(INFO) << "====== sample number: " << samples
+              << ", average latency of each sample: " << latency / samples
+              << "ms ======";
   }
 }
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """seq2seq model for fluid."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -181,7 +182,7 @@ def lodtensor_to_ndarray(lod_tensor):
     return ndarray
 
 
-def get_model(args):
+def get_model(args, is_train, main_prog, startup_prog):
     if args.use_reader_op:
         raise Exception("machine_translation do not support reader op for now.")
     embedding_dim = 512
@@ -190,30 +191,27 @@ def get_model(args):
     dict_size = 30000
     beam_size = 3
     max_length = 250
-    avg_cost, feeding_list = seq_to_seq_net(
-        embedding_dim,
-        encoder_size,
-        decoder_size,
-        dict_size,
-        dict_size,
-        False,
-        beam_size=beam_size,
-        max_length=max_length)
 
-    # clone from default main program
-    inference_program = fluid.default_main_program().clone()
+    with fluid.program_guard(main_prog, startup_prog):
+        with fluid.unique_name.guard():
+            avg_cost, feeding_list = seq_to_seq_net(
+                embedding_dim,
+                encoder_size,
+                decoder_size,
+                dict_size,
+                dict_size,
+                False,
+                beam_size=beam_size,
+                max_length=max_length)
+    if is_train:
+        optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
+        optimizer.minimize(avg_cost)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
-
-    train_batch_generator = paddle.batch(
+    batch_generator = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+            paddle.dataset.wmt14.train(dict_size)
+            if is_train else paddle.dataset.wmt14.test(dict_size),
+            buf_size=1000),
         batch_size=args.batch_size * args.gpus)
 
-    test_batch_generator = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.wmt14.test(dict_size), buf_size=1000),
-        batch_size=args.batch_size)
-
-    return avg_cost, inference_program, optimizer, train_batch_generator, \
-           test_batch_generator, None
+    return avg_cost, optimizer, [], batch_generator, None

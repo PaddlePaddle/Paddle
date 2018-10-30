@@ -16,6 +16,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/rw_lock.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -32,6 +35,16 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   return it->second.get();
 }
 
+const std::vector<const DeviceContext*>
+DeviceContextPool::GetAllDeviceContexts() const {
+  std::vector<const DeviceContext*> all_device_ctx;
+  all_device_ctx.reserve(device_contexts_.size());
+  for (auto& dev_ctx : device_contexts_) {
+    all_device_ctx.emplace_back(dev_ctx.second.get());
+  }
+  return all_device_ctx;
+}
+
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
@@ -40,20 +53,20 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-VLOG(3) << "pool start";
+  VLOG(3) << "pool start";
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
       device_contexts_.emplace(
           p, PtrType(new MKLDNNDeviceContext(boost::get<CPUPlace>(p))));
 #else
-VLOG(3) << "cpu context start";
+      VLOG(3) << "cpu context start";
       device_contexts_.emplace(
           p, PtrType(new CPUDeviceContext(boost::get<CPUPlace>(p))));
 #endif
     } else if (platform::is_gpu_place(p)) {
 #ifdef PADDLE_WITH_CUDA
-VLOG(3) << "gpu context start";
+      VLOG(3) << "gpu context start";
       device_contexts_.emplace(
           p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
 #else
@@ -63,7 +76,7 @@ VLOG(3) << "gpu context start";
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
-VLOG(3) << "gpu pin start";
+      VLOG(3) << "gpu pin start";
       device_contexts_.emplace(
           p,
           PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
@@ -73,7 +86,7 @@ VLOG(3) << "gpu pin start";
           "option");
 #endif
     }
-VLOG(3) << "pool finish";
+    VLOG(3) << "pool finish";
   }
 }
 
@@ -146,42 +159,90 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable unsigned int* semaphore_;
 };
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+  }
+
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_len) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
+  ~CudnnHolder() {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+    if (workspace_ != nullptr) {
+      paddle::memory::Free(place_, workspace_);
+    }
+  }
+
+ private:
+  void ReallocateWorkspace(size_t required_workspace_len) {
+    if (required_workspace_len <= workspace_len_) {
+      return;
+    }
+    if (workspace_ != nullptr) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      paddle::memory::Free(place_, workspace_);
+    }
+    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
+    workspace_len_ = required_workspace_len;
+  }
+
+  cudnnHandle_t cudnn_handle_;
+  void* workspace_;
+  size_t workspace_len_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : place_(place), cudnn_holder_(nullptr) {
   SetDeviceId(place_.device);
-  compute_capability = GetCUDAComputeCapability(place_.device);
-  multi_process = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
-  VLOG(3) << "cuda info pass";
+  compute_capability_ = GetCUDAComputeCapability(place_.device);
+  multi_process_ = GetCUDAMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
-  VLOG(3) << "cuda stream pass";
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-
-  VLOG(3) << "eigen pass";
-    if (dynload::HasCUDNN()) {
-  VLOG(3) << "cudnn start";
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    VLOG(3) << "cudnn create pass";
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
-  } else {
-    cudnn_handle_ = nullptr;
-  }
-  VLOG(3) << "cudnn pass";
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-  VLOG(3) << "cublas pass";
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
-  VLOG(3) << "cublas pass";
+  if (dynload::HasCUDNN()) {
+    cudnn_holder_.reset(new CudnnHolder(&stream_, place));
+  }
 
+  driver_version_ = GetCUDADriverVersion(place_.device);
+  runtime_version_ = GetCUDARuntimeVersion(place_.device);
+
+  LOG(INFO) << "device: " << place_.device
+            << ", CUDA Capability: " << compute_capability_
+            << ", Driver Version: " << driver_version_ / 1000 << "."
+            << (driver_version_ % 100) / 10
+            << ", Runtime Version: " << runtime_version_ / 1000 << "."
+            << (runtime_version_ % 100) / 10;
+
+  callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  WaitStreamCallback();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  if (cudnn_handle_ != nullptr) {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -195,11 +256,11 @@ void CUDADeviceContext::Wait() const {
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
-  return compute_capability;
+  return compute_capability_;
 }
 
 int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
-  return multi_process * max_threads_per_mp;
+  return multi_process_ * max_threads_per_mp_;
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
@@ -210,7 +271,14 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return cublas_handle_;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
+  return cudnn_holder_->cudnn_handle();
+}
+
+void CUDADeviceContext::RunCudnnFuncWithWorkspace(
+    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
+  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
+}
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
@@ -232,38 +300,73 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobs_() {
-  p_blobs_.reset(new std::unordered_map<std::string, std::shared_ptr<void>>());
+    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobmap_() {
+  p_blobmap_.reset(new BlobMap());
+  p_mutex_.reset(new std::mutex());
 }
+
+namespace {
+// Current thread's id.
+thread_local int cur_thread_id = 0;
+}
+
+void set_cur_thread_id(int tid) { cur_thread_id = tid; }
+int get_cur_thread_id(void) { return cur_thread_id; }
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
-  std::unordered_map<std::string, std::shared_ptr<void>>* p;
-  p = p_blobs_.get();
+  BlobMap* pMap = p_blobmap_.get();
+  std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  auto it = p->find(name);
+  int tid = platform::get_cur_thread_id();
 
-  if (it == p->end()) {
-    (*p)[name] = data;  // create new blob
+  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+
+  // Find KeyBlob for current thread
+  auto map_it = pMap->find(tid);
+
+  if (map_it == pMap->end()) {
+    // 1st time to set blob in current thread
+    pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
+    (*pMap)[tid] = pBlob;
   } else {
-    it->second = data;  // set data to existing blob
+    pBlob = map_it->second;
   }
 
+  // Find Key in found (or newly created) KeyBlob
+  auto key_it = pBlob->find(name);
+
+  if (key_it == pBlob->end()) {
+    (*pBlob)[name] = data;  // create new blob
+  } else {
+    key_it->second = data;  // set data to existing blob
+  }
+
+  // lock will be automatically released when out of scope
   return;
 }
 
 std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
-  std::unordered_map<std::string, std::shared_ptr<void>>* p;
-  p = p_blobs_.get();
+  BlobMap* pMap = p_blobmap_.get();
+  std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  auto it = p->find(name);
+  int tid = platform::get_cur_thread_id();
 
-  if (it != p->end()) {
-    return it->second;
-  }
+  std::lock_guard<std::mutex> lock(*p_mutex_.get());
 
-  return nullptr;
+  // Find KeyBlob for current thread firstly
+  auto map_it = pMap->find(tid);
+  if (map_it == pMap->end()) return nullptr;
+  pBlob = map_it->second;
+
+  // Find Blob via name
+  auto key_it = pBlob->find(name);
+
+  if (key_it == pBlob->end()) return nullptr;
+
+  // lock will be automatically released when out of scope
+  return key_it->second;
 }
 
 #endif

@@ -46,6 +46,7 @@ struct RWLock {
  private:
   pthread_rwlock_t lock_;
 };
+// TODO(paddle-dev): Support RWLock for WIN32 for correctness.
 #else
 // https://stackoverflow.com/questions/7125250/making-pthread-rwlock-wrlock-recursive
 // In windows, rw_lock seems like a hack. Use empty object and do nothing.
@@ -55,6 +56,77 @@ struct RWLock {
   void UNLock() {}
 };
 #endif
+
+class RWLockGuard {
+ public:
+  enum Status { kUnLock, kWRLock, kRDLock };
+
+  RWLockGuard(RWLock* rw_lock, Status init_status)
+      : lock_(rw_lock), status_(Status::kUnLock) {
+    switch (init_status) {
+      case Status::kRDLock: {
+        RDLock();
+        break;
+      }
+      case Status::kWRLock: {
+        WRLock();
+        break;
+      }
+      case Status::kUnLock: {
+        break;
+      }
+    }
+  }
+
+  void WRLock() {
+    switch (status_) {
+      case Status::kUnLock: {
+        lock_->WRLock();
+        status_ = Status::kWRLock;
+        break;
+      }
+      case Status::kWRLock: {
+        break;
+      }
+      case Status::kRDLock: {
+        PADDLE_THROW(
+            "Please unlock read lock first before invoking write lock.");
+        break;
+      }
+    }
+  }
+
+  void RDLock() {
+    switch (status_) {
+      case Status::kUnLock: {
+        lock_->RDLock();
+        status_ = Status::kRDLock;
+        break;
+      }
+      case Status::kRDLock: {
+        break;
+      }
+      case Status::kWRLock: {
+        PADDLE_THROW(
+            "Please unlock write lock first before invoking read lock.");
+        break;
+      }
+    }
+  }
+
+  void UnLock() {
+    if (status_ != Status::kUnLock) {
+      lock_->UNLock();
+      status_ = Status::kUnLock;
+    }
+  }
+
+  ~RWLockGuard() { UnLock(); }
+
+ private:
+  RWLock* lock_;
+  Status status_;
+};
 
 }  // namespace framework
 }  // namespace paddle

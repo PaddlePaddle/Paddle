@@ -33,7 +33,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/inference/analysis/pass.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -43,7 +43,7 @@ namespace analysis {
  * PassManager is the base class for all pass managers, a pass manager has
  * several Pass-es registered, and execute them in the linear order.
  */
-class PassManager : public OrderedRegistry<Pass> {
+class PassManager : public OrderedRegistry<AnalysisPass> {
  public:
   PassManager() = default;
   // Call all the passes' Initialize methods. The desc and data_flow_graph are
@@ -87,18 +87,6 @@ class DfgPassManager : public PassManager {
   void RunAll() override;
 
   virtual ~DfgPassManager() = default;
-};
-
-/*
- * A pass manager that process a Node each time.
- */
-class NodePassManager : public PassManager {
- public:
-  NodePassManager() = default;
-
-  void RunAll() override;
-
-  virtual ~NodePassManager() = default;
 };
 
 }  // namespace analysis

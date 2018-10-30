@@ -24,14 +24,54 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+// Node should normally created by Graph::CreateXXXNode().
 class Node {
  public:
   enum class Type { kOperation, kVariable };
-#if !defined(_WIN32) // msvc not support constexpr correctly.
+#if !defined(_WIN32)  // msvc not support constexpr correctly.
   static constexpr char kControlDepVarName[] = "__control_var";
-#else 
+#else
   static const char kControlDepVarName[];
 #endif
+
+  Type NodeType() const { return type_; }
+
+  std::string Name() const { return name_; }
+
+  VarDesc* Var() {
+    PADDLE_ENFORCE(IsVar());
+    return var_desc_.get();
+  }
+
+  OpDesc* Op() const {
+    PADDLE_ENFORCE(IsOp());
+    return op_desc_.get();
+  }
+
+  // Please don't use this API!
+  int id() const { return id_; }
+
+  bool IsOp() const { return type_ == Type::kOperation; }
+  bool IsVar() const { return type_ == Type::kVariable; }
+  bool IsCtrlVar() const {
+    return type_ == Type::kVariable &&
+           Name().find(ir::Node::kControlDepVarName) != std::string::npos;
+  }
+
+  std::vector<Node*> inputs;
+  std::vector<Node*> outputs;
+
+ protected:
+  const std::string name_;
+  std::unique_ptr<VarDesc> var_desc_;
+  std::unique_ptr<OpDesc> op_desc_;
+  Type type_;
+  int id_;
+
+ private:
+  friend class Graph;
+  friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+                                                 Node::Type type);
 
   explicit Node(const std::string& name, Type type)
       : name_(name),
@@ -54,41 +94,16 @@ class Node {
         type_(Type::kOperation),
         id_(count_++) {}
 
-  Type NodeType() const { return type_; }
+  Node() = delete;
 
-  std::string Name() const { return name_; }
-
-  VarDesc* Var() {
-    PADDLE_ENFORCE(IsVar());
-    return var_desc_.get();
-  }
-
-  OpDesc* Op() const {
-    PADDLE_ENFORCE(IsOp());
-    return op_desc_.get();
-  }
-
-  int id() const { return id_; }
-
-  bool IsOp() const { return type_ == Type::kOperation; }
-  bool IsVar() const { return type_ == Type::kVariable; }
-
-  std::vector<Node*> inputs;
-  std::vector<Node*> outputs;
-
- protected:
-  const std::string name_;
-  std::unique_ptr<VarDesc> var_desc_;
-  std::unique_ptr<OpDesc> op_desc_;
-  Type type_;
-  int id_;
-
- private:
-  friend class Graph;
   static int count_;
+  // Please don't use this API or make this public.
   static void ResetId() { count_ = 0; }
   DISABLE_COPY_AND_ASSIGN(Node);
 };
+
+std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+                                        Node::Type type);
 
 }  // namespace ir
 }  // namespace framework

@@ -19,7 +19,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
-  PADDLE_ENFORCE(!applied_, "Pass can only Apply() once.");
   PADDLE_ENFORCE(graph.get(), "graph passed to Pass::Apply() cannot be empty.");
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),

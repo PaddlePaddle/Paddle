@@ -104,7 +104,7 @@ def batch_images_from_tar(data_file,
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
-                    protocol=pickle.HIGHEST_PROTOCOL)
+                    protocol=2)
                 file_id += 1
                 data = []
                 labels = []
@@ -113,9 +113,7 @@ def batch_images_from_tar(data_file,
         output['label'] = labels
         output['data'] = data
         pickle.dump(
-            output,
-            open('%s/batch_%d' % (out_path, file_id), 'wb'),
-            protocol=pickle.HIGHEST_PROTOCOL)
+            output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2)
 
     with open(meta_file, 'a') as meta:
         for file in os.listdir(out_path):

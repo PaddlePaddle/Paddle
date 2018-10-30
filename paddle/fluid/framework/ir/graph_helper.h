@@ -27,6 +27,8 @@ namespace ir {
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
 
+size_t GraphNum(const Graph &graph);
+
 // Topology Sort the operations in the graph from inputs to outputs.
 // `graph` cannot contain circle.
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph);

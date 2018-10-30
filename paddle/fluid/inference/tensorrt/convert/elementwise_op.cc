@@ -89,6 +89,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
         shift_weights.get(), scale_weights.get(), power_weights.get());
     auto output_name = op_desc.Output("Out")[0];
 
+    layer->setName(("elementwise_add (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->weight_map[op_desc.Input("Y").front()] = std::move(weight_tensor);
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {  // the test framework can not determine which is the
@@ -137,6 +139,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
         *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
 
     auto output_name = op_desc.Output("Out")[0];
+    layer->setName(("elementwise (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.

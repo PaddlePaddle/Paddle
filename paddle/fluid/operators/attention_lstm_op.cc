@@ -24,28 +24,28 @@ namespace operators {
 
 void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of AttentionLSTM should not be null.");
+                 "Assert only one Input(X) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasInput("C0"),
-                 "Input(C0) of AttentionLSTM should not be null.");
+                 "Assert only one Input(C0) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasInput("LSTMWeight"),
-                 "Input(LSTMWeight) of AttentionLSTM should not be null.");
+                 "Assert only one Input(LSTMWeight) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasInput("LSTMBias"),
-                 "Input(LSTMBias) of AttentionLSTM should not be null.");
+                 "Assert only one Input(LSTMBias) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasInput("AttentionWeight"),
-                 "Input(AttentionWeight) of AttentionLSTM should not be null.");
+                 "Assert only one Input(AttentionWeight) of AttentionLSTM.");
 
   PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                 "Output(Hidden) of AttentionLSTM should not be null.");
+                 "Assert only one Output(Hidden) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                 "Output(Cell) of AttentionLSTM should not be null.");
+                 "Assert only one Output(Cell) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("AttentionedX"),
-                 "Output(AttentionedX) of AttentionLSTM should not be null.");
+                 "Assert only one Output(AttentionedX) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("AttentionFCOut"),
-                 "Output(AttentionFCOut) of AttentionLSTM should not be null.");
+                 "Assert only one Output(AttentionFCOut) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("LSTMX"),
-                 "Output(LSTMX) of AttentionLSTM should not be null.");
+                 "Assert only one Output(LSTMX) of AttentionLSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("LSTMOUT"),
-                 "Output(LSTMOUT) of AttentionLSTM should not be null.");
+                 "Assert only one Output(LSTMOUT) of AttentionLSTM.");
 
   auto x_dims = ctx->GetInputDim("X");
   const int M = x_dims[1];

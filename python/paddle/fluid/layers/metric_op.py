@@ -58,11 +58,11 @@ def accuracy(input, label, k=1, correct=None, total=None):
     """
     helper = LayerHelper("accuracy", **locals())
     topk_out, topk_indices = nn.topk(input, k=k)
-    acc_out = helper.create_tmp_variable(dtype="float32")
+    acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
-        correct = helper.create_tmp_variable(dtype="int64")
+        correct = helper.create_variable_for_type_inference(dtype="int64")
     if total is None:
-        total = helper.create_tmp_variable(dtype="int64")
+        total = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="accuracy",
         inputs={
@@ -78,7 +78,12 @@ def accuracy(input, label, k=1, correct=None, total=None):
     return acc_out
 
 
-def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
+def auc(input,
+        label,
+        curve='ROC',
+        num_thresholds=2**12 - 1,
+        topk=1,
+        slide_steps=1):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -105,6 +110,8 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
         num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 200.
         topk(int): only topk number of prediction output will be used for auc.
+        slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
+
 
     Returns:
         Variable: A scalar representing the current AUC.
@@ -117,38 +124,69 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
             auc_out=fluid.layers.auc(input=prediction, label=label)
     """
     helper = LayerHelper("auc", **locals())
-    auc_out = helper.create_tmp_variable(dtype="float64")
+    auc_out = helper.create_variable_for_type_inference(dtype="float64")
+    batch_auc_out = helper.create_variable_for_type_inference(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
-    tp = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
-    tn = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
-    fp = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
-    fn = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
-    for var in [tp, tn, fp, fn]:
+
+    # for batch auc
+    batch_stat_pos = helper.create_global_variable(
+        persistable=True,
+        dtype='int64',
+        shape=[slide_steps, num_thresholds + 1])
+    batch_stat_neg = helper.create_global_variable(
+        persistable=True,
+        dtype='int64',
+        shape=[slide_steps, num_thresholds + 1])
+
+    # for global auc
+    stat_pos = helper.create_global_variable(
+        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+    stat_neg = helper.create_global_variable(
+        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+
+    for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var, Constant(
                 value=0.0, force_cpu=True))
 
+    # Batch AUC
     helper.append_op(
         type="auc",
         inputs={
             "Predict": [input],
             "Label": [label],
-            "TP": [tp],
-            "TN": [tn],
-            "FP": [fp],
-            "FN": [fn]
+            "StatPos": [batch_stat_pos],
+            "StatNeg": [batch_stat_neg]
         },
-        attrs={"curve": curve,
-               "num_thresholds": num_thresholds},
+        attrs={
+            "curve": curve,
+            "num_thresholds": num_thresholds,
+            "slide_steps": slide_steps
+        },
+        outputs={
+            "AUC": [batch_auc_out],
+            "StatPosOut": [batch_stat_pos],
+            "StatNegOut": [batch_stat_neg]
+        })
+    # Global AUC
+    helper.append_op(
+        type="auc",
+        inputs={
+            "Predict": [input],
+            "Label": [label],
+            "StatPos": [stat_pos],
+            "StatNeg": [stat_neg]
+        },
+        attrs={
+            "curve": curve,
+            "num_thresholds": num_thresholds,
+            "slide_steps": 0
+        },
         outputs={
             "AUC": [auc_out],
-            "TPOut": [tp],
-            "TNOut": [tn],
-            "FPOut": [fp],
-            "FNOut": [fn]
+            "StatPosOut": [stat_pos],
+            "StatNegOut": [stat_neg]
         })
-    return auc_out, [tp, tn, fp, fn]
+    return auc_out, batch_auc_out, [
+        batch_stat_pos, batch_stat_neg, stat_pos, stat_neg
+    ]
