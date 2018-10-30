@@ -27,6 +27,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 
+DEFINE_int32(rpc_send_thread_num, 5, "number of threads for rpc send");
+DEFINE_int32(rpc_get_thread_num, 5, "number of threads for rpc get");
+DEFINE_int32(rpc_prefetch_thread_num, 5, "number of threads for rpc prefetch");
+
 namespace paddle {
 namespace operators {
 
@@ -332,11 +336,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       sync_mode, checkpoint_block_id));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
-                            request_send_handler_.get());
+                            request_send_handler_.get(),
+                            FLAGS_rpc_send_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestGet,
-                            request_get_handler_.get());
+                            request_get_handler_.get(),
+                            FLAGS_rpc_get_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
-                            request_prefetch_handler_.get());
+                            request_prefetch_handler_.get(),
+                            FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
 
