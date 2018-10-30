@@ -15,6 +15,8 @@
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
+#include "paddle/fluid/framework/data_layout_transform.h"
+
 namespace paddle {
 namespace operators {
 
@@ -106,6 +108,11 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
     auto user_pd = user_weights_memory_p->get_primitive_desc();
     return this->AcquireMemory(weights_pd, user_pd, user_weights_memory_p,
                                "@data-weights_mem_p", pipeline);
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireResidualDataMemory(
+      const mkldnn::memory::desc& md, void* ptr) {
+    return this->AcquireMemory(md, ptr, "@user_residual_data_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromDataPrimitive(
@@ -386,7 +393,15 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_weights_memory_p = handler.AcquireWeightsMemory(
         user_weights_md, to_void_cast<T>(filter_data));
 
-    T* output_data = nullptr;
+    // create reorder primitive if the input format is not the preferred one
+    auto src_memory_p =
+        handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
+    auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
+        user_weights_memory_p, pipeline, is_test);
+    auto output_data =
+        output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+    auto dst_memory_p =
+        handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
 
     if (fuse_residual_conn) {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
@@ -399,20 +414,21 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "Output and elementwise parameter need to have the "
                         "same dimension sizes");
 
-      output->ShareDataWith(*residual_param);
-      output_data = output->mutable_data<T>(ctx.GetPlace());
-    } else {
-      output_data =
-          output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
-    }
+      if (residual_param->format() != output->format()) {
+        auto residual_data_tz =
+            paddle::framework::vectorize2int(residual_param->dims());
+        auto residual_data_type =
+            paddle::framework::ToMKLDNNDataType(residual_param->type());
 
-    // create reorder primitive if the input format is not the preferred one
-    auto src_memory_p =
-        handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
-    auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
-        user_weights_memory_p, pipeline, is_test);
-    auto dst_memory_p =
-        handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
+        auto user_residual_md = platform::MKLDNNMemDesc(
+            residual_data_tz, residual_data_type, residual_param->format());
+        auto user_residual_memory_p = handler.AcquireResidualDataMemory(
+            user_residual_md, to_void_cast<T>(residual_param_data));
+        platform::Reorder(*user_residual_memory_p, *dst_memory_p);
+      } else {
+        output->ShareDataWith(*residual_param);
+      }
+    }
 
     // create convolution op primitive
     std::shared_ptr<mkldnn::convolution_forward> conv_p;
