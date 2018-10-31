@@ -75,12 +75,9 @@ def train(nn_type, use_cuda):
 
     net_conf = mlp if nn_type == 'mlp' else conv_net
 
-    switch_dtype = fluid.contrib.SwitchDataType(fluid.default_main_program())
-    with switch_dtype.block():
+    with fluid.contrib.switch_dtype_block(fluid.default_main_program()):
         hidden, label = net_conf(img, label)
-        # switch_dtype.output(hidden)
 
-    # hidden = switch_dtype()
     hidden = fluid.layers.cast(hidden, np.float32)
     prediction, avg_loss, acc = loss_net(hidden, label)
     # test_program = fluid.default_main_program().clone(for_test=True)
