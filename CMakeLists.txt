@@ -68,7 +68,6 @@ option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better d
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
-option(WITH_INFERENCE    "Compile fluid inference library"              ON)
 option(ON_INFER         "Turn on inference optimization."               OFF)
 option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
