@@ -87,8 +87,9 @@ def switch_dtype_block(main_program,
     ]
 
     for op in ops:
+        # ReInfer the output var's type and dtype
         op.desc.infer_var_type(cur_block.desc)
-        op.desc.infer_shape(cur_block.desc)
+        # op.desc.infer_shape(cur_block.desc)
 
     # Node: Some output doesn't need convert data type
     # Temporally doesn't cast data to origin type, because some

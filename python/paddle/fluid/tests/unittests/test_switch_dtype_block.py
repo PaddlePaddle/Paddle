@@ -66,9 +66,7 @@ def conv_net(img, label):
     return conv_pool_2, label
 
 
-def train(nn_type, use_cuda):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
+def train(nn_type, parallel):
 
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -80,11 +78,10 @@ def train(nn_type, use_cuda):
 
     hidden = fluid.layers.cast(hidden, np.float32)
     prediction, avg_loss, acc = loss_net(hidden, label)
-    # test_program = fluid.default_main_program().clone(for_test=True)
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0)
     exe = fluid.Executor(place)
 
     train_reader = paddle.batch(
@@ -92,14 +89,11 @@ def train(nn_type, use_cuda):
             paddle.dataset.mnist.train(), buf_size=500),
         batch_size=BATCH_SIZE)
 
-    # test_reader = paddle.batch(
-    #     paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
     feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
         for batch_id, data in enumerate(train_reader()):
-            # train a mini-batch, fetch nothing
             acc_np, avg_loss_np = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[acc, avg_loss])
@@ -111,38 +105,35 @@ def train(nn_type, use_cuda):
     train_loop(fluid.default_main_program())
 
 
-def main(use_cuda, parallel, nn_type, combine):
-    train(nn_type=nn_type, use_cuda=use_cuda)
+def main(parallel, nn_type):
+    train(nn_type=nn_type, parallel=parallel)
 
 
 class TestRecognizeDigits(unittest.TestCase):
     pass
 
 
-def inject_test_method(use_cuda, parallel, nn_type, combine):
+def inject_test_method(parallel, nn_type):
     def __impl__(self):
         prog = fluid.Program()
         startup_prog = fluid.Program()
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                main(use_cuda, parallel, nn_type, combine)
+                main(parallel, nn_type)
 
-    fn = 'test_{0}_{1}_{2}_{3}'.format(nn_type, 'cuda'
-                                       if use_cuda else 'cpu', 'parallel'
-                                       if parallel else 'normal', 'combine'
-                                       if combine else 'separate')
+    fn = 'test_{0}_{1}'.format(nn_type, 'parallel' if parallel else 'normal')
 
     setattr(TestRecognizeDigits, fn, __impl__)
 
 
 def inject_all_tests():
-    for use_cuda in (True, ):
-        if use_cuda and not core.is_compiled_with_cuda():
-            continue
-        for parallel in (False, ):
-            for nn_type in ('mlp', 'conv'):
-                inject_test_method(use_cuda, parallel, nn_type, True)
+    if not core.is_compiled_with_cuda():
+        return
+
+    for parallel in (False, ):
+        for nn_type in ('mlp', 'conv'):
+            inject_test_method(parallel, nn_type)
 
 
 inject_all_tests()

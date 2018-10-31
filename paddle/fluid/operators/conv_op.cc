@@ -220,18 +220,12 @@ $$
 )DOC");
 }
 
-class ConvOpInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto x_name = op_desc.Input("Input")[0];
-    //    auto filter_name = op_desc.Input("Filter")[0];
-    auto out_name = op_desc.Output("Output")[0];
-
-    auto& x = block->FindRecursiveOrCreateVar(x_name);
-    auto& out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(x.GetType());
-    out.SetDataType(x.GetDataType());
+class ConvOpInferVarType : public framework::InferVarTypeHelper {
+ protected:
+  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+      const override {
+    return std::unordered_map<std::string, std::string>{
+        {"Input", /*->*/ "Output"}};
   }
 };
 

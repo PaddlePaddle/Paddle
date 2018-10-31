@@ -240,18 +240,11 @@ Example:
 )DOC");
 }
 
-class PoolOpInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto x_name = op_desc.Input("X")[0];
-    //    auto filter_name = op_desc.Input("Filter")[0];
-    auto out_name = op_desc.Output("Out")[0];
-
-    auto& x = block->FindRecursiveOrCreateVar(x_name);
-    auto& out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(x.GetType());
-    out.SetDataType(x.GetDataType());
+class PoolOpInferVarType : public framework::InferVarTypeHelper {
+ protected:
+  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
