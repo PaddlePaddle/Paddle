@@ -61,8 +61,6 @@ cc_test(test_paddle_inference_api
 
 inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
-
-set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps} paddle_inference_api
         ARGS --dirname=${PYTHON_TESTS_DIR}/book)
 

@@ -158,6 +158,8 @@ __all__ = [
     'affine_channel',
     'hash',
     'grid_sampler',
+    'log_loss',
+    'add_position_encoding',
 ]
 
 
@@ -7661,5 +7663,100 @@ def grid_sampler(x, grid, name=None):
     ipts = {'X': x, 'Grid': grid}
 
     helper.apppend_op(type='grid_sampler', inputs=ipts, outputs={'Output', out})
+    return out
 
+
+def log_loss(input, label, epsilon=1e-4, name=None):
+    """
+    **Negative Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    negative log loss.
+
+    .. math::
+
+        Out = -label * \\log{(input + \\epsilon)}
+              - (1 - label) * \\log{(1 - input + \\epsilon)}
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        epsilon (float): epsilon
+        name (string): the name of log_loss
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the negative log loss.
+
+    Examples:
+        .. code-block:: python
+
+          prob = fluid.layers.sigmoid(net)
+          cost = fluid.layers.log_loss(input=prob, label=label)
+    """
+    helper = LayerHelper('log_loss', **locals())
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+
+    helper.append_op(
+        type='log_loss',
+        inputs={'Predicted': [input],
+                'Labels': [label]},
+        outputs={'Loss': [loss]},
+        attrs={'epsilon': epsilon})
+    return loss
+
+
+def add_position_encoding(input, alpha, beta, name=None):
+    """
+    **Add Position Encoding Layer**
+
+    This layer accepts an input 3D-Tensor of shape [N x M x P], and return an
+    output Tensor of shape [N x M x P] with positional encoding value.
+
+    Refer to `Attention Is All You Need<http://arxiv.org/pdf/1706.03762.pdf>`_ .
+
+    .. math::
+        PE(pos, 2i) = \\sin{(pos / 10000^{2i / P})}   \\\\
+        PE(pos, 2i + 1) = \\cos{(pos / 10000^{2i / P})}  \\\\
+        Out(:, pos, i) = \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
+
+    Where:
+    * PE(pos, 2i): the increment for the number at even position
+    * PE(pos, 2i + 1): the increment for the number at odd position
+
+    Args:
+        input (Variable): 3-D input tensor with shape [N x M x P]
+        alpha (float): multiple of Input Tensor
+        beta (float): multiple of Positional Encoding Tensor
+        name (string): the name of position encoding layer
+
+    Returns:
+        Variable: A 3-D Tensor of shape [N x M x P] with positional encoding.
+
+    Examples:
+        .. code-block:: python
+
+          position_tensor = fluid.layers.add_position_encoding(input=tensor)
+    """
+    helper = LayerHelper('add_position_encoding', **locals())
+    dtype = helper.input_dtype()
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="add_position_encoding",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"alpha": alpha,
+               "beta": beta})
     return out
