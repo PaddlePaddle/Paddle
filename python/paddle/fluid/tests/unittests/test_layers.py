@@ -869,7 +869,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x_data = layers.data(name="x", shape=[16], dtype="float32")
-            mask = layers.data(name="mask", shape=[16], dtype="int64")
+            mask = layers.data(name="mask", shape=[1], dtype="int64")
             out = layers.mask_extract(x_data, mask)
             self.assertIsNotNone(out)
         print(str(program))

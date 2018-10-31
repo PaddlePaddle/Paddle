@@ -38,8 +38,7 @@ class MaskExtractOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto mask_dims = ctx->GetInputDim("Mask");
     PADDLE_ENFORCE(mask_dims.size() == 2 && mask_dims[1] == 1,
-                   "Input(X) and Input(Mask) should have the same first "
-                   "dimension.");
+                   "Input(Mask) should have the shape like [batch_size, 1].");
     PADDLE_ENFORCE_EQ(x_dims[0], mask_dims[0], "Input(X) and Input(Mask) "
                    "should have the same first dimension.");
     ctx->SetOutputDim("Out", x_dims);

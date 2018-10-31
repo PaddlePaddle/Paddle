@@ -82,6 +82,7 @@ __all__ = [
     'beam_search',
     'row_conv',
     'multiplex',
+    'mask_extract',
     'layer_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
