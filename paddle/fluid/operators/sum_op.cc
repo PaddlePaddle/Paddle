@@ -67,6 +67,7 @@ class SumOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
+    auto x_vars_name = ctx.Inputs("X");
 
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
@@ -81,9 +82,11 @@ class SumOp : public framework::OperatorWithKernel {
 
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
-      for (auto& x_var : x_vars) {
+      for (size_t idx = 0; idx < x_vars.size(); ++idx) {
+        PADDLE_ENFORCE(x_vars[idx] != nullptr,
+                       "Input var[%s] should not be nullptr", x_vars_name[idx]);
         // FIXME(zcd): The input x_var may be SelectedRows or LoDTensor.
-        auto tensor = framework::GetTensorFromVar(x_var);
+        auto tensor = framework::GetTensorFromVar(*x_vars[idx]);
         if (tensor->numel() == 0) {
           continue;
         }
