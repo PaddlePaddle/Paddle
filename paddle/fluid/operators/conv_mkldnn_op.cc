@@ -59,6 +59,11 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
     return conv_pd_->dst_primitive_desc().get_size();
   }
 
+  mkldnn::memory::format GetDstFormat() const {
+    return static_cast<mkldnn::memory::format>(
+        conv_pd_->dst_primitive_desc().desc().data.format);
+  }
+
   size_t GetDiffWeightsMemorySize() const {
     return conv_bwd_weights_pd_->diff_weights_primitive_desc().get_size();
   }
@@ -113,6 +118,15 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireResidualDataMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_residual_data_mem_p");
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromResidualDataMemory(
+      const std::shared_ptr<mkldnn::memory>& user_residual_memory_p,
+      void* dst_ptr,
+      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+    return this->AcquireMemory(user_residual_memory_p,
+                               this->AcquireDstMemoryFromPrimitive(dst_ptr),
+                               "@residual_data_mem_p", pipeline);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromDataPrimitive(
@@ -398,10 +412,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline, is_test);
-    auto output_data =
-        output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
-    auto dst_memory_p =
-        handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
+
+    std::shared_ptr<mkldnn::memory> dst_memory_p;
 
     if (fuse_residual_conn) {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
@@ -414,7 +426,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "Output and elementwise parameter need to have the "
                         "same dimension sizes");
 
-      if (residual_param->format() != output->format()) {
+      if (residual_param->format() != handler.GetDstFormat()) {
+        auto output_data =
+            output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
         auto residual_data_tz =
             paddle::framework::vectorize2int(residual_param->dims());
         auto residual_data_type =
@@ -424,10 +438,20 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             residual_data_tz, residual_data_type, residual_param->format());
         auto user_residual_memory_p = handler.AcquireResidualDataMemory(
             user_residual_md, to_void_cast<T>(residual_param_data));
-        platform::Reorder(*user_residual_memory_p, *dst_memory_p);
+
+        dst_memory_p = handler.AcquireDstMemoryFromResidualDataMemory(
+            user_residual_memory_p, to_void_cast<T>(output_data), pipeline);
       } else {
         output->ShareDataWith(*residual_param);
+        auto output_data = output->mutable_data<T>(ctx.GetPlace());
+        dst_memory_p =
+            handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
+    } else {
+      auto output_data =
+          output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+      dst_memory_p =
+          handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
     }
 
     // create convolution op primitive
