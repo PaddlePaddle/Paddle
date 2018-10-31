@@ -188,7 +188,7 @@ class TestDistBase(unittest.TestCase):
         self._pservers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
             self._find_free_port(), self._find_free_port())
-        self._python_interp = "python"
+        self._python_interp = sys.executable
         self._sync_mode = True
         self._enforce_place = None
         self._mem_opt = False
