@@ -112,13 +112,16 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const int group_size = (x_dims[1] - 1) / groups + 1;
 
     // TODO(liangdun): need to check d_x is null
-    d_x->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    set_zero(dev_ctx, d_x, static_cast<T>(0));
+    T* d_x_data = nullptr;
+    if (d_x) {
+      d_x->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_x, static_cast<T>(0));
+      d_x_data = d_x->data<T>();
+    }
 
     auto* x_data = x->data<T>();
-    auto* d_x_data = d_x->data<T>();
     auto* y_data = d_y->data<T>();
     auto* mean_data = mean->data<T>();
     auto* var_data = var->data<T>();
@@ -164,7 +167,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
 
             d_var_inv += (tmp[0] - x_mean) * dval;
             T d_tmp = dval * var_inv;
-            iter_d_x_data[0] += d_tmp;
+            if (d_x_data) iter_d_x_data[0] += d_tmp;
             d_x_mean -= d_tmp;
           }
         }
@@ -176,11 +179,14 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
         d_x_mean /= number * imsize;
 
         iter_d_x_data = tmp2;
-        for (int cid = 0; cid < number; cid++) {
-          for (int imid = 0; imid < imsize;
-               imid++, iter_x_data++, iter_d_x_data++) {
-            iter_d_x_data[0] += d_x_mean;
-            iter_d_x_data[0] += iter_x_data[0] * 2 * d_x_var;
+
+        if (d_x_data) {
+          for (int cid = 0; cid < number; cid++) {
+            for (int imid = 0; imid < imsize;
+                 imid++, iter_x_data++, iter_d_x_data++) {
+              iter_d_x_data[0] += d_x_mean;
+              iter_d_x_data[0] += iter_x_data[0] * 2 * d_x_var;
+            }
           }
         }
       }

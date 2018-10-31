@@ -2308,9 +2308,7 @@ def layer_norm(input,
 
 @templatedoc()
 def group_norm(input,
-               scale=True,
-               shift=True,
-               groups=32,
+               groups,
                epsilon=1e-05,
                param_attr=None,
                bias_attr=None,
@@ -2324,13 +2322,11 @@ def group_norm(input,
 
     Args:
         input(Variable): The input tensor variable.
-        scale(bool): Scale is a 1-dimensional tensor of size C that is multiply to the output.
-        shift(bool): Shift is a 1-dimensional tensor of size C that is add to the output.
         groups(int): The number of groups that divided from channels.
         epsilon(float): The small value added to the variance to prevent
             division by zero.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-            gain :math:`g`.
+            scale :math:`g`.
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
             bias :math:`b`.
         act(str): Activation to be applied to the output of group normalizaiton.
@@ -2338,7 +2334,7 @@ def group_norm(input,
         name (str): The name of this layer. It is optional.
 
     Returns:
-        ${y_comment}
+        Variable: A tensor variable which is the result after applying group normalization on the input.
 
     Examples:
 
@@ -2355,15 +2351,14 @@ def group_norm(input,
     if data_layout != 'NCHW':
         raise ValueError("unsupported data layout:" + data_layout)
     param_shape = [input_shape[1]]
-    if scale:
+    if param_attr:
         scale = helper.create_parameter(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
             default_initializer=Constant(1.0))
         inputs['Scale'] = scale
-    if shift:
-        assert bias_attr is not False
+    if bias_attr:
         bias = helper.create_parameter(
             attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
         inputs['Bias'] = bias

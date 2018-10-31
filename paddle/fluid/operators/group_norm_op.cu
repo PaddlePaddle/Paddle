@@ -153,7 +153,7 @@ __global__ void GroupNormBackwardGetMeanAndVar(
     if (scale) dval = dval * scale[ccid];
     d_var_data += (tmp - x_mean) * dval;
     T d_tmp = dval * var_inv;
-    d_x[(bid * C + ccid) * imsize + imid] = d_tmp;
+    if (d_x) d_x[(bid * C + ccid) * imsize + imid] = d_tmp;
     d_mean_data -= d_tmp;
   }
 
@@ -200,7 +200,8 @@ __global__ void GroupNormBackward(const T* x, const T* mean, const T* var,
   d_x_mean /= number * imsize;
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T tmp = x[(bid * C + ccid) * imsize + imid];
-    d_x[(bid * C + ccid) * imsize + imid] += d_x_mean + tmp * 2 * d_x_var;
+    if (d_x)
+      d_x[(bid * C + ccid) * imsize + imid] += d_x_mean + tmp * 2 * d_x_var;
   }
 }
 
@@ -225,8 +226,11 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const auto& x_dims = x->dims();
     const int group_size = (x_dims[1] - 1) / groups + 1;
 
-    // TODO(liangdun): need to check d_x is null
-    d_x->mutable_data<T>(ctx.GetPlace());
+    T* d_x_data = nullptr;
+    if (d_x) {
+      d_x->mutable_data<T>(ctx.GetPlace());
+      d_x_data = d_x->data<T>();
+    }
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -241,7 +245,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     T* temp_mean_data = temp_mean.data<T>();
 
     auto* x_data = x->data<T>();
-    auto* d_x_data = d_x->data<T>();
     auto* y_data = d_y->data<T>();
     auto* mean_data = mean->data<T>();
     auto* var_data = var->data<T>();

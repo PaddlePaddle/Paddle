@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,7 +84,6 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'epsilon' should be between 0.0 and 1.0.");
         });
     AddAttr<int>("groups", "The number of groups that divided from channels.")
-        .SetDefault(32)
         .AddCustomChecker([](const int &groups) {
           PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
         });
