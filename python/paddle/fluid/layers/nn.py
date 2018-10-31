@@ -1825,7 +1825,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type):
+def sequence_pool(input, pool_type, is_test=False):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -1862,6 +1862,7 @@ def sequence_pool(input, pool_type):
         input(variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
+        is_test(bool, Default False): Used distinguish training from scoring mode.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -1889,7 +1890,8 @@ def sequence_pool(input, pool_type):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper()})
+        attrs={"pooltype": pool_type.upper(),
+               "is_test": is_test})
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
