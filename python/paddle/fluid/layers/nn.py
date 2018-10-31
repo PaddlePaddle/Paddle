@@ -5570,6 +5570,7 @@ def dice_loss(input, label, epsilon=0.00001):
 def image_resize(input,
                  out_shape=None,
                  scale=None,
+                 actual_shape=None,
                  name=None,
                  resample='BILINEAR'):
     """
@@ -5586,13 +5587,19 @@ def image_resize(input,
         input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|Variable|None): Output shape of image resize
+        out_shape(list|tuple|None): Output shape of image resize
                                     layer, the shape is (out_h, out_w).
                                     Default: None
         scale(float|None): The multiplier for the input height or width.
                          At least one of out_shape or scale must be set.
                          And out_shape has a higher priority than scale.
                          Default: None
+        actual_shape(Variable): An optional input. If provided, image resize 
+                                according to this given shape rather than 
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the 
+                                highest priority.
+                                Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
         resample(str): The resample method. It can only be 'BILINEAR' currently.
@@ -5601,6 +5608,13 @@ def image_resize(input,
     Returns:
         Variable: The output is a 4-D tensor of the shape
         (num_batches, channls, out_h, out_w).
+
+    Raises:
+        TypeError: out_shape should be a list or tuple.
+        TypeError: actual_shape should either be Variable or None.
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR' currently.
+        ValueError: One of out_shape and scale must not be None.
+        ValueError: out_shape length should be 2.
 
     Examples:
         .. code-block:: python
@@ -5612,7 +5626,7 @@ def image_resize(input,
         raise ValueError(
             "The 'resample' of image_resize can only be 'BILINEAR' currently.")
     if out_shape is None and scale is None:
-        raise ValueError("One of out_shape and scale must not be None")
+        raise ValueError("One of out_shape and scale must not be None.")
     helper = LayerHelper('bilinear_interp', **locals())
     dtype = helper.input_dtype()
 
@@ -5623,18 +5637,21 @@ def image_resize(input,
     out_w = 0
     inputs = {"X": input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape) and
-                len(out_shape) == 2) and not isinstance(out_shape, Variable):
-            raise ValueError('out_shape should be a list or tuple or variable')
-        if _is_list_or_turple_(out_shape):
-            out_shape = list(map(int, out_shape))
-            out_h = out_shape[0]
-            out_w = out_shape[1]
-        else:
-            inputs['OutSize'] = out_shape
+        if not (_is_list_or_turple_(out_shape)):
+            raise TypeError("out_shape should be a list or tuple.")
+        if len(out_shape) != 2:
+            raise ValueError("out_shape length should be 2.")
+        out_shape = list(map(int, out_shape))
+        out_h = out_shape[0]
+        out_w = out_shape[1]
     else:
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
+
+    if isinstance(actual_shape, Variable):
+        inputs["OutSize"] = actual_shape
+    elif actual_shape is not None:
+        raise TypeError("actual_shape should either be Variable or None.")
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

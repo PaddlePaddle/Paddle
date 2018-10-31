@@ -24,7 +24,7 @@ class BilinearInterpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input_t = ctx.Input<Tensor>("X");      // float tensor
     auto* output_t = ctx.Output<Tensor>("Out");  // float tensor
-    auto out_dims = output_t->dims();
+    auto in_dims = input_t->dims();
     auto* input = input_t->data<T>();
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
@@ -35,7 +35,7 @@ class BilinearInterpKernel : public framework::OpKernel<T> {
       out_w = out_size_data[1];
     }
     auto* output = output_t->mutable_data<T>(
-        {out_dims[0], out_dims[1], out_h, out_w}, ctx.GetPlace());
+        {in_dims[0], in_dims[1], out_h, out_w}, ctx.GetPlace());
     int batch_size = input_t->dims()[0];
     int channels = input_t->dims()[1];
     int in_h = input_t->dims()[2];
