@@ -634,7 +634,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       memory::dims padding_dims = {paddings[0], paddings[1]};
 
       auto conv_desc = mkldnn::convolution_forward::desc(
-          mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+          mkldnn::prop_kind::forward_scoring, mkldnn::convolution_direct, src, weights,
           dst, stride_dims, padding_dims, padding_dims,
           mkldnn::padding_kind::zero);
 
@@ -683,7 +683,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       memory::dims padding_dims = {paddings[0], paddings[1]};
 
       auto conv_desc = mkldnn::convolution_forward::desc(
-          mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+          mkldnn::prop_kind::forward_scoring, mkldnn::convolution_direct, src, weights,
           bias, dst, stride_dims, padding_dims, padding_dims,
           mkldnn::padding_kind::zero);
 
