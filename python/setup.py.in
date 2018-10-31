@@ -174,6 +174,18 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             raise Exception("patch libmkldnn.so failed, command: %s" % command)
         package_data['paddle.libs']+=['libmkldnn.so.0']
         shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+if '${WITH_NGRAPH}' == 'ON':
+    if '${CMAKE_BUILD_TYPE}' == 'Release':
+        # only change rpath in Release mode.
+        command = "patchelf --set-rpath '$ORIGIN/' ${NGRAPH_SHARED_LIB}"
+        if os.system(command) != 0:
+            raise Exception("patch ${NGRAPH_SHARED_LIB_NAME} failed, command: %s" % command)
+    shutil.copy('${NGRAPH_SHARED_LIB}', libs_path)
+    shutil.copy('${NGRAPH_CPU_LIB}', libs_path)
+    shutil.copy('${NGRAPH_TBB_LIB}', libs_path)
+    package_data['paddle.libs']+=['${NGRAPH_SHARED_LIB_NAME}',
+                                  '${NGRAPH_CPU_LIB_NAME}',
+                                  '${NGRAPH_TBB_LIB_NAME}']
 # remove unused paddle/libs/__init__.py
 os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
