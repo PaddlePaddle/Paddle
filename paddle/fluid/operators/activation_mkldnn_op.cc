@@ -136,8 +136,12 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
     dev_ctx.SetBlob(key_src_mem, src_memory);
 
     // create primitive descriptor for activation forward and save it
+    bool is_test = ctx.Attr<bool>("is_test");
+    auto mkldnn_forward_prop_kind = is_test
+                                        ? mkldnn::prop_kind::forward_inference
+                                        : mkldnn::prop_kind::forward_training;
     auto forward_desc = mkldnn::eltwise_forward::desc(
-        mkldnn::prop_kind::forward_training, algorithm,
+        mkldnn_forward_prop_kind, algorithm,
         src_memory->get_primitive_desc().desc(), alpha, beta);
     auto forward_pd = std::make_shared<mkldnn::eltwise_forward::primitive_desc>(
         forward_desc, mkldnn_engine);

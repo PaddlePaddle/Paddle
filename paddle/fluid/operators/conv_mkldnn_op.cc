@@ -390,11 +390,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
       conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
                                      strides, paddings, mkldnn_engine,
-                                     fuse_relu, fuse_residual_conn);
+                                     fuse_relu, fuse_residual_conn, is_test);
     } else {
-      conv_pd =
-          ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
-                               mkldnn_engine, fuse_relu, fuse_residual_conn);
+      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
+                                     paddings, mkldnn_engine, fuse_relu,
+                                     fuse_residual_conn, is_test);
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -511,14 +511,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        const mkldnn::engine& engine, const bool fuse_relu,
-                       const bool fuse_residual_conn) const {
+                       const bool fuse_residual_conn, bool is_test) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
+    auto mkldnn_forward_prop_kind = is_test
+                                        ? mkldnn::prop_kind::forward_inference
+                                        : mkldnn::prop_kind::forward_training;
     auto conv_desc = mkldnn::convolution_forward::desc(
-        mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
-        dst, stride_dims, padding_dims, padding_dims,
-        mkldnn::padding_kind::zero);
+        mkldnn_forward_prop_kind, mkldnn::convolution_direct, src, weights, dst,
+        stride_dims, padding_dims, padding_dims, mkldnn::padding_kind::zero);
 
     mkldnn::primitive_attr conv_attr =
         CreatePostOps(fuse_relu, fuse_residual_conn);
@@ -536,12 +538,15 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        const mkldnn::engine& engine, const bool fuse_relu,
-                       const bool fuse_residual_conn) const {
+                       const bool fuse_residual_conn, bool is_test) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
+    auto mkldnn_forward_prop_kind = is_test
+                                        ? mkldnn::prop_kind::forward_inference
+                                        : mkldnn::prop_kind::forward_training;
     auto conv_desc = mkldnn::convolution_forward::desc(
-        mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+        mkldnn_forward_prop_kind, mkldnn::convolution_direct, src, weights,
         bias, dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
