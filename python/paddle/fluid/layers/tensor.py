@@ -215,7 +215,7 @@ def lod_tensor_array_concat(input, axis=1, name=None):
            out = fluid.layers.concat(input=weights_array)
     """
     helper = LayerHelper('lod_tensor_array_concat', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='lod_tensor_array_concat',
         inputs={'X': input},
