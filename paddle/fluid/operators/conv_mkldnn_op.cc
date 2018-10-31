@@ -564,6 +564,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
+    if(is_INT8 && fuse_residual_conn){
+        output->mutable_data<uint8_t>(ctx.GetPlace());
+    }
+
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
   }
