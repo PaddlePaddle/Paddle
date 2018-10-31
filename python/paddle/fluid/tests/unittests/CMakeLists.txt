@@ -92,4 +92,6 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SE
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 150)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
-py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
+if(NOT APPLE)
+    py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
+endif()
