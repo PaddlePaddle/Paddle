@@ -221,12 +221,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        if check_error_log:
-            ps0_pipe = open("/tmp/ps0_err.log", "wb")
-            ps1_pipe = open("/tmp/ps1_err.log", "wb")
-        else:
-            ps0_pipe = subprocess.PIPE
-            ps1_pipe = subprocess.PIPE
+        ps0_pipe = open("/tmp/ps0_err.log", "wb")
+        ps1_pipe = open("/tmp/ps1_err.log", "wb")
 
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
