@@ -62,7 +62,6 @@ static void *dlopen(const char *filename, int flag) {
   }
   return reinterpret_cast<void *>(hModule);
 }
-
 #endif  // !_WIN32
 
 static void ExecShellCommand(const std::string &cmd, std::string *message) {

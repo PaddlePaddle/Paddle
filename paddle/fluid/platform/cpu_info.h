@@ -16,6 +16,18 @@ limitations under the License. */
 
 #include <stddef.h>
 
+#ifdef _WIN32
+#if defined(__AVX2__)
+#include <immintrin.h>  //avx2
+#elif defined(__AVX__)
+#include <intrin.h>  //avx
+#endif               // AVX
+#else                // WIN32
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
+#endif  // WIN32
+
 namespace paddle {
 namespace platform {
 
