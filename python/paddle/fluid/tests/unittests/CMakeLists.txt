@@ -18,6 +18,9 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
     LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     LIST(REMOVE_ITEM TEST_OPS test_dist_ctr)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_batch_merge)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
 endif(NOT WITH_DISTRIBUTE)
 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
