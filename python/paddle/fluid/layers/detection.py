@@ -1424,7 +1424,36 @@ def generate_proposal_labels(rpn_rois,
                              use_random=True):
     """
     ** Generate proposal labels Faster-RCNN **
-    TODO(buxingyuan): Add Document
+    This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
+    to sample foreground boxes and background boxes, and compute loss target.
+
+    RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
+    were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
+    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
+    If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
+    then it was considered as a background sample.
+    After all foreground and background boxes are chosen (so called Rois),
+    then we apply random sampling to make sure
+    the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
+
+    For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
+    Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+
+    Args:
+        rpn_rois(Variable): A 2-D LoDTensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth.
+        is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd.
+        gt_boxes(Variable): A 2-D LoDTensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
+
+        batch_size_per_im(int): Batch size of rois per images.
+        fg_fraction(float): Foreground fraction in total batch_size_per_im.
+        fg_thresh(float): Overlap threshold which is used to chose foreground sample.
+        bg_thresh_hi(float): Overlap threshold upper bound which is used to chose background sample.
+        bg_thresh_lo(float): Overlap threshold lower bound which is used to chose background sample.
+        bbox_reg_weights(list|tuple): Box regression weights.
+        class_nums(int): Class number.
+        use_random(bool): Use random sampling to choose foreground and background boxes.
     """
 
     helper = LayerHelper('generate_proposal_labels', **locals())
@@ -1487,7 +1516,7 @@ def generate_proposals(scores,
                        eta=1.0,
                        name=None):
     """
-    ** Generate proposal labels Faster-RCNN **
+    ** Generate proposal Faster-RCNN **
 	
 	This operation proposes RoIs according to each box with their probability to be a foreground object and 
 	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals

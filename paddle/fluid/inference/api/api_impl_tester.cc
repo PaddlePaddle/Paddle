@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 #ifdef __clang__
-#define ACC_DIFF 4e-3
+#define ACC_DIFF 4e-2
 #else
-#define ACC_DIFF 1e-3
+#define ACC_DIFF 1e-2
 #endif
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -187,7 +187,7 @@ void MainThreadsWord2Vec(bool use_gpu) {
   std::vector<std::thread> threads;
   for (int tid = 0; tid < num_jobs; ++tid) {
     threads.emplace_back([&, tid]() {
-      auto predictor = main_predictor->Clone();
+      auto predictor = CreatePaddlePredictor(config);
       auto& local_inputs = paddle_tensor_feeds[tid];
       std::vector<PaddleTensor> local_outputs;
       ASSERT_TRUE(predictor->Run(local_inputs, &local_outputs));
@@ -245,7 +245,7 @@ void MainThreadsImageClassification(bool use_gpu) {
   std::vector<std::thread> threads;
   for (int tid = 0; tid < num_jobs; ++tid) {
     threads.emplace_back([&, tid]() {
-      auto predictor = main_predictor->Clone();
+      auto predictor = CreatePaddlePredictor(config);
       auto& local_inputs = paddle_tensor_feeds[tid];
       std::vector<PaddleTensor> local_outputs;
       ASSERT_TRUE(predictor->Run(local_inputs, &local_outputs));
