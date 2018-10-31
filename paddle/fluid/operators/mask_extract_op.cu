@@ -104,7 +104,6 @@ class MaskExtractGPUKernel : public framework::OpKernel<T> {
           out_idx += 1;
         }
     }
-    std::cout << "flag 6"  << std::endl;
     TensorCopySync(offset_cpu, ctx.GetPlace(), offset); 
     TensorCopySync(ids_cpu, ctx.GetPlace(), ids); 
     

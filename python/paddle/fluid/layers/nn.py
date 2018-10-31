@@ -4671,6 +4671,23 @@ def multiplex(inputs, index):
         outputs={'Out': [out]})
     return out
 
+def mask_extract(input, mask):
+    """
+    """
+
+    helper = LayerHelper('mask_extract', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    ids = helper.create_variable_for_type_inference(mask.dtype)
+    offset = helper.create_variable_for_type_inference(mask.dtype)
+    helper.append_op(
+        type='mask_extract',
+        inputs={"X": input,
+                "Mask": mask},
+        outputs={'Out': out,
+                 'Offset': offset,
+                 'Ids': ids})
+    return out, ids
+    
 
 def softmax_with_cross_entropy(logits,
                                label,
