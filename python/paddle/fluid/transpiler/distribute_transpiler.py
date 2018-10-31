@@ -35,6 +35,7 @@ import sys
 import numpy as np
 import collections
 import six
+import logging
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -768,6 +769,7 @@ in a single call.")
                 lookup_table_var_name_to_block_id)
 
         if len(optimize_blocks) == 0:
+            logging.warn("pserver [" + str(endpoint) + "] has no optimize block!!")
             pre_block_idx = pserver_program.num_blocks - 1
             empty_block = pserver_program._create_block(pre_block_idx)
             optimize_blocks.append(empty_block)
@@ -1282,7 +1284,6 @@ to transpile() call.")
         }
         outputs = {"ParamOut": [param_var]}
         # only support sgd now
-        import logging
         logging.warn(
             "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
             + table_opt_op.type)
