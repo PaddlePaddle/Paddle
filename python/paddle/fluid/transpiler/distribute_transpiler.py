@@ -767,7 +767,7 @@ in a single call.")
             prefetch_var_name_to_block_id.extend(
                 lookup_table_var_name_to_block_id)
 
-        if optimize_blocks.size() == 0:
+        if len(optimize_blocks) == 0:
             pre_block_idx = pserver_program.num_blocks - 1
             empty_block = pserver_program._create_block(pre_block_idx)
             optimize_blocks.append(empty_block)
