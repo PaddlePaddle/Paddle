@@ -87,13 +87,14 @@ copy(boost_lib
   DSTS ${dst_dir}
   DEPS boost
 )
-
+if(NOT WIN32)
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/xxhash")
 copy(xxhash_lib
   SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
   DSTS ${dst_dir} ${dst_dir}/lib
   DEPS xxhash
 )
+endif(NOT WIN32)
 
 if(NOT PROTOBUF_FOUND)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/protobuf")
