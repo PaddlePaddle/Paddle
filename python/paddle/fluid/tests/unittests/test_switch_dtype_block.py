@@ -81,8 +81,8 @@ def train(nn_type, use_cuda):
     hidden = fluid.layers.cast(hidden, np.float32)
     prediction, avg_loss, acc = loss_net(hidden, label)
     # test_program = fluid.default_main_program().clone(for_test=True)
-    # optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    # optimizer.minimize(avg_loss)
+    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
