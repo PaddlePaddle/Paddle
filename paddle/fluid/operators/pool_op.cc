@@ -242,6 +242,23 @@ Example:
        W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
+  For exclusive = true:
+       $$
+       hstart = i * strides[0] - paddings[0]
+       hend = hstart + ksize[0]
+       wstart = j * strides[1] - paddings[1]
+       wend = wstart + ksize[1]
+       Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
+       $$
+  For exclusive = false:
+       $$
+       hstart = max(0, i * strides[0] - paddings[0])
+       hend = min(H, hstart + ksize[0])
+       wstart = max(0, j * strides[1] - paddings[1])
+       wend = min(W, wstart + ksize[1])
+       Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+       $$
+
 )DOC");
 }
 
