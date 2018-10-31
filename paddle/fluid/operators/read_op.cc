@@ -72,7 +72,13 @@ class ReadOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(dev_place);
     platform::RecordEvent record_event(Type(), &ctx);
 
+    // auto read_queue_start = std::chrono::system_clock::now();
     reader->ReadNext(&ins);
+    // auto read_queue_end = std::chrono::system_clock::now();
+    // std::chrono::duration<double> read_queue_diff = read_queue_end -
+    // read_queue_start;
+    // LOG(ERROR) << "read_queue end, cost: " << read_queue_diff.count();
+
     if (ins.empty()) {
       if (Attr<bool>("throw_eof_exp")) {
         PADDLE_THROW_EOF();
@@ -84,13 +90,22 @@ class ReadOp : public framework::OperatorBase {
         }
       }
     }
+
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
+
+    // auto set_data_start = std::chrono::system_clock::now();
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
+      // LOG(ERROR) << out_arg_names[i] << " " << ins[i].dims()[0] << ", " <<
+      // ins[i].dims()[1];
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }
+    // auto set_data_end = std::chrono::system_clock::now();
+    // std::chrono::duration<double> set_data_diff = set_data_end -
+    // set_data_start;
+    // LOG(ERROR) << "set_data end, cost: " << set_data_diff.count();
   }
 };
 

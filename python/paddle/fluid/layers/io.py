@@ -655,7 +655,10 @@ def py_reader(capacity,
     reader.exited = False
 
     def start_provide_thread(func):
+        import time
+
         def __provider_thread__():
+            t1 = time.time()
             for tensors in func():
                 array = core.LoDTensorArray()
                 for item in tensors:
@@ -669,6 +672,8 @@ def py_reader(capacity,
                 if reader.exited:
                     break
                 feed_queue.push(array)
+                print('push tensor array time:', time.time() - t1)
+                t1 = time.time()
                 if reader.exited:
                     break
             feed_queue.close()
