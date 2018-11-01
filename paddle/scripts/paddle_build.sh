@@ -153,7 +153,6 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
-        -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
@@ -186,7 +185,6 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-        -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
@@ -653,7 +651,7 @@ function gen_capi_package() {
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Generating fluid library for train and inference ...
@@ -666,7 +664,7 @@ EOF
 }
 
 function tar_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Taring fluid library for train and inference ...
@@ -681,7 +679,7 @@ EOF
 }
 
 function test_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Testing fluid library for inference ...

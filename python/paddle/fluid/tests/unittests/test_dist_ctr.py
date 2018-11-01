@@ -18,6 +18,7 @@ import unittest
 from test_dist_base import TestDistBase
 
 
+# FIXME(tangwei): sum op can not handle when inputs is empty.
 class TestDistCTR2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
