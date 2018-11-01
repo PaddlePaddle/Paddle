@@ -1065,7 +1065,12 @@ to transpile() call.")
             continue_search_lookup_table_op = False
             all_ops = program.global_block().ops
             for op in all_ops:
-                if op.type == LOOKUP_TABLE_TYPE:
+                if op.type == LOOKUP_TABLE_TYPE and self.table_name == op.input(
+                        "W")[0]:
+                    if not op.attr('is_distributed'):
+                        raise RuntimeError(
+                            "lookup_table_op that lookup an distributed embedding table"
+                            "should set is_distributed to true")
                     continue_search_lookup_table_op = True
 
                     lookup_table_op_index = lookup_table_op_index if lookup_table_op_index != -1 else list(
