@@ -34,11 +34,23 @@ BufferedAllocator::BufferedAllocator(std::unique_ptr<Allocator>&& allocator,
   InitAndEnforceCheck(std::move(allocator), division_plan);
 }
 
-BufferedAllocator::~BufferedAllocator() {
+BufferedAllocator::~BufferedAllocator() { FlushImpl(); }
+
+void BufferedAllocator::FlushImpl() {
   for (auto& v : allocations_) {
     for (auto& pair : v) {
       underlying_allocator_->FreeUniquePtr(std::move(pair.second));
     }
+    v.clear();
+  }
+}
+
+void BufferedAllocator::Flush() {
+  if (mtx_) {
+    std::lock_guard<std::mutex> lock(*mtx_);
+    FlushImpl();
+  } else {
+    FlushImpl();
   }
 }
 
@@ -77,8 +89,7 @@ void BufferedAllocator::InsertAllocationImpl(
     std::unique_ptr<Allocation>&& allocation) {
   auto size = allocation->size();
   auto idx = GetListIndex(size);
-  allocations_[idx].insert(std::pair<size_t, std::unique_ptr<Allocation>>(
-      size, std::move(allocation)));
+  allocations_[idx].emplace(size, std::move(allocation));
 }
 
 void BufferedAllocator::InsertAllocation(
@@ -91,9 +102,8 @@ void BufferedAllocator::InsertAllocation(
   }
 }
 
-bool BufferedAllocator::Match(const std::unique_ptr<Allocation>& allocation,
-                              size_t size) {
-  return (allocation->size() >> 1) <= size;
+bool BufferedAllocator::Match(size_t actual_size, size_t requested_size) {
+  return (actual_size >> 1) < requested_size;
 }
 
 size_t BufferedAllocator::GetListIndex(size_t size) {
@@ -108,11 +118,28 @@ std::unique_ptr<Allocation> BufferedAllocator::RemoveAllocationImpl(
   auto& allocation_map = allocations_[idx];
   auto it = allocation_map.lower_bound(size);
   // Only remove allocation whose size is not more than twice of requested size
-  if (it != allocation_map.end() && Match(it->second, size)) {
-    auto ret = std::move(it->second);
-    allocation_map.erase(it);
-    return ret;
+  if (it != allocation_map.end()) {
+    if (Match(it->second->size(), size)) {
+      auto ret = std::move(it->second);
+      allocation_map.erase(it);
+      return ret;
+    } else {
+      return nullptr;
+    }
   } else {
+    while (++idx < allocations_.size() && Match(division_plan_[idx], size)) {
+      auto& allocation_map = allocations_[idx];
+      if (!allocation_map.empty()) {
+        auto it = allocation_map.begin();
+        if (Match(it->second->size(), size)) {
+          auto ret = std::move(it->second);
+          allocation_map.erase(it);
+          return ret;
+        } else {
+          return nullptr;
+        }
+      }
+    }
     return nullptr;
   }
 }
@@ -170,6 +197,10 @@ void BufferedAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
 }
 
 bool BufferedAllocator::IsAllocThreadSafe() const { return mtx_ != nullptr; }
+
+const std::vector<size_t>& BufferedAllocator::GetDivisionPlan() const {
+  return division_plan_;
+}
 
 }  // namespace allocation
 }  // namespace memory

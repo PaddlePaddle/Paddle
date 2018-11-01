@@ -37,11 +37,16 @@ class BufferedAllocator : public UnmanagedAllocator {
 
   ~BufferedAllocator();
 
-  std::unique_ptr<Allocation> Allocate(size_t size, Allocator::Attr) override;
+  std::unique_ptr<Allocation> Allocate(
+      size_t size, Allocator::Attr attr = Allocator::Attr::kDefault) override;
 
   void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
 
   bool IsAllocThreadSafe() const override;
+
+  const std::vector<size_t>& GetDivisionPlan() const;
+
+  void Flush();
 
  private:
   void InitAndEnforceCheck(std::unique_ptr<Allocator>&& allocator,
@@ -50,12 +55,14 @@ class BufferedAllocator : public UnmanagedAllocator {
   void InsertAllocation(std::unique_ptr<Allocation>&& allocation);
   void InsertAllocationImpl(std::unique_ptr<Allocation>&& allocation);
 
-  static bool Match(const std::unique_ptr<Allocation>& allocation, size_t size);
+  static bool Match(size_t actual_size, size_t requested_size);
   std::unique_ptr<Allocation> RemoveAllocation(size_t size);
   std::unique_ptr<Allocation> RemoveAllocationImpl(size_t size);
 
   void FreeAllocations(size_t size);
   void FreeAllocationsImpl(size_t size);
+
+  void FlushImpl();
 
   size_t GetListIndex(size_t size);
 
