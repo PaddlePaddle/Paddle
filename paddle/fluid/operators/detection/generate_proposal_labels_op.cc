@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {

@@ -128,7 +128,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
       return cpu.has(Cpu::tAVX);
     case avx2:
       return cpu.has(Cpu::tAVX2);
-    case avx512_common:
+    case avx512f:
       return cpu.has(Cpu::tAVX512F);
     case avx512_core:
       return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
