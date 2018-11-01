@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -37,12 +37,12 @@ class NearestNeighborInterpKernel : public framework::OpKernel<T> {
       out_w = out_size_data[1];
     }
 
-    const int in_n = input->dims()[0];
-    const int in_c = input->dims()[1];
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
     const int in_h = input->dims()[2];
     const int in_w = input->dims()[3];
 
-    output->mutable_data<T>({in_n, in_c, out_h, out_w}, ctx.GetPlace());
+    output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
     auto& device_ctx =
         ctx.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, T> zero;
@@ -61,11 +61,11 @@ class NearestNeighborInterpKernel : public framework::OpKernel<T> {
     auto input_t = EigenTensor<T, 4>::From(*input);
     auto output_t = EigenTensor<T, 4>::From(*output);
     for (int k = 0; k < out_h; k++) {  // loop for images
+      int in_k = static_cast<int>(round(ratio_h * k));
       for (int l = 0; l < out_w; l++) {
-        int in_k = static_cast<int>(round(ratio_h * k));
         int in_l = static_cast<int>(round(ratio_w * l));
-        for (int i = 0; i < in_n; i++) {    // loop for batches
-          for (int j = 0; j < in_c; j++) {  // loop for channels
+        for (int i = 0; i < n; i++) {    // loop for batches
+          for (int j = 0; j < c; j++) {  // loop for channels
             output_t(i, j, k, l) = input_t(i, j, in_k, in_l);
           }
         }
@@ -78,6 +78,7 @@ template <typename T>
 class NearestNeighborInterpGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
@@ -90,11 +91,12 @@ class NearestNeighborInterpGradKernel : public framework::OpKernel<T> {
       out_w = out_size_data[1];
     }
 
-    const int in_n = input_grad->dims()[0];
-    const int in_c = input_grad->dims()[1];
-    const int in_h = input_grad->dims()[2];
-    const int in_w = input_grad->dims()[3];
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
 
+    input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
     auto& device_ctx =
         ctx.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, T> zero;
@@ -113,11 +115,11 @@ class NearestNeighborInterpGradKernel : public framework::OpKernel<T> {
     auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
     auto output_grad_t = EigenTensor<T, 4>::From(*output_grad);
     for (int k = 0; k < out_h; k++) {  // loop for images
+      int in_k = static_cast<int>(round(ratio_h * k));
       for (int l = 0; l < out_w; l++) {
-        int in_k = static_cast<int>(round(ratio_h * k));
         int in_l = static_cast<int>(round(ratio_w * l));
-        for (int i = 0; i < in_n; i++) {    // loop for batches
-          for (int j = 0; j < in_c; j++) {  // loop for channels
+        for (int i = 0; i < n; i++) {    // loop for batches
+          for (int j = 0; j < c; j++) {  // loop for channels
             input_grad_t(i, j, in_k, in_l) += output_grad_t(i, j, k, l);
           }
         }
