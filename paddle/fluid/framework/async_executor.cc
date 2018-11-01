@@ -168,13 +168,9 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
     if (var->Persistable()) {
       auto* ptr = root_scope_->Var(var->Name());
       CreateTensor(ptr, var->GetType());
-      // LOGERR("create Persistable var[%s] finished",
-      //      var->Name().c_str());
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
       CreateTensor(ptr, var->GetType());
-      // LOGERR("create unpersistable var[%s] finished",
-      //      var->Name().c_str());
     }
   }
 }
@@ -530,7 +526,7 @@ void AsyncExecutor::PrepareThreads(const ProgramDesc& host_program) {
     workers_[i]->CreateThreadScope(host_program);
     workers_[i]->SetInspectVarName(inspect_var_name_);
     workers_[i]->SetModelParamNames(model_param_names_);
-    workers_[i]->SetSparseCommData(sparse_comm_data_);
+    workers_[i]->SetSparseCommData(sparse_comm_data_); 
     workers_[i]->SetMainProgram(host_program);
     workers_[i]->SetModelPrefix(model_prefix_);
   }
@@ -540,9 +536,7 @@ void AsyncExecutor::PrepareThreads(const ProgramDesc& host_program) {
     // filelist is static so that we only add filelist once
     workers_[0]->AddTrainFile(filelist_[i]);
   }
-  // mpi_wrapper::ModelParam model_param(true);
-  // workers_[0]->register_parallel_training_param(model_param);
-
+  
   for (unsigned i = 0; i < thread_num_; ++i) {
     // new a datafeed here
     std::shared_ptr<DataFeed> local_feed = CreateDataFeed(feed_name_.c_str());

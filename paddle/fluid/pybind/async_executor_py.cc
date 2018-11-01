@@ -60,11 +60,7 @@ void BindAsyncExecutor(py::module* m) {
         for (int i = 0; i < base_param.model_param_names_size(); ++i) {
           param_names.push_back(base_param.model_param_names(i));
         }
-#ifdef FORK_V1
-        paddle::framework::InitDevices();
-#else
         paddle::framework::InitDevices(false);
-#endif
         self.InitRootScope(scope);
         self.SetThreadNum(base_param.thread_num());
         self.SetMaxTrainingEpoch(base_param.max_epoch());
