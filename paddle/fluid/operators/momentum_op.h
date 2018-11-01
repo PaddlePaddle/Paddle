@@ -28,6 +28,54 @@ using framework::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
 
+class MomentumOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(param) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(grad) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Velocity"),
+                   "Input(velocity) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of Momentum should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("VelocityOut"),
+                   "Output(VelocityOut) of Momentum should not be null.");
+
+    auto param_dim = ctx->GetInputDim("Param");
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Grad"),
+          "Param and Grad input of MomentumOp should have the same dimension.");
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Velocity"),
+          "Param and Velocity of MomentumOp should have the same dimension.");
+    }
+    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
+                      "Learning_rate should be a scalar");
+
+    ctx->SetOutputDim("ParamOut", param_dim);
+    ctx->SetOutputDim("VelocityOut", param_dim);
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
 template <typename T>
 class CPUDenseMomentumFunctor {
  private:
