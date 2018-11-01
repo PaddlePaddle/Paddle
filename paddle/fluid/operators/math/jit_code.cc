@@ -35,7 +35,7 @@ bool VMulJitCode::init(int d) {
 }
 
 void VMulJitCode::generate() {
-  preCode();
+  // do not need push stack, and do not need save avx512reg if do not use avx512
   int stride = sizeof(float) * AVX_FLOAT_BLOCK;
   for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
     vmovups(ymm_src1, ptr[param1 + i * stride]);
@@ -43,7 +43,7 @@ void VMulJitCode::generate() {
     vmulps(ymm_dst, ymm_src1, ymm_src2);
     vmovups(ptr[param3 + stride * i], ymm_dst);
   }
-  postCode();
+  ret();
 }
 
 }  // namespace gen
