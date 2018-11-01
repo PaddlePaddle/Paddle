@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <string>
-#include "paddle/fluid/operators/math/jit_gen.h"
+#include "paddle/fluid/operators/math/jit_code.h"
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -30,30 +30,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
-
-namespace jit = platform::jit;  // remove me
-
-using namespace platform::jit;  // NOLINT
-
-/* VMUL JitKernel */
-struct VMulJitCode : public gen::JitCode {
-  DECLARE_JIT_CODE(VMulJitCode);
-  explicit VMulJitCode(size_t code_size = 256 * 1024, void* code_ptr = nullptr)
-      : gen::JitCode(code_size, code_ptr) {}
-  static bool init(int d) {
-    if (MayIUse(avx) || MayIUse(avx2)) {
-      return d % AVX_FLOAT_BLOCK == 0;
-    } else if (MayIUse(avx512f)) {
-      return d % AVX512_FLOAT_BLOCK == 0;
-    } else {
-      return false;
-    }
-  }
-  void generate() override {
-    preCode();
-    postCode();
-  }
-};
+namespace jit = platform::jit;
 
 template <typename T>
 void VMulRefer(const T* x, const T* y, T* z, int n) {
@@ -76,6 +53,7 @@ void VMulMKL<double>(const double* x, const double* y, double* z, int n) {
 }
 #endif
 
+/* VMUL JitKernel */
 template <typename T>
 class VMulKernelImpl : public VMulKernel<T> {
  public:
@@ -88,7 +66,7 @@ class VMulKernelImpl : public VMulKernel<T> {
   explicit VMulKernelImpl(int d) : VMulKernel<T>() {
     if (useJIT(d)) {
       constexpr size_t sz = 256 * 1024;  // TODO(TJ): should be related with d
-      jitcode_.reset(new VMulJitCode(sz));
+      jitcode_.reset(new gen::VMulJitCode(d, sz));
       this->Compute =
           jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
       return;
@@ -103,12 +81,12 @@ class VMulKernelImpl : public VMulKernel<T> {
   }
 
  private:
-  std::unique_ptr<VMulJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VMulJitCode> jitcode_{nullptr};
 };
 
 template <>
 bool VMulKernelImpl<float>::useJIT(int d) {
-  return VMulJitCode::init(d);
+  return gen::VMulJitCode::init(d);
 }
 
 template <>
