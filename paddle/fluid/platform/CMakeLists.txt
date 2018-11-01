@@ -27,12 +27,6 @@ ENDIF()
 cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
-set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
-set(MYDEPS ${MYDEPS} libcmt shlwapi)
-set(MYDEPS ${MYDEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX})
-set(MYDEPS ${MYDEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX})
-set(MYDEPS ${MYDEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX})
-
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
 
 cc_library(place SRCS place.cc DEPS enforce boost)
@@ -64,7 +58,6 @@ nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
-target_link_libraries(cudnn_helper_test ${MYDEPS})
 nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 
 
