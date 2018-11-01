@@ -194,7 +194,7 @@ class CompositeMetric(MetricBase):
                                or soft-label, should custom the corresponding update rule.
         """
         for m in self._metrics:
-            ans.append(m.update(preds, labels))
+            m.update(preds, labels)
 
     def eval(self):
         """
