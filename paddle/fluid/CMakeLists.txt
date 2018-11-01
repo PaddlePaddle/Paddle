@@ -9,8 +9,6 @@ add_subdirectory(pybind)
 add_subdirectory(recordio)
 endif(NOT WIN32)
 
-if(WITH_INFERENCE)
-  # NOTE: please add subdirectory inference at last.
-  add_subdirectory(inference)
-  add_subdirectory(train)
-endif()
+# NOTE: please add subdirectory inference at last.
+add_subdirectory(inference)
+add_subdirectory(train)

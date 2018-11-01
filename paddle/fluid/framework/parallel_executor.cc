@@ -187,6 +187,10 @@ void ParallelExecutor::BCastParamsToDevices(
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
+    if (!main_tensor.IsInitialized()) {
+      VLOG(3) << "one in var not inited, return!";
+      continue;
+    }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -299,10 +303,8 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 }
 
 ParallelExecutor::~ParallelExecutor() {
-  const auto dev_ctxs =
-      platform::DeviceContextPool::Instance().GetAllDeviceContexts();
-  for (auto &dev_ctx : dev_ctxs) {
-    dev_ctx->Wait();
+  for (auto &p : member_->places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
 
   if (member_->own_local_scope_) {

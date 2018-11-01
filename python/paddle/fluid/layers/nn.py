@@ -158,6 +158,8 @@ __all__ = [
     'sequence_reverse',
     'affine_channel',
     'hash',
+    'log_loss',
+    'add_position_encoding',
 ]
 
 
@@ -748,7 +750,7 @@ def dynamic_gru(input,
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
     batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    if h_0 != None:
+    if h_0:
         assert h_0.shape == (
             batch_size, size
         ), 'The shape of h0 should be(batch_size, %d)' % size
@@ -1824,7 +1826,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type):
+def sequence_pool(input, pool_type, is_test=False):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -1861,6 +1863,7 @@ def sequence_pool(input, pool_type):
         input(variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
+        is_test(bool, Default False): Used distinguish training from scoring mode.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -1888,7 +1891,8 @@ def sequence_pool(input, pool_type):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper()})
+        attrs={"pooltype": pool_type.upper(),
+               "is_test": is_test})
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -3017,7 +3021,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
             x = fluid.layers.data(name='y', shape=[10, 5],
                              dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            pad_value = fluid.layers.assign(
+                input=numpy.array([0], dtype=numpy.float32))
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
     """
 
@@ -7633,4 +7638,100 @@ def hash(input, hash_size, num_hash=1, name=None):
         outputs={'Out': out},
         attrs={'num_hash': num_hash,
                'mod_by': hash_size})
+    return out
+
+
+def log_loss(input, label, epsilon=1e-4, name=None):
+    """
+    **Negative Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    negative log loss.
+
+    .. math::
+
+        Out = -label * \\log{(input + \\epsilon)}
+              - (1 - label) * \\log{(1 - input + \\epsilon)}
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        epsilon (float): epsilon
+        name (string): the name of log_loss
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the negative log loss.
+
+    Examples:
+        .. code-block:: python
+
+          prob = fluid.layers.sigmoid(net)
+          cost = fluid.layers.log_loss(input=prob, label=label)
+    """
+    helper = LayerHelper('log_loss', **locals())
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+
+    helper.append_op(
+        type='log_loss',
+        inputs={'Predicted': [input],
+                'Labels': [label]},
+        outputs={'Loss': [loss]},
+        attrs={'epsilon': epsilon})
+    return loss
+
+
+def add_position_encoding(input, alpha, beta, name=None):
+    """
+    **Add Position Encoding Layer**
+
+    This layer accepts an input 3D-Tensor of shape [N x M x P], and return an
+    output Tensor of shape [N x M x P] with positional encoding value.
+
+    Refer to `Attention Is All You Need<http://arxiv.org/pdf/1706.03762.pdf>`_ .
+
+    .. math::
+        PE(pos, 2i) = \\sin{(pos / 10000^{2i / P})}   \\\\
+        PE(pos, 2i + 1) = \\cos{(pos / 10000^{2i / P})}  \\\\
+        Out(:, pos, i) = \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
+
+    Where:
+    * PE(pos, 2i): the increment for the number at even position
+    * PE(pos, 2i + 1): the increment for the number at odd position
+
+    Args:
+        input (Variable): 3-D input tensor with shape [N x M x P]
+        alpha (float): multiple of Input Tensor
+        beta (float): multiple of Positional Encoding Tensor
+        name (string): the name of position encoding layer
+
+    Returns:
+        Variable: A 3-D Tensor of shape [N x M x P] with positional encoding.
+
+    Examples:
+        .. code-block:: python
+
+          position_tensor = fluid.layers.add_position_encoding(input=tensor)
+    """
+    helper = LayerHelper('add_position_encoding', **locals())
+    dtype = helper.input_dtype()
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="add_position_encoding",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"alpha": alpha,
+               "beta": beta})
     return out
