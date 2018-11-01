@@ -749,7 +749,7 @@ def dynamic_gru(input,
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
     batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    if h_0 != None:
+    if h_0:
         assert h_0.shape == (
             batch_size, size
         ), 'The shape of h0 should be(batch_size, %d)' % size
@@ -3020,7 +3020,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
             x = fluid.layers.data(name='y', shape=[10, 5],
                              dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            pad_value = fluid.layers.assign(
+                input=numpy.array([0], dtype=numpy.float32))
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
     """
 

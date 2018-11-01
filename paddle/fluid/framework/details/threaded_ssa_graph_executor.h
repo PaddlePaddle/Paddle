@@ -51,7 +51,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() {}
 
  private:
-  void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
+  void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
  private:
