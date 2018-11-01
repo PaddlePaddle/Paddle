@@ -40,6 +40,7 @@ class Kernel {
   Kernel() = default;
   virtual ~Kernel() = default;
   int num_{0};
+  // TODO(TJ): below two should be reomved.
   int end_{0};
   int rest_{0};
   DISABLE_COPY_AND_ASSIGN(Kernel);
