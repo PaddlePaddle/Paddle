@@ -431,7 +431,8 @@ class TestDistLookupTableBase(TranspilerTest):
         title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed)
         brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed)
         profile_emb = emb_pool(profile_ids, "profile_emb", False)
-        fc0 = fluid.layers.concat(input=[title_emb, brand_emb, profile_emb], axis=1)
+        fc0 = fluid.layers.concat(
+            input=[title_emb, brand_emb, profile_emb], axis=1)
         predict = fluid.layers.fc(input=fc0,
                                   size=2,
                                   act=None,
@@ -471,13 +472,14 @@ class TestLocalLookupTable(TestDistLookupTableBase):
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
-            'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add', 'cross_entropy', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad',
-            'elementwise_add_grad', 'send', 'mul_grad', 'send', 'concat_grad',
-            'sequence_pool_grad', 'lookup_table_grad', 'split_selected_rows', 'send',
-            'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
-            'lookup_table_grad', 'sum', 'split_selected_rows', 'send',
-            'send_barrier', 'recv', 'recv', 'recv', 'recv', 'fetch_barrier', 'concat', 'concat'
+            'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
+            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'split_selected_rows', 'send', 'sequence_pool_grad',
+            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sum', 'split_selected_rows', 'send', 'send_barrier', 'recv',
+            'recv', 'recv', 'recv', 'fetch_barrier', 'concat', 'concat'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
@@ -510,21 +512,25 @@ class TestDistLookupTable(TestDistLookupTableBase):
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
-            'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
-            'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'split_selected_rows', 'send', 'sequence_pool_grad', 'lookup_table_grad',
-            'sequence_pool_grad', 'lookup_table_grad', 'sum', 'split_ids', 'send', 'send_barrier',
-            'recv', 'recv', 'recv', 'fetch_barrier', 'concat']
+            'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
+            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'split_selected_rows', 'send',
+            'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sum', 'split_ids', 'send', 'send_barrier',
+            'recv', 'recv', 'recv', 'fetch_barrier', 'concat'
+        ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
         startup_ops = [
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'uniform_random', 'uniform_random',
-            'recv', 'recv', 'recv', 'fetch_barrier', 'concat', 'fake_init']
+            'fill_constant', 'fill_constant', 'uniform_random',
+            'uniform_random', 'recv', 'recv', 'recv', 'fetch_barrier', 'concat',
+            'fake_init'
+        ]
         self.assertEqual([op.type for op in trainer_startup.blocks[0].ops],
                          startup_ops)
 
@@ -557,13 +563,12 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
             'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send',
-            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
-            'lookup_table_grad', 'split_selected_rows', 'send',
-            'sequence_pool_grad', 'lookup_table_grad',
-            'sequence_pool_grad', 'lookup_table_grad',
-            'sum', 'split_selected_rows', 'send', 'recv', 'recv', 'recv', 'recv',
-            'concat', 'concat'
+            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'split_selected_rows', 'send', 'sequence_pool_grad',
+            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sum', 'split_selected_rows', 'send', 'recv', 'recv', 'recv',
+            'recv', 'concat', 'concat'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
@@ -597,14 +602,15 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
-            'sequence_pool', 'lookup_table', 'sequence_pool',
-            'concat', 'mul', 'elementwise_add', 'cross_entropy',
-            'mean', 'fill_constant', 'mean_grad', 'cross_entropy_grad',
-            'elementwise_add_grad', 'send', 'mul_grad', 'send',
-            'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'split_selected_rows', 'send', 'sequence_pool_grad',
-            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'sum', 'split_ids', 'send', 'recv', 'recv', 'recv', 'concat']
+            'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
+            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'split_selected_rows', 'send',
+            'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sum', 'split_ids', 'send', 'recv', 'recv',
+            'recv', 'concat'
+        ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
 
