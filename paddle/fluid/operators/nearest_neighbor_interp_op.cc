@@ -25,9 +25,9 @@ class NearestNeighborInterpOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of BilinearInterOp should not be null.");
+                   "Input(X) of NearestNeighborInterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of BilinearInterOp should not be null.");
+                   "Output(Out) of NearestNeighborInterOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
     int out_h = ctx->Attrs().Get<int>("out_h");
@@ -64,8 +64,9 @@ class NearestNeighborInterpOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out", "The dimension of output is (N x C x out_h x out_w)");
 
-    AddAttr<int>("out_h", "output height of bilinear interpolation op.");
-    AddAttr<int>("out_w", "output width of bilinear interpolation op.");
+    AddAttr<int>("out_h",
+                 "output height of nearest neighbor interpolation op.");
+    AddAttr<int>("out_w", "output width of nearest neighbor interpolation op.");
     AddComment(R"DOC(
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
           in bot the 3rd dimention(in height direction) and the 4th dimention(in width 

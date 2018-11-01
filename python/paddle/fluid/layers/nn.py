@@ -101,6 +101,7 @@ __all__ = [
     'image_resize',
     'image_resize_short',
     'resize_bilinear',
+    'resize_nearest',
     'gather',
     'scatter',
     'sequence_scatter',
@@ -5584,6 +5585,7 @@ def image_resize(input,
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+        'NEAREST' : Nearest neighbor interpolation
 
     Args:
         input (Variable): The input tensor of image resize layer,
@@ -5610,13 +5612,17 @@ def image_resize(input,
 
             out = fluid.layers.image_resize(input, out_shape=[12, 12])
     """
-    resample_methods = {'BILINEAR': 'bilinear_interp'}
+    resample_methods = {
+        'BILINEAR': 'bilinear_interp',
+        'NEAREST': 'nearest_neighbor_interp'
+    }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR' currently.")
+            "The 'resample' of image_resize can only be 'BILINEAR' and 'NEAREST' currently."
+        )
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None")
-    helper = LayerHelper('bilinear_interp', **locals())
+    helper = LayerHelper(resample_methods[resample], **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -5670,6 +5676,29 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR')
+
+
+@templatedoc(op_type="bilinear_interp")
+def resize_nearest(input, out_shape=None, scale=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(${x_type}): ${x_comment}.
+
+        out_shape(${out_size_type}): ${out_size_comment}.
+
+        scale(float|None): The multiplier for the input height or width. At
+             least one of out_shape or scale must be set. And out_shape has
+             a higher priority than scale. Default: None.
+
+        name(str|None): The output variable name.
+
+    Returns:
+        ${out_comment}.
+    """
+
+    return image_resize(input, out_shape, scale, name, 'NEAREST')
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
