@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
