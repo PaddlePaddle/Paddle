@@ -34,9 +34,7 @@ IF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "App
 ELSE()
     SET(USE_OMP ON)
 ENDIF()
-message("warpctc")
-message(${CMAKE_CXX_COMPILER})
-message(${CMAKE_CXX_FLAGS})
+
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -45,7 +43,8 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_CXX_FLAGS=""
+                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                     -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
                     -DWITH_GPU=${WITH_GPU}
                     -DWITH_OMP=${USE_OMP}

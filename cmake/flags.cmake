@@ -119,6 +119,7 @@ set(COMMON_FLAGS
     -Werror
     -Wall
     -Wextra
+    -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
@@ -166,6 +167,7 @@ endif(APPLE)
 if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
+        -Werror
         -Wextra
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
