@@ -1,3 +1,4 @@
+
 # windows treat symbolic file as a real file, which is different with unix
 # We create a hidden file and compile it instead of origin source file.
 function(windows_symbolic TARGET)
@@ -9,11 +10,23 @@ function(windows_symbolic TARGET)
   if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc OR NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cu)
       message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
   endif()
-  add_custom_command(OUTPUT .${src}.cu 
+
+  # only copy the xx.cu to .xx.cu when the content are modified
+  set(copy_flag 1)
+  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu)
+  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc SOURCE_STR)
+  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu TARGET_STR)
+  if (SOURCE_STR STREQUAL TARGET_STR)
+    set(copy_flag 0)
+  endif()
+  endif()
+  if (copy_flag)
+  add_custom_command(OUTPUT .${src}.cu
           COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu
           COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc" "${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu"
           COMMENT "create hidden file of ${src}.cu")
-  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)  
+  endif(copy_flag)
+  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
   endforeach()
 endfunction()
 
@@ -81,6 +94,8 @@ nv_test(data_device_transform_test SRCS data_device_transform_test.cu
 
 if(WITH_GPU)
   if (WIN32)
+    # windows treat symbolic file as a real file, which is different with unix
+    # We create a hidden file and compile it instead of origin source file.
       windows_symbolic(hidden_file SRCS data_type_transform.cu)
       nv_library(data_type_transform SRCS .data_type_transform.cu DEPS tensor)
       add_dependencies(data_type_transform hidden_file)
@@ -149,7 +164,7 @@ if(WITH_DISTRIBUTE)
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
-  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass elementwise_add_op)
+  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
  
 if (NOT WIN32)

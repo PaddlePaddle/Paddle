@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -79,7 +79,7 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
 template <typename DeviceContext>
 template <typename T>
 void LoDTensorToArrayFunctorImpl<DeviceContext>::apply() {
-  math::ConcatGradFunctor<DeviceContext, T> func;
+  math::SplitFunctor<DeviceContext, T> func;
   func(*dev_ctx_, prev_functor_->input_, prev_functor_->ref_inputs_, 0,
        &prev_functor_->outputs_);
 }

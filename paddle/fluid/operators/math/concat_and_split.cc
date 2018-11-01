@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include <vector>
 
 namespace paddle {
@@ -67,7 +67,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatGradFunctor<platform::CPUDeviceContext, T> {
+class SplitFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
@@ -111,7 +111,7 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
 };
 #define DEFINE_FUNCTOR(type)                                      \
   template class ConcatFunctor<platform::CPUDeviceContext, type>; \
-  template class ConcatGradFunctor<platform::CPUDeviceContext, type>;
+  template class SplitFunctor<platform::CPUDeviceContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

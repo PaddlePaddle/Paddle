@@ -20,8 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
-              "Default use 92% of GPU memory for PaddlePaddle,"
-              "reserve the rest for page tables, etc");
+              "Allocate a trunk of gpu memory that is this fraction of the "
+              "total gpu memory size. Future memory usage will be allocated "
+              "from the trunk. If the trunk doesn't have enough gpu memory, "
+              "additional trunks of the same size will be requested from gpu "
+              "until the gpu has no memory left for another trunk.");
 
 namespace paddle {
 namespace platform {
@@ -41,6 +44,24 @@ int GetCUDAComputeCapability(int id) {
                  "cudaGetDeviceProperties failed in "
                  "paddle::platform::GetCUDAComputeCapability");
   return device_prop.major * 10 + device_prop.minor;
+}
+
+int GetCUDARuntimeVersion(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  int runtime_version = 0;
+  PADDLE_ENFORCE(cudaRuntimeGetVersion(&runtime_version),
+                 "cudaRuntimeGetVersion failed in "
+                 "paddle::platform::cudaRuntimeGetVersion");
+  return runtime_version;
+}
+
+int GetCUDADriverVersion(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  int driver_version = 0;
+  PADDLE_ENFORCE(cudaDriverGetVersion(&driver_version),
+                 "cudaDriverGetVersion failed in "
+                 "paddle::platform::GetCUDADriverVersion");
+  return driver_version;
 }
 
 int GetCUDAMultiProcessors(int id) {
