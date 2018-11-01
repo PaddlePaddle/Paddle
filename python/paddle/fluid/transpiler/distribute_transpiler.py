@@ -1456,6 +1456,9 @@ to transpile() call.")
         elif op_type == "decayed_adagrad":
             if varkey == "Moment":
                 return param_shape
+        elif op_type == "ftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
+                return param_shape
         elif op_type == "sgd":
             pass
         else:
