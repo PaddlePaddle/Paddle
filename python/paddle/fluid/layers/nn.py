@@ -7652,6 +7652,7 @@ def grid_sampler(x, grid, name=None):
         out = fluid.layers.grid_sampler(x=x, grid=grid)
     """
     helper = LayerHelper("grid_sampler", **locals())
+    dtype = helper.input_dtype()
 
     if not isinstance(x, Variable):
         return ValueError("The x should be a Variable")
@@ -7659,10 +7660,10 @@ def grid_sampler(x, grid, name=None):
     if not isinstance(grid, Variable):
         return ValueError("The grid should be a Variable")
 
-    out = helper.create_tmp_variable(x.dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     ipts = {'X': x, 'Grid': grid}
 
-    helper.apppend_op(type='grid_sampler', inputs=ipts, outputs={'Output', out})
+    helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output', out})
     return out
 
 
