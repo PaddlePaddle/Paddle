@@ -35,7 +35,7 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
     const T* theta_data = theta->data<T>();
 
     int n = theta->dims()[0];
-    auto size_attr = ctx.Attr<std::vector<int>>("size");
+    auto size_attr = ctx.Attr<std::vector<int>>("output_shape");
     Tensor h_sizes;
     int* h_size_data;
     if (size_attr.size() == 0) {
@@ -43,7 +43,7 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*output_shape, platform::CPUPlace(), &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {
-      h_size_data = h_sizes.mutable_data<int>({4}, ctx.GetPlace());
+      h_size_data = h_sizes.mutable_data<int>({4}, platform::CPUPlace());
       h_size_data[0] = n;
       h_size_data[1] = size_attr[1];
       h_size_data[2] = size_attr[2];
@@ -73,7 +73,7 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
 
     int n = output_grad->dims()[0];
-    auto size_attr = ctx.Attr<std::vector<int>>("size");
+    auto size_attr = ctx.Attr<std::vector<int>>("output_shape");
     Tensor h_sizes;
     int* h_size_data;
     if (size_attr.size() == 0) {
@@ -81,7 +81,7 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*output_shape, platform::CPUPlace(), &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {
-      h_size_data = h_sizes.mutable_data<int>({4}, ctx.GetPlace());
+      h_size_data = h_sizes.mutable_data<int>({4}, platform::CPUPlace());
       h_size_data[0] = n;
       h_size_data[1] = size_attr[1];
       h_size_data[2] = size_attr[2];

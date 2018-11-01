@@ -154,7 +154,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
-    'affine_grid_generator',
+    'affine_grid',
     'sequence_reverse',
     'affine_channel',
     'hash',
@@ -6106,7 +6106,7 @@ def crop(x, shape=None, offsets=None, name=None):
     return out
 
 
-def affine_grid_generator(theta, out_shape, name=None):
+def affine_grid(theta, out_shape, name=None):
     """
     It generates a grid of (x,y) coordinates using the parameters of
     the affine transformation that correspond to a set of points where
@@ -6193,13 +6193,13 @@ def affine_grid_generator(theta, out_shape, name=None):
         .. code-block:: python
             theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
             out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
-            data = fluid.layers.affine_grid_generator(theta, out_shape)
+            data = fluid.layers.affine_grid(theta, out_shape)
 
             # or
-            data = fluid.layers.affine_grid_generator(theta, [5, 3, 28, 28])
+            data = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
 
     """
-    helper = LayerHelper('affine_grid_generator')
+    helper = LayerHelper('affine_grid')
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
         isinstance(out_shape, Variable)):
@@ -6214,7 +6214,7 @@ def affine_grid_generator(theta, out_shape, name=None):
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
     else:
-        attrs['size'] = out_shape
+        attrs['output_shape'] = out_shape
 
     helper.append_op(
         type='affine_grid',

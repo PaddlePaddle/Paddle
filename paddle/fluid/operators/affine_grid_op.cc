@@ -50,16 +50,17 @@ class AffineGridOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(theta_dims.size() == 3,
                    "AffineGrid's Input(Theta) should be 3-D tensor.");
 
-    auto size = ctx->Attrs().Get<std::vector<int>>("size");
-    if (size.size() == 0) {
+    auto output_shape = ctx->Attrs().Get<std::vector<int>>("output_shape");
+    if (output_shape.size() == 0) {
       PADDLE_ENFORCE(ctx->HasInput("OutputShape"),
                      "Input(OutputShape) of AffineGridOp should not be null if "
-                     "attr(size) is not configured.");
-      auto size_dims = ctx->GetInputDim("OutputShape");
-      PADDLE_ENFORCE(size_dims.size() == 1,
+                     "attr(output_shape) is not configured.");
+      auto output_shape_dims = ctx->GetInputDim("OutputShape");
+      PADDLE_ENFORCE(output_shape_dims.size() == 1,
                      "AffineGrid's Input(OutputShape) should be 1-D tensor.");
     } else {
-      PADDLE_ENFORCE(size.size() == 4, "The size of attr(size) should be 4.");
+      PADDLE_ENFORCE(output_shape.size() == 4,
+                     "The size of attr(output_shape) should be 4.");
     }
 
     PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] should be 2.");
@@ -102,7 +103,8 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
     AddAttr<std::vector<int>>(
-        "size", "The target output image shape with format [N, C, H, W].")
+        "output_shape",
+        "The target output image shape with format [N, C, H, W].")
         .SetDefault(std::vector<int>());
 
     AddComment(R"DOC(
@@ -174,7 +176,6 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto theta_dims = ctx->GetInputDim("Theta");
-    auto size_dims = ctx->GetInputDim("OutputShape");
     if (ctx->HasOutput(framework::GradVarName("Theta"))) {
       ctx->SetOutputDim(framework::GradVarName("Theta"), theta_dims);
     }

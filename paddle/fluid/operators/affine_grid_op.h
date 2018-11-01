@@ -49,7 +49,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     auto* theta = ctx.Input<Tensor>("Theta");
     int n = theta->dims()[0];
 
-    auto size_attr = ctx.Attr<std::vector<int>>("size");
+    auto size_attr = ctx.Attr<std::vector<int>>("output_shape");
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {
@@ -123,7 +123,7 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
 
     int n = output_grad->dims()[0];
-    auto size_attr = ctx.Attr<std::vector<int>>("size");
+    auto size_attr = ctx.Attr<std::vector<int>>("output_shape");
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {

@@ -44,21 +44,35 @@ class TestAffineGridOp(OpTest):
         self.op_type = "affine_grid"
         theta = np.random.randint(1, 3, self.theta_shape).astype("float32")
         theta = np.ones(self.theta_shape).astype("float32")
-        self.inputs = {'Theta': theta, 'OutputShape': self.size}
+        self.inputs = {'Theta': theta}
         self.attrs = {"use_cudnn": True}
-        self.outputs = {'Output': AffineGrid(theta, self.size)}
+        if self.dynamic_shape:
+            self.inputs['OutputShape'] = self.output_shape
+        else:
+            self.attrs['output_shape'] = self.output_shape
+        self.outputs = {'Output': AffineGrid(theta, self.output_shape)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Theta'], 'Output', no_grad_set=['Size'], max_relative_error=0.006)
+            ['Theta'],
+            'Output',
+            no_grad_set=['OutputShape'],
+            max_relative_error=0.006)
 
     def initTestCase(self):
         self.theta_shape = (3, 2, 3)
-        self.size = np.array([3, 2, 5, 7]).astype("int32")
+        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
+        self.dynamic_shape = False
 
+
+#class TestAffineGridOpCase1(TestAffineGridOp):
+#    def initTestCase(self):
+#        self.theta_shape = (3, 2, 3)
+#        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
+#        self.dynamic_shape=True
 
 if __name__ == '__main__':
     unittest.main()
