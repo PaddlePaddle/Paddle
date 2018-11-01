@@ -485,6 +485,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_resize_bilinear(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_nearest(x, out_shape=[12, 12])
+            self.assertIsNotNone(output)
+            output = layers.resize_nearest(x, scale=3)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_polygon_box_transform(self):
         program = Program()
         with program_guard(program):
