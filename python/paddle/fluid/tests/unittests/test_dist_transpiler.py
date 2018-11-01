@@ -405,6 +405,31 @@ class TestL2DecayWithPiecewise(TranspilerTest):
             ["sum", "scale", "scale", "elementwise_add", "momentum"])
 
 
+class TestEmptyPserverOptimizeBlocks(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        # only one parameter
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=False)
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer.minimize(avg_cost)
+
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        config.slice_var_up = False
+
+        pserver, startup = self.get_pserver(ep=self.pserver2_ep, config=config)
+
+        self.assertEqual(len(pserver.blocks), 2)
+        self.assertEqual(len(pserver.blocks[1].ops), 0)
+
+
 class TestDistLookupTableBase(TranspilerTest):
     def network_with_table(self, is_sparse, is_distributed):
         self.table_size = 1000
