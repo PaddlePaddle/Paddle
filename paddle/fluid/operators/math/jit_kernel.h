@@ -39,8 +39,8 @@ class Kernel {
  public:
   Kernel() = default;
   virtual ~Kernel() = default;
+  // TODO(TJ): below members should be deprecated.
   int num_{0};
-  // TODO(TJ): below two should be reomved.
   int end_{0};
   int rest_{0};
   DISABLE_COPY_AND_ASSIGN(Kernel);
@@ -65,7 +65,7 @@ class KernelPool {
 template <typename T>
 class VMulKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
