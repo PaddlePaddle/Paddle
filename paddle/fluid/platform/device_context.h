@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -223,9 +224,6 @@ class DeviceContextPool {
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
 
-  /*! \brief  Return all the device contexts. */
-  const std::vector<const DeviceContext*> GetAllDeviceContexts() const;
-
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
       const Place& place) {
@@ -237,7 +235,8 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::map<Place, std::unique_ptr<DeviceContext>> device_contexts_;
+  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
+      device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

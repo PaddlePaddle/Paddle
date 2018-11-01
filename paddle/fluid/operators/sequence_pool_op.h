@@ -32,10 +32,6 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<Tensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
-    Tensor* index = nullptr;
-    if (pooltype == "MAX") {
-      index = context.Output<Tensor>("MaxIndex");
-    }
 
     auto dims = in->dims();
     auto lod = in->lod();
@@ -48,13 +44,22 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     dims[0] = lod[0].size() - 1;
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
-    if (pooltype == "MAX") {
+    Tensor* index = nullptr;
+
+    const bool is_test = context.Attr<bool>("is_test");
+
+    // Do not create index buffer for inference (is_test) mode
+    // TODO(jczaja): Skip index buffer creation for other devices eg. GPU
+    if (pooltype == "MAX" &&
+        (is_test == false ||
+         platform::is_cpu_place(context.GetPlace()) == false)) {
+      index = context.Output<Tensor>("MaxIndex");
       index->Resize({dims});
       index->mutable_data<int>(context.GetPlace());
     }
     math::SequencePoolFunctor<DeviceContext, T> pool;
     pool(context.template device_context<DeviceContext>(), pooltype, *in, out,
-         index);
+         is_test, index);
   }
 };
 
