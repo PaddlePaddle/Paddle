@@ -68,11 +68,12 @@ class TestAffineGridOp(OpTest):
         self.dynamic_shape = False
 
 
-#class TestAffineGridOpCase1(TestAffineGridOp):
-#    def initTestCase(self):
-#        self.theta_shape = (3, 2, 3)
-#        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
-#        self.dynamic_shape=True
+class TestAffineGridOpCase1(TestAffineGridOp):
+    def initTestCase(self):
+        self.theta_shape = (3, 2, 3)
+        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
+        self.dynamic_shape = True
+
 
 if __name__ == '__main__':
     unittest.main()
