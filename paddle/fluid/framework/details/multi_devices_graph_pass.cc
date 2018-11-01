@@ -404,6 +404,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                         break;
                       case BuildStrategy::OptimizeStrategy::kMerge:
                       default:
+                        LOG(ERROR) << "Create Reduce Op of " << g_name;
                         CreateReduceOp(&result, g_name, cur_device_id);
                         break;
                     }

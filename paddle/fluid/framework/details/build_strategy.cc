@@ -122,6 +122,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
     }
+    LOG(ERROR) << "start apply pass " << pass->Type();
     graph = pass->Apply(std::move(graph));
   }
   return graph;
