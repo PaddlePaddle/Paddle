@@ -27,12 +27,12 @@ std::unique_ptr<Allocation> LockedAllocator::Allocate(size_t size, Attr attr) {
     return underlying_allocator_->Allocate(size, attr);
   }
 }
-void LockedAllocator::Free(Allocation *allocation) {
+void LockedAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
   if (underlying_allocator_->IsAllocThreadSafe()) {
-    return underlying_allocator_->Free(allocation);
+    return underlying_allocator_->FreeUniquePtr(std::move(allocation));
   } else {
     std::lock_guard<std::mutex> guard(mtx_);
-    return underlying_allocator_->Free(allocation);
+    return underlying_allocator_->FreeUniquePtr(std::move(allocation));
   }
 }
 bool LockedAllocator::IsAllocThreadSafe() const { return true; }

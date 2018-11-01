@@ -32,8 +32,8 @@ std::unique_ptr<Allocation> CPUPinnedAllocator::Allocate(size_t size,
       new CPUPinnedAllocation(ptr, size));
 }
 
-void CPUPinnedAllocator::Free(Allocation* allocation) {
-  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUPinnedAllocation*>(allocation));
+void CPUPinnedAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUPinnedAllocation*>(allocation.get()));
   PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
 }
 

@@ -34,7 +34,7 @@ class CUDAAllocator : public UnmanagedAllocator {
       : place_(boost::get<platform::CUDAPlace>(place)) {}
   std::unique_ptr<Allocation> Allocate(size_t size,
                                        Attr attr = kDefault) override;
-  void Free(Allocation* allocation) override;
+  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
   bool IsAllocThreadSafe() const override;
 
  private:
