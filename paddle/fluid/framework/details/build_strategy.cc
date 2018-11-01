@@ -121,6 +121,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
+USE_PASS(multi_batch_merge_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);

@@ -95,9 +95,9 @@ function cmake_gen() {
                 exit 1
             fi
         fi
-    else 
+    else
         if [ "$1" != "" ]; then
-            echo "using python abi: $1"     
+            echo "using python abi: $1"
             if [ "$1" == "cp27-cp27m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
                 export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
@@ -119,7 +119,7 @@ function cmake_gen() {
            fi
         fi
     fi
-    
+
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
         WITH_AVX=${WITH_AVX:-ON}
@@ -127,7 +127,7 @@ function cmake_gen() {
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
-    
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -153,7 +153,6 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
-        -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
@@ -186,7 +185,6 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-        -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
@@ -394,8 +392,8 @@ EOF
         export http_proxy=
         export https_proxy=
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $1     
-        # make install should also be test when unittest 
+        ctest --output-on-failure -j $1
+        # make install should also be test when unittest
         make install -j 8
         pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
@@ -653,20 +651,20 @@ function gen_capi_package() {
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Generating fluid library for train and inference ...
     ========================================
 EOF
-        cmake .. -DWITH_DISTRIBUTE=OFF
+        cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
         make -j `nproc` fluid_lib_dist
         make -j `nproc` inference_lib_dist
       fi
 }
 
 function tar_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Taring fluid library for train and inference ...
@@ -681,7 +679,7 @@ EOF
 }
 
 function test_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Testing fluid library for inference ...

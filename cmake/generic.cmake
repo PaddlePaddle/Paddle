@@ -261,6 +261,13 @@ function(cc_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} mklml)
         target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
       endif()
+      # remove link to python, see notes at:
+      # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
+      if("${cc_library_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cc_library_DEPS python)
+        add_dependencies(${TARGET_NAME} python)
+        target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
+      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()

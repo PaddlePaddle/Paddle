@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -176,6 +177,12 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
+using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
+using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+
+void set_cur_thread_id(int);
+int get_cur_thread_id(void);
+
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
@@ -191,8 +198,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
  private:
   mkldnn::engine engine_;
-  std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<void>>>
-      p_blobs_;
+  std::shared_ptr<BlobMap> p_blobmap_;
+  std::shared_ptr<std::mutex> p_mutex_;
 };
 #endif
 
@@ -228,7 +235,8 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::map<Place, std::unique_ptr<DeviceContext>> device_contexts_;
+  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
+      device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

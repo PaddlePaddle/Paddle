@@ -67,20 +67,21 @@ class Analyzer : public OrderedRegistry<PassManager> {
   // larger fusion.
   const std::vector<std::string> all_ir_passes_{{
       // Manual update the passes here.
-      "infer_clean_graph_pass",        //
-      "attention_lstm_fuse_pass",      //
-      "embedding_fc_lstm_fuse_pass",   //
-      "fc_lstm_fuse_pass",             //
-      "mul_lstm_fuse_pass",            //
-      "fc_gru_fuse_pass",              //
-      "mul_gru_fuse_pass",             //
-      "seq_concat_fc_fuse_pass",       //
-      "fc_fuse_pass",                  //
-      "conv_bn_fuse_pass",             //
-      "conv_eltwiseadd_bn_fuse_pass",  //
+      "attention_lstm_fuse_pass",       //
+      "seqconv_eltadd_relu_fuse_pass",  //
+      "embedding_fc_lstm_fuse_pass",    //
+      "fc_lstm_fuse_pass",              //
+      "mul_lstm_fuse_pass",             //
+      "fc_gru_fuse_pass",               //
+      "mul_gru_fuse_pass",              //
+      "seq_concat_fc_fuse_pass",        //
+      "fc_fuse_pass",                   //
+      "conv_bn_fuse_pass",              //
+      "conv_eltwiseadd_bn_fuse_pass",   //
 #ifdef PADDLE_WITH_MKLDNN
-      "conv_bias_mkldnn_fuse_pass",  //
-      "conv_relu_mkldnn_fuse_pass",  //
+      "conv_bias_mkldnn_fuse_pass",             //
+      "conv_relu_mkldnn_fuse_pass",             //
+      "conv_elementwise_add_mkldnn_fuse_pass",  //
 #endif
   }};
 

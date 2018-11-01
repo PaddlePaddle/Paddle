@@ -80,8 +80,8 @@ def split_lod_tensor(input, mask, level=0):
 
     """
     helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_tmp_variable(dtype=input.dtype)
-    out_false = helper.create_tmp_variable(dtype=input.dtype)
+    out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='split_lod_tensor',
         inputs={
@@ -131,7 +131,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=in_true.dtype)
+    out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -524,7 +524,7 @@ class StaticRNN(object):
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
 
-        tmp_o = self.helper.create_tmp_variable(dtype=o.dtype)
+        tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
         self.helper.append_op(
             type='rnn_memory_helper',
             inputs={'X': [o]},
@@ -606,7 +606,8 @@ class StaticRNN(object):
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
-            new_mem = self.helper.create_tmp_variable(dtype=mem_var.dtype)
+            new_mem = self.helper.create_variable_for_type_inference(
+                dtype=mem_var.dtype)
 
             rnn_block.append_op(
                 type='rnn_memory_helper',
@@ -813,7 +814,7 @@ def max_sequence_len(rank_table):
         ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
-    res = helper.create_tmp_variable(dtype="int64")
+    res = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="max_sequence_len",
         inputs={"RankTable": rank_table},
@@ -884,7 +885,7 @@ def array_to_lod_tensor(x, table):
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.dtype)
+    tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="array_to_lod_tensor",
         inputs={'X': x,
@@ -915,7 +916,7 @@ def increment(x, value=1.0, in_place=True):
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = x
     helper.append_op(
@@ -1012,7 +1013,7 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
     attrs = dict()
@@ -1051,7 +1052,7 @@ def equal(x, y, cond=None, **ignored):
     """
     helper = LayerHelper("equal", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
     helper.append_op(
@@ -1098,7 +1099,7 @@ def array_read(array, i):
             array,
             Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         raise TypeError("array should be tensor array vairable")
-    out = helper.create_tmp_variable(dtype=array.dtype)
+    out = helper.create_variable_for_type_inference(dtype=array.dtype)
     helper.append_op(
         type='read_from_array',
         inputs={'X': [array],
@@ -1133,7 +1134,7 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
         inputs={'X': [x],
@@ -1170,7 +1171,7 @@ def array_length(array):
 
     """
     helper = LayerHelper('array_length', **locals())
-    tmp = helper.create_tmp_variable(dtype='int64')
+    tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
@@ -1590,7 +1591,7 @@ class DynamicRNN(object):
         self.mem_dict = dict()
         self.output_array = []
         self.outputs = []
-        self.cond = self.helper.create_tmp_variable(dtype='bool')
+        self.cond = self.helper.create_variable_for_type_inference(dtype='bool')
         self.cond.stop_gradient = False
         self.while_op = While(self.cond)
         self.input_array = []
@@ -1924,7 +1925,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
 
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reorder_lod_tensor_by_rank',
         inputs={'X': [x],
@@ -1958,7 +1959,7 @@ def is_empty(x, cond=None, **ignored):
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
     elif not isinstance(cond, Variable):
         raise TypeError("cond takes a variable")
