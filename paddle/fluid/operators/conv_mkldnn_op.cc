@@ -147,14 +147,15 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_bias_memory_p,
       std::vector<mkldnn::primitive>& pipeline,
+      bool is_persistent = false,
       bool is_INT8 = false,
       std::vector<float> scale_data = {1.0f},
       int mask = 0) {  // NOLINT
     auto user_bias_pd = user_bias_memory_p->get_primitive_desc();
     auto bias_pd = conv_pd_->bias_primitive_desc();
     return this->AcquireMemory(bias_pd, user_bias_pd, user_bias_memory_p,
-                               "@bias_mem_p", pipeline, 
-                               false, is_INT8, scale_data, mask);
+                               "@bias_mem_p", pipeline, is_persistent,
+                               is_INT8, scale_data, mask);
   }
 
   std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
@@ -547,7 +548,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
               scale_bias_data[i] = (*scale_in->data<float>()) * (*(scale_weights->data<float>() + i));
           }
           bias_memory_p =
-              handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline, is_INT8, scale_bias_data, mask_reorder);
+              handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline, is_test, is_INT8, scale_bias_data, mask_reorder);
       } else{
           bias_memory_p =
               handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
