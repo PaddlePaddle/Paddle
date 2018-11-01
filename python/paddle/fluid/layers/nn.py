@@ -7506,9 +7506,16 @@ def space_to_depth(x, blocksize, name=None):
     space_to_depth is used to This operation is useful for resizing the activations between convolutions 
     (but keeping all data)
 
+    - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
+    - The depth of the output tensor is block_size * block_size * input channel 
+    - The Y, X coordinates within each block of the input become the high order component of the output channel index
+    - channel should be divisible by square of blocksize
+    - height, width should be divsible by blocksize
+
+
     Args:
         x(variable): The input LoDtensor.
-        blocksize(variable): The blocksize to select the element on each feature map
+        blocksize(variable): The blocksize to select the element on each feature map should be > 2
 
     Returns:
         Variable: The output LoDtensor.
