@@ -769,7 +769,8 @@ in a single call.")
                 lookup_table_var_name_to_block_id)
 
         if len(optimize_blocks) == 0:
-            logging.warn("pserver [" + str(endpoint) + "] has no optimize block!!")
+            logging.warn("pserver [" + str(endpoint) +
+                         "] has no optimize block!!")
             pre_block_idx = pserver_program.num_blocks - 1
             empty_block = pserver_program._create_block(pre_block_idx)
             optimize_blocks.append(empty_block)
