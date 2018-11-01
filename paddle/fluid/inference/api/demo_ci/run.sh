@@ -62,7 +62,7 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_GPU=$TEST_GPU_CPU \
     -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
-  word2vec_model=${PADDLE_ROOT}'/build/python/paddle/fluid/tests/book/word2vec.inference.model'
+  word2vec_model=$DATA_DIR'/word2vec/word2vec.inference.model'
   if [ -d $word2vec_model ]; then
     for use_gpu in $use_gpu_list; do
       ./simple_on_word2vec \
