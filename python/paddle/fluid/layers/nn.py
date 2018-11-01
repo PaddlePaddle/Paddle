@@ -5570,9 +5570,9 @@ def dice_loss(input, label, epsilon=0.00001):
 def image_resize(input,
                  out_shape=None,
                  scale=None,
-                 actual_shape=None,
                  name=None,
-                 resample='BILINEAR'):
+                 resample='BILINEAR',
+                 actual_shape=None):
     """
     **Resize a Batch of Images**
 
@@ -5587,30 +5587,37 @@ def image_resize(input,
         input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|None): Output shape of image resize
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
+        out_shape(list|tuple|Variable|None): Output shape of image resize
+                                          layer, the shape is (out_h, out_w).
+                                          Default: None
         scale(float|None): The multiplier for the input height or width.
                          At least one of out_shape or scale must be set.
                          And out_shape has a higher priority than scale.
                          Default: None
-        actual_shape(Variable): An optional input. If provided, image resize 
-                                according to this given shape rather than 
-                                :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority.
-                                Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
         resample(str): The resample method. It can only be 'BILINEAR' currently.
                        Default: 'BILINEAR'
+        actual_shape(Variable): An optional input to specify output shape 
+                                dynamically. If provided, image resize  
+                                according to this given shape rather than 
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the 
+                                highest priority. It is recommended to use 
+                                actual_shape instead of :attr:`out_shape` if you 
+                                want to specify output shape dynamically. When 
+                                using actual_shape to specify output shape, one of 
+                                :attr:`out_shape` and :attr:`scale` should also be 
+                                set, otherwise errors would be occured in graph 
+                                constructing stage.
+                                Default: None
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
         (num_batches, channls, out_h, out_w).
 
     Raises:
-        TypeError: out_shape should be a list or tuple.
+        TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
         ValueError: The 'resample' of image_resize can only be 'BILINEAR' currently.
         ValueError: One of out_shape and scale must not be None.
@@ -5637,10 +5644,16 @@ def image_resize(input,
     out_w = 0
     inputs = {"X": input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape)):
-            raise TypeError("out_shape should be a list or tuple.")
-        if len(out_shape) != 2:
+        if isinstance(out_shape, Variable):
+            print("Warning: out_shape as Variable type is deprecated, \
+                    it is recommended to use actual_shape instead of \
+                    out_shape to specify output shape dynamically.")
+            inputs['OutSize'] = out_shape
+        elif not (_is_list_or_turple_(out_shape)):
+            raise TypeError("out_shape should be a list or tuple or Variable.")
+        elif len(out_shape) != 2:
             raise ValueError("out_shape length should be 2.")
+
         out_shape = list(map(int, out_shape))
         out_h = out_shape[0]
         out_w = out_shape[1]
@@ -5664,7 +5677,11 @@ def image_resize(input,
 
 
 @templatedoc(op_type="bilinear_interp")
-def resize_bilinear(input, out_shape=None, scale=None, name=None):
+def resize_bilinear(input,
+                    out_shape=None,
+                    scale=None,
+                    name=None,
+                    actual_shape=None):
     """
     ${comment}
 
@@ -5679,11 +5696,25 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
 
         name(str|None): The output variable name.
 
+        actual_shape(Variable): An optional input to specify output shape 
+                                dynamically. If provided, image resize  
+                                according to this given shape rather than 
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the 
+                                highest priority. It is recommended to use 
+                                actual_shape instead of :attr:`out_shape` if you 
+                                want to specify output shape dynamically. When 
+                                using actual_shape to specify output shape, one of 
+                                :attr:`out_shape` and :attr:`scale` should also be 
+                                set, otherwise errors would be occured in graph 
+                                constructing stage.
+                                Default: None
+
     Returns:
         ${out_comment}.
     """
 
-    return image_resize(input, out_shape, scale, name, 'BILINEAR')
+    return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
