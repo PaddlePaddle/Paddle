@@ -439,31 +439,88 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // TODO(buxingyuan): Add Document
-    AddInput("RpnRois", "RpnRois.");
-    AddInput("GtClasses", "GtClasses.");
-    AddInput("IsCrowd", "IsCrowd.");
-    AddInput("GtBoxes", "GtBoxes.");
-    AddInput("ImInfo", "ImInfo.");
+    AddInput(
+        "RpnRois",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [N, 4]. "
+        "N is the number of the GenerateProposalOp's output, "
+        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+    AddInput("GtClasses",
+             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "M is the number of groundtruth, "
+             "each element is a class label of groundtruth.");
+    AddInput(
+        "IsCrowd",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "M is the number of groundtruth, "
+        "each element is a flag indicates whether a groundtruth is crowd.");
+    AddInput(
+        "GtBoxes",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 4]. "
+        "M is the number of groundtruth, "
+        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+    AddInput("ImInfo",
+             "(Tensor), This input is a 2D Tensor with shape [B, 3]. "
+             "B is the number of input images, "
+             "each element consists of im_height, im_width, im_scale.");
 
-    AddOutput("Rois", "Rois.");
-    AddOutput("LabelsInt32", "LabelsInt32.");
-    AddOutput("BboxTargets", "BboxTargets.");
-    AddOutput("BboxInsideWeights", "BboxInsideWeights.");
-    AddOutput("BboxOutsideWeights", "BboxOutsideWeights.");
+    AddOutput(
+        "Rois",
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "P usuall equal to  batch_size_per_im * batch_size, "
+        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+    AddOutput("LabelsInt32",
+              "(LoDTensor), This output is a 2D LoDTensor with shape [P], "
+              "each element repersents a class label of a roi");
+    AddOutput("BboxTargets",
+              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+              "class_nums], "
+              "each element repersents a box label of a roi");
+    AddOutput(
+        "BboxInsideWeights",
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "class_nums], "
+        "each element indicates whether a box should contribute to loss.");
+    AddOutput(
+        "BboxOutsideWeights",
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "class_nums], "
+        "each element indicates whether a box should contribute to loss.");
 
-    AddAttr<int>("batch_size_per_im", "batch_size_per_im");
-    AddAttr<float>("fg_fraction", "fg_fraction");
-    AddAttr<float>("fg_thresh", "fg_thresh");
-    AddAttr<float>("bg_thresh_hi", "bg_thresh_hi");
-    AddAttr<float>("bg_thresh_lo", "bg_thresh_lo");
-    AddAttr<std::vector<float>>("bbox_reg_weights", "bbox_reg_weights");
-    AddAttr<int>("class_nums", "class_nums");
-    AddAttr<bool>("use_random", "use_random").SetDefault(true);
+    AddAttr<int>("batch_size_per_im", "Batch size of rois per images.");
+    AddAttr<float>("fg_fraction",
+                   "Foreground fraction in total batch_size_per_im.");
+    AddAttr<float>(
+        "fg_thresh",
+        "Overlap threshold which is used to chose foreground sample.");
+    AddAttr<float>("bg_thresh_hi",
+                   "Overlap threshold upper bound which is used to chose "
+                   "background sample.");
+    AddAttr<float>("bg_thresh_lo",
+                   "Overlap threshold lower bound which is used to chose "
+                   "background sample.");
+    AddAttr<std::vector<float>>("bbox_reg_weights", "Box regression weights.");
+    AddAttr<int>("class_nums", "Class number.");
+    AddAttr<bool>(
+        "use_random",
+        "Use random sampling to choose foreground and background boxes.")
+        .SetDefault(true);
 
     AddComment(R"DOC(
-Generate Proposals Labels Operator.
-)DOC");
+This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
+to sample foreground boxes and background boxes, and compute loss target.
+
+RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
+were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
+If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
+If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
+then it was considered as a background sample.
+After all foreground and background boxes are chosen (so called Rois),
+then we apply random sampling to make sure
+the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
+
+For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
+Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+    )DOC");
   }
 };
 

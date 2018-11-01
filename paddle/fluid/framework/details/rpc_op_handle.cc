@@ -38,7 +38,7 @@ void RPCOpHandle::RunImpl() {
       continue;
     }
     if (in->GeneratedOp()) {
-      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[p]);
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(p));
     }
   }
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
