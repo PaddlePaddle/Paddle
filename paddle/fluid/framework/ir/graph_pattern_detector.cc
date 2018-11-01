@@ -259,22 +259,15 @@ GraphPatternDetector::DetectPatterns() {
   return result;
 }
 
-// Sort by key first, then by value.
-struct SubGraphItemCMP {
-  using value_type = GraphPatternDetector::subgraph_t::value_type;
-  bool operator<(const value_type &a, const value_type &b) {
-    if (a.first != b.first) {
-      return a.first < b.first;
-    } else {
-      return a.second < b.second;
-    }
+bool GraphItemCMP(const std::pair<PDNode *, Node *> &a,
+                  const std::pair<PDNode *, Node *> &b) {
+  if (a.first != b.first) {
+    return a.first < b.first;
+  } else {
+    return a.second < b.second;
   }
+}
 
-  static SubGraphItemCMP &Instance() {
-    static auto *x = new SubGraphItemCMP;
-    return *x;
-  }
-};
 // TODO(Superjomn) enhance the function as it marks unique unique as duplicates
 // see https://github.com/PaddlePaddle/Paddle/issues/13550
 void GraphPatternDetector::UniquePatterns(
@@ -282,18 +275,17 @@ void GraphPatternDetector::UniquePatterns(
   if (subgraphs->empty()) return;
   std::vector<GraphPatternDetector::subgraph_t> result;
 
-  std::unordered_set<std::string> set;
+  std::unordered_set<size_t> set;
+  std::hash<std::string> hasher;
   for (auto &g : *subgraphs) {
     // Sort the items in the sub-graph, and transform to a string key.
-    std::vector<GraphPatternDetector::subgraph_t::value_type> sorted_keys(
-        g.begin(), g.end());
-    std::sort(sorted_keys.begin(), sorted_keys.end(),
-              SubGraphItemCMP::Instance());
+    std::vector<std::pair<PDNode *, Node *>> sorted_keys(g.begin(), g.end());
+    std::sort(sorted_keys.begin(), sorted_keys.end(), GraphItemCMP);
     std::stringstream ss;
     for (auto &item : sorted_keys) {
       ss << item.first << ":" << item.second;
     }
-    auto key = ss.str();
+    auto key = hasher(ss.str());
     if (!set.count(key)) {
       result.emplace_back(g);
       set.insert(key);
