@@ -75,7 +75,7 @@ Allocation* RetryAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
 }
 void RetryAllocator::FreeUnderlyingAllocation(
     std::unique_ptr<Allocation>&& allocation) {
-  underlying_allocator_->Free(allocation.get());
+  underlying_allocator_->FreeUniquePtr(std::move(allocation));
   {
     // notify all waited allocators, they can try to allocate memory after free.
     std::lock_guard<std::mutex> lock(mutex_);

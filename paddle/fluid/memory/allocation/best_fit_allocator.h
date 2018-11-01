@@ -109,7 +109,7 @@ class BestFitAllocator : public UnmanagedAllocator {
 
   std::unique_ptr<Allocation> Allocate(size_t size,
                                        Attr attr = kDefault) override;
-  void Free(Allocation* allocation) override;
+  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
 
   size_t NumFreeChunks() const;
 

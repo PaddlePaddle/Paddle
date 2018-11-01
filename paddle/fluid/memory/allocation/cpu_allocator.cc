@@ -29,8 +29,8 @@ std::unique_ptr<Allocation> CPUAllocator::Allocate(size_t size, Attr attr) {
   }
   return std::unique_ptr<Allocation>(new CPUAllocation(ptr, size));
 }
-void CPUAllocator::Free(Allocation* allocation) {
-  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUAllocation*>(allocation));
+void CPUAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUAllocation*>(allocation.get()));
   free(allocation->ptr());
 }
 

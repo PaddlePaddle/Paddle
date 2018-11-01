@@ -35,9 +35,9 @@ std::unique_ptr<Allocation> CUDAAllocator::Allocate(size_t size, Attr attr) {
       new CUDAAllocation(ptr, size, platform::Place(place_)));
 }
 
-void CUDAAllocator::Free(Allocation* allocation) {
+void CUDAAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
   platform::CUDADeviceGuard guard(place_.device);
-  auto* cuda_allocation = dynamic_cast<CUDAAllocation*>(allocation);
+  auto* cuda_allocation = dynamic_cast<CUDAAllocation*>(allocation.get());
   PADDLE_ENFORCE_NOT_NULL(cuda_allocation);
   PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(cuda_allocation->place()),
                     place_);
