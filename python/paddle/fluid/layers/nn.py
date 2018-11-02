@@ -710,8 +710,18 @@ def dynamic_gru(input,
               The first part are weights of the update gate and reset gate with
               shape :math:`(D \\times 2D)`, and the second part are weights for
               candidate hidden state with shape :math:`(D \\times D)`.
-        bias_attr(ParamAttr): The parameter attribute for learnable the
-            hidden-hidden bias.
+
+            If it is set to None or one attribute of ParamAttr, dynamic_gru will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
             :attr:`False`.
         gate_activation(str): The activation for update gate and reset gate.
@@ -810,10 +820,29 @@ def gru_unit(input,
 
     Args:
         input (Variable): The fc transformed input value of current step.
-        hidden (Variable): The hidden value of lstm unit from previous step.
+        hidden (Variable): The hidden value of gru unit from previous step.
         size (integer): The input dimension value.
-        param_attr (ParamAttr): The weight parameters for gru unit. Default: None
-        bias_attr (ParamAttr): The bias parameters for gru unit. Default: None
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Note:
+
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
+              :math:`D` is the hidden size.
+            - All elements in the weight matrix can be divided into two parts.
+              The first part are weights of the update gate and reset gate with
+              shape :math:`(D \\times 2D)`, and the second part are weights for
+              candidate hidden state with shape :math:`(D \\times D)`.
+
+            If it is set to None or one attribute of ParamAttr, gru_unit will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, gru_unit will create ParamAttr as 
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
