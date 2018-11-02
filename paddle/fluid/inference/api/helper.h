@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/api/timer.h"
 #include "paddle_inference_api.h"  //NOLINT
 
 namespace paddle {
