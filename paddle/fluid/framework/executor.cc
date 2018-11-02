@@ -401,6 +401,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
+  // LOG(INFO) << "Memory used after one batch " <<
+  // memory::memory_usage(place_);
+  /// platform::CPUPlace pp;
+  // LOG(INFO) << "Memory used after one batch " << memory::memory_usage(pp);
+
   if (gc != nullptr) {
     gc->Wait();
   } else {
@@ -421,12 +426,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
-  if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
-  }
+  // if (FLAGS_benchmark) {
+  // VLOG(2) << "-------------------------------------------------------";
+  // VLOG(2) << "-------------------------------------------------------";
+  //}
 }
 
 void Executor::RunPreparedContext(

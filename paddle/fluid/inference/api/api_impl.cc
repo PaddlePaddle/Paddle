@@ -162,6 +162,10 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  platform::CUDAPlace place0;
+  platform::CPUPlace place1;
+  LOG(INFO) << "Memory used " << memory::memory_usage(place0)  << "\t" << memory::memory_usage(place1);
   return true;
 }
 

@@ -74,6 +74,7 @@ void NaiveExecutor::Run() {
     VLOG(4) << "run " << op->Type();
     op->Run(*scope_, place_);
   }
+  LOG(INFO) << "Memory used after one batch " << memory::memory_usage(place_);
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,

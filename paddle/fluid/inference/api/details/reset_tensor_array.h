@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_set>
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -30,7 +31,7 @@ struct TensorArrayBatchCleaner {
 
  private:
   bool flag_{true};
-  std::vector<framework::LoDTensorArray *> arrays_;
+  std::unordered_set<framework::LoDTensorArray *> arrays_;
 };
 
 }  // namespace details

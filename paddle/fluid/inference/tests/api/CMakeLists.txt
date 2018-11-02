@@ -81,6 +81,8 @@ inference_analysis_test(test_analyzer_resnet50 SRCS analyzer_resnet50_tester.cc
 # ocr debug
 cc_test(ocr_debug SRCS ocr_debug.cc DEPS ${INFERENCE_EXTRA_DEPS})
 
+target_link_libraries(ocr_debug tcmalloc)
+
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    # anakin rnn1

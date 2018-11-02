@@ -25,17 +25,23 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       // TODO(Superjomn) should avoid the case when a TensorArray is a
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
-      if (var->Type() == typeid(framework::LoDTensorArray)) {
+      if (var->Type() == typeid(framework::LoDTensorArray) ||
+          var->Type() == typeid(framework::Scope *) ||
+          var->Type() == typeid(std::vector<int32_t>) ||
+          var->Type() == typeid(std::vector<int64_t>) ||
+          var->Type() == typeid(std::vector<float>) ||
+          var->Type() == typeid(std::vector<double>) ||
+          var->Type() == typeid(std::vector<std::string>)) {
         VLOG(4) << "collect " << var_name;
-        arrays_.push_back(var->GetMutable<framework::LoDTensorArray>());
+        arrays_.insert(var->GetMutable<framework::LoDTensorArray>());
       }
     }
     for (auto *kid : scope->kids()) {
       CollectTensorArrays(kid);
     }
 
-    VLOG(3) << "Collect " << arrays_.size() << " arrays";
-    flag_ = false;
+    LOG(INFO) << "Collect " << arrays_.size() << " arrays";
+    flag_ = true;
   }
 }
 
