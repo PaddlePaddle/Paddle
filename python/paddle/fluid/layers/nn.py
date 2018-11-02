@@ -4472,7 +4472,10 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[5, 10, 15], dtype='float32')
+            # use append_batch_size=False to avoid prepending extra 
+            # batch size in shape
+            x = fluid.layers.data(name='x', shape=[5, 10, 15], 
+                            dtype='float32', append_batch_size=False)
             x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
 
