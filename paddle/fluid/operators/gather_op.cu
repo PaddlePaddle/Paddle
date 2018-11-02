@@ -61,5 +61,11 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>,
+                        ops::GatherOpCUDAKernel<double>,
+                        ops::GatherOpCUDAKernel<int64_t>,
+                        ops::GatherOpCUDAKernel<int>);
+REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>,
+                        ops::GatherGradOpCUDAKernel<double>,
+                        ops::GatherGradOpCUDAKernel<int64_t>,
+                        ops::GatherGradOpCUDAKernel<int>);

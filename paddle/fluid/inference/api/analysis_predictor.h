@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -88,6 +91,7 @@ class AnalysisPredictor : public PaddlePredictor {
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
+  details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
 };
 
 }  // namespace paddle

@@ -184,6 +184,20 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
             out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
 
 
+class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
+    def compute(self, x, offset, out):
+        self.attrs = {'pooltype': "MAX", 'is_test': True}
+        for i in range(len(offset[0]) - 1):
+            sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
+                               (-1, 3 * 11))
+            out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
+
+    def test_check_grad(self):
+        """Grad computation does not apply to Sequence MAX 
+            Pool executed when is_test is true """
+        return
+
+
 class TestSeqLastPool2D(TestSeqAvgPool2D):
     def compute(self, x, offset, out):
         self.attrs = {'pooltype': "LAST"}

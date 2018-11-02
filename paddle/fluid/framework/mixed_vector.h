@@ -542,6 +542,33 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
     this->reserve(this->size() + size_t(end - begin));
     this->insert(this->end(), begin, end);
   }
+
+  const T *CUDAData(platform::Place place) const {
+    PADDLE_THROW(
+        "Vector::CUDAData() method is not supported in CPU-only version");
+  }
+
+  T *CUDAMutableData(platform::Place place) {
+    PADDLE_THROW(
+        "Vector::CUDAMutableData() method is not supported in CPU-only "
+        "version");
+  }
+
+  const T *Data(platform::Place place) const {
+    PADDLE_ENFORCE(
+        platform::is_cpu_place(place),
+        "Vector::Data() method is not supported when not in CPUPlace");
+    return this->data();
+  }
+
+  T *MutableData(platform::Place place) {
+    PADDLE_ENFORCE(
+        platform::is_cpu_place(place),
+        "Vector::MutableData() method is not supported when not in CPUPlace");
+    return this->data();
+  }
+
+  const void *Handle() const { return static_cast<const void *>(this); }
 };
 
 template <typename T>

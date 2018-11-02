@@ -155,7 +155,11 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'sequence_reverse',
     'affine_channel',
+    'hash',
+    'log_loss',
+    'add_position_encoding',
 ]
 
 
@@ -746,7 +750,7 @@ def dynamic_gru(input,
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
     batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    if h_0 != None:
+    if h_0:
         assert h_0.shape == (
             batch_size, size
         ), 'The shape of h0 should be(batch_size, %d)' % size
@@ -981,7 +985,12 @@ def cos_sim(X, Y):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
+def dropout(x,
+            dropout_prob,
+            is_test=False,
+            seed=None,
+            name=None,
+            dropout_implementation="downgrade_in_infer"):
     """
     Computes dropout.
 
@@ -1001,6 +1010,21 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
                     units will be dropped. DO NOT use a fixed seed in training.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
+        dropout_implementation(string): ['downgrade_in_infer'(defauld)|'upscale_in_train']
+                                        1. downgrade_in_infer(default), downgrade the outcome at inference
+                                           train: out = input * mask
+                                           inference: out = input * dropout_prob
+                                           (make is a tensor same shape with input, value is 0 or 1
+                                            ratio of 0 is dropout_prob)
+                                        2. upscale_in_train, upscale the outcome at training time
+                                           train: out = input * mask / ( 1.0 - dropout_prob )
+                                           inference: out = input
+                                           (make is a tensor same shape with input, value is 0 or 1
+                                            ratio of 0 is dropout_prob)
+                                           dropout op can be removed from the program. 
+                                           the program will be efficient
+                                        
+
 
     Returns:
         Variable: A tensor variable is the shape with `x`.
@@ -1030,7 +1054,8 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
         })
     return out
 
@@ -1815,7 +1840,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type):
+def sequence_pool(input, pool_type, is_test=False):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -1852,6 +1877,7 @@ def sequence_pool(input, pool_type):
         input(variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
+        is_test(bool, Default False): Used distinguish training from scoring mode.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -1879,7 +1905,8 @@ def sequence_pool(input, pool_type):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper()})
+        attrs={"pooltype": pool_type.upper(),
+               "is_test": is_test})
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -1984,17 +2011,17 @@ def sequence_slice(input, offset, length, name=None):
     """
     **Sequence Slice Layer**
 
-    The layer crops a subsequence from given sequence with given start 
+    The layer crops a subsequence from given sequence with given start
     offset and subsequence length.
 
     It only supports sequence data (LoDTensor with lod_level equal to 1).
 
     .. code-block:: text
-    
+
 	- Case:
 
             Given the input Variable **input**:
-                
+
                 input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
                 input.lod = [[3, 2]],
                 input.dims = (5, 2),
@@ -2002,16 +2029,16 @@ def sequence_slice(input, offset, length, name=None):
             with offset.data = [[0], [1]] and length.data = [[2], [1]],
 
             the output Variable will be
-                
+
                 out.data = [[a1, a2], [b1, b2], [e1, e2]],
                 out.lod = [[2, 1]],
                 out.dims = (3, 2).
-	
-    NOTE: The first dimension size of **input**, **offset** and **length** 
+
+    NOTE: The first dimension size of **input**, **offset** and **length**
           should be equal. The **offset** should start from 0.
-    
+
     Args:
-        input(Variable): The input Variable which consists of the complete 
+        input(Variable): The input Variable which consists of the complete
                          sequences.
         offset(Variable): The offset to slice each sequence.
         length(Variable): The length of each subsequence.
@@ -2030,7 +2057,7 @@ def sequence_slice(input, offset, length, name=None):
                               dtype='float32', lod_level=1)
              offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
              length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
-             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset, 
+             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
     helper = LayerHelper("sequence_slice", **locals())
@@ -2413,12 +2440,12 @@ def layer_norm(input,
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
-            a default :code:`ParamAttr` would be added as scale. The 
-            :attr:`param_attr` is initialized as 1 if it is added. Default None. 
+            a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default None.
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
-            a default :code:`ParamAttr` would be added as bias. The 
+            a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default None.
         act(str): Activation to be applied to the output of layer normalizaiton.
                   Default None.
@@ -3008,7 +3035,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
             x = fluid.layers.data(name='y', shape=[10, 5],
                              dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            pad_value = fluid.layers.assign(
+                input=numpy.array([0], dtype=numpy.float32))
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
     """
 
@@ -3036,8 +3064,8 @@ def sequence_unpad(x, length, name=None):
     """
     **Sequence Unpad Layer**
 
-    This layer removes the padding data in the input sequences and convert 
-    them into sequences with actual length as output, identitied by lod 
+    This layer removes the padding data in the input sequences and convert
+    them into sequences with actual length as output, identitied by lod
     information.
 
     .. code-block:: text
@@ -3047,9 +3075,9 @@ def sequence_unpad(x, length, name=None):
 	Given input Variable **x**:
 	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
 		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
-		      [11.0, 12.0, 13.0, 14.0, 15.0]], 
-     
-	in which there are 3 sequences padded to length 5, and the acutal length 
+		      [11.0, 12.0, 13.0, 14.0, 15.0]],
+
+	in which there are 3 sequences padded to length 5, and the acutal length
 	specified by input Variable **length**:
 
 	    length.data = [[2], [3], [4]],
@@ -3057,7 +3085,7 @@ def sequence_unpad(x, length, name=None):
 	after unpadding, the output Variable will be:
 
 	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[2, 3, 4]]      
+	    out.lod = [[2, 3, 4]]
 
     Args:
         x(Variable): Input Variable which contains the padded sequences with
@@ -4859,7 +4887,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
+def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     """
     Gives a new shape to the input Tensor without changing its data.
 
@@ -4907,15 +4935,22 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                                 :attr:`shape` specifying shape. That is to
                                 say :attr:`actual_shape` has a higher priority
                                 than :attr:`shape`.
-        act (str): The non-linear activation to be applied to output variable.
-        inplace(bool): If this flag is set true, the output
-                       shares data with input without copying, otherwise
-                       a new output tensor is created
-                       whose data is copied from input x.
+        act (str): The non-linear activation to be applied to the reshaped tensor
+                   variable.
+        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
+                       operators. If this flag is set :attr:`True`, reuse input
+                       :attr:`x` to reshape, which will change the shape of
+                       tensor variable :attr:`x` and might cause errors when
+                       :attr:`x` is used in multiple operators. If :attr:`False`,
+                       preserve the shape :attr:`x` and create a new output tensor
+                       variable whose data is copied from input x but reshaped.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: The output tensor.
+        Variable: The reshaped tensor variable if :attr:`act` is None. It is a \
+                  new tensor variable if :attr:`inplace` is :attr:`False`, \
+                  otherwise it is :attr:`x`. If :attr:`act` is not None, return \
+                  the activated tensor variable.
 
     Raises:
         TypeError: if actual_shape is neither Variable nor None.
@@ -4926,7 +4961,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
             data = fluid.layers.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
-                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True)
+                x=data, shape=[-1, 0, 3, 2], inplace=True)
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
@@ -4953,7 +4988,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out = x if inplace else helper.create_variable_for_type_inference(
+        dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
@@ -5484,9 +5520,9 @@ def roi_align(input,
     Examples:
         .. code-block:: python
 
-            align_out = fluid.layers.roi_align(input=x, 
-                                               rois=rois, 
-                                               pooled_height=7, 
+            align_out = fluid.layers.roi_align(input=x,
+                                               rois=rois,
+                                               pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
                                                sampling_ratio=-1)
@@ -7470,13 +7506,40 @@ def maxout(x, groups, name=None):
     return out
 
 
+@templatedoc()
+def sequence_reverse(x, name=None):
+    """ 
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${y_type}): ${y_comment}
+    """
+    helper = LayerHelper("sequence_reverse", **locals())
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="sequence_reverse",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs=dict())
+    return out
+
+
 def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
     """
     Applies a separate affine transformation to each channel of the input.
     Useful for replacing spatial batch norm with its equivalent fixed
     transformation. The input also can be 2D tensor and applies a affine
     transformation in second dimension.
-    
+
     Args:
         x (Variable): Feature map input can be a 4D tensor with order NCHW
             or NHWC. It also can be a 2D tensor and the affine transformation
@@ -7508,4 +7571,128 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
+    return out
+
+
+def hash(input, hash_size, num_hash=1, name=None):
+    """
+    hash the input
+     Args:
+        input (Variable): The input variable which is a one-hot word.
+        hash_size (int): The space size for hash algorithm.
+        num_hash (int): The times of hash, default 1.
+        name (str, default None): The name of this layer.
+     Returns:
+        Variable: The hash result variable which is a LoDTensor.
+     Examples:
+        .. code-block:: python
+            word_dict = paddle.dataset.imdb.word_dict()
+            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+            out = fluid.layers.hash(input=x, len(word_dict))
+    """
+    helper = LayerHelper('hash', **locals())
+    out = helper.create_variable_for_type_inference(
+        helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='hash',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'num_hash': num_hash,
+               'mod_by': hash_size})
+    return out
+
+
+def log_loss(input, label, epsilon=1e-4, name=None):
+    """
+    **Negative Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    negative log loss.
+
+    .. math::
+
+        Out = -label * \\log{(input + \\epsilon)}
+              - (1 - label) * \\log{(1 - input + \\epsilon)}
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        epsilon (float): epsilon
+        name (string): the name of log_loss
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the negative log loss.
+
+    Examples:
+        .. code-block:: python
+
+          prob = fluid.layers.sigmoid(net)
+          cost = fluid.layers.log_loss(input=prob, label=label)
+    """
+    helper = LayerHelper('log_loss', **locals())
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+
+    helper.append_op(
+        type='log_loss',
+        inputs={'Predicted': [input],
+                'Labels': [label]},
+        outputs={'Loss': [loss]},
+        attrs={'epsilon': epsilon})
+    return loss
+
+
+def add_position_encoding(input, alpha, beta, name=None):
+    """
+    **Add Position Encoding Layer**
+
+    This layer accepts an input 3D-Tensor of shape [N x M x P], and return an
+    output Tensor of shape [N x M x P] with positional encoding value.
+
+    Refer to `Attention Is All You Need<http://arxiv.org/pdf/1706.03762.pdf>`_ .
+
+    .. math::
+        PE(pos, 2i) = \\sin{(pos / 10000^{2i / P})}   \\\\
+        PE(pos, 2i + 1) = \\cos{(pos / 10000^{2i / P})}  \\\\
+        Out(:, pos, i) = \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
+
+    Where:
+    * PE(pos, 2i): the increment for the number at even position
+    * PE(pos, 2i + 1): the increment for the number at odd position
+
+    Args:
+        input (Variable): 3-D input tensor with shape [N x M x P]
+        alpha (float): multiple of Input Tensor
+        beta (float): multiple of Positional Encoding Tensor
+        name (string): the name of position encoding layer
+
+    Returns:
+        Variable: A 3-D Tensor of shape [N x M x P] with positional encoding.
+
+    Examples:
+        .. code-block:: python
+
+          position_tensor = fluid.layers.add_position_encoding(input=tensor)
+    """
+    helper = LayerHelper('add_position_encoding', **locals())
+    dtype = helper.input_dtype()
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="add_position_encoding",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"alpha": alpha,
+               "beta": beta})
     return out
