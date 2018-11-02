@@ -35,6 +35,7 @@ import sys
 import numpy as np
 import collections
 import six
+import logging
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -767,6 +768,15 @@ in a single call.")
             prefetch_var_name_to_block_id.extend(
                 lookup_table_var_name_to_block_id)
 
+        if len(optimize_blocks) == 0:
+            logging.warn("pserver [" + str(endpoint) +
+                         "] has no optimize block!!")
+            pre_block_idx = pserver_program.num_blocks - 1
+            empty_block = pserver_program._create_block(pre_block_idx)
+            optimize_blocks.append(empty_block)
+
+        # In some case, some parameter server will have no parameter to optimize
+        # So we give an empty optimize block to parameter server.
         attrs = {
             "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
@@ -1065,7 +1075,12 @@ to transpile() call.")
             continue_search_lookup_table_op = False
             all_ops = program.global_block().ops
             for op in all_ops:
-                if op.type == LOOKUP_TABLE_TYPE:
+                if op.type == LOOKUP_TABLE_TYPE and self.table_name == op.input(
+                        "W")[0]:
+                    if not op.attr('is_distributed'):
+                        raise RuntimeError(
+                            "lookup_table_op that lookup an distributed embedding table"
+                            "should set is_distributed to true")
                     continue_search_lookup_table_op = True
 
                     lookup_table_op_index = lookup_table_op_index if lookup_table_op_index != -1 else list(
@@ -1275,7 +1290,6 @@ to transpile() call.")
         }
         outputs = {"ParamOut": [param_var]}
         # only support sgd now
-        import logging
         logging.warn(
             "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
             + table_opt_op.type)
@@ -1441,6 +1455,9 @@ to transpile() call.")
                 return param_shape
         elif op_type == "decayed_adagrad":
             if varkey == "Moment":
+                return param_shape
+        elif op_type == "ftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
                 return param_shape
         elif op_type == "sgd":
             pass
