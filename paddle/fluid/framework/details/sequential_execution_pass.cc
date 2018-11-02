@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -29,6 +30,15 @@ static bool IsSameOpDesc(OpDesc *op1, OpDesc *op2) {
 
 std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
+  // FIXME(zjl): Insert dependencies between some distributed ops may cause
+  // the multi_devices_graph_pass fails. So we skip these ops here.
+  // Indeed, maybe we should not insert dependencies between these ops
+  // casually, which may cause deadlock easily.
+  // We should add more skipped distributed ops when found errors in
+  // multi_devices_graph_pass
+  static std::unordered_set<std::string> skip_dist_ops{
+      "send", "recv", "send_barrier", "fetch_barrier"};
+
   auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
   std::vector<ir::Node *> op_node_list;
   op_node_list.reserve(ops.size());
@@ -73,7 +83,9 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
       }
     }
     ready_ops.erase(found_node);
-    op_node_list.push_back(found_node);
+    if (skip_dist_ops.count(op_desc->Type()) == 0) {
+      op_node_list.push_back(found_node);
+    }
   }
 
   for (size_t i = 1; i < op_node_list.size(); ++i) {
