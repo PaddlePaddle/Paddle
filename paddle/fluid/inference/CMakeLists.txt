@@ -1,4 +1,6 @@
-cc_library(inference_io SRCS io.cc)
+if(WITH_TESTING)
+  include(test.cmake) # some generic cmake funtion for inference
+endif()
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.
 add_subdirectory(analysis)
@@ -7,6 +9,8 @@ if (TENSORRT_FOUND)
 endif()
 
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
+
+cc_library(inference_io SRCS io.cc)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
