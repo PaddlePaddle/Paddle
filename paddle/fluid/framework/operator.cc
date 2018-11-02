@@ -414,7 +414,7 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
-  return static_cast<const Tensor*>(Input<LoDTensor>(name));
+  return Input<LoDTensor>(name);
 }
 
 template <>
@@ -437,7 +437,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
-  return static_cast<Tensor*>(Output<LoDTensor>(name));
+  return Output<LoDTensor>(name);
 }
 
 template <>
