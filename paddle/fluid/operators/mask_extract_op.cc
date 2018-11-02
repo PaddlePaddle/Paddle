@@ -59,18 +59,45 @@ class MaskExtractOp : public framework::OperatorWithKernel {
 class MaskExtractOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor, default LoDTensor<float>) Input data.");
-    AddInput("Mask", "(LoDTensor, default LoDTensor<float>) Mask information");
-    AddOutput("Out", "(LodTensor, default LoDTensor<float>). ");
-    AddOutput("Ids", "(LodTensor, default LoDTensor<float>). ");
+    AddInput("X", "(LoDTensor) The representations of an entire sequence.");
+    AddInput("Mask", "(LoDTensor) The indices of masked tokens.");
+    AddOutput("Out", "(LodTensor) The representations of masked tokens.");
+    AddOutput("Ids", "(LodTensor) The indices of extracted maksed tokens.");
     AddOutput("Offset",
-              "(LodTensor, default LoDTensor<float>). Intermediate offset to "
+              "(LodTensor). Intermediate offset to "
               "assist the backward computation")
         .AsIntermediate();
     AddComment(R"DOC(
 Mask Extract Operator.
 
-This operator extracts unmasked data from input, with the given mask.
+In the training of masked language model, one usual approach is masking some
+input tokens at random, and predicting only those masked tokens. This operator
+plays the role to extract the representations and indices of these masked tokens
+from an entire input sequence and feeds them to some loss layer.
+
+Input(Mask) must have the same first dimension with Input(X), in which the valid
+indices indicate the chosen masked tokens. While the reset invalid indices,
+here including all the negative integers, stand for the unmasked tokens.
+
+Example:
+
+    Given the input
+
+        X.data = [0.1, 0.2, 0.3, 0.4, 0.5],
+        X.dim = (5, 1)
+
+    and the mask indices
+
+        Mask.data = [-1, 0, 2, -1, 5],
+        Mask.dim = (5, 1)
+
+    the output should be
+
+        Out.data = [0.2, 0.3, 0.5],
+        Out.dim = (3, 1)
+
+        Ids.data = [0, 2, 5]
+        Ids.dim = (3, 1)
 
 )DOC");
   }

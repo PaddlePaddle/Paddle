@@ -153,6 +153,12 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
+                 nullptr);
   }
 #endif
 }

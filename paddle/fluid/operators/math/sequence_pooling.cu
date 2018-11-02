@@ -133,7 +133,7 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const std::string pooltype, const framework::LoDTensor& input,
-                  framework::Tensor* output,
+                  framework::Tensor* output, bool is_test,
                   framework::Tensor* index = nullptr) {
     auto& lod = input.lod()[0];
     const size_t item_dim = output->numel() / output->dims()[0];
