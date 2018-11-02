@@ -91,7 +91,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   }
 };
 
-class ActivationOpInferVarType : public framework::InferVarTypeHelper {
+class ActivationOpInferVarType : public framework::VarTypeInferenceHelper {
  protected:
   std::unordered_map<std::string, std::string> ShareTypeAndDType()
       const override {

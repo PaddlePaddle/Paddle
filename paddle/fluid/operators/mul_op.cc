@@ -126,7 +126,7 @@ or not. But the output only shares the LoD information with input $X$.
   }
 };
 
-class MulOpInferVarType : public framework::InferVarTypeHelper {
+class MulOpInferVarType : public framework::VarTypeInferenceHelper {
  protected:
   std::unordered_map<std::string, std::string> ShareTypeAndDType()
       const override {

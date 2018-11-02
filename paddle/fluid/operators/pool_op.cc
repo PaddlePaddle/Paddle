@@ -239,7 +239,7 @@ Example:
 )DOC");
 }
 
-class PoolOpInferVarType : public framework::InferVarTypeHelper {
+class PoolOpInferVarType : public framework::VarTypeInferenceHelper {
  protected:
   std::unordered_map<std::string, std::string> ShareTypeAndDType()
       const override {

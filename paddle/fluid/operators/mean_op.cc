@@ -42,7 +42,7 @@ Mean Operator calculates the mean of all elements in X.
   }
 };
 
-class MeanOpInferVarType : public framework::InferVarTypeHelper {
+class MeanOpInferVarType : public framework::VarTypeInferenceHelper {
  protected:
   std::unordered_map<std::string, std::string> ShareTypeAndDType()
       const override {
