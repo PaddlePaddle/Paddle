@@ -72,9 +72,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnGetTensorNdDescriptor);                    \
   __macro(cudnnGetConvolutionNdForwardOutputDim);         \
   __macro(cudnnGetConvolutionForwardAlgorithm);           \
-  __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
-  __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
-  __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
   __macro(cudnnCreateTensorDescriptor);                   \
   __macro(cudnnDestroyTensorDescriptor);                  \
   __macro(cudnnCreateFilterDescriptor);                   \
@@ -93,6 +90,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnSetConvolutionNdDescriptor);               \
   __macro(cudnnGetConvolutionNdDescriptor);               \
   __macro(cudnnDeriveBNTensorDescriptor);                 \
+  __macro(cudnnCreateSpatialTransformerDescriptor);       \
+  __macro(cudnnSetSpatialTransformerNdDescriptor);        \
+  __macro(cudnnDestroySpatialTransformerDescriptor);      \
+  __macro(cudnnSpatialTfGridGeneratorForward);            \
+  __macro(cudnnSpatialTfGridGeneratorBackward);           \
+  __macro(cudnnSpatialTfSamplerForward);                  \
+  __macro(cudnnSpatialTfSamplerBackward);                 \
   __macro(cudnnCreate);                                   \
   __macro(cudnnDestroy);                                  \
   __macro(cudnnSetStream);                                \
@@ -106,6 +110,9 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnSoftmaxBackward);                          \
   __macro(cudnnSoftmaxForward);                           \
   __macro(cudnnGetVersion);                               \
+  __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
+  __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
+  __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
   __macro(cudnnGetErrorString);
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
