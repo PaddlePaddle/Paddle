@@ -21,7 +21,7 @@ import math
 from op_test import OpTest
 
 
-class TestPriorBoxOp(OpTest):
+class TestDensityPriorBoxOp(OpTest):
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -44,8 +44,6 @@ class TestPriorBoxOp(OpTest):
         }
         if len(self.max_sizes) > 0:
             self.attrs['max_sizes'] = self.max_sizes
-#        if self.density_prior_box:
-#        self.attrs['density_prior_box'] = self.density_prior_box
 
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
@@ -64,7 +62,6 @@ class TestPriorBoxOp(OpTest):
         self.min_max_aspect_ratios_order = False
 
     def set_density(self):
-#        self.density_prior_box = Fasle
         self.densities = []
         self.fixed_sizes = []
         self.fixed_ratios = []
@@ -85,7 +82,6 @@ class TestPriorBoxOp(OpTest):
 
         self.min_sizes = [2, 4]
         self.min_sizes = np.array(self.min_sizes).astype('float32').tolist()
-       # print("mini_size len: ",len(self.min_sizes))
         self.set_max_sizes()
         self.aspect_ratios = [2.0, 3.0]
         self.flip = True
@@ -95,24 +91,22 @@ class TestPriorBoxOp(OpTest):
             self.aspect_ratios, dtype=np.float).flatten()
         self.variances = [0.1, 0.1, 0.2, 0.2]
         self.variances = np.array(self.variances, dtype=np.float).flatten()
+
         self.set_density()
 
         self.clip = True
 
         self.num_priors = len(self.real_aspect_ratios) * len(self.min_sizes)
-   #     print("fixed_size len ", len(self.fixed_sizes))
         if len(self.fixed_sizes) > 0:
-            self.num_priors += len(self.real_aspect_ratios) * len(self.fixed_sizes)
-        if len(self.densities) > 0:
-            for density in self.densities:
-                if len(self.fixed_ratios) > 0:
-                    self.num_priors += len(self.fixed_ratios) * (pow(density,2)-1)
-                else:
-                    self.num_priors += (len(self.real_aspect_ratios)+1) * (pow(density,2)-1)
+            if len(self.densities) > 0:
+                for density in self.densities:
+                    if len(self.fixed_ratios) > 0:
+                        self.num_priors += len(self.fixed_ratios) * (pow(density,2))
+                    else:
+                        self.num_priors += len(self.real_aspect_ratios) * (pow(density,2))
         if len(self.max_sizes) > 0:
             self.num_priors += len(self.max_sizes)
         self.offset = 0.5
-
     def init_test_input(self):
         self.image = np.random.random(
             (self.batch_size, self.image_channels, self.image_w,
@@ -129,20 +123,16 @@ class TestPriorBoxOp(OpTest):
 
         step_average = int((self.step_w + self.step_h)*0.5)
         
-        a = 0
-
         for h in range(self.layer_h):
             for w in range(self.layer_w):
                 idx = 0
                 c_x = (w + self.offset) * self.step_w
                 c_y = (h + self.offset) * self.step_h
-# wangshipeng begin 20181030
-
                 for density, fixed_size in zip(self.densities, self.fixed_sizes):
                     box_width = box_height = fixed_size
                     if (len(self.fixed_ratios) > 0):
                         for ar in self.fixed_ratios:
-                            shift = step_average / density
+                            shift = int(step_average / density)
                             box_width_ratio = fixed_size * math.sqrt(ar)
                             box_height_ratio = fixed_size / math.sqrt(ar)
                             for di in range(density):
@@ -156,10 +146,8 @@ class TestPriorBoxOp(OpTest):
                                         min((c_y_temp + box_height_ratio / 2.0)/ self.image_h , 1)
                                     ]
                                     idx += 1
-                 #       print("C++ have fixed_ratios idx --- ", idx)
                     else:
-
-                        shift = fixed_size / density
+                        shift = int(fixed_size / density)
                         for di in range(density):
                             for dj in range(density):
                                 c_x_temp = c_x - fixed_size / 2.0 + shift / 2.0 + dj * shift
@@ -173,7 +161,7 @@ class TestPriorBoxOp(OpTest):
                         for ar in self.real_aspect_ratios:
                             if (abs(ar-1.)< 1e-6):
                                 continue
-                            shift = fixed_size / density
+                            shift = int(fixed_size / density)
                             box_width_ratio = fixed_size * math.sqrt(ar)
                             box_height_ratio = fixed_size / math.sqrt(ar)
                             for di in range(density):
@@ -186,21 +174,14 @@ class TestPriorBoxOp(OpTest):
                                         min((c_x_temp + box_width_ratio / 2.0)/ self.image_w , 1),
                                         min((c_y_temp + box_height_ratio / 2.0)/ self.image_h , 1)]
                                     idx += 1
-                #        print(" does not have density_ratios idx --- ",idx)
 
-# aspect max   
-               # print("total density idx --- :",idx)
-           #     print("min size --- :", len(self.min_sizes))
-                a = idx
                 for s in range(len(self.min_sizes)):
-          #          print("idx = ", idx)
                     min_size = self.min_sizes[s]
                     if not self.min_max_aspect_ratios_order:
-                        # rest of priors
                         for r in range(len(self.real_aspect_ratios)):
                             ar = self.real_aspect_ratios[r]
-                            c_w = min_size * math.sqrt(ar) / 2
-                            c_h = (min_size / math.sqrt(ar)) / 2
+                            c_w = min_size * math.sqrt(ar) / 2.
+                            c_h = (min_size / math.sqrt(ar)) / 2.
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w, 
                                 (c_y - c_h) / self.image_h, 
@@ -211,8 +192,7 @@ class TestPriorBoxOp(OpTest):
 
                         if len(self.max_sizes) > 0:
                             max_size = self.max_sizes[s]
-                            # second prior: aspect_ratio = 1,
-                            c_w = c_h = math.sqrt(min_size * max_size) / 2
+                            c_w = c_h = math.sqrt(min_size * max_size) / 2.
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w, 
                                 (c_y - c_h) / self.image_h, 
@@ -220,8 +200,6 @@ class TestPriorBoxOp(OpTest):
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
-
-# min max aspectratio
                     else:
                         c_w = c_h = min_size / 2.
                         out_boxes[h, w, idx, :] = [
@@ -233,8 +211,7 @@ class TestPriorBoxOp(OpTest):
                         idx += 1
                         if len(self.max_sizes) > 0:
                             max_size = self.max_sizes[s]
-                            # second prior: aspect_ratio = 1,
-                            c_w = c_h = math.sqrt(min_size * max_size) / 2
+                            c_w = c_h = math.sqrt(min_size * max_size) / 2.
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w, 
                                 (c_y - c_h) / self.image_h, 
@@ -242,14 +219,12 @@ class TestPriorBoxOp(OpTest):
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
-
-                        # rest of priors
                         for r in range(len(self.real_aspect_ratios)):
                             ar = self.real_aspect_ratios[r]
                             if abs(ar - 1.) < 1e-6:
                                 continue
-                            c_w = min_size * math.sqrt(ar) / 2
-                            c_h = (min_size / math.sqrt(ar)) / 2
+                            c_w = min_size * math.sqrt(ar) / 2.
+                            c_h = (min_size / math.sqrt(ar)) / 2.
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w, 
                                 (c_y - c_h) / self.image_h, 
@@ -257,45 +232,33 @@ class TestPriorBoxOp(OpTest):
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
-          #      print("py density idx",idx)
-        # clip the prior's coordidate such that it is within[0, 1]
-        print ("python",a)
         if self.clip:
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
-        # set the variance.
         out_var = np.tile(self.variances, (self.layer_h, self.layer_w,
                                            self.num_priors, 1))
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
 
-
-"""
-class TestPriorBoxOpWithoutMaxSize(TestPriorBoxOp):
+class TestPriorBoxOpWithoutMaxSize(TestDensityPriorBoxOp):
     def set_max_sizes(self):
         self.max_sizes = []
 
-
-class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
+class TestPriorBoxOpWithSpecifiedOutOrder(TestDensityPriorBoxOp):
     def set_min_max_aspect_ratios_order(self):
         self.min_max_aspect_ratios_order = True
-"""
 
-class TestPriorBoxWithDensityBox(TestPriorBoxOp):
+class TestDensityPriorBoxWithDensityBox(TestDensityPriorBoxOp):
     def set_density(self):
-#        self.density_prior_box = True
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]
         self.fixed_ratios = [1.0 / 2.0, 1.0, 2.0]
-"""
-class TestPriorBoxWithDensityBoxWithoutFixedRatios(TestPriorBoxOp):
+
+class TestDensityPriorBoxWithDensityBoxWithoutFixedRatios(TestDensityPriorBoxOp):
     def set_density(self):
-#        self.density_prior_box = True
         self.densities = [3, 4]
-        self.fixed_sizes = [1, 2]
+        self.fixed_sizes = [1.0, 2.0]
         self.fixed_ratios = []
         
-"""
-
 if __name__ == '__main__':
     unittest.main()
 

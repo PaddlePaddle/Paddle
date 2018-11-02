@@ -67,11 +67,9 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     auto clip = ctx.Attr<bool>("clip");
     auto min_max_aspect_ratios_order =
         ctx.Attr<bool>("min_max_aspect_ratios_order");
-//  begin  wangshipeng @ 20181028
     auto fixed_sizes = ctx.Attr<std::vector<float>>("fixed_sizes");
     auto fixed_ratios = ctx.Attr<std::vector<float>>("fixed_ratios");
-    auto densities = ctx.Attr<std::vector<float>>("densities");
-//  end  wangshipeng @ 20181028
+    auto densities = ctx.Attr<std::vector<int>>("densities");
     std::vector<float> aspect_ratios;
 
     ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
@@ -97,46 +95,35 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
     int num_priors = aspect_ratios.size() * min_sizes.size();
 
-//  begin  wangshipeng @ 20181028
     if (fixed_sizes.size()>0){
-      num_priors += aspect_ratios.size() * fixed_sizes.size();
-    }
-    if (densities.size() > 0) {
-        for (size_t i = 0; i < densities.size(); ++i) {
-            if (fixed_ratios.size() > 0) {
-                num_priors += (fixed_ratios.size()) * (pow(densities[i], 2) - 1);
-            } else {
-                num_priors += (aspect_ratios.size() + 1) * (pow(densities[i], 2) - 1);
-            }
-        }
-    }
-	
-//  end  wangshipeng @ 20181028
+    	if (densities.size() > 0) {
+       		for (size_t i = 0; i < densities.size(); ++i) {
+           		if (fixed_ratios.size() > 0) {
+        	    	num_priors += (fixed_ratios.size()) * (pow(densities[i], 2) );
+				} else {
+    	        	num_priors += (aspect_ratios.size() ) * (pow(densities[i], 2) );
+ 	           	}
+	        }
+   		}
+  	}
     if (max_sizes.size() > 0) {
       num_priors += max_sizes.size();
     }
-	LOG(ERROR)<<"C++ ==================== num_priors"<<num_priors;
-//  apply storage
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
-//  eigen
-    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
-//  step_average
+    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
+
     int step_average = static_cast<int>((step_width+step_height)*0.5);
-    int h1 = 0;
-	int h2 = 0;
-	int h3 = 0;
+
     for (int h = 0; h < feature_height; ++h) {
         for (int w = 0; w < feature_width; ++w) {
             T center_x = (w + offset) * step_width;
             T center_y = (h + offset) * step_height;
             T box_width, box_height;
             int idx = 0;
-//begin wangshipeng @20181029
             for (size_t s = 0; s < fixed_sizes.size(); ++s){
                 auto fixed_size = fixed_sizes[s];
                 box_width = box_height = fixed_size;
-//densities vector has the same size as fixed_sizes
                 int density = densities[s];
                 if (fixed_ratios.size() > 0){
                     for(size_t r = 0; r < fixed_ratios.size(); ++r){
@@ -144,11 +131,10 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                         int shift  = step_average / density;
                         float box_width_ratio = fixed_size * sqrt(ar);
                         float box_height_ratio = fixed_size / sqrt(ar);
-// if have ratios use step_average if not use fixed_size to calculate center
                         for (int di = 0; di < density; ++di){
                             for (int dj=0; dj < density; ++dj){
-                                float center_x_temp = center_x - step_average / 2 + shift / 2. + dj * shift;
-                                float center_y_temp = center_y - step_average / 2 + shift / 2. + di * shift;
+                                float center_x_temp = center_x - step_average / 2. + shift / 2. + dj * shift;
+                                float center_y_temp = center_y - step_average / 2. + shift / 2. + di * shift;
                                 e_boxes(h, w, idx, 0) = (center_x_temp - box_width_ratio / 2.) / img_width >= 0 ?
                                                         (center_x_temp - box_width_ratio / 2.) / img_width : 0 ;
                                 e_boxes(h, w, idx, 1) = (center_y_temp - box_height_ratio / 2.)/ img_height >= 0 ?
@@ -161,15 +147,12 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                             }
                         }
                     }
-		//			LOG(ERROR) << "C++ fixed_ratios idx: " << idx;
-					h1 = idx;
                 } else {
-                    // does not give fixed_ratio but give densities
                     int shift = fixed_size/ density;
                     for (int di = 0; di < density; ++di){
                     	for (int dj = 0; dj < density; ++dj){
-                        	float center_x_temp = center_x - fixed_size / 2 + shift / 2. + dj * shift;
-                            float center_y_temp = center_y - fixed_size / 2 + shift / 2. + di * shift;
+                        	float center_x_temp = center_x - fixed_size / 2. + shift / 2. + dj * shift;
+                            float center_y_temp = center_y - fixed_size / 2. + shift / 2. + di * shift;
                             e_boxes(h, w, idx, 0) = (center_x_temp - box_width / 2.)/ img_width >= 0 ?
                                                         (center_x_temp - box_width / 2.)/ img_width : 0 ;
                             e_boxes(h, w, idx, 1) = (center_y_temp - box_height / 2.)/ img_height >= 0 ?
@@ -181,12 +164,9 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                             idx++;
                         }
                     }
-            		// if does not give fixed_ratios  then use aspect ratio
                     for (size_t r = 0; r < aspect_ratios.size(); ++r){
                         float ar = aspect_ratios[r];
                         if (fabs(ar - 1.) < 1e-6) {
-                        // liu@20171207 added for debugging
-                        //LOG(INFO) << "returning for aspect == 1";
                             continue;
                         }
                         int shift = fixed_size / density;
@@ -194,9 +174,8 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                         float box_height_ratio = fixed_size / sqrt(ar);
                         for (int di= 0; di < density; ++di){
                             for (int dj= 0; dj < density; ++dj){
-                                float center_x_temp = center_x - fixed_size / 2 + shift / 2. + dj * shift;
-                                float center_y_temp = center_y - fixed_size / 2 + shift / 2. + di * shift;
-								// order: xmin ymin xmax ymax
+                                float center_x_temp = center_x - fixed_size / 2. + shift / 2. + dj * shift;
+                                float center_y_temp = center_y - fixed_size / 2. + shift / 2. + di * shift;
                                 e_boxes(h, w, idx, 0) = (center_x_temp - box_width_ratio / 2.)
                                                         / img_width >= 0 ?
                                                         (center_x_temp - box_width_ratio / 2.)
@@ -217,14 +196,8 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                             }
                         }
                     }
-					h2=idx;
-		//			LOG(ERROR)<<"C++ does not have fixed_ratios idx: "<<idx;
                 }
             }
-
-			// min max aspect order
-		//	LOG(ERROR)<<"C++ total density idx --- :" << idx;
-
             for (size_t s = 0; s < min_sizes.size(); ++s) {
                 auto min_size = min_sizes[s];
                 if (min_max_aspect_ratios_order) {
@@ -236,7 +209,6 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                     idx++;
                     if (max_sizes.size() > 0) {
                         auto max_size = max_sizes[s];
-                       	// square prior with size sqrt(minSize * maxSize)
                         box_width = box_height = sqrt(min_size * max_size) / 2.;
                         e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
                         e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
@@ -244,7 +216,6 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                         e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
                         idx++;
                     }
-                    // priors with different aspect ratios
                     for (size_t r = 0; r < aspect_ratios.size(); ++r) {
                         float ar = aspect_ratios[r];
                         if (fabs(ar - 1.) < 1e-6) {
@@ -271,7 +242,6 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                     }
                     if (max_sizes.size() > 0) {
                         auto max_size = max_sizes[s];
-                        // square prior with size sqrt(minSize * maxSize)
                         box_width = box_height = sqrt(min_size * max_size) / 2.;
                         e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
                         e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
@@ -282,13 +252,8 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
                 }
 
             }
-			h3 = idx;
         }
     }
-	LOG(ERROR)<<"C++ have fixed size w/ fixed ratio"<< h1;
-	LOG(ERROR)<<"C++ have fixed size without fixed ratio"<< h2;
-	LOG(ERROR)<<"C++ have fixed size after density"<< h3;
- 
     if (clip) {
       platform::Transform<platform::CPUDeviceContext> trans;
       ClipFunctor<T> clip_func;

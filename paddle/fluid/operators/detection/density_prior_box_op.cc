@@ -19,11 +19,10 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    LOG(ERROR) << "C++  ===================";
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of PriorBoxOp should not be null.");
+                   "Input(Input) of DensityPriorBoxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Image) of PriorBoxOp should not be null.");
+                   "Input(Image) of DensityPriorBoxOp should not be null.");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
@@ -41,29 +40,36 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
     bool flip = ctx->Attrs().Get<bool>("flip");
-//  densities and fixed_size 
-//  begin wangshipeng @20181028
     auto fixed_sizes = ctx->Attrs().Get<std::vector<float>>("fixed_sizes");
 	auto fixed_ratios = ctx->Attrs().Get<std::vector<float>>("fixed_ratios");
     auto densities = ctx->Attrs().Get<std::vector<int>>("densities");
-//  end wangshipeng @20181028
     std::vector<float> aspect_ratios_vec;
     ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
     size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
+	PADDLE_ENFORCE_EQ(fixed_sizes.size(),densities.size(),
+					"The number of fixed_sizes and densities must be equal.");
+
+	if (fixed_sizes.size()>0){
+		if (densities.size() > 0){
+			for(size_t i = 0; i < densities.size(); ++i){
+				if(fixed_ratios.size() > 0) {
+					num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
+				} else {
+					num_priors += (aspect_ratios_vec.size()) * (pow(densities[i], 2));
+				}
+			}
+		}
+ 	}
     if (max_sizes.size() > 0) {
-      PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
+      	PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
                         "The number of min_size and max_size must be equal.");
-      num_priors += max_sizes.size();
-      for (size_t i = 0; i < max_sizes.size(); ++i) {
-        PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
+      	num_priors += max_sizes.size();
+      	for (size_t i = 0; i < max_sizes.size(); ++i) {
+        	PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
                          "max_size[%d] must be greater than min_size[%d].", i,i);
       }
     }
-//  begin wangshipeng @20181028
-    PADDLE_ENFORCE_EQ(fixed_sizes.size(),densities.size(),
-                        "The number of fixed_sizes and densities must be equal.");
-//  end wangshipeng @20181028
 
     std::vector<int64_t> dim_vec(4);
     dim_vec[0] = input_dims[2];
@@ -73,7 +79,6 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
     ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
   }
-//
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -155,8 +160,6 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float) "
                    "Prior boxes center offset.")
         .SetDefault(0.5);
-//  Add Arrtibutes fixed_sizes, fixed_ratios and densities
-//  begin wangshipeng @20181028
     AddAttr<std::vector<float>>("fixed_sizes",
                             "(vector<float>) List of fixed sizes "
                             "of generated density prior boxes.")

@@ -22,6 +22,7 @@ iou_similarity_op.cu)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc poly_util.cc gpc.cc)
 detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
+detection_library(density_prior_box_op SRCS density_prior_box_op.cc)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
 anchor_generator_op.cu)
 detection_library(target_assign_op SRCS target_assign_op.cc
@@ -30,7 +31,6 @@ detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
 polygon_box_transform_op.cu)
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 detection_library(generate_proposal_labels_op SRCS generate_proposal_labels_op.cc)
-detection_library(density_prior_box_op SRCS density_prior_box_op.cc)
 
 if(WITH_GPU)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)
