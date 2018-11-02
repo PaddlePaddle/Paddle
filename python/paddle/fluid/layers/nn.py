@@ -4672,6 +4672,7 @@ def multiplex(inputs, index):
         outputs={'Out': [out]})
     return out
 
+
 def mask_extract(input, mask):
     """
     """
@@ -4688,7 +4689,7 @@ def mask_extract(input, mask):
                  'Offset': offset,
                  'Ids': ids})
     return out, ids
-    
+
 
 def softmax_with_cross_entropy(logits,
                                label,
