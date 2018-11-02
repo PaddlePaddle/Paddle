@@ -6,13 +6,13 @@ option(WITH_STATIC_LIB "Compile demo with static/shared library, default use sta
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
 
 macro(safe_set_static_flag)
-    foreach(flag_var
-        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "/MD")
-        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-      endif(${flag_var} MATCHES "/MD")
-    endforeach(flag_var)
+  foreach(flag_var
+      CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+      CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    if(${flag_var} MATCHES "/MD")
+      string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+    endif(${flag_var} MATCHES "/MD")
+  endforeach(flag_var)
 endmacro()
 
 if (WIN32)
@@ -42,7 +42,7 @@ if(WITH_GPU) # default gpu path
     set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
   else()
     if(CUDA_LIB STREQUAL "")
-    set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
+      set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
     endif()
   endif(NOT WIN32)
 endif()
@@ -53,9 +53,9 @@ include_directories("${PADDLE_LIB}/third_party/install/glog/include")
 include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
 include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
 if (NOT WIN32)
-include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
-include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
-include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
+  include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
+  include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
+  include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 endif(NOT WIN32)
 
 include_directories("${PADDLE_LIB}/third_party/boost")
@@ -63,15 +63,15 @@ include_directories("${PADDLE_LIB}/third_party/eigen3")
 
 if (NOT WIN32)
   if (USE_TENSORRT AND WITH_GPU)
-      include_directories("${TENSORRT_INCLUDE_DIR}")
-      link_directories("${TENSORRT_LIB_DIR}")
+    include_directories("${TENSORRT_INCLUDE_DIR}")
+    link_directories("${TENSORRT_LIB_DIR}")
   endif()
 endif(NOT WIN32)
 
 if (NOT WIN32)
-link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
-link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
-link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
+  link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
+  link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
+  link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 endif(NOT WIN32)
 
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
@@ -80,18 +80,12 @@ link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
-# add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
- # add_library(${DEMO_NAME} ${DEMO_NAME}.cc)
-add_executable(real_data_icnet_tester real_data_icnet_tester.cc)
-
-# add_library(${DEMO_NAME} SHARED  ${DEMO_NAME}.cc)
-# add_executable(test test.cc)
-add_executable(thread_icnet_test thread_icnet_test.cc)
+add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
-               ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
+    ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
   set(MKLDNN_PATH "${PADDLE_LIB}/third_party/install/mkldnn")
   if(EXISTS ${MKLDNN_PATH})
     include_directories("${MKLDNN_PATH}/include")
@@ -104,25 +98,25 @@ endif()
 # Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
 if(WITH_STATIC_LIB)
   set(DEPS
-	  ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+    ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   set(DEPS
-      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+    ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
 
 if (NOT WIN32)
-set(EXTERNAL_LIB "-lrt -ldl -lpthread")
-set(DEPS ${DEPS}
+  set(EXTERNAL_LIB "-lrt -ldl -lpthread")
+  set(DEPS ${DEPS}
     ${MATH_LIB} ${MKLDNN_LIB}
     glog gflags protobuf snappystream snappy z xxhash
     ${EXTERNAL_LIB})
 else()
-set(DEPS ${DEPS}
+  set(DEPS ${DEPS}
     ${MATH_LIB} ${MKLDNN_LIB}
     ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
     ${EXTERNAL_LIB})
-# NOTE(dzhwinter) shlwapi is deprecated.
-set(DEPS ${DEPS} libcmt shlwapi)
+  # NOTE(dzhwinter) shlwapi will be deprecated.
+  set(DEPS ${DEPS} libcmt shlwapi)
 endif(NOT WIN32)
 
 if(WITH_GPU)
@@ -134,14 +128,9 @@ if(WITH_GPU)
     set(DEPS ${DEPS} ${CUDA_LIB}/libcudart${CMAKE_SHARED_LIBRARY_SUFFIX})
   else()
     set(DEPS ${DEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} )
-  set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
-  set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
+    set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
+    set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
   endif()
 endif()
 
-target_link_libraries(real_data_icnet_tester ${DEPS})
-
-# target_link_libraries(${DEMO_NAME} ${DEPS})
-# target_link_libraries(test ${DEMO_NAME} )
-target_link_libraries(thread_icnet_test ${DEPS})
-# target_compile_definitions(${DEMO_NAME} PRIVATE "API_DEFINITION")
+target_link_libraries(${DEMO_NAME} ${DEPS})

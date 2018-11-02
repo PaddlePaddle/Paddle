@@ -3,7 +3,6 @@ INCLUDE(ExternalProject)
 SET(THREADPOOL_SOURCE_DIR ${THIRD_PARTY_PATH}/threadpool)
 SET(THREADPOOL_INCLUDE_DIR ${THREADPOOL_SOURCE_DIR}/src/extern_threadpool)
 INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
-message("Debug" ${THREADPOOL_INCLUDE_DIR})
 
 ExternalProject_Add(
     extern_threadpool
