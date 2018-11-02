@@ -24,7 +24,7 @@ class ScaleKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* in_var = ctx.InputVar("X");
-    auto* in = framework::GetTensorOrSelectedRowsFromVar(*in_var);
+    auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
 
     auto scale = static_cast<T>(ctx.Attr<float>("scale"));
     auto bias = static_cast<T>(ctx.Attr<float>("bias"));
@@ -38,7 +38,8 @@ class ScaleKernel : public framework::OpKernel<T> {
       out_slr->set_height(in_slr.height());
     }
 
-    auto* out = framework::GetMutableTensorOrSelectedRowsFromVar(out_var);
+    auto* out =
+        framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
 
     PADDLE_ENFORCE_EQ(in->dims(), out->dims(),

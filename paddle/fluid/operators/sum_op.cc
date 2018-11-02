@@ -86,7 +86,8 @@ class SumOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE(x_vars[idx] != nullptr,
                        "Input var[%s] should not be nullptr", x_vars_name[idx]);
         // FIXME(zcd): The input x_var may be SelectedRows or LoDTensor.
-        auto tensor = framework::GetTensorOrSelectedRowsFromVar(*x_vars[idx]);
+        auto tensor =
+            framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
         if (tensor->numel() == 0) {
           continue;
         }
