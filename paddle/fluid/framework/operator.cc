@@ -425,19 +425,14 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) -> const Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(var->IsType<LoDTensor>(),
-                                  "%s should be LoDTensor, but not %s",
-                                  sub_name, var->Type().name());
-                   return static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
+                   return Input<LoDTensor>(sub_name);
                  });
   return res;
 }
 
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
-  return static_cast<Tensor*>(Output<LoDTensor>(name));
+  return Output<LoDTensor>(name);
 }
 
 template <>
@@ -448,12 +443,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) -> Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(var->IsType<LoDTensor>(),
-                                  "%s should be LoDTensor, but not %s",
-                                  sub_name, var->Type().name());
-                   return static_cast<Tensor*>(var->GetMutable<LoDTensor>());
+                   return Output<LoDTensor>(sub_name);
                  });
   return res;
 }
