@@ -39,8 +39,9 @@ class MaskExtractOp : public framework::OperatorWithKernel {
     auto mask_dims = ctx->GetInputDim("Mask");
     PADDLE_ENFORCE(mask_dims.size() == 2 && mask_dims[1] == 1,
                    "Input(Mask) should have the shape like [batch_size, 1].");
-    PADDLE_ENFORCE_EQ(x_dims[0], mask_dims[0], "Input(X) and Input(Mask) "
-                   "should have the same first dimension.");
+    PADDLE_ENFORCE_EQ(x_dims[0], mask_dims[0],
+                      "Input(X) and Input(Mask) "
+                      "should have the same first dimension.");
     ctx->SetOutputDim("Out", x_dims);
     ctx->SetOutputDim("Ids", mask_dims);
     ctx->SetOutputDim("Offset", mask_dims);
@@ -48,27 +49,24 @@ class MaskExtractOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         ctx.GetPlace());
   }
-
 };
 
 class MaskExtractOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) Input data.");
-    AddInput("Mask",
-             "(LoDTensor, default LoDTensor<float>) Mask information");
-    AddOutput("Out",
-              "(LodTensor, default LoDTensor<float>). ");
-    AddOutput("Ids",
-              "(LodTensor, default LoDTensor<float>). ");
+    AddInput("X", "(LoDTensor, default LoDTensor<float>) Input data.");
+    AddInput("Mask", "(LoDTensor, default LoDTensor<float>) Mask information");
+    AddOutput("Out", "(LodTensor, default LoDTensor<float>). ");
+    AddOutput("Ids", "(LodTensor, default LoDTensor<float>). ");
     AddOutput("Offset",
-              "(LodTensor, default LoDTensor<float>). ").AsIntermediate();
+              "(LodTensor, default LoDTensor<float>). Intermediate offset to "
+              "assist the backward computation")
+        .AsIntermediate();
     AddComment(R"DOC(
 Mask Extract Operator.
 
@@ -100,7 +98,7 @@ class MaskExtractOpGrad : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         ctx.GetPlace());
@@ -111,8 +109,7 @@ class MaskExtractOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mask_extract, ops::MaskExtractOp,
-                  ops::MaskExtractOpMaker,
+REGISTER_OPERATOR(mask_extract, ops::MaskExtractOp, ops::MaskExtractOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(mask_extract_grad, ops::MaskExtractOpGrad);
 REGISTER_OP_CPU_KERNEL(
