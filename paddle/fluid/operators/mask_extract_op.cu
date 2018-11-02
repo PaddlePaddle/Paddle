@@ -124,9 +124,6 @@ class MaskExtractGPUGradKernel : public framework::OpKernel<T> {
     auto* d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(ctx.template device_context<DeviceContext>(), d_x,
-             static_cast<T>(0));
     auto x_dims = d_x->dims();
     auto feat_dim = d_x->numel() / x_dims[0];
 
