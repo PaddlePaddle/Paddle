@@ -358,7 +358,7 @@ static bool VarIsTensor(const Variable& var) {
   return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
 }
 
-const Tensor* GetTensorOrSelectedRowsFromVar(const Variable& var) {
+const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
   if (var.IsType<LoDTensor>()) {
     return static_cast<const Tensor*>(&(var.Get<LoDTensor>()));
   } else if (var.IsType<SelectedRows>()) {
@@ -369,7 +369,7 @@ const Tensor* GetTensorOrSelectedRowsFromVar(const Variable& var) {
   }
 }
 
-Tensor* GetMutableTensorOrSelectedRowsFromVar(Variable* var) {
+Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
@@ -414,7 +414,7 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
-  return static_cast<const Tensor*>(Input<LoDTensor>());
+  return static_cast<const Tensor*>(Input<LoDTensor>(name));
 }
 
 template <>
@@ -774,11 +774,11 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* original_tensor =
-        GetMutableTensorOrSelectedRowsFromVar(scope.FindVar(var_name));
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
     auto* var = transfer_scope.FindVar(var_name);
     PADDLE_ENFORCE(var != nullptr, "The var[%s] should not be nullptr",
                    var_name);
-    auto* transformed_tensor = GetTensorOrSelectedRowsFromVar(*var);
+    auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     original_tensor->ShareDataWith(*transformed_tensor);
   }
 }
@@ -795,7 +795,7 @@ Scope* OperatorWithKernel::TryTransferData(
         continue;
       }
 
-      auto* tensor_in = GetTensorOrSelectedRowsFromVar(*var);
+      auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       if (!tensor_in->IsInitialized()) {
         continue;
       }
