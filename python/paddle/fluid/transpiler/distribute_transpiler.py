@@ -920,11 +920,11 @@ to transpile() call.")
             block_idx = int(block_name.split(block_suffix)[1])
             orig_var = self.origin_program.global_block().vars[orig_var_name]
 
-            skip_numel = 0
+            skip_dim0 = 0
             slice_vars = self.param_var_mapping[orig_var_name]
             for slice_var in slice_vars[:block_idx]:
-                skip_numel += reduce(lambda x, y: x * y, slice_var.shape)
-            slice_vars_and_attrs.append([orig_var, skip_numel, param])
+                skip_dim0 += slice_var.shape[0]
+            slice_vars_and_attrs.append([orig_var, skip_dim0, param])
 
         return slice_vars_and_attrs
 
