@@ -369,7 +369,7 @@ const Tensor* GetTensorFromVar(const Variable& var) {
   }
 }
 
-static Tensor* GetMutableTensorFromVar(Variable* var) {
+Tensor* GetMutableTensorFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
@@ -442,7 +442,10 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto var = OutputVar(name);
-  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
+  if (var == nullptr) return nullptr;
+  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "%s should be LoDTensor, but not %s",
+                 name, var->Type().name());
+  return var->GetMutable<LoDTensor>();
 }
 
 template <>
@@ -452,10 +455,13 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   std::vector<Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) {
+                 [&](const std::string& sub_name) -> Tensor* {
                    auto var = scope_.FindVar(sub_name);
-                   return var == nullptr ? nullptr
-                                         : GetMutableTensorFromVar(var);
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(var->IsType<LoDTensor>(),
+                                  "%s should be LoDTensor, but not %s",
+                                  sub_name, var->Type().name());
+                   return var->GetMutable<LoDTensor>();
                  });
   return res;
 }
