@@ -15,6 +15,8 @@
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include <unordered_map>
+#include <map>
 
 namespace paddle {
 namespace operators {
@@ -346,36 +348,76 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
-    std::vector<float> output_shift_scale;
-    float sum_scale = 1.0f;
-
-    if(is_INT8){
-        int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
-        float scale_in_data = *(scale_in->data<float>());
-
-        std::vector<float> scale_weights_data(count);
-        for(int i=0; i<count; i++){
-            scale_weights_data[i] =*(scale_weights->data<float>() + i);
-        }
-        float scale_out_data = *(scale_out->data<float>());
-        output_shift_scale.resize(count);
-        for(int i=0; i<count; i++){
-            if(scale_weights_data[i] == 0.0)
-                output_shift_scale[i] = scale_out_data;
-            else 
-                output_shift_scale[i] = scale_out_data / (scale_in_data * scale_weights_data[i]);
-        }
-        if(fuse_residual_conn){
-            float scale_in_eltwise_data = *(scale_in_eltwise->data<float>());
-            sum_scale = scale_out_data / scale_in_eltwise_data;
-        }
-    }
-
     // Get unique name for storing MKLDNN primitives
     const std::string key = ConvMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
         ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
+    static std::unordered_map<std::string, std::vector<float>> scale_map;
+    //scale_map.insert({key_conv_pd,{1.0f}});
+    //scale_map[key_conv_pd]={0.1f};
+    bool scale_reuse = false;
+    auto scale_in_key = key + "@scale_in";
+    auto scale_weights_key = key + "@scale_weights";
+    auto scale_out_key = key + "@scale_out";
+    auto output_shift_scale_key = key + "@output_shift_scale";
+    auto sum_scale_key = key + "@sum_scale";
+    auto scale_in_eltwise_key = key + "@scale_in_eltwise";
+    std::vector<float> scale_in_data;
+    std::vector<float> scale_out_data;
+    std::vector<float> scale_weights_data;
+    std::vector<float> scale_in_eltwise_data;
+    std::vector<float> output_shift_scale;
+    std::vector<float> sum_scale = {1.0f};
+    std::vector<float> none_scale = {0};
+
+    if (is_INT8 && GetScaleMap(scale_map, scale_in_key) == none_scale){
+        scale_reuse = true;
+    }
+//std::cout<<"scale_reuse = "<<scale_reuse<<std::endl;
+    if(is_INT8){
+        if(scale_reuse){
+//std::cout<<"load scale!!!!!!!!"<<std::endl;
+            int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
+            scale_in_data = {*(scale_in->data<float>())};
+            scale_weights_data.resize(count);
+            for(int i=0; i<count; i++){
+                scale_weights_data[i] =*(scale_weights->data<float>() + i);
+            }
+            scale_out_data = {*(scale_out->data<float>())};
+            output_shift_scale.resize(count);
+            for(int i=0; i<count; i++){
+                if(scale_weights_data[i] == 0.0)
+                    output_shift_scale[i] = scale_out_data[0];
+                else 
+                    output_shift_scale[i] = scale_out_data[0] / (scale_in_data[0] * scale_weights_data[i]);
+            }
+            if(fuse_residual_conn){
+                scale_in_eltwise_data = {*(scale_in_eltwise->data<float>())};
+                sum_scale[0] = scale_out_data[0] / scale_in_eltwise_data[0];
+                SetScaleMap(scale_map, scale_in_eltwise_key, scale_in_eltwise_data);
+            }
+
+            //scale reuse
+            SetScaleMap(scale_map, scale_in_key, scale_in_data);
+            SetScaleMap(scale_map, scale_weights_key, scale_weights_data);
+            SetScaleMap(scale_map, scale_out_key, scale_out_data);
+            SetScaleMap(scale_map, output_shift_scale_key, output_shift_scale);
+            SetScaleMap(scale_map, sum_scale_key, sum_scale);
+        } else{
+            scale_in_data = GetScaleMap(scale_map, scale_in_key);
+            scale_out_data = GetScaleMap(scale_map, scale_out_key);
+            scale_weights_data = GetScaleMap(scale_map, scale_weights_key);
+            if(fuse_residual_conn){
+                scale_in_eltwise_data = GetScaleMap(scale_map, scale_in_eltwise_key);
+            }
+            output_shift_scale = GetScaleMap(scale_map, output_shift_scale_key);
+            sum_scale = GetScaleMap(scale_map, sum_scale_key); 
+            //printf("pause!!!");
+        }
+
+    }
+
 
     std::vector<primitive> pipeline;
     auto user_src_md = platform::MKLDNNMemDesc(
@@ -431,7 +473,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
                                            strides, paddings, mkldnn_engine,
                                            fuse_relu, fuse_residual_conn, 
-                                           output_shift_scale, sum_scale);
+                                           output_shift_scale, sum_scale[0]);
         } else{
             conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
                                            strides, paddings, mkldnn_engine,
@@ -442,7 +484,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             conv_pd =
                 ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
                                      mkldnn_engine, fuse_relu, fuse_residual_conn,
-                                     output_shift_scale, sum_scale);
+                                     output_shift_scale, sum_scale[0]);
         } else{
             conv_pd =
                 ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
@@ -466,11 +508,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::memory> weights_memory_p;
     if(is_INT8){
         int mask_reorder = is_multi_channel? ((g!= 1) ? (1<<1)+(1<<0) : 1<<0) : 0;
-        int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
-        std::vector<float> scale_weights_data(count);
-        for(int i=0; i<count; i++){
-            scale_weights_data[i] = *(scale_weights->data<float>() + i);
-        }
         weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
             user_weights_memory_p, pipeline, is_test, is_INT8, scale_weights_data, mask_reorder);
     } else{
@@ -536,6 +573,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // create convolution op primitive
     std::shared_ptr<mkldnn::convolution_forward> conv_p;
+    std::vector<float> scale_bias_data;
+    auto scale_bias_key = key + "@scale_bias";
     if (bias) {
       const float* bias_data = bias->data<float>();
       auto user_bias_md = platform::MKLDNNMemDesc(
@@ -545,10 +584,15 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::shared_ptr<mkldnn::memory>  bias_memory_p;
       if(is_INT8){
           int mask_reorder = is_multi_channel? 1<<0 : 1;
-          int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
-          std::vector<float> scale_bias_data(count);
-          for(int i=0; i<count; i++){
-              scale_bias_data[i] = (*scale_in->data<float>()) * (*(scale_weights->data<float>() + i));
+          if(scale_reuse){
+              int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
+              scale_bias_data.resize(count);
+              for(int i=0; i<count; i++){
+                  scale_bias_data[i] = scale_in_data[0] * scale_weights_data[i];
+              }
+              SetScaleMap(scale_map, scale_bias_key, scale_bias_data);
+          } else{
+              scale_bias_data = GetScaleMap(scale_map, scale_bias_key);
           }
           bias_memory_p =
               handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline, is_test, is_INT8, scale_bias_data, mask_reorder);
@@ -577,6 +621,27 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
+
+    void SetScaleMap(std::unordered_map<std::string, std::vector<float>> &scale_map,
+                       const std::string& name, std::vector<float> scale_data) const {
+      auto it = scale_map.find(name);
+      if (it == scale_map.end()) {
+        scale_map[name] = scale_data;  // create new blob
+      } else {
+        (*it).second = scale_data;  // set data to existing blob
+      }
+      return;
+    }
+
+    std::vector<float> GetScaleMap(std::unordered_map<std::string, std::vector<float>> &scale_map,
+         const std::string& name) const {
+      auto it = scale_map.find(name);
+      if (it != scale_map.end()) {
+        return (*it).second;
+      }
+      return {0};
+    }
+
     mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
                           const std::vector<float> output_shift_scale, float sum_scale) const {
       mkldnn::primitive_attr conv_attr;
