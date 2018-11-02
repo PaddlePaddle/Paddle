@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,13 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
+namespace ir {
 
-using LoDTensorArray = std::vector<LoDTensor>;
+class DepthwiseConvMKLDNNPass : public FusePassBase {
+ public:
+  virtual ~DepthwiseConvMKLDNNPass() {}
 
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
+};
+
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle
