@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/conv_relu_mkldnn_fuse_pass.h"
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -36,6 +37,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("X", inputs);
   }
   op->SetOutput("Out", outputs);
+  op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+              static_cast<int>(OpRole::kForward));
 }
 
 // a->OP0->b
