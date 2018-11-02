@@ -364,7 +364,7 @@ const Tensor* GetTensorFromVar(const Variable& var) {
   } else if (var.IsType<SelectedRows>()) {
     return &(var.Get<SelectedRows>().value());
   } else {
-    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows",
                  var.Type().name());
   }
 }
@@ -415,7 +415,10 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
-  return var == nullptr ? nullptr : GetTensorFromVar(*var);
+  if (var == nullptr) return nullptr;
+  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "%s should be LoDTensor, but not %s",
+                 name, var->Type().name());
+  return static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
 }
 
 template <>
@@ -425,9 +428,13 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   std::vector<const Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) {
+                 [&](const std::string& sub_name) -> const Tensor* {
                    auto var = scope_.FindVar(sub_name);
-                   return var == nullptr ? nullptr : GetTensorFromVar(*var);
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(var->IsType<LoDTensor>(),
+                                  "%s should be LoDTensor, but not %s",
+                                  sub_name, var->Type().name());
+                   return static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
                  });
   return res;
 }
