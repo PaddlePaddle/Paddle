@@ -1907,8 +1907,19 @@ class DynamicRNN(object):
 
     def _init_zero_idx_(self):
         if self.zero_idx is None:
-            self.zero_idx = fill_constant(
-                shape=[1], value=0, dtype='int64', force_cpu=True)
+            parent_block = self._parent_block_()
+            self.zero_idx = parent_block.create_var(
+                name=unique_name.generate('zero_idx'), dtype='int64')
+            parent_block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [self.zero_idx]},
+                attrs={
+                    'shape': [1],
+                    'dtype': self.zero_idx.dtype,
+                    'value': float(0),
+                    'force_cpu': True
+                })
 
     def _parent_block_(self):
         prog = self.helper.main_program
