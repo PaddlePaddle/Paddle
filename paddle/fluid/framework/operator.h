@@ -225,7 +225,7 @@ class ExecutionContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> const T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
@@ -238,7 +238,7 @@ class ExecutionContext {
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });

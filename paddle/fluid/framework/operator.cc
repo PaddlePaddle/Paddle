@@ -425,7 +425,13 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) -> const Tensor* {
-                   return Input<LoDTensor>(sub_name);
+                   auto var = scope_.FindVar(sub_name);
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(
+                       var->IsType<LoDTensor>(),
+                       "%s should be LoDTensor, but the received type is %s",
+                       sub_name, var->Type().name());
+                   return &(var->Get<LoDTensor>());
                  });
   return res;
 }
@@ -443,7 +449,13 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
                  [&](const std::string& sub_name) -> Tensor* {
-                   return Output<LoDTensor>(sub_name);
+                   auto var = scope_.FindVar(sub_name);
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(
+                       var->IsType<LoDTensor>(),
+                       "%s should be LoDTensor, but the received type is %s",
+                       sub_name, var->Type().name());
+                   return var->GetMutable<LoDTensor>();
                  });
   return res;
 }
