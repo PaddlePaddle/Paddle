@@ -11,9 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
-#include <glog/logging.h>
 
 #include "paddle/fluid/operators/conv_op.h"
 
@@ -38,7 +35,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasOutput("Output"),
                  "Output(Output) of ConvOp should not be null.");
 
-  VLOG(3) << "Conv op infershape";
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
 
@@ -46,51 +42,32 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
-  VLOG(3) << "Conv op Before check";
-  in_dims.size() == 4 || in_dims.size() == 5;
-  // PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
-  //               "Conv intput should be 4-D or 5-D tensor.");
-  VLOG(3) << "check0";
 
-  // PADDLE_ENFORCE_EQ(
-  //    in_dims.size(), filter_dims.size(),
-  //    "Conv input dimension and filter dimension should be the same.");
-  in_dims.size() == filter_dims.size();
-  VLOG(3) << "enforce check0";
+  PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
+                 "Conv intput should be 4-D or 5-D tensor.");
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(), filter_dims.size(),
+      "Conv input dimension and filter dimension should be the same.");
   PADDLE_ENFORCE(
       in_dims.size() - strides.size() == 2U,
       "Conv input dimension and strides dimension should be consistent.");
-  VLOG(3) << "check1";
   PADDLE_ENFORCE_EQ(
       paddings.size(), strides.size(),
       "Conv paddings dimension and Conv strides dimension should be the same.");
 
-  VLOG(3) << "check2";
-  // in_dims[1] == filter_dims[1] * groups;
-  // PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
-  //                  "The number of input channels should be equal to filter "
-  //                  "channels * groups.");
-  VLOG(3) << "check3";
-  // filter_dims[0] % groups == 0 ;
-  // PADDLE_ENFORCE_EQ(
-  //    filter_dims[0] % groups, 0,
-  //    "The number of output channels should be divided by groups.");
-  VLOG(3) << "filter" << filter_dims.size();
-  VLOG(3) << "filter" << filter_dims[0];
-  VLOG(3) << "check4";
-  VLOG(3) << "filter" << filter_dims[1];
-  VLOG(3) << "dims" << in_dims[0];
+  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
+                    "The number of input channels should be equal to filter "
+                    "channels * groups.");
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups, 0,
+      "The number of output channels should be divided by groups.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
-  VLOG(3) << "output shape";
   for (size_t i = 0; i < strides.size(); ++i) {
-    VLOG(3) << "check5";
     output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
                                           dilations[i], paddings[i],
                                           strides[i]));
-    VLOG(3) << "check pass";
   }
-  VLOG(3) << "Conv InferShape Pass";
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   ctx->ShareLoD("Input", "Output");
 }

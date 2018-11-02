@@ -94,8 +94,6 @@ bool NativePaddlePredictor::Init(
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
-    auto exe = executor_.get();
-    auto sc = scope_.get();
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
 
