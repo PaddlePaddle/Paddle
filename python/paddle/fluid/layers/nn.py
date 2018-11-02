@@ -154,6 +154,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'affine_grid',
     'sequence_reverse',
     'affine_channel',
     'hash',
@@ -710,8 +711,18 @@ def dynamic_gru(input,
               The first part are weights of the update gate and reset gate with
               shape :math:`(D \\times 2D)`, and the second part are weights for
               candidate hidden state with shape :math:`(D \\times D)`.
-        bias_attr(ParamAttr): The parameter attribute for learnable the
-            hidden-hidden bias.
+
+            If it is set to None or one attribute of ParamAttr, dynamic_gru will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
             :attr:`False`.
         gate_activation(str): The activation for update gate and reset gate.
@@ -810,10 +821,29 @@ def gru_unit(input,
 
     Args:
         input (Variable): The fc transformed input value of current step.
-        hidden (Variable): The hidden value of lstm unit from previous step.
+        hidden (Variable): The hidden value of gru unit from previous step.
         size (integer): The input dimension value.
-        param_attr (ParamAttr): The weight parameters for gru unit. Default: None
-        bias_attr (ParamAttr): The bias parameters for gru unit. Default: None
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Note:
+
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
+              :math:`D` is the hidden size.
+            - All elements in the weight matrix can be divided into two parts.
+              The first part are weights of the update gate and reset gate with
+              shape :math:`(D \\times 2D)`, and the second part are weights for
+              candidate hidden state with shape :math:`(D \\times D)`.
+
+            If it is set to None or one attribute of ParamAttr, gru_unit will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, gru_unit will create ParamAttr as 
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
@@ -4443,7 +4473,10 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[5, 10, 15], dtype='float32')
+            # use append_batch_size=False to avoid prepending extra 
+            # batch size in shape
+            x = fluid.layers.data(name='x', shape=[5, 10, 15], 
+                            dtype='float32', append_batch_size=False)
             x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
 
@@ -6104,6 +6137,124 @@ def crop(x, shape=None, offsets=None, name=None):
         type='crop',
         inputs=ipts,
         outputs={'Out': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def affine_grid(theta, out_shape, name=None):
+    """
+    It generates a grid of (x,y) coordinates using the parameters of
+    the affine transformation that correspond to a set of points where
+    the input feature map should be sampled to produce the transformed
+    output feature map.
+
+    .. code-block:: text
+
+        * Case 1:
+
+          Given:
+
+              theta = [[[x_11, x_12, x_13]
+                        [x_14, x_15, x_16]]
+                       [[x_21, x_22, x_23]
+                        [x_24, x_25, x_26]]]
+      
+              out_shape = [2, 3, 5, 5]
+      
+          Step 1:
+      
+              Generate normalized coordinates according to out_shape.
+              The values of the normalized coordinates are in the interval between -1 and 1.
+              The shape of the normalized coordinates is [2, H, W] as below:
+      
+              C = [[[-1.  -1.  -1.  -1.  -1. ]
+                    [-0.5 -0.5 -0.5 -0.5 -0.5]
+                    [ 0.   0.   0.   0.   0. ]
+                    [ 0.5  0.5  0.5  0.5  0.5]
+                    [ 1.   1.   1.   1.   1. ]]
+                   [[-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]]]
+              C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+
+          Step2:
+
+              Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+              C_ = [[-1.  -1.   1. ]
+                    [-0.5 -1.   1. ]
+                    [ 0.  -1.   1. ]
+                    [ 0.5 -1.   1. ]
+                    [ 1.  -1.   1. ]
+                    [-1.  -0.5  1. ]
+                    [-0.5 -0.5  1. ]
+                    [ 0.  -0.5  1. ]
+                    [ 0.5 -0.5  1. ]
+                    [ 1.  -0.5  1. ]
+                    [-1.   0.   1. ]
+                    [-0.5  0.   1. ]
+                    [ 0.   0.   1. ]
+                    [ 0.5  0.   1. ]
+                    [ 1.   0.   1. ]
+                    [-1.   0.5  1. ]
+                    [-0.5  0.5  1. ]
+                    [ 0.   0.5  1. ]
+                    [ 0.5  0.5  1. ]
+                    [ 1.   0.5  1. ]
+                    [-1.   1.   1. ]
+                    [-0.5  1.   1. ]
+                    [ 0.   1.   1. ]
+                    [ 0.5  1.   1. ]
+                    [ 1.   1.   1. ]]
+          Step3:
+              Compute output by equation $$Output[i] = C_ * Theta[i]^T$$
+
+    Args:
+        theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
+        out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W].
+        out_shape can be a Variable or a list or tuple.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The output with shape [N, H, W, 2].
+
+    Raises:
+        ValueError: If the type of arguments is not supported.
+
+    Examples:
+
+        .. code-block:: python
+            theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
+            out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
+            data = fluid.layers.affine_grid(theta, out_shape)
+
+            # or
+            data = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
+
+    """
+    helper = LayerHelper('affine_grid')
+
+    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
+        isinstance(out_shape, Variable)):
+        raise ValueError("The out_shape should be a list, tuple or Variable.")
+
+    if not isinstance(theta, Variable):
+        raise ValueError("The theta should be a Variable.")
+
+    out = helper.create_variable_for_type_inference(theta.dtype)
+    ipts = {'Theta': theta}
+    attrs = {}
+    if isinstance(out_shape, Variable):
+        ipts['OutputShape'] = out_shape
+    else:
+        attrs['output_shape'] = out_shape
+
+    helper.append_op(
+        type='affine_grid',
+        inputs=ipts,
+        outputs={'Output': out},
         attrs=None if len(attrs) == 0 else attrs)
     return out
 
