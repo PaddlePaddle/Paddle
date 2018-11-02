@@ -5612,17 +5612,14 @@ def image_resize(input,
 
             out = fluid.layers.image_resize(input, out_shape=[12, 12])
     """
-    resample_methods = {
-        'BILINEAR': 'bilinear_interp',
-        'NEAREST': 'nearest_neighbor_interp'
-    }
+    resample_methods = {'BILINEAR': 'bilinear', 'NEAREST': 'nearest'}
     if resample not in resample_methods:
         raise ValueError(
             "The 'resample' of image_resize can only be 'BILINEAR' and 'NEAREST' currently."
         )
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None")
-    helper = LayerHelper(resample_methods[resample], **locals())
+    helper = LayerHelper('interpolate', **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -5647,15 +5644,18 @@ def image_resize(input,
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type=resample_methods[resample],
+        type='interpolate',
         inputs=inputs,
         outputs={"Out": out},
-        attrs={"out_h": out_h,
-               "out_w": out_w})
+        attrs={
+            "out_h": out_h,
+            "out_w": out_w,
+            "interp_method": resample_methods[resample]
+        })
     return out
 
 
-@templatedoc(op_type="bilinear_interp")
+@templatedoc(op_type="interpolate")
 def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
     ${comment}
@@ -5678,7 +5678,7 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
     return image_resize(input, out_shape, scale, name, 'BILINEAR')
 
 
-@templatedoc(op_type="bilinear_interp")
+@templatedoc(op_type="interpolate")
 def resize_nearest(input, out_shape=None, scale=None, name=None):
     """
     ${comment}
