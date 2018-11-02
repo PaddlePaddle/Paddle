@@ -24,7 +24,7 @@ from paddle.fluid.executor import Executor
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
     def setUp(self):
-        self.op_type = "lod_tensor_array_concat"
+        self.op_type = "tensor_array_concat"
         self.attrs = {"axis": 0}
         self.outputs = ["Out"]
 
@@ -44,19 +44,21 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         cpu = core.CPUPlace()
         for i in range(10):
             t = core.LoDTensor()
-            t.set(numpy.array([i], dtype='float32'), cpu)
-            t.set_recursive_sequence_lengths([[1]])
+            if i == 0:
+                t.set(numpy.array([[i], [i]], dtype='float32'), cpu)
+            else:
+                t.set(numpy.array([[i]], dtype='float32'), cpu)
             input_tensor_array.append(t)
 
         self.assertEqual(10, len(input_tensor_array))
 
-        random_grad = numpy.random.random_sample([10]).astype(numpy.float32)
+        random_grad = numpy.random.random_sample([11]).astype(numpy.float32)
 
         y_out = block.create_var(name="Out")
         y_out.persistable = True
 
         y_grad_arr = block.create_var(
-            name='Out@GRAD', dtype='float32', shape=[10])
+            name='Out@GRAD', dtype='float32', shape=[11])
         y_grad_arr.persistable = True
         y_grad = scope.var('Out@GRAD')
         y_grad_tensor = y_grad.get_tensor()
@@ -96,7 +98,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         # test forward
         tensor = out[0]
         tensor_res = numpy.array(tensor)
-        tensor_gt = numpy.array(range(10), dtype='float32')
+        tensor_gt = numpy.array([0.0] + range(10), dtype='float32')
 
         self.assertEqual(len(tensor_res), len(tensor_gt))
 
@@ -107,10 +109,20 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         grad_tensor = scope.var('tmp_lod_tensor_array@GRAD')
         grad_tensor_array = grad_tensor.get_lod_tensor_array()
 
-        self.assertEqual(len(random_grad), len(grad_tensor_array))
+        self.assertEqual(10, len(grad_tensor_array))
+
         for i in range(len(grad_tensor_array)):
-            self.assertEqual(
-                numpy.array(grad_tensor_array[i]), numpy.array(random_grad[i]))
+            if i == 0:
+                self.assertEqual(
+                    numpy.array(grad_tensor_array[i])[0],
+                    numpy.array(random_grad[i]))
+                self.assertEqual(
+                    numpy.array(grad_tensor_array[i])[1],
+                    numpy.array(random_grad[i + 1]))
+            if i == 1:
+                self.assertEqual(
+                    numpy.array(grad_tensor_array[i]),
+                    numpy.array(random_grad[i + 1]))
 
 
 if __name__ == '__main__':
