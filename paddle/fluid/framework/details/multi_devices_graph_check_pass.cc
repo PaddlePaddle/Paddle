@@ -90,5 +90,4 @@ REGISTER_PASS(multi_devices_check_pass,
               paddle::framework::details::SSAGraghBuilderWithChecker)
     .RequireGraphAttr(paddle::framework::details::kGraphVars)
     .RequireGraphAttr(paddle::framework::details::kGraphDepVars)
-    .RequireGraphAttr(paddle::framework::details::kGraphOps)
-    .RequireGraphAttr(paddle::framework::details::kShardedVarDevice);
+    .RequireGraphAttr(paddle::framework::details::kGraphOps);
