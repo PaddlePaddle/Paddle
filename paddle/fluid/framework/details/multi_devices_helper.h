@@ -49,9 +49,6 @@ const char kGraphDepVars[] = "dep_vars";
 // unordered.
 typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
 const char kGraphOps[] = "ops";
-
-typedef std::unordered_map<std::string, int> ShardedVarDevice;
-const char kShardedVarDevice[] = "sharded_var_device";
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
