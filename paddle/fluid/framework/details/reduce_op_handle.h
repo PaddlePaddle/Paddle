@@ -46,7 +46,8 @@ struct ReduceOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
+        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+                               p_ctx.second.ctx_.get());
       }
     }
   }
