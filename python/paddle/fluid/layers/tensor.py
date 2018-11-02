@@ -25,7 +25,7 @@ import numpy
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
-    'lod_tensor_array_concat', 'concat', 'sums', 'assign',
+    'tensor_array_concat', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite'
 ]
@@ -193,10 +193,8 @@ def concat(input, axis=0, name=None):
     return out
 
 
-def lod_tensor_array_concat(input, axis=1, name=None):
+def tensor_array_concat(input, axis=1, name=None):
     """
-    **Concat**
-
     This function concatenates the input LodTensorArray along the axis mentioned
     and returns that as the output.
 
@@ -212,12 +210,12 @@ def lod_tensor_array_concat(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-           out = fluid.layers.concat(input=weights_array)
+           out = fluid.layers.concat(input=tensor_array)
     """
-    helper = LayerHelper('lod_tensor_array_concat', **locals())
+    helper = LayerHelper('tensor_array_concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
-        type='lod_tensor_array_concat',
+        type='tensor_array_concat',
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})

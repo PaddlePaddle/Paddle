@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ namespace operators {
 using framework::Tensor;
 
 void LodTensorArray2LodTensorVector(const framework::Scope &scope,
-                                    std::string base_name,
-                                    const std::string lod_tensor_array_name,
+                                    const std::string &base_name,
+                                    const std::string &lod_tensor_array_name,
                                     std::vector<std::string> *res_names) {
   auto &inx =
       scope.FindVar(lod_tensor_array_name)->Get<framework::LoDTensorArray>();
@@ -40,9 +40,9 @@ void LodTensorArray2LodTensorVector(const framework::Scope &scope,
   }
 }
 
-void LodTensorVectorResizefromLodTensorArray(
-    const framework::Scope &scope, std::string base_name,
-    const std::string lod_tensor_array_name,
+void LodTensorVectorResizeFromLodTensorArray(
+    const framework::Scope &scope, const std::string &base_name,
+    const std::string &lod_tensor_array_name,
     std::vector<std::string> *res_names) {
   auto &inx =
       scope.FindVar(lod_tensor_array_name)->Get<framework::LoDTensorArray>();
@@ -58,10 +58,10 @@ void LodTensorVectorResizefromLodTensorArray(
   }
 }
 
-void LodTensorArrayResizefromLodTensorArray(
+void LodTensorArrayCreateFromLodTensorArray(
     const framework::Scope &scope,
-    const std::string input_lod_tensor_array_name,
-    const std::string output_lod_tensor_array_name) {
+    const std::string &input_lod_tensor_array_name,
+    const std::string &output_lod_tensor_array_name) {
   auto &inx = scope.FindVar(input_lod_tensor_array_name)
                   ->Get<framework::LoDTensorArray>();
   auto &grad_inx = *scope.FindVar(output_lod_tensor_array_name)
@@ -73,8 +73,6 @@ void LodTensorArrayResizefromLodTensorArray(
         const_cast<framework::Scope &>(scope).Var(var_name);
     auto &feed_input =
         *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
-    auto dims = inx[i].dims();
-    feed_input.Resize(dims);
     grad_inx.push_back(feed_input);
   }
 }
@@ -91,17 +89,24 @@ class LoDTensorArrayConcatOp : public framework::OperatorBase {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
 
-    // auto* ins = ctx.Input<framework::LoDTensorArray>("X");
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
 
+    const size_t n = inx.size();
+    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
-    names.clear();
 
     auto out_dims = inx[0].dims();
-    out_dims[axis] = inx.size();
+    size_t out_dim_sum = 0;
+    for (size_t index = 0; index < inx.size(); index++) {
+      auto inx_dims = inx[index].dims();
+      out_dim_sum += inx_dims[axis];
+    }
+
+    out_dims[axis] = out_dim_sum;
     out.Resize(out_dims);
 
     LodTensorArray2LodTensorVector(scope, base_name, Input("X"), &names);
@@ -116,8 +121,8 @@ class LoDTensorArrayConcatOp : public framework::OperatorBase {
 class LoDTensorArrayConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input LoDTensorArray of concat operator.");
-    AddOutput("Out", "Output tensor of concat operator.");
+    AddInput("X", "Input LoDTensorArray of tensor_array_concat operator.");
+    AddOutput("Out", "Output tensor of tensor_array_concat operator.");
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
@@ -165,13 +170,15 @@ class LoDTensorArrayConcatGradOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto axis = Attr<int>("axis");
-
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
 
+    auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
+    const size_t n = inx.size();
+    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
-    names.clear();
 
     LodTensorArray2LodTensorVector(scope, base_name, Input("X"), &names);
 
@@ -180,9 +187,8 @@ class LoDTensorArrayConcatGradOp : public framework::OperatorBase {
     auto dout_name = Input(framework::GradVarName("Out"));
 
     std::vector<std::string> grad_names;
-    grad_names.clear();
 
-    LodTensorVectorResizefromLodTensorArray(scope, "grad_name", Input("X"),
+    LodTensorVectorResizeFromLodTensorArray(scope, "grad_name", Input("X"),
                                             &grad_names);
 
     auto concat_grad_op = framework::OpRegistry::CreateOp(
@@ -191,7 +197,7 @@ class LoDTensorArrayConcatGradOp : public framework::OperatorBase {
 
     concat_grad_op->Run(scope, place);
 
-    LodTensorArrayResizefromLodTensorArray(scope, Input("X"), dx_name);
+    LodTensorArrayCreateFromLodTensorArray(scope, Input("X"), dx_name);
     auto &grad_inx =
         *scope.FindVar(dx_name)->GetMutable<framework::LoDTensorArray>();
 
@@ -206,13 +212,12 @@ class LoDTensorArrayConcatGradOp : public framework::OperatorBase {
 }  // namespace operators
 }  // namespace paddle
 USE_OP(concat);
-// USE_OP(concat_grad);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lod_tensor_array_concat, ops::LoDTensorArrayConcatOp,
+REGISTER_OPERATOR(tensor_array_concat, ops::LoDTensorArrayConcatOp,
                   ops::LoDTensorArrayConcatOpMaker,
                   ops::LoDTensorArrayConcatOpInferShape,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(lod_tensor_array_concat_grad, ops::LoDTensorArrayConcatGradOp,
+REGISTER_OPERATOR(tensor_array_concat_grad, ops::LoDTensorArrayConcatGradOp,
                   ops::LoDTensorArrayConcatGradInferShape,
                   ops::LoDTensorArrayConcatGradInferVarType);
