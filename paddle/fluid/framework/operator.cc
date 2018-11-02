@@ -369,7 +369,7 @@ const Tensor* GetTensorOrSelectedRowsFromVar(const Variable& var) {
   }
 }
 
-static Tensor* GetMutableTensorOrSelectedRowsFromVar(Variable* var) {
+Tensor* GetMutableTensorOrSelectedRowsFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
@@ -447,7 +447,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   std::vector<Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) {
+                 [&](const std::string& sub_name) -> Tensor* {
                    auto var = scope_.FindVar(sub_name);
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE(var->IsType<LoDTensor>(),
