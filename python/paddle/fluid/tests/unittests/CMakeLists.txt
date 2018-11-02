@@ -17,6 +17,10 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
     LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_ctr)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_batch_merge)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
 endif(NOT WITH_DISTRIBUTE)
 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
@@ -88,4 +92,6 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SE
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 150)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
-py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
+if(NOT APPLE)
+    py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
+endif()
