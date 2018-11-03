@@ -80,8 +80,6 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() final {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-    // AddOutput("SavedShape", "(Tensor), save X, Y shape for grad to save
-    // memory.").AsIntermediate();
     AddOutput("Out", "The output of elementwise op.");
     AddAttr<int>("axis",
                  "(int, default -1). The start dimension index "
@@ -129,13 +127,11 @@ But the output only shares the LoD information with the input $X$.
 
 )DOC",
                                GetName(), GetEquation()));
-    SetReuse();
   }
 
  protected:
   virtual std::string GetName() const = 0;
   virtual std::string GetEquation() const = 0;
-  virtual void SetReuse() {}
 };
 
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
@@ -269,7 +265,6 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
    protected:                                                          \
     virtual std::string GetName() const { return op_name; }            \
     virtual std::string GetEquation() const { return equation; }       \
-    virtual void SetReuse() { Reuse(__VA_ARGS__); }                    \
   };                                                                   \
   REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
                     __ElemwiseOp##op_type##Maker__,                    \
