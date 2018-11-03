@@ -228,6 +228,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_rnn1, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.use_gpu = false;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -308,18 +309,13 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   PaddlePlace place;
   int output_size{0};
 
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   config.use_feed_fetch_ops = true;
-  auto native_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
-  auto analysis_predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
 #define NEW_TENSOR(name__) \
   auto name__##_tensor = predictor->GetInputTensor(#name__);

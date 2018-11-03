@@ -92,9 +92,9 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter").Reuse("Param");
-    AddOutput("Moment1Out", "(Tensor) Output first moment").Reuse("Moment1");
-    AddOutput("Moment2Out", "(Tensor) Output second moment").Reuse("Moment2");
+    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("Moment1Out", "(Tensor) Output first moment");
+    AddOutput("Moment2Out", "(Tensor) Output second moment");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "

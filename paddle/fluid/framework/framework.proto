@@ -35,6 +35,7 @@ enum AttrType {
   BLOCK = 8;
   LONG = 9;
   BLOCKS = 10;
+  LONGS = 11;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -55,6 +56,7 @@ message OpDesc {
     optional int32 block_idx = 12;
     optional int64 l = 13;
     repeated int32 blocks_idx = 14;
+    repeated int64 longs = 15;
   };
 
   message Var {
@@ -80,7 +82,6 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
-    optional string reuse = 6;
   }
 
   // AttrProto describes the C++ type Attribute.
