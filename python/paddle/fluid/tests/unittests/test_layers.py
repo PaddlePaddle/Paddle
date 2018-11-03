@@ -865,6 +865,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_grid_sampler(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5, 7], dtype='float32')
+            grid = layers.data(name='grid', shape=[5, 7, 2], dtype='float32')
+            out = layers.grid_sampler(x, grid)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_affine_grid(self):
         program = Program()
         with program_guard(program):
