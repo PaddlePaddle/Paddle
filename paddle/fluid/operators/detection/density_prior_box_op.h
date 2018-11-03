@@ -95,17 +95,17 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
     int num_priors = aspect_ratios.size() * min_sizes.size();
 
-    if (fixed_sizes.size()>0){
-    	if (densities.size() > 0) {
-       		for (size_t i = 0; i < densities.size(); ++i) {
-           		if (fixed_ratios.size() > 0) {
-        	    	num_priors += (fixed_ratios.size()) * (pow(densities[i], 2) );
-				} else {
-    	        	num_priors += (aspect_ratios.size() ) * (pow(densities[i], 2) );
- 	           	}
-	        }
-   		}
-  	}
+    if (fixed_sizes.size() > 0) {
+      if (densities.size() > 0) {
+        for (size_t i = 0; i < densities.size(); ++i) {
+          if (fixed_ratios.size() > 0) {
+            num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
+          } else {
+            num_priors += (aspect_ratios.size()) * (pow(densities[i], 2));
+          }
+        }
+      }
+    }
     if (max_sizes.size() > 0) {
       num_priors += max_sizes.size();
     }
@@ -113,146 +113,167 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     vars->mutable_data<T>(ctx.GetPlace());
     auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
 
-    int step_average = static_cast<int>((step_width+step_height)*0.5);
+    int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
     for (int h = 0; h < feature_height; ++h) {
-        for (int w = 0; w < feature_width; ++w) {
-            T center_x = (w + offset) * step_width;
-            T center_y = (h + offset) * step_height;
-            T box_width, box_height;
-            int idx = 0;
-            for (size_t s = 0; s < fixed_sizes.size(); ++s){
-                auto fixed_size = fixed_sizes[s];
-                box_width = box_height = fixed_size;
-                int density = densities[s];
-                if (fixed_ratios.size() > 0){
-                    for(size_t r = 0; r < fixed_ratios.size(); ++r){
-                        float ar = fixed_ratios[r];
-                        int shift  = step_average / density;
-                        float box_width_ratio = fixed_size * sqrt(ar);
-                        float box_height_ratio = fixed_size / sqrt(ar);
-                        for (int di = 0; di < density; ++di){
-                            for (int dj=0; dj < density; ++dj){
-                                float center_x_temp = center_x - step_average / 2. + shift / 2. + dj * shift;
-                                float center_y_temp = center_y - step_average / 2. + shift / 2. + di * shift;
-                                e_boxes(h, w, idx, 0) = (center_x_temp - box_width_ratio / 2.) / img_width >= 0 ?
-                                                        (center_x_temp - box_width_ratio / 2.) / img_width : 0 ;
-                                e_boxes(h, w, idx, 1) = (center_y_temp - box_height_ratio / 2.)/ img_height >= 0 ?
-                                                        (center_y_temp - box_height_ratio / 2.)/ img_height : 0;
-                                e_boxes(h, w, idx, 2) = (center_x_temp + box_width_ratio / 2.) / img_width <= 1 ?
-                                                        (center_x_temp + box_width_ratio / 2.) / img_width : 1;
-                                e_boxes(h, w, idx, 3) = (center_y_temp + box_height_ratio / 2.)/ img_height <= 1 ?
-                                                        (center_y_temp + box_height_ratio / 2.)/ img_height : 1;
-                                idx++;
-                            }
-                        }
-                    }
-                } else {
-                    int shift = fixed_size/ density;
-                    for (int di = 0; di < density; ++di){
-                    	for (int dj = 0; dj < density; ++dj){
-                        	float center_x_temp = center_x - fixed_size / 2. + shift / 2. + dj * shift;
-                            float center_y_temp = center_y - fixed_size / 2. + shift / 2. + di * shift;
-                            e_boxes(h, w, idx, 0) = (center_x_temp - box_width / 2.)/ img_width >= 0 ?
-                                                        (center_x_temp - box_width / 2.)/ img_width : 0 ;
-                            e_boxes(h, w, idx, 1) = (center_y_temp - box_height / 2.)/ img_height >= 0 ?
-                                                        (center_y_temp - box_height / 2.)/ img_height : 0;
-                            e_boxes(h, w, idx, 2) = (center_x_temp + box_width / 2.)/ img_width <= 1 ?
-                                                        (center_x_temp + box_width / 2.)/ img_width : 1;
-                            e_boxes(h, w, idx, 3) = (center_y_temp + box_height / 2.)/ img_height <= 1 ?
-                                                        (center_y_temp + box_height / 2.)/ img_height : 1;
-                            idx++;
-                        }
-                    }
-                    for (size_t r = 0; r < aspect_ratios.size(); ++r){
-                        float ar = aspect_ratios[r];
-                        if (fabs(ar - 1.) < 1e-6) {
-                            continue;
-                        }
-                        int shift = fixed_size / density;
-                        float box_width_ratio = fixed_size * sqrt(ar);
-                        float box_height_ratio = fixed_size / sqrt(ar);
-                        for (int di= 0; di < density; ++di){
-                            for (int dj= 0; dj < density; ++dj){
-                                float center_x_temp = center_x - fixed_size / 2. + shift / 2. + dj * shift;
-                                float center_y_temp = center_y - fixed_size / 2. + shift / 2. + di * shift;
-                                e_boxes(h, w, idx, 0) = (center_x_temp - box_width_ratio / 2.)
-                                                        / img_width >= 0 ?
-                                                        (center_x_temp - box_width_ratio / 2.)
-                                                        / img_width : 0 ;
-                                e_boxes(h, w, idx, 1) = (center_y_temp - box_height_ratio / 2.)
-                                                        / img_height >= 0 ?
-                                                        (center_y_temp - box_height_ratio / 2.)
-                                                        / img_height : 0;
-                                e_boxes(h, w, idx, 2) = (center_x_temp + box_width_ratio / 2.)
-                                                        / img_width <= 1 ?
-                                                        (center_x_temp + box_width_ratio / 2.)
-                                                        / img_width : 1;
-                                e_boxes(h, w, idx, 3) = (center_y_temp + box_height_ratio / 2.)
-                                                        / img_height <= 1 ?
-                                                        (center_y_temp + box_height_ratio / 2.)
-                                                        / img_height : 1;
-                                idx++;
-                            }
-                        }
-                    }
+      for (int w = 0; w < feature_width; ++w) {
+        T center_x = (w + offset) * step_width;
+        T center_y = (h + offset) * step_height;
+        T box_width, box_height;
+        int idx = 0;
+        for (size_t s = 0; s < fixed_sizes.size(); ++s) {
+          auto fixed_size = fixed_sizes[s];
+          box_width = box_height = fixed_size;
+          int density = densities[s];
+          if (fixed_ratios.size() > 0) {
+            for (size_t r = 0; r < fixed_ratios.size(); ++r) {
+              float ar = fixed_ratios[r];
+              int shift = step_average / density;
+              float box_width_ratio = fixed_size * sqrt(ar);
+              float box_height_ratio = fixed_size / sqrt(ar);
+              for (int di = 0; di < density; ++di) {
+                for (int dj = 0; dj < density; ++dj) {
+                  float center_x_temp =
+                      center_x - step_average / 2. + shift / 2. + dj * shift;
+                  float center_y_temp =
+                      center_y - step_average / 2. + shift / 2. + di * shift;
+                  e_boxes(h, w, idx, 0) =
+                      (center_x_temp - box_width_ratio / 2.) / img_width >= 0
+                          ? (center_x_temp - box_width_ratio / 2.) / img_width
+                          : 0;
+                  e_boxes(h, w, idx, 1) =
+                      (center_y_temp - box_height_ratio / 2.) / img_height >= 0
+                          ? (center_y_temp - box_height_ratio / 2.) / img_height
+                          : 0;
+                  e_boxes(h, w, idx, 2) =
+                      (center_x_temp + box_width_ratio / 2.) / img_width <= 1
+                          ? (center_x_temp + box_width_ratio / 2.) / img_width
+                          : 1;
+                  e_boxes(h, w, idx, 3) =
+                      (center_y_temp + box_height_ratio / 2.) / img_height <= 1
+                          ? (center_y_temp + box_height_ratio / 2.) / img_height
+                          : 1;
+                  idx++;
                 }
+              }
             }
-            for (size_t s = 0; s < min_sizes.size(); ++s) {
-                auto min_size = min_sizes[s];
-                if (min_max_aspect_ratios_order) {
-                    box_width = box_height = min_size / 2.;
-                    e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-                    e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-                    e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-                    e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-                    idx++;
-                    if (max_sizes.size() > 0) {
-                        auto max_size = max_sizes[s];
-                        box_width = box_height = sqrt(min_size * max_size) / 2.;
-                        e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-                        e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-                        e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-                        e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-                        idx++;
-                    }
-                    for (size_t r = 0; r < aspect_ratios.size(); ++r) {
-                        float ar = aspect_ratios[r];
-                        if (fabs(ar - 1.) < 1e-6) {
-                            continue;
-                        }
-                        box_width = min_size * sqrt(ar) / 2.;
-                        box_height = min_size / sqrt(ar) / 2.;
-                        e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-                        e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-                        e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-                        e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-                        idx++;
-                    }
-                } else {
-                    for (size_t r = 0; r < aspect_ratios.size(); ++r) {
-                        float ar = aspect_ratios[r];
-                        box_width = min_size * sqrt(ar) / 2.;
-                        box_height = min_size / sqrt(ar) / 2.;
-                        e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-                        e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-                        e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-                        e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-                        idx++;
-                    }
-                    if (max_sizes.size() > 0) {
-                        auto max_size = max_sizes[s];
-                        box_width = box_height = sqrt(min_size * max_size) / 2.;
-                        e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-                        e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-                        e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-                        e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-                        idx++;
-                    }
+          } else {
+            int shift = fixed_size / density;
+            for (int di = 0; di < density; ++di) {
+              for (int dj = 0; dj < density; ++dj) {
+                float center_x_temp =
+                    center_x - fixed_size / 2. + shift / 2. + dj * shift;
+                float center_y_temp =
+                    center_y - fixed_size / 2. + shift / 2. + di * shift;
+                e_boxes(h, w, idx, 0) =
+                    (center_x_temp - box_width / 2.) / img_width >= 0
+                        ? (center_x_temp - box_width / 2.) / img_width
+                        : 0;
+                e_boxes(h, w, idx, 1) =
+                    (center_y_temp - box_height / 2.) / img_height >= 0
+                        ? (center_y_temp - box_height / 2.) / img_height
+                        : 0;
+                e_boxes(h, w, idx, 2) =
+                    (center_x_temp + box_width / 2.) / img_width <= 1
+                        ? (center_x_temp + box_width / 2.) / img_width
+                        : 1;
+                e_boxes(h, w, idx, 3) =
+                    (center_y_temp + box_height / 2.) / img_height <= 1
+                        ? (center_y_temp + box_height / 2.) / img_height
+                        : 1;
+                idx++;
+              }
+            }
+            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+              float ar = aspect_ratios[r];
+              if (fabs(ar - 1.) < 1e-6) {
+                continue;
+              }
+              int shift = fixed_size / density;
+              float box_width_ratio = fixed_size * sqrt(ar);
+              float box_height_ratio = fixed_size / sqrt(ar);
+              for (int di = 0; di < density; ++di) {
+                for (int dj = 0; dj < density; ++dj) {
+                  float center_x_temp =
+                      center_x - fixed_size / 2. + shift / 2. + dj * shift;
+                  float center_y_temp =
+                      center_y - fixed_size / 2. + shift / 2. + di * shift;
+                  e_boxes(h, w, idx, 0) =
+                      (center_x_temp - box_width_ratio / 2.) / img_width >= 0
+                          ? (center_x_temp - box_width_ratio / 2.) / img_width
+                          : 0;
+                  e_boxes(h, w, idx, 1) =
+                      (center_y_temp - box_height_ratio / 2.) / img_height >= 0
+                          ? (center_y_temp - box_height_ratio / 2.) / img_height
+                          : 0;
+                  e_boxes(h, w, idx, 2) =
+                      (center_x_temp + box_width_ratio / 2.) / img_width <= 1
+                          ? (center_x_temp + box_width_ratio / 2.) / img_width
+                          : 1;
+                  e_boxes(h, w, idx, 3) =
+                      (center_y_temp + box_height_ratio / 2.) / img_height <= 1
+                          ? (center_y_temp + box_height_ratio / 2.) / img_height
+                          : 1;
+                  idx++;
                 }
-
+              }
             }
+          }
         }
+        for (size_t s = 0; s < min_sizes.size(); ++s) {
+          auto min_size = min_sizes[s];
+          if (min_max_aspect_ratios_order) {
+            box_width = box_height = min_size / 2.;
+            e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+            e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+            e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+            e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+            idx++;
+            if (max_sizes.size() > 0) {
+              auto max_size = max_sizes[s];
+              box_width = box_height = sqrt(min_size * max_size) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+              float ar = aspect_ratios[r];
+              if (fabs(ar - 1.) < 1e-6) {
+                continue;
+              }
+              box_width = min_size * sqrt(ar) / 2.;
+              box_height = min_size / sqrt(ar) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+          } else {
+            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+              float ar = aspect_ratios[r];
+              box_width = min_size * sqrt(ar) / 2.;
+              box_height = min_size / sqrt(ar) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+            if (max_sizes.size() > 0) {
+              auto max_size = max_sizes[s];
+              box_width = box_height = sqrt(min_size * max_size) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+          }
+        }
+      }
     }
     if (clip) {
       platform::Transform<platform::CPUDeviceContext> trans;
@@ -286,4 +307,3 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-

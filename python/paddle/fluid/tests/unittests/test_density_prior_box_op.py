@@ -101,12 +101,15 @@ class TestDensityPriorBoxOp(OpTest):
             if len(self.densities) > 0:
                 for density in self.densities:
                     if len(self.fixed_ratios) > 0:
-                        self.num_priors += len(self.fixed_ratios) * (pow(density,2))
+                        self.num_priors += len(self.fixed_ratios) * (pow(
+                            density, 2))
                     else:
-                        self.num_priors += len(self.real_aspect_ratios) * (pow(density,2))
+                        self.num_priors += len(self.real_aspect_ratios) * (pow(
+                            density, 2))
         if len(self.max_sizes) > 0:
             self.num_priors += len(self.max_sizes)
         self.offset = 0.5
+
     def init_test_input(self):
         self.image = np.random.random(
             (self.batch_size, self.image_channels, self.image_w,
@@ -121,14 +124,15 @@ class TestDensityPriorBoxOp(OpTest):
         out_boxes = np.zeros(out_dim).astype('float32')
         out_var = np.zeros(out_dim).astype('float32')
 
-        step_average = int((self.step_w + self.step_h)*0.5)
-        
+        step_average = int((self.step_w + self.step_h) * 0.5)
+
         for h in range(self.layer_h):
             for w in range(self.layer_w):
                 idx = 0
                 c_x = (w + self.offset) * self.step_w
                 c_y = (h + self.offset) * self.step_h
-                for density, fixed_size in zip(self.densities, self.fixed_sizes):
+                for density, fixed_size in zip(self.densities,
+                                               self.fixed_sizes):
                     box_width = box_height = fixed_size
                     if (len(self.fixed_ratios) > 0):
                         for ar in self.fixed_ratios:
@@ -139,11 +143,15 @@ class TestDensityPriorBoxOp(OpTest):
                                 for dj in range(density):
                                     c_x_temp = c_x - step_average / 2.0 + shift / 2.0 + dj * shift
                                     c_y_temp = c_y - step_average / 2.0 + shift / 2.0 + di * shift
-                                    out_boxes[h, w, idx, :]=[
-                                        max((c_x_temp - box_width_ratio / 2.0)/ self.image_w , 0),
-                                        max((c_y_temp - box_height_ratio / 2.0)/ self.image_h , 0),
-                                        min((c_x_temp + box_width_ratio / 2.0)/ self.image_w , 1),
-                                        min((c_y_temp + box_height_ratio / 2.0)/ self.image_h , 1)
+                                    out_boxes[h, w, idx, :] = [
+                                        max((c_x_temp - box_width_ratio / 2.0) /
+                                            self.image_w, 0),
+                                        max((c_y_temp - box_height_ratio / 2.0)
+                                            / self.image_h, 0),
+                                        min((c_x_temp + box_width_ratio / 2.0) /
+                                            self.image_w, 1),
+                                        min((c_y_temp + box_height_ratio / 2.0)
+                                            / self.image_h, 1)
                                     ]
                                     idx += 1
                     else:
@@ -152,14 +160,19 @@ class TestDensityPriorBoxOp(OpTest):
                             for dj in range(density):
                                 c_x_temp = c_x - fixed_size / 2.0 + shift / 2.0 + dj * shift
                                 c_y_temp = c_y - fixed_size / 2.0 + shift / 2.0 + di * shift
-                                out_boxes[h, w, idx, :]=[
-                                    max((c_x_temp - box_width / 2.0)/ self.image_w , 0),
-                                    max((c_y_temp - box_height / 2.0)/ self.image_h , 0),
-                                    min((c_x_temp + box_width / 2.0)/ self.image_w , 1),
-                                    min((c_y_temp + box_height / 2.0)/ self.image_h , 1)]
+                                out_boxes[h, w, idx, :] = [
+                                    max((c_x_temp - box_width / 2.0) /
+                                        self.image_w, 0),
+                                    max((c_y_temp - box_height / 2.0) /
+                                        self.image_h, 0), min(
+                                            (c_x_temp + box_width / 2.0) /
+                                            self.image_w, 1), min(
+                                                (c_y_temp + box_height / 2.0) /
+                                                self.image_h, 1)
+                                ]
                                 idx += 1
                         for ar in self.real_aspect_ratios:
-                            if (abs(ar-1.)< 1e-6):
+                            if (abs(ar - 1.) < 1e-6):
                                 continue
                             shift = int(fixed_size / density)
                             box_width_ratio = fixed_size * math.sqrt(ar)
@@ -168,11 +181,16 @@ class TestDensityPriorBoxOp(OpTest):
                                 for dj in range(density):
                                     c_x_temp = c_x - fixed_size / 2.0 + shift / 2.0 + dj * shift
                                     c_y_temp = c_y - fixed_size / 2.0 + shift / 2.0 + di * shift
-                                    out_boxes[h, w, idx, :]=[
-                                        max((c_x_temp - box_width_ratio / 2.0)/ self.image_w , 0),
-                                        max((c_y_temp - box_height_ratio / 2.0)/ self.image_h , 0),
-                                        min((c_x_temp + box_width_ratio / 2.0)/ self.image_w , 1),
-                                        min((c_y_temp + box_height_ratio / 2.0)/ self.image_h , 1)]
+                                    out_boxes[h, w, idx, :] = [
+                                        max((c_x_temp - box_width_ratio / 2.0) /
+                                            self.image_w, 0),
+                                        max((c_y_temp - box_height_ratio / 2.0)
+                                            / self.image_h, 0),
+                                        min((c_x_temp + box_width_ratio / 2.0) /
+                                            self.image_w, 1),
+                                        min((c_y_temp + box_height_ratio / 2.0)
+                                            / self.image_h, 1)
+                                    ]
                                     idx += 1
 
                 for s in range(len(self.min_sizes)):
@@ -183,9 +201,8 @@ class TestDensityPriorBoxOp(OpTest):
                             c_w = min_size * math.sqrt(ar) / 2.
                             c_h = (min_size / math.sqrt(ar)) / 2.
                             out_boxes[h, w, idx, :] = [
-                                (c_x - c_w) / self.image_w, 
-                                (c_y - c_h) / self.image_h, 
-                                (c_x + c_w) / self.image_w,
+                                (c_x - c_w) / self.image_w, (c_y - c_h) /
+                                self.image_h, (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
@@ -194,28 +211,24 @@ class TestDensityPriorBoxOp(OpTest):
                             max_size = self.max_sizes[s]
                             c_w = c_h = math.sqrt(min_size * max_size) / 2.
                             out_boxes[h, w, idx, :] = [
-                                (c_x - c_w) / self.image_w, 
-                                (c_y - c_h) / self.image_h, 
-                                (c_x + c_w) / self.image_w,
+                                (c_x - c_w) / self.image_w, (c_y - c_h) /
+                                self.image_h, (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
                     else:
                         c_w = c_h = min_size / 2.
-                        out_boxes[h, w, idx, :] = [
-                                (c_x - c_w) / self.image_w,
-                                (c_y - c_h) / self.image_h,
-                                (c_x + c_w) / self.image_w,
-                                (c_y + c_h) / self.image_h
-                            ]
+                        out_boxes[h, w, idx, :] = [(c_x - c_w) / self.image_w,
+                                                   (c_y - c_h) / self.image_h,
+                                                   (c_x + c_w) / self.image_w,
+                                                   (c_y + c_h) / self.image_h]
                         idx += 1
                         if len(self.max_sizes) > 0:
                             max_size = self.max_sizes[s]
                             c_w = c_h = math.sqrt(min_size * max_size) / 2.
                             out_boxes[h, w, idx, :] = [
-                                (c_x - c_w) / self.image_w, 
-                                (c_y - c_h) / self.image_h, 
-                                (c_x + c_w) / self.image_w,
+                                (c_x - c_w) / self.image_w, (c_y - c_h) /
+                                self.image_h, (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
@@ -226,9 +239,8 @@ class TestDensityPriorBoxOp(OpTest):
                             c_w = min_size * math.sqrt(ar) / 2.
                             c_h = (min_size / math.sqrt(ar)) / 2.
                             out_boxes[h, w, idx, :] = [
-                                (c_x - c_w) / self.image_w, 
-                                (c_y - c_h) / self.image_h, 
-                                (c_x + c_w) / self.image_w,
+                                (c_x - c_w) / self.image_w, (c_y - c_h) /
+                                self.image_h, (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h
                             ]
                             idx += 1
@@ -239,13 +251,16 @@ class TestDensityPriorBoxOp(OpTest):
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
 
+
 class TestPriorBoxOpWithoutMaxSize(TestDensityPriorBoxOp):
     def set_max_sizes(self):
         self.max_sizes = []
 
+
 class TestPriorBoxOpWithSpecifiedOutOrder(TestDensityPriorBoxOp):
     def set_min_max_aspect_ratios_order(self):
         self.min_max_aspect_ratios_order = True
+
 
 class TestDensityPriorBoxWithDensityBox(TestDensityPriorBoxOp):
     def set_density(self):
@@ -253,12 +268,14 @@ class TestDensityPriorBoxWithDensityBox(TestDensityPriorBoxOp):
         self.fixed_sizes = [1.0, 2.0]
         self.fixed_ratios = [1.0 / 2.0, 1.0, 2.0]
 
-class TestDensityPriorBoxWithDensityBoxWithoutFixedRatios(TestDensityPriorBoxOp):
+
+class TestDensityPriorBoxWithDensityBoxWithoutFixedRatios(
+        TestDensityPriorBoxOp):
     def set_density(self):
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]
         self.fixed_ratios = []
-        
+
+
 if __name__ == '__main__':
     unittest.main()
-

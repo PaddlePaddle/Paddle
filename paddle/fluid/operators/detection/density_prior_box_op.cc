@@ -41,33 +41,34 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
     bool flip = ctx->Attrs().Get<bool>("flip");
     auto fixed_sizes = ctx->Attrs().Get<std::vector<float>>("fixed_sizes");
-	auto fixed_ratios = ctx->Attrs().Get<std::vector<float>>("fixed_ratios");
+    auto fixed_ratios = ctx->Attrs().Get<std::vector<float>>("fixed_ratios");
     auto densities = ctx->Attrs().Get<std::vector<int>>("densities");
     std::vector<float> aspect_ratios_vec;
     ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
     size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
-	PADDLE_ENFORCE_EQ(fixed_sizes.size(),densities.size(),
-					"The number of fixed_sizes and densities must be equal.");
+    PADDLE_ENFORCE_EQ(fixed_sizes.size(), densities.size(),
+                      "The number of fixed_sizes and densities must be equal.");
 
-	if (fixed_sizes.size()>0){
-		if (densities.size() > 0){
-			for(size_t i = 0; i < densities.size(); ++i){
-				if(fixed_ratios.size() > 0) {
-					num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
-				} else {
-					num_priors += (aspect_ratios_vec.size()) * (pow(densities[i], 2));
-				}
-			}
-		}
- 	}
+    if (fixed_sizes.size() > 0) {
+      if (densities.size() > 0) {
+        for (size_t i = 0; i < densities.size(); ++i) {
+          if (fixed_ratios.size() > 0) {
+            num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
+          } else {
+            num_priors += (aspect_ratios_vec.size()) * (pow(densities[i], 2));
+          }
+        }
+      }
+    }
     if (max_sizes.size() > 0) {
-      	PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
+      PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
                         "The number of min_size and max_size must be equal.");
-      	num_priors += max_sizes.size();
-      	for (size_t i = 0; i < max_sizes.size(); ++i) {
-        	PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
-                         "max_size[%d] must be greater than min_size[%d].", i,i);
+      num_priors += max_sizes.size();
+      for (size_t i = 0; i < max_sizes.size(); ++i) {
+        PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
+                          "max_size[%d] must be greater than min_size[%d].", i,
+                          i);
       }
     }
 
@@ -79,6 +80,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
     ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
   }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -161,37 +163,37 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Prior boxes center offset.")
         .SetDefault(0.5);
     AddAttr<std::vector<float>>("fixed_sizes",
-                            "(vector<float>) List of fixed sizes "
-                            "of generated density prior boxes.")
+                                "(vector<float>) List of fixed sizes "
+                                "of generated density prior boxes.")
         .SetDefault(std::vector<float>{})
         .AddCustomChecker([](const std::vector<float>& fixed_sizes) {
-      		for (size_t i = 0; i < fixed_sizes.size(); ++i) {
-        		PADDLE_ENFORCE_GT(fixed_sizes[i], 0.0,
-                          "fixed_sizes[%d] should be larger than 0.", i);
-      }
-    });
+          for (size_t i = 0; i < fixed_sizes.size(); ++i) {
+            PADDLE_ENFORCE_GT(fixed_sizes[i], 0.0,
+                              "fixed_sizes[%d] should be larger than 0.", i);
+          }
+        });
 
     AddAttr<std::vector<float>>("fixed_ratios",
-                            "(vector<float>) List of fixed ratios "
-                            "of generated density prior boxes.")
+                                "(vector<float>) List of fixed ratios "
+                                "of generated density prior boxes.")
         .SetDefault(std::vector<float>{})
         .AddCustomChecker([](const std::vector<float>& fixed_ratios) {
-      		for (size_t i = 0; i < fixed_ratios.size(); ++i) {
-        		PADDLE_ENFORCE_GT(fixed_ratios[i], 0.0,
-                          "fixed_ratios[%d] should be larger than 0.", i);
-      }
-    });
+          for (size_t i = 0; i < fixed_ratios.size(); ++i) {
+            PADDLE_ENFORCE_GT(fixed_ratios[i], 0.0,
+                              "fixed_ratios[%d] should be larger than 0.", i);
+          }
+        });
 
     AddAttr<std::vector<int>>("densities",
-                            "(vector<float>) List of densities "
-                            "of generated density prior boxes.")
+                              "(vector<float>) List of densities "
+                              "of generated density prior boxes.")
         .SetDefault(std::vector<int>{})
         .AddCustomChecker([](const std::vector<int>& densities) {
-      		for (size_t i = 0; i < densities.size(); ++i) {
-        		PADDLE_ENFORCE_GT(densities[i], 0,
-                          "densities[%d] should be larger than 0.", i);
-      }
-    });
+          for (size_t i = 0; i < densities.size(); ++i) {
+            PADDLE_ENFORCE_GT(densities[i], 0,
+                              "densities[%d] should be larger than 0.", i);
+          }
+        });
 
     AddAttr<bool>(
         "min_max_aspect_ratios_order",
@@ -217,9 +219,9 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(density_prior_box, ops::DensityPriorBoxOp, ops::DensityPriorBoxOpMaker,
+REGISTER_OPERATOR(density_prior_box, ops::DensityPriorBoxOp,
+                  ops::DensityPriorBoxOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 
 REGISTER_OP_CPU_KERNEL(density_prior_box, ops::DensityPriorBoxOpKernel<float>,
                        ops::DensityPriorBoxOpKernel<double>);
-
