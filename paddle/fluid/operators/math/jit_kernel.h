@@ -142,6 +142,22 @@ class LSTMKernel : public Kernel {
                            const T *wp_data = nullptr) const = 0;
 };
 
+template <typename T>
+class GRUKernel : public Kernel {
+ public:
+  // compute h1 without h0
+  virtual void ComputeH1(T *gates, T *ht) const = 0;
+  virtual void ComputeHtPart1(T *gates, const T *ht_1, T *ht) const = 0;
+  virtual void ComputeHtPart2(T *gates, const T *ht_1, T *ht) const = 0;
+};
+
+template <typename T>
+class CRFDecodeKernel : public Kernel {
+ public:
+  virtual void Compute(const int seq_len, const T *x, const T *w, T *alpha,
+                       int *track) const = 0;
+};
+
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators

@@ -284,7 +284,7 @@ static inline Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox,
       selected_indices.push_back(idx);
       ++selected_num;
     }
-    sorted_indices.erase(sorted_indices.end());
+    sorted_indices.erase(sorted_indices.end() - 1);
     if (flag && eta < 1 && adaptive_threshold > 0.5) {
       adaptive_threshold *= eta;
     }

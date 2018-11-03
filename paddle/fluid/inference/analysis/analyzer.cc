@@ -107,6 +107,9 @@ void Analyzer::Run(Argument* argument) {
     passes.push_back("mkldnn_placement_pass");
   }
 #endif
+  // infer_clean_graph_pass should be the first default pass
+  // after mkldnn_placement_pass.
+  passes.push_back("infer_clean_graph_pass");
   for (auto& pass : ir_passes_) {
     if (!disabled_ir_passes_.count(pass)) {
       passes.push_back(pass);
