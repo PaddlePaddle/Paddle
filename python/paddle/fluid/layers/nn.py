@@ -7735,19 +7735,59 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
 
 def hash(input, hash_size, num_hash=1, name=None):
     """
-    hash the input
-     Args:
-        input (Variable): The input variable which is a one-hot word.
-        hash_size (int): The space size for hash algorithm.
+    Hash the input to an integer whose value is less than the given hash size.
+
+    The hash algorithm we used was xxHash - Extremely fast hash algorithm
+    (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
+
+    A simple example as below:
+
+    .. code-block:: text
+
+        Given:
+
+        # shape [2, 2]
+        input.data = [
+            [[1], [2]],
+            [[3], [4]],
+        ]
+
+        input.lod = [[0, 2]]
+
+        hash_size = 10000
+
+        num_hash = 4
+
+        Then:
+
+        Hash op will take all number in input's 2nd dimension as hash algorithm's
+        input for each time. Each input will be hashed for 4 times, and get an
+        array whose length is 4. Each value in the array ranges from 0 to 9999.
+
+        # shape [2, 4]
+        output.data = [
+            [[9662], [9217], [1129], [8487]],
+            [[8310], [1327], [1654], [4567]],
+        ]
+
+        output.lod = [[0, 2]]
+
+    Args:
+        input (Variable): The input variable which is a one-hot word. The
+            dimensions of the input variable must be 2.
+        hash_size (int): The space size for hash algorithm. The output value
+            will keep in the range:math:`[0, hash_size - 1]`.
         num_hash (int): The times of hash, default 1.
         name (str, default None): The name of this layer.
-     Returns:
-        Variable: The hash result variable which is a LoDTensor.
-     Examples:
-        .. code-block:: python
-            word_dict = paddle.dataset.imdb.word_dict()
-            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
-            out = fluid.layers.hash(input=x, len(word_dict))
+
+    Returns:
+       Variable: The hash result variable which is a LoDTensor.
+
+    Examples:
+       .. code-block:: python
+           word_dict = paddle.dataset.imdb.word_dict()
+           x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
