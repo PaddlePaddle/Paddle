@@ -865,6 +865,31 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_mask_extract(self):
+        program = Program()
+        with program_guard(program):
+            x_data = layers.data(name="x", shape=[16], dtype="float32")
+            mask = layers.data(name="mask", shape=[1], dtype="int64")
+            out = layers.mask_extract(x_data, mask)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_affine_grid(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+
+            theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
+            out_shape = layers.data(
+                name="out_shape", shape=[-1], dtype="float32")
+            data_0 = layers.affine_grid(theta, out_shape)
+            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+
+            self.assertIsNotNone(data_0)
+            self.assertIsNotNone(data_1)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
