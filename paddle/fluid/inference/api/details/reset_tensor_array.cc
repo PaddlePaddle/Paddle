@@ -52,5 +52,25 @@ void TensorArrayBatchCleaner::ResetTensorArray() {
   }
 }
 
+void TensorArrayBatchCleaner::CollectOtherTypes(framework::Scope *scope) {
+  if (!no_tensor_flag_) {
+    for (auto& var_name : scope->LocalVarNames()) {
+      auto* var = scope->FindVar(var_name);
+      if (!valid_types_.count(var->Type())) {
+        no_tensor_vars_.insert(var);
+      }
+    }
+    LOG(INFO) << "collect " << no_tensor_vars_.size() << " no tensor vars";
+    no_tensor_flag_ = false;
+  }
+}
+
+void TensorArrayBatchCleaner::ResetOtherTypes() {
+  for (auto* var : no_tensor_vars_) {
+    // Clear the original data structure.
+    var->GetMutable<char>();
+  }
+}
+
 }  // namespace details
 }  // namespace paddle

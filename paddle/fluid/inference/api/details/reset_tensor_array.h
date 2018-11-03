@@ -25,13 +25,23 @@ namespace details {
 // Clean the TensorArray each batch to make the behavior the same with the
 // training phase.
 struct TensorArrayBatchCleaner {
+  TensorArrayBatchCleaner() {
+    valid_types_.insert(typeid(framework::Tensor));
+    valid_types_.insert(typeid(framework::LoDTensor));
+  }
   // Fix the tensor array not clear in the inference scenarios.
   void CollectTensorArrays(framework::Scope *scope);
   void ResetTensorArray();
 
+  void CollectOtherTypes(framework::Scope *scope);
+  void ResetOtherTypes();
+
  private:
   bool flag_{true};
+  bool no_tensor_flag_{true};
   std::unordered_set<framework::LoDTensorArray *> arrays_;
+  std::unordered_set<framework::Variable*> no_tensor_vars_;
+  std::unordered_set<std::type_index> valid_types_;
 };
 
 }  // namespace details
