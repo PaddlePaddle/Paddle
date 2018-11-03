@@ -158,6 +158,7 @@ __all__ = [
     'sequence_reverse',
     'affine_channel',
     'hash',
+    'grid_sampler',
     'log_loss',
     'add_position_encoding',
 ]
@@ -7798,6 +7799,87 @@ def hash(input, hash_size, num_hash=1, name=None):
         outputs={'Out': out},
         attrs={'num_hash': num_hash,
                'mod_by': hash_size})
+    return out
+
+
+@templatedoc()
+def grid_sampler(x, grid, name=None):
+    """
+    This operation samples input X by using bilinear interpolation based on 
+    flow field grid, which is usually gennerated by affine_grid. The grid of
+    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates 
+    with shape [N, H, W] each, where grid_x is indexing the 4th dimension 
+    (in width dimension) of input data x and grid_y is indexng the 3rd 
+    dimention (in height dimension), finally results is the bilinear 
+    interpolation value of 4 nearest corner points.
+
+    Step 1:
+    Get (x, y) grid coordinates and scale to [0, H-1/W-1].
+
+    grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+    grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+
+    Step 2:
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear 
+    interpolate point value by 4 nearest points.
+
+      wn ------- y_n ------- en
+      |           |           |
+      |          d_n          |
+      |           |           |
+     x_w --d_w-- grid--d_e-- x_e
+      |           |           |
+      |          d_s          |
+      |           |           |
+      ws ------- y_s ------- wn
+
+    x_w = floor(x)              // west side x coord
+    x_e = x_w + 1               // east side x coord
+    y_n = floor(y)              // north side y coord
+    y_s = y_s + 1               // south side y coord
+
+    d_w = grid_x - x_w          // distance to west side
+    d_e = x_e - grid_x          // distance to east side
+    d_n = grid_y - y_n          // distance to north side
+    d_s = y_s - grid_y          // distance to south side
+
+    wn = X[:, :, y_n, x_w]      // north-west point value
+    en = X[:, :, y_n, x_e]      // north-east point value
+    ws = X[:, :, y_s, x_w]      // south-east point value
+    es = X[:, :, y_s, x_w]      // north-east point value
+
+    output = wn * d_e * d_s + en * d_w * d_s
+           + ws * d_e * d_n + es * d_w * d_n
+
+    Args:
+        x(Variable): Input data of shape [N, C, H, W].
+        grid(Variable): Input grid tensor of shape [N, H, W, 2].
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out(Variable): Output of shape [N, C, H, W] data samples input X 
+        using bilnear interpolation based on input grid.
+
+    Exmples:
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
+        theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
+        grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
+        out = fluid.layers.grid_sampler(x=x, grid=grid)
+    """
+    helper = LayerHelper("grid_sampler", **locals())
+
+    if not isinstance(x, Variable):
+        return ValueError("The x should be a Variable")
+
+    if not isinstance(grid, Variable):
+        return ValueError("The grid should be a Variable")
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    ipts = {'X': x, 'Grid': grid}
+
+    helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output': out})
     return out
 
 
