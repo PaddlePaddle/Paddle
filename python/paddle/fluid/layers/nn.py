@@ -154,8 +154,12 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'affine_grid',
+    'sequence_reverse',
     'affine_channel',
     'hash',
+    'log_loss',
+    'add_position_encoding',
 ]
 
 
@@ -707,8 +711,18 @@ def dynamic_gru(input,
               The first part are weights of the update gate and reset gate with
               shape :math:`(D \\times 2D)`, and the second part are weights for
               candidate hidden state with shape :math:`(D \\times D)`.
-        bias_attr(ParamAttr): The parameter attribute for learnable the
-            hidden-hidden bias.
+
+            If it is set to None or one attribute of ParamAttr, dynamic_gru will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
             :attr:`False`.
         gate_activation(str): The activation for update gate and reset gate.
@@ -746,7 +760,7 @@ def dynamic_gru(input,
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
     batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    if h_0 != None:
+    if h_0:
         assert h_0.shape == (
             batch_size, size
         ), 'The shape of h0 should be(batch_size, %d)' % size
@@ -807,10 +821,29 @@ def gru_unit(input,
 
     Args:
         input (Variable): The fc transformed input value of current step.
-        hidden (Variable): The hidden value of lstm unit from previous step.
+        hidden (Variable): The hidden value of gru unit from previous step.
         size (integer): The input dimension value.
-        param_attr (ParamAttr): The weight parameters for gru unit. Default: None
-        bias_attr (ParamAttr): The bias parameters for gru unit. Default: None
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Note:
+
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
+              :math:`D` is the hidden size.
+            - All elements in the weight matrix can be divided into two parts.
+              The first part are weights of the update gate and reset gate with
+              shape :math:`(D \\times 2D)`, and the second part are weights for
+              candidate hidden state with shape :math:`(D \\times D)`.
+
+            If it is set to None or one attribute of ParamAttr, gru_unit will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, gru_unit will create ParamAttr as 
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
@@ -981,7 +1014,12 @@ def cos_sim(X, Y):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
+def dropout(x,
+            dropout_prob,
+            is_test=False,
+            seed=None,
+            name=None,
+            dropout_implementation="downgrade_in_infer"):
     """
     Computes dropout.
 
@@ -1001,6 +1039,21 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
                     units will be dropped. DO NOT use a fixed seed in training.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
+        dropout_implementation(string): ['downgrade_in_infer'(defauld)|'upscale_in_train']
+                                        1. downgrade_in_infer(default), downgrade the outcome at inference
+                                           train: out = input * mask
+                                           inference: out = input * dropout_prob
+                                           (make is a tensor same shape with input, value is 0 or 1
+                                            ratio of 0 is dropout_prob)
+                                        2. upscale_in_train, upscale the outcome at training time
+                                           train: out = input * mask / ( 1.0 - dropout_prob )
+                                           inference: out = input
+                                           (make is a tensor same shape with input, value is 0 or 1
+                                            ratio of 0 is dropout_prob)
+                                           dropout op can be removed from the program. 
+                                           the program will be efficient
+                                        
+
 
     Returns:
         Variable: A tensor variable is the shape with `x`.
@@ -1030,7 +1083,8 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
         })
     return out
 
@@ -1801,7 +1855,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type):
+def sequence_pool(input, pool_type, is_test=False):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -1838,6 +1892,7 @@ def sequence_pool(input, pool_type):
         input(variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
+        is_test(bool, Default False): Used distinguish training from scoring mode.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -1865,7 +1920,8 @@ def sequence_pool(input, pool_type):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper()})
+        attrs={"pooltype": pool_type.upper(),
+               "is_test": is_test})
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -2994,7 +3050,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
             x = fluid.layers.data(name='y', shape=[10, 5],
                              dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            pad_value = fluid.layers.assign(
+                input=numpy.array([0], dtype=numpy.float32))
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
     """
 
@@ -4416,7 +4473,10 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[5, 10, 15], dtype='float32')
+            # use append_batch_size=False to avoid prepending extra 
+            # batch size in shape
+            x = fluid.layers.data(name='x', shape=[5, 10, 15], 
+                            dtype='float32', append_batch_size=False)
             x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
 
@@ -4653,7 +4713,8 @@ def multiplex(inputs, index):
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=-100):
+                               ignore_index=-100,
+                               numeric_stable_mode=False):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4687,6 +4748,18 @@ def softmax_with_cross_entropy(logits,
         \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
+    3) If numeric_stable_mode is True, softmax is calculated first by:
+
+    .. math::
+        
+        max_j = \\max_{i=0}^{K}{\\text{logit}_i}
+
+        log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
+
+        softmax_j = \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
+
+    and then cross entropy loss is calculated by softmax and label.
+
     Args:
         logits (Variable): The unscaled log probabilities, which is a 2-D tensor
             with shape [N x K]. N is the batch_size, and K is the class number.
@@ -4698,6 +4771,13 @@ def softmax_with_cross_entropy(logits,
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
                             if soft_label is set to False. Default: -100
+        numeric_stable_mode (bool): A flag to indicate whether to use a more
+                                    numerically stable algorithm. Only valid
+                                    when soft_label is False and GPU is used.
+                                    When soft_label is True or CPU is used, 
+                                    the algorithm is always numerically stable. 
+                                    Note that the speed may be slower when use 
+                                    stable algorithm. Default: False
 
     Returns:
         Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
@@ -4720,8 +4800,11 @@ def softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label,
-               'ignore_index': ignore_index})
+        attrs={
+            'soft_label': soft_label,
+            'ignore_index': ignore_index,
+            'numeric_stable_mode': numeric_stable_mode
+        })
     return loss
 
 
@@ -4845,7 +4928,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
+def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     """
     Gives a new shape to the input Tensor without changing its data.
 
@@ -4893,15 +4976,22 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                                 :attr:`shape` specifying shape. That is to
                                 say :attr:`actual_shape` has a higher priority
                                 than :attr:`shape`.
-        act (str): The non-linear activation to be applied to output variable.
-        inplace(bool): If this flag is set true, the output
-                       shares data with input without copying, otherwise
-                       a new output tensor is created
-                       whose data is copied from input x.
+        act (str): The non-linear activation to be applied to the reshaped tensor
+                   variable.
+        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
+                       operators. If this flag is set :attr:`True`, reuse input
+                       :attr:`x` to reshape, which will change the shape of
+                       tensor variable :attr:`x` and might cause errors when
+                       :attr:`x` is used in multiple operators. If :attr:`False`,
+                       preserve the shape :attr:`x` and create a new output tensor
+                       variable whose data is copied from input x but reshaped.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: The output tensor.
+        Variable: The reshaped tensor variable if :attr:`act` is None. It is a \
+                  new tensor variable if :attr:`inplace` is :attr:`False`, \
+                  otherwise it is :attr:`x`. If :attr:`act` is not None, return \
+                  the activated tensor variable.
 
     Raises:
         TypeError: if actual_shape is neither Variable nor None.
@@ -4912,7 +5002,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
             data = fluid.layers.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
-                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True)
+                x=data, shape=[-1, 0, 3, 2], inplace=True)
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
@@ -4939,7 +5029,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out = x if inplace else helper.create_variable_for_type_inference(
+        dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
@@ -6069,6 +6160,124 @@ def crop(x, shape=None, offsets=None, name=None):
         type='crop',
         inputs=ipts,
         outputs={'Out': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def affine_grid(theta, out_shape, name=None):
+    """
+    It generates a grid of (x,y) coordinates using the parameters of
+    the affine transformation that correspond to a set of points where
+    the input feature map should be sampled to produce the transformed
+    output feature map.
+
+    .. code-block:: text
+
+        * Case 1:
+
+          Given:
+
+              theta = [[[x_11, x_12, x_13]
+                        [x_14, x_15, x_16]]
+                       [[x_21, x_22, x_23]
+                        [x_24, x_25, x_26]]]
+      
+              out_shape = [2, 3, 5, 5]
+      
+          Step 1:
+      
+              Generate normalized coordinates according to out_shape.
+              The values of the normalized coordinates are in the interval between -1 and 1.
+              The shape of the normalized coordinates is [2, H, W] as below:
+      
+              C = [[[-1.  -1.  -1.  -1.  -1. ]
+                    [-0.5 -0.5 -0.5 -0.5 -0.5]
+                    [ 0.   0.   0.   0.   0. ]
+                    [ 0.5  0.5  0.5  0.5  0.5]
+                    [ 1.   1.   1.   1.   1. ]]
+                   [[-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]]]
+              C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+
+          Step2:
+
+              Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+              C_ = [[-1.  -1.   1. ]
+                    [-0.5 -1.   1. ]
+                    [ 0.  -1.   1. ]
+                    [ 0.5 -1.   1. ]
+                    [ 1.  -1.   1. ]
+                    [-1.  -0.5  1. ]
+                    [-0.5 -0.5  1. ]
+                    [ 0.  -0.5  1. ]
+                    [ 0.5 -0.5  1. ]
+                    [ 1.  -0.5  1. ]
+                    [-1.   0.   1. ]
+                    [-0.5  0.   1. ]
+                    [ 0.   0.   1. ]
+                    [ 0.5  0.   1. ]
+                    [ 1.   0.   1. ]
+                    [-1.   0.5  1. ]
+                    [-0.5  0.5  1. ]
+                    [ 0.   0.5  1. ]
+                    [ 0.5  0.5  1. ]
+                    [ 1.   0.5  1. ]
+                    [-1.   1.   1. ]
+                    [-0.5  1.   1. ]
+                    [ 0.   1.   1. ]
+                    [ 0.5  1.   1. ]
+                    [ 1.   1.   1. ]]
+          Step3:
+              Compute output by equation $$Output[i] = C_ * Theta[i]^T$$
+
+    Args:
+        theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
+        out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W].
+        out_shape can be a Variable or a list or tuple.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The output with shape [N, H, W, 2].
+
+    Raises:
+        ValueError: If the type of arguments is not supported.
+
+    Examples:
+
+        .. code-block:: python
+            theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
+            out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
+            data = fluid.layers.affine_grid(theta, out_shape)
+
+            # or
+            data = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
+
+    """
+    helper = LayerHelper('affine_grid')
+
+    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
+        isinstance(out_shape, Variable)):
+        raise ValueError("The out_shape should be a list, tuple or Variable.")
+
+    if not isinstance(theta, Variable):
+        raise ValueError("The theta should be a Variable.")
+
+    out = helper.create_variable_for_type_inference(theta.dtype)
+    ipts = {'Theta': theta}
+    attrs = {}
+    if isinstance(out_shape, Variable):
+        ipts['OutputShape'] = out_shape
+    else:
+        attrs['output_shape'] = out_shape
+
+    helper.append_op(
+        type='affine_grid',
+        inputs=ipts,
+        outputs={'Output': out},
         attrs=None if len(attrs) == 0 else attrs)
     return out
 
@@ -7456,6 +7665,33 @@ def maxout(x, groups, name=None):
     return out
 
 
+@templatedoc()
+def sequence_reverse(x, name=None):
+    """ 
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${y_type}): ${y_comment}
+    """
+    helper = LayerHelper("sequence_reverse", **locals())
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="sequence_reverse",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs=dict())
+    return out
+
+
 def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
     """
     Applies a separate affine transformation to each channel of the input.
@@ -7562,4 +7798,100 @@ def hash(input, hash_size, num_hash=1, name=None):
         outputs={'Out': out},
         attrs={'num_hash': num_hash,
                'mod_by': hash_size})
+    return out
+
+
+def log_loss(input, label, epsilon=1e-4, name=None):
+    """
+    **Negative Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    negative log loss.
+
+    .. math::
+
+        Out = -label * \\log{(input + \\epsilon)}
+              - (1 - label) * \\log{(1 - input + \\epsilon)}
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        epsilon (float): epsilon
+        name (string): the name of log_loss
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the negative log loss.
+
+    Examples:
+        .. code-block:: python
+
+          prob = fluid.layers.sigmoid(net)
+          cost = fluid.layers.log_loss(input=prob, label=label)
+    """
+    helper = LayerHelper('log_loss', **locals())
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+
+    helper.append_op(
+        type='log_loss',
+        inputs={'Predicted': [input],
+                'Labels': [label]},
+        outputs={'Loss': [loss]},
+        attrs={'epsilon': epsilon})
+    return loss
+
+
+def add_position_encoding(input, alpha, beta, name=None):
+    """
+    **Add Position Encoding Layer**
+
+    This layer accepts an input 3D-Tensor of shape [N x M x P], and return an
+    output Tensor of shape [N x M x P] with positional encoding value.
+
+    Refer to `Attention Is All You Need<http://arxiv.org/pdf/1706.03762.pdf>`_ .
+
+    .. math::
+        PE(pos, 2i) = \\sin{(pos / 10000^{2i / P})}   \\\\
+        PE(pos, 2i + 1) = \\cos{(pos / 10000^{2i / P})}  \\\\
+        Out(:, pos, i) = \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
+
+    Where:
+    * PE(pos, 2i): the increment for the number at even position
+    * PE(pos, 2i + 1): the increment for the number at odd position
+
+    Args:
+        input (Variable): 3-D input tensor with shape [N x M x P]
+        alpha (float): multiple of Input Tensor
+        beta (float): multiple of Positional Encoding Tensor
+        name (string): the name of position encoding layer
+
+    Returns:
+        Variable: A 3-D Tensor of shape [N x M x P] with positional encoding.
+
+    Examples:
+        .. code-block:: python
+
+          position_tensor = fluid.layers.add_position_encoding(input=tensor)
+    """
+    helper = LayerHelper('add_position_encoding', **locals())
+    dtype = helper.input_dtype()
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="add_position_encoding",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"alpha": alpha,
+               "beta": beta})
     return out
