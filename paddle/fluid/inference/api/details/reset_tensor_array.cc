@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
+#include "reset_tensor_array.h"
 
 namespace paddle {
 namespace details {
@@ -43,6 +44,28 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
 void TensorArrayBatchCleaner::ResetTensorArray() {
   for (auto *arr : arrays_) {
     arr->clear();
+  }
+}
+
+void TensorArrayBatchCleaner::CollectNoTensorVars(framework::Scope *scope) {
+  if (no_tensor_flag_) {
+    for (auto &var_name : scope->LocalVarNames()) {
+      auto *var = scope->FindVar(var_name);
+      if (!valid_types_.count(var->Type())) {
+        no_tensor_vars_.insert(var);
+      }
+    }
+
+    for (auto *kid : scope->kids()) {
+      CollectTensorArrays(kid);
+    }
+    no_tensor_flag_ = false;  // Only collect one time.
+  }
+}
+
+void TensorArrayBatchCleaner::ResetNoTensorVars() {
+  for (auto *var : no_tensor_vars_) {
+    var->Clear();
   }
 }
 
