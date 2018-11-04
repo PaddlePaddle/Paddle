@@ -24,7 +24,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void RandomGenerator(const size_t n, const int seed, const int voc_size, 
+__global__ void RandomGenerator(const int64_t n, const int seed, 
+                                const int64_t post_rnd_offset, const int voc_size, 
                                 const float masked_prob, const T mask_id,
                                 const T* src, 
                                 T* mask_data, T* dst) {
@@ -42,26 +43,35 @@ __global__ void RandomGenerator(const size_t n, const int seed, const int voc_si
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
+
+    //hack for null mask  
+    if (idx == post_rnd_offset) {
+        mask_data[idx] = s;
+        dst[idx] = mask_id;
+        continue;
+    }
+
     if (step_size == 0) {
       rng.discard(idx);
       step_size = blockDim.x * gridDim.x;
     } else {
       rng.discard(step_size);
     }
-    
-    if (dist(rng) < fake_masked_prob) {
+
+    float dist_rng = dist(rng); 
+    if (dist_rng < fake_masked_prob) {
         mask_data[idx] = s;
         dst[idx] = s;
         continue;
     }
-    if (dist(rng) < rand_masked_prob) {
+    if (dist_rng < rand_masked_prob) {
         mask_data[idx] = s;
         dest = static_cast<T>(floor(
-                (dist(rng) - fake_masked_prob) / rand_scale * voc_size));
+                (dist_rng - fake_masked_prob) / rand_scale * voc_size));
         dst[idx] = dest;
         continue;
     }
-    if (dist(rng) < masked_prob) {
+    if (dist_rng < masked_prob) {
         mask_data[idx] = s;
         dst[idx] = mask_id;
         continue;
@@ -75,15 +85,17 @@ __global__ void RandomGenerator(const size_t n, const int seed, const int voc_si
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
+using framework::LoDTensor;
+
 template <typename Place, typename T>
 class GPUMaskLMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
+    auto* x = context.Input<LoDTensor>("X");
     auto* x_data = x->data<T>();
-    auto* y = context.Output<Tensor>("Out");
+    auto* y = context.Output<LoDTensor>("Out");
     auto* y_data = y->mutable_data<T>(context.GetPlace());
-    auto* mask = context.Output<Tensor>("Mask");
+    auto* mask = context.Output<LoDTensor>("Mask");
     auto* mask_data = mask->mutable_data<T>(context.GetPlace());
     
     T mask_id = static_cast<T>(context.Attr<int>("mask_id"));
@@ -93,13 +105,20 @@ class GPUMaskLMKernel : public framework::OpKernel<T> {
     std::random_device rnd;
     int seed =
         context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-
-    size_t size = framework::product(mask->dims());
+    
+    //hack for null mask
+    int64_t size = mask->numel();
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, size - 1);
+    int64_t post_rnd_offset = dis(gen);
+    
     int threads = 512;
     int grid = (x->numel() + threads - 1) / threads;
     RandomGenerator<
         T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-        size, seed, voc_size, masked_prob, mask_id, x_data, mask_data, y_data);
+        size, seed, post_rnd_offset, voc_size, 
+        masked_prob, mask_id, x_data, mask_data, y_data);
   }
 };
 
