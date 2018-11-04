@@ -47,6 +47,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor<int>) This tensor is used for the sequence max-pooling "
               "to record the max indexes.")
         .AsIntermediate();
+    AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<std::string>(
         "pooltype",
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
@@ -102,8 +103,9 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("X", framework::GradVarName("X"));
+
+    ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 
  protected:

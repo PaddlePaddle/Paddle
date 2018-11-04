@@ -75,7 +75,7 @@ class ParallelExecutor {
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
-  ParallelExecutorPrivate *member_;
+  std::unique_ptr<ParallelExecutorPrivate> member_;
 
 #ifdef PADDLE_WITH_CUDA
   // ref_cnts_ is only initialized when ParallelExecutor constructs, and then

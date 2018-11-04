@@ -24,21 +24,10 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor',
-    'create_parameter',
-    'create_global_var',
-    'cast',
-    'concat',
-    'sums',
-    'assign',
-    'fill_constant_batch_size_like',
-    'fill_constant',
-    'argmin',
-    'argmax',
-    'argsort',
-    'ones',
-    'zeros',
-    'reverse',
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
+    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
+    'argmin', 'argmax', 'argsort', 'ones', 'zeros', 'reverse', 'has_inf',
+    'has_nan', 'isfinite'
 ]
 
 
@@ -111,7 +100,7 @@ def create_global_var(shape,
                       force_cpu=False,
                       name=None):
     """
-    Create a new variable in the global block(block 0).
+    Create a new tensor variable with value in the global block(block 0).
 
     Args:
         shape(list[int]): shape of the variable
@@ -163,7 +152,7 @@ def cast(x, dtype):
             result = fluid.layers.cast(x=data, dtype='float64')
     """
     helper = LayerHelper('cast', **locals())
-    out = helper.create_tmp_variable(dtype=dtype)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
@@ -195,7 +184,7 @@ def concat(input, axis=0, name=None):
            out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
     """
     helper = LayerHelper('concat', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
         inputs={'X': input},
@@ -232,7 +221,8 @@ def sums(input, out=None):
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
-        out = helper.create_tmp_variable(dtype=helper.input_dtype())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
     helper.append_op(
         type='sum',
         inputs={'X': input},
@@ -263,7 +253,7 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     if output is None:
-        output = helper.create_tmp_variable(dtype=input.dtype)
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     if isinstance(input, Variable):
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
@@ -322,7 +312,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     helper = LayerHelper("fill_constant", **locals())
     if out is None:
-        out = helper.create_tmp_variable(dtype=dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='fill_constant',
         inputs={},
@@ -369,7 +359,7 @@ def fill_constant_batch_size_like(input,
         ${out_comment}.
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
-    out = helper.create_tmp_variable(dtype=dtype)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='fill_constant_batch_size_like',
         inputs={'Input': input},
@@ -407,7 +397,7 @@ def argmin(x, axis=0):
           out = fluid.layers.argmin(x=in, axis=-1)
     """
     helper = LayerHelper("arg_min", **locals())
-    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
         type='arg_min',
         inputs={'X': x},
@@ -438,7 +428,7 @@ def argmax(x, axis=0):
           out = fluid.layers.argmax(x=in, axis=-1)
     """
     helper = LayerHelper("arg_max", **locals())
-    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
         type='arg_max',
         inputs={'X': x},
@@ -488,8 +478,10 @@ def argsort(input, axis=-1, name=None):
             out, indices = fluid.layers.argsort(input, axis=0)
     """
     helper = LayerHelper("argsort", **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype, stop_gradient=True)
-    ids = helper.create_tmp_variable(VarDesc.VarType.INT64, stop_gradient=True)
+    out = helper.create_variable_for_type_inference(
+        dtype=input.dtype, stop_gradient=True)
+    ids = helper.create_variable_for_type_inference(
+        VarDesc.VarType.INT64, stop_gradient=True)
     helper.append_op(
         type='argsort',
         inputs={'X': input},
@@ -573,7 +565,7 @@ def reverse(x, axis):
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reverse',
         inputs={'Input': x},
@@ -652,3 +644,52 @@ def load_combine(out, file_path):
         inputs={},
         output={"Out": out},
         args={"file_path": file_path})
+
+
+def has_inf(x):
+    """
+    Test if any of x contains an infinity number
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, only a bool value.
+    """
+    helper = LayerHelper("isinf", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def has_nan(x):
+    """
+    Test if any of x contains a NAN
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, only a bool value.
+    """
+    helper = LayerHelper("isnan", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def isfinite(x):
+    """
+    Test if any of x contains an infinity/NAN number. If all the elements are finite,
+    returns true, else false.
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, contains a bool value.
+    """
+    helper = LayerHelper("isfinite", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
+    return out

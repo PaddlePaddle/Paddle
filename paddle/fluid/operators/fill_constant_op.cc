@@ -25,16 +25,22 @@ class FillConstantOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillConstantOp should not be null.");
-    auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+                                                const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context());
+                                   static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
+                                   ctx.device_context());
   }
+};
+
+class FillConstantOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {}
 };
 
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -44,7 +50,8 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<std::vector<int64_t>>("shape",
+                                  "(vector<int64_t>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
     AddAttr<bool>("force_cpu",
@@ -67,8 +74,10 @@ Fill up a variable with specified constant value.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(fill_constant, ops::FillConstantOp,
+                  ops::FillConstantInferShape, ops::FillConstantOpMaker,
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::FillConstantOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     fill_constant,
     ops::FillConstantOpKernel<paddle::platform::CPUDeviceContext, float>,

@@ -27,16 +27,31 @@ class FillConstantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto data_type =
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto value = ctx.Attr<float>("value");
-    auto force_cpu = ctx.Attr<bool>("force_cpu");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
+        static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
+    auto value = Attr<float>("value");
+    auto force_cpu = Attr<bool>("force_cpu");
+
+    framework::Tensor *tensor = nullptr;
+
+    auto &out_var = *scope.FindVar(Output("Out"));
+
+    if (out_var.IsType<framework::LoDTensor>()) {
+      tensor = out_var.GetMutable<framework::LoDTensor>();
+      tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
+    } else if (out_var.IsType<framework::SelectedRows>()) {
+      tensor = out_var.GetMutable<framework::SelectedRows>()->mutable_value();
+      tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
+    } else {
+      PADDLE_THROW(
+          "fill constant op's output only"
+          "supports SelectedRows and LoDTensor");
+    }
+
     if (force_cpu) {
       auto cpu = platform::CPUPlace();
-      out->mutable_data(cpu, framework::ToTypeIndex(data_type));
+      tensor->mutable_data(cpu, framework::ToTypeIndex(data_type));
     } else {
-      out->mutable_data(ctx.GetPlace(), framework::ToTypeIndex(data_type));
+      tensor->mutable_data(dev_place, framework::ToTypeIndex(data_type));
     }
 
     math::set_constant(ctx.template device_context<DeviceContext>(), out,
