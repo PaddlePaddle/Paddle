@@ -36,7 +36,7 @@ void GatherOpHandle::RunImpl() {
 
   VarHandle *out_var_handle;
   {
-    auto out_var_handles = DynamicCast<VarHandle>(outputs_);
+    auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
     PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
                       "The number of output should be one.");
     out_var_handle = out_var_handles.front();
@@ -99,7 +99,7 @@ void GatherOpHandle::RunImpl() {
   Tensor *out_tensor = out_value->mutable_value();
 
   // copy
-  auto dev_ctx = dev_ctxes_[out_var_handle->place_];
+  auto dev_ctx = dev_ctxes_.at(out_var_handle->place_);
   RunAndRecordEvent(out_var_handle->place_, [in_tensors, out_tensor, &dev_ctx,
                                              t_out_p] {
     int s = 0, e = 0;
