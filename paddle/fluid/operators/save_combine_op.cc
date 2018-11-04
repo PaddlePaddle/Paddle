@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <fstream>
+#include <memory>
 #include <numeric>
 #include <sstream>
 #include "paddle/fluid/framework/data_type.h"
@@ -41,6 +42,7 @@ class SaveCombineOp : public framework::OperatorBase {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
     auto save_as_fp16 = Attr<bool>("save_as_fp16");
+    auto format = Attr<std::string>("format");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
@@ -49,8 +51,14 @@ class SaveCombineOp : public framework::OperatorBase {
     }
 
     MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename, std::ios_base::out | std::ios_base::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
+    std::unique_ptr<std::ofstream> fout;
+    if (format == "windows") {
+      fout.reset(new std::ofstream(filename,
+                                   std::ios_base::out | std::ios_base::binary));
+    } else {
+      fout.reset(new std::ofstream(filename));
+    }
+    PADDLE_ENFORCE(static_cast<bool>(*fout), "Cannot open %s to write",
                    filename);
 
     auto inp_var_names = Inputs("X");
@@ -86,12 +94,11 @@ class SaveCombineOp : public framework::OperatorBase {
         // copy LoD info to the new tensor
         out.set_lod(tensor.lod());
         framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(fout, out, dev_ctx);
+        framework::SerializeToStream(*fout, out, dev_ctx);
       } else {
-        framework::SerializeToStream(fout, tensor, dev_ctx);
+        framework::SerializeToStream(*fout, tensor, dev_ctx);
       }
     }
-    fout.close();
   }
 };
 
@@ -124,6 +131,18 @@ to a file on disk.
         "The \"file_path\" where the LoDTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddAttr<std::string>("format",
+                         R"DOC((windows|linux)" "saved model file format
+                         windows and linux file newline symbol is
+different. windows(newline is \n\r) or linux(newline is \r)
+So if you set attribute format to windows, then we saved model file in binary.
+It can be used both linux and windows. If you set format to linux,
+it will save file in normal file, newline symbol is \r. Need to note
+that these two format is not inter-compatible.)DOC")
+        .SetDefault("linux")
+        .AddCustomChecker([](const std::string &s) {
+          return s == "windows" || s == "linux";
+        });
   }
 };
 

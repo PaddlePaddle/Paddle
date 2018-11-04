@@ -94,9 +94,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   int count = 0;
 #ifdef PADDLE_WITH_CUDA
   try {
-    VLOG(3) << "get cuda count";
     count = platform::GetCUDADeviceCount();
-    VLOG(3) << "get cuda pass";
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
@@ -109,14 +107,11 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
     }
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
-  VLOG(3) << "before p2p";
   if (init_p2p) {
     InitP2P(devices);
   }
-  VLOG(3) << "p2p pass";
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
-  VLOG(3) << "init pass";
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif

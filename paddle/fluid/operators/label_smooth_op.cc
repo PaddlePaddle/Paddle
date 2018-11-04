@@ -34,7 +34,7 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     if (ctx->HasInput("PriorDist")) {
       auto noise_dims = ctx->GetInputDim("PriorDist");
-      int64_t noise_numel = paddle::framework::product(noise_dims);
+      auto noise_numel = paddle::framework::product(noise_dims);
       PADDLE_ENFORCE(
           in_dims[1] == noise_numel,
           "The number of elements in Input(PriorDist) must be equal to the "
