@@ -97,7 +97,7 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
-static int ZeroCopyTensorAssignData(paddle::ZeroCopyTensor *tensor,
+static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
                                     const std::vector<std::vector<T>> &data) {
   int size{0};
   auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);

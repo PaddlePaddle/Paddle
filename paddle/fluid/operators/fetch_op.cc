@@ -42,8 +42,6 @@ class FetchOp : public framework::OperatorBase {
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
 
-    VLOG(3) << "fetch_var ptr " << fetch_var << " is " << (fetch_var == nullptr);
-    VLOG(3) << "out_var ptr " << out_var << " is " << (out_var == nullptr);
     auto col = static_cast<size_t>(Attr<int>("col"));
 
     auto *fetch_list = out_var->GetMutable<framework::FeedFetchList>();
