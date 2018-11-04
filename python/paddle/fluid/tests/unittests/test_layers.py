@@ -871,6 +871,13 @@ class TestBook(unittest.TestCase):
             x_data = layers.data(name="x", shape=[16], dtype="float32")
             mask = layers.data(name="mask", shape=[1], dtype="int64")
             out = layers.mask_extract(x_data, mask)
+
+    def test_grid_sampler(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5, 7], dtype='float32')
+            grid = layers.data(name='grid', shape=[5, 7, 2], dtype='float32')
+            out = layers.grid_sampler(x, grid)
             self.assertIsNotNone(out)
         print(str(program))
 
