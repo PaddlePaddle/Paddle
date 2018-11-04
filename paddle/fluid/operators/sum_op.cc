@@ -67,6 +67,7 @@ class SumOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
+    auto x_vars_name = ctx.Inputs("X");
 
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
@@ -81,15 +82,18 @@ class SumOp : public framework::OperatorWithKernel {
 
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
-      for (auto& x_var : x_vars) {
-        auto& lod_tensor = x_var->Get<framework::LoDTensor>();
-        if (lod_tensor.numel() == 0) {
+      for (size_t idx = 0; idx < x_vars.size(); ++idx) {
+        PADDLE_ENFORCE(x_vars[idx] != nullptr,
+                       "Input var[%s] should not be nullptr", x_vars_name[idx]);
+        // FIXME(zcd): The input x_var may be SelectedRows or LoDTensor.
+        auto tensor = framework::GetTensorFromVar(*x_vars[idx]);
+        if (tensor->numel() == 0) {
           continue;
         }
         if (dtype == -1) {
-          dtype = framework::ToDataType(lod_tensor.type());
+          dtype = framework::ToDataType(tensor->type());
         } else {
-          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(lod_tensor.type()));
+          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(tensor->type()));
         }
       }
       PADDLE_ENFORCE_NE(dtype, -1,
@@ -132,7 +136,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor) The output tensor of sum operator.").Reuse("X");
+    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
