@@ -15,20 +15,17 @@
 #include "paddle/fluid/framework/details/modify_op_lock_and_record_event_pass.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/op_handle_graph.h"
+#include "paddle/fluid/framework/details/op_graph_view.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-static ComputationOpHandle *ConvertToComputationOpHandle(OpHandleBase *op) {
-  return dynamic_cast<ComputationOpHandle *>(op);
-}
-
 static bool IsLockAndRecordEventFreeComputationOpHandle(
-    ComputationOpHandle *op, const OpHandleGraph &graph) {
-  for (auto &pending_op : graph.PendingOps(op)) {
-    auto *tmp = ConvertToComputationOpHandle(pending_op);
+    ComputationOpHandle *op, const OpGraphView &graph_view) {
+  if (!platform::is_gpu_place(op->GetPlace())) return false;
+  for (auto &pending_op : graph_view.PendingOps(op)) {
+    auto *tmp = dynamic_cast<ComputationOpHandle *>(pending_op);
     if (tmp == nullptr || !(tmp->GetPlace() == op->GetPlace())) {
       return false;
     }
@@ -39,12 +36,12 @@ static bool IsLockAndRecordEventFreeComputationOpHandle(
 std::unique_ptr<ir::Graph> ModifyOpLockAndRecordEventPass::ApplyImpl(
     std::unique_ptr<ir::Graph> ir_graph) const {
   auto &all_ops = ir_graph->Get<GraphOps>(kGraphOps);
-  OpHandleGraph graph(all_ops);
+  OpGraphView graph_view(all_ops);
   for (auto &op : all_ops) {
-    auto *compute_op = ConvertToComputationOpHandle(op.get());
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op.get());
     if (compute_op == nullptr) continue;
     bool is_lock_and_record_event_free =
-        IsLockAndRecordEventFreeComputationOpHandle(compute_op, graph);
+        IsLockAndRecordEventFreeComputationOpHandle(compute_op, graph_view);
     compute_op->SetLockAndRecordEventFree(is_lock_and_record_event_free);
     if (is_lock_and_record_event_free) {
       VLOG(10) << "Set is_lock_and_record_event_free be true in op "

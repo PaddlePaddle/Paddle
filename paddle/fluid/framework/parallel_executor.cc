@@ -118,10 +118,6 @@ ParallelExecutor::ParallelExecutor(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
 
-  graph = ir::PassRegistry::Instance()
-              .Get("modify_op_lock_and_record_event_pass")
-              ->Apply(std::move(graph));
-
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
     for (auto &place : member_->places_) {
@@ -149,10 +145,6 @@ ParallelExecutor::ParallelExecutor(
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
-
-  graph = ir::PassRegistry::Instance()
-              .Get("modify_op_lock_and_record_event_pass")
-              ->Apply(std::move(graph));
 #endif
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
@@ -331,8 +323,6 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
-
-USE_PASS(modify_op_lock_and_record_event_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 #endif

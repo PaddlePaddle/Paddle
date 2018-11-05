@@ -24,11 +24,9 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class OpHandleGraph {
+class OpGraphView {
  public:
-  enum Relation { kSame = 0, kBefore = 1, kAfter = 2, kNoDeps = 3 };
-
-  explicit OpHandleGraph(const std::vector<std::unique_ptr<OpHandleBase>> &ops);
+  explicit OpGraphView(const std::vector<std::unique_ptr<OpHandleBase>> &ops);
 
   size_t OpNumber() const;
 
@@ -39,42 +37,11 @@ class OpHandleGraph {
 
   const std::unordered_set<OpHandleBase *> &PendingOps(OpHandleBase *op) const;
 
-  std::vector<std::unordered_set<OpHandleBase *>> AllPrecedingOps(
-      OpHandleBase *op) const;
-
-  std::vector<std::unordered_set<OpHandleBase *>> AllPendingOps(
-      OpHandleBase *op) const;
-
   bool HasOp(OpHandleBase *op) const;
 
-  Relation RelationBetween(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  bool IsSame(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  bool IsBeforeOrSame(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  bool IsBefore(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  bool IsAfterOrSame(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  bool IsAfter(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  bool IsNoDeps(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  OpHandleBase *NearestCommonParent(OpHandleBase *op1, OpHandleBase *op2) const;
-
-  // Find an operator that is after op and before op1, op2
-  OpHandleBase *NearestCommonParentAfter(OpHandleBase *op, OpHandleBase *op1,
-                                         OpHandleBase *op2) const;
-
-  std::unordered_set<OpHandleBase *> NoPendingOpSet() const;
-
-  std::unordered_set<OpHandleBase *> NoPrecedingOpSet() const;
-
  private:
-  void BuildGraph(const std::vector<std::unique_ptr<OpHandleBase>> &ops);
+  void Build(const std::vector<std::unique_ptr<OpHandleBase>> &ops);
   void EnforceHasOp(OpHandleBase *op) const;
-  bool IsBeforeOrSameImpl(OpHandleBase *op1, OpHandleBase *op2) const;
 
   std::unordered_map<OpHandleBase *, std::unordered_set<OpHandleBase *>>
       preceding_ops_;

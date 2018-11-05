@@ -28,20 +28,13 @@ namespace framework {
 namespace details {
 struct ComputationOpHandle : public OpHandleBase {
  public:
-  ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
-                      size_t scope_idx);
+  ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place);
 
   std::string Name() const override;
 
   const Scope *GetScope() const { return scope_; }
 
   const platform::Place &GetPlace() const { return place_; }
-
-  size_t GetScopeIdx() const { return scope_idx_; }
-
-  OperatorBase &GetOp() { return *op_; }
-
-  const OperatorBase &GetOp() const { return *op_; }
 
   void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }
 
@@ -54,7 +47,6 @@ struct ComputationOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
   platform::Place place_;
-  size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
 };
 }  // namespace details
