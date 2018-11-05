@@ -17,12 +17,8 @@ IF(USE_EIGEN_FOR_BLAS)
 ENDIF(USE_EIGEN_FOR_BLAS)
 
 INCLUDE(cblas)
-# IF(WIN32 AND NOT ${CBLAS_FOUND})
-
-
 
 IF(NOT ${CBLAS_FOUND})
-
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
@@ -34,66 +30,95 @@ IF(NOT ${CBLAS_FOUND})
         CACHE FILEPATH "openblas library." FORCE)
 
     ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
-    IF (WIN32)
+
+    IF (WITH_PREBUILD_OPENBLAS)
         SET(CBLAS_FOUND true)
-        MESSAGE(WARNING, "In windows, openblas only support msvc build, please build it manually and put it at " ${CBLAS_INSTALL_DIR})
-    ENDIF(WIN32)
+        MESSAGE(STATUS, "Use prebuild openblas, please put it at " ${CBLAS_INSTALL_DIR})
+    ELSE(WITH_PREBUILD_OPENBLAS)
+        SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
+        SET(OPENBLAS_COMMIT "v0.2.20")
 
-    IF (NOT WIN32)
-    SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
-    SET(OPENBLAS_COMMIT "v0.2.20")
-
-    IF(CMAKE_CROSSCOMPILING)
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
-        GET_FILENAME_COMPONENT(CROSS_SUFFIX ${CMAKE_C_COMPILER} DIRECTORY)
-        SET(CROSS_SUFFIX ${CROSS_SUFFIX}/)
-        IF(ANDROID)
-            IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
-                # use softfp
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
-            ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
+        IF(CMAKE_CROSSCOMPILING)
+            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
+            GET_FILENAME_COMPONENT(CROSS_SUFFIX ${CMAKE_C_COMPILER} DIRECTORY)
+            SET(CROSS_SUFFIX ${CROSS_SUFFIX}/)
+            IF(ANDROID)
+                IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
+                    # use softfp
+                    SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
+                ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
+                    SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
+                ENDIF()
+            ELSEIF(IOS)
+                IF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+                    SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
+                    SET(OPENBLAS_CC "${OPENBLAS_CC} -arch arm64")
+                    SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0 CROSS_SUFFIX=${CROSS_SUFFIX})
+                ELSE()
+                    MESSAGE(FATAL_ERROR "OpenBLAS only support arm64 architectures on iOS. "
+                           "You can set IOS_USE_VECLIB_FOR_BLAS=ON or USE_EIGEN_FOR_BLAS=ON to use other blas library instead.")
+                ENDIF()
+            ELSEIF(RPI)
+                # use hardfp
+                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 USE_THREAD=0)
             ENDIF()
-        ELSEIF(IOS)
-            IF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
-                SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
-                SET(OPENBLAS_CC "${OPENBLAS_CC} -arch arm64")
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0 CROSS_SUFFIX=${CROSS_SUFFIX})
-            ELSE()
-                MESSAGE(FATAL_ERROR "OpenBLAS only support arm64 architectures on iOS. "
-                       "You can set IOS_USE_VECLIB_FOR_BLAS=ON or USE_EIGEN_FOR_BLAS=ON to use other blas library instead.")
+        ELSE()
+            IF(APPLE)
+                SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
             ENDIF()
-        ELSEIF(RPI)
-            # use hardfp
-            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 USE_THREAD=0)
+            SET(OPTIONAL_ARGS "")
+            IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
+                SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
+            ENDIF()
         ENDIF()
-    ELSE()
-        IF(APPLE)
-            SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
-        ENDIF()
-        SET(OPTIONAL_ARGS "")
-        IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
-            SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
-        ENDIF()
-    ENDIF()
 
-    SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
-    ExternalProject_Add(
-        extern_openblas
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
-        GIT_TAG             ${OPENBLAS_COMMIT}
-        PREFIX              ${CBLAS_SOURCES_DIR}
-        INSTALL_DIR         ${CBLAS_INSTALL_DIR}
-        BUILD_IN_SOURCE     1
-        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
-        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
-                            && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
-        UPDATE_COMMAND      ""
-        CONFIGURE_COMMAND   ""
-    )
-    ELSE()
-    ENDIF(NOT WIN32)
+        IF(WIN32)
+            ExternalProject_Add(
+                extern_openblas
+                ${EXTERNAL_PROJECT_LOG_ARGS}
+    #              GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
+                GIT_REPOSITORY      http://admin@localhost:8080/r/openblas.git
+    #              GIT_TAG             ${OPENBLAS_COMMIT}
+                PREFIX              ${CBLAS_SOURCES_DIR}
+                INSTALL_DIR         ${CBLAS_INSTALL_DIR}
+                BUILD_IN_SOURCE     1
+                CMAKE_ARGS    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                -DCMAKE_C_FLAGS_DEBUG=${DCMAKE_C_FLAGS_DEBUG}
+                -DCMAKE_C_FLAGS_RELEASE=${DCMAKE_C_FLAGS_RELEASE}
+                -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                -DNO_SHARED=ON
+                -DNO_STATIC=OFF
+                -DBUILD_WITHOUT_LAPACK=ON
+                -DUSE_THREAD=OFF
+                -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
+                -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                )
+        ELSE(WIN32)
+            SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
+            ExternalProject_Add(
+                extern_openblas
+                ${EXTERNAL_PROJECT_LOG_ARGS}
+                #  GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
+                GIT_REPOSITORY      http://admin@localhost:8080/r/openblas.git
+                #  GIT_TAG             ${OPENBLAS_COMMIT}
+                PREFIX              ${CBLAS_SOURCES_DIR}
+                INSTALL_DIR         ${CBLAS_INSTALL_DIR}
+                BUILD_IN_SOURCE     1
+                BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
+                INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
+                && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
+                UPDATE_COMMAND      ""
+                CONFIGURE_COMMAND   ""
+                )
+        ENDIF(WIN32)
+    ENDIF (WITH_PREBUILD_OPENBLAS)
+
     SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)

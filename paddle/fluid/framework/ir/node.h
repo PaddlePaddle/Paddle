@@ -28,7 +28,7 @@ namespace ir {
 class Node {
  public:
   enum class Type { kOperation, kVariable };
-  static constexpr char kControlDepVarName[] = "__control_var";
+  static constexpr const char kControlDepVarName[] = "__control_var";
 
   Type NodeType() const { return type_; }
 
