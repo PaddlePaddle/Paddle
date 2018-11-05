@@ -15,8 +15,12 @@
 #pragma once
 
 #include <glog/logging.h>
+#if !defined(_WIN32)
 #include <sys/time.h>
+#else
+#endif
 #include <chrono>  // NOLINT
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>

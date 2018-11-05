@@ -207,7 +207,7 @@ struct PassRegistrar : public Registrar {
     return 0;                                                         \
   }                                                                   \
   static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      &__pass_tmp_registrar_##pass_type##__ __attribute__((unused)) = \
+      &__pass_tmp_registrar_##pass_type##__ __UNUSED__() = \
           __pass_registrar_##pass_type##__
 
 #define USE_PASS(pass_type)                                           \
@@ -215,7 +215,7 @@ struct PassRegistrar : public Registrar {
       __use_pass_itself_##pass_type,                                  \
       "USE_PASS must be called in global namespace");                 \
   extern int TouchPassRegistrar_##pass_type();                        \
-  static int use_pass_itself_##pass_type##_ __attribute__((unused)) = \
+  static int use_pass_itself_##pass_type##_ __UNUSED__() = \
       TouchPassRegistrar_##pass_type()
 
 }  // namespace ir

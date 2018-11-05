@@ -126,7 +126,11 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
 
 static void ExecShellCommand(const std::string &cmd, std::string *message) {
   char buffer[128];
+#if !defined(_WIN32)
   std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+#else
+  std::shared_ptr<FILE> pipe(_popen(cmd.c_str(), "r"), _pclose);
+#endif  // _WIN32
   if (!pipe) {
     LOG(ERROR) << "error running command: " << cmd;
     return;
