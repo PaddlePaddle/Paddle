@@ -157,7 +157,7 @@ void SetConfig(contrib::AnalysisConfig *cfg) {
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->enable_ir_optim = false;
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -198,16 +198,16 @@ TEST(Analyzer_dam, profile) {
 // Check the fuse status
 TEST(Analyzer_dam, fuse_statis) {
   contrib::AnalysisConfig cfg;
-  // cfg.enable_ir_optim must be set true
   SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
-  EXPECT_EQ(num_ops, 2020);
+  if (cfg.enable_ir_optim) {  // cfg.enable_ir_optim must be set true
+    int num_ops;
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+    auto fuse_statis = GetFuseStatis(
+        static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
+    EXPECT_EQ(num_ops, 2020);
+  }
 }
 
 // Compare result of NativeConfig and AnalysisConfig
