@@ -106,39 +106,6 @@ TEST(trt_models_test, resnext50) {
   CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "resnext50");
 }
 
-TEST(Analyzer, use_gpu) {
-  AnalysisConfig config(false);
-  config.model_dir = FLAGS_dirname + "/" + "mobilenet";
-  config.fraction_of_gpu_memory = 0.1;
-  config.device = 0;
-  config.enable_ir_optim = true;
-  config.pass_builder()->TurnOnDebug();
-  // config.EnableTensorRtEngine();
-
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-  // auto base_predictor = CreatePaddlePredictor<NativeConfig>(config);
-
-  std::vector<PaddleTensor> inputs(1);
-  PrepareInputs(&inputs, 2);
-
-  std::vector<PaddleTensor> outputs;
-  inference::Timer timer;
-
-  timer.tic();
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    ASSERT_TRUE(predictor->Run(inputs, &outputs));
-  }
-  LOG(INFO) << "analysis latency: " << timer.toc() / 10 << " ms";
-
-  int num_ops{0};
-  auto fuse_statis = inference::GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-
-  // ASSERT_EQ(fuse_statis["conv_bn_fuse"], 14);
-  // ASSERT_EQ(fuse_statis["original_graph"],
-  // 87);  // not eq if the model is changed.
-}
-
 }  // namespace paddle
 
 USE_PASS(tensorrt_subgraph_pass);
