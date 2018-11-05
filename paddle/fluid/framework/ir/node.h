@@ -73,26 +73,32 @@ class Node {
         var_desc_(nullptr),
         op_desc_(nullptr),
         type_(type),
-        id_(count_++) {}
+        id_(count()++) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
         type_(Type::kVariable),
-        id_(count_++) {}
+        id_(count()++) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation),
-        id_(count_++) {}
+        id_(count()++) {}
 
   Node() = delete;
 
-  static int count_;
-  static void ResetId() { count_ = 0; }
+  static int& count() {
+    // According to C++ standard, thread_local variable is implied to be static
+    thread_local int cnt = 0;
+    return cnt;
+  }
+
+  // Please don't use this API or make this public.
+  static void ResetId() { count() = 0; }
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 
