@@ -145,10 +145,11 @@ class TestFP16SumOp(TestSumOp):
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=2e-2)
 
-    @unittest.skip(reason="fp16 gradient fail")
+    # FIXME: Because of the precision fp16, max_relative_error
+    # should be 0.15 here.
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
-            self.check_grad(['x0'], 'Out')
+            self.check_grad(['x0'], 'Out', max_relative_error=0.15)
 
 
 class TestFP16SelectedRowsSumOp(TestSelectedRowsSumOp):
