@@ -17,13 +17,17 @@
 #ifdef PADDLE_WITH_CUDA
 
 #include <string>
+#include <thread>
+#include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 
 namespace paddle {
 
@@ -49,7 +53,7 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
   return TRT_DT::kINT32;
 }
 
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
+nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
   PADDLE_ENFORCE_GT(shape.size(), 1UL,
                     "TensorRT' tensor input requires at least 2 dimensions");
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
@@ -64,60 +68,133 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
 
 using inference::Singleton;
 using inference::tensorrt::TRT_EngineManager;
+using inference::tensorrt::TRTInt8Calibrator;
+using inference::tensorrt::TRT_CalibratorRes;
+using inference::tensorrt::TRT_CalibratorResManager;
 
-class TensorRTEngineOp : public framework::OperatorWithKernel {
+class TensorRTEngineOp : public framework::OperatorBase {
+ private:
+  std::unique_ptr<TRTInt8Calibrator> calibrator_;
+  std::string precision_mode_;
+  std::string calibration_data_;
+  std::string engine_name_;
+  std::vector<std::string> input_names_;
+  std::unordered_set<std::string> param_names_;
+  int max_batch_size_;
+  int workspace_size_;
+  bool calibration_mode_;
+
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  TensorRTEngineOp(const std::string &type,
+                   const framework::VariableNameMap &inputs,
+                   const framework::VariableNameMap &outputs,
+                   const framework::AttributeMap &attrs)
+      : framework::OperatorBase(type, inputs, outputs, attrs) {
+    precision_mode_ = Attr<std::string>("precision_mode");
+    calibration_data_ = Attr<std::string>("calibration_data");
+    engine_name_ = Attr<std::string>("engine_uniq_key");
+    input_names_ = Inputs("Xs");
+    max_batch_size_ = Attr<int>("max_batch_size");
+    workspace_size_ = Attr<int>("workspace_size");
+
+    auto params = Attr<std::vector<std::string>>("parameters");
+    for (const auto &param : params) {
+      param_names_.insert(param);
+    }
+
+    calibration_mode_ =
+        (precision_mode_ == "INT8" && calibration_data_.size() == 0);
+
+    if (precision_mode_ == "INT8" && calibration_data_.size()) {
+      calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
+    }
+  }
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {}
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input0 = ctx.Inputs("Xs").front();
-    framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(ctx.scope()
-                                  .FindVar(input0)
-                                  ->GetMutable<framework::LoDTensor>()
-                                  ->type()),
-        ctx.GetPlace());
-    return kt;
+  void RunNative(const framework::Scope &scope,
+                 const platform::Place &dev_place) const {
+    framework::NaiveExecutor executor(dev_place);
+    auto *block = Attr<framework::BlockDesc *>("sub_block");
+    auto *program = block->Program();
+    auto *scope_ptr = const_cast<framework::Scope *>(&scope);
+    executor.Prepare(scope_ptr, *program, block->ID(), false);
+    executor.Run();
   }
-};
 
-template <typename DeviceContext, typename T>
-class TensorRTEngineKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto engine_name = context.Attr<std::string>("engine_uniq_key");
-    int max_batch_size = context.Attr<int>("max_batch_size");
-    if (!Singleton<TRT_EngineManager>::Global().HasEngine(engine_name)) {
-      Prepare(context);
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    if (calibration_mode_ == true) {
+      RunCalibration(scope, dev_place);
+      return;
     }
-    auto* engine = Singleton<TRT_EngineManager>::Global().Get(engine_name);
-    auto input_names = context.op().Inputs("Xs");
-    PADDLE_ENFORCE(!input_names.empty(), "should pass more than one inputs");
-    PADDLE_ENFORCE_LE(FLAGS_tensorrt_engine_batch_size, max_batch_size);
+    RunTrt(scope, dev_place);
+  }
+
+  void RunCalibration(const framework::Scope &scope,
+                      const platform::Place &dev_place) const {
+    // Create calibrator here.
+    if (!Singleton<TRT_CalibratorResManager>::Global().Has(engine_name_)) {
+      TRT_CalibratorRes *calib_res =
+          Singleton<TRT_CalibratorResManager>::Global().Create(engine_name_);
+      std::unordered_map<std::string, size_t> calib_buffers;
+      for (auto &x : input_names_) {
+        if (param_names_.count(x)) continue;
+        // convert input and copy to TRT engine's buffer
+        auto &t =
+            inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+        calib_buffers[x] = t.memory_size();
+      }
+
+      calib_res->calib_.reset(
+          new TRTInt8Calibrator(calib_buffers, FLAGS_tensorrt_engine_batch_size,
+                                engine_name_, dev_place));
+
+      // Should add an comments here.
+      calib_res->thr_.reset(new std::thread([&]() {
+        VLOG(3) << "start the calib trt engine thread";
+        Prepare(scope, dev_place, precision_mode_, calib_res->calib_.get());
+      }));
+    }
+
+    TRTInt8Calibrator *temp_calibrator =
+        Singleton<TRT_CalibratorResManager>::Global()
+            .Get(engine_name_)
+            ->calib_.get();
+    std::unordered_map<std::string, void *> calib_data;
+    for (auto &x : Inputs("Xs")) {
+      if (param_names_.count(x)) continue;
+      auto &t =
+          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      calib_data.emplace(x, t.data<void>());
+    }
+
+    temp_calibrator->setBatch(calib_data);
+    RunNative(scope, dev_place);
+  }
+
+  void RunTrt(const framework::Scope &scope,
+              const platform::Place &dev_place) const {
+    if (!Singleton<TRT_EngineManager>::Global().HasEngine(engine_name_)) {
+      Prepare(scope, dev_place, precision_mode_, calibrator_.get());
+    }
+    auto *engine = Singleton<TRT_EngineManager>::Global().Get(engine_name_);
+    PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
+    PADDLE_ENFORCE_LE(FLAGS_tensorrt_engine_batch_size, max_batch_size_);
 
     std::vector<std::string> output_maps =
-        context.Attr<std::vector<std::string>>("output_name_mapping");
+        Attr<std::vector<std::string>>("output_name_mapping");
 
-    auto params = context.Attr<std::vector<std::string>>("parameters");
-    std::unordered_set<std::string> parameters;
-    for (const auto& param : params) {
-      parameters.insert(param);
-    }
     // Convert input tensor from fluid to engine.
-    for (const auto& x : context.Inputs("Xs")) {
-      if (parameters.count(x)) continue;
+    for (const auto &x : Inputs("Xs")) {
+      if (param_names_.count(x)) continue;
       // convert input and copy to TRT engine's buffer
-      auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(
-          context.scope(), x);
+      auto &t =
+          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       if (platform::is_cpu_place(t.place())) {
-        engine->SetInputFromCPU(x, static_cast<const void*>(t.data<void>()),
+        engine->SetInputFromCPU(x, static_cast<const void *>(t.data<void>()),
                                 t.memory_size());
       } else {
-        engine->SetInputFromGPU(x, static_cast<const void*>(t.data<void>()),
+        engine->SetInputFromGPU(x, static_cast<const void *>(t.data<void>()),
                                 t.memory_size());
       }
     }
@@ -128,10 +205,10 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     // Convert output tensor from engine to fluid
     int output_index = 0;
     VLOG(4) << "TensorRT Engine Op Outputs:";
-    for (const auto& y : context.Outputs("Ys")) {
+    for (const auto &y : Outputs("Ys")) {
       VLOG(4) << y;
       // convert output and copy to fluid.
-      nvinfer1::ITensor* trt_t = engine->GetITensor(output_maps[output_index]);
+      nvinfer1::ITensor *trt_t = engine->GetITensor(output_maps[output_index]);
       auto dims = trt_t->getDimensions();
       // Use the output ITensor's dims to reshape the Fluid Tensor.
       // The ITensor doesn't contain the batch size dim.
@@ -141,9 +218,9 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
         ddim.push_back(dims.d[i]);
       }
 
-      auto* fluid_v = context.scope().FindVar(y);
+      auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
-      auto* fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
 
       fluid_t->Resize(framework::make_ddim(ddim));
 
@@ -156,7 +233,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       engine->GetOutputInGPU(
           output_maps[output_index],
           fluid_t->mutable_data<float>(platform::CUDAPlace(
-              boost::get<platform::CUDAPlace>(context.GetPlace()).device)),
+              boost::get<platform::CUDAPlace>(dev_place).device)),
           size * sizeof(float));
 
       output_index += 1;
@@ -165,29 +242,24 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     cudaStreamSynchronize(*engine->stream());
   }
 
- protected:
-  void Prepare(const framework::ExecutionContext& context) const {
+  void Prepare(const framework::Scope &scope, const platform::Place &dev_place,
+               std::string precision_mode,
+               TRTInt8Calibrator *calibrator) const {
+    framework::proto::BlockDesc block_desc;
+    block_desc.ParseFromString(Attr<std::string>("subgraph"));
     VLOG(4) << "Prepare engine";
     // Get the ProgramDesc and pass to convert.
-    framework::proto::BlockDesc block_desc;
-    block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
-    int max_batch_size = context.Attr<int>("max_batch_size");
-    int workspace_size = context.Attr<int>("workspace_size");
-
-    auto params = context.Attr<std::vector<std::string>>("parameters");
-    std::unordered_set<std::string> parameters;
-    for (const auto& param : params) {
-      parameters.insert(param);
-    }
 
     std::vector<std::string> output_maps =
-        context.Attr<std::vector<std::string>>("output_name_mapping");
+        Attr<std::vector<std::string>>("output_name_mapping");
 
     // TODO(Superjomn) replace this with a different stream
-    auto* engine = Singleton<TRT_EngineManager>::Global().Create(
-        max_batch_size, workspace_size, nullptr /*engine hold its own stream*/,
-        context.Attr<std::string>("engine_uniq_key"),
-        boost::get<platform::CUDAPlace>(context.GetPlace()).device);
+    auto *engine = Singleton<TRT_EngineManager>::Global().Create(
+        max_batch_size_, workspace_size_,
+        nullptr /*engine hold its own stream*/,
+        Attr<std::string>("engine_uniq_key"),
+        boost::get<platform::CUDAPlace>(dev_place).device, precision_mode,
+        calibrator);
 
     engine->InitNetwork();
 
@@ -195,10 +267,10 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     VLOG(4) << "parsed var size " << block.AllVars().size();
     // Add inputs
     VLOG(4) << "declare inputs";
-    for (auto& input : context.Inputs("Xs")) {
-      if (parameters.count(input)) continue;
+    for (auto &input : Inputs("Xs")) {
+      if (param_names_.count(input)) continue;
       VLOG(4) << "declare input " << input;
-      auto* var = block.FindVar(input);
+      auto *var = block.FindVar(input);
       // TensorRT engine need to create parameters. The parameter's description
       // should be set in
       PADDLE_ENFORCE(var, "no variable called %s", input);
@@ -219,13 +291,12 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     }
 
     inference::Singleton<inference::tensorrt::OpConverter>::Global()
-        .ConvertBlock(block_desc, parameters, context.scope(), engine);
+        .ConvertBlock(block_desc, param_names_, scope, engine);
 
     // Add outputs
-    for (auto& output : output_maps) {
+    for (auto &output : output_maps) {
       engine->DeclareOutput(output);
     }
-
     engine->FreezeNetwork();
   }
 };

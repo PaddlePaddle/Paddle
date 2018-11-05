@@ -91,7 +91,7 @@ bool AnalysisPredictor::Init(
 
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
-                            int batch_size) {
+                            int batch_size, bool is_calib_done) {
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();

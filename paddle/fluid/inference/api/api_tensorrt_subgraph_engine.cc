@@ -16,8 +16,11 @@
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
+
+#include <fstream>
 
 namespace paddle {
 
@@ -26,6 +29,10 @@ using inference::Singleton;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
 using paddle::contrib::MixedRTConfig;
+
+using inference::tensorrt::TRTInt8Calibrator;
+using inference::tensorrt::TRT_CalibratorRes;
+using inference::tensorrt::TRT_CalibratorResManager;
 
 class TensorRTSubgraphPredictor : public NativePaddlePredictor {
  public:
@@ -79,12 +86,45 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   }
 
   bool Run(const std::vector<PaddleTensor>& inputs,
-           std::vector<PaddleTensor>* output_data,
-           int batch_size = -1) override {
+           std::vector<PaddleTensor>* output_data, int batch_size = -1,
+           bool is_calib_done = false) override {
     PADDLE_ENFORCE_GT(batch_size, 0,
                       "TensorRT engine needs the argument batch_size set");
     FLAGS_tensorrt_engine_batch_size = batch_size;
-    return NativePaddlePredictor::Run(inputs, output_data, batch_size);
+
+    if (is_calib_done) {
+      auto& block = inference_program_->Block(0);
+      for (auto& op_desc : block.AllOps()) {
+        if (op_desc->Type() == "tensorrt_engine") {
+          // get_attr
+          std::string engine_name =
+              boost::get<std::string>(op_desc->GetAttr("engine_uniq_key"));
+          if (!Singleton<TRT_CalibratorResManager>::Global().Has(engine_name)) {
+            LOG(ERROR) << "fail to get calibrator resource manager.";
+          }
+          TRT_CalibratorRes* calib_res =
+              Singleton<TRT_CalibratorResManager>::Global().Get(engine_name);
+          VLOG(3) << "start wait and set done";
+          calib_res->calib_->waitAndSetDone();
+          VLOG(3) << "finish wait and set done";
+          calib_res->thr_->join();
+          VLOG(3) << "join the thread";
+          std::string calibration_data =
+              calib_res->calib_->getCalibrationTableAsString();
+          if (calibration_data.size() == 0) {
+            LOG(ERROR) << "the calibration table is empty.";
+            return false;
+          }
+          std::ofstream ofile(config_.model_dir + "/" + engine_name,
+                              std::ios::out);
+          ofile << calibration_data;
+          ofile.close();
+        }
+      }
+      return true;
+    } else {
+      return NativePaddlePredictor::Run(inputs, output_data, batch_size);
+    }
   }
 
   void OptimizeInferenceProgram() {
@@ -98,6 +138,8 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     argument.Set<std::string>("precision_mode",
                               new std::string(config_.precision_mode));
 
+    argument.Set<std::string>("calibration_table_dir",
+                              new std::string(config_.calibration_table_dir));
     if (!config_.model_dir.empty()) {
       argument.fluid_model_dir.reset(new std::string(config_.model_dir));
     } else {

@@ -41,8 +41,8 @@ class AnalysisPredictor : public PaddlePredictor {
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
 
   bool Run(const std::vector<PaddleTensor> &inputs,
-           std::vector<PaddleTensor> *output_data,
-           int batch_size = -1) override;
+           std::vector<PaddleTensor> *output_data, int batch_size = -1,
+           bool is_calib_done = false) override;
 
   std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string &name) override;

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -54,12 +55,16 @@ class TensorRTEngine : public EngineBase {
 
   TensorRTEngine(int max_batch, int max_workspace,
                  cudaStream_t* stream = nullptr, int device = 0,
+                 std::string precision_mode = "FP32" /*FP32, INT8*/,
+                 TRTInt8Calibrator* calibrator = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         stream_(stream ? stream : &default_stream_),
-        logger_(logger),
-        device_(device) {
+        device_(device),
+        precision_mode_(precision_mode),
+        calibrator_(calibrator),
+        logger_(logger) {
     freshDeviceId();
     cudaStreamCreate(stream_);
   }
@@ -140,11 +145,18 @@ class TensorRTEngine : public EngineBase {
   // the max memory size the engine uses
   int max_workspace_;
 
-  // batch size of the current data, will be updated each Executation.
-  int batch_size_{-1};
   cudaStream_t* stream_;
   // If stream_ is not set from outside, hold its own stream.
   cudaStream_t default_stream_;
+
+  // The specific GPU id that the TensorRTEngine bounded to.
+  int device_;
+
+  std::string precision_mode_;
+  TRTInt8Calibrator* calibrator_;
+
+  // batch size of the current data, will be updated each Executation.
+  int batch_size_{-1};
   nvinfer1::ILogger& logger_;
 
   std::vector<Buffer> buffers_;
@@ -152,8 +164,6 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
-  // The specific GPU id that the TensorRTEngine bounded to.
-  int device_;
 
   // TensorRT related internal members
   template <typename T>
@@ -196,7 +206,8 @@ class TensorRTEngine : public EngineBase {
 class TRT_EngineManager {
  public:
   bool HasEngine(const std::string& name) const {
-    return engines_.count(name) != 0;
+    if (engines_.count(name) == 0) return false;
+    return engines_.at(name).get() != nullptr;
   }
 
   // Get an engine called `name`.
@@ -206,8 +217,12 @@ class TRT_EngineManager {
 
   // Create or get an engine called `name`
   TensorRTEngine* Create(int max_batch, int max_workspace, cudaStream_t* stream,
-                         const std::string& name, int gpu_device = 0) {
-    auto* p = new TensorRTEngine(max_batch, max_workspace, stream, gpu_device);
+                         const std::string& name, int gpu_device = 0,
+                         std::string precision_mode = "FP32",
+                         TRTInt8Calibrator* calibrator = nullptr) {
+    VLOG(3) << "create a " << name << " engine";
+    auto* p = new TensorRTEngine(max_batch, max_workspace, stream, gpu_device,
+                                 precision_mode, calibrator);
     engines_[name].reset(p);
     return p;
   }

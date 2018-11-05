@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
+#include <fstream>
+#include <sstream>
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -206,11 +208,27 @@ void CreateTrtEngineOp(Node *node, Argument *argument,
 
   PADDLE_ENFORCE(!block->vars().empty(), "the block has no var-desc");
   // Set attrs
+  std::string calibration_table_dir =
+      argument->Get<std::string>("calibration_table_dir");
+  std::string engine_name = "trt-" + std::to_string(counter++);
+
+  SetAttr(desc.Proto(), "calibration_data", std::string(""));
+
+  if (calibration_table_dir.size()) {
+    std::ifstream infile(calibration_table_dir + "/" + engine_name,
+                         std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string calibration_data(buffer.str());
+    SetAttr(desc.Proto(), "calibration_data", calibration_data);
+  }
 
   SetAttr(desc.Proto(), "subgraph", block->SerializeAsString());
+  SetAttr(desc.Proto(), "precision_mode",
+          argument->Get<std::string>("precision_mode"));
   SetAttr(desc.Proto(), "max_batch_size", argument->Get<int>("max_batch_size"));
   SetAttr(desc.Proto(), "workspace_size", argument->Get<int>("workspace_size"));
-  SetAttr(desc.Proto(), "engine_uniq_key", "trt-" + std::to_string(counter++));
+  SetAttr(desc.Proto(), "engine_uniq_key", engine_name);
   SetAttr(desc.Proto(), "parameters", ExtractParameters(graph.nodes.nodes()));
   SetAttr(desc.Proto(), "output_name_mapping", output_mapping);
   node->SetPbMsg(desc.Proto()->SerializeAsString());
@@ -236,28 +254,43 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   PADDLE_ENFORCE(node->IsFunctionBlock());
   auto *block_node = static_cast<FunctionBlock *>(node);
   framework::proto::BlockDesc proto;
+  // framework::ProgramDesc program_desc;
+
   framework::BlockDesc block_desc(nullptr, &proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   VLOG(4) << "origin variable size: "
           << argument_->origin_program_desc->blocks(0).vars().size();
   VLOG(4) << "transformed variable size: " << block_desc.Proto()->vars().size();
-  // copy ops.
 
+  // copy ops.
   for (auto *node : block_node->subgraph) {
     auto *op = block_desc.AppendOp();
     PADDLE_ENFORCE(!node->pb_msg().empty());
     op->Proto()->ParseFromString(node->pb_msg());
   }
 
+  // add block to program proto
+  int block_id = desc_->blocks_size();
+  auto *new_block = desc_->add_blocks();
+  new_block->CopyFrom(*block_desc.Proto());
+  new_block->set_parent_idx(framework::kRootBlockIndex);
+  new_block->set_idx(block_id);
+
   *block_desc.Proto()->mutable_vars() =
       argument_->origin_program_desc->blocks(0).vars();
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty());
+
   CreateTrtEngineOp(node, argument_, block_desc.Proto());
   auto *main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto *op = main_block->add_ops();
   PADDLE_ENFORCE(!node->pb_msg().empty(), "failed to set desc for block");
   op->ParseFromString(node->pb_msg());
+
+  auto *new_attr = op->add_attrs();
+  new_attr->set_name("sub_block");
+  new_attr->set_type(framework::proto::AttrType::BLOCK);
+  new_attr->set_block_idx(block_id);
 }
 
 namespace {

@@ -151,8 +151,8 @@ class PaddlePredictor {
   // responsible for the output tensor's buffer, either allocated or passed from
   // outside.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
-                   std::vector<PaddleTensor>* output_data,
-                   int batch_size = -1) = 0;
+                   std::vector<PaddleTensor>* output_data, int batch_size = -1,
+                   bool is_calib_done = false) = 0;
 
   // Zero copy input and output optimization.
   // Get the input or output tensors, and operate on their memory directly,
@@ -249,6 +249,7 @@ struct MixedRTConfig : public NativeConfig {
   // Reserved configuration
   // We just support "FP32" now, "FP16" and "INT8" will be supported.
   std::string precision_mode = "FP32";
+  std::string calibration_table_dir = "";
 };
 
 // NOTE WIP, not stable yet.
