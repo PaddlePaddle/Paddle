@@ -800,7 +800,7 @@ TEST(JitKernel, pool) {
   EXPECT_TRUE(std::dynamic_pointer_cast<const jit::Kernel>(pvmul_f) !=
               std::dynamic_pointer_cast<const jit::Kernel>(pvmul_d));
 
-  const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulfany");
+  const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulfjit4");
   EXPECT_EQ(pvmul_f, pvmul_from_key);
   const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulfjit");
   EXPECT_TRUE(pvmul_from_key2 == nullptr);
