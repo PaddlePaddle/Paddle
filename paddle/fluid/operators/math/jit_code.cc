@@ -25,10 +25,10 @@ namespace gen {
 using namespace platform::jit;  // NOLINT
 
 bool VMulJitCode::init(int d) {
-  // TODO(TJ): maybe one AVX is enough, AVX above would slow down freq
-  // try more with avx2 or avx512
-  if (MayIUse(avx) || MayIUse(avx2)) {
-    return d % AVX_FLOAT_BLOCK == 0;
+  // It's not necessary to use avx512 since it would slow down the frequency
+  // and this kernel is not compute bound.
+  if (MayIUse(avx)) {
+    return d % 2 == 0;
   } else {
     return false;
   }
@@ -36,12 +36,33 @@ bool VMulJitCode::init(int d) {
 
 void VMulJitCode::generate() {
   // do not need push stack, and do not need save avx512reg if do not use avx512
-  int stride = sizeof(float) * AVX_FLOAT_BLOCK;
+  int offset = 0;
   for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
-    vmovups(ymm_src1, ptr[param1 + i * stride]);
-    vmovups(ymm_src2, ptr[param2 + i * stride]);
+    vmovups(ymm_src1, ptr[param1 + offset]);
+    vmovups(ymm_src2, ptr[param2 + offset]);
     vmulps(ymm_dst, ymm_src1, ymm_src2);
-    vmovups(ptr[param3 + stride * i], ymm_dst);
+    vmovups(ptr[param3 + offset], ymm_dst);
+    offset += sizeof(float) * AVX_FLOAT_BLOCK;
+  }
+  int rest = num_ % AVX_FLOAT_BLOCK;
+  if (rest >= 4) {
+    vmovups(xmm_src1, ptr[param1 + offset]);
+    vmovups(xmm_src2, ptr[param2 + offset]);
+    vmulps(xmm_dst, xmm_src1, xmm_src2);
+    vmovups(ptr[param3 + offset], xmm_dst);
+    offset += sizeof(float) * 4;
+    rest -= 4;
+  }
+  if (rest >= 2) {
+    mov(tmp, qword[param1 + offset]);
+    vmovq(xmm_src1, tmp);
+    mov(tmp, qword[param2 + offset]);
+    vmovq(xmm_src2, tmp);
+    vmulps(xmm_dst, xmm_src1, xmm_src2);
+    vmovq(tmp, xmm_dst);
+    mov(ptr[param3 + offset], tmp);
+    offset += sizeof(float) * 2;
+    rest -= 2;
   }
   ret();
 }

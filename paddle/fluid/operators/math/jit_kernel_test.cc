@@ -578,7 +578,7 @@ void vmul_mkl(const int n, const float* x, const float* y, float* z) {
 
 TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 256, 512, 1000, 1024}) {
+  for (int d : {7, 8, 15, 16, 20, 30, 256, 512, 1000, 1024}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data());
