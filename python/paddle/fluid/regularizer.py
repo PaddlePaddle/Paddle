@@ -142,11 +142,11 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(block, framework.Block)
 
         decay = block.create_var(
-            dtype=param.dtype(), shape=param.shape, lod_level=param.lod_level)
+            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
             decay = block.create_var(
-                dtype=grad.dtype(), type=core.VarDesc.VarType.SELECTED_ROWS)
+                dtype=grad.dtype, type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
                 type='get_sparse_as',
                 inputs={'W': param,
@@ -211,11 +211,11 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(block, framework.Block)
 
         decay = block.create_var(
-            dtype=param.dtype(), shape=param.shape, lod_level=param.lod_level)
+            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
             decay = block.create_var(
-                dtype=grad.dtype(), type=core.VarDesc.VarType.SELECTED_ROWS)
+                dtype=grad.dtype, type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
                 type='get_sparse_as',
                 inputs={'W': param,

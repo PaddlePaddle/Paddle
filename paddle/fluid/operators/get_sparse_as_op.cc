@@ -29,12 +29,21 @@ class GetSparseAsOp : public framework::OperatorWithKernel {
                    "Input(X) of GetSparseAsOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GetSparseAsOp should not be null.");
-    PADDLE_ENFORCE(ctx->GetInputsVarType("W")[0] ==
-                   framework::proto::VarType::LOD_TENSOR);
-    PADDLE_ENFORCE(ctx->GetInputsVarType("X")[0] ==
-                   framework::proto::VarType::SELECTED_ROWS);
-    PADDLE_ENFORCE(ctx->GetOutputsVarType("Out")[0] ==
-                   framework::proto::VarType::SELECTED_ROWS);
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("W")[0], framework::proto::VarType::LOD_TENSOR,
+        "The type of Input(W) of GetSparseAsOp should be LoDTensor, but the "
+        "received type is %s.",
+        ctx->GetInputsVarType("W")[0]);
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X")[0],
+                      framework::proto::VarType::SELECTED_ROWS,
+                      "The type of Input(X) of GetSparseAsOp should be "
+                      "SelectedRows, but the received type is %s",
+                      ctx->GetInputsVarType("X")[0]);
+    PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out")[0],
+                      framework::proto::VarType::SELECTED_ROWS,
+                      "The type of Output(Out) of GetSparseAsOp should be "
+                      "SelectedRows, but the received type is %s",
+                      ctx->GetInputsVarType("Out")[0]);
 
     auto table_dims = ctx->GetInputDim("W");
     auto x_dims = ctx->GetInputDim("X");
@@ -58,7 +67,9 @@ class GetSparseAsOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("W", "(LoDTensor) The input represents look up table.");
     AddInput("X", "(SelectedRows).");
-    AddOutput("Out", "(SelectedRows).") AddComment(R"DOC(
+    AddOutput("Out", "(SelectedRows).");
+
+    AddComment(R"DOC(
 Get Sparse As Operator.
 
 )DOC");
