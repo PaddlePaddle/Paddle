@@ -70,12 +70,8 @@ void Main(bool use_gpu) {
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
          i++) {
-      // Here will result random fail, for that the model is trained by CI, the
-      // train phase is not stable, so the result will be random.
-      // TODO(Superjomn) will restore after the model is upload.
-      // CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i],
-      // result[i],
-      // 0.001);
+      CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
+                 0.001);
     }
   }
 }
