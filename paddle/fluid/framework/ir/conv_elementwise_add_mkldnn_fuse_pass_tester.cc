@@ -22,29 +22,23 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+namespace {
 constexpr int nodes_removed = 3;
 constexpr int nodes_added = 1;
 
 void SetOp(ProgramDesc* prog, const std::string& type,
-           const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs) {
+           const std::vector<std::pair<std::string, std::string>>& inputs,
+           const std::pair<std::string, std::string>& output) {
   auto op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
+  op->SetAttr("use_mkldnn", true);
 
-  if (type == "conv2d") {
-    op->SetAttr("use_mkldnn", true);
-    op->SetInput("Input", {inputs[0]});
-    op->SetInput("Bias", {inputs[1]});
-    op->SetInput("Filter", {inputs[2]});
-    op->SetOutput("Output", outputs);
-  } else if (type == "elementwise_add") {
-    op->SetInput("X", {inputs[0]});
-    op->SetInput("Y", {inputs[1]});
-    op->SetOutput("Out", outputs);
-  } else if (type == "relu" || type == "sigmoid") {
-    op->SetInput("X", {inputs[0]});
-    op->SetOutput("Out", outputs);
+  for (const auto& input : inputs) {
+    op->SetInput(input.first, {input.second});
   }
+
+  op->SetOutput(output.first, {output.second});
+
 }
 
 struct IsReachable {
@@ -96,6 +90,7 @@ struct IsReachable {
   }
 };
 
+<<<<<<< HEAD
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
@@ -120,6 +115,61 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
 
   IsReachable is_reachable;
 
+=======
+void AssertOpsCount(const std::unique_ptr<ir::Graph>& graph) {
+  int conv_count = 0;
+  int elementwise_add_count = 0;
+
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == "conv2d") {
+      ++conv_count;
+    }
+    if (node->IsOp() && node->Op()->Type() == "elementwise_add") {
+      ++elementwise_add_count;
+    }
+  }
+  EXPECT_EQ(conv_count, 1);
+  EXPECT_EQ(elementwise_add_count, 0);
+}
+
+ProgramDesc BuildProgramDesc(const std::vector<std::string>& transient_vars,
+                             const std::vector<std::string>& persistent_vars) {
+  ProgramDesc prog;
+
+  auto add_var_to_prog = [&prog](const std::string& var_name) -> VarDesc* {
+    auto var = prog.MutableBlock(0)->Var(var_name);
+    var->SetType(proto::VarType::LOD_TENSOR);
+
+    return var;
+  };
+
+  for (const auto& v : transient_vars) {
+    add_var_to_prog(v);
+  }
+
+  for (const auto& v : persistent_vars) {
+    auto var = add_var_to_prog(v);
+    var->SetPersistable(true);
+  }
+
+  return prog;
+}
+}  // namespace
+
+TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
+  auto prog =
+      BuildProgramDesc({"a", "b", "c", "d", "e", "f"}, {"bias", "weights"});
+
+  SetOp(&prog, "conv2d",
+        {{"Input", "a"}, {"Bias", "bias"}, {"Filter", "weights"}},
+        {"Output", "b"});
+  SetOp(&prog, "elementwise_add", {{"X", "b"}, {"Y", "c"}}, {"Out", "d"});
+  SetOp(&prog, "relu", {{"X", "d"}}, {"Out", "e"});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  IsReachable is_reachable;
+>>>>>>> develop
   EXPECT_TRUE(is_reachable(graph)("a", "relu"));
 
   auto pass =
@@ -132,6 +182,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
 
   EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
             current_nodes_num);
+<<<<<<< HEAD
   // Assert conv_relu op in newly generated graph
   int conv_count = 0;
   int elementwise_add_count = 0;
@@ -166,6 +217,47 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
   };
 
   auto prog = build_program_desc();
+=======
+
+  AssertOpsCount(graph);
+}
+
+TEST(ConvElementwiseAddMKLDNNFusePass,
+     ConvolutionWithElementwiseAddReluNoBias) {
+  auto prog = BuildProgramDesc({"a", "b", "c", "d", "e"}, {"weights"});
+  SetOp(&prog, "conv2d", {{"Input", "a"}, {"Filter", "weights"}},
+        {"Output", "b"});
+  SetOp(&prog, "elementwise_add", {{"X", "b"}, {"Y", "c"}}, {"Out", "d"});
+  SetOp(&prog, "relu", {{"X", "d"}}, {"Out", "e"});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  IsReachable is_reachable;
+
+  EXPECT_TRUE(is_reachable(graph)("a", "relu"));
+
+  auto pass =
+      PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
+  int original_nodes_num = graph->Nodes().size();
+  graph = pass->Apply(std::move(graph));
+  int current_nodes_num = graph->Nodes().size();
+
+  EXPECT_TRUE(is_reachable(graph)("a", "relu"));
+
+  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
+            current_nodes_num);
+
+  AssertOpsCount(graph);
+}
+
+TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
+  auto prog = BuildProgramDesc({"a", "b", "c", "d"}, {"bias", "weights"});
+  SetOp(&prog, "conv2d",
+        {{"Input", "a"}, {"Bias", "bias"}, {"Filter", "weights"}},
+        {"Output", "b"});
+  SetOp(&prog, "elementwise_add", {{"X", "b"}, {"Y", "c"}}, {"Out", "d"});
+
+>>>>>>> develop
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   IsReachable is_reachable;
@@ -181,6 +273,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
 
   EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
             current_nodes_num);
+<<<<<<< HEAD
   // Assert conv_relu op in newly generated graph
   int conv_count = 0;
   int elementwise_add_count = 0;
@@ -218,6 +311,21 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
   };
 
   auto prog = build_program_desc();
+=======
+  AssertOpsCount(graph);
+}
+
+TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
+  auto prog =
+      BuildProgramDesc({"a", "b", "c", "d", "e", "f"}, {"bias", "weights"});
+  SetOp(&prog, "sigmoid", {{"X", "a"}}, {"Out", "b"});
+  SetOp(&prog, "conv2d",
+        {{"Input", "b"}, {"Bias", "bias"}, {"Filter", "weights"}},
+        {"Output", "c"});
+  SetOp(&prog, "elementwise_add", {{"X", "c"}, {"Y", "d"}}, {"Out", "e"});
+  SetOp(&prog, "relu", {{"X", "e"}}, {"Out", "f"});
+
+>>>>>>> develop
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   IsReachable is_reachable;
@@ -234,20 +342,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
 
   EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
             current_nodes_num);
-  // Assert conv_relu op in newly generated graph
-  int conv_count = 0;
-  int elementwise_add_count = 0;
-
-  for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "conv2d") {
-      ++conv_count;
-    }
-    if (node->IsOp() && node->Op()->Type() == "elementwise_add") {
-      ++elementwise_add_count;
-    }
-  }
-  EXPECT_EQ(conv_count, 1);
-  EXPECT_EQ(elementwise_add_count, 0);
+  AssertOpsCount(graph);
 }
 
 }  // namespace ir

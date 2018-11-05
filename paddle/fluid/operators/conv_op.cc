@@ -145,8 +145,8 @@ void Conv2DOpMaker::Make() {
       .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCHW.");
+
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
@@ -253,8 +253,7 @@ void Conv3DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "
