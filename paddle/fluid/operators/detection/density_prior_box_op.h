@@ -120,9 +120,9 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
         T center_x = (w + offset) * step_width;
         T center_y = (h + offset) * step_height;
         T box_width, box_height;
-        int idx = 0
-            // Generate density prior boxes with fixed sizes.
-            for (size_t s = 0; s < fixed_sizes.size(); ++s) {
+        int idx = 0;
+        // Generate density prior boxes with fixed sizes.
+        for (size_t s = 0; s < fixed_sizes.size(); ++s) {
           auto fixed_size = fixed_sizes[s];
           box_width = box_height = fixed_size;
           int density = densities[s];
