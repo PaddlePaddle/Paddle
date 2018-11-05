@@ -36,9 +36,9 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
 
   for (auto &op : ops) {
     int dep = static_cast<int>(op->NotReadyInputSize());
-    op_deps_.emplace(op.get(), dep);
+    op_deps_.emplace(op, dep);
     if (dep == 0) {
-      bootstrap_ops_.emplace_back(op.get());
+      bootstrap_ops_.emplace_back(op);
     }
   }
 
@@ -54,13 +54,13 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   paddle::framework::FeedFetchList fetches;
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-  std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
+  std::vector<FetchOpHandle *> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
+        fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
       }
     }
   }

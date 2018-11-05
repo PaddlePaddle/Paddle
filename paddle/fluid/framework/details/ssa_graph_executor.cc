@@ -19,8 +19,7 @@ namespace framework {
 namespace details {
 SSAGraphExecutor::~SSAGraphExecutor() {}
 
-void ClearFetchOp(ir::Graph* graph,
-                  std::vector<std::unique_ptr<FetchOpHandle>>* fetch_ops) {
+void ClearFetchOp(ir::Graph* graph, std::vector<FetchOpHandle*>* fetch_ops) {
   if (fetch_ops->empty()) return;
 
   for (auto& op : *fetch_ops) {
