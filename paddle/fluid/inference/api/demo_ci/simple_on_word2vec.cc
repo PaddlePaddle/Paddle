@@ -23,7 +23,7 @@ limitations under the License. */
 #include <memory>
 #include <thread>  //NOLINT
 
-#include "paddle/fluid/inference/paddle_inference_api.h"
+#include "paddle/include/paddle_inference_api.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
@@ -42,8 +42,7 @@ void Main(bool use_gpu) {
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     //# 2. Prepare input.
@@ -85,8 +84,7 @@ void MainThreads(int num_threads, bool use_gpu) {
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
-  auto main_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   std::vector<std::thread> threads;
   for (int tid = 0; tid < num_threads; ++tid) {

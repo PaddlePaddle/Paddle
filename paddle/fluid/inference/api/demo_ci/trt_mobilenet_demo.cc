@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
-#include "paddle/fluid/inference/demo_ci/utils.h"
+#include "utils.h"  // NOLINT
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DEFINE_string(modeldir, "", "Directory of the inference model.");
