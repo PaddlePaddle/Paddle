@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -96,10 +96,10 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "Input",
         "(Tensor, default Tensor<float>), "
-        "the input feature data of DensityPriorBoxOp, The layout is NCHW.");
+        "the input feature data of DensityPriorBoxOp, the layout is NCHW.");
     AddInput("Image",
              "(Tensor, default Tensor<float>), "
-             "the input image data of DensityPriorBoxOp, The layout is NCHW.");
+             "the input image data of DensityPriorBoxOp, the layout is NCHW.");
     AddOutput("Boxes",
               "(Tensor, default Tensor<float>), the output prior boxes of "
               "DensityPriorBoxOp. The layout is [H, W, num_priors, 4]. "
@@ -206,13 +206,17 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "followed by and does not affect the final detection results.")
         .SetDefault(false);
     AddComment(R"DOC(
-Density Prior box operator
-Generate density prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
-Each position of the input produce N prior boxes, N is determined by
- the count of min_sizes, max_sizes and aspect_ratios, The size of the
- box is in range(min_size, max_size) interval, which is generated in
- sequence according to the aspect_ratios.
-)DOC");
+        Density Prior box operator
+        Generate density prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+        Each position of the input produce N prior boxes, N is determined by
+        the count of fixed_sizes, fixed_ratios, densities, min_sizes, max_sizes and aspect_ratios,
+        Generate the density prior boxes by fixed_sizes, fixed rstios, densities, 
+        if the fixed_sizes, fixed_ratios and densities is supported, the calculation of shift is as follows:
+        $$shift = \frac{StepAverage}{density}$$, which step_average is a harmonic value of step_w and step_h
+        if the fixed_ratios is not supported, the calculation of shift is changed to:
+        $$shift= \frac{FixedSize}{density}$$
+        and then generate prior box.
+        )DOC");
   }
 };
 

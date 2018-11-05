@@ -95,14 +95,12 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
     int num_priors = aspect_ratios.size() * min_sizes.size();
 
-    if (fixed_sizes.size() > 0) {
-      if (densities.size() > 0) {
-        for (size_t i = 0; i < densities.size(); ++i) {
-          if (fixed_ratios.size() > 0) {
-            num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
-          } else {
-            num_priors += (aspect_ratios.size()) * (pow(densities[i], 2));
-          }
+    if (fixed_sizes.size() > 0 && densities.size() > 0) {
+      for (size_t i = 0; i < densities.size(); ++i) {
+        if (fixed_ratios.size() > 0) {
+          num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
+        } else {
+          num_priors += (aspect_ratios.size()) * (pow(densities[i], 2));
         }
       }
     }
