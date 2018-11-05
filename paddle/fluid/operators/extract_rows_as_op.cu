@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/get_sparse_as_op.h"
+#include "paddle/fluid/operators/extract_rows_as_op.h"
 #include "paddle/fluid/platform/assert.h"
 
 namespace paddle {
@@ -20,9 +20,9 @@ namespace operators {
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX,
           bool PaddingFlag>
-__global__ void GetSparseAs(T *output, const T *table, const int64_t *ids,
-                            const int64_t N, const int64_t K, const int64_t D,
-                            const int64_t padding_idx) {
+__global__ void ExtractRowsAs(T *output, const T *table, const int64_t *ids,
+                              const int64_t N, const int64_t K, const int64_t D,
+                              const int64_t padding_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
@@ -47,7 +47,7 @@ __global__ void GetSparseAs(T *output, const T *table, const int64_t *ids,
 }
 
 template <typename T>
-class GetSparseAsCUDAKernel : public framework::OpKernel<T> {
+class ExtractRowsAsCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     using LoDTensor = framework::LoDTensor;
@@ -74,7 +74,7 @@ class GetSparseAsCUDAKernel : public framework::OpKernel<T> {
     dim3 threads(128, 8);
     dim3 grids(8, 1);
 
-    GetSparseAs<T, 128, 8, 8, false /*padding_idx*/><<<
+    ExtractRowsAs<T, 128, 8, 8, false /*padding_idx*/><<<
         grids, threads, 0, context.cuda_device_context().stream()>>>(
         output_ptr, table_ptr, ids_v.CUDAData(context.GetPlace()), row_num,
         sparse_row_num, row_width, -1 /*padding_idx*/);
@@ -85,5 +85,5 @@ class GetSparseAsCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(get_sparse_as, ops::GetSparseAsCUDAKernel<float>,
-                        ops::GetSparseAsCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(extract_rows_as, ops::ExtractRowsAsCUDAKernel<float>,
+                        ops::ExtractRowsAsCUDAKernel<double>);

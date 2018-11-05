@@ -12,36 +12,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/get_sparse_as_op.h"
+#include "paddle/fluid/operators/extract_rows_as_op.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace operators {
 
-class GetSparseAsOp : public framework::OperatorWithKernel {
+class ExtractRowsAsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(W) of GetSparseAsOp should not be null.");
+                   "Input(W) of ExtractRowsAsOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GetSparseAsOp should not be null.");
+                   "Input(X) of ExtractRowsAsOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GetSparseAsOp should not be null.");
+                   "Output(Out) of ExtractRowsAsOp should not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("W")[0], framework::proto::VarType::LOD_TENSOR,
-        "The type of Input(W) of GetSparseAsOp should be LoDTensor, but the "
+        "The type of Input(W) of ExtractRowsAsOp should be LoDTensor, but the "
         "received type is %s.",
         ctx->GetInputsVarType("W")[0]);
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X")[0],
                       framework::proto::VarType::SELECTED_ROWS,
-                      "The type of Input(X) of GetSparseAsOp should be "
+                      "The type of Input(X) of ExtractRowsAsOp should be "
                       "SelectedRows, but the received type is %s",
                       ctx->GetInputsVarType("X")[0]);
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out")[0],
                       framework::proto::VarType::SELECTED_ROWS,
-                      "The type of Output(Out) of GetSparseAsOp should be "
+                      "The type of Output(Out) of ExtractRowsAsOp should be "
                       "SelectedRows, but the received type is %s",
                       ctx->GetInputsVarType("Out")[0]);
 
@@ -62,15 +62,28 @@ class GetSparseAsOp : public framework::OperatorWithKernel {
   }
 };
 
-class GetSparseAsOpMaker : public framework::OpProtoAndCheckerMaker {
+class ExtractRowsAsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("W", "(LoDTensor) The input represents look up table.");
-    AddInput("X", "(SelectedRows).");
-    AddOutput("Out", "(SelectedRows).");
+    AddInput(
+        "W",
+        "(LoDTensor) The input(W) is a LoDTensor which represents a table, "
+        "and this LoDTensor is a matrix.");
+    AddInput(
+        "X",
+        "(SelectedRows) The input(X) is a SelectedRows whose rows is used to "
+        "specify the rows to be extracted from W.");
+    AddOutput("Out",
+              "(SelectedRows). The output(Out) is a SelectedRows, "
+              "and the height, rows and value's dim equal to X's.");
 
     AddComment(R"DOC(
-Get Sparse As Operator.
+Extract Rows As Operator.
+
+This operator is used to extract the specific rows from a table. W is
+a LoDTensor and represents a table, X is a SelectedRows and it's rows
+specify the rows of W. And the output of this Op is a SelectedRows, the
+height, rows, and value's dim of output is equal to the X's.
 
 )DOC");
   }
@@ -80,6 +93,7 @@ Get Sparse As Operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(get_sparse_as, ops::GetSparseAsOp, ops::GetSparseAsOpMaker);
-REGISTER_OP_CPU_KERNEL(get_sparse_as, ops::GetSparseAsKernel<float>,
-                       ops::GetSparseAsKernel<double>);
+REGISTER_OPERATOR(extract_rows_as, ops::ExtractRowsAsOp,
+                  ops::ExtractRowsAsOpMaker);
+REGISTER_OP_CPU_KERNEL(extract_rows_as, ops::ExtractRowsAsKernel<float>,
+                       ops::ExtractRowsAsKernel<double>);

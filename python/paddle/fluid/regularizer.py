@@ -148,7 +148,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype=grad.dtype, type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
-                type='get_sparse_as',
+                type='extract_rows_as',
                 inputs={'W': param,
                         'X': grad},
                 outputs={'Out': decay})
@@ -217,7 +217,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype=grad.dtype, type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
-                type='get_sparse_as',
+                type='extract_rows_as',
                 inputs={'W': param,
                         'X': grad},
                 outputs={'Out': decay})

@@ -24,12 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
-
-constexpr int64_t kNoPadding = -1;
-
 template <typename T>
-class GetSparseAsKernel : public framework::OpKernel<T> {
+class ExtractRowsAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     using LoDTensor = framework::LoDTensor;
