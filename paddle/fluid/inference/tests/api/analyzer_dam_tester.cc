@@ -111,7 +111,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   auto one_batch = data->NextBatch();
   int size = one_batch.response[0].size();
   CHECK_EQ(size, MAX_TURN_LEN);
-
   // turn tensor assignment
   for (int i = 0; i < MAX_TURN_NUM; ++i) {
     turns_tensor[i].name = turn_pre + std::to_string(i);
@@ -119,7 +118,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
     turns_tensor[i].dtype = PaddleDType::INT64;
     TensorAssignData<int64_t>(&turns_tensor[i], one_batch.turns[i]);
   }
-
   // turn mask tensor assignment
   for (int i = 0; i < MAX_TURN_NUM; ++i) {
     turns_mask_tensor[i].name = turn_mask_pre + std::to_string(i);
@@ -127,13 +125,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
     turns_mask_tensor[i].dtype = PaddleDType::FLOAT32;
     TensorAssignData<float>(&turns_mask_tensor[i], one_batch.turns_mask[i]);
   }
-
   // response tensor assignment
   response_tensor.name = "response";
   response_tensor.shape.assign({batch_size, size, 1});
   response_tensor.dtype = PaddleDType::INT64;
   TensorAssignData<int64_t>(&response_tensor, one_batch.response);
-
   // response mask tensor assignment
   response_mask_tensor.name = "response_mask";
   response_mask_tensor.shape.assign({batch_size, size, 1});
