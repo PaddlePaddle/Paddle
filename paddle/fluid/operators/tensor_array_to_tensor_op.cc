@@ -77,7 +77,7 @@ void LodTensorArrayCreateFromLodTensorArray(
   }
 }
 
-class LoDTensorArrayConcatOp : public framework::OperatorBase {
+class LoDTensorArray2TensorOp : public framework::OperatorBase {
  public:
   using OperatorBase::OperatorBase;
 
@@ -92,6 +92,8 @@ class LoDTensorArrayConcatOp : public framework::OperatorBase {
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &out_inx =
+        *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
 
     const size_t n = inx.size();
     PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
@@ -99,13 +101,30 @@ class LoDTensorArrayConcatOp : public framework::OperatorBase {
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
 
+    // get the input tensorarray items' dim in out_inx
+    auto out_inx_dim = out_inx.dims();
+    out_inx_dim[0] = inx.size();
+    out_inx.Resize(out_inx_dim);
+
+    std::string var_name = "out_index";
+    framework::Variable *tmp_index_var =
+        const_cast<framework::Scope &>(scope).Var(var_name);
+    auto &tmp_index_tensor =
+        *(tmp_index_var->GetMutable<paddle::framework::LoDTensor>());
+    tmp_index_tensor.Resize(out_inx_dim);
+    int *tmp_index_data =
+        tmp_index_tensor.mutable_data<int>(platform::CPUPlace());
+
     auto out_dims = inx[0].dims();
     size_t out_dim_sum = 0;
     for (size_t index = 0; index < inx.size(); index++) {
       auto inx_dims = inx[index].dims();
       out_dim_sum += inx_dims[axis];
+      tmp_index_data[index] = inx_dims[axis];
     }
+    out_inx.ShareDataWith(tmp_index_tensor);
 
+    // get input array items' dims
     out_dims[axis] = out_dim_sum;
     out.Resize(out_dims);
 
@@ -118,40 +137,44 @@ class LoDTensorArrayConcatOp : public framework::OperatorBase {
   }
 };
 
-class LoDTensorArrayConcatOpMaker : public framework::OpProtoAndCheckerMaker {
+class LoDTensorArray2TensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input LoDTensorArray of tensor_array_concat operator.");
-    AddOutput("Out", "Output tensor of tensor_array_concat operator.");
+    AddInput("X", "Input LoDTensorArray of tensor_array_to_tensor operator.");
+    AddOutput("Out", "Output tensor of tensor_array_to_tensor operator.");
+    AddOutput("OutIndex",
+              "Output input LoDTensorArray items' dims of "
+              "tensor_array_to_tensor operator.");
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
     AddComment(R"DOC(
-Concat Operator.
+tensor_array_to_tensor Operator.
 
-Concatenate the input LoDTensorArray along dimension axis.
+Concatenate the input LoDTensorArray along dimension axis to the output Tensor.
 Examples:
   Input = {[1,2], [3,4], [5,6]}
   axis = 0
   Output = [[1,2],
             [3,4],
             [5,6]]
+  OutputIndex = [1,1,1]
 
 )DOC");
   }
 };
 
-class LoDTensorArrayConcatOpInferShape : public framework::InferShapeBase {
+class LoDTensorArray2TensorOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
-class LoDTensorArrayConcatGradInferShape : public framework::InferShapeBase {
+class LoDTensorArray2TensorGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {}
 };
 
-class LoDTensorArrayConcatGradInferVarType
+class LoDTensorArray2TensorGradInferVarType
     : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc &op_desc,
@@ -162,7 +185,7 @@ class LoDTensorArrayConcatGradInferVarType
   }
 };
 
-class LoDTensorArrayConcatGradOp : public framework::OperatorBase {
+class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
  public:
   using OperatorBase::OperatorBase;
 
@@ -214,10 +237,10 @@ class LoDTensorArrayConcatGradOp : public framework::OperatorBase {
 USE_OP(concat);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(tensor_array_concat, ops::LoDTensorArrayConcatOp,
-                  ops::LoDTensorArrayConcatOpMaker,
-                  ops::LoDTensorArrayConcatOpInferShape,
+REGISTER_OPERATOR(tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
+                  ops::LoDTensorArray2TensorOpMaker,
+                  ops::LoDTensorArray2TensorOpInferShape,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(tensor_array_concat_grad, ops::LoDTensorArrayConcatGradOp,
-                  ops::LoDTensorArrayConcatGradInferShape,
-                  ops::LoDTensorArrayConcatGradInferVarType);
+REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
+                  ops::LoDTensorArray2TensorGradInferShape,
+                  ops::LoDTensorArray2TensorGradInferVarType);
