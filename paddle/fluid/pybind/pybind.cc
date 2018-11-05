@@ -821,6 +821,13 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) {
             self.enable_data_balance_ = b;
           })  // FIXME(chengudo): enable_data_balance seems not important
+      .def_property("enable_sequential_execution",
+                    [](const BuildStrategy &self) {
+                      return self.enable_sequential_execution_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.enable_sequential_execution_ = b;
+                    })
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

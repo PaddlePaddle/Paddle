@@ -14,27 +14,21 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
-namespace ir {
+namespace details {
 
-/*
- * Fuse the CONV and ReLU to a ConvReLUOp.
- */
-class ConvReLUFusePass : public FusePassBase {
- public:
-  virtual ~ConvReLUFusePass() {}
+constexpr char kAllOpDescs[] = "all_op_descs";
 
+class SequentialExecutionPass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 };
 
-}  // namespace ir
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
