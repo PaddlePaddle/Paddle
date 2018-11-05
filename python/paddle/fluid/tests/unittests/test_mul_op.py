@@ -136,7 +136,7 @@ class TestFP16MulOp2(TestMulOp2):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['X', 'Y'], 'Out', max_relative_error=0.8)
+                place, ['X', 'Y'], 'Out', max_relative_error=0.9)
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
