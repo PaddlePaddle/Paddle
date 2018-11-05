@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 
@@ -130,6 +131,8 @@ void SetOp(framework::ProgramDesc* prog, const std::string& type,
   op->SetType(type);
   op->SetInput("Xs", inputs);
   op->SetOutput("Xs", outputs);
+  op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+              static_cast<int>(framework::OpRole::kForward));
 }
 
 TEST(DataFlowGraph, Build_IR_Graph) {

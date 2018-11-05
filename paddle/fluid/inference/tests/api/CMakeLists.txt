@@ -1,18 +1,4 @@
-set(INFERENCE_URL "http://paddle-inference-dist.cdn.bcebos.com")
-set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
-    "A path setting inference demo download directories.")
 set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor)
-function (inference_download install_dir url filename)
-    message(STATUS "Download inference test stuff from ${url}/${filename}")
-    execute_process(COMMAND bash -c "mkdir -p ${install_dir}")
-    execute_process(COMMAND bash -c "cd ${install_dir} && wget -q ${url}/${filename}")
-    message(STATUS "finish downloading ${filename}")
-endfunction()
-
-function (inference_download_and_uncompress install_dir url filename)
-    inference_download(${install_dir} ${url} ${filename})
-    execute_process(COMMAND bash -c "cd ${install_dir} && tar xzf ${filename}")
-endfunction()
 
 function(download_model_and_data install_dir model_name data_name)
     if (NOT EXISTS ${install_dir})
