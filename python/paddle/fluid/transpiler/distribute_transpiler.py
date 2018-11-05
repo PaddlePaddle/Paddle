@@ -35,6 +35,7 @@ import sys
 import numpy as np
 import collections
 import six
+import logging
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -49,6 +50,7 @@ LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
+OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
@@ -474,6 +476,26 @@ class DistributeTranspiler(object):
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
 
+        # delete table init op
+        if self.has_distributed_lookup_table:
+            table_var = self.startup_program.global_block().vars[
+                self.table_name]
+            table_param_init_op = []
+            for op in self.startup_program.global_block().ops:
+                if self.table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            self.startup_program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
+
         self.origin_program.__str__()
 
         if wait_port:
@@ -712,7 +734,7 @@ in a single call.")
                 for _, op in enumerate(self.optimize_ops):
                     # optimizer is connected to itself
                     if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                        op not in global_ops:
+                            op not in global_ops:
                         log("append opt op: ", op.type, op.input_arg_names,
                             merged_var)
                         __append_optimize_op__(op, per_opt_block,
@@ -746,6 +768,15 @@ in a single call.")
             prefetch_var_name_to_block_id.extend(
                 lookup_table_var_name_to_block_id)
 
+        if len(optimize_blocks) == 0:
+            logging.warn("pserver [" + str(endpoint) +
+                         "] has no optimize block!!")
+            pre_block_idx = pserver_program.num_blocks - 1
+            empty_block = pserver_program._create_block(pre_block_idx)
+            optimize_blocks.append(empty_block)
+
+        # In some case, some parameter server will have no parameter to optimize
+        # So we give an empty optimize block to parameter server.
         attrs = {
             "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
@@ -889,11 +920,11 @@ to transpile() call.")
             block_idx = int(block_name.split(block_suffix)[1])
             orig_var = self.origin_program.global_block().vars[orig_var_name]
 
-            skip_numel = 0
+            skip_dim0 = 0
             slice_vars = self.param_var_mapping[orig_var_name]
             for slice_var in slice_vars[:block_idx]:
-                skip_numel += reduce(lambda x, y: x * y, slice_var.shape)
-            slice_vars_and_attrs.append([orig_var, skip_numel, param])
+                skip_dim0 += slice_var.shape[0]
+            slice_vars_and_attrs.append([orig_var, skip_dim0, param])
 
         return slice_vars_and_attrs
 
@@ -1033,92 +1064,90 @@ to transpile() call.")
     def _replace_lookup_table_op_with_prefetch(self, program,
                                                pserver_endpoints):
         # 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
-        # self.all_prefetch_input_vars =
-        #       [[var0_prefetch_in_pserver0, var0_prefetch_in_pserver1]
-        #        [var1_prefetch_in_pserver0, var1_prefetch_in_pserver1]]
+        self.all_in_ids_vars = []
         self.all_prefetch_input_vars = []
-
-        # self.all_prefetch_input_vars =
-        #       [[var0_prefetch_in_pserver0, var0_prefetch_in_pserver1]
-        #        [var1_prefetch_in_pserver0, var1_prefetch_in_pserver1]]
         self.all_prefetch_output_vars = []
+        self.all_out_emb_vars = []
+        lookup_table_op_index = -1
 
         continue_search_lookup_table_op = True
         while continue_search_lookup_table_op:
             continue_search_lookup_table_op = False
             all_ops = program.global_block().ops
             for op in all_ops:
-                if op.type == LOOKUP_TABLE_TYPE:
+                if op.type == LOOKUP_TABLE_TYPE and self.table_name == op.input(
+                        "W")[0]:
+                    if not op.attr('is_distributed'):
+                        raise RuntimeError(
+                            "lookup_table_op that lookup an distributed embedding table"
+                            "should set is_distributed to true")
                     continue_search_lookup_table_op = True
 
-                    lookup_table_op_index = list(all_ops).index(op)
+                    lookup_table_op_index = lookup_table_op_index if lookup_table_op_index != -1 else list(
+                        all_ops).index(op)
                     ids_name = op.input("Ids")
                     out_name = op.output("Out")
 
                     ids_var = program.global_block().vars[ids_name[0]]
-                    prefetch_input_vars = self._create_splited_vars(
-                        source_var=ids_var,
-                        block=program.global_block(),
-                        tag="_prefetch_in_")
-                    self.all_prefetch_input_vars.append(prefetch_input_vars)
+                    self.all_in_ids_vars.append(ids_var)
 
                     out_var = program.global_block().vars[out_name[0]]
-                    prefetch_output_vars = self._create_splited_vars(
-                        source_var=out_var,
-                        block=program.global_block(),
-                        tag="_prefetch_out_")
-                    self.all_prefetch_output_vars.append(prefetch_output_vars)
-
-                    # insert split_ids_op
-                    program.global_block()._insert_op(
-                        index=lookup_table_op_index,
-                        type="split_ids",
-                        inputs={
-                            'Ids': [
-                                program.global_block().vars[varname]
-                                for varname in ids_name
-                            ]
-                        },
-                        outputs={"Out": prefetch_input_vars})
-
-                    # insert prefetch_op
-                    program.global_block()._insert_op(
-                        index=lookup_table_op_index + 1,
-                        type="prefetch",
-                        inputs={'X': prefetch_input_vars},
-                        outputs={"Out": prefetch_output_vars},
-                        attrs={
-                            "epmap": pserver_endpoints,
-                            # FIXME(qiao) temporarily disable this config because prefetch
-                            # is not act as other rpc op, it's more like a forward op
-                            # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                        })
-
-                    # insert concat_op
-                    program.global_block()._insert_op(
-                        index=lookup_table_op_index + 2,
-                        type="merge_ids",
-                        inputs={
-                            'Ids': [
-                                program.global_block().vars[varname]
-                                for varname in ids_name
-                            ],
-                            'X': prefetch_output_vars
-                        },
-                        outputs={
-                            "Out": [
-                                program.global_block().vars[varname]
-                                for varname in out_name
-                            ]
-                        })
+                    self.all_out_emb_vars.append(out_var)
 
                     # delete lookup_table_op
                     delete_ops(program.global_block(), [op])
                     # break for loop
                     break
 
+        for index in range(len(self.pserver_endpoints)):
+            in_var = program.global_block().create_var(
+                name=str("prefetch_compress_in_tmp_" + str(index)),
+                type=self.all_in_ids_vars[0].type,
+                shape=self.all_in_ids_vars[0].shape,
+                dtype=self.all_in_ids_vars[0].dtype)
+            self.all_prefetch_input_vars.append(in_var)
+
+            out_var = program.global_block().create_var(
+                name=str("prefetch_compress_out_tmp_" + str(index)),
+                type=self.all_out_emb_vars[0].type,
+                shape=self.all_out_emb_vars[0].shape,
+                dtype=self.all_out_emb_vars[0].dtype)
+            self.all_prefetch_output_vars.append(out_var)
+
+        # insert split_ids_op
+        program.global_block()._insert_op(
+            index=lookup_table_op_index,
+            type="split_ids",
+            inputs={'Ids': self.all_in_ids_vars},
+            outputs={"Out": self.all_prefetch_input_vars})
+
+        # insert prefetch_op
+        program.global_block()._insert_op(
+            index=lookup_table_op_index + 1,
+            type="prefetch",
+            inputs={'X': self.all_prefetch_input_vars},
+            outputs={"Out": self.all_prefetch_output_vars},
+            attrs={
+                "epmap": pserver_endpoints,
+                # FIXME(qiao) temporarily disable this config because prefetch
+                # is not act as other rpc op, it's more like a forward op
+                # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
+        # insert concat_op
+        program.global_block()._insert_op(
+            index=lookup_table_op_index + 2,
+            type="merge_ids",
+            inputs={
+                'Ids': self.all_in_ids_vars,
+                'Rows': self.all_prefetch_input_vars,
+                'X': self.all_prefetch_output_vars
+            },
+            outputs={"Out": self.all_out_emb_vars})
+
     def _split_table_grad_and_add_send_vars(self, program, pserver_endpoints):
         # 2. add split_ids_op and send_op to send gradient to pservers
+
         # there should only be one table_name
         all_ops = program.global_block().ops
         table_grad_name = grad_var_name(self.table_name)
@@ -1132,7 +1161,8 @@ to transpile() call.")
                     inputs={
                         'Ids': [program.global_block().vars[table_grad_name]]
                     },
-                    outputs={"Out": self.trainer_side_table_grad_list})
+                    outputs={"Out": self.trainer_side_table_grad_list},
+                    attrs={RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE})
                 program.global_block()._insert_op(
                     index=op_index + 2,
                     type="send",
@@ -1143,7 +1173,7 @@ to transpile() call.")
                         if self.sync_mode else []
                     },
                     attrs={
-                        "sync_mode": self.sync_mode,
+                        "sync_mode": not self.sync_mode,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME: [
@@ -1158,38 +1188,45 @@ to transpile() call.")
         # STEP: create prefetch block
         table_var = pserver_program.global_block().vars[self.table_name]
         prefetch_var_name_to_block_id = []
-        for index in range(len(self.all_prefetch_input_vars)):
-            prefetch_block = pserver_program._create_block(optimize_block.idx)
-            trainer_ids = self.all_prefetch_input_vars[index][pserver_index]
-            pserver_ids = pserver_program.global_block().create_var(
-                name=trainer_ids.name,
-                type=trainer_ids.type,
-                shape=trainer_ids.shape,
-                dtype=trainer_ids.dtype)
-            trainer_out = self.all_prefetch_output_vars[index][pserver_index]
-            pserver_out = pserver_program.global_block().create_var(
-                name=trainer_out.name,
-                type=trainer_out.type,
-                shape=trainer_out.shape,
-                dtype=trainer_out.dtype)
-            prefetch_block.append_op(
-                type="lookup_sparse_table",
-                inputs={'Ids': pserver_ids,
-                        "W": table_var},
-                outputs={"Out": pserver_out},
-                attrs={
-                    "is_sparse": True,  # has no effect on lookup_table op
-                    "is_distributed": True,
-                    "padding_idx": -1
-                })
-            prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
-                prefetch_block.idx))
+        prefetch_block = pserver_program._create_block(optimize_block.idx)
+        trainer_ids = self.all_prefetch_input_vars[pserver_index]
+        pserver_ids = pserver_program.global_block().create_var(
+            name=trainer_ids.name,
+            type=trainer_ids.type,
+            shape=trainer_ids.shape,
+            dtype=trainer_ids.dtype)
+        trainer_out = self.all_prefetch_output_vars[pserver_index]
+        pserver_out = pserver_program.global_block().create_var(
+            name=trainer_out.name,
+            type=trainer_out.type,
+            shape=trainer_out.shape,
+            dtype=trainer_out.dtype)
+        prefetch_block.append_op(
+            type="lookup_sparse_table",
+            inputs={'Ids': pserver_ids,
+                    "W": table_var},
+            outputs={"Out": pserver_out},
+            attrs={
+                "is_sparse": True,  # has no effect on lookup_table op
+                "is_distributed": True,
+                "padding_idx": -1
+            })
+        prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
+            prefetch_block.idx))
         return prefetch_var_name_to_block_id
 
     def _create_table_optimize_block(self, pserver_index, pserver_program,
                                      pre_block_idx, grad_to_block_id):
         # STEP: create table optimize block
+        table_opt_block = pserver_program._create_block(pre_block_idx)
         # create table param and grad var in pserver program
+        # create table optimize block in pserver program
+        table_opt_op = [
+            op for op in self.optimize_ops
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
+        ][0]
+
         origin_param_var = self.origin_program.global_block().vars[
             self.table_name]
 
@@ -1205,19 +1242,16 @@ to transpile() call.")
             dtype=origin_param_var.dtype,
             type=core.VarDesc.VarType.SELECTED_ROWS,
             persistable=True)
+
         # parameter must be selected rows
         param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
         grad_var = pserver_program.global_block()._clone_variable(
             self.origin_program.global_block().vars[grad_var_name(
                 self.table_name)])
 
-        # create table optimize block in pserver program
-        table_opt_op = [
-            op for op in self.optimize_ops
-            if 'Param' in op.input_names and op.input("Param")[0] ==
-            self.table_name
-        ][0]
-        table_opt_block = pserver_program._create_block(pre_block_idx)
+        lr_var = pserver_program.global_block()._clone_variable(
+            self.origin_program.global_block().vars[table_opt_op.input(
+                "LearningRate")[0]])
 
         if self.sync_mode:
             # create grad vars in pserver program
@@ -1249,8 +1283,6 @@ to transpile() call.")
             grad_var = pserver_program.global_block()._rename_var(
                 origin_grad_name, splited_grad_name)
 
-        lr_var = pserver_program.global_block().vars[table_opt_op.input(
-            "LearningRate")[0]]
         inputs = {
             "Param": [param_var],
             "Grad": [grad_var],
@@ -1258,7 +1290,6 @@ to transpile() call.")
         }
         outputs = {"ParamOut": [param_var]}
         # only support sgd now
-        import logging
         logging.warn(
             "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
             + table_opt_op.type)
@@ -1359,16 +1390,6 @@ to transpile() call.")
             program.global_block()._sync_with_cpp()
         return var_mapping
 
-    def _create_splited_vars(self, source_var, block, tag):
-        return [
-            block.create_var(
-                name=str(source_var.name + tag + str(index)),
-                type=source_var.type,
-                shape=source_var.shape,
-                dtype=source_var.dtype)
-            for index in range(len(self.pserver_endpoints))
-        ]
-
     def _clone_var(self, block, var, persistable=True):
         return block.create_var(
             name=var.name,
@@ -1426,7 +1447,7 @@ to transpile() call.")
         elif op_type == "adamax":
             if varkey in ["Moment", "InfNorm"]:
                 return param_shape
-        elif op_type == "momentum":
+        elif op_type in ["momentum", "lars_momentum"]:
             if varkey == "Velocity":
                 return param_shape
         elif op_type == "rmsprop":
@@ -1435,8 +1456,15 @@ to transpile() call.")
         elif op_type == "decayed_adagrad":
             if varkey == "Moment":
                 return param_shape
+        elif op_type == "ftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
+                return param_shape
         elif op_type == "sgd":
             pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
         return orig_shape
 
     def _get_varname_parts(self, varname):
@@ -1713,8 +1741,10 @@ to transpile() call.")
         lr_ops = []
         block = self.origin_program.global_block()
         for op in block.ops:
-            if int(op.attr(RPC_OP_ROLE_ATTR_NAME)) == int(
-                    LR_SCHED_OP_ROLE_ATTR_VALUE):
+            role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
+            if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                    int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
         return lr_ops

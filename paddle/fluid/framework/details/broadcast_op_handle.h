@@ -44,7 +44,8 @@ struct BroadcastOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
+        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+                               p_ctx.second.ctx_.get());
       }
     }
   }
@@ -61,7 +62,10 @@ struct BroadcastOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
- private:
+  void BroadcastOneVar(const VarHandle &in_var_handle,
+                       const std::vector<VarHandle *> &out_var_handles,
+                       const std::vector<const Scope *> &var_scopes);
+
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 #ifdef PADDLE_WITH_CUDA

@@ -47,7 +47,8 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         if grad is None:
             params_and_grads.append((param, grad))
             continue
-        with param.block.program._optimized_guard([param, grad]):
+        with param.block.program._optimized_guard(
+            [param, grad]), framework.name_scope('regularization'):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
@@ -151,7 +152,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
+                type=core.VarDesc.VarType.LOD_TENSOR)
             block.append_op(
                 type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
             block.append_op(
@@ -228,7 +229,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
+                type=core.VarDesc.VarType.LOD_TENSOR)
             block.append_op(
                 type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
             block.append_op(
@@ -237,6 +238,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                         'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
+            param = decay
 
         # Append sign op
         block.append_op(

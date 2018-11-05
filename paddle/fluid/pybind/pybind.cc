@@ -57,6 +57,10 @@ limitations under the License. */
 
 #include "pybind11/stl.h"
 
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -380,7 +384,8 @@ All parameter, weight, gradient are variables in Paddle.
                                return make_ddim(shape);
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims);
+              holder->InitOnce(capacity, dims,
+                               FLAGS_reader_queue_speed_test_mode);
               return holder->GetQueue();
             },
         py::return_value_policy::copy);
@@ -640,9 +645,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
-      .def("set_str", [](ir::Pass &self, const std::string &name,
-                         const std::string &attr) {
-        self.Set<std::string>(name, new std::string(attr));
+      .def(
+          "set_str",
+          [](ir::Pass &self, const std::string &name, const std::string &attr) {
+            self.Set<std::string>(name, new std::string(attr));
+          })
+      .def("set_int", [](ir::Pass &self, const std::string &name, int val) {
+        self.Set<const int>(name, new int(val));
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
@@ -812,6 +821,13 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) {
             self.enable_data_balance_ = b;
           })  // FIXME(chengudo): enable_data_balance seems not important
+      .def_property("enable_sequential_execution",
+                    [](const BuildStrategy &self) {
+                      return self.enable_sequential_execution_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.enable_sequential_execution_ = b;
+                    })
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
