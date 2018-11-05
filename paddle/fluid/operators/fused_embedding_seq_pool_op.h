@@ -31,8 +31,6 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-constexpr int64_t kNoPadding = -1;
-
 template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
