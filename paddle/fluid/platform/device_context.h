@@ -73,29 +73,55 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
-class CudnnHolder;
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place);
+  ~CudnnHolder();
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+ private:
+  friend class CudnnWorkspaceHandle;
+  void ReallocateWorkspace(size_t required_workspace_len);
+
+  template <typename Callback>
+  void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
+  std::mutex& Mutex() { return mtx_; }
+
+  cudnnHandle_t cudnn_handle_;
+  void* workspace_;
+  size_t workspace_len_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
 
 class CudnnWorkspaceHandle {
  public:
   /*! \brief The lock would not be acquired when constructor calls.
    *  The lock would be acquired when RunFunc() is called first time. */
-  explicit CudnnWorkspaceHandle(CudnnHolder* holder);
+  inline explicit CudnnWorkspaceHandle(CudnnHolder* holder) : holder_(holder) {}
 
   /*! \brief Thread which call RunFunc() would acquire the lock first
    *  before invoking cudnn functions. */
-  void RunFunc(const std::function<void(void*)>& cudnn_func,
-               size_t required_workspace_len);
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+  }
 
-  /*! \brief User can call this method to acquire the lock manually,
-   *  But it is usually unnecessary, because RunFunc() would
-   *  acquire the lock first before invoking cudnn functions. */
-  void BeginCallGuard();
-
-  /*! \brief User can call this method to release the lock manually,
-   *  But it is usually unnecssary, because the lock would be
-   *  release once the handle is destructed. But it can be used
-   *  to manually release the lock as soon as possible. */
-  void EndCallGuard();
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
 
  private:
   CudnnHolder* holder_;  // not own
@@ -136,11 +162,6 @@ class CUDADeviceContext : public DeviceContext {
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
-
-  /*! \brief  Run a cudnn function with the workspace provided by
-   * CUDADeviceContext */
-  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
-                                 size_t workspace_len) const;
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
