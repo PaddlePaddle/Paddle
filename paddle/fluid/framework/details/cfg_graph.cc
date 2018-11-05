@@ -22,13 +22,12 @@ namespace framework {
 namespace details {
 
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
-  ops_ = ir::TopologySortOperations(graph);
-  for (auto& op : ops_) {
-    PADDLE_ENFORCE(
-        op->NodeType() == ir::Node::Type::kOperation,
-        string::Sprintf("ControlFlow expect op, but get %s ", op->Name()));
-    if (successors_.find(op) == successors_.end()) {
-      // op info init
+  // ops_ = ir::TopologySortOperations(graph);
+  for (auto& op : graph.Nodes()) {
+    if (op->NodeType() != ir::Node::Type::kOperation)
+      continue;
+    else {
+      ops_.push_back(op);
       successors_[op] = std::list<ir::Node*>();
       predecessors_[op] = std::list<ir::Node*>();
       live_in_[op] = std::unordered_set<ir::Node*>();
@@ -36,21 +35,32 @@ ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
       uses_[op] = std::unordered_set<ir::Node*>();
       defs_[op] = std::unordered_set<ir::Node*>();
     }
+  }
+  ConnectNodes();
+}
+
+void ControlFlowGraph::ConnectNodes() {
+  for (size_t i = 0; i < ops_.size(); ++i) {
+    auto& op = ops_[i];
+    if (i < ops_.size() - 1) {
+      auto& next_op = ops_[i + 1];
+      successors_[op].push_back(next_op);
+      predecessors_[next_op].push_back(op);
+    }
     for (auto& input_var : op->inputs) {
-      for (auto& generated_op : input_var->inputs) {
-        predecessors_[op].push_back(generated_op);
-        successors_[generated_op].push_back(op);
+      // for (auto& generated_op : input_var->inputs) {
+      //   predecessors_[op].push_back(generated_op);
+      //   successors_[generated_op].push_back(op);
+      // }
+      // skip control var
+      if (input_var->IsVar() && !input_var->IsCtrlVar()) {
+        uses_[op].insert(input_var);
       }
-      PADDLE_ENFORCE(
-          input_var->NodeType() == ir::Node::Type::kVariable,
-          string::Sprintf("Expect var, but get %s", input_var->Name()));
-      uses_[op].insert(input_var);
     }
     for (auto& output_var : op->outputs) {
-      PADDLE_ENFORCE(
-          output_var->NodeType() == ir::Node::Type::kVariable,
-          string::Sprintf("Expect var, but get %s", output_var->Name()));
-      defs_[op].insert(output_var);
+      if (output_var->IsVar() && !output_var->IsCtrlVar()) {
+        defs_[op].insert(output_var);
+      }
     }
   }
 }
@@ -63,10 +73,10 @@ void ControlFlowGraph::LiveVariableAnalysis() {
   // http://www.cs.cornell.edu/courses/cs4120/2013fa/lectures/lec26-fa13.pdf
 
   std::unordered_set<ir::Node*> node_live_in;
-  std::list<ir::Node*> worklist(ops_.begin(), ops_.end());
-  std::reverse(worklist.begin(), worklist.end());
+  std::list<ir::Node*> worklist(ops_.rbegin(), ops_.rend());
+  // std::reverse(worklist.begin(), worklist.end());
   auto set_equal = [](const std::unordered_set<ir::Node*>& lhs,
-                      const std::unordered_set<ir::Node*>& rhs) -> bool {
+                      const std::unordered_set<ir::Node*>& rhs) {
     if (lhs.size() != rhs.size()) return false;
     for (auto& item : lhs) {
       if (rhs.find(item) == rhs.end()) {
@@ -75,32 +85,25 @@ void ControlFlowGraph::LiveVariableAnalysis() {
     }
     return true;
   };
+
   while (!worklist.empty()) {
     ir::Node* op = worklist.front();
     worklist.pop_front();
-    PADDLE_ENFORCE(live_in_.find(op) != live_in_.end(),
-                   string::Sprintf("Expect var %s in live_in, but Not Found.",
-                                   op->Name()));
-    node_live_in = live_in_[op];
+    node_live_in = std::move(live_in_[op]);
     for (auto& s : successors_[op]) {
       for (auto& var : live_in_[s]) {
-        if (live_out_[op].find(var) == live_out_[op].end()) {
-          live_out_[op].insert(var);
-        }
+        live_out_[op].insert(var);
       }
     }
-    live_in_[op].clear();
-    for (auto it = live_out_[op].begin(); it != live_out_[op].end(); ++it) {
-      if (defs_[op].find(*it) == defs_[op].end()) {
-        live_in_[op].insert(*it);
-      }
+    for (auto& var : live_out_[op]) {
+      live_in_[op].insert(var);
     }
-    for (auto it = uses_[op].begin(); it != uses_[op].end(); ++it) {
-      if (live_in_[op].find(*it) == live_in_[op].end()) {
-        live_in_[op].insert(*it);
-      }
+    for (auto& var : uses_[op]) {
+      live_in_[op].insert(var);
     }
-
+    for (auto& var : defs_[op]) {
+      live_in_[op].erase(var);
+    }
     if (!set_equal(live_in_[op], node_live_in)) {
       for (auto& pre : predecessors_[op]) {
         worklist.push_back(pre);

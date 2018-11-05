@@ -53,6 +53,7 @@ class ControlFlowGraph {
   const std::vector<ir::Node*>& Ops() const;
 
  private:
+  void ConnectNodes();
   using NodeListMap = std::unordered_map<ir::Node*, std::list<ir::Node*>>;
   using NodeSetMap =
       std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>>;

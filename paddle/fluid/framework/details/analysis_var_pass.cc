@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/analysis_var_pass.h"
+#include <iostream>
 #include <iterator>
+#include <type_traits>
 #include <vector>
 
 namespace paddle {
@@ -23,6 +25,14 @@ namespace details {
 using details::UnlivedNodePool;
 using details::ReusedNodePairMap;
 using details::ControlFlowGraph;
+
+template <typename Container>
+void PrintIt(const Container& cons) {
+  for (auto& item : cons) {
+    std::cout << item->Name() << " ";
+  }
+  std::cout << std::endl;
+}
 
 bool AnalysisVarPass::NodeMatching(ir::Node* var, ir::Node** cache,
                                    int* node_idx_in_pool) const {
@@ -71,14 +81,18 @@ const std::string AnalysisVarPass::DebugString(ir::Node* var) const {
 
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
+  VLOG(3) << "inside analysis";
   auto& node_pair_map = Get<ReusedNodePairMap>(kGlobalReusedNodePairMap);
   auto& graph_ops = Get<std::vector<ir::Node*>>(kGraphReusedOps);
 
+  VLOG(3) << "before cfg";
   // use worklist algorithm to compute the unlived variables.
   ControlFlowGraph cfg(*graph.get());
   cfg.LiveVariableAnalysis();
+  VLOG(3) << "after cfg";
 
-  auto op_has_subblock = [&](const AttributeMap& attrs) {
+  auto op_has_subblock = [&](OpDesc* desc) {
+    const AttributeMap& attrs = desc->GetAttrMap();
     for (auto& attr : attrs) {
       if (typeid(attr.second) == typeid(BlockDesc)) return true;
     }
@@ -86,8 +100,9 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   };
 
   auto var_can_reused = [&](ir::Node* node) {
-    PADDLE_ENFORCE(node->IsVar(), string::Sprintf("Expect node %s as Variable.",
-                                                  node->Name()));
+    PADDLE_ENFORCE(
+        node->IsVar() && !node->IsCtrlVar(),
+        string::Sprintf("Expect node %s as Variable.", node->Name()));
     auto* desc = node->Var();
     proto::VarType::Type type = desc->GetType();
     if (desc->Persistable() || (type != proto::VarType::LOD_TENSOR &&
@@ -105,20 +120,20 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   };
 
   for (auto& op : cfg.Ops()) {
+    VLOG(3) << "analysis op " << op->Name();
+    PrintIt(pool);
     auto* op_desc = op->Op();
-    if (op_has_subblock(op_desc->GetAttrMap())) continue;
-    graph_ops.push_back(op);
-
-    for (auto var : cfg.LiveIn(op)) {
-      if (!cfg.LiveOut(op).count(var) && var_can_reused(var)) {
-        pool.insert(var);
-      }
+    if (op_has_subblock(op_desc)) {
+      VLOG(3) << op->Name() << " has subblock, skipped.";
+      continue;
     }
+    graph_ops.push_back(op);
 
     for (auto& var : cfg.Def(op)) {
       if (var_can_reused(var)) {
         int node_idx_in_pool = -1;
         ir::Node* cached_var = nullptr;
+        VLOG(3) << "var " << var->Name();
         if (NodeMatching(var, &cached_var, &node_idx_in_pool)) {
           VLOG(3) << string::Sprintf(
               "Hit Cache !!! cache pool index %d, var is %s, cached var %s",
@@ -127,6 +142,13 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
           pool.erase(cached_var);
           node_pair_map[op] = std::make_pair(var, cached_var);
         }
+        VLOG(3) << "after match";
+      }
+    }
+
+    for (auto var : cfg.LiveIn(op)) {
+      if (!cfg.LiveOut(op).count(var) && var_can_reused(var)) {
+        pool.insert(var);
       }
     }
   }

@@ -72,9 +72,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       // NOTE(dzh): reuse based unique name maybe deperated. So divide analysis
       // and reuse as two seperated passes.
       auto memory_reuse_pass = AppendPass("memory_reuse_pass");
-      memory_reuse_pass->SetNotOwned(details::kGlobalReusedNodePairMap,
-                                     &reuse_map);
-      memory_reuse_pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
     }
 
     // Convert graph to run on multi-devices.
@@ -124,6 +121,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   }
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+  details::ReusedNodePairMap reuse_map;
+  details::GraphReusedOps graph_ops;
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
@@ -147,6 +146,22 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+    }
+    if (pass->Type() == "analysis_var_pass") {
+      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
+      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+    }
+    if (pass->Type() == "memory_reuse_pass") {
+      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
+      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+    }
+    if (pass->Type() == "analysis_var_pass") {
+      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
+      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+    }
+    if (pass->Type() == "memory_reuse_pass") {
+      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
+      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
     }
     graph = pass->Apply(std::move(graph));
   }

@@ -282,6 +282,8 @@ class ControlFlowGraph(object):
             self._skip_opt.update(skip_opt_set)
         for i in range(self.op_size):
             op = self._ops[i]
+            print(op.type())
+            print(self.pool)
             if op.type() in SUB_BLOCK_OPS:
                 continue
             block_desc = op.block()
