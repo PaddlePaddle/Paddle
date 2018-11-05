@@ -44,6 +44,7 @@ class Node {
     return op_desc_.get();
   }
 
+  // Please don't use this API!
   int id() const { return id_; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
