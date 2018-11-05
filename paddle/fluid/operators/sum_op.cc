@@ -212,6 +212,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
                      grad_op->SetInput("X", og);
                      grad_op->SetOutput("Out", {x_grad});
                      grad_op->SetAttr("scale", 1.0f);
+                     grad_op->SetAttr("grad_inplace", true);
                      return std::unique_ptr<framework::OpDesc>(grad_op);
                    });
     return grad_ops;

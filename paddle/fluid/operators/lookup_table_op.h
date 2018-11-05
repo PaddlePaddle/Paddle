@@ -53,14 +53,16 @@ class LookupTableKernel : public framework::OpKernel<T> {
       auto *table = table_t->data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
 
+      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_LT(ids[i], row_number);
           PADDLE_ENFORCE_GE(ids[i], 0, "ids %d", i);
-          memcpy(output + i * row_width, table + ids[i] * row_width,
-                 row_width * sizeof(T));
+          blas.VCOPY(row_width, table + ids[i] * row_width, output + i * row_width);
+          // memcpy(output + i * row_width, table + ids[i] * row_width,
+                 // row_width * sizeof(T));
         }
       }
     } else if (table_var->IsType<SelectedRows>()) {
@@ -69,7 +71,6 @@ class LookupTableKernel : public framework::OpKernel<T> {
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-      // auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -80,7 +81,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           memcpy(output + i * row_width, table + id_index * row_width,
                  row_width * sizeof(T));
           // blas.VCOPY(row_width, table + id_index * row_width,
-          // output + i * row_width);
+                // output + i * row_width);
         }
       }
     }

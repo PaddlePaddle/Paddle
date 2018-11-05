@@ -115,7 +115,12 @@ class Optimizer(object):
                 with default_main_program()._lr_schedule_guard(
                         is_with_opt=True), framework.name_scope(
                             'scale_with_param_lr'):
-                    return self._global_learning_rate() * param_lr
+                    return layers.create_global_var(
+                                    name=unique_name.generate("learning_rate"),
+                                    shape=[1],
+                                    value=float(self._learning_rate * param_lr),
+                                    dtype='float32' if self._dtype == None else self._dtype,
+                                    persistable=True)
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -425,7 +430,7 @@ class LarsMomentumOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
-        
+
 
     Examples:
         .. code-block:: python

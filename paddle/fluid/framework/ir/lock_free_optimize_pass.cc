@@ -88,7 +88,8 @@ std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
               unmerged_grad_var->inputs.size() == 1u) {
             ir::Node* backward_op = unmerged_grad_var->inputs[0];
 
-            LOG(ERROR) << "Found backward_op " << backward_op->Name();
+            LOG(ERROR) << "Found backward_var " << unmerged_grad_var->Name() << "_" << unmerged_grad_var->id();
+            LOG(ERROR) << "Found backward_op " << backward_op->Name() << "_" << backward_op->id();
 
             // find the forward op related to the backward op
             ir::Node* forward_op =
@@ -139,6 +140,44 @@ std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
                      << node->id();
         }
       }
+
+      if (output_node->Name() == "PyramidHash_emb_0@GRAD") {
+        for (Node* input_node : node->outputs) {
+          LOG(ERROR) << "SGD Output link: " << input_node->Name() << "_"
+                     << input_node->id() << " --> " << node->Name() << "_"
+                     << node->id();
+        }
+      }
+    }
+  }
+
+  for (auto* node : graph->Nodes()) {
+    auto& output_node_vec = node->outputs;
+    for (auto output_node_iter = output_node_vec.begin();
+         output_node_iter != output_node_vec.end();) {
+      if (grad_sum_op_set.find(*output_node_iter) != grad_sum_op_set.end()) {
+        output_node_iter = output_node_vec.erase(output_node_iter);
+      } else {
+        ++output_node_iter;
+      }
+    }
+  }
+
+  for (auto* node : graph->Nodes()) {
+    for (Node* output_node : node->outputs) {
+      if (graph->Nodes().find(output_node) == graph->Nodes().end()) {
+        LOG(ERROR) << "Find Wrong node from : " << node->Name() << " " << node->id();
+        LOG(ERROR) << "Find Wrong node: " << output_node->Name() << " " << output_node->id();
+      }
+    }
+  }
+
+
+  for (auto* node : graph->Nodes()) {
+    for (Node* output_node : node->outputs) {
+        LOG(ERROR) << node->Name() << "_"
+                    << node->id() << " -> " << output_node->Name() << "_"
+                    << output_node->id() << ";";
     }
   }
 
@@ -194,6 +233,9 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
   // keep with the same output nodes between new optimizer and the
   // old one
   Node* sgd_node = graph->CreateOpNode(&new_desc);
+
+  sgd_node->inputs.emplace_back(grad_node);
+  grad_node->outputs.emplace_back(sgd_node);
 
   // change all outputs of the optimize_node to the new one
   ReplaceAllDownstreamNode(optimize_node, sgd_node);

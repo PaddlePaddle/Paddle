@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <jemalloc/jemalloc.h>
 #include <vector>
 
 #include "paddle/fluid/memory/malloc.h"
@@ -73,6 +74,7 @@ template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
+  // void* p = je_malloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -84,11 +86,13 @@ template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
+  // je_free(p);
 }
 
 template <>
 size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
+  // return 0u;
 }
 
 #ifdef PADDLE_WITH_CUDA

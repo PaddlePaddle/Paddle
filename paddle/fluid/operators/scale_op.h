@@ -33,24 +33,29 @@ class ScaleKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
                       "in and out should have the same dim");
 
-    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
-    auto bias = static_cast<T>(ctx.Attr<float>("bias"));
-    auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
-
-    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<framework::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
-      out_slr->set_rows(in_slr.rows());
-      out_slr->set_height(in_slr.height());
-    }
-
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    if (bias_after_scale) {
-      eigen_out.device(dev) = scale * eigen_in + bias;
+    bool grad_inplace = static_cast<T>(ctx.Attr<bool>("scale"));
+    if (grad_inplace) {
+      in->ShareDataWith(*out);
     } else {
-      eigen_out.device(dev) = scale * (eigen_in + bias);
+      auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+      auto bias = static_cast<T>(ctx.Attr<float>("bias"));
+      auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
+
+      if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
+        auto& in_slr = in_var->Get<framework::SelectedRows>();
+        auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+        out_slr->set_rows(in_slr.rows());
+        out_slr->set_height(in_slr.height());
+      }
+
+      auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+      auto eigen_in = framework::EigenVector<T>::Flatten(*in);
+      auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
+      if (bias_after_scale) {
+        eigen_out.device(dev) = scale * eigen_in + bias;
+      } else {
+        eigen_out.device(dev) = scale * (eigen_in + bias);
+      }
     }
   }
 };
