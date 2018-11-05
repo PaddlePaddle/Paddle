@@ -7902,6 +7902,8 @@ def mask_lm(x,
         dtype=x.dtype, stop_gradient=True)
     mask = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
+    mask_pos = helper.create_variable_for_type_inference(
+        dtype='int64', stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
@@ -7910,7 +7912,8 @@ def mask_lm(x,
         type='mask_lm',
         inputs={'X': [x]},
         outputs={'Out': [out],
-                 'Mask': [mask]},
+                 'Mask': [mask],
+                 'MaskPos': [mask_pos]},
         attrs={
             'mask_id': mask_id,
             'voc_size': voc_size,
@@ -7918,7 +7921,7 @@ def mask_lm(x,
             'fix_seed': fix_seed,
             'seed': seed if seed is not None else 0
         })
-    return out, mask
+    return out, mask, mask_pos
 
 
 @templatedoc()
