@@ -51,7 +51,7 @@ struct TensorArrayBatchCleaner {
   std::vector<framework::LoDTensorArray *> arrays_;
 
   std::unordered_set<std::type_index> valid_types_;
-  std::unordered_set<framework::Variable*> no_tensor_vars_;
+  std::unordered_set<framework::Variable *> no_tensor_vars_;
 };
 
 }  // namespace details

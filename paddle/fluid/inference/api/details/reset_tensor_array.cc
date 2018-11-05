@@ -51,6 +51,7 @@ void TensorArrayBatchCleaner::CollectNoTensorVars(framework::Scope *scope) {
   if (no_tensor_flag_) {
     for (auto &var_name : scope->LocalVarNames()) {
       auto *var = scope->FindVar(var_name);
+      if (!var->IsInitialized()) continue;
       if (!valid_types_.count(var->Type())) {
         no_tensor_vars_.insert(var);
       }
