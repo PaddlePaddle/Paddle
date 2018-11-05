@@ -40,6 +40,8 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
       "send", "recv", "send_barrier", "fetch_barrier"};
 
   auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
+  auto seq_only_all_reduce = Get<bool>(kSeqOnlyAllReduceOps);
+
   std::vector<ir::Node *> op_node_list;
   op_node_list.reserve(ops.size());
 
@@ -84,7 +86,13 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
     }
     ready_ops.erase(found_node);
     if (skip_dist_ops.count(op_desc->Type()) == 0) {
-      op_node_list.push_back(found_node);
+      if (!seq_only_all_reduce) {
+        op_node_list.push_back(found_node);
+      } else {
+        if (found_node->Name() == "all_reduce") {
+          op_node_list.push_back(found_node);
+        }
+      }
     }
   }
 

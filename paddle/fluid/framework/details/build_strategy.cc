@@ -24,11 +24,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
+  return (!strategy.enable_sequential_execution_ && strategy.num_trainers_ > 1);
+}
+
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
-    if (strategy_.enable_sequential_execution_) {
+    if (strategy_.enable_sequential_execution_ ||
+        SeqOnlyAllReduceOps(strategy)) {
       AppendPass("sequential_execution_pass");
     }
 
@@ -120,6 +125,14 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+
+      pass->Erase(kSeqOnlyAllReduceOps);
+      pass->Set<bool>(kSeqOnlyAllReduceOps,
+                      new bool(SeqOnlyAllReduceOps(*this)));
+      VLOG(1) << "set sequential_execution_pass with SeqOnlyAllReduceOps"
+              << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_
+              << ", trainer_id:" << trainer_id_;
     }
     graph = pass->Apply(std::move(graph));
   }

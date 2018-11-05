@@ -22,6 +22,7 @@ namespace framework {
 namespace details {
 
 constexpr char kAllOpDescs[] = "all_op_descs";
+constexpr char kSeqOnlyAllReduceOps[] = "seq_only_all_reduce";
 
 class SequentialExecutionPass : public ir::Pass {
  protected:

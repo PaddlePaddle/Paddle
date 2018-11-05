@@ -171,13 +171,14 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     strategy.num_threads = args.cpus
     strategy.allow_op_delay = False
     build_strategy = fluid.BuildStrategy()
+    build_strategy.debug_graphviz_path = "./ssa_graph.dot"
     if args.reduce_strategy == "reduce":
         build_strategy.reduce_strategy = fluid.BuildStrategy(
         ).ReduceStrategy.Reduce
     else:
         build_strategy.reduce_strategy = fluid.BuildStrategy(
         ).ReduceStrategy.AllReduce
-    build_strategy.fuse_broadcast_op = args.fuse_broadcast_op
+    #build_strategy.fuse_broadcast_op = args.fuse_broadcast_op
 
     avg_loss = train_args[0]
 
