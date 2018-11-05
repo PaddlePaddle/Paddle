@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 
 #include <glog/logging.h>
+#include <memory>
 
 #include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
@@ -31,6 +32,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    // NOTE(dzh): memory optimize should be a runtime pass.
+    // However, after multi_devices_pass, VarHandle, OpHandle is
+    // the de-fact IR, any reuse on Graph is meaningless.
+    // A side-effect of that, memory optimize cannot forsee the fetched vars
+    // , so fetchlist should be set persistable before call the Run interface.
+    if (strategy.memory_optimize_) {
+      auto analysis_var_pass = AppendPass("analysis_var_pass");
+      // NOTE(dzh): reuse based unique name maybe deperated. So divide analysis
+      // and reuse as two seperated passes.
+      auto memory_reuse_pass = AppendPass("memory_reuse_pass");
+    }
+
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
     }
@@ -54,24 +67,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         viz_pass->Set<std::string>("graph_viz_path",
                                    new std::string(graph_path));
       }
-    }
-
-    // NOTE(dzh): memory optimize should be a runtime pass.
-    // However, after multi_devices_pass, VarHandle, OpHandle is
-    // the de-fact IR, any reuse on Graph is meaningless.
-    // A side-effect of that, memory optimize cannot forsee the fetched vars
-    // , so fetchlist should be set persistable before call the Run interface.
-    details::ReusedNodePairMap reuse_map;
-    details::GraphReusedOps graph_ops;
-    if (strategy.memory_optimize_) {
-      auto analysis_var_pass = AppendPass("analysis_var_pass");
-      analysis_var_pass->SetNotOwned(details::kGlobalReusedNodePairMap,
-                                     &reuse_map);
-      analysis_var_pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
-
-      // NOTE(dzh): reuse based unique name maybe deperated. So divide analysis
-      // and reuse as two seperated passes.
-      auto memory_reuse_pass = AppendPass("memory_reuse_pass");
     }
 
     // Convert graph to run on multi-devices.
@@ -119,11 +114,10 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   if (!pass_builder_) {
     CreatePassesFromStrategy();
   }
-
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+
   details::ReusedNodePairMap reuse_map;
   details::GraphReusedOps graph_ops;
-
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
       pass->Erase("places");
@@ -146,20 +140,10 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
-    }
-    if (pass->Type() == "analysis_var_pass") {
+    } else if (pass->Type() == "analysis_var_pass") {
       pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
       pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
-    }
-    if (pass->Type() == "memory_reuse_pass") {
-      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
-      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
-    }
-    if (pass->Type() == "analysis_var_pass") {
-      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
-      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
-    }
-    if (pass->Type() == "memory_reuse_pass") {
+    } else if (pass->Type() == "memory_reuse_pass") {
       pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
       pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
     }

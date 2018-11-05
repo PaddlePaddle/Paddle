@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -102,7 +103,7 @@ class Graph {
     attr_dels_[attr_name] = []() {};
   }
 
-  const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
+  const std::set<ir::Node *> &Nodes() const { return node_set_; }
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
@@ -180,7 +181,7 @@ class Graph {
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
-  std::unordered_set<ir::Node *> node_set_;
+  std::set<ir::Node *> node_set_;  // order matters
 };
 
 bool IsControlDepVar(const ir::Node &var);

@@ -22,19 +22,17 @@ namespace framework {
 namespace details {
 
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
-  // ops_ = ir::TopologySortOperations(graph);
   for (auto& op : graph.Nodes()) {
-    if (op->NodeType() != ir::Node::Type::kOperation)
+    if (op->NodeType() != ir::Node::Type::kOperation) {
       continue;
-    else {
-      ops_.push_back(op);
-      successors_[op] = std::list<ir::Node*>();
-      predecessors_[op] = std::list<ir::Node*>();
-      live_in_[op] = std::unordered_set<ir::Node*>();
-      live_out_[op] = std::unordered_set<ir::Node*>();
-      uses_[op] = std::unordered_set<ir::Node*>();
-      defs_[op] = std::unordered_set<ir::Node*>();
     }
+    ops_.push_back(op);
+    successors_[op] = std::list<ir::Node*>();
+    predecessors_[op] = std::list<ir::Node*>();
+    live_in_[op] = std::unordered_set<ir::Node*>();
+    live_out_[op] = std::unordered_set<ir::Node*>();
+    uses_[op] = std::unordered_set<ir::Node*>();
+    defs_[op] = std::unordered_set<ir::Node*>();
   }
   ConnectNodes();
 }
@@ -66,15 +64,14 @@ void ControlFlowGraph::ConnectNodes() {
 }
 
 void ControlFlowGraph::LiveVariableAnalysis() {
+  // NOTE(dzh): variable liveless analysis (a.k.a worklist algorithm)
   // compute the liveness of for each variable though worklist algorithm.
   // It iterates the operators from end to begin, compute the live in/live out
   // variable set for each op, then the diff between in/out will be used for
   // the variable reuse. For detail refer to
   // http://www.cs.cornell.edu/courses/cs4120/2013fa/lectures/lec26-fa13.pdf
-
   std::unordered_set<ir::Node*> node_live_in;
   std::list<ir::Node*> worklist(ops_.rbegin(), ops_.rend());
-  // std::reverse(worklist.begin(), worklist.end());
   auto set_equal = [](const std::unordered_set<ir::Node*>& lhs,
                       const std::unordered_set<ir::Node*>& rhs) {
     if (lhs.size() != rhs.size()) return false;

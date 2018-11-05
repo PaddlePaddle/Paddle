@@ -39,6 +39,9 @@ void MemoryReusePass::UpdateGraphFromReuseMap(
     auto* op_desc = op->Op();
     // update desc
     op_desc->Rename(var->Name(), cache_var->Name());
+    if (op_desc->Block()->HasVar(var->Name())) {
+      op_desc->Block()->RemoveVar(var->Name());
+    }
     // update node
     std::replace(op->inputs.begin(), op->inputs.end(), var, cache_var);
     std::replace(op->outputs.begin(), op->outputs.end(), var, cache_var);

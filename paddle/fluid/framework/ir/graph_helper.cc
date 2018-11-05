@@ -114,7 +114,8 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
 }
 
 size_t GraphNum(const Graph &graph) {
-  std::unordered_set<ir::Node *> nodes = graph.Nodes();
+  std::unordered_set<ir::Node *> nodes(graph.Nodes().begin(),
+                                       graph.Nodes().end());
   std::unordered_set<ir::Node *> visited_nodes;
   visited_nodes.reserve(nodes.size());
   std::deque<ir::Node *> q_nodes;

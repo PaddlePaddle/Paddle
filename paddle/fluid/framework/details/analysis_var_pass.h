@@ -25,15 +25,19 @@ namespace framework {
 namespace details {
 
 class AnalysisVarPass : public ir::Pass {
+ public:
+  const std::string DebugString(ir::Node* var) const;
+
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
   // search pool for a best fit Node.
-  bool NodeMatching(ir::Node* var, ir::Node** cache, int* idx) const;
-
-  const std::string DebugString(ir::Node* var) const;
+  bool NodeMatch(ir::Node* var, ir::Node** cache, int* idx) const;
+  // scan subblock and collect the variables.
+  std::unordered_set<ir::Node*> GetSubBlockOutputVars(
+      const std::set<ir::Node*>&) const;
   // Reuse Node Pool
   mutable details::UnlivedNodePool pool;
 };
