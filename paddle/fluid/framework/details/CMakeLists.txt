@@ -9,6 +9,8 @@ cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_he
 cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc DEPS multi_devices_helper)
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
 
+cc_library(op_handle_graph SRCS op_handle_graph.cc DEPS op_handle_base)
+
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
 if(WITH_GPU)
@@ -36,10 +38,12 @@ endif()
 cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_devices_helper computation_op_handle
         scale_loss_grad_op_handle rpc_op_handle all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle)
 
+cc_library(inplace_op_pass SRCS inplace_op_pass.cc DEPS op_handle_base computation_op_handle) 
+
 if(WITH_GPU)
-  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto reference_count_pass)
+  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto reference_count_pass inplace_op_pass)
 else()
-  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto)
+  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto inplace_op_pass)
 endif()
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope

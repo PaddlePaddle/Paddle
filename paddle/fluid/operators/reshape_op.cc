@@ -112,6 +112,10 @@ class ReshapeOp : public framework::OperatorWithKernel {
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         ctx.device_context());
   }
+
+  InplaceWithNoChangeMap GetInplaceWithNoChangeMap() const override {
+    return {{"X", {"Out"}}};
+  }
 };
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -193,6 +197,10 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         ctx.device_context());
   }
+
+  InplaceWithNoChangeMap GetInplaceWithNoChangeMap() const {
+    return {{framework::GradVarName("Out"), {framework::GradVarName("X")}}};
+  }
 };
 
 class ReshapeKernel {
@@ -228,7 +236,9 @@ class ReshapeKernel {
     }
 
     out->mutable_data(ctx.GetPlace(), in->type());
-    framework::TensorCopySync(*in, ctx.GetPlace(), out);
+    if (!ctx.TryInplaceWithNoChange("X", "Out")) {
+      framework::TensorCopySync(*in, ctx.GetPlace(), out);
+    }
     out->Resize(out_dims);
   }
 };
@@ -241,7 +251,10 @@ class ReshapeGradKernel {
     auto in_dims = d_x->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
+    if (!ctx.TryInplaceWithNoChange(framework::GradVarName("Out"),
+                                    framework::GradVarName("X"))) {
+      framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
+    }
     d_x->Resize(in_dims);
   }
 };
@@ -326,6 +339,10 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
             ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
                 ->type()),
         ctx.device_context());
+  }
+
+  InplaceWithNoChangeMap GetInplaceWithNoChangeMap() const {
+    return {{framework::GradVarName("Out"), {framework::GradVarName("X")}}};
   }
 };
 

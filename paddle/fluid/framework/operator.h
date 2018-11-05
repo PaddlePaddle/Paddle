@@ -67,6 +67,10 @@ proto::VarType::Type GetDataTypeOfVar(const Variable* var);
 class OperatorBase;
 class ExecutionContext;
 
+namespace details {
+class InplaceOpPass;
+}  // namespace details
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -136,11 +140,48 @@ class OperatorBase {
   VariableNameMap outputs_;
   AttributeMap attrs_;
 
+ public:
+  bool TryInplaceWithNoChange(const std::string& in, const Tensor& in_tensor,
+                              const std::string& out, Tensor* out_tensor) const;
+  bool TryInplaceWithChange(const std::string& in, const Tensor& in_tensor,
+                            const std::string& out, Tensor* out_tensor) const;
+  using InplaceWithNoChangeMap =
+      std::unordered_map<std::string, std::vector<std::string>>;
+  using InplaceWithChangeMap = std::unordered_map<std::string, std::string>;
+
+ protected:
+  virtual InplaceWithNoChangeMap GetInplaceWithNoChangeMap() const {
+    return InplaceWithNoChangeMap();
+  }
+
+  virtual InplaceWithChangeMap GetInplaceWithChangeMap() const {
+    return InplaceWithChangeMap();
+  }
+
  private:
   void GenerateTemporaryNames();
   void CheckAllInputOutputSet() const;
   virtual void RunImpl(const Scope& scope,
                        const platform::Place& place) const = 0;
+
+  // NOTE(zjl): the following members should not be visited except in
+  // details::InplaceOpPass
+  void ClearInplaceWithNoChangeMap();
+  void ClearInplaceWithChangeMap();
+  void UpdateInplaceWithNoChangeMap(const std::string& in_name,
+                                    const std::string& out_name);
+  void UpdateInplaceWithChangeMap(const std::string& in_name,
+                                  const std::string& out_name);
+  bool CanInplaceWithNoChange(const std::string& in_name,
+                              const std::string& out_name) const;
+  bool CanInplaceWithChange(const std::string& in_name,
+                            const std::string& out_name) const;
+
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      inplace_with_no_change_map_;
+  std::unordered_map<std::string, std::string> inplace_with_change_map_;
+
+  friend class details::InplaceOpPass;
 };
 
 class ExecutionContext {
@@ -150,6 +191,12 @@ class ExecutionContext {
       : op_(op), scope_(scope), device_context_(device_context) {}
 
   const OperatorBase& op() const { return op_; }
+
+  bool TryInplaceWithChange(const std::string& in,
+                            const std::string& out) const;
+
+  bool TryInplaceWithNoChange(const std::string& in,
+                              const std::string& out) const;
 
   const Scope& scope() const { return scope_; }
 

@@ -354,6 +354,69 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+void OperatorBase::ClearInplaceWithNoChangeMap() {
+  inplace_with_no_change_map_.clear();
+}
+
+void OperatorBase::ClearInplaceWithChangeMap() {
+  inplace_with_change_map_.clear();
+}
+
+void OperatorBase::UpdateInplaceWithNoChangeMap(const std::string& in_name,
+                                                const std::string& out_name) {
+  inplace_with_no_change_map_[in_name].insert(out_name);
+}
+
+void OperatorBase::UpdateInplaceWithChangeMap(const std::string& in_name,
+                                              const std::string& out_name) {
+  inplace_with_change_map_[in_name] = out_name;
+}
+
+bool OperatorBase::CanInplaceWithNoChange(const std::string& in_name,
+                                          const std::string& out_name) const {
+  auto it = inplace_with_no_change_map_.find(in_name);
+  if (it != inplace_with_no_change_map_.end()) {
+    return it->second.count(out_name) != 0;
+  } else {
+    return false;
+  }
+}
+
+bool OperatorBase::CanInplaceWithChange(const std::string& in_name,
+                                        const std::string& out_name) const {
+  auto it = inplace_with_change_map_.find(in_name);
+  if (it != inplace_with_change_map_.end()) {
+    return it->second == out_name;
+  } else {
+    return false;
+  }
+}
+
+bool OperatorBase::TryInplaceWithNoChange(const std::string& in,
+                                          const Tensor& in_tensor,
+                                          const std::string& out,
+                                          Tensor* out_tensor) const {
+  if (CanInplaceWithNoChange(in, out) &&
+      in_tensor.numel() == out_tensor->numel()) {
+    out_tensor->ShareBufferWith(in_tensor);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool OperatorBase::TryInplaceWithChange(const std::string& in,
+                                        const Tensor& in_tensor,
+                                        const std::string& out,
+                                        Tensor* out_tensor) const {
+  if (CanInplaceWithChange(in, out) &&
+      in_tensor.numel() == out_tensor->numel()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
@@ -452,6 +515,18 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                                          : GetMutableTensorFromVar(var);
                  });
   return res;
+}
+
+bool ExecutionContext::TryInplaceWithChange(const std::string& in,
+                                            const std::string& out) const {
+  return op_.TryInplaceWithChange(in, *Input<Tensor>(in), out,
+                                  Output<Tensor>(out));
+}
+
+bool ExecutionContext::TryInplaceWithNoChange(const std::string& in,
+                                              const std::string& out) const {
+  return op_.TryInplaceWithNoChange(in, *Input<Tensor>(in), out,
+                                    Output<Tensor>(out));
 }
 
 bool OpSupportGPU(const std::string& op_type) {

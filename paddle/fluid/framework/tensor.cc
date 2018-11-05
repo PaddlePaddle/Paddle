@@ -85,6 +85,17 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
+Tensor& Tensor::ShareBufferWith(const Tensor& src) {
+  src.check_memory_size();
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = src.format_;
+#endif
+  holder_ = src.holder_;
+  layout_ = src.layout_;
+  offset_ = src.offset_;
+  return *this;
+}
+
 Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,

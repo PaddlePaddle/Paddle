@@ -20,11 +20,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
-                                         platform::Place place)
+                                         platform::Place place,
+                                         size_t scope_idx)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(*node->Op())),
       scope_(scope),
-      place_(place) {}
+      place_(place),
+      scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
