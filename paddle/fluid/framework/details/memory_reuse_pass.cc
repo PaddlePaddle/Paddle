@@ -64,6 +64,6 @@ std::unique_ptr<ir::Graph> MemoryReusePass::ApplyImpl(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(memory_optimize_pass, paddle::framework::details::MemoryReusePass)
+REGISTER_PASS(memory_reuse_pass, paddle::framework::details::MemoryReusePass)
     .RequirePassAttr(paddle::framework::details::kGlobalReusedNodePairMap)
     .RequirePassAttr(paddle::framework::details::kGraphReusedOps);

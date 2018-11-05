@@ -61,15 +61,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // the de-fact IR, any reuse on Graph is meaningless.
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
+    details::ReusedNodePairMap reuse_map;
+    details::GraphReusedOps graph_ops;
     if (strategy.memory_optimize_) {
       auto analysis_var_pass = AppendPass("analysis_var_pass");
-      details::ReusedNodePairMap reuse_map;
-      details::GraphReusedOps graph_ops;
       analysis_var_pass->SetNotOwned(details::kGlobalReusedNodePairMap,
                                      &reuse_map);
       analysis_var_pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
 
-      // TODO(dzh): reuse based unique name maybe deperated.
+      // NOTE(dzh): reuse based unique name maybe deperated. So divide analysis
+      // and reuse as two seperated passes.
       auto memory_reuse_pass = AppendPass("memory_reuse_pass");
       memory_reuse_pass->SetNotOwned(details::kGlobalReusedNodePairMap,
                                      &reuse_map);
@@ -87,7 +88,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       const std::string graph_path =
           string::Sprintf("%s%s", strategy_.debug_graphviz_path_.c_str(),
                           "_multi_devices_graph");
-      VLOG(3) << "multi_device graph " << graph_path;
       multi_devices_print_pass->Set<std::string>(kGraphvizPath,
                                                  new std::string(graph_path));
       multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
