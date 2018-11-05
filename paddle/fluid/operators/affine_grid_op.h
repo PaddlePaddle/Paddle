@@ -37,20 +37,24 @@ using Array4 = Eigen::DSizes<int64_t, 4>;
  */
 template <typename DeviceContext, typename T>
 struct Linspace {
-  framework::Tensor operator()(T start, T end, int count,
-                               const framework::ExecutionContext& ctx);
+  void operator()(T start, T end, int count, framework::Tensor* numbers,
+                  const framework::ExecutionContext& ctx);
 };
 
 template <typename DeviceContext, typename T>
-inline Tensor GetIdxMap(int n, int h, int w,
-                        const framework::ExecutionContext& ctx) {
+inline void GetIdxMap(int n, int h, int w, Tensor* grid,
+                      const framework::ExecutionContext& ctx) {
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-  Linspace<DeviceContext, T> linspace;
+  grid->mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
+  auto grid_t = EigenTensor<T, 4>::From(*grid);
   // Get indexes of height with shape [height, width, 1]
-  auto h_idx = linspace((T)-1, (T)1, h, ctx);
+  Tensor h_idx;
+  Linspace<DeviceContext, T> linspace;
+  linspace((T)-1, (T)1, h, &h_idx, ctx);
   auto h_idx_t = EigenTensor<T, 1>::From(h_idx);
   // Get indexes of width with shape [height, width, 1]
-  auto w_idx = linspace((T)-1, (T)1, w, ctx);
+  Tensor w_idx;
+  linspace((T)-1, (T)1, w, &w_idx, ctx);
   auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
   // Get constant ones tensor with shape [height, width, 1]
   Tensor ones;
@@ -58,9 +62,6 @@ inline Tensor GetIdxMap(int n, int h, int w,
   auto ones_t = EigenTensor<T, 3>::From(ones).setConstant((T)1);
   // Get grid tensor with shape [n, h, w, 3] by concatenating h_idx, w_idx and
   // ones
-  Tensor grid;
-  grid.mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
-  auto grid_t = EigenTensor<T, 4>::From(grid);
   Tensor w_idx_map;
   w_idx_map.mutable_data<T>({h, w, 1}, ctx.GetPlace());
   auto w_idx_map_t = EigenTensor<T, 3>::From(w_idx_map);
@@ -87,7 +88,6 @@ inline Tensor GetIdxMap(int n, int h, int w,
   w_h_one_idx_map_t.device(place) = w_h_idx_map_t.concatenate(ones_t, 2);
   grid_t.device(place) = w_h_one_idx_map_t.reshape(Array4(1, h, w, 3))
                              .broadcast(Array4(n, 1, 1, 1));
-  return grid;
 }
 
 template <typename DeviceContext, typename T>
@@ -115,7 +115,8 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), output,
         static_cast<T>(0));
-    Tensor grid = GetIdxMap<DeviceContext, T>(n, h, w, ctx);
+    Tensor grid;
+    GetIdxMap<DeviceContext, T>(n, h, w, &grid, ctx);
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
@@ -154,7 +155,8 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), theta_grad,
         static_cast<T>(0));
-    Tensor grid = GetIdxMap<DeviceContext, T>(n, h, w, ctx);
+    Tensor grid;
+    GetIdxMap<DeviceContext, T>(n, h, w, &grid, ctx);
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
