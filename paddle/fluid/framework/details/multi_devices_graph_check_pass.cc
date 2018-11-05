@@ -36,20 +36,20 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
   for (auto &var_map : graph->Get<GraphVars>(kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        insert_pending_var(version_pair.get());
+        insert_pending_var(version_pair);
       }
     }
   }
 
   for (auto &var : graph->Get<GraphDepVars>(kGraphDepVars)) {
-    insert_pending_var(var.get());
+    insert_pending_var(var);
   }
 
   for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
     if (op->Inputs().empty()) {
-      ready_ops.insert(op.get());
+      ready_ops.insert(op);
     } else {
-      pending_ops.insert({op.get(), op.get()->NoDupInputSize()});
+      pending_ops.insert({op, op->NoDupInputSize()});
     }
   }
 

@@ -27,6 +27,8 @@ namespace ir {
 // Node should normally created by Graph::CreateXXXNode().
 class Node {
  public:
+  virtual ~Node() {}
+
   enum class Type { kOperation, kVariable };
   static constexpr char kControlDepVarName[] = "__control_var";
 
@@ -42,6 +44,20 @@ class Node {
   OpDesc* Op() const {
     PADDLE_ENFORCE(IsOp());
     return op_desc_.get();
+  }
+
+  template <typename T>
+  void WrappedBy(T* wrapper) {
+    if (!wrapper_.empty()) {
+      wrapper_deleter_();
+    }
+    wrapper_ = wrapper;
+    wrapper_deleter_ = [wrapper]() { delete wrapper; };
+  }
+
+  template <typename T>
+  T& Wrapper() {
+    return *boost::any_cast<T*>(wrapper_);
   }
 
   // Please don't use this API!
@@ -95,6 +111,10 @@ class Node {
   static int count_;
   // Please don't use this API or make this public.
   static void ResetId() { count_ = 0; }
+
+  boost::any wrapper_;
+  std::function<void(void)> wrapper_deleter_;
+
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 

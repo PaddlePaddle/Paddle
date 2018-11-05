@@ -70,13 +70,13 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                         BlockingQueue<VarHandleBase *> *ready_vars,
                         VarHandleBase *var) const;
 
-  void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors,
-      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
-      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
-      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
-      std::unordered_set<VarHandleBase *> *pending_vars,
-      BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
+  void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
+                      std::vector<FetchOpHandle *> *fetch_ops,
+                      std::unordered_set<VarHandleBase *> *fetch_dependencies,
+                      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+                      std::unordered_set<VarHandleBase *> *pending_vars,
+                      BlockingQueue<VarHandleBase *> *ready_vars,
+                      FeedFetchList *fetch_data);
 
  private:
   ExecutionStrategy strategy_;

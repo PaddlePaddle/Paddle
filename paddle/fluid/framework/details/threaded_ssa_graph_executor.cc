@@ -51,25 +51,25 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        InsertPendingVar(&pending_vars, ready_vars.get(), version_pair.get());
+        InsertPendingVar(&pending_vars, ready_vars.get(), version_pair);
       }
     }
   }
   for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
-    InsertPendingVar(&pending_vars, ready_vars.get(), var.get());
+    InsertPendingVar(&pending_vars, ready_vars.get(), var);
   }
 
   for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
-      ready_ops.insert(op.get());
+      ready_ops.insert(op);
     } else {
-      InsertPendingOp(&pending_ops, op.get());
+      InsertPendingOp(&pending_ops, op);
     }
   }
 
   // Step 2. Insert FetchOps
-  std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
-  std::unordered_set<std::unique_ptr<VarHandleBase>> fetch_dependencies;
+  std::vector<FetchOpHandle *> fetch_ops;
+  std::unordered_set<VarHandleBase *> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
@@ -140,8 +140,8 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
-    std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
-    std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+    std::vector<FetchOpHandle *> *fetch_ops,
+    std::unordered_set<VarHandleBase *> *fetch_dependencies,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
     BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data) {
@@ -151,7 +151,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
+        fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
       }
     }
   }

@@ -31,8 +31,8 @@ struct TestGatherOpHandle {
   std::vector<Scope*> local_scopes_;
   std::vector<Scope*> param_scopes_;
   Scope g_scope_;
-  std::unique_ptr<OpHandleBase> op_handle_;
-  std::vector<std::unique_ptr<VarHandleBase>> vars_;
+  OpHandleBase* op_handle_;
+  std::vector<VarHandleBase*> vars_;
   std::vector<p::Place> gpu_list_;
 
   void WaitAll() {
@@ -84,8 +84,8 @@ struct TestGatherOpHandle {
 
     nodes.emplace_back(
         ir::CreateNodeForTest("node", ir::Node::Type::kOperation).release());
-    op_handle_.reset(
-        new GatherOpHandle(nodes.back().get(), local_scopes_, gpu_list_));
+    op_handle_ =
+        new GatherOpHandle(nodes.back().get(), local_scopes_, gpu_list_);
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
@@ -102,7 +102,7 @@ struct TestGatherOpHandle {
         ir::CreateNodeForTest("node2", ir::Node::Type::kVariable).release());
     vars_.emplace_back(new DummyVarHandle(nodes.back().get()));
     DummyVarHandle* in_dummy_var_handle =
-        static_cast<DummyVarHandle*>(vars_.back().get());
+        static_cast<DummyVarHandle*>(vars_.back());
     in_dummy_var_handle->ClearGeneratedOp();
     op_handle_->AddInput(in_dummy_var_handle);
 
@@ -119,7 +119,7 @@ struct TestGatherOpHandle {
         ir::CreateNodeForTest("node4", ir::Node::Type::kVariable).release());
     vars_.emplace_back(new DummyVarHandle(nodes.back().get()));
     DummyVarHandle* dummy_var_handle =
-        static_cast<DummyVarHandle*>(vars_.back().get());
+        static_cast<DummyVarHandle*>(vars_.back());
     op_handle_->AddOutput(dummy_var_handle);
   }
 
