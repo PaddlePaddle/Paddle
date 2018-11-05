@@ -205,19 +205,21 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if os.system(command) != 0:
                 raise Exception("patch _swig_paddle.so failed, command: %s" % command)
 
+ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
     # fix the path separator under windows
     fix_package_dir = {}
     for k, v in package_dir.items():
         fix_package_dir[k] = v.replace('/', '\\')
     package_dir = fix_package_dir
+    ext_modules = []
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
-      ext_modules=[Extension('_foo', ['stub.cc'])],
+      ext_modules=ext_modules,
       package_data=package_data,
       package_dir=package_dir,
       scripts=paddle_bins

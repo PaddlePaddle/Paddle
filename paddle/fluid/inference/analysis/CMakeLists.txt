@@ -20,6 +20,10 @@ cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
 
+if(WIN32)
+    target_link_libraries(inference_analyzer shlwapi)
+endif(WIN32)
+
 function (inference_analysis_test TARGET)
     if(WITH_TESTING)
         set(options "")
