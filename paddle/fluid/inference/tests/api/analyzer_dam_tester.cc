@@ -152,7 +152,8 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
+  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->param_file = FLAGS_infer_model + "/param";
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->specify_input_name = true;
