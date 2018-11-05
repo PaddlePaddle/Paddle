@@ -364,7 +364,7 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
   } else if (var.IsType<SelectedRows>()) {
     return &(var.Get<SelectedRows>().value());
   } else {
-    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows",
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var.Type().name());
   }
 }

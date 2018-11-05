@@ -142,25 +142,16 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(block, framework.Block)
 
         decay = block.create_var(
-            dtype="float32", shape=param.shape, lod_level=param.lod_level)
+            dtype=param.dtype(), shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            idx = block.create_var(
-                dtype="int64",
-                shape=param.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
-                dtype="float32",
-                shape=param.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                dtype=grad.dtype(), type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
-                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
-            block.append_op(
-                type='lookup_table',
+                type='get_sparse_as',
                 inputs={'W': param,
-                        'Ids': idx},
-                outputs={'Out': decay},
-                attrs={'is_sparse': True})
+                        'X': grad},
+                outputs={'Out': decay})
             param = decay
 
         # Append Op to calculate decay
@@ -218,26 +209,18 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         """
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
+
         decay = block.create_var(
-            dtype="float32", shape=param.shape, lod_level=param.lod_level)
+            dtype=param.dtype(), shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            idx = block.create_var(
-                dtype="int64",
-                shape=param.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
-                dtype="float32",
-                shape=param.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                dtype=grad.dtype(), type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
-                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
-            block.append_op(
-                type='lookup_table',
+                type='get_sparse_as',
                 inputs={'W': param,
-                        'Ids': idx},
-                outputs={'Out': decay},
-                attrs={'is_sparse': True})
+                        'X': grad},
+                outputs={'Out': decay})
             param = decay
 
         # Append sign op
