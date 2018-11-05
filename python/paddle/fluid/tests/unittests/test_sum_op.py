@@ -143,13 +143,16 @@ class TestFP16SumOp(TestSumOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=2e-2)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
     # FIXME: Because of the precision fp16, max_relative_error
     # should be 0.15 here.
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
-            self.check_grad(['x0'], 'Out', max_relative_error=0.15)
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad(['x0'], 'Out', max_relative_error=0.15)
 
 
 class TestFP16SelectedRowsSumOp(TestSelectedRowsSumOp):
@@ -159,8 +162,9 @@ class TestFP16SelectedRowsSumOp(TestSelectedRowsSumOp):
     def test_w_is_selected_rows(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            for inplace in [True, False]:
-                self.check_with_place(place, inplace)
+            if core.is_float16_supported(place):
+                for inplace in [True, False]:
+                    self.check_with_place(place, inplace)
 
 
 if __name__ == "__main__":
