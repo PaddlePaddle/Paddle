@@ -234,30 +234,12 @@ class AnalysisPredictor;
 
 namespace contrib {
 
-// Accelerate GPU computation with TensorRT engine.
-struct MixedRTConfig : public NativeConfig {
-  // Determine whether a subgraph will be executed by TRT.
-  int min_subgraph_size{1};
-  // While TensorRT allows an engine optimized for a given max batch size
-  // to run at any smaller size, the performance for those smaller
-  // sizes may not be as well-optimized. Therefore, Max batch is best
-  // equivalent to the runtime batch size.
-  int max_batch_size{1};
-  // For workspace_size, refer it from here:
-  // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int workspace_size{1 << 30};
-  //  We transform the Ops that can be converted into TRT layer in the model,
-  //  and aggregate these Ops into subgraphs for TRT execution.
-  //  We set this variable to control the minimum number of nodes in the
-  //  subgraph, 3 as default value.
-  int minimum_subgraph_size = 3;
-  // Reserved configuration
-  // We just support "FP32" now, "FP16" and "INT8" will be supported.
-  std::string precision_mode = "FP32";
-};
-
 // NOTE WIP, not stable yet.
 struct AnalysisConfig : public NativeConfig {
+  explicit AnalysisConfig(bool use_gpu = false);
+  explicit AnalysisConfig(const AnalysisConfig& other);
+  explicit AnalysisConfig(AnalysisConfig&& other);
+
   // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;
 
@@ -271,16 +253,7 @@ struct AnalysisConfig : public NativeConfig {
   // NOT stable yet.
   bool _use_mkldnn{false};
   void EnableTensorRtEngine(int workspace_size = 1 << 30,
-                            int max_batch_size = 1) {
-    use_tensorrt_ = true;
-    tensorrt_workspace_size_ = workspace_size;
-    tensorrt_max_batchsize_ = max_batch_size;
-    // Append after the infer_clean pass.
-    pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
-  }
-
-  explicit AnalysisConfig(bool use_gpu = false);
-  explicit AnalysisConfig(const AnalysisConfig& other);
+                            int max_batch_size = 1);
 
   friend class ::paddle::AnalysisPredictor;
 

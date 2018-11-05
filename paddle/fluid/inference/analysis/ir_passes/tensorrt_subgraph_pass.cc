@@ -42,7 +42,6 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   }
   SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
   fuser();
-  LOG(INFO) << "graph size " << graph->Nodes().size();
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && Agent(node).subgraph()) {

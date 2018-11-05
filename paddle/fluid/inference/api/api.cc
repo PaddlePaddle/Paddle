@@ -140,4 +140,33 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   }
 }
 
+contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
+  // fields from Config
+  model_dir = other.model_dir;
+  // fields from NativeConfig
+  use_gpu = other.use_gpu;
+  device = other.device;
+  fraction_of_gpu_memory = other.fraction_of_gpu_memory;
+  prog_file = other.prog_file;
+  param_file = other.param_file;
+  specify_input_name = other.specify_input_name;
+  // fields from this.
+  enable_ir_optim = other.enable_ir_optim;
+  use_feed_fetch_ops = other.use_feed_fetch_ops;
+  _use_mkldnn = other._use_mkldnn;
+  use_tensorrt_ = other.use_tensorrt_;
+  tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
+  tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
+  pass_builder_ = std::move(other.pass_builder_);
+}
+
+void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size, int max_batch_size) {
+  use_tensorrt_ = true;
+  tensorrt_workspace_size_ = workspace_size;
+  tensorrt_max_batchsize_ = max_batch_size;
+  // Append after the infer_clean pass.
+  pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+}
+
+
 }  // namespace paddle

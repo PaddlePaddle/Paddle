@@ -22,7 +22,6 @@
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
-using paddle::contrib::MixedRTConfig;
 using paddle::contrib::AnalysisConfig;
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -31,20 +30,19 @@ NativeConfig GetConfigNative() {
   NativeConfig config;
   config.model_dir = FLAGS_dirname;
   // LOG(INFO) << "dirname  " << config.model_dir;
-  config.fraction_of_gpu_memory = 0.45;
+  config.fraction_of_gpu_memory = 0.15;
   config.use_gpu = true;
   config.device = 0;
   return config;
 }
 
-MixedRTConfig GetConfigTRT() {
-  MixedRTConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_gpu = true;
-  config.fraction_of_gpu_memory = 0.2;
-  config.device = 0;
-  config.max_batch_size = 3;
-  return config;
+void PrepareTRTConfig(AnalysisConfig *config) {
+  config->model_dir = FLAGS_dirname + "/" + "mobilenet";
+  config->fraction_of_gpu_memory = 0.15;
+  config->EnableTensorRtEngine(1 << 10, 5);
+  config->pass_builder()->DeletePass("conv_bn_fuse_pass");
+  config->pass_builder()->DeletePass("fc_fuse_pass");
+  config->pass_builder()->TurnOnDebug();
 }
 
 void PrepareInputs(std::vector<PaddleTensor> *tensors, int batch_size) {
@@ -65,16 +63,17 @@ void PrepareInputs(std::vector<PaddleTensor> *tensors, int batch_size) {
 }
 
 void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
-  NativeConfig config0 = GetConfigNative();
+  auto config0 = GetConfigNative();
   config0.model_dir = model_dirname;
 
-  MixedRTConfig config1 = GetConfigTRT();
+  AnalysisConfig config1(true);
+  PrepareTRTConfig(&config1);
   config1.model_dir = model_dirname;
-  config1.max_batch_size = batch_size;
 
   auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
-  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
+  auto predictor1 = CreatePaddlePredictor(config1);
 
+  // Prepare inputs
   std::vector<PaddleTensor> paddle_tensor_feeds(1);
   PrepareInputs(&paddle_tensor_feeds, batch_size);
 
@@ -82,12 +81,7 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   std::vector<PaddleTensor> outputs0;
   std::vector<PaddleTensor> outputs1;
   CHECK(predictor0->Run(paddle_tensor_feeds, &outputs0));
-
   CHECK(predictor1->Run(paddle_tensor_feeds, &outputs1, batch_size));
-
-  // Get output.
-  ASSERT_EQ(outputs0.size(), 1UL);
-  ASSERT_EQ(outputs1.size(), 1UL);
 
   const size_t num_elements = outputs0.front().data.length() / sizeof(float);
   const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
@@ -102,12 +96,14 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   }
 }
 
-TEST(trt_models_test, main) {
-  std::vector<std::string> infer_models = {"mobilenet", "resnet50",
-                                           "resnext50"};
-  for (auto &model_dir : infer_models) {
-    CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + model_dir);
-  }
+TEST(trt_models_test, mobilenet) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "mobilenet");
+}
+TEST(trt_models_test, resnet50) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "resnet50");
+}
+TEST(trt_models_test, resnext50) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "resnext50");
 }
 
 TEST(Analyzer, use_gpu) {
@@ -117,13 +113,13 @@ TEST(Analyzer, use_gpu) {
   config.device = 0;
   config.enable_ir_optim = true;
   config.pass_builder()->TurnOnDebug();
-  //config.EnableTensorRtEngine();
+  // config.EnableTensorRtEngine();
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   // auto base_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   std::vector<PaddleTensor> inputs(1);
-  PrepareInputs(&inputs, 2 /*batch size*/);
+  PrepareInputs(&inputs, 2);
 
   std::vector<PaddleTensor> outputs;
   inference::Timer timer;
@@ -133,14 +129,6 @@ TEST(Analyzer, use_gpu) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
   }
   LOG(INFO) << "analysis latency: " << timer.toc() / 10 << " ms";
-
-  /*
-  timer.tic();
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    ASSERT_TRUE(base_predictor->Run(inputs, &outputs));
-  }
-  LOG(INFO) << "native latency: " << timer.toc() / 10 << " ms";
-   */
 
   int num_ops{0};
   auto fuse_statis = inference::GetFuseStatis(

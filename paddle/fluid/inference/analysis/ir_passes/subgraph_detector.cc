@@ -424,8 +424,6 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     auto *block_node = graph_->CreateOpNode(&empty_desc);
     Agent(block_node).set_subgraph({});
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
-    LOG(INFO) << "io.inputs " << io.first.size();
-    LOG(INFO) << "io.outputs " << io.second.size();
     block_node->inputs = std::move(io.first);
     block_node->outputs = std::move(io.second);
 

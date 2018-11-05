@@ -25,8 +25,8 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
 if (WITH_GPU AND TENSORRT_FOUND)
-  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS} paddle_inference_tensorrt_subgraph_engine)
-  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/api/api_tensorrt_subgraph_engine.cc)
+  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS})
+  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS})
 endif()
 
 # Create static library

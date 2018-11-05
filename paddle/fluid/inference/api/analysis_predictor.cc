@@ -24,6 +24,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -354,3 +355,27 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
 }
 
 }  // namespace paddle
+
+// TODO(Superjomn) add an definition PADDLE_WITH_TENSORRT.
+#if PADDLE_WITH_CUDA
+USE_TRT_CONVERTER(elementwise_add_weight);
+USE_TRT_CONVERTER(elementwise_add_tensor);
+USE_TRT_CONVERTER(elementwise_sub_tensor);
+USE_TRT_CONVERTER(elementwise_div_tensor);
+USE_TRT_CONVERTER(elementwise_mul_tensor);
+USE_TRT_CONVERTER(elementwise_max_tensor);
+USE_TRT_CONVERTER(elementwise_min_tensor);
+USE_TRT_CONVERTER(elementwise_pow_tensor);
+USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(conv2d);
+USE_TRT_CONVERTER(relu);
+USE_TRT_CONVERTER(sigmoid);
+USE_TRT_CONVERTER(tanh);
+USE_TRT_CONVERTER(fc);
+USE_TRT_CONVERTER(pool2d);
+USE_TRT_CONVERTER(softmax);
+USE_TRT_CONVERTER(batch_norm);
+USE_TRT_CONVERTER(concat);
+USE_TRT_CONVERTER(dropout);
+USE_TRT_CONVERTER(pad);
+#endif

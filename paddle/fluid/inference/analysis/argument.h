@@ -144,8 +144,10 @@ struct Argument {
   }
 
   ~Argument() {
-    for (auto& item : attr_deleters_) {
-      item.second();
+    for (auto it = std::begin(attr_deleters_); it != std::end(attr_deleters_); it++) {
+      LOG(INFO) << "deleting attr " << it->first;
+      it->second();
+      it = attr_deleters_.erase(it);
     }
   }
 
