@@ -167,13 +167,13 @@ class TestBilinearInterpCase6(TestInterpolateOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
-# class TestBilinearInterpBigScale(TestInterpolateOp):
-#     def init_test_case(self):
-#       self.interp_method = 'bilinear'
-#       self.input_shape = [32, 16, 128, 64]
-#       self.out_h = 200
-#       self.out_w = 100
-#       self.out_size = np.array([201, 101]).astype('int32')
+class TestBilinearInterpBigScale(TestInterpolateOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [4, 4, 64, 32]
+        self.out_h = 100
+        self.out_w = 50
+        self.out_size = np.array([101, 51]).astype('int32')
 
 
 class TestInterpolateOpUint8(OpTest):
@@ -271,6 +271,15 @@ class TestNearestNeighborInterpCase6(TestInterpolateOp):
         self.out_h = 64
         self.out_w = 128
         self.out_size = np.array([65, 129]).astype("int32")
+
+
+class TestNearestNeighborInterpBigScale(TestInterpolateOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [4, 4, 64, 32]
+        self.out_h = 100
+        self.out_w = 50
+        self.out_size = np.array([101, 51]).astype('int32')
 
 
 class TestNearestNeighborInterpCase1Uint8(TestInterpolateOpUint8):
