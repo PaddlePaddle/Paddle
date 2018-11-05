@@ -27,11 +27,7 @@ using namespace platform::jit;  // NOLINT
 bool VMulJitCode::init(int d) {
   // It's not necessary to use avx512 since it would slow down the frequency
   // and this kernel is not compute bound.
-  if (MayIUse(avx)) {
-    return d % 2 == 0;
-  } else {
-    return false;
-  }
+  return MayIUse(avx);
 }
 
 void VMulJitCode::generate() {
@@ -54,15 +50,18 @@ void VMulJitCode::generate() {
     rest -= 4;
   }
   if (rest >= 2) {
-    mov(tmp, qword[param1 + offset]);
-    vmovq(xmm_src1, tmp);
-    mov(tmp, qword[param2 + offset]);
-    vmovq(xmm_src2, tmp);
+    vmovq(xmm_src1, ptr[param1 + offset]);
+    vmovq(xmm_src2, ptr[param2 + offset]);
     vmulps(xmm_dst, xmm_src1, xmm_src2);
-    vmovq(tmp, xmm_dst);
-    mov(ptr[param3 + offset], tmp);
+    vmovq(ptr[param3 + offset], xmm_dst);
     offset += sizeof(float) * 2;
     rest -= 2;
+  }
+  if (rest > 0) {
+    vmovss(xmm_src1, ptr[param1 + offset]);
+    vmovss(xmm_src2, ptr[param2 + offset]);
+    vmulss(xmm_dst, xmm_src1, xmm_src2);
+    vmovss(ptr[param3 + offset], xmm_dst);
   }
   ret();
 }
