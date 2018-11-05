@@ -64,6 +64,13 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     case proto::AttrType::LONG: {
       return attr_desc.l();
     }
+    case proto::AttrType::LONGS: {
+      std::vector<int64_t> val(attr_desc.longs_size());
+      for (int i = 0; i < attr_desc.longs_size(); ++i) {
+        val[i] = attr_desc.longs(i);
+      }
+      return val;
+    }
     default:
       PADDLE_THROW("Unsupport attr type %d", attr_desc.type());
   }

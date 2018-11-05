@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
@@ -30,6 +31,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    if (strategy_.enable_sequential_execution_) {
+      AppendPass("sequential_execution_pass");
+    }
+
     // Add a graph viz pass to record a graph.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
@@ -137,6 +142,11 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
+    } else if (pass->Type() == "sequential_execution_pass") {
+      pass->Erase(kAllOpDescs);
+      pass->Set<const std::vector<OpDesc *>>(
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     }
     graph = pass->Apply(std::move(graph));
   }
@@ -149,8 +159,10 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
+USE_PASS(multi_batch_merge_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(analysis_var_pass);
 USE_PASS(memory_reuse_pass);
+USE_PASS(sequential_execution_pass);

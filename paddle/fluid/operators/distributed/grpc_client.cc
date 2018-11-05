@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/distributed/grpc_client.h"
-
 #include <sys/time.h>
-
 #include <limits>
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/distributed/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -88,7 +86,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     // stub context
     s->response_call_back_ = nullptr;
 
-    platform::RecordEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
@@ -145,7 +143,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
     // stub context
     s->response_call_back_ = ProcGetResponse;
 
-    platform::RecordEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
@@ -193,7 +191,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     // stub context
     s->response_call_back_ = ProcGetResponse;
 
-    platform::RecordEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method, p_ctx);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
@@ -223,7 +221,7 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
 
-  platform::RecordEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method, nullptr);
 
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -248,7 +246,7 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
 
-  platform::RecordEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method, nullptr);
 
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -273,7 +271,7 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(COMPLETE_MESSAGE);
 
-  platform::RecordEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method, nullptr);
 
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -303,7 +301,7 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);
   req.set_out_varname(dir);
 
-  platform::RecordEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method, nullptr);
 
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -336,8 +334,11 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+      // FIXME(gongwb): parse error_details?
       LOG(ERROR) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error:" << c->status_.error_message();
+                 << " meets grpc error, error_code:" << c->status_.error_code()
+                 << " error_message:" << c->status_.error_message()
+                 << " error_details:" << c->status_.error_details();
       {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
@@ -345,7 +346,10 @@ void GRPCClient::Proceed() {
       c->Finish(false);
     } else {
       LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error:" << c->status_.error_message();
+                 << " meets grpc error, error_code:" << c->status_.error_code()
+                 << " error_message:" << c->status_.error_message()
+                 << " error_details:" << c->status_.error_details();
+
       c->Finish(false);
     }
 
