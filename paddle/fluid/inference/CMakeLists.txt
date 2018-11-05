@@ -15,7 +15,11 @@ cc_library(paddle_fluid_api
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
 # paddle_fluid_origin exclude inference api interface
-cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+if(WIN32)
+  sep_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+else(WIN32)
+  cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+endif(WIN32)
 
 add_subdirectory(api)
 
@@ -31,10 +35,10 @@ endif()
 
 # Create static library
 if(WIN32)
-sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
-else()
-cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
-endif()
+  sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+else(WIN32)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+endif(WIN32)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
@@ -43,11 +47,16 @@ if(NOT APPLE)
 endif()
 
 # Create shared library
-cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-    DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+if(WIN32)
+  sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+else(WIN32)
+  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+      DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
-if(NOT APPLE)
+if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.map")
   set_target_properties(paddle_fluid_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")

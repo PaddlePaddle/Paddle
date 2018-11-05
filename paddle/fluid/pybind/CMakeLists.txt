@@ -4,7 +4,7 @@ set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc)
 if(NOT WIN32)
   list(APPEND PYBIND_DEPS parallel_executor profiler)
   list(APPEND PYBIND_SRCS recordio.cc)
-endif()
+endif(NOT WIN32)
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED

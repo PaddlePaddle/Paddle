@@ -60,13 +60,13 @@ add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE})
 IF(WIN32)
 	add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 #		COMMAND ${CMAKE_COMMAND} -E touch stub.cc
-		COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle
-		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle
-		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/paddle/py_paddle ${PADDLE_BINARY_DIR}/python/
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle
+		COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_SOURCE_DIR}/paddle/py_paddle ${PADDLE_BINARY_DIR}/python/
 		COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
 		COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 		COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-#		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
+		COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_PYTHON_BUILD_DIR}/libs ${PADDLE_PYTHON_BUILD_DIR}/lib-python
 		DEPENDS gen_proto_py copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 ELSE(WIN32)
 	add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp

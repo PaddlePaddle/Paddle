@@ -21,7 +21,12 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+#if defined(__FLT_MAX__)
 #define FLT_MAX __FLT_MAX__
+#else
+#include <float.h>
+#include <limits>
+#endif
 
 template <typename T>
 struct MaxPoolFunctor {

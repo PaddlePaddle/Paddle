@@ -18,8 +18,8 @@
 #include <cuda_runtime.h>
 #include <functional>
 #include <memory>
-#include "ThreadPool.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "third_party/threadpool/src/extern_threadpool/ThreadPool.h"
 
 namespace paddle {
 namespace platform {
