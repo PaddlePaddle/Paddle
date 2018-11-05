@@ -101,8 +101,6 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 # Add FP16 test
-
-
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScaleFp16Op(TestScaleOp):
