@@ -89,7 +89,7 @@ class Pool2dFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* output);
+                  bool exclusive, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -101,7 +101,7 @@ class Pool2dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* input_grad);
+                  bool exclusive, framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, class T>
@@ -123,7 +123,7 @@ class Pool3dFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* output);
+                  bool exclusive, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -135,7 +135,7 @@ class Pool3dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* input_grad);
+                  bool exclusive, framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, class T>

@@ -45,7 +45,7 @@ void ComputationOpHandle::RunImpl() {
 bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
   bool need_wait =
       in_var && in_var->GeneratedOp() &&
-      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_[place_];
+      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_.at(place_);
   return need_wait;
 }
 
