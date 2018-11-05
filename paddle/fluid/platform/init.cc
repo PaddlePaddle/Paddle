@@ -116,16 +116,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
-  if (platform::jit::MayIUse(platform::jit::avx512f)) {
-#ifndef __AVX512F__
-    LOG(WARNING) << "AVX512F is available, Please re-compile on local machine";
-#endif
-  }
-  if (platform::jit::MayIUse(platform::jit::avx2)) {
-#ifndef __AVX2__
-    LOG(WARNING) << "AVX2 is available, Please re-compile on local machine";
-#endif
-  }
   if (platform::jit::MayIUse(platform::jit::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
