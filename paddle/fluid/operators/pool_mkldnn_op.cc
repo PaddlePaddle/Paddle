@@ -215,7 +215,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto mkldnn_forward_prop_kind = is_test
                                             ? mkldnn::prop_kind::forward_inference
                                             : mkldnn::prop_kind::forward_training;
-      std::cout<<is_test<<" "<<__LINE__<<std::endl;
       auto pool_desc = mkldnn::pooling_forward::desc(
         mkldnn_forward_prop_kind,
         pooling_type == "max" ? mkldnn::algorithm::pooling_max
