@@ -25,16 +25,17 @@ namespace framework {
 namespace details {
 
 static std::unique_ptr<std::unordered_set<ir::Node *>> FindAllReduceNodes(
-    const std::vector<ir::Node *> &nodes) {
+    const std::unordered_set<ir::Node *> &nodes) {
   std::unique_ptr<std::unordered_set<ir::Node *>> all_reduce_nodes(
       new std::unordered_set<ir::Node *>());
   for (auto &node : nodes) {
     if (!node->IsOp()) {
       continue;
     }
-    if (node->Name() != "all_reduce") {
+    if (node->Name() != "all_reduce" && node->Name() != "allreduce") {
       continue;
     }
+    // std::cout << node->Name() << std::endl;
     all_reduce_nodes->insert(node);
   }
   return all_reduce_nodes;
@@ -42,16 +43,62 @@ static std::unique_ptr<std::unordered_set<ir::Node *>> FindAllReduceNodes(
 
 std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  auto node_list = FindAllReduceNodes(graph->Nodes());
+  /*
+auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
+for (auto *op : ops) {
+    auto& inputs = op->Inputs();
+    auto& outputs = op->Outputs();
+    std::cout << "op name:" << op->Type() << std::endl;
+    for (auto& t:inputs){
+        std::cout << "\tinput name: " << t.first << ", value:";
+        for(auto& v:t.second){
+          std::cout  << v << ",";
+        }
+        std::cout << std::endl;
+    }
+    for (auto& t:outputs){
+        std::cout << "\toutput name: " << t.first << ", value:";
+        for(auto& v:t.second){
+          std::cout << v << ",";
+        }
+        std::cout << std::endl;
+    }
+}
+auto allreduce_nodes = FindAllReduceNodes(graph->Nodes());
+for(ir::Node* node:*allreduce_nodes.get()){
+    std::cout << "allreduce node name:" << node->Name() <<std::endl;
+        // << ", opdesc:" << node->Op()->Type() << std::endl;
+    for(auto& t:node->inputs){
+        if (t->IsVar()){
+            std::cout << "\tinput var name:" << t->Name() << std::endl;
+        }
+    }
 
-  for (size_t i = 1; i < node_list.size(); ++i) {
-    auto *dep_var = graph->CreateControlDepVar();
-    node_list[i]->inputs.push_back(dep_var);
-    node_list[i - 1]->outputs.push_back(dep_var);
-    dep_var->outputs.push_back(node_list[i]);
-    dep_var->inputs.push_back(node_list[i - 1]);
-    VLOG(10) << "Add all_reduce Sequential dependencies between "
-             << node_list[i - 1]->Name() << " and " << node_list[i]->Name();
+    for(auto& t:node->outputs){
+        if (t->IsVar()){
+            std::cout << "\toutput var name:" << t->Name() << std::endl;
+        }
+
+    }
+}
+
+for (size_t i = 1; i < node_list.size(); ++i) {
+  auto *dep_var = graph->CreateControlDepVar();
+  node_list[i]->inputs.push_back(dep_var);
+  node_list[i - 1]->outputs.push_back(dep_var);
+  dep_var->outputs.push_back(node_list[i]);
+  dep_var->inputs.push_back(node_list[i - 1]);
+  VLOG(10) << "Add all_reduce Sequential dependencies between "
+           << node_list[i - 1]->Name() << " and " << node_list[i]->Name();
+}
+*/
+
+  auto &graph_ops = graph->Get<GraphOps>(kGraphOps);
+  OpGraphView graph_view(all_ops);
+  std::unordered_set<OpHandleBase *> cur_level_ops;
+  std::vector<std::unordered_set<AllReduceOpHandle *>> all_reduce_ops;
+
+  for (auto *op : graph_vew.AllOps()) {
   }
 
   return graph;
@@ -63,3 +110,4 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
 
 REGISTER_PASS(all_reduce_deps_pass,
               paddle::framework::details::AllReduceDepsPass)
+    .RequirePassAttr(paddle::framework::details::kAllOpDescs);

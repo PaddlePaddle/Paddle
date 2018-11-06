@@ -130,6 +130,11 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+    } else if (pass->Type() == "all_reduce_deps_pass") {
+      pass->Erase(kAllOpDescs);
+      pass->Set<const std::vector<OpDesc *>>(
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     }
 
     if (pass->Type() == "all_reduce_deps_pass" ||

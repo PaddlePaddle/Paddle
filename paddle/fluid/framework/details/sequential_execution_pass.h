@@ -14,15 +14,13 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/details/utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
-constexpr char kAllOpDescs[] = "all_op_descs";
-constexpr char kSeqOnlyAllReduceOps[] = "seq_only_all_reduce";
 
 class SequentialExecutionPass : public ir::Pass {
  protected:
