@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -59,7 +60,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     InsertPendingVar(&pending_vars, ready_vars.get(), var);
   }
 
-  for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
+  for (auto &op : ir::GetFilteredNodes<OpHandleBase>(*graph_)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op);
     } else {

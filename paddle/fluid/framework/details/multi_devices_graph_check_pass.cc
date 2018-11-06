@@ -45,7 +45,9 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
     insert_pending_var(var);
   }
 
-  for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
+  for (ir::Node *node : graph->Nodes()) {
+    if (!node->IsWrappedBy<OpHandleBase>()) continue;
+    OpHandleBase *op = &node->Wrapper<OpHandleBase>();
     if (op->Inputs().empty()) {
       ready_ops.insert(op);
     } else {
@@ -89,5 +91,4 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 REGISTER_PASS(multi_devices_check_pass,
               paddle::framework::details::SSAGraghBuilderWithChecker)
     .RequireGraphAttr(paddle::framework::details::kGraphVars)
-    .RequireGraphAttr(paddle::framework::details::kGraphDepVars)
-    .RequireGraphAttr(paddle::framework::details::kGraphOps);
+    .RequireGraphAttr(paddle::framework::details::kGraphDepVars);

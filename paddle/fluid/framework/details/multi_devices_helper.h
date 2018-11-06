@@ -43,11 +43,6 @@ const char kGraphVars[] = "vars";
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase*> GraphDepVars;
 const char kGraphDepVars[] = "dep_vars";
-
-// all operators. NOTE that even we use a vector here, the operators is
-// unordered.
-typedef std::vector<OpHandleBase*> GraphOps;
-const char kGraphOps[] = "ops";
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

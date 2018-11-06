@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/reference_count_pass.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -156,7 +157,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     }
   };
 
-  auto &all_ops = graph->Get<GraphOps>(kGraphOps);
+  auto all_ops = ir::GetFilteredNodes<OpHandleBase>(*graph);
   for (auto &op : all_ops) {
     auto in_var_names = get_ref_cnts_from_compute_op(op, op->Inputs());
     auto out_var_names = get_ref_cnts_from_compute_op(op, op->Outputs());
