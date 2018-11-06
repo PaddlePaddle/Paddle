@@ -158,6 +158,7 @@ __all__ = [
     'sequence_reverse',
     'affine_channel',
     'hash',
+    'grid_sampler',
     'log_loss',
     'add_position_encoding',
 ]
@@ -2101,7 +2102,8 @@ def pool2d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           name=None):
+           name=None,
+           exclusive=True):
     """
     ${comment}
 
@@ -2115,11 +2117,13 @@ def pool2d(input,
         pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
-        global_pooling: ${global_pooling_comment}
-        use_cudnn: ${use_cudnn_comment}
-        ceil_mode: ${ceil_mode_comment}
+        global_pooling (bool): ${global_pooling_comment}
+        use_cudnn (bool): ${use_cudnn_comment}
+        ceil_mode (bool): ${ceil_mode_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
+        exclusive (bool): Whether to exclude padding points in average pooling 
+                          mode, default is true
 
     Returns:
         Variable: The pooling result.
@@ -2177,7 +2181,8 @@ def pool2d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": False
+            "use_mkldnn": False,
+            "exclusive": exclusive,
         })
 
     return pool_out
@@ -2191,7 +2196,8 @@ def pool3d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           name=None):
+           name=None,
+           exclusive=True):
     """
     This function adds the operator for pooling in 3-dimensions, using the
     pooling configurations mentioned in input parameters.
@@ -2207,6 +2213,8 @@ def pool3d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
+        exclusive (bool): Whether to exclude padding points in average pooling 
+                          mode, default is true
 
     Returns:
         Variable: output of pool3d layer.
@@ -2245,7 +2253,8 @@ def pool3d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": False
+            "use_mkldnn": False,
+            "exclusive": exclusive,
         })
 
     return pool_out
@@ -4713,7 +4722,8 @@ def multiplex(inputs, index):
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=-100):
+                               ignore_index=-100,
+                               numeric_stable_mode=False):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4747,6 +4757,18 @@ def softmax_with_cross_entropy(logits,
         \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
+    3) If numeric_stable_mode is True, softmax is calculated first by:
+
+    .. math::
+        
+        max_j = \\max_{i=0}^{K}{\\text{logit}_i}
+
+        log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
+
+        softmax_j = \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
+
+    and then cross entropy loss is calculated by softmax and label.
+
     Args:
         logits (Variable): The unscaled log probabilities, which is a 2-D tensor
             with shape [N x K]. N is the batch_size, and K is the class number.
@@ -4758,6 +4780,13 @@ def softmax_with_cross_entropy(logits,
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
                             if soft_label is set to False. Default: -100
+        numeric_stable_mode (bool): A flag to indicate whether to use a more
+                                    numerically stable algorithm. Only valid
+                                    when soft_label is False and GPU is used.
+                                    When soft_label is True or CPU is used, 
+                                    the algorithm is always numerically stable. 
+                                    Note that the speed may be slower when use 
+                                    stable algorithm. Default: False
 
     Returns:
         Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
@@ -4780,8 +4809,11 @@ def softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label,
-               'ignore_index': ignore_index})
+        attrs={
+            'soft_label': soft_label,
+            'ignore_index': ignore_index,
+            'numeric_stable_mode': numeric_stable_mode
+        })
     return loss
 
 
@@ -7473,10 +7505,10 @@ def clip(x, min, max, name=None):
     helper = LayerHelper("clip", **locals())
 
     if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+        name = unique_name.generate(".".join([helper.name, 'tmp']))
+
+    out = helper.create_variable(
+        type=x.type, name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="clip",
@@ -7505,10 +7537,10 @@ def clip_by_norm(x, max_norm, name=None):
     helper = LayerHelper("clip_by_norm", **locals())
 
     if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+        name = unique_name.generate(".".join([helper.name, 'tmp']))
+
+    out = helper.create_variable(
+        type=x.type, name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="clip_by_norm",
@@ -7712,19 +7744,59 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
 
 def hash(input, hash_size, num_hash=1, name=None):
     """
-    hash the input
-     Args:
-        input (Variable): The input variable which is a one-hot word.
-        hash_size (int): The space size for hash algorithm.
+    Hash the input to an integer whose value is less than the given hash size.
+
+    The hash algorithm we used was xxHash - Extremely fast hash algorithm
+    (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
+
+    A simple example as below:
+
+    .. code-block:: text
+
+        Given:
+
+        # shape [2, 2]
+        input.data = [
+            [[1], [2]],
+            [[3], [4]],
+        ]
+
+        input.lod = [[0, 2]]
+
+        hash_size = 10000
+
+        num_hash = 4
+
+        Then:
+
+        Hash op will take all number in input's 2nd dimension as hash algorithm's
+        input for each time. Each input will be hashed for 4 times, and get an
+        array whose length is 4. Each value in the array ranges from 0 to 9999.
+
+        # shape [2, 4]
+        output.data = [
+            [[9662], [9217], [1129], [8487]],
+            [[8310], [1327], [1654], [4567]],
+        ]
+
+        output.lod = [[0, 2]]
+
+    Args:
+        input (Variable): The input variable which is a one-hot word. The
+            dimensions of the input variable must be 2.
+        hash_size (int): The space size for hash algorithm. The output value
+            will keep in the range:math:`[0, hash_size - 1]`.
         num_hash (int): The times of hash, default 1.
         name (str, default None): The name of this layer.
-     Returns:
-        Variable: The hash result variable which is a LoDTensor.
-     Examples:
-        .. code-block:: python
-            word_dict = paddle.dataset.imdb.word_dict()
-            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
-            out = fluid.layers.hash(input=x, len(word_dict))
+
+    Returns:
+       Variable: The hash result variable which is a LoDTensor.
+
+    Examples:
+       .. code-block:: python
+           word_dict = paddle.dataset.imdb.word_dict()
+           x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
@@ -7735,6 +7807,87 @@ def hash(input, hash_size, num_hash=1, name=None):
         outputs={'Out': out},
         attrs={'num_hash': num_hash,
                'mod_by': hash_size})
+    return out
+
+
+@templatedoc()
+def grid_sampler(x, grid, name=None):
+    """
+    This operation samples input X by using bilinear interpolation based on 
+    flow field grid, which is usually gennerated by affine_grid. The grid of
+    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates 
+    with shape [N, H, W] each, where grid_x is indexing the 4th dimension 
+    (in width dimension) of input data x and grid_y is indexng the 3rd 
+    dimention (in height dimension), finally results is the bilinear 
+    interpolation value of 4 nearest corner points.
+
+    Step 1:
+    Get (x, y) grid coordinates and scale to [0, H-1/W-1].
+
+    grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+    grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+
+    Step 2:
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear 
+    interpolate point value by 4 nearest points.
+
+      wn ------- y_n ------- en
+      |           |           |
+      |          d_n          |
+      |           |           |
+     x_w --d_w-- grid--d_e-- x_e
+      |           |           |
+      |          d_s          |
+      |           |           |
+      ws ------- y_s ------- wn
+
+    x_w = floor(x)              // west side x coord
+    x_e = x_w + 1               // east side x coord
+    y_n = floor(y)              // north side y coord
+    y_s = y_s + 1               // south side y coord
+
+    d_w = grid_x - x_w          // distance to west side
+    d_e = x_e - grid_x          // distance to east side
+    d_n = grid_y - y_n          // distance to north side
+    d_s = y_s - grid_y          // distance to south side
+
+    wn = X[:, :, y_n, x_w]      // north-west point value
+    en = X[:, :, y_n, x_e]      // north-east point value
+    ws = X[:, :, y_s, x_w]      // south-east point value
+    es = X[:, :, y_s, x_w]      // north-east point value
+
+    output = wn * d_e * d_s + en * d_w * d_s
+           + ws * d_e * d_n + es * d_w * d_n
+
+    Args:
+        x(Variable): Input data of shape [N, C, H, W].
+        grid(Variable): Input grid tensor of shape [N, H, W, 2].
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out(Variable): Output of shape [N, C, H, W] data samples input X 
+        using bilnear interpolation based on input grid.
+
+    Exmples:
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
+        theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
+        grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
+        out = fluid.layers.grid_sampler(x=x, grid=grid)
+    """
+    helper = LayerHelper("grid_sampler", **locals())
+
+    if not isinstance(x, Variable):
+        return ValueError("The x should be a Variable")
+
+    if not isinstance(grid, Variable):
+        return ValueError("The grid should be a Variable")
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    ipts = {'X': x, 'Grid': grid}
+
+    helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output': out})
     return out
 
 

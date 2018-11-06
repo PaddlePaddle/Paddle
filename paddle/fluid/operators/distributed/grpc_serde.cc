@@ -34,8 +34,8 @@ namespace distributed {
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg,
-                           const std::string& out_name) {
+                           ::grpc::ByteBuffer* msg, const std::string& out_name,
+                           const int trainer_id) {
   platform::RecordRPCEvent record_event("serial", &ctx);
   // Default DestroyCallback does nothing, When using GPU
   // the CPU buffer need to be freed.
@@ -45,6 +45,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   size_t payload_size;
 
   request.set_varname(name);
+  request.set_trainer_id(trainer_id);
   // Note: normally the profiler is enabled in 1 trainer, hence only
   // 1 trainer returns true for ShouldSendProfileState(). It tells PS
   // servers the trainer's profiling state so that PS can follow the
@@ -147,11 +148,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable** var) {
+                               framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial", &ctx);
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
+  *trainer_id = resp.GetTrainerId();
 }
 
 }  // namespace distributed
