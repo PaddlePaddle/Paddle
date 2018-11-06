@@ -18,7 +18,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-bool if_skip_merging_optimize(TensorRTEngine* engine_,
+bool to_skip_merging_optimize(TensorRTEngine* engine_,
                               const std::vector<int>& filters,
                               const std::vector<int>& strides,
                               const std::vector<int>& paddings,
@@ -101,7 +101,7 @@ class Conv2dOpConverter : public OpConverter {
     engine_->SetITensor(output_name, layer->getOutput(0));
 
     if (test_mode ||
-        if_skip_merging_optimize(engine_, {filter_h, filter_w}, strides,
+        to_skip_merging_optimize(engine_, {filter_h, filter_w}, strides,
                                  paddings, op_desc.Input("Input").front())) {
       engine_->DeclareOutput(output_name);
     }
