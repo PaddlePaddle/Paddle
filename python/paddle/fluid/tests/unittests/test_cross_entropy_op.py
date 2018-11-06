@@ -109,16 +109,15 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
     """
 
     def init_label(self):
-        self.label_index = np.random.randint(
-            0, self.class_num, (self.batch_size), dtype="int32")
+        self.label_index = np.random.randint(0, self.class_num,
+                                             (self.batch_size))
         self.label = np.zeros(self.x.shape).astype(self.dtype)
         self.label[np.arange(self.batch_size), self.label_index] = 1
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
             [[-np.log(self.x[i][self.label_index[i]])]
-             for i in range(self.x.shape[0])],
-            dtype="float32")
+             for i in range(self.x.shape[0])]).astype(self.dtype)
 
     def init_attr_type(self):
         self.soft_label = True
@@ -297,7 +296,7 @@ def create_test_class(parent, cls_name):
 
 create_test_class(TestCrossEntropyOp, "TestCrossEntropyF16Op")
 #create_test_class(TestCrossEntropyOp2, "TestCrossEntropyF16Op2")
-#create_test_class(TestCrossEntropyOp3, "TestCrossEntropyF16Op3")
+create_test_class(TestCrossEntropyOp3, "TestCrossEntropyF16Op3")
 create_test_class(TestCrossEntropyOp4, "TestCrossEntropyF16Op4")
 #create_test_class(TestCrossEntropyOp5, "TestCrossEntropyF16Op5")
 create_test_class(TestCrossEntropyOp6, "TestCrossEntropyF16Op6")
