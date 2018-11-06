@@ -202,29 +202,29 @@ class TestCase5(TestCase2):
 #--------------------test pool2d cudnn--------------------
 
 
-def create_test_cudnn_class(parent, cls_name):
+def create_test_cudnn_class(parent):
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
 
-    cls_name = "{0}".format(cls_name)
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOp")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
 
-create_test_cudnn_class(TestPool2D_Op, "TestPool2DCUDNNOp")
-create_test_cudnn_class(TestCase1, "TestPool2DCUDNNOpCase1")
-create_test_cudnn_class(TestCase2, "TestPool2DCUDNNOpCase2")
-create_test_cudnn_class(TestCase3, "TestPool2DCUDNNOpCase3")
-create_test_cudnn_class(TestCase4, "TestPool2DCUDNNOpCase4")
-create_test_cudnn_class(TestCase5, "TestPool2DCUDNNOpCase5")
+create_test_cudnn_class(TestPool2D_Op)
+create_test_cudnn_class(TestCase1)
+create_test_cudnn_class(TestCase2)
+create_test_cudnn_class(TestCase3)
+create_test_cudnn_class(TestCase4)
+create_test_cudnn_class(TestCase5)
 
 #--------------------test pool2d cudnn_fp16--------------------
 
 
-def create_test_cudnn_fp16_class(parent, cls_name, check_grad=True):
+def create_test_cudnn_fp16_class(parent, check_grad=True):
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
     class TestCUDNNFp16Case(parent):
@@ -245,23 +245,22 @@ def create_test_cudnn_fp16_class(parent, cls_name, check_grad=True):
                 self.check_grad_with_place(
                     place, set(['X']), 'Out', max_relative_error=0.07)
 
-    cls_name = "{0}".format(cls_name)
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
     globals()[cls_name] = TestCUDNNFp16Case
 
 
-create_test_cudnn_fp16_class(TestPool2D_Op, "TestPool2DCUDNNFp16Op")
-create_test_cudnn_fp16_class(
-    TestCase1, "TestPool2DCUDNNFp16OpCase1", check_grad=False)
-create_test_cudnn_fp16_class(TestCase2, "TestPool2DCUDNNFp16OpCase2")
-create_test_cudnn_fp16_class(TestCase3, "TestPool2DCUDNNFp16OpCase3")
-create_test_cudnn_fp16_class(TestCase4, "TestPool2DCUDNNFp16OpCase4")
-create_test_cudnn_fp16_class(TestCase5, "TestPool2DCUDNNFp16OpCase5")
+create_test_cudnn_fp16_class(TestPool2D_Op)
+create_test_cudnn_fp16_class(TestCase1, check_grad=False)
+create_test_cudnn_fp16_class(TestCase2)
+create_test_cudnn_fp16_class(TestCase3)
+create_test_cudnn_fp16_class(TestCase4)
+create_test_cudnn_fp16_class(TestCase5)
 
 #--------------------test pool2d use ceil mode--------------------
 
 
-def create_test_cudnn_use_ceil_class(parent, cls_name):
+def create_test_cudnn_use_ceil_class(parent):
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
     class TestPool2DUseCeilCase(parent):
@@ -271,27 +270,27 @@ def create_test_cudnn_use_ceil_class(parent, cls_name):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}".format(cls_name)
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOpCeilMode")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
 
-create_test_cudnn_use_ceil_class(TestPool2D_Op, "TestPool2DCUDNNOpCeilMode")
-create_test_cudnn_use_ceil_class(TestCase1, "TestPool2DCUDNNOpCeilModeCase1")
+create_test_cudnn_use_ceil_class(TestPool2D_Op)
+create_test_cudnn_use_ceil_class(TestCase1)
 
 
-def create_test_use_ceil_class(parent, cls_name):
+def create_test_use_ceil_class(parent):
     class TestPool2DUseCeilCase(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}".format(cls_name)
+    cls_name = "{0}_{1}".format(parent.__name__, "CeilModeCast")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
 
-create_test_use_ceil_class(TestCase1, "TestPool2DOpCeilModeCast1")
-create_test_use_ceil_class(TestCase2, "TestPool2DOpCeilModeCast2")
+create_test_use_ceil_class(TestCase1)
+create_test_use_ceil_class(TestCase2)
 
 if __name__ == '__main__':
     unittest.main()
