@@ -40,6 +40,17 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of elementwise op should not be null.");
 
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("X").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front());
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Y").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Y").front(), ctx->GetInputsVarType("Y").front());
+
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
@@ -205,54 +216,6 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
 
       ctx->ShareDim("Y", /*->*/ y_grad_name);
       ctx->ShareLoD("Y", /*->*/ y_grad_name);
-    }
-  }
-};
-
-template <typename T>
-class ElemwiseKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto x_var = ctx.InputVar("X");
-    if (x_var->IsType<framework::SelectedRows>()) {
-      auto y_var = ctx.InputVar("Y");
-      auto out_var = ctx.OutputVar("Out");
-      auto x_name = ctx.Inputs("X")[0];
-      auto y_name = ctx.Inputs("Y")[0];
-
-      PADDLE_ENFORCE(
-          y_var->IsType<framework::SelectedRows>() &&
-              out_var->IsType<framework::SelectedRows>(),
-          "The input type and output type of elementwise_op should be the same,"
-          " but the current input X[%s] is %s and Y[%s] is %s",
-          ctx.Inputs("X")[0], x_var->Type().name(), ctx.Inputs("Y")[0],
-          y_var->Type().name(), ctx.Outputs("Out")[0], out_var->Type().name());
-
-      auto &x_sele = x_var->Get<framework::SelectedRows>();
-      auto &y_sele = y_var->Get<framework::SelectedRows>();
-      auto *out_sele = out_var->GetMutable<framework::SelectedRows>();
-      auto &x_rows = x_sele.rows();
-      auto &y_rows = y_sele.rows();
-
-      PADDLE_ENFORCE_EQ(
-          x_sele.height(), y_sele.height(),
-          "The height of X[%s](%d) and Y[%s](%d) is not the equal.", x_name,
-          x_sele.height(), y_name, y_sele.height());
-      PADDLE_ENFORCE_EQ(
-          x_sele.value().dims(), y_sele.value().dims(),
-          "The tensor dim of X[%s](%d) and Y[%s](%d) is not the equal.", x_name,
-          x_sele.value().dims(), y_name, y_sele.value().dims());
-
-      for (size_t i = 0; i < x_sele.rows().size(); ++i) {
-        PADDLE_ENFORCE_EQ(
-            x_rows[i], y_rows[i],
-            "The row[%d] of X[%s](%d) and Y[%s](%d) is not the equal.", i,
-            x_name, x_rows[i], y_name, y_rows[i]);
-      }
-
-      out_sele->set_height(x_sele.height());
-      out_sele->set_rows(x_rows);
-      out_sele->mutable_value()->Resize(x_sele.value().dims());
     }
   }
 };

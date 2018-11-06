@@ -57,16 +57,12 @@ elementwise_mul(const framework::ExecutionContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-class ElementwiseMulKernel : public ElemwiseKernel<T> {
+class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElemwiseKernel<T>::Compute(ctx);
-    auto x_var = ctx.InputVar("X");
-    auto y_var = ctx.InputVar("Y");
-    auto z_var = ctx.OutputVar("Out");
-    const auto x = framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
-    const auto y = framework::GetLoDTensorOrSelectedRowsValueFromVar(*y_var);
-    auto z = framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(z_var);
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
 
     z->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == y->numel()) {
