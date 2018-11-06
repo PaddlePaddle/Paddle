@@ -50,7 +50,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
     auto &ref_out = ref_outputs[i];
     size_t size = VecReduceToInt(out.shape);
     size_t ref_size = VecReduceToInt(ref_out.shape);
-    EXPECT_GT(size, 0);
+    EXPECT_GT(size, 0UL);
     EXPECT_EQ(size, ref_size);
     EXPECT_EQ(out.dtype, ref_out.dtype);
     switch (out.dtype) {
@@ -77,11 +77,9 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const AnalysisConfig &config, bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig,
-                                 PaddleEngineKind::kAnalysis>(config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(config);
   } else {
-    return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-        config);
+    return CreatePaddlePredictor<NativeConfig>(config);
   }
 }
 
@@ -141,6 +139,9 @@ void TestMultiThreadPrediction(
   }
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
+#ifdef PADDLE_WITH_MKLDNN
+      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
+#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;
@@ -165,7 +166,8 @@ void TestPrediction(const AnalysisConfig &config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
-  LOG(INFO) << "use_analysis: " << use_analysis;
+  LOG(INFO) << "use_analysis: " << use_analysis
+            << ", use_mkldnn: " << config._use_mkldnn;
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -177,6 +179,7 @@ void TestPrediction(const AnalysisConfig &config,
 void CompareNativeAndAnalysis(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
+  LOG(INFO) << "use_mkldnn: " << config._use_mkldnn;
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);

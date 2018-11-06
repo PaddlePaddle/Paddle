@@ -645,9 +645,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
-      .def("set_str", [](ir::Pass &self, const std::string &name,
-                         const std::string &attr) {
-        self.Set<std::string>(name, new std::string(attr));
+      .def(
+          "set_str",
+          [](ir::Pass &self, const std::string &name, const std::string &attr) {
+            self.Set<std::string>(name, new std::string(attr));
+          })
+      .def("set_int", [](ir::Pass &self, const std::string &name, int val) {
+        self.Set<const int>(name, new int(val));
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
@@ -817,6 +821,24 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) {
             self.enable_data_balance_ = b;
           })  // FIXME(chengudo): enable_data_balance seems not important
+      .def_property(
+          "enable_sequential_execution",
+          [](const BuildStrategy &self) {
+            return self.enable_sequential_execution_;
+          },
+          [](BuildStrategy &self, bool b) {
+            self.enable_sequential_execution_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
+      .def_property(
+          "remove_unnecessary_lock",
+          [](const BuildStrategy &self) {
+            return self.remove_unnecessary_lock_;
+          },
+          [](BuildStrategy &self, bool b) {
+            self.remove_unnecessary_lock_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

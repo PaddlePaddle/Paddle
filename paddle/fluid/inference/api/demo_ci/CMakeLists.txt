@@ -52,6 +52,7 @@ include_directories("${PADDLE_LIB}")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")
 include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
+include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
 if (NOT WIN32)
 include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
 include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
@@ -61,8 +62,8 @@ endif(NOT WIN32)
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
 
-if (NOT WIN32) 
-  if (USE_TENSORRT AND WITH_GPU) 
+if (NOT WIN32)
+  if (USE_TENSORRT AND WITH_GPU)
       include_directories("${TENSORRT_INCLUDE_DIR}")
       link_directories("${TENSORRT_LIB_DIR}")
   endif()
@@ -77,13 +78,14 @@ endif(NOT WIN32)
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
-link_directories("${PADDLE_LIB}/paddle/fluid/inference")
+link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
+link_directories("${PADDLE_LIB}/paddle/lib")
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
-  set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX} 
+  set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
                ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
   set(MKLDNN_PATH "${PADDLE_LIB}/third_party/install/mkldnn")
   if(EXISTS ${MKLDNN_PATH})
@@ -97,17 +99,17 @@ endif()
 # Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
 if(WITH_STATIC_LIB)
   set(DEPS
-      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+      ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   set(DEPS
-      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+      ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
 
 if (NOT WIN32)
 set(EXTERNAL_LIB "-lrt -ldl -lpthread")
 set(DEPS ${DEPS}
     ${MATH_LIB} ${MKLDNN_LIB}
-    glog gflags protobuf snappystream snappy z
+    glog gflags protobuf snappystream snappy z xxhash
     ${EXTERNAL_LIB})
 else()
 set(DEPS ${DEPS}
@@ -120,7 +122,7 @@ endif(NOT WIN32)
 
 if(WITH_GPU)
   if(NOT WIN32)
-    if (USE_TENSORRT) 
+    if (USE_TENSORRT)
       set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/libnvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
       set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/libnvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif()
