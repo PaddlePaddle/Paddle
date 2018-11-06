@@ -235,5 +235,10 @@ class TestWarpCTCOpCase1(TestWarpCTCOp):
         self.norm_by_times = False
 
 
+class TestCudnnCTCOp(TestWarpCTCOp):
+    def config(self):
+        self.op_type = "cudnn_ctc"
+
+
 if __name__ == "__main__":
     unittest.main()

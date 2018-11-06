@@ -380,6 +380,7 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   return use_cudnn;
 }
 
+#if CUDNN_VERSION >= 7001
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
@@ -398,6 +399,7 @@ class ScopedCTCLossDescriptor {
   cudnnCTCLossDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
 };
+#endif
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");

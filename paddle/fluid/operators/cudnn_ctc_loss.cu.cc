@@ -48,6 +48,8 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(num_sequences, label_lod[level].size() - 1,
                       "The number of sequences of Input(Logits) should be "
                       "equal to that of Input(Label).");
+    PADDLE_ENFORCE_LE(num_sequences, 256,
+                      "The labelLengths must less than 256 for cudnn call.");
 
     const size_t sequence_width = logits->numel() / logits_dims[0];
     auto loss_dims =
@@ -80,7 +82,7 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     T* warpctc_grad_data =
         warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
 
-    // TODO(typhoonzero): can remove setconstant?
+    // TODO(typhoonzero): can remove set constant?
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), warpctc_grad,
         static_cast<T>(0));
@@ -90,7 +92,6 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
-    // IMPORTANT: The labelLengths must less than 256 for cudnn call.
     ScopedTensorDescriptor logits_desc;
     ScopedTensorDescriptor grad_desc;
     ScopedCTCLossDescriptor ctcloss_desc;
@@ -112,16 +113,15 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
         warpctc_logits_lengths.CUDAData(ctx.GetPlace()),
         CUDNN_CTC_LOSS_ALGO_DETERMINISTIC, cu_ctcloss_desc, &workspace_size));
 
-    void* workspace = memory::Alloc(ctx.GetPlace(), workspace_size);
-
-    CUDNN_ENFORCE(platform::dynload::cudnn::cudnnCTCLoss(
-        handle, cu_logits_desc, warpctc_logits_data, label_data,
-        warpctc_label_lengths.CUDAData(ctx.GetPlace()),
-        warpctc_logits_lengths.CUDAData(ctx.GetPlace()), loss_data,
-        cu_grad_desc, warpctc_grad_data, CUDNN_CTC_LOSS_ALGO_DETERMINISTIC,
-        cu_ctcloss_desc, workspace, workspace_size));
-
-    memory::Free(ctx.GetPlace(), workspace);
+    auto cudnn_func = [&](void* cudnn_workspace) {
+      CUDNN_ENFORCE(platform::dynload::cudnn::cudnnCTCLoss(
+          handle, cu_logits_desc, warpctc_logits_data, label_data,
+          warpctc_label_lengths.CUDAData(ctx.GetPlace()),
+          warpctc_logits_lengths.CUDAData(ctx.GetPlace()), loss_data,
+          cu_grad_desc, warpctc_grad_data, CUDNN_CTC_LOSS_ALGO_DETERMINISTIC,
+          cu_ctcloss_desc, cudnn_workspace, workspace_size));
+    };
+    dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
   }
 };
 
@@ -151,7 +151,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    cudnnctc, ops::CudnnCTCKernel<paddle::platform::CUDADeviceContext, float>);
+    cudnn_ctc, ops::CudnnCTCKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
-    cudnnctc_grad,
+    cudnn_ctc_grad,
     ops::CudnnCTCGradKernel<paddle::platform::CUDADeviceContext, float>);
