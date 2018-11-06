@@ -85,8 +85,10 @@ Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
+  // TODO(typhoonzero): complete message will need to use real trainer_id,
+  // except 0.
   ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
+      ::paddle::operators::distributed::GRPCClient>(0)
       ->SendComplete();
 #endif
 }
@@ -101,7 +103,7 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope*>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
