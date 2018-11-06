@@ -36,6 +36,7 @@ namespace framework {
 namespace details {
 
 namespace {
+// TODO(panyx0718): Clean this up as well.
 // all operators. NOTE that even we use a vector here, the operators is
 // unordered.
 typedef std::vector<OpHandleBase *> GraphOps;

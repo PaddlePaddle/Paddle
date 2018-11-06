@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 import os
-import sys
 import paddle.fluid as fluid
 import paddle
 import numpy as np
@@ -91,13 +90,11 @@ class TestReaderReset(unittest.TestCase):
             try:
                 data_val, label_val = parallel_exe.run(fetch_list,
                                                        return_numpy=True)
-                sys.stderr.write('fetched %s\n' % label_val)
                 ins_num = data_val.shape[0]
                 broadcasted_label = np.ones((ins_num, ) + tuple(
                     self.ins_shape)) * label_val.reshape((ins_num, 1))
                 self.assertEqual(data_val.all(), broadcasted_label.all())
                 for l in label_val:
-                    sys.stderr.write('label_val: %s\n' % l[0])
                     self.assertFalse(data_appeared[l[0]])
                     data_appeared[l[0]] = True
 
@@ -107,7 +104,6 @@ class TestReaderReset(unittest.TestCase):
                     data_appeared = data_appeared[:-parallel_exe.device_count *
                                                   self.batch_size]
                 for i in data_appeared:
-                    sys.stderr.write('appeared %s\n' % i)
                     self.assertTrue(i)
                 if pass_count < self.test_pass_num:
                     data_appeared = [False] * self.total_ins_num

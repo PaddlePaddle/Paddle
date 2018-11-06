@@ -38,7 +38,7 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);
 
 template <typename T>
-std::vector<T *> GetFilteredNodes(const Graph &graph) {
+std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
   std::vector<T *> ret;
   for (ir::Node *n : graph.Nodes()) {
     if (n->IsWrappedBy<T>()) ret.push_back(&n->Wrapper<T>());
