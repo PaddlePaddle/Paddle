@@ -125,7 +125,7 @@ TEST(PREFETCH, CPU) {
   g_req_handler.reset(new distributed::RequestPrefetchHandler(true));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
   distributed::RPCClient* client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   std::thread server_thread(StartServer, distributed::kRequestPrefetch);
   g_rpc_service->WaitServerReady();
@@ -165,7 +165,7 @@ TEST(COMPLETE, CPU) {
   g_req_handler.reset(new distributed::RequestSendHandler(true));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
   distributed::RPCClient* client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
   PADDLE_ENFORCE(client != nullptr);
   std::thread server_thread(StartServer, distributed::kRequestSend);
   g_rpc_service->WaitServerReady();
