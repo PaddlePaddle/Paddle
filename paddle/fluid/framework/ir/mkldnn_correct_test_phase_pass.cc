@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn_correct_test_phase_pass.h"
 #include <string>
+#include <utility>
 
 namespace paddle {
 namespace framework {
@@ -42,7 +43,8 @@ std::unique_ptr<ir::Graph> MKLDNNCorrectTestPhasePass::ApplyImpl(
         op->SetAttr(attr_name, true);
       } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
                  end(op_list)) {
-        op->MutableAttrMap()->at("is_test") = true;
+        op->MutableAttrMap()->insert(
+            std::pair<std::string, Attribute>("is_test", true));
       }
     }
   }
