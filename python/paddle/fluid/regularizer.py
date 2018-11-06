@@ -61,14 +61,12 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                 params_and_grads.append((param, grad))
                 continue
 
-            assert grad.shape == regularization_term.shape
-
             grad.block.append_op(
-                type='elementwise_add',
-                inputs={"X": grad,
-                        "Y": regularization_term},
-                outputs={"Out": grad})
-            params_and_grads.append((param, grad))
+                type='sum',
+                inputs={"X": [grad, regularization_term]},
+                outputs={"Out": new_grad})
+
+            params_and_grads.append((param, new_grad))
 
     return params_and_grads
 
@@ -144,16 +142,6 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         decay = block.create_var(
             dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            decay = block.create_var(
-                dtype=grad.dtype, type=core.VarDesc.VarType.SELECTED_ROWS)
-            block.append_op(
-                type='extract_rows_as',
-                inputs={'W': param,
-                        'X': grad},
-                outputs={'Out': decay})
-            param = decay
-
         # Append Op to calculate decay
         block.append_op(
             type='scale',
@@ -212,16 +200,6 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 
         decay = block.create_var(
             dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
-
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            decay = block.create_var(
-                dtype=grad.dtype, type=core.VarDesc.VarType.SELECTED_ROWS)
-            block.append_op(
-                type='extract_rows_as',
-                inputs={'W': param,
-                        'X': grad},
-                outputs={'Out': decay})
-            param = decay
 
         # Append sign op
         block.append_op(
