@@ -27,7 +27,24 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// Node should normally created by Graph::CreateXXXNode().
+// Node should only created by Graph::CreateXXXNode().
+// 1. Every Node should be part of a graph. No dangling Node exists.
+// 2. Node only contains members necessary for building graph structure.
+//    It doesn't contain other unrelated members, such as device, etc.
+//
+// Sometimes, for specific usages, Node needs to have additional members,
+// such as device_placement, version in order to be executed. It is suggested
+// to use composition pattern.
+//
+// class RunnableOp {
+//    RunnableOp(ir::Node* n) : n_(n) { n_.WrappedBy(this); }
+//
+//    int any_thing_;
+// }
+//
+// RunnableOp is owned by the ir::Node that composes it. In other words.
+// ir::Node will be responsible for deleting RunnableOp, say, when ir::Node
+// is deleted from the graph.
 class Node {
  public:
   virtual ~Node() {
@@ -53,6 +70,7 @@ class Node {
     return op_desc_.get();
   }
 
+  // Set the `wrapper` that wraps the Node. `wrapper` is owned by Node.
   template <typename T>
   void WrappedBy(T* wrapper) {
     if (!wrapper_.empty()) {
@@ -63,11 +81,13 @@ class Node {
     wrapper_type_ = std::type_index(typeid(T));
   }
 
+  // Return a reference to the `wrapper`.
   template <typename T>
   T& Wrapper() {
     return *boost::any_cast<T*>(wrapper_);
   }
 
+  // Test if the Node is wrapped by type T.
   template <typename T>
   bool IsWrappedBy() {
     return std::type_index(typeid(T)) == wrapper_type_;
