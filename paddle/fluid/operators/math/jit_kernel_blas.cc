@@ -65,8 +65,9 @@ class VMulKernelImpl : public VMulKernel<T> {
 
   explicit VMulKernelImpl(int d) : VMulKernel<T>() {
     if (useJIT(d)) {
-      constexpr size_t sz = 256 * 1024;  // TODO(TJ): should be related with d
-      jitcode_.reset(new gen::VMulJitCode(d, sz));
+      // roughly estimate the size of code
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      jitcode_.reset(new gen::VMulJitCode(d, sz > 4096 ? sz : 4096));
       this->Compute =
           jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
       return;
