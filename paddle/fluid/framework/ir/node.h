@@ -15,7 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <typeindex>
+#include <typeinfo>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
@@ -57,11 +60,17 @@ class Node {
     }
     wrapper_ = wrapper;
     wrapper_deleter_ = [wrapper]() { delete wrapper; };
+    wrapper_type_ = std::type_index(typeid(T));
   }
 
   template <typename T>
   T& Wrapper() {
     return *boost::any_cast<T*>(wrapper_);
+  }
+
+  template <typename T>
+  bool IsWrappedBy() {
+    return std::type_index(typeid(T)) == wrapper_type_;
   }
 
   // Please don't use this API!
@@ -118,6 +127,7 @@ class Node {
 
   boost::any wrapper_;
   std::function<void(void)> wrapper_deleter_;
+  std::type_index wrapper_type_ = std::type_index(typeid(void));
 
   DISABLE_COPY_AND_ASSIGN(Node);
 };
