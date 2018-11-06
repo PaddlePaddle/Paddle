@@ -31,31 +31,38 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 struct EmbeddingVSumFunctor {
-  void operator()(const DeviceContext &context, LoDTensor *table_t,
-                  LoDTensor *ids_t, LoDTensor *output_t) {
+  void operator()(const framework::ExecutionContext &context,
+                  const LoDTensor *table_t, const LoDTensor *ids_t,
+                  LoDTensor *output_t) {
     auto *table = table_t->data<T>();
-    int64_t row_number = table->dims()[0];
-    int64_t row_width = table->dims()[1];
+    int64_t row_number = table_t->dims()[0];
+    int64_t row_width = table_t->dims()[1];
+    int64_t last_dim = output_t->dims()[1];
     int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
-    auto ids_lod = ids_t->LoD()[0];
+    auto ids_lod = ids_t->lod()[0];
+    int64_t ids_count = ids_t->numel() / ids_lod.back();
+
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int64_t i = 0; i != ids_lod.size() - 1; ++i) {
-      size_t begin = ids_lod[i];
+      for (int64_t j = 0; j != ids_count; ++j) {
+        size_t begin = ids_lod[i] * ids_count;
 
-      PADDLE_ENFORCE_LT(ids[begin], row_number);
-      PADDLE_ENFORCE_GE(ids[begin], 0, "ids %d", i);
-      blas.VCOPY(row_width, table + ids[begin] * row_width,
-                 output + i * row_width);
+        PADDLE_ENFORCE_LT(ids[begin], row_number);
+        PADDLE_ENFORCE_GE(ids[begin], 0, "ids %d", i);
+        blas.VCOPY(row_width, table + ids[begin] * row_width,
+                   output + i * last_dim + j * row_width);
+      }
 
-      for (int64_t r = ids_lod[i] + 1; r < ids_lod[i + 1]; ++r) {
+      for (int64_t r = (ids_lod[i] + 1) * ids_count;
+           r < ids_lod[i + 1] * ids_count; ++r) {
         PADDLE_ENFORCE_LT(ids[r], row_number);
         PADDLE_ENFORCE_GE(ids[r], 0, "ids %d", i);
         blas.AXPY(row_width, 1., table + ids[r] * row_width,
-                  output + i * row_width);
+                  output + i * row_width + (r % ids_count) * row_width);
       }
     }
   }
@@ -65,14 +72,14 @@ template <typename T>
 class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    LoDTensor *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
-    LoDTensor *output_t = context.Output<LoDTensor>("Out");  // float tensor
-    LoDTensor *table_var = context.Input<LoDTensor>("W");
+    const LoDTensor *ids_t = context.Input<LoDTensor>("Ids");  // int tensor
+    LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
+    const LoDTensor *table_var = context.Input<LoDTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
 
     if (combiner_type == "sum") {
       EmbeddingVSumFunctor<T> functor;
-      functor(context.template device_context(), ids_t, output_t, table_var);
+      functor(context, table_var, ids_t, output_t);
     }
   }
 };
@@ -105,7 +112,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
       auto lod = ids->lod()[0];
-      int64_t row_width = table_dim[1];
+      int64_t row_width = d_output->dims()[1];
 
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
@@ -113,11 +120,11 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
-      d_table_value->Resize({ids_num, row_width});
+      d_table_value->Resize({ids_num, table_dim[1]});
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
 
-      auto blas = math::GetBlas<T>(context);
+      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
         int64_t in_offset = lod[i] * row_width;
