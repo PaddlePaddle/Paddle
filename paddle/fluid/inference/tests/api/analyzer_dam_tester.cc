@@ -196,7 +196,7 @@ TEST(Analyzer_dam, fuse_statis) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (FLAGS_use_analysis) {  // use_analysis must be set true
+  if (FLAGS_use_analysis) {
     int num_ops;
     auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
     auto fuse_statis = GetFuseStatis(
