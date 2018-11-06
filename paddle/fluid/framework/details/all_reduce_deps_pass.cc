@@ -12,93 +12,90 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/op_graph_view.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-static std::unique_ptr<std::unordered_set<ir::Node *>> FindAllReduceNodes(
-    const std::unordered_set<ir::Node *> &nodes) {
-  std::unique_ptr<std::unordered_set<ir::Node *>> all_reduce_nodes(
-      new std::unordered_set<ir::Node *>());
-  for (auto &node : nodes) {
-    if (!node->IsOp()) {
-      continue;
-    }
-    if (node->Name() != "all_reduce" && node->Name() != "allreduce") {
-      continue;
-    }
-    // std::cout << node->Name() << std::endl;
-    all_reduce_nodes->insert(node);
-  }
-  return all_reduce_nodes;
+inline bool less(const AllReduceOpHandle* a1, const AllReduceOpHandle* a2) {
+  PADDLE_ENFORCE(a1->Inputs().size() > 0 && a2->Inputs().size() > 0,
+                 "All reduce must have > 1 input vars.");
+
+  VarHandle* i0 = dynamic_cast<VarHandle*>(a1->Inputs()[0]);
+  VarHandle* i1 = dynamic_cast<VarHandle*>(a2->Inputs()[0]);
+
+  PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "Convert to VarHandle error");
+
+  return i0->name_ < i1->name_;
 }
 
 std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  /*
-auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
-for (auto *op : ops) {
-    auto& inputs = op->Inputs();
-    auto& outputs = op->Outputs();
-    std::cout << "op name:" << op->Type() << std::endl;
-    for (auto& t:inputs){
-        std::cout << "\tinput name: " << t.first << ", value:";
-        for(auto& v:t.second){
-          std::cout  << v << ",";
-        }
-        std::cout << std::endl;
+  auto& graph_ops = graph->Get<GraphOps>(kGraphOps);
+  OpGraphView graph_view(graph_ops);
+  std::unordered_set<OpHandleBase*> cur_level_ops;
+  std::vector<std::unordered_set<AllReduceOpHandle*>> allreduce_ops;
+
+  for (auto* op : graph_view.AllOps()) {
+    if (graph_view.PrecedingOps(op).empty()) {
+      cur_level_ops.insert(op);
     }
-    for (auto& t:outputs){
-        std::cout << "\toutput name: " << t.first << ", value:";
-        for(auto& v:t.second){
-          std::cout << v << ",";
-        }
-        std::cout << std::endl;
+  }
+
+  while (!cur_level_ops.empty()) {
+    std::unordered_set<OpHandleBase*> next_level_ops;
+    std::unordered_set<AllReduceOpHandle*> next_level_allreduce_ops;
+
+    for (auto* op : cur_level_ops) {
+      auto* allreduce_op = dynamic_cast<AllReduceOpHandle*>(op);
+      if (allreduce_op != nullptr) {
+        next_level_allreduce_ops.insert(allreduce_op);
+      }
+
+      for (auto* pending_op : graph_view.PendingOps(op)) {
+        next_level_ops.insert(pending_op);
+      }
+
+      if (!next_level_allreduce_ops.empty()) {
+        allreduce_ops.emplace_back(std::move(next_level_allreduce_ops));
+      }
     }
-}
-auto allreduce_nodes = FindAllReduceNodes(graph->Nodes());
-for(ir::Node* node:*allreduce_nodes.get()){
-    std::cout << "allreduce node name:" << node->Name() <<std::endl;
-        // << ", opdesc:" << node->Op()->Type() << std::endl;
-    for(auto& t:node->inputs){
-        if (t->IsVar()){
-            std::cout << "\tinput var name:" << t->Name() << std::endl;
-        }
+
+    cur_level_ops.swap(next_level_ops);
+  }
+
+  for (auto& s : allreduce_ops) {
+    std::vector<AllReduceOpHandle*> op_list;
+    for (auto* n : s) {
+      op_list.emplace_back(n);
     }
 
-    for(auto& t:node->outputs){
-        if (t->IsVar()){
-            std::cout << "\toutput var name:" << t->Name() << std::endl;
-        }
+    // sort cur_level_ops by inputs[0].name
+    std::sort(op_list.begin(), op_list.end(), less);
 
+    // Add dependency.
+    for (size_t i = 1; i < op_list.size(); ++i) {
+      auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+      op_list[i]->AddInput(dep_var);
+      op_list[i - 1]->AddOutput(dep_var);
+
+      graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
+
+      VLOG(10) << "Add all_reduce Sequential dependencies between "
+               << op_list[i - 1]->Name() << " and " << op_list[i]->Name();
     }
-}
-
-for (size_t i = 1; i < node_list.size(); ++i) {
-  auto *dep_var = graph->CreateControlDepVar();
-  node_list[i]->inputs.push_back(dep_var);
-  node_list[i - 1]->outputs.push_back(dep_var);
-  dep_var->outputs.push_back(node_list[i]);
-  dep_var->inputs.push_back(node_list[i - 1]);
-  VLOG(10) << "Add all_reduce Sequential dependencies between "
-           << node_list[i - 1]->Name() << " and " << node_list[i]->Name();
-}
-*/
-
-  auto &graph_ops = graph->Get<GraphOps>(kGraphOps);
-  OpGraphView graph_view(all_ops);
-  std::unordered_set<OpHandleBase *> cur_level_ops;
-  std::vector<std::unordered_set<AllReduceOpHandle *>> all_reduce_ops;
-
-  for (auto *op : graph_vew.AllOps()) {
   }
 
   return graph;
