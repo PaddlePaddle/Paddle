@@ -180,7 +180,8 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         package_data['paddle.libs']+=['libmkldnn.so.0']
         shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
 # remove unused paddle/libs/__init__.py
-os.remove(libs_path+'/__init__.py')
+if os.path.isfile(libs_path+'/__init__.py'):
+    os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
 
 # change rpath of core.so, add $ORIGIN/../libs/ to it.

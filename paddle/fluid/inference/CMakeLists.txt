@@ -13,10 +13,14 @@ cc_library(paddle_fluid_api
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB}) 
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
 
 # paddle_fluid_origin exclude inference api interface
 if(WIN32)
   sep_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+  if(WITH_GPU AND NOT WITH_DSO)
+    target_link_libraries(paddle_fluid_origin ${cuda_modules})
+  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 endif(WIN32)
@@ -36,6 +40,9 @@ endif()
 # Create static library
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+  if(WITH_GPU AND NOT WITH_DSO)
+    target_link_libraries(paddle_fluid ${cuda_modules})
+  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
 endif(WIN32)
@@ -50,6 +57,9 @@ endif()
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
           DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+  if(WITH_GPU AND NOT WITH_DSO)
+    target_link_libraries(paddle_fluid_origin ${cuda_modules})
+  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
       DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
