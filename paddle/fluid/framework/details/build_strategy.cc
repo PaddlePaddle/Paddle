@@ -79,6 +79,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (SeqOnlyAllReduceOps(strategy)) {
       AppendPass("all_reduce_deps_pass");
     }
+
+    if (strategy_.remove_unnecessary_lock_) {
+      AppendPass("modify_op_lock_and_record_event_pass");
+    }
   }
 
  private:
@@ -160,3 +164,4 @@ USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
+USE_PASS(modify_op_lock_and_record_event_pass);

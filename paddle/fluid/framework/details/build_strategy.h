@@ -75,6 +75,7 @@ struct BuildStrategy {
 
   int num_trainers_{1};
   int trainer_id_{0};
+  bool remove_unnecessary_lock_{false};
 
   // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
