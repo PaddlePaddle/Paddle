@@ -91,6 +91,8 @@ class TensorRTEngine : public EngineBase {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Check if the ITensor has been declared
+  bool HasDeclared(const std::string& name);
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
