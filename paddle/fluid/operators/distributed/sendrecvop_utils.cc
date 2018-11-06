@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 
+DEFINE_bool(rpc_disable_reuse_port, true, "Disable SO_REUSEPORT or not.");
+
 namespace paddle {
 namespace operators {
 namespace distributed {
