@@ -69,6 +69,8 @@ struct BuildStrategy {
 
   bool enable_data_balance_{false};
 
+  bool enable_sequential_execution_{false};
+
   bool fuse_broadcast_op_{false};
 
   // User normally doesn't need to call this API.
