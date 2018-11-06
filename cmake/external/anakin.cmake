@@ -58,6 +58,8 @@ ExternalProject_Add(
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
                         -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
                         -DENABLE_OP_TIMER=${ANAKIN_ENABLE_OP_TIMER}
+                        -DCMAKE_C_COMPILER="${CCACHE_PATH} ${CMAKE_C_COMPILER}"
+                        -DCMAKE_CXX_COMPILER="${CCACHE_PATH} ${CMAKE_CXX_COMPILER}"
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
 )

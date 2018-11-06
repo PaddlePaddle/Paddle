@@ -28,9 +28,9 @@ include(ProcessorCount)
 ProcessorCount(NUM_OF_PROCESSOR)
 
 IF(APPLE)
-  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
+  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false CC="${CCACHE_PATH} ${CMAKE_C_COMPILER}" CXX="ccache ${CMAKE_CXX_COMPILER}" -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false CC="${CCACHE_PATH} ${CMAKE_C_COMPILER}" CXX="ccache ${CMAKE_CXX_COMPILER}" -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
 ENDIF()
 
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them
