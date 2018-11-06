@@ -57,7 +57,7 @@ ThreadPool::ThreadPool(int num_threads) : running_(true) {
 ThreadPool::~ThreadPool() {
   {
     // notify all threads to stop running
-    std::lock_guard<std::mutex> l(mutex_);
+    std::unique_lock<std::mutex> l(mutex_);
     running_ = false;
   }
   scheduled_.notify_all();
