@@ -27,7 +27,11 @@ namespace ir {
 // Node should normally created by Graph::CreateXXXNode().
 class Node {
  public:
-  virtual ~Node() {}
+  virtual ~Node() {
+    if (!wrapper_.empty()) {
+      wrapper_deleter_();
+    }
+  }
 
   enum class Type { kOperation, kVariable };
   static constexpr char kControlDepVarName[] = "__control_var";
