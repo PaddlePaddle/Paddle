@@ -70,23 +70,25 @@ ThreadPool::~ThreadPool() {
 
 void ThreadPool::TaskLoop() {
   while (true) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    Task task;
 
-    scheduled_.wait(
-        lock, [this] { return !this->tasks_.empty() || !this->running_; });
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      scheduled_.wait(
+          lock, [this] { return !this->tasks_.empty() || !this->running_; });
 
-    if (!running_ && tasks_.empty()) {
-      return;
+      if (!running_ && tasks_.empty()) {
+        return;
+      }
+
+      if (tasks_.empty()) {
+        PADDLE_THROW("This thread has no task to Run");
+      }
+
+      // pop a task from the task queue
+      task = std::move(tasks_.front());
+      tasks_.pop();
     }
-
-    if (tasks_.empty()) {
-      PADDLE_THROW("This thread has no task to Run");
-    }
-
-    // pop a task from the task queue
-    auto task = std::move(tasks_.front());
-    tasks_.pop();
-    lock.unlock();
 
     // run the task
     task();
