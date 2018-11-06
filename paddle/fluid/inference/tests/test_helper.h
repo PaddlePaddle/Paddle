@@ -101,8 +101,8 @@ std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
     // Hard-coding the file names of program and parameters in unittest.
     // The file names should be consistent with that used in Python API
     //  `fluid.io.save_inference_model`.
-    std::string prog_filename = "__model_combined__";
-    std::string param_filename = "__params_combined__";
+    std::string prog_filename = "model";
+    std::string param_filename = "params";
     inference_program =
         paddle::inference::Load(executor, scope, dirname + "/" + prog_filename,
                                 dirname + "/" + param_filename);
@@ -261,5 +261,3 @@ void TestInference(const std::string& dirname,
 
   delete scope;
 }
-
-USE_PASS(graph_to_program_pass);

@@ -30,25 +30,7 @@ void SetConfig(AnalysisConfig *cfg) {
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
-  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
-
-  PaddleTensor input;
-  // channel=3, height/width=318
-  std::vector<int> shape({FLAGS_batch_size, 3, 318, 318});
-  input.shape = shape;
-  input.dtype = PaddleDType::FLOAT32;
-
-  // fill input data, for profile easily, do not use random data here.
-  size_t size = FLAGS_batch_size * 3 * 318 * 318;
-  input.data.Resize(size * sizeof(float));
-  float *input_data = static_cast<float *>(input.data.data());
-  for (size_t i = 0; i < size; i++) {
-    *(input_data + i) = static_cast<float>(i) / size;
-  }
-
-  std::vector<PaddleTensor> input_slots;
-  input_slots.assign({input});
-  (*inputs).emplace_back(input_slots);
+  SetFakeImageInput(inputs, FLAGS_infer_model);
 }
 
 // Easy for profiling independently.
