@@ -216,8 +216,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   if (config_.use_gpu && config_.use_tensorrt_) {
     LOG(INFO) << "argument_ set TensorRT true";
     argument_.SetUseTensorRT(true);
-    argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
-    argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+    argument_.SetTensorRtWorkspaceSize(new int(config_.tensorrt_workspace_size_));
+    argument_.SetTensorRtMaxBatchSize(new int(config_.tensorrt_max_batchsize_));
   }
 
   auto passes = config_.pass_builder()->AllPasses();

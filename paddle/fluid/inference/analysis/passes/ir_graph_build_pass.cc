@@ -28,16 +28,16 @@ namespace analysis {
 
 void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope()) {
-    argument->SetScope(std::unique_ptr<framework::Scope>(new framework::Scope));
+    argument->SetScope(new framework::Scope);
   }
 
   if (argument->model_dir()) {
     auto program = LoadModel(*argument->model_dir(), argument->scope());
-    argument->SetMainProgram(std::move(program));
+    argument->SetMainProgram(program.release());
   } else if (argument->model_program_path() && argument->model_params_path()) {
     auto program = LoadModel(*argument->model_program_path(),
                              *argument->model_params_path(), argument->scope());
-    argument->SetMainProgram(std::move(program));
+    argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
         "either model_dir or (program path and parameter path) should be set.");
@@ -45,7 +45,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
   auto graph = std::unique_ptr<Graph>(new Graph(*argument->main_program()));
   LOG(INFO) << "Load " << graph->Nodes().size() << " nodes";
-  argument->SetMainGraph(std::move(graph));
+  argument->SetMainGraph(graph.release());
   argument->main_graph()->Set(framework::ir::kParamScopeAttr,
                               new framework::Scope *(argument->scope()));
 }

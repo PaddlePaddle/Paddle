@@ -61,12 +61,12 @@ struct Argument {
 
 #define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__) \
   DECL_ARGUMENT_GETTER(field__, type__)                    \
-  void Set##Field(std::unique_ptr<type__>&& x) {           \
+  void Set##Field(type__* x) {                             \
     LOG(INFO) << "set argument field " << #field__;        \
     if (Has(#field__)) {                                   \
-      Release<type__>(#field__);                           \
+      delete Release<type__>(#field__);                    \
     }                                                      \
-    Set<type__>(#field__, x.release());                    \
+    Set<type__>(#field__, x);                              \
   }                                                        \
   void Set##Field##NotOwned(type__* x) { SetNotOwned<type__>(#field__, x); }
 
@@ -91,12 +91,13 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
                       std::function<bool(const framework::ir::Node*)>);
-  DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
+  DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize,
+                             int);
+  DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
 
   // The program transformed by IR analysis phase.
-  DECL_ARGUMENT_FIELD(ir_analyzed_program, IrAnalyzedProgram,
-                      framework::proto::ProgramDesc);
+  DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,
+                             framework::proto::ProgramDesc);
 
   using fusion_statis_t = std::unordered_map<std::string, int>;
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
@@ -107,12 +108,11 @@ struct Argument {
     PADDLE_ENFORCE_NOT_NULL(data);
     PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
                    key);
-    attrs_[key] = data;
-    attr_deleters_[key] = [data, key]() {
-      VLOG(3) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-      VLOG(3) << "argument delete attr: " << key;
-      delete data;
-    };
+    attrs_[key] = unique_ptr_t(static_cast<void*>(data), [key](void* x) {
+      LOG(INFO) << "to delete attr " << key;
+      delete static_cast<T*>(x);
+      LOG(INFO) << "delete attr " << key;
+    });
   }
 
   template <typename T>
@@ -121,39 +121,32 @@ struct Argument {
 
     PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
                    key);
-    attrs_[key] = data;
-    // An empty deleter for that this ptr is not owned, so don't need to delete.
-    attr_deleters_[key] = [data, key]() {};
+    attrs_[key] = unique_ptr_t(static_cast<void*>(data), [](void* x) {});
   }
 
   bool Has(const std::string& name) const { return attrs_.count(name); }
 
   template <typename T>
   T* Release(const std::string& key) {
+    LOG(INFO) << "Releasing Attr " << key;
     PADDLE_ENFORCE(attrs_.count(key));
-    auto* res = boost::any_cast<T*>(attrs_.at(key));
-    attrs_.erase(key);
-    attr_deleters_.erase(key);
-    return res;
+    auto& res = attrs_[key];
+    return static_cast<T*>(res.release());
   }
 
   template <typename T>
   T& Get(const std::string& key) {
     PADDLE_ENFORCE(Has(key));
-    return *boost::any_cast<T*>(attrs_.at(key));
+    return *static_cast<T*>(attrs_.at(key).get());
   }
 
-  ~Argument() {
-    for (auto it = std::begin(attr_deleters_); it != std::end(attr_deleters_); it++) {
-      LOG(INFO) << "deleting attr " << it->first;
-      it->second();
-      it = attr_deleters_.erase(it);
-    }
-  }
+  ~Argument() {}
 
  private:
-  std::unordered_map<std::string, boost::any> attrs_;
-  std::unordered_map<std::string, std::function<void()>> attr_deleters_;
+  using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
+  std::unordered_map<std::string, unique_ptr_t> attrs_;
+  // std::unordered_map<std::string, boost::any> attrs_;
+  // std::unordered_map<std::string, std::function<void()>> attr_deleters_;
 };
 
 #define ARGUMENT_CHECK_FIELD(argument__, fieldname__) \
