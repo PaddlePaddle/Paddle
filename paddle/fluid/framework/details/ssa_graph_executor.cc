@@ -26,6 +26,9 @@ void ClearFetchOp(ir::Graph* graph, std::vector<FetchOpHandle*>* fetch_ops) {
     for (auto& out_var : op->Node()->outputs) {
       graph->RemoveNode(out_var);
     }
+    for (auto& in_var : op->Inputs()) {
+      in_var->RemoveOutput(op, op->Node());
+    }
     graph->RemoveNode(op->Node());
   }
   fetch_ops->clear();
