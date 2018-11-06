@@ -109,7 +109,10 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
           complete_q->Pop();
         }
       }
-      exception_.ReThrow();
+      if (exception_.IsCaught()) {
+        ClearFetchOp(graph_.get(), &fetch_ops);
+        exception_.ReThrow();
+      }
     }
     num_complete += num_comp;
   }
