@@ -93,6 +93,12 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                          "are supported, sum computes the weighted sum of the "
                          "embedding results for each row.")
         .SetDefault("sum");
+    // NOTE(minqiyang): grad_inplace is an temporal attribute,
+    // please do NOT set this attribute in python layer.
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "
                   "Sparse update.")
