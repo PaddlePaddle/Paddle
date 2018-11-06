@@ -42,8 +42,14 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     // we only support sum now
     PADDLE_ENFORCE_EQ(combiner, "sum");
 
+    int64_t last_dim = table_dims[1];
+    for (int i = 1; i != ids_dims.size(); ++i) {
+      last_dim *= ids_dims[i];
+    }
+
     if (ctx->IsRuntime()) {
-      Variable* ids_var = boost::get<Variable*>(ctx->GetInputVarPtrs("Ids")[0]);
+      framework::Variable* ids_var =
+          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Ids")[0]);
       const auto& ids_lod = ids_var->Get<LoDTensor>().lod();
 
       // in run time, the LoD of ids must be 1
@@ -51,20 +57,20 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
                      "The LoD level of Input(Ids) must be 1");
       PADDLE_ENFORCE_GE(ids_lod[0].size(), 1u, "The LoD could NOT be empty");
 
-      size_t batch_size = ids_lod[0].size() - 1;
+      int64_t batch_size = ids_lod[0].size() - 1;
 
       // in run time, the shape from Ids -> output
       // should be [seq_length, 1] -> [batch_size, embedding_size]
-      ctx->SetOutputDim("Out",
-                        framework::make_ddim({batch_size, table_dims[1]}));
+      ctx->SetOutputDim("Out", framework::make_ddim({batch_size, last_dim}));
     } else {
       // in compile time, the lod level of ids must be 1
-      VarDesc* ids_desc = boost::get<VarDesc*>(ctx->GetInputVarPtrs("Ids")[0]);
+      framework::VarDesc* ids_desc =
+          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Ids")[0]);
       PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(), 1);
 
       // in compile time, the shape from Ids -> output
       // should be [-1, 1] -> [-1, embedding_size]
-      ctx->SetOutputDim("Out", framework::make_ddim({-1, table_dims[1]}));
+      ctx->SetOutputDim("Out", framework::make_ddim({-1, last_dim}));
     }
   }
 
