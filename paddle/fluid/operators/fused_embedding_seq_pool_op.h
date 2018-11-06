@@ -53,7 +53,7 @@ struct EmbeddingVSumFunctor {
 
         PADDLE_ENFORCE_LT(ids[begin], row_number);
         PADDLE_ENFORCE_GE(ids[begin], 0, "ids %d", i);
-        blas.VCOPY(row_width, table + ids[begin] * row_width,
+        blas.VCOPY(row_width, table + ids[begin + j] * row_width,
                    output + i * last_dim + j * row_width);
       }
 
@@ -62,7 +62,7 @@ struct EmbeddingVSumFunctor {
         PADDLE_ENFORCE_LT(ids[r], row_number);
         PADDLE_ENFORCE_GE(ids[r], 0, "ids %d", i);
         blas.AXPY(row_width, 1., table + ids[r] * row_width,
-                  output + i * row_width + (r % ids_count) * row_width);
+                  output + i * last_dim + (r % ids_count) * row_width);
       }
     }
   }
