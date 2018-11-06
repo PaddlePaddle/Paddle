@@ -26,15 +26,13 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 struct Linspace<paddle::platform::CPUDeviceContext, T> {
-  framework::Tensor operator()(T start, T end, int count,
-                               const framework::ExecutionContext& ctx) {
-    Tensor numbers;
-    T* number_data = numbers.mutable_data<T>({count}, platform::CPUPlace());
+  void operator()(T start, T end, int count, framework::Tensor* numbers,
+                  const framework::ExecutionContext& ctx) {
+    T* number_data = numbers->mutable_data<T>({count}, platform::CPUPlace());
     T slice = (end - start) / (T)(count - 1);
     for (int i = 0; i < count; ++i) {
       number_data[i] = start + (T)i * slice;
     }
-    return numbers;
   }
 };
 
