@@ -51,7 +51,7 @@ class ReferenceCountOpHandle : public OpHandleBase {
     dev_ctx_ = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (IsStreamGarabageCollector()) {
-      PADDLE_ENFORCE(cudaSetDevice(place.device));
+      platform::SetDeviceId(place.device);
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
     }
 
@@ -61,7 +61,7 @@ class ReferenceCountOpHandle : public OpHandleBase {
   ~ReferenceCountOpHandle() {
     if (IsStreamGarabageCollector()) {
       auto gpu_place = boost::get<platform::CUDAPlace>(dev_ctx_->GetPlace());
-      PADDLE_ENFORCE(cudaSetDevice(gpu_place.device));
+      platform::SetDeviceId(gpu_place.device);
       PADDLE_ENFORCE(cudaEventDestroy(event_));
     }
   }
