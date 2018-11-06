@@ -60,7 +60,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     InsertPendingVar(&pending_vars, ready_vars.get(), var);
   }
 
-  for (auto &op : ir::GetFilteredNodes<OpHandleBase>(*graph_)) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op);
     } else {

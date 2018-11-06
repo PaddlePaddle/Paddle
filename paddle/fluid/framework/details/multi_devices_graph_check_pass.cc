@@ -46,7 +46,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
     insert_pending_var(var);
   }
 
-  for (OpHandleBase *op : ir::GetFilteredNodes<OpHandleBase>(*graph)) {
+  for (OpHandleBase *op : ir::FilterByNodeWrapper<OpHandleBase>(*graph)) {
     if (op->Inputs().empty()) {
       ready_ops.insert(op);
     } else {

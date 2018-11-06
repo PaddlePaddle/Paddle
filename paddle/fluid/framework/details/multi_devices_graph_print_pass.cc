@@ -63,7 +63,7 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
   });
 
   size_t op_id = 0;
-  for (auto &op : ir::GetFilteredNodes<OpHandleBase>(graph)) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(graph)) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;

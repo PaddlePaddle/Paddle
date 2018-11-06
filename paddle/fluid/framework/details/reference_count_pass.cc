@@ -157,7 +157,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     }
   };
 
-  auto all_ops = ir::GetFilteredNodes<OpHandleBase>(*graph);
+  auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
   for (auto &op : all_ops) {
     auto in_var_names = get_ref_cnts_from_compute_op(op, op->Inputs());
     auto out_var_names = get_ref_cnts_from_compute_op(op, op->Outputs());

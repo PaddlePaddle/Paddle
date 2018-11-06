@@ -33,7 +33,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       pool_(strategy.num_threads_ +
             1),  // add one more thread for generate op_deps
       fetch_ctxs_(places) {
-  for (auto &op : ir::GetFilteredNodes<OpHandleBase>(*graph_)) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
     if (dep == 0) {
