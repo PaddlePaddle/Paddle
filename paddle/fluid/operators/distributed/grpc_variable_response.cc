@@ -293,6 +293,14 @@ int GRPCVariableResponse::Parse(Source* source) {
         }
         break;
       }
+      case sendrecv::VariableMessage::kTrainerIdFieldNumber: {
+        uint64_t trainer_id = 0;
+        if (!input.ReadVarint64(&trainer_id)) {
+          return tag;
+        }
+        meta_.set_trainer_id(trainer_id);
+        break;
+      }
       default: {
         // Unknown tag, return unknown error.
         return -1;
