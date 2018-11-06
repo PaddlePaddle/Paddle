@@ -46,35 +46,38 @@ class VMulJitCode : public JitCode {
 
   xmm_t xmm_src1 = xmm_t(0);
   xmm_t xmm_src2 = xmm_t(1);
-  xmm_t xmm_dst = xmm_t(2);
+  xmm_t xmm_dst = xmm_t(1);
 
   ymm_t ymm_src1 = ymm_t(0);
   ymm_t ymm_src2 = ymm_t(1);
-  ymm_t ymm_dst = ymm_t(2);
+  ymm_t ymm_dst = ymm_t(1);
 };
 
 class VAddJitCode : public JitCode {
  public:
   DECLARE_JIT_CODE(VAddJitCode);
-  explicit VAddJitCode(int d, size_t code_size = 256 * 1024,
+  explicit VAddJitCode(int d, bool with_relu, size_t code_size = 256 * 1024,
                        void* code_ptr = nullptr)
-      : JitCode(code_size, code_ptr), num_(d) {}
+      : JitCode(code_size, code_ptr), num_(d), with_relu_(with_relu) {}
   static bool init(int d);
   void generate() override;
 
  private:
   int num_;
+  bool with_relu_;
   reg64_t param1{abi_param1};
   reg64_t param2{abi_param2};
   reg64_t param3{abi_param3};
 
   xmm_t xmm_src1 = xmm_t(0);
   xmm_t xmm_src2 = xmm_t(1);
-  xmm_t xmm_dst = xmm_t(2);
+  xmm_t xmm_dst = xmm_t(1);
+  xmm_t xmm_zero = xmm_t(2);
 
   ymm_t ymm_src1 = ymm_t(0);
   ymm_t ymm_src2 = ymm_t(1);
-  ymm_t ymm_dst = ymm_t(2);
+  ymm_t ymm_dst = ymm_t(1);
+  ymm_t ymm_zero = ymm_t(2);
 };
 
 }  // namespace gen

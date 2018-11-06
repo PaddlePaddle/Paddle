@@ -70,10 +70,16 @@ bool VAddJitCode::init(int d) { return MayIUse(avx); }
 
 void VAddJitCode::generate() {
   int offset = 0;
+  if (with_relu_) {
+    vxorps(ymm_zero, ymm_zero, ymm_zero);
+  }
   for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
     vmovups(ymm_src1, ptr[param1 + offset]);
     vmovups(ymm_src2, ptr[param2 + offset]);
     vaddps(ymm_dst, ymm_src1, ymm_src2);
+    if (with_relu_) {
+      vmaxps(ymm_dst, ymm_zero, ymm_dst);
+    }
     vmovups(ptr[param3 + offset], ymm_dst);
     offset += sizeof(float) * AVX_FLOAT_BLOCK;
   }
@@ -82,6 +88,9 @@ void VAddJitCode::generate() {
     vmovups(xmm_src1, ptr[param1 + offset]);
     vmovups(xmm_src2, ptr[param2 + offset]);
     vaddps(xmm_dst, xmm_src1, xmm_src2);
+    if (with_relu_) {
+      vmaxps(xmm_dst, xmm_zero, xmm_dst);
+    }
     vmovups(ptr[param3 + offset], xmm_dst);
     offset += sizeof(float) * 4;
     rest -= 4;
@@ -90,6 +99,9 @@ void VAddJitCode::generate() {
     vmovq(xmm_src1, ptr[param1 + offset]);
     vmovq(xmm_src2, ptr[param2 + offset]);
     vaddps(xmm_dst, xmm_src1, xmm_src2);
+    if (with_relu_) {
+      vmaxps(xmm_dst, xmm_zero, xmm_dst);
+    }
     vmovq(ptr[param3 + offset], xmm_dst);
     offset += sizeof(float) * 2;
     rest -= 2;
@@ -98,6 +110,9 @@ void VAddJitCode::generate() {
     vmovss(xmm_src1, ptr[param1 + offset]);
     vmovss(xmm_src2, ptr[param2 + offset]);
     vaddss(xmm_dst, xmm_src1, xmm_src2);
+    if (with_relu_) {
+      vmaxps(xmm_dst, xmm_zero, xmm_dst);
+    }
     vmovss(ptr[param3 + offset], xmm_dst);
   }
   ret();
