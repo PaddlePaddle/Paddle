@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -32,9 +33,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       pool_(strategy.num_threads_ +
             1),  // add one more thread for generate op_deps
       fetch_ctxs_(places) {
-  auto &ops = graph_->Get<details::GraphOps>("ops");
-
-  for (auto &op : ops) {
+  for (auto &op : ir::GetFilteredNodes<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
     if (dep == 0) {

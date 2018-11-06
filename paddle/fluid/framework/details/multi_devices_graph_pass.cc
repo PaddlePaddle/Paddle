@@ -36,6 +36,11 @@ namespace framework {
 namespace details {
 
 namespace {
+// all operators. NOTE that even we use a vector here, the operators is
+// unordered.
+typedef std::vector<OpHandleBase *> GraphOps;
+const char kGraphOps[] = "ops";
+
 void PolishGraphToSupportDataHazards(ir::Graph *graph) {
   for (auto &var_map : graph->Get<GraphVars>(kGraphVars)) {
     for (auto &name_pair : var_map) {
@@ -458,7 +463,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
-  PADDLE_ENFORCE(!ir::HasCircle(result));
+  result.Erase<GraphOps>(kGraphOps);
   return graph;
 }
 
