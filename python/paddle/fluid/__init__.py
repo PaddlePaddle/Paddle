@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
@@ -43,16 +44,17 @@ from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
 from . import unique_name
-from . import recordio_writer
-from . import parallel_executor
-from .parallel_executor import *
+if os.name != 'nt':
+    from . import recordio_writer
+    from . import parallel_executor
+    from .parallel_executor import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-    parallel_executor.__all__ + lod_tensor.__all__ + [
+    lod_tensor.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -78,7 +80,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'recordio_writer',
         'Scope',
     ]
-
+if os.name != 'nt':
+    __all__ += parallel_executor.__all__
 
 def __bootstrap__():
     """
@@ -110,12 +113,16 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
+        'use_pinned_memory', 'check_nan_inf', 'benchmark',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        'dist_threadpool_size', 'cpu_deterministic', 'eager_delete_tensor_gb',
+        'dist_threadpool_size', 'eager_delete_tensor_gb',
         'reader_queue_speed_test_mode'
     ]
+    if os.name != 'nt':
+        read_env_flags.append('warpctc_dir')
+        read_env_flags.append('cpu_deterministic')
+
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
         read_env_flags.append('rpc_server_profile_period')
