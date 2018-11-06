@@ -35,7 +35,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     const std::string& combiner = ctx->Attrs().Get<std::string>("combiner");
 
     PADDLE_ENFORCE_EQ(table_dims.size(), 2);
-    PADDLE_ENFORCE_GE(ids_dims.size(), 1u,
+    PADDLE_ENFORCE_GE(ids_dims.size(), 1,
                       "The dim size of the 'Ids' tensor must greater than 1.");
     PADDLE_ENFORCE_EQ(ids_dims[ids_dims.size() - 1], 1,
                       "The last dimension of the 'Ids' tensor must be 1.");
