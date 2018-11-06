@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import warnings
 import numpy as np
 
-import layers
-from framework import Program, Variable, program_guard
-import unique_name
-from layer_helper import LayerHelper
-from initializer import Constant
+from . import layers
+from .framework import Program, Variable, program_guard
+from . import unique_name
+from .layer_helper import LayerHelper
+from .initializer import Constant
 
 __all__ = [
     'ChunkEvaluator',
@@ -314,7 +316,7 @@ class DetectionMAP(Evaluator):
         gt_label (Variable): The ground truth label index, which is a LoDTensor
             with shape [N, 1].
         gt_box (Variable): The ground truth bounding box (bbox), which is a
-            LoDTensor with shape [N, 6]. The layout is [xmin, ymin, xmax, ymax].
+            LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
         gt_difficult (Variable|None): Whether this ground truth is a difficult
             bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
             it means all the ground truth labels are not difficult bbox.

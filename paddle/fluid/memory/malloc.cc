@@ -36,6 +36,8 @@ namespace memory {
 using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
+  // We tried thread_local for inference::RNN1 model, but that not works much
+  // for multi-thread test.
   static std::once_flag init_flag;
   static detail::BuddyAllocator* a = nullptr;
 
@@ -47,6 +49,25 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 
   return a;
 }
+
+// We compared the NaiveAllocator with BuddyAllocator in CPU memory allocation,
+// seems they are almost the same overhead.
+struct NaiveAllocator {
+  void* Alloc(size_t size) { return malloc(size); }
+
+  void Free(void* p) {
+    PADDLE_ENFORCE(p);
+    free(p);
+  }
+
+  static NaiveAllocator* Instance() {
+    static NaiveAllocator x;
+    return &x;
+  }
+
+ private:
+  std::mutex lock_;
+};
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
@@ -119,8 +140,8 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
                  << place.device << ", available " << avail << " bytes";
     LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize " << platform::GpuMinChunkSize();
-    LOG(WARNING) << "GpuMaxChunkSize " << platform::GpuMaxChunkSize();
+    LOG(WARNING) << "GpuMinChunkSize " << buddy_allocator->GetMinChunkSize();
+    LOG(WARNING) << "GpuMaxChunkSize " << buddy_allocator->GetMaxChunkSize();
     LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
     platform::SetDeviceId(cur_dev);
   }

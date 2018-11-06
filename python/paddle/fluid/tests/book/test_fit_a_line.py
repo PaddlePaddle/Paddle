@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -114,7 +116,7 @@ def infer(use_cuda, save_dirname=None):
         test_reader = paddle.batch(
             paddle.dataset.uci_housing.test(), batch_size=batch_size)
 
-        test_data = test_reader().next()
+        test_data = next(test_reader())
         test_feat = numpy.array(
             [data[0] for data in test_data]).astype("float32")
         test_label = numpy.array(

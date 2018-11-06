@@ -17,6 +17,8 @@ Print all signature of a python module in alphabet order.
 Usage:
     ./print_signature  "paddle.fluid" > signature.txt
 """
+from __future__ import print_function
+
 import importlib
 import inspect
 import collections
@@ -64,4 +66,4 @@ def visit_all_module(mod):
 visit_all_module(importlib.import_module(sys.argv[1]))
 
 for name in member_dict:
-    print name, member_dict[name]
+    print(name, member_dict[name])

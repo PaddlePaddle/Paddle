@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import framework
+from __future__ import print_function
+
+from . import framework
 from . import core
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
@@ -45,7 +47,8 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         if grad is None:
             params_and_grads.append((param, grad))
             continue
-        with param.block.program.optimized_guard([param, grad]):
+        with param.block.program._optimized_guard(
+            [param, grad]), framework.name_scope('regularization'):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
@@ -142,14 +145,20 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            idx = block.create_var(
+                dtype="int64",
+                shape=param.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
+                type=core.VarDesc.VarType.LOD_TENSOR)
+            block.append_op(
+                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
             block.append_op(
                 type='lookup_table',
                 inputs={'W': param,
-                        'Ids': grad},
+                        'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
             param = decay
@@ -182,14 +191,11 @@ class L1DecayRegularizer(WeightDecayRegularizer):
     Examples:
         .. code-block:: python
 
-            program = fluid.framework.Program()
-            block = program.global_block()
-            mul_x = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="mul.x",
-                regularizer=fluid.regularizer.L1DecayRegularizer(0.5))
+            optimizer = fluid.optimizer.Adagrad(
+                learning_rate=1e-4,
+                regularization=fluid.regularizer.L1DecayRegularizer(
+                    regularization_coeff=0.1))
+            optimizer.minimize(avg_cost)
     """
 
     def __init__(self, regularization_coeff=0.0):
@@ -216,16 +222,23 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            idx = block.create_var(
+                dtype="int64",
+                shape=param.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
+                type=core.VarDesc.VarType.LOD_TENSOR)
+            block.append_op(
+                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
             block.append_op(
                 type='lookup_table',
                 inputs={'W': param,
-                        'Ids': grad},
+                        'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
+            param = decay
 
         # Append sign op
         block.append_op(

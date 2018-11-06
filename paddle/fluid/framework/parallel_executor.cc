@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
-
 #include <string>
 #include <tuple>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -24,8 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -108,34 +109,69 @@ ParallelExecutor::ParallelExecutor(
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-  // Startup Program has been run. All local scopes has correct parameters.
+// Startup Program has been run. All local scopes has correct parameters.
 
-  // Step 2. Create vars in each scope;
-  std::vector<details::VariableInfo> var_infos;
-  for (auto *var : main_program.Block(0).AllVars()) {
-    var_infos.emplace_back();
-    var_infos.back().name_ = var->Name();
-    var_infos.back().type_ = var->GetType();
-    var_infos.back().persistable_ = var->Persistable();
-  }
-
-  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
-  // ncclOp
-  details::SSAGraphBuilderFactory builder_factory(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      build_strategy);
-  if (member_->use_cuda_) {
+// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+// ncclOp
 #ifdef PADDLE_WITH_CUDA
-    builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
-#else
-    PADDLE_THROW("Not compiled with CUDA.");
-#endif
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+
+  auto max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size >= 0) {
+    for (auto &place : member_->places_) {
+      if (!platform::is_gpu_place(place)) continue;
+      auto gpu_place = boost::get<platform::CUDAPlace>(place);
+      if (gcs_[gpu_place.device] == nullptr) {
+        ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
+        cur_ref_cnts_[gpu_place.device].reset(
+            new details::AtomicReferenceCountMap());
+        gcs_[gpu_place.device].reset(
+            new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
+      }
+    }
+    if (!gcs_.empty()) {
+      auto ref_cnt_pass =
+          ir::PassRegistry::Instance().Get("reference_count_pass");
+      ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
+      ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
+      ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+      graph = ref_cnt_pass->Apply(std::move(graph));
+      graph->SetNotOwned("garbage_collector", &gcs_);
+    }
   }
-  builder_ = builder_factory.Create();
-  std::unique_ptr<Graph> graph(new Graph(main_program));
-  graph = builder_->Apply(std::move(graph));
-  member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places, std::move(graph)));
+#else
+  std::unique_ptr<ir::Graph> graph =
+      build_strategy.Apply(main_program, member_->places_, loss_var_name,
+                           params, member_->local_scopes_, member_->use_cuda_);
+#endif
+
+  // Step 3. Create vars in each scope. Passes may also create new vars.
+  //         skip control vars and empty vars
+  std::vector<details::VariableInfo> var_infos;
+  for (auto &node : graph->Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      var_infos.emplace_back();
+      var_infos.back().name_ = node->Var()->Name();
+      var_infos.back().type_ = node->Var()->GetType();
+      var_infos.back().persistable_ = node->Var()->Persistable();
+    }
+  }
+  // If the loss_var_name is given, the number of graph should be only one.
+  if (loss_var_name.size()) {
+    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                      "The number of graph should be only one");
+  }
+
+  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  } else {
+    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  }
+
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
       member_->places_, std::move(member_->executor_)));
@@ -143,28 +179,18 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
-  // the initializing bcast, all vars would be bcast from device(0),
-  // otherwise
-  // bcast from the specified device.
-  bool initializing = builder_.get() == nullptr ? true : false;
-
+  // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
-    int var_dev_id =
-        builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
-    if (!initializing && var_dev_id == -1) continue;
-
-    framework::Variable *main_var = nullptr;
-    if (initializing) {
-      main_var = member_->local_scopes_[0]->FindVar(var);
-    } else {
-      main_var = member_->local_scopes_[var_dev_id]->FindVar(var);
-    }
-
+    framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
     if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
+    if (!main_tensor.IsInitialized()) {
+      VLOG(3) << "one in var not inited, return!";
+      continue;
+    }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -175,8 +201,7 @@ void ParallelExecutor::BCastParamsToDevices(
         auto place = member_->places_[i];
         void *buffer;
 
-        if ((initializing && i == 0) ||
-            (!initializing && static_cast<int>(i) == var_dev_id)) {
+        if (i == 0) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
@@ -193,29 +218,18 @@ void ParallelExecutor::BCastParamsToDevices(
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
-          if (initializing) {
-            platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
-                                         nccl_ctx.comm_, nccl_ctx.stream());
-          } else {
-            if (var_dev_id >= 0) {
-              platform::dynload::ncclBcast(buffers[i], numel, data_type,
-                                           var_dev_id, nccl_ctx.comm_,
-                                           nccl_ctx.stream());
-            }
-          }
+          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
         }
         member_->nccl_ctxs_->WaitAll();
       }
-
 #else
       PADDLE_THROW("Not compiled with CUDA");
 #endif
     } else {
       platform::CPUPlace cpu;
       for (size_t i = 0; i < member_->places_.size(); ++i) {
-        if ((initializing && i == 0) ||
-            (!initializing && static_cast<int>(i) == var_dev_id))
-          continue;
+        if (i == 0) continue;
 
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
@@ -237,6 +251,18 @@ void ParallelExecutor::BCastParamsToDevices(
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+#ifdef PADDLE_WITH_CUDA
+  if (!gcs_.empty()) {
+    ResetReferenceCount();
+    for (auto &pair : cur_ref_cnts_) {
+      auto &name_map = *(pair.second);
+      for (auto &fetch_name : fetch_tensors) {
+        name_map.erase(fetch_name);
+      }
+      name_map.erase(fetched_var_name);
+    }
+  }
+#endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
@@ -277,12 +303,26 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 }
 
 ParallelExecutor::~ParallelExecutor() {
+  for (auto &p : member_->places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+
   if (member_->own_local_scope_) {
     for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-      member_->global_scope_->DeleteScope(member_->local_scopes_[i]);
+      Scope *local_scope = member_->local_scopes_[i];
+      if (member_->global_scope_->HasKid(local_scope)) {
+        member_->global_scope_->DeleteScope(local_scope);
+      }
     }
   }
+
+  // member_ must be destructed before gcs_ since the destructor of
+  // ReferenceCountOpHandle use raw pointers of gcs_ inside.
+  member_.reset();
 }
 
 }  // namespace framework
 }  // namespace paddle
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(reference_count_pass);
+#endif

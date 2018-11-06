@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -29,11 +31,11 @@ class TestSeqAvgPool(OpTest):
         self.op_type = 'sequence_pool'
         # one level, batch size is 4
         x = np.random.uniform(0.1, 1, [11, 23]).astype('float32')
-        lod = [[4, 1, 3, 3]]
+        lod = [[11]]
         self.inputs = {'X': (x, lod)}
         offset = self.convert_to_offset(lod)
 
-        out = np.zeros((4, 23)).astype('float32')
+        out = np.zeros((len(lod[0]), 23)).astype('float32')
         self.outputs = {'Out': out}
         return x, offset, out
 
@@ -69,7 +71,7 @@ class TestSeqMaxPool(TestSeqAvgPool):
     def set_data(self):
         self.op_type = 'sequence_pool'
         x = np.random.uniform(0.1, 1, [13, 23]).astype('float32')
-        lod = [[4, 1, 3, 5]]
+        lod = [[13]]
         offset = self.convert_to_offset(lod)
         for i in range(len(offset[0]) - 1):
             l = offset[0][i + 1] - offset[0][i]
@@ -77,7 +79,7 @@ class TestSeqMaxPool(TestSeqAvgPool):
 
         self.inputs = {'X': (x, lod)}
 
-        out = np.zeros((4, 23)).astype('float32')
+        out = np.zeros((1, 23)).astype('float32')
         self.outputs = {'Out': out}
         return x, offset, out
 
@@ -180,6 +182,20 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 11))
             out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
+
+
+class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
+    def compute(self, x, offset, out):
+        self.attrs = {'pooltype': "MAX", 'is_test': True}
+        for i in range(len(offset[0]) - 1):
+            sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
+                               (-1, 3 * 11))
+            out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
+
+    def test_check_grad(self):
+        """Grad computation does not apply to Sequence MAX 
+            Pool executed when is_test is true """
+        return
 
 
 class TestSeqLastPool2D(TestSeqAvgPool2D):

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from paddle.fluid.default_scope_funcs import *
 import unittest
 
@@ -39,7 +41,7 @@ class TestDefaultScopeFuncs(unittest.TestCase):
             self.assertTrue(i.is_int())
             self.assertEqual(10, i.get_int())
 
-        for _ in xrange(10):
+        for _ in range(10):
             scoped_function(__new_scope__)
 
 

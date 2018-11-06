@@ -17,6 +17,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#if defined(_WIN32)
+#include <intrin.h>
+#include <windows.h>
+#endif  // _WIN32
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -55,12 +60,38 @@ namespace math {
  *    FindLastSet(x) = 1 + \floor*{\log_{2}x}
  * \f]
  */
+#if !defined(_WIN32)
 inline constexpr size_t FindLastSet(size_t x) {
   return std::is_same<size_t, unsigned int>::value
              ? (x ? 8 * sizeof(x) - __builtin_clz(x) : 0)
              : (std::is_same<size_t, unsigned long>::value  // NOLINT
                     ? (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
                     : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
+
+#else
+// windows don't have built-in clz, ctz function
+template <typename T>
+inline int ctz(const T& value) {
+  DWORD trailing_zero = 0;
+  if (_BitScanForward(&trailing_zero, value)) {
+    return static_cast<int>(trailing_zero);
+  } else {
+    return static_cast<int>(0);
+  }
+}
+
+template <typename T>
+inline int clz(const T& value) {
+  DWORD leadning_zero = 0;
+  if (_BitScanReverse(&leadning_zero, value)) {
+    return static_cast<int>(sizeof(T) * 8 - leadning_zero);
+  } else {
+    return static_cast<int>(0);
+  }
+}
+
+inline size_t FindLastSet(size_t x) { return sizeof(size_t) * 8 - clz(x); }
+#endif  // !_WIN32
 }
 
 struct SimpleCode {

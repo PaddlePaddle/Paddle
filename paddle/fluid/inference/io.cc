@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/pybind/pybind.h"
 
@@ -124,6 +125,9 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
+  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
+                 "model version %ld is not supported.",
+                 main_program->Version());
 
   LoadPersistables(executor, scope, *main_program, dirname, "");
   return main_program;
@@ -138,9 +142,28 @@ std::unique_ptr<framework::ProgramDesc> Load(
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
+  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
+                 "model version %ld is not supported.",
+                 main_program->Version());
 
   LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
+}
+
+void SaveVars(const framework::Scope& scope,
+              const std::vector<std::string>& vars, const std::string& dirname,
+              bool predicate) {
+  framework::ProgramDesc prog;
+  auto* block = prog.MutableBlock(0);
+  auto* op = block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", vars);
+  op->SetAttr("file_path", dirname + "/param");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }
 
 }  // namespace inference

@@ -92,9 +92,14 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
+  auto server_var = GetVar();
+  if (!server_var) {
+    LOG(ERROR) << "recved var should not on current server: "
+               << meta_.varname();
+    return false;
+  }
   auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
-
   framework::LoD lod;
   for (int i = 0; i < meta_.lod_level(); ++i) {
     framework::Vector<size_t> v;
@@ -107,7 +112,6 @@ bool VariableResponse::CopyLodTensorData(
 
   void* tensor_data =
       tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
-
   if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
     return false;
   }
@@ -151,6 +155,7 @@ bool VariableResponse::CopySelectRowsData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, int length) {
   auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
+  slr->mutable_rows()->clear();
   slr->mutable_rows()->resize(length /
                               framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
@@ -190,12 +195,15 @@ bool VariableResponse::ProcSerializedField(
 #endif
   }
 
+  VLOG(7) << "ProcSerializedField:" << meta_.varname()
+          << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
     PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");
     if (!CopyLodTensorData(input, *dev_ctx_, dims, num_bytes)) {
       return false;
     }
+
     return true;
   }
 
@@ -206,7 +214,9 @@ bool VariableResponse::ProcSerializedField(
     return true;
   }
 
-  return true;
+  PADDLE_ENFORCE("not supported var types:", meta_.varname(), meta_.type());
+
+  return false;
 }
 
 };  // namespace distributed

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -27,13 +28,52 @@ namespace paddle {
 namespace framework {
 extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 
+template <typename T>
+std::unordered_map<std::string, T> GetNonPersistableReferenceCount(
+    const ProgramDesc& prog, size_t block_id) {
+  auto& block = prog.Block(block_id);
+  std::unordered_map<std::string, T> ref_cnts;
+
+  auto update_ref_cnts = [&](OpDesc* op_desc, const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto* var_desc = block.FindVar(name);
+        if (var_desc == nullptr || var_desc->Persistable()) continue;
+        auto type = var_desc->Proto()->type().type();
+        if (type != proto::VarType::LOD_TENSOR &&
+            type != proto::VarType::SELECTED_ROWS) {
+          continue;
+        }
+
+        auto it = ref_cnts.find(name);
+        if (it != ref_cnts.end()) {
+          ++it->second;
+        } else {
+          ref_cnts[name] = 1;
+        }
+      }
+    }
+  };
+
+  for (auto op_desc : block.AllOps()) {
+    update_ref_cnts(op_desc, op_desc->Inputs());
+    update_ref_cnts(op_desc, op_desc->Outputs());
+  }
+  return ref_cnts;
+}
+
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
   ~ExecutorPrepareContext();
 
+  void ResetReferenceCount() { cur_ref_cnts_ = ref_cnts_; }
+
   const framework::ProgramDesc& prog_;
   size_t block_id_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+
+  std::unordered_map<std::string, int> ref_cnts_;
+  std::unordered_map<std::string, int> cur_ref_cnts_;
 };
 
 class Executor {
@@ -60,6 +100,7 @@ class Executor {
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true);
 
+  // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, const LoDTensor*>* feed_targets,
            std::map<std::string, LoDTensor*>* fetch_targets,
@@ -79,6 +120,7 @@ class Executor {
                           bool create_local_scope = true,
                           bool create_vars = true, bool keep_kids = false);
 
+  // This API is very slow.
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
                           std::map<std::string, LoDTensor*>* fetch_targets,

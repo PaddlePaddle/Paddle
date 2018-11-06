@@ -12,17 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/cub_reduce.h"
 #include "paddle/fluid/operators/reduce_sum_op.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_sum,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::SumFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::SumFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::SumFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::SumFunctor>);
+namespace paddle {
+namespace operators {
+
+template <typename T>
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor() {}
+
+  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+};
+
+template <typename T>
+class ReduceSumKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
+
+    auto dims = context.Attr<std::vector<int>>("dim");
+    bool keep_dim = context.Attr<bool>("keep_dim");
+
+    std::vector<int> reduce_dims;
+    if (reduce_all) {
+      reduce_dims.resize(input->dims().size());
+      for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
+    } else {
+      for (auto e : dims) {
+        reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
+      }
+    }
+
+    int reduce_num = 1;
+    for (int i = 0; i < reduce_dims.size(); ++i) {
+      reduce_num *= input->dims()[reduce_dims[i]];
+    }
+
+    auto stream = context.cuda_device_context().stream();
+    TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+        *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
+        IdentityFunctor<T>(), stream);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<float>,
+                        ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
+                        ops::ReduceSumKernel<int64_t>);
+
 REGISTER_OP_CUDA_KERNEL(
     reduce_sum_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
                                            float, ops::SumGradFunctor>,

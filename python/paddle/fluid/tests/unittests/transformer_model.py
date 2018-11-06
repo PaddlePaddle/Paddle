@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from functools import partial
 import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid.layers.io import open_recordio_file
 
 pos_enc_param_names = (
     "src_pos_enc_table",
     "trg_pos_enc_table", )
 
-batch_size = 64
+batch_size = 2
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -118,8 +121,9 @@ def multi_head_attention(queries,
         # FIXME(guosheng): Decouple the program desc with batch_size.
         return layers.reshape(
             x=trans_x,
-            shape=map(int,
-                      [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]]))
+            shape=list(
+                map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]
+                          ])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """
@@ -242,6 +246,7 @@ def prepare_encoder(src_word,
         padding_idx=pos_pad_idx,
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name, trainable=False))
+    src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
 
     # FIXME(guosheng): Decouple the program desc with batch_size.
@@ -402,8 +407,8 @@ def transformer(
         src_pad_idx,
         trg_pad_idx,
         pos_pad_idx, ):
-    file_obj = fluid.layers.open_recordio_file(
-        filename='./wmt16.recordio',
+    file_obj = open_recordio_file(
+        filename='/tmp/wmt16.recordio',
         shapes=[
             [batch_size * max_length, 1],
             [batch_size * max_length, 1],

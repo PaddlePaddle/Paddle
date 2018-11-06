@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
 #include <string>
 #include <vector>
 
@@ -25,8 +26,20 @@ namespace analysis {
 
 bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
-  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
-  PADDLE_ENFORCE(argument);
+  if (argument->origin_program_desc) {
+    LOG(WARNING) << "argument's origin_program_desc is already set, might "
+                    "duplicate called";
+  }
+  if (!argument->fluid_model_program_path) {
+    ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_dir);
+    argument->fluid_model_program_path.reset(
+        new std::string(*argument->fluid_model_dir + "/__model__"));
+  }
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_program_path);
+  auto program = LoadProgramDesc(*argument->fluid_model_program_path);
+  argument->origin_program_desc.reset(
+      new framework::proto::ProgramDesc(program));
+
   if (!argument->main_dfg) {
     argument->main_dfg.reset(new DataFlowGraph);
   }
@@ -39,61 +52,7 @@ bool FluidToDataFlowGraphPass::Finalize() { return true; }
 void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
   PADDLE_ENFORCE(graph);
   PADDLE_ENFORCE(desc_);
-  // insert vars
-  std::unordered_map<std::string, size_t> var2id;
-  auto &main_block = desc_->blocks(framework::kRootBlockIndex);
-  for (int i = 0; i < main_block.vars_size(); i++) {
-    const auto &var = main_block.vars(i);
-    auto *v = graph->nodes.Create(Node::Type::kValue);
-    v->SetName(var.name());
-    v->SetPbDesc(const_cast<void *>(static_cast<const void *>(&var)));
-    v->SetPbMsg(var.SerializeAsString());
-    var2id[var.name()] = v->id();
-  }
-
-  for (int i = 0; i < main_block.ops_size(); i++) {
-    const auto &op = main_block.ops(i);
-    auto *o = graph->nodes.Create(Node::Type::kFunction);
-    o->SetName(op.type());
-    static_cast<Function *>(o)->SetFuncType(op.type());
-    // Link to the original protobuf message's memory, make it easier to
-    // generate from a data flow graph to fluid ProgramDesc.
-    o->SetPbDesc(const_cast<void *>(static_cast<const void *>(&op)));
-    o->SetPbMsg(op.SerializeAsString());
-
-    // set inputs and outputs
-    std::unordered_set<Node *> inlinks;
-    for (int j = 0; j < op.inputs_size(); j++) {
-      auto &in_var = op.inputs(j);
-      for (int k = 0; k < in_var.arguments_size(); k++) {
-        auto *in = graph->nodes.GetMutable(var2id.at(in_var.arguments(k)));
-        in->outlinks.push_back(o);
-        o->inlinks.push_back(in);
-        inlinks.insert(in);
-      }
-    }
-    for (int j = 0; j < op.outputs_size(); j++) {
-      auto &out_var = op.outputs(j);
-      for (int k = 0; k < out_var.arguments_size(); k++) {
-        auto *out = graph->nodes.GetMutable(var2id[out_var.arguments(k)]);
-        if (inlinks.count(out)) {
-          // Loop found, for example, a = op(a), use SSA, change to a1 = op(a).
-          auto *out_alias = graph->nodes.Create(Node::Type::kValue);
-          out_alias->SetName(out->name());
-          out_alias->SetPbDesc(out->pb_desc());
-          out_alias->SetPbMsg(out->pb_msg());
-          var2id[out_alias->name()] = out_alias->id();  // update a -> a0
-          LOG(INFO) << "loop found in graph, create SSA alias node ["
-                    << out_alias->repr() << "] for [" << out->repr() << "]";
-          out = out_alias;
-        }
-        out->inlinks.push_back(o);
-        o->outlinks.push_back(out);
-      }
-    }
-  }
-  // Analysis and extract the inputs and outputs of this graph.
-  graph->Build();
+  graph->Build(*desc_);
 }
 
 namespace {
@@ -107,9 +66,9 @@ class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
 };
 }
 
-Pass *FluidToDataFlowGraphPass::CreateGraphvizDebugerPass() const {
+AnalysisPass *FluidToDataFlowGraphPass::CreateGraphvizDebugerPass() const {
   return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
-      FLAGS_inference_analysis_graphviz_log_root, "fluid-to-dfg-debuger"));
+      FLAGS_IA_graphviz_log_root, "fluid-to-dfg-debuger"));
 }
 
 }  // namespace analysis

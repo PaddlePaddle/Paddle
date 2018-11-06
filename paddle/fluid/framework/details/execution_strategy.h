@@ -19,10 +19,13 @@ namespace framework {
 namespace details {
 
 struct ExecutionStrategy {
+  enum ExecutorType { kDefault = 0, kExperimental = 1 };
+
   size_t num_threads_{0};
   bool use_cuda_{true};
   bool allow_op_delay_{false};
   size_t num_iteration_per_drop_scope_{100};
+  ExecutorType type_{kDefault};
 };
 
 }  //  namespace details

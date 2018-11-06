@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import numpy as np
@@ -53,7 +55,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         height_sections = [5, 5, 5, 5, 3]
 
         # initialize output variables [out0, out1]
-        outs_name = ["out%d" % i for i in xrange(len(height_sections))]
+        outs_name = ["out%d" % i for i in range(len(height_sections))]
         outs = [
             scope.var(var_name).get_selected_rows() for var_name in outs_name
         ]
@@ -97,7 +99,6 @@ class TestSpliteSelectedRows(unittest.TestCase):
         out0_grad.set_height(height)
         out0_grad_tensor = out0_grad.get_tensor()
         np_array = np.ones((len(rows0), row_numel)).astype("float32")
-        np_array[0, 0] = 2.0
         out0_grad_tensor.set(np_array, place)
 
         out1_grad = scope.var("out1@GRAD").get_selected_rows()
@@ -106,7 +107,6 @@ class TestSpliteSelectedRows(unittest.TestCase):
         out1_grad.set_height(height)
         out1_grad_tensor = out1_grad.get_tensor()
         np_array = np.ones((len(rows1), row_numel)).astype("float32")
-        np_array[0, 1] = 4.0
         out1_grad_tensor.set(np_array, place)
 
         x_grad = scope.var("X@GRAD").get_selected_rows()
@@ -119,11 +119,13 @@ class TestSpliteSelectedRows(unittest.TestCase):
 
         grad_op.run(scope, place)
 
-        self.assertEqual(x_grad.rows(), rows0 + rows1)
+        merged_rows = set(rows0 + rows1)
+        self.assertEqual(set(x_grad.rows()), set(rows0 + rows1))
         self.assertEqual(x_grad.height(), height)
 
+        print(np.array(x_grad.get_tensor()))
         self.assertAlmostEqual(2.0, np.array(x_grad.get_tensor())[0, 0])
-        self.assertAlmostEqual(4.0, np.array(x_grad.get_tensor())[2, 1])
+        self.assertAlmostEqual(1.0, np.array(x_grad.get_tensor())[2, 1])
 
 
 if __name__ == "__main__":

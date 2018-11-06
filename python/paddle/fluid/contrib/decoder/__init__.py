@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import beam_search_decoder
-from beam_search_decoder import *
+from __future__ import print_function
+
+from . import beam_search_decoder
+from .beam_search_decoder import *
 
 __all__ = beam_search_decoder.__all__

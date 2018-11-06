@@ -59,13 +59,12 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                  \
-  do {                                                            \
-    cudnnStatus_t status = condition;                             \
-    if (status != CUDNN_STATUS_SUCCESS) {                         \
-      VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
-      PADDLE_THROW("cuDNN call failed");                          \
-    }                                                             \
+#define CUDNN_ENFORCE(condition)                                     \
+  do {                                                               \
+    cudnnStatus_t status = condition;                                \
+    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {                  \
+      PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
+    }                                                                \
   } while (false)
 
 enum class DataLayout {  // Not use
@@ -77,8 +76,9 @@ enum class DataLayout {  // Not use
 
 enum class PoolingMode {
   kMaximum,
-  kAverage,
   kMaximumDeterministic,
+  kAverageExclusive,
+  kAverageInclusive,
 };
 
 #if CUDNN_VERSION < 6000
@@ -92,8 +92,10 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
   switch (mode) {
     case PoolingMode::kMaximumDeterministic:
       return CUDNN_POOLING_MAX;
-    case PoolingMode::kAverage:
+    case PoolingMode::kAverageExclusive:
       return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kAverageInclusive:
+      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
@@ -106,8 +108,10 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
   switch (mode) {
     case PoolingMode::kMaximumDeterministic:
       return CUDNN_POOLING_MAX_DETERMINISTIC;
-    case PoolingMode::kAverage:
+    case PoolingMode::kAverageExclusive:
       return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kAverageInclusive:
+      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
@@ -340,6 +344,28 @@ class ScopedPoolingDescriptor {
  private:
   cudnnPoolingDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
+};
+
+class ScopedSpatialTransformerDescriptor {
+ public:
+  ScopedSpatialTransformerDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
+  }
+  ~ScopedSpatialTransformerDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
+  }
+
+  template <typename T>
+  inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
+                                                        const int dimA[]) {
+    PADDLE_ENFORCE(dynload::cudnnSetSpatialTransformerNdDescriptor(
+        desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
+    return desc_;
+  }
+
+ private:
+  cudnnSpatialTransformerDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedSpatialTransformerDescriptor);
 };
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {

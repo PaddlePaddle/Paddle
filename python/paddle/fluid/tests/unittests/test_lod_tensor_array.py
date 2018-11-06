@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import numpy
@@ -24,7 +26,7 @@ class TestLoDTensorArray(unittest.TestCase):
         tensor_array = arr.get_lod_tensor_array()
         self.assertEqual(0, len(tensor_array))
         cpu = core.CPUPlace()
-        for i in xrange(10):
+        for i in range(10):
             t = core.LoDTensor()
             t.set(numpy.array([i], dtype='float32'), cpu)
             t.set_recursive_sequence_lengths([[1]])
@@ -32,7 +34,7 @@ class TestLoDTensorArray(unittest.TestCase):
 
         self.assertEqual(10, len(tensor_array))
 
-        for i in xrange(10):
+        for i in range(10):
             t = tensor_array[i]
             self.assertEqual(numpy.array(t), numpy.array([i], dtype='float32'))
             self.assertEqual([[1]], t.recursive_sequence_lengths())

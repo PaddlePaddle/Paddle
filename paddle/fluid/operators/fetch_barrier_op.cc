@@ -36,14 +36,9 @@ class FetchBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
-
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
 
@@ -58,6 +53,8 @@ class FetchBarrierOp : public framework::OperatorBase {
 class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
+        .AsDuplicable();
     AddComment(R"DOC(
 SendBarrier operator
 
@@ -65,6 +62,7 @@ This operator will send a send barrier signal to list_and_serv op, so that
 the Parameter Server would knew all variables have been sent.
 )DOC");
 
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")

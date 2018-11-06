@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -24,19 +26,20 @@ def max_pool2D_forward_naive(x,
                              strides,
                              paddings,
                              global_pool=0,
-                             ceil_mode=False):
+                             ceil_mode=False,
+                             exclusive=True):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
     H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
-    for i in xrange(H_out):
-        for j in xrange(W_out):
+    for i in range(H_out):
+        for j in range(W_out):
             r_start = np.max((i * strides[0] - paddings[0], 0))
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
             c_start = np.max((j * strides[1] - paddings[1], 0))
@@ -52,27 +55,29 @@ def avg_pool2D_forward_naive(x,
                              strides,
                              paddings,
                              global_pool=0,
-                             ceil_mode=False):
+                             ceil_mode=False,
+                             exclusive=True):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
     H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
-    for i in xrange(H_out):
-        for j in xrange(W_out):
+    for i in range(H_out):
+        for j in range(W_out):
             r_start = np.max((i * strides[0] - paddings[0], 0))
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
             c_start = np.max((j * strides[1] - paddings[1], 0))
             c_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
 
-            out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / (
-                (r_end - r_start) * (c_end - c_start))
+            field_size = ((r_end - r_start) * (c_end - c_start)) if exclusive \
+                            else (ksize[0] * ksize[1])
+            out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
     return out
 
 
@@ -87,12 +92,13 @@ class TestPool2d_Op(OpTest):
         self.init_kernel_type()
         self.init_pool_type()
         self.init_ceil_mode()
+        self.init_exclusive()
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype(self.dtype)
-        output = self.pool2D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings, self.global_pool,
-                                           self.ceil_mode).astype(self.dtype)
+        output = self.pool2D_forward_naive(
+            input, self.ksize, self.strides, self.paddings, self.global_pool,
+            self.ceil_mode, self.exclusive).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -104,7 +110,9 @@ class TestPool2d_Op(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
             'ceil_mode': self.ceil_mode,
-            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
+            'data_format':
+            'AnyLayout',  # TODO(dzhwinter) : should be fix latter
+            'exclusive': self.exclusive
         }
 
         self.outputs = {'Out': output}
@@ -147,6 +155,9 @@ class TestPool2d_Op(OpTest):
 
     def init_ceil_mode(self):
         self.ceil_mode = False
+
+    def init_exclusive(self):
+        self.exclusive = True
 
 
 class TestCase1(TestPool2d_Op):
@@ -318,6 +329,16 @@ class TestCeilModeCase3(TestCase1):
 class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
+
+
+class TestAvgInclude(TestCase2):
+    def init_exclusive(self):
+        self.exclusive = False
+
+
+class TestCUDNNAvgInclude(TestCUDNNCase3):
+    def init_exclusive(self):
+        self.exclusive = False
 
 
 if __name__ == '__main__':

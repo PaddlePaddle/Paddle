@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import math
 import unittest
 from paddle.fluid.transpiler.distribute_transpiler import slice_variable
@@ -28,7 +30,6 @@ class TestSliceVar(unittest.TestCase):
             var = program.global_block().create_var(
                 name=str(random.randint(10000, 99999)),
                 persistable=True,
-                # dtype=core.VarDesc.VarType.LOD_TENSOR,
                 shape=shape)
             var_list.append(var)
         blocks = slice_variable(var_list, 10, min_size)

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
-
 namespace paddle {
 namespace operators {
 
@@ -55,9 +55,10 @@ struct MinGradDy {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMinGradKernel : public framework::OpKernel<T> {
+class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
     auto* x = ctx.Input<Tensor>("X");

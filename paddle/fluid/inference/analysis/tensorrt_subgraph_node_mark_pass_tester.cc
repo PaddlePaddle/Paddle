@@ -22,11 +22,11 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, tensorrt_subgraph_node_mark_pass) {
+TEST(TensorRTSubgraphNodeMarkPass, test) {
   // init
   FluidToDataFlowGraphPass pass;
+  Argument argument(FLAGS_inference_model_dir);
   ASSERT_TRUE(pass.Initialize(&argument));
-  argument.main_dfg.reset(new DataFlowGraph);
   pass.Run(argument.main_dfg.get());
 
   TensorRTSubgraphNodeMarkPass::teller_t teller = [](const Node* node) {
@@ -41,7 +41,7 @@ TEST_F(DFG_Tester, tensorrt_subgraph_node_mark_pass) {
   for (auto& node : argument.main_dfg->nodes.nodes()) {
     counter += node->attr(ATTR_supported_by_tensorrt).Bool();
   }
-
+  ASSERT_EQ(counter, 2);
   LOG(INFO) << counter << " nodes marked";
 }
 

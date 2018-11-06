@@ -21,7 +21,6 @@ namespace framework {
 void OpProtoAndCheckerMaker::Validate() {
   validated_ = true;
   CheckNoDuplicatedInOutAttrs();
-  CheckReuseVars();
 }
 
 OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
@@ -57,24 +56,6 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
-void OpProtoAndCheckerMaker::CheckReuseVars() {
-  std::unordered_set<std::string> names;
-  for (auto& input : proto_->inputs()) {
-    names.insert(input.name());
-  }
-  auto checker = [&](const std::string& name, const std::string& reused) {
-    PADDLE_ENFORCE(
-        names.count(reused),
-        "Output [%s] reuse Input [%s], but the input is not registered.", name,
-        reused);
-  };
-  for (auto& output : proto_->outputs()) {
-    if (output.has_reuse()) {
-      checker(output.name(), output.reuse());
-    }
-  }
-}
-
 void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                         OpAttrChecker* attr_checker) {
   proto_ = proto;
@@ -86,14 +67,20 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
           {static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kBackward),
            static_cast<int>(OpRole::kOptimize), static_cast<int>(OpRole::kRPC),
+           static_cast<int>(OpRole::kDist), static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kLoss) |
                static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize) |
+               static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kNotSpecified)})
       .SetDefault(static_cast<int>(OpRole::kNotSpecified));
   AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
                                     "Optimized for variable")
       .SetDefault({});
+
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
+      .SetDefault("");
 
   Validate();
 }

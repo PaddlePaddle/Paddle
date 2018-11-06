@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from __future__ import division
 import unittest
 import numpy as np
@@ -80,7 +82,7 @@ class TestMeanIOUOp(OpTest):
             'InCorrects': in_corrects,
             'InMeanIou': in_mean_ious
         }
-        self.attrs = {'num_classes': long(self.num_classes)}
+        self.attrs = {'num_classes': int(self.num_classes)}
         mean_iou, out_wrong, out_correct = compute_mean_iou(
             predictions, labels, self.num_classes, in_wrongs, in_corrects,
             in_mean_ious)

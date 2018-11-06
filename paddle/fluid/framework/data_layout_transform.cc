@@ -46,7 +46,7 @@ struct CastDataLayout {
   const std::vector<int> axis_;
 
   template <typename T>
-  void operator()() {
+  void apply() {
     auto place = ctx_->GetPlace();
 
     if (platform::is_cpu_place(place)) {

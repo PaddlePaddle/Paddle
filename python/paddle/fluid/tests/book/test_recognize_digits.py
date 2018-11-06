@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
 
 import paddle.fluid.core as core
@@ -24,6 +25,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 
 BATCH_SIZE = 64
 
@@ -65,6 +67,7 @@ def train(nn_type,
           use_cuda,
           parallel,
           save_dirname=None,
+          save_full_dirname=None,
           model_filename=None,
           params_filename=None,
           is_local=True):
@@ -80,7 +83,7 @@ def train(nn_type,
 
     if parallel:
         places = get_places()
-        pd = fluid.layers.ParallelDo(places)
+        pd = ParallelDo(places)
         with pd.do():
             img_ = pd.read_input(img)
             label_ = pd.read_input(label)
@@ -97,7 +100,7 @@ def train(nn_type,
 
     test_program = fluid.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001, LARS_weight_decay=0.3)
+    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -141,6 +144,13 @@ def train(nn_type,
                                 exe,
                                 model_filename=model_filename,
                                 params_filename=params_filename)
+                        if save_full_dirname is not None:
+                            fluid.io.save_inference_model(
+                                save_full_dirname, [], [],
+                                exe,
+                                model_filename=model_filename,
+                                params_filename=params_filename,
+                                export_for_deployment=False)
                         return
                     else:
                         print(
@@ -212,10 +222,12 @@ def infer(use_cuda,
 
 def main(use_cuda, parallel, nn_type, combine):
     save_dirname = None
+    save_full_dirname = None
     model_filename = None
     params_filename = None
     if not use_cuda and not parallel:
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
+        save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
         if combine == True:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
@@ -226,6 +238,7 @@ def main(use_cuda, parallel, nn_type, combine):
         use_cuda=use_cuda,
         parallel=parallel,
         save_dirname=save_dirname,
+        save_full_dirname=save_full_dirname,
         model_filename=model_filename,
         params_filename=params_filename)
     infer(

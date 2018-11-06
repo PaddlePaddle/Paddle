@@ -11,14 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
-import argparse
+
+import sys
+
 import paddle.fluid as fluid
+
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import paddle.fluid.core as core
 import paddle
-import sys
 import numpy
-import unittest
 import math
 import sys
 import os
@@ -62,17 +73,17 @@ def optimizer_func():
     return fluid.optimizer.Adam(learning_rate=0.001)
 
 
-def train(use_cuda, train_program, params_dirname):
+def train(use_cuda, train_program, parallel, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program,
         place=place,
         optimizer_func=optimizer_func,
-        parallel=True)
+        parallel=parallel)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
+        if isinstance(event, EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
             avg_cost, acc = trainer.test(
@@ -88,9 +99,11 @@ def train(use_cuda, train_program, params_dirname):
                     event.epoch + 1, avg_cost, acc))
                 if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
-        elif isinstance(event, fluid.EndStepEvent):
-            print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(numpy.array, event.metrics)))
+        elif isinstance(event, EndStepEvent):
+            print(
+                ("Step {0}, Epoch {1} Metrics {2}".format(
+                    event.step, event.epoch,
+                    list(map(numpy.array, event.metrics)))))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -104,11 +117,14 @@ def train(use_cuda, train_program, params_dirname):
         feed_order=['img', 'label'])
 
 
-def infer(use_cuda, inference_program, params_dirname=None):
+def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=params_dirname, place=place)
+    inferencer = Inferencer(
+        infer_func=inference_program,
+        param_path=params_dirname,
+        place=place,
+        parallel=parallel)
 
     batch_size = 1
     tensor_img = numpy.random.uniform(-1.0, 1.0,
@@ -119,20 +135,32 @@ def infer(use_cuda, inference_program, params_dirname=None):
     print("infer results: ", results[0])
 
 
-def main(use_cuda):
+def main(use_cuda, parallel):
     params_dirname = "recognize_digits_conv.inference.model"
 
     # call train() with is_local argument to run distributed train
+    os.environ['CPU_NUM'] = str(4)
     train(
         use_cuda=use_cuda,
         train_program=train_program,
-        params_dirname=params_dirname)
+        params_dirname=params_dirname,
+        parallel=parallel)
+
+    # FIXME(zcd): in the inference stage, the number of
+    # input data is one, it is not appropriate to use parallel.
+    if parallel and use_cuda:
+        return
+    os.environ['CPU_NUM'] = str(1)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
-        params_dirname=params_dirname)
+        params_dirname=params_dirname,
+        parallel=parallel)
 
 
 if __name__ == '__main__':
-    # for use_cuda in (False, True):
-    main(use_cuda=core.is_compiled_with_cuda())
+    for use_cuda in (False, True):
+        for parallel in (False, True):
+            if use_cuda and not core.is_compiled_with_cuda():
+                continue
+            main(use_cuda=use_cuda, parallel=parallel)

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import math
 import unittest
 import numpy as np
@@ -76,7 +78,7 @@ class TestGRUUnitOp(OpTest):
         x = self.inputs['Input']
         h_p = self.inputs['HiddenPrev']
         w = self.inputs['Weight']
-        b = self.inputs['Bias'] if self.inputs.has_key('Bias') else np.zeros(
+        b = self.inputs['Bias'] if 'Bias' in self.inputs else np.zeros(
             (1, frame_size * 3))
         g = x + np.tile(b, (batch_size, 1))
         w_u_r = w.flatten()[:frame_size * frame_size * 2].reshape(

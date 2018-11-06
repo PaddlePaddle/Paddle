@@ -16,6 +16,13 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
+// Any incompatible changes to ProgramDesc and its dependencies should
+// raise the version defined version.h.
+//
+// Serailization and Deserialization codes should be modified in a way
+// that supports old versions following the version and compatibility policy.
+message Version { optional int64 version = 1 [ default = 0 ]; }
+
 enum AttrType {
   INT = 0;
   FLOAT = 1;
@@ -28,6 +35,7 @@ enum AttrType {
   BLOCK = 8;
   LONG = 9;
   BLOCKS = 10;
+  LONGS = 11;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -48,6 +56,7 @@ message OpDesc {
     optional int32 block_idx = 12;
     optional int64 l = 13;
     repeated int32 blocks_idx = 14;
+    repeated int64 longs = 15;
   };
 
   message Var {
@@ -73,7 +82,6 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
-    optional string reuse = 6;
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -107,6 +115,7 @@ message VarType {
     // Tensor<size_t> is used in C++.
     SIZE_T = 19;
     UINT8 = 20;
+    INT8 = 21;
 
     // Other types that may need additional descriptions
     LOD_TENSOR = 7;
@@ -118,7 +127,6 @@ message VarType {
     LOD_TENSOR_ARRAY = 13;
     PLACE_LIST = 14;
     READER = 15;
-    CHANNEL = 16;
     // Any runtime decided variable type is raw
     // raw variables should manage their own allocations
     // in operators like nccl_op
@@ -150,12 +158,6 @@ message VarType {
   message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
   optional ReaderDesc reader = 5;
 
-  message ChannelDesc {
-    required Type data_type = 1;
-    required int64 capacity = 2;
-  }
-  optional ChannelDesc channel = 6;
-
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
 }
@@ -179,4 +181,8 @@ message BlockDesc {
 // for more details.
 // TODO(panyx0718): A model can have multiple programs. Need a
 // way to distinguish them. Maybe ID or name?
-message ProgramDesc { repeated BlockDesc blocks = 1; }
+message ProgramDesc {
+  repeated BlockDesc blocks = 1;
+
+  optional Version version = 2;
+}

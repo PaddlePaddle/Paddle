@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import copy
 import itertools
+import six
 
-from framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
-import unique_name
+from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
+from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
-from param_attr import ParamAttr, WeightNormParamAttr
-import core
+from .param_attr import ParamAttr, WeightNormParamAttr
+from . import core
+from six.moves import zip
 
 
 class LayerHelper(object):
@@ -83,7 +87,7 @@ class LayerHelper(object):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in xrange(length):
+            for i in six.moves.range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -91,7 +95,7 @@ class LayerHelper(object):
     def iter_inputs_and_params(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
-        for ipt, param_attr in itertools.izip(inputs, param_attrs):
+        for ipt, param_attr in zip(inputs, param_attrs):
             yield ipt, param_attr
 
     def input_dtype(self, input_param_name='input'):
@@ -218,7 +222,7 @@ class LayerHelper(object):
                 norm = __norm_op(reshape, dim=0, block=block)
                 __reshape_op(norm, out=out, shape=out_shape, block=block)
             else:
-                perm = range(len(x.shape))
+                perm = list(range(len(x.shape)))
                 perm[0], perm[dim] = dim, 0
                 transpose = __transpose_op(x, perm, block=block)
                 norm = __norm_op(transpose, dim=0, block=block)
@@ -320,10 +324,19 @@ class LayerHelper(object):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    def create_tmp_variable(self, dtype, stop_gradient=False):
+    def create_variable_for_type_inference(self, dtype, stop_gradient=False):
+        """Create a temporary variable that should be type inferred layer.
+
+        Note:
+            The default type will be set to LOD_TENSOR. However, when
+            the var is used as operator output, its type will be updated
+            based on operator's `VarTypeInference` implementation in
+            infer_var_type.
+        """
         return self.main_program.current_block().create_var(
             name=unique_name.generate(".".join([self.name, 'tmp'])),
             dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=stop_gradient)
 
@@ -384,7 +397,7 @@ class LayerHelper(object):
 
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
-        tmp = self.create_tmp_variable(dtype=input_var.dtype)
+        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
@@ -397,8 +410,10 @@ class LayerHelper(object):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
-        if isinstance(act, basestring):
+        if isinstance(act, six.string_types):
             act = {'type': act}
+        else:
+            raise TypeError(str(act) + " should be unicode or str")
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
@@ -408,7 +423,7 @@ class LayerHelper(object):
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
         if not core.IsInplace(act_type):
-            tmp = self.create_tmp_variable(dtype=input_var.dtype)
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

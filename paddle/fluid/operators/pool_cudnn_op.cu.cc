@@ -41,6 +41,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     T *output_data = output->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    bool exclusive = ctx.Attr<bool>("exclusive");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -72,7 +73,8 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     if (pooling_type == "max") {
       pooling_mode = PoolingMode::kMaximum;
     } else {
-      pooling_mode = PoolingMode::kAverage;
+      pooling_mode = exclusive ? PoolingMode::kAverageExclusive
+                               : PoolingMode::kAverageInclusive;
     }
 
     cudnnPoolingDescriptor_t cudnn_pool_desc =
@@ -81,7 +83,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn pool algorithm ---------------------
     auto handle = ctx.cuda_device_context().cudnn_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    PADDLE_ENFORCE(platform::dynload::cudnnPoolingForward(
+    CUDNN_ENFORCE(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
         cudnn_output_desc, output_data));
   }
@@ -101,6 +103,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     Tensor *input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    bool exclusive = ctx.Attr<bool>("exclusive");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -141,7 +144,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
         pooling_mode = PoolingMode::kMaximum;
       }
     } else {
-      pooling_mode = PoolingMode::kAverage;
+      pooling_mode = exclusive ? PoolingMode::kAverageExclusive
+                               : PoolingMode::kAverageInclusive;
     }
 
     cudnnPoolingDescriptor_t cudnn_pool_desc =
@@ -154,7 +158,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       T *input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
 
-      PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
+      CUDNN_ENFORCE(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data));

@@ -23,9 +23,9 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SqueezeOp should not be null.");
+                   "Input(X) of Squeeze operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SqueezeOp should not be null.");
+                   "Output(Out) of Squeeze operator should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
@@ -107,7 +107,6 @@ class SqueezeOp : public framework::OperatorBase {
 
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(out_dims);
-    attrs["inplace"] = Attr<bool>("inplace");
     // Invoke Reshape Op
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -125,23 +124,17 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(std::vector<int>). List of integers,"
                               " indicating the dimensions to squeeze.")
         .SetDefault({});
-    AddAttr<bool>("inplace",
-                  "(default: false) Squeeze the source tensor's shape without "
-                  "memory copy. When Attr(inplace) is set true, the output "
-                  "tensor shares memory with Input(X), otherwise, a new output "
-                  "tensor is created, and its data are copied from Input(x).")
-        .SetDefault(false);
     AddComment(R"DOC(
         Squeeze Operator.
-        
-        Remove single-dimensional entries from the shape of a tensor. 
-        Takes a parameter axes with a list of axes to squeeze. 
-        If axes is not provided, all the single dimensions will be removed from the shape. 
+
+        Remove single-dimensional entries from the shape of a tensor.
+        Takes a parameter axes with a list of axes to squeeze.
+        If axes is not provided, all the single dimensions will be removed from the shape.
         If an axis is selected with shape entry not equal to one, an error is raised.
-        
+
         Examples:
         Case 1:
-          Given 
+          Given
             X.shape = (1, 3, 1, 5)
           and
             axes = [0]
@@ -151,7 +144,7 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         Case 2:
           Given
             X.shape = (1, 3, 1, 5)
-          and 
+          and
             axes = []
           we get:
             Out.shape = (3, 5)
@@ -180,11 +173,117 @@ class SqueezeGradOp : public framework::OperatorBase {
     auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(x_dims);
-    attrs["inplace"] = Attr<bool>("inplace");
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
         attrs);
+    reshape_op->Run(scope, place);
+  }
+};
+
+// FIXME(zcd): squeeze2 adds an intermediate output(XShape) based on squeeze,
+// the XShape is used to carry the shape and lod of X which will be used in
+// squeeze_grad, in this way, the framework can reuse the memory of X
+// immediately the squeeze2_op is finished.
+// Considering compatibility issues, we could not fix squeeze2_op
+class Squeeze2OpMaker : public SqueezeOpMaker {
+ public:
+  void Make() override {
+    SqueezeOpMaker::Make();
+    AddOutput("XShape",
+              "XShape is just used to store the shape and lod of X, which will "
+              "be used in SqueezeGradOp.")
+        .AsIntermediate();
+  }
+};
+
+class Squeeze2OpInferShape : public SqueezeOpInferShape {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {
+    SqueezeOpInferShape::operator()(ctx);
+    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
+                   "Output(XShape) of Squeeze operator should not be null.");
+    const auto &x_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", /*->*/ "XShape");
+  }
+};
+
+class Squeeze2Op : public framework::OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto &axes = Attr<std::vector<int>>("axes");
+    auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
+    auto out_dims = Squeeze2OpInferShape::GetOutputShape(axes, x_dims);
+
+    framework::AttributeMap attrs;
+    attrs["shape"] = framework::vectorize2int(out_dims);
+    // Invoke Reshape Op
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape2", {{"X", {Input("X")}}, {"Shape", {}}},
+        {{"Out", {Output("Out")}}, {"XShape", {Output("XShape")}}}, attrs);
+    reshape_op->Run(scope, place);
+  }
+};
+
+class Squeeze2GradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("squeeze2_grad");
+    grad_op->SetInput("XShape", Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
+class Squeeze2GradInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE(context->HasInput("XShape"),
+                   "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) shouldn't be null.");
+    auto xshape_dims = context->GetInputDim("XShape");
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    context->SetOutputDim(framework::GradVarName("X"), x_dims);
+    context->ShareLoD("XShape", framework::GradVarName("X"));
+  }
+};
+
+class Squeeze2GradOp : public framework::OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto dx_name = Output(framework::GradVarName("X"));
+    auto dout_name = Input(framework::GradVarName("Out"));
+    auto xshape_name = Input("XShape");
+    auto xshape_dims =
+        scope.FindVar(xshape_name)->Get<framework::LoDTensor>().dims();
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+
+    framework::AttributeMap attrs;
+    attrs["shape"] = framework::vectorize2int(x_dims);
+
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
+        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
@@ -200,3 +299,8 @@ REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
                   ops::SqueezeOpInferShape,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp, ops::SqueezeGradInferShape);
+
+REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
+                  ops::Squeeze2OpInferShape, ops::Squeeze2GradOpMaker);
+REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
+                  ops::Squeeze2GradInferShape);

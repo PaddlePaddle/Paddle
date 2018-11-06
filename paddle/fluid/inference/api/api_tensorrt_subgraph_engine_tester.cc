@@ -20,40 +20,39 @@
 
 namespace paddle {
 
+using contrib::MixedRTConfig;
+
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 void CompareTensorRTWithFluid(bool enable_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = enable_tensorrt;
+  FLAGS_IA_enable_tensorrt_subgraph_engine = enable_tensorrt;
 
   //# 1. Create PaddlePredictor with a config.
   NativeConfig config0;
-  config0.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config0.model_dir = FLAGS_dirname;
   config0.use_gpu = true;
   config0.fraction_of_gpu_memory = 0.3;
   config0.device = 0;
 
-  TensorRTConfig config1;
-  config1.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  MixedRTConfig config1;
+  config1.model_dir = FLAGS_dirname;
   config1.use_gpu = true;
   config1.fraction_of_gpu_memory = 0.3;
   config1.device = 0;
+  config1.max_batch_size = 10;
 
-  auto predictor0 =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
-  auto predictor1 =
-      CreatePaddlePredictor<TensorRTConfig,
-                            PaddleEngineKind::kAutoMixedTensorRT>(config1);
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
 
   for (int batch_id = 0; batch_id < 1; batch_id++) {
     //# 2. Prepare input.
     std::vector<int64_t> data(20);
     for (int i = 0; i < 20; i++) data[i] = i;
 
-    PaddleTensor tensor{
-        .name = "",
-        .shape = std::vector<int>({10, 1}),
-        .data = PaddleBuf(data.data(), data.size() * sizeof(int64_t)),
-        .dtype = PaddleDType::INT64};
+    PaddleTensor tensor;
+    tensor.shape = std::vector<int>({10, 1});
+    tensor.data = PaddleBuf(data.data(), data.size() * sizeof(int64_t));
+    tensor.dtype = PaddleDType::INT64;
 
     // For simplicity, we set all the slots with the same data.
     std::vector<PaddleTensor> slots(4, tensor);

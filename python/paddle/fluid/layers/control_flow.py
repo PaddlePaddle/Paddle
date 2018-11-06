@@ -11,16 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 
-from layer_function_generator import autodoc, templatedoc
-from tensor import assign, fill_constant
+from .layer_function_generator import autodoc, templatedoc
+from .tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from ops import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_not, logical_or
 import numpy
+import warnings
+import six
+from functools import reduce
 
 __all__ = [
     'While',
@@ -36,7 +41,6 @@ __all__ = [
     'DynamicRNN',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
-    'ParallelDo',
     'Print',
     'is_empty',
 ]
@@ -76,8 +80,8 @@ def split_lod_tensor(input, mask, level=0):
 
     """
     helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_tmp_variable(dtype=input.dtype)
-    out_false = helper.create_tmp_variable(dtype=input.dtype)
+    out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='split_lod_tensor',
         inputs={
@@ -127,7 +131,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=in_true.dtype)
+    out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -184,7 +188,6 @@ def Print(input,
                message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='print',
         inputs={'In': input},
@@ -197,9 +200,7 @@ def Print(input,
             'print_tensor_shape': print_tensor_shape,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
-        },
-        outputs={'Out': out})
-    return out
+        })
 
 
 class BlockGuard(object):
@@ -216,10 +217,10 @@ class BlockGuard(object):
         self.main_program = main_program
 
     def __enter__(self):
-        self.main_program.create_block()
+        self.main_program._create_block()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.main_program.rollback()
+        self.main_program._rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True
@@ -257,7 +258,7 @@ class ParallelDo(object):
       # ParallelDo version & Single-thread version
       if thread_num > 1:
           places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.ParallelDo(places)
+          pd = fluid.layers.control_flow.ParallelDo(places)
           with pd.do():
               images = pd.read_input(images)
               label = pd.read_input(label)
@@ -275,11 +276,14 @@ class ParallelDo(object):
           avg_cost = fluid.layers.mean(x=cost)
 
     .. warning::
-    
+
        It will be soon deprecated, please use ParallelExecutor instead.
     """
 
     def __init__(self, places, use_nccl=False, name=None):
+        warnings.warn(
+            "API ParallelDo is deprecated since 0.15.0. Please use ParallelExecutor instead.",
+            Warning)
         self.helper = LayerHelper("parallel_do", name=name)
         self.inputs = []
         self.places = places
@@ -338,7 +342,7 @@ class ParallelDo(object):
 
         return [parent_block.var(name) for name in params]
 
-    def complete_op(self):
+    def _complete_op(self):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
@@ -394,7 +398,7 @@ class BlockGuardWithCompletion(BlockGuard):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
-        self.rnn.complete_op()
+        self.rnn._complete_op()
         return super(BlockGuardWithCompletion, self).__exit__(exc_type, exc_val,
                                                               exc_tb)
 
@@ -470,7 +474,7 @@ class StaticRNN(object):
             if shape is None or batch_ref is None:
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
-            parent_block = self.parent_block()
+            parent_block = self._parent_block()
             var_name = unique_name.generate("@".join(
                 [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
@@ -520,14 +524,14 @@ class StaticRNN(object):
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
 
-        tmp_o = self.helper.create_tmp_variable(dtype=o.dtype)
+        tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
         self.helper.append_op(
             type='rnn_memory_helper',
             inputs={'X': [o]},
             outputs={'Out': tmp_o},
             attrs={'dtype': o.dtype})
 
-        out_var = self.parent_block().create_var(
+        out_var = self._parent_block().create_var(
             name=tmp_o.name,
             shape=[self.seq_len] + list(tmp_o.shape),
             dtype=tmp_o.dtype)
@@ -543,7 +547,7 @@ class StaticRNN(object):
             raise TypeError("update memory should take variables")
         self.memories[mem.name].mem = var
 
-    def parent_block(self):
+    def _parent_block(self):
         prog = self.helper.main_program
         parent_idx = prog.current_block().parent_idx
         assert parent_idx >= 0
@@ -560,10 +564,10 @@ class StaticRNN(object):
         else:
             return self.outputs
 
-    def complete_op(self):
+    def _complete_op(self):
         main_program = self.helper.main_program
         rnn_block = main_program.current_block()
-        parent_block = self.parent_block()
+        parent_block = self._parent_block()
 
         local_inputs = set()
 
@@ -597,12 +601,13 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in self.memories.iteritems():
+        for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
-            new_mem = self.helper.create_tmp_variable(dtype=mem_var.dtype)
+            new_mem = self.helper.create_variable_for_type_inference(
+                dtype=mem_var.dtype)
 
             rnn_block.append_op(
                 type='rnn_memory_helper',
@@ -643,7 +648,7 @@ class WhileGuard(BlockGuard):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
-        self.while_op.complete()
+        self.while_op._complete()
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -653,6 +658,7 @@ class While(object):
 
     Args:
         cond (Variable): condition used to compare.
+        is_test(bool): A flag indicating whether execution is in test phase.
         name (str): The name of this layer.
 
     Examples:
@@ -675,7 +681,7 @@ class While(object):
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
 
-    def __init__(self, cond, name=None):
+    def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
@@ -686,11 +692,12 @@ class While(object):
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")
         self.cond_var = cond
+        self.is_test = is_test
 
     def block(self):
         return WhileGuard(self)
 
-    def complete(self):
+    def _complete(self):
         main_program = self.helper.main_program
         while_block = main_program.current_block()
         parent_block = main_program.block(main_program.current_block()
@@ -727,7 +734,8 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'sub_block': while_block})
+            attrs={'sub_block': while_block,
+                   "is_test": self.is_test})
 
 
 def lod_rank_table(x, level=0):
@@ -806,7 +814,7 @@ def max_sequence_len(rank_table):
         ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
-    res = helper.create_tmp_variable(dtype="int64")
+    res = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="max_sequence_len",
         inputs={"RankTable": rank_table},
@@ -815,21 +823,21 @@ def max_sequence_len(rank_table):
 
 
 def lod_tensor_to_array(x, table):
-    """ 
+    """
     Convert a LoDTensor to a LoDTensorArray.
 
-    This function split a LoDTesnor to a LoDTensorArray according to its LoD 
-    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in 
-    PaddlePaddle. The generated LoDTensorArray of this function can be further read 
-    or written by `read_from_array()` and `write_to_array()` operators. However, 
-    this function is generally an internal component of PaddlePaddle `DynamicRNN`. 
+    This function split a LoDTesnor to a LoDTensorArray according to its LoD
+    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in
+    PaddlePaddle. The generated LoDTensorArray of this function can be further read
+    or written by `read_from_array()` and `write_to_array()` operators. However,
+    this function is generally an internal component of PaddlePaddle `DynamicRNN`.
     Users should not use it directly.
 
     Args:
         x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
-                                descending order. It is generally generated 
+                                descending order. It is generally generated
                                 by `layers.lod_rank_table()` API.
 
     Returns:
@@ -877,7 +885,7 @@ def array_to_lod_tensor(x, table):
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.dtype)
+    tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="array_to_lod_tensor",
         inputs={'X': x,
@@ -908,7 +916,7 @@ def increment(x, value=1.0, in_place=True):
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = x
     helper.append_op(
@@ -1005,7 +1013,7 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
     attrs = dict()
@@ -1044,7 +1052,7 @@ def equal(x, y, cond=None, **ignored):
     """
     helper = LayerHelper("equal", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
     helper.append_op(
@@ -1063,9 +1071,9 @@ def array_read(array, i):
         Given:
 
         array = [0.6, 0.1, 0.3, 0.1]
-        
+
         And:
-        
+
         i = 2
 
         Then:
@@ -1091,7 +1099,7 @@ def array_read(array, i):
             array,
             Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         raise TypeError("array should be tensor array vairable")
-    out = helper.create_tmp_variable(dtype=array.dtype)
+    out = helper.create_variable_for_type_inference(dtype=array.dtype)
     helper.append_op(
         type='read_from_array',
         inputs={'X': [array],
@@ -1126,7 +1134,7 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
         inputs={'X': [x],
@@ -1163,7 +1171,7 @@ def array_length(array):
 
     """
     helper = LayerHelper('array_length', **locals())
-    tmp = helper.create_tmp_variable(dtype='int64')
+    tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
@@ -1172,9 +1180,9 @@ def array_length(array):
 
 class ConditionalBlockGuard(BlockGuard):
     """
-    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for 
-    holding a ConditionalBlock, and helping users entering and exiting the 
-    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard 
+    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
+    holding a ConditionalBlock, and helping users entering and exiting the
+    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard
     is generally an internal component of IfElse, users should not use it directly.
     """
 
@@ -1264,8 +1272,8 @@ class ConditionalBlock(object):
         parent_block.append_op(
             type='conditional_block',
             inputs={
-                'X': self.inputs,
-                'Params': param_list,
+                'Cond': self.inputs,
+                'Input': param_list,
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
@@ -1508,7 +1516,7 @@ class IfElse(object):
     def __call__(self):
         if self.status != self.OUT_IF_ELSE_BLOCKS:
             raise ValueError("IfElse::__call__ must be out of sub-block")
-        false_len, true_len = map(len, self.output_table)
+        false_len, true_len = list(map(len, self.output_table))
         if false_len == 0 and true_len == 0:
             raise ValueError("Must invoke true_block/false_block before "
                              "__call__")
@@ -1563,6 +1571,10 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
+    
+    NOTES:
+        Currently it is not supported that setting is_sparse to True of any 
+        layers within DynamicRNN.
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1574,12 +1586,11 @@ class DynamicRNN(object):
         self.lod_rank_table = None
         self.max_seq_len = None
         self.step_idx = None
-        self.zero_idx = fill_constant(
-            shape=[1], value=0, dtype='int64', force_cpu=True)
+        self.zero_idx = None
         self.mem_dict = dict()
         self.output_array = []
         self.outputs = []
-        self.cond = self.helper.create_tmp_variable(dtype='bool')
+        self.cond = self.helper.create_variable_for_type_inference(dtype='bool')
         self.cond.stop_gradient = False
         self.while_op = While(self.cond)
         self.input_array = []
@@ -1780,6 +1791,7 @@ class DynamicRNN(object):
 
         """
         self._assert_in_rnn_block_('memory')
+        self._init_zero_idx_()
         if init is not None:
             if not isinstance(init, Variable):
                 raise TypeError(
@@ -1893,6 +1905,22 @@ class DynamicRNN(object):
             array_write(x=each, i=self.step_idx, array=outside_array)
             self.output_array.append(outside_array)
 
+    def _init_zero_idx_(self):
+        if self.zero_idx is None:
+            parent_block = self._parent_block_()
+            self.zero_idx = parent_block.create_var(
+                name=unique_name.generate('zero_idx'), dtype='int64')
+            parent_block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [self.zero_idx]},
+                attrs={
+                    'shape': [1],
+                    'dtype': self.zero_idx.dtype,
+                    'value': float(0),
+                    'force_cpu': True
+                })
+
     def _parent_block_(self):
         prog = self.helper.main_program
         parent_idx = prog.current_block().parent_idx
@@ -1913,7 +1941,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
 
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reorder_lod_tensor_by_rank',
         inputs={'X': [x],
@@ -1928,7 +1956,7 @@ def is_empty(x, cond=None, **ignored):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result 
+        cond (Variable|None): Output parameter. Returns the test result
                               of given 'x'. Default: None
 
     Returns:
@@ -1947,7 +1975,7 @@ def is_empty(x, cond=None, **ignored):
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
     elif not isinstance(cond, Variable):
         raise TypeError("cond takes a variable")

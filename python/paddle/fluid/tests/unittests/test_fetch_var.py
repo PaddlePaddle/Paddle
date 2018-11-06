@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import op_test
@@ -26,7 +28,7 @@ class TestFetchVar(op_test.OpTest):
         layers.assign(input=val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
-        fetched_x = fluid.fetch_var("x")
+        fetched_x = fluid.executor._fetch_var("x")
         self.assertTrue(
             numpy.array_equal(fetched_x, val),
             "fetch_x=%s val=%s" % (fetched_x, val))

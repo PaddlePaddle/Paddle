@@ -125,13 +125,16 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
+    auto bias = ctx.Input<Tensor>("Bias");
 
     PADDLE_ENFORCE(input->dims().size() == 2 || input->dims().size() == 4,
                    "Input must be with 2 or 4 dimensions, i.e. NCHW");
+    // TODO(intel friends): the native weight format is io,
+    // but the mkldnn weight format is oihw, which may need be transposed.
     PADDLE_ENFORCE(w->dims().size() == 2 || w->dims().size() == 4,
                    "Weights must be with 2 or 4 dimensions, i.e. OI or OIHW");
 
-    bool with_bias = ctx.Attr<bool>("bias_attr");
+    bool with_bias = bias != nullptr;
     MKLDNNMD<Tensor> md(input, w, with_bias);
 
     std::shared_ptr<mkldnn::inner_product_forward::primitive_desc> pd =
@@ -154,6 +157,7 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_memory = mem.dst(output_data);
     auto src_memory = mem.src(input_data);
     auto weights_memory = mem.weights(w_data);
+    // TODO(intel friends): bias memory should also be obtain from bias->data()
     auto bias_memory = mem.bias();
 
     auto forward = with_bias ? mkldnn::inner_product_forward(
@@ -216,7 +220,8 @@ class FCMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     const T* out_grad_data = out_grad->data<T>();
 
-    bool with_bias = ctx.Attr<bool>("bias_attr");
+    auto bias = ctx.Input<Tensor>("Bias");
+    bool with_bias = bias != nullptr;
 
     MKLDNNMD<Tensor> md(input, w, with_bias);
     MKLDNNMemory mem(&md, mkldnn_engine);

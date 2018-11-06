@@ -54,7 +54,7 @@ function cpu_config() {
   if [ $platform == "Linux" ]; then
     ht=`lscpu |grep "per core"|awk -F':' '{print $2}'|xargs`
   elif [ $platform == "Darwin" ]; then
-    if [`sysctl -n hw.physicalcpu` -eq `sysctl -n hw.logicalcpu`]; then
+    if [ `sysctl -n hw.physicalcpu` -eq `sysctl -n hw.logicalcpu` ]; then
       # HT is OFF
       ht=1
     fi

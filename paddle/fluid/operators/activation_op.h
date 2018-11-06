@@ -865,8 +865,8 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto temp1 = static_cast<T>(1) /
                  (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
-    auto temp2 = temp1 * (static_cast<T>(1) - (beta * out));
-    dx.device(d) = dout * ((beta * out) + temp2);
+    auto temp2 = temp1 * (static_cast<T>(1) - (static_cast<T>(beta) * out));
+    dx.device(d) = dout * ((static_cast<T>(beta) * out) + temp2);
   }
 };
 

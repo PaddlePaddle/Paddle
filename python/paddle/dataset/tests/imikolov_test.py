@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.dataset.imikolov
 import unittest
 
@@ -59,7 +61,7 @@ class TestMikolov(unittest.TestCase):
         self.assertEqual(first_line, read_line)
 
     def test_total(self):
-        _, idx = zip(*WORD_DICT.items())
+        _, idx = list(zip(*list(WORD_DICT.items())))
         self.assertEqual(sorted(idx)[-1], len(WORD_DICT) - 1)
 
 

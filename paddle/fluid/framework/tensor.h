@@ -82,29 +82,31 @@ class Tensor {
   template <typename T>
   const T* data() const;
 
-  bool IsInitialized() const;
+  inline bool IsInitialized() const;
 
   /**
    * @brief   Return a pointer to mutable memory block.
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(platform::Place place);
+  T* mutable_data(platform::Place place, size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, std::type_index type);
+  void* mutable_data(platform::Place place, std::type_index type,
+                     size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place);
+  void* mutable_data(platform::Place place, size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
    *
-   * @param[in] dims    The dimensions of the memory block.
-   * @param[in] place   The place of the memory block.
+   * @param[in] dims           The dimensions of the memory block.
+   * @param[in] place          The place of the memory block.
+   * @param[in] requested_size The size of the block in bytes.
    *
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place);
+  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;
@@ -148,6 +150,8 @@ class Tensor {
   DataLayout layout() const { return layout_; }
 
   void set_layout(const DataLayout layout) { layout_ = layout; }
+
+  void clear() { holder_ = nullptr; }
 
  private:
   /**

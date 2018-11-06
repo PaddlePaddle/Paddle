@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -22,17 +23,33 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-inline static size_t MaximumSequenceLength(const framework::LoD& lod,
-                                           const size_t level) {
-  const size_t num_sequences = lod[level].size() - 1;
-  size_t max_sequence_length = 0;
-  framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
-  for (size_t i = 0; i < num_sequences; ++i) {
-    max_sequence_length =
-        std::max(max_sequence_length,
-                 abs_offset_lod[level][i + 1] - abs_offset_lod[level][i]);
+enum PadLayout { kBatchLengthWidth = 0, kLengthBatchWidth };
+
+enum CopyType { kSeqToPad, kPadToSeq };
+
+inline static size_t MaximumSequenceLength(
+    const framework::Vector<size_t>& seq_offset) {
+  size_t seq_num = seq_offset.size() - 1;
+  size_t max_seq_len = 0;
+  for (size_t i = 0; i < seq_num; ++i) {
+    max_seq_len = std::max(max_seq_len, seq_offset[i + 1] - seq_offset[i]);
   }
-  return max_sequence_length;
+  return max_seq_len;
+}
+
+inline static void CheckDims(const framework::DDim& seq_tensor_dims,
+                             const framework::DDim& pad_tensor_dims,
+                             const framework::Vector<size_t>& seq_offset,
+                             int64_t padded_seq_len, int64_t step_width,
+                             const PadLayout& layout) {
+  PADDLE_ENFORCE_EQ(static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back(),
+                    "Value of 1st dimension of the sequence tensor should be "
+                    "equal to sum of lengths of all sequences.");
+
+  PADDLE_ENFORCE(seq_tensor_dims.size() + 1 == pad_tensor_dims.size() ||
+                     seq_tensor_dims.size() == pad_tensor_dims.size(),
+                 "pad_tensor's rank should be 1 greater than seq_tensor's "
+                 "rank, or be equal with it.");
 }
 
 /*
@@ -64,15 +81,22 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
 template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::LoDTensor& seq,
-                  framework::Tensor* padding, bool norm_by_times);
+  void operator()(const DeviceContext& context,
+                  const framework::LoDTensor& seq_tensor,
+                  framework::LoDTensor* pad_tensor,
+                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth);
 };
 
 template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
-  void operator()(const DeviceContext& context, framework::LoDTensor* seq,
-                  const framework::Tensor& padding, bool norm_by_times);
+  void operator()(const DeviceContext& context,
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth);
 };
 
 }  // namespace math

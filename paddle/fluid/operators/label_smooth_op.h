@@ -38,7 +38,8 @@ class LabelSmoothKernel : public framework::OpKernel<T> {
       auto dist = framework::EigenVector<T>::Flatten(*dist_t);
       out.device(dev) =
           static_cast<T>(1 - epsilon) * in +
-          epsilon * dist.broadcast(Eigen::DSizes<int, 1>(in_t->numel()));
+          static_cast<T>(epsilon) *
+              dist.broadcast(Eigen::DSizes<int, 1>(in_t->numel()));
     } else {
       out.device(dev) = static_cast<T>(1 - epsilon) * in +
                         static_cast<T>(epsilon / label_dim);

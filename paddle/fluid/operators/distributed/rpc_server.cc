@@ -18,10 +18,43 @@
 #include <string>
 
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/platform/profiler.h"
+
+DEFINE_int32(rpc_server_profile_period, 0,
+             "the period of listen_and_serv to do profile");
+DEFINE_string(rpc_server_profile_path, "/dev/null",
+              "the profile log file path");
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+RPCServerProfiler::RPCServerProfiler(int profile_period,
+                                     const std::string& profile_log_path)
+    : profile_period_(profile_period), profile_log_path_(profile_log_path) {
+  step_ = 0;
+}
+
+void RPCServerProfiler::OneStep() {
+  PADDLE_ENFORCE_LE(step_, profile_period_,
+                    "step_ should not be larger then "
+                    "profile_period_");
+  if (profile_period_ <= 0) {
+    return;
+  }
+
+  if (step_ == 0) {
+    auto pf_state = paddle::platform::ProfilerState::kCPU;
+    paddle::platform::EnableProfiler(pf_state);
+  }
+  if (step_ == profile_period_) {
+    paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
+                                      profile_log_path_);
+    step_ = 0;
+  } else {
+    step_++;
+  }
+}
 
 void RPCServer::ShutDown() {
   LOG(INFO) << "RPCServer ShutDown ";
@@ -68,12 +101,19 @@ void RPCServer::Complete() {
   {
     std::unique_lock<std::mutex> lock(mutex_);
     client_num_--;
+    need_reset_all_vars_ = true;
+
     VLOG(4) << "decrease client_num to: " << client_num_;
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
       barrier_counter_[kRequestGet]--;
     }
   }
   barrier_cond_.notify_all();
+}
+
+bool RPCServer::NeedResetAllVars() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  return need_reset_all_vars_;
 }
 
 int RPCServer::GetClientNum() {
@@ -87,6 +127,7 @@ void RPCServer::ResetBarrierCounter() {
   for (auto& t : barrier_counter_) {
     t.second = 0;
   }
+  need_reset_all_vars_ = false;
 }
 
 void RPCServer::RegisterRPC(const std::string& rpc_name,

@@ -32,20 +32,21 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
+    int ids_rank = ids_dims.size();
 
-    auto ids_var_type = ctx->GetInputsVarType("Ids").front();
-    // The type of Ids(Input) is SelectedRows or LoDTensor, when Ids's type
-    // is LoDTensor, this tensor contains the ids to be looked up in W
-    // and it must be a column vector with rank = 2 while the 2nd dimension
-    // size must be 1, when Ids's type is SelectedRows, the rows of Ids
-    // contains the ids to be looked up in W;
-    if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
-      PADDLE_ENFORCE_EQ(ids_dims[1], 1);
+    PADDLE_ENFORCE_EQ(table_dims.size(), 2);
+    PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+                      "The last dimension of the 'Ids' tensor must be 1.");
+
+    auto output_dims =
+        framework::vectorize(framework::slice_ddim(ids_dims, 0, ids_rank - 1));
+    output_dims.push_back(table_dims[1]);
+    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+
+    if (ctx->GetOutputsVarType("Out")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      ctx->ShareLoD("Ids", /*->*/ "Out");
     }
-
-    ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
-    ctx->ShareLoD("Ids", /*->*/ "Out");
   }
 
  protected:
@@ -62,17 +63,11 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W",
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
-    AddInput(
-        "Ids",
-        "(Tensor or SelectedRows) Ids's type can be Tensor or "
-        "SelectedRows, when Ids's type is Tensor, this tensor contains "
-        "the ids to be looked up in W and it must be a column vector with "
-        "rank = 2 while the 2nd dimension size must be 1; when Ids's type is "
-        "SelectedRows, the rows of Ids contains the ids to be looked up "
-        "in W.");
-    AddOutput("Out",
-              "(Tensor or SelectedRows) The lookup results, which have the "
-              "same type as W.");
+    AddInput("Ids",
+             "An input with type int32 or int64 "
+             "contains the ids to be looked up in W. "
+             "The last dimension size must be 1.");
+    AddOutput("Out", "The lookup results, which have the same type as W.");
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "
                   "Sparse update.")
@@ -86,19 +81,20 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
+    // NOTE(minqiyang): grad_inplace is an temporal attribute,
+    // please do NOT set this attribute in python layer.
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Lookup Table Operator.
 
 This operator is used to perform lookups on the parameter W,
-then concatenated into a dense or sparse tensor.
+then concatenated into a dense tensor.
 
-The type of Ids(Input) is SelectedRows, Tensor or LoDTensor, when Ids's
-type is SelectedRows, the rows of Ids contains the ids to be looked up in W;
-when Ids's type is Tensor, this tensor contains the ids to be looked up in W
-and it must be a column vector with rank = 2 while the 2nd dimension size must be 1,
-at this time, Ids can carry the LoD (Level of Details) information, or not, and
-the output only shares the LoD information with input Ids.
-
+The input Ids can carry the LoD (Level of Details) information,
+or not. And the output only shares the LoD information with input Ids.
 
 )DOC");
   }
@@ -125,7 +121,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -147,6 +143,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
               << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
+    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
   }
 };
 

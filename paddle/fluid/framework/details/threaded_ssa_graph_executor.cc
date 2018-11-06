@@ -14,14 +14,16 @@
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
-#include "paddle/fluid/framework/details/ssa_graph_builder.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places, std::unique_ptr<Graph> &&graph)
+    const std::vector<platform::Place> &places,
+    std::unique_ptr<ir::Graph> &&graph)
     : graph_(std::move(graph)),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
@@ -33,9 +35,11 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare", nullptr));
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
-  BlockingQueue<VarHandleBase *> ready_vars;
+  auto ready_vars = std::make_shared<BlockingQueue<VarHandleBase *>>();
   std::unordered_set<OpHandleBase *> ready_ops;
   // For ops (e.g. nccl_all_reduce) that need to coordinate multiple
   // streams from multiple GPUs, it's faster to buffer them and schedule
@@ -44,18 +48,18 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<OpHandleBase *> delayed_ops;
 
   // Transform SSAGraph to pending_ops & pending_vars
-  for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+  for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        InsertPendingVar(&pending_vars, &ready_vars, version_pair.get());
+        InsertPendingVar(&pending_vars, ready_vars.get(), version_pair.get());
       }
     }
   }
-  for (auto &var : graph_->Get<details::GraphDepVars>("dep_vars")) {
-    InsertPendingVar(&pending_vars, &ready_vars, var.get());
+  for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
+    InsertPendingVar(&pending_vars, ready_vars.get(), var.get());
   }
 
-  for (auto &op : graph_->Get<details::GraphOps>("ops")) {
+  for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
@@ -65,25 +69,24 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   // Step 2. Insert FetchOps
   std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
-  std::vector<std::unique_ptr<ir::Node>> tmp_nodes;
   std::unordered_set<std::unique_ptr<VarHandleBase>> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
-  InsertFetchOps(fetch_tensors, &fetch_ops, &tmp_nodes, &fetch_dependencies,
-                 &pending_ops, &pending_vars, &ready_vars, &fetch_data);
+  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
+                 &pending_vars, ready_vars.get(), &fetch_data);
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
       running_ops_++;
-      RunOp(&ready_vars, op);
+      RunOp(ready_vars, op);
     }
     set.clear();
   };
 
   // Clean run context
   run_op_futures_.clear();
-  exception_.reset();
-
+  exception_holder_.Clear();
+  event.reset(nullptr);
   // Step 3. Execution
   while (!pending_vars.empty()) {
     // 1. Run All Ready ops
@@ -99,26 +102,14 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     // 2. Find ready variable
     bool timeout;
-    auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
+    auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
 
     if (timeout) {
-      std::unique_lock<std::mutex> l(exception_mu_);
-      if (exception_) {
-        l.unlock();
+      if (exception_holder_.IsCaught()) {
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
-        l.lock();
-        std::exception *exp = exception_.get();
-        if (dynamic_cast<platform::EOFException *>(exp)) {
-          auto e = *static_cast<platform::EOFException *>(exp);
-          throw e;
-        } else if (dynamic_cast<platform::EnforceNotMet *>(exp)) {
-          auto e = *static_cast<platform::EnforceNotMet *>(exp);
-          throw e;
-        } else {
-          LOG(FATAL) << "Unknown exception.";
-        }
+        exception_holder_.ReThrow();
       } else {
         continue;
       }
@@ -141,11 +132,8 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     }
   }
   PADDLE_ENFORCE(ready_ops.empty());
-
   // Wait FetchOps.
-  if (!fetch_ops.empty()) {
-    fetch_ops.clear();
-  }
+  ClearFetchOp(graph_.get(), &fetch_ops);
 
   return fetch_data;
 }
@@ -153,7 +141,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
     std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
-    std::vector<std::unique_ptr<ir::Node>> *temp_nodes,
     std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
@@ -161,7 +148,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
@@ -178,9 +165,9 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
 
     auto &vars = fetched_var_it->second;
 
-    temp_nodes->emplace_back(new ir::Node("fetch", ir::Node::Type::kOperation));
-    auto *op = new FetchOpHandle(temp_nodes->back().get(), fetch_data, i,
-                                 &local_scopes_);
+    ir::Node *fetch_node =
+        graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
+    auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -191,8 +178,9 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       op->AddInput(var);
     }
 
-    temp_nodes->emplace_back(new ir::Node("fetch", ir::Node::Type::kOperation));
-    auto *fetch_dummy = new DummyVarHandle(temp_nodes->back().get());
+    ir::Node *fetch_var =
+        graph_->CreateEmptyNode("fetch", ir::Node::Type::kVariable);
+    auto *fetch_dummy = new DummyVarHandle(fetch_var);
     op->AddOutput(fetch_dummy);
     fetch_dependencies->emplace(fetch_dummy);
     this->InsertPendingVar(pending_vars, ready_vars, fetch_dummy);
@@ -216,7 +204,8 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
 }
 
 void ThreadedSSAGraphExecutor::RunOp(
-    BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
+    const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
+    details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
       if (VLOG_IS_ON(10)) {
@@ -227,17 +216,8 @@ void ThreadedSSAGraphExecutor::RunOp(
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
-    } catch (platform::EOFException ex) {
-      std::lock_guard<std::mutex> l(exception_mu_);
-      // EOFException will not cover up existing EnforceNotMet.
-      if (exception_.get() == nullptr) {
-        exception_.reset(new platform::EOFException(ex));
-      }
-    } catch (platform::EnforceNotMet ex) {
-      std::lock_guard<std::mutex> l(exception_mu_);
-      exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
-      LOG(FATAL) << "Unknown exception catched";
+      exception_holder_.Catch(std::current_exception());
     }
   };
   if (pool_) {

@@ -2,42 +2,47 @@
 
 ## Automatic Differentiation
 
-A key challenge in the field of deep learning is to automatically derive the backward pass from the forward pass described algorithmically by researchers.  Such a derivation, or a transformation of the forward pass program, has been long studied before the recent prosperity of deep learning in the field known as [automatic differentiation](https://arxiv.org/pdf/1502.05767.pdf).
+A key challenge in deep learning is to automatically derive the backward pass given the forward pass as a program, which has been long studied in the field of [automatic differentiation](https://arxiv.org/pdf/1502.05767.pdf), or autodiff, before the prosperity of deep learning.
 
-## The Tape
+## Program Transformation v.s. Backtracking
 
-Given the forward pass program (usually in Python in practices), there are two strategies to derive the backward pass:
+Given the forward pass program, there are two strategies to derive the backward pass:
 
-1. from the forward pass program itself, or
-1. from the execution trace of the forward pass program, which is often known as the *tape*.
+1. by transforming the forward pass program without executing it, or
+1. by backtracking the execution process of the forward pass program.
 
-This article surveys systems that follow the latter strategy.
+This article is about the latter strategy. 
 
-## Dynamic Network
+## The Tape and Dynamic Networks
 
-When we train a deep learning model, the tape changes every iteration as the input data change, so we have to re-derive the backward pass every iteration.  This is known as *dynamic network*.
+We refer to the trace of the execution of the forward pass program as a *tape* [[1]](http://www.bcl.hamilton.ie/~barak/papers/toplas-reverse.pdf).  When we train a deep learning model, the tape changes every iteration as the input data change, so we'd have to re-derive the backward pass, which is time-consuming, but also eases the case that the forward program includes control flows like if-else and for/while. With these control flows, the execution trace might change with iterations.  Such changes are known as *dynamic networks* in the field of deep learning.
 
-Deep learning systems that utilize the idea of dynamic network gained their popularities in recent years.  This article surveys two representative systems: [PyTorch](https://pytorch.org/) and [DyNet](https://dynet.readthedocs.io/en/latest/).
+## Typical Systems
 
-## An Overview
+Deep learning systems that utilize the idea of dynamic networks gained their popularities in recent years.  This article surveys the following typical systems: 
 
-Both frameworks record a ‘tape’ of the computation and interpreting (or run-time compiling) a transformation of the tape played back in reverse. This tape is a different kind of entity than the original program.[[link]](http://www.bcl.hamilton.ie/~barak/papers/toplas-reverse.pdf)
+- [DyNet](https://dynet.readthedocs.io/en/latest/)
+- [PyTorch](https://pytorch.org/)
+- Chainer
+- Autograd from HIPS
 
-Consider the following code feedforward model.
+Before diving into these systems, let us pose an example forward pass program:
 
 ```python
 x = Variable(randn(20, 1)))
 label = Variable(randint(1))
 W_1, W_2 = Variable(randn(20, 20)), Variable(randn(10, 20))
 h = matmul(W_1, x)
-pred = matmul(W_2, x)
+pred = matmul(W_2, h)
 loss = softmax(pred, label)
 loss.backward()
 ```
 
-### 1) Dynet uses List to encode the Tape
+## The Representation of Tapes
 
-During the forward execution, a list of operators, in this case `matmul`, `matmul` and `softmax`, are recorded in the tape, along with the necessary information needed to do the backward such as pointers to the inputs and outputs. Then the tape is played in reverse order at `loss.backward()`.
+### DyNet: the Tape as a List
+
+DyNet uses a linear data structure, a list, to represent the tape. During the execution of the above example, it is a list of operators: `matmul`, `matmul`, and `softmax`.  The list also includes information needed to do the backward pass, such as pointers to the inputs and outputs. Then the tape is played in reverse order at `loss.backward().`
 
 <details> 
 <summary></summary>
@@ -69,9 +74,9 @@ digraph g {
 
 ![Alt text](https://g.gravizo.com/svg?digraph%20g%20{%20graph%20[%20rankdir%20=%20%22LR%22%20];%20node%20[%20fontsize%20=%20%2216%22%20shape%20=%20%22ellipse%22%20];%20edge%20[];%20%22node0%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20%3Cf1%3E%20input:%20W_1,%20x%20|%20%3Cf2%3E%20output:%20h%22%20shape%20=%20%22record%22%20];%20%22node1%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20%3Cf1%3E%20input:%20W_2,%20h%20|%20%3Cf2%3E%20output:%20pred%22%20shape%20=%20%22record%22%20];%20%22node2%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20softmax%20|%20%3Cf1%3E%20input:%20pred,%20label%20|%20%3Cf2%3E%20output:%20loss%22%20shape%20=%20%22record%22%20];%20%22node0%22:f0%20-%3E%20%22node1%22:f0%20[%20id%20=%200%20];%20%22node1%22:f0%20-%3E%20%22node2%22:f0%20[%20id%20=%201%20];%20})
 
-### 2) Pytorch uses Node Graph to encode the Tape
+### PyTorch: the Tape as a Graph
 
-The graph is composed of `Variable`s and `Function`s. During the forward execution, a `Variable` records its creator function, e.g. `h.creator = matmul`. And a Function records its inputs' previous/dependent functions `prev_func` through `creator`, e.g. `matmul.prev_func = matmul1`. At `loss.backward()`, a topological sort is performed on all `prev_func`s. Then the grad op is performed by the sorted order.
+The graph is composed of `Variable`s and `Function`s. During the forward execution, a `Variable` records its creator function, e.g. `h.creator = matmul`. And a Function records its inputs' previous/dependent functions `prev_func` through `creator`, e.g. `matmul.prev_func = matmul1`. At `loss.backward()`, a topological sort is performed on all `prev_func`s. Then the grad op is performed by the sorted order.  Please be aware that a `Function` might have more than one `prev_func`s.
 
 <details> 
 <summary></summary>
@@ -132,27 +137,22 @@ digraph g {
 
 ![Alt text](https://g.gravizo.com/svg?digraph%20g%20{%20graph%20[%20rankdir%20=%20%22LR%22%20];%20subgraph%20function%20{%20node%20[%20fontsize%20=%20%2216%22%20style%20=%20filled%20shape%20=%20%22record%22%20];%20%22matmul0%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20prev_func:%20None%22%20];%20%22matmul1%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20prev_func:%20matmul%22%20];%20%22softmax%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20softmax%20|%20prev_func:%20matmul%22%20];%20}%20subgraph%20variable%20{%20node%20[%20fontsize%20=%20%2216%22%20shape%20=%20%22Mrecord%22%20style%20=%20filled%20fillcolor%20=%20white%20];%20%22x%22%20[%20label%20=%20%22%3Cf0%3E%20x%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22label%22%20[%20label%20=%20%22%3Cf0%3E%20label%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22W_1%22%20[%20label%20=%20%22%3Cf0%3E%20W_1%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22W_2%22%20[%20label%20=%20%22%3Cf0%3E%20W_2%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22h%22%20[%20label%20=%20%22%3Cf0%3E%20h%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22pred%22%20[%20label%20=%20%22%3Cf0%3E%20pred%20|%20%3Cf1%3E%20creator:%20matmul%22%20];%20%22loss%22%20[%20label%20=%20%22%3Cf0%3E%20loss%20|%20%3Cf1%3E%20creator:%20softmax%22%20];%20}%20subgraph%20data_flow%20{%20%22x%22:f0%20-%3E%20%22matmul0%22:f0;%20%22W_1%22:f0%20-%3E%20%22matmul0%22:f0;%20%22matmul0%22:f0%20-%3E%20%22h%22:f0;%20%22h%22:f0%20-%3E%20%22matmul1%22:f0;%20%22W_2%22:f0%20-%3E%20%22matmul1%22:f0;%20%22matmul1%22:f0%20-%3E%20%22pred%22:f0;%20%22pred%22:f0%20-%3E%20%22softmax%22:f0;%20%22label%22:f0%20-%3E%20%22softmax%22:f0;%20%22softmax%22:f0%20-%3E%20%22loss%22:f0;%20}%20subgraph%20prev_func%20{%20edge%20[color=%22red%22,%20arrowsize=%220.6%22,%20penwidth=%221%22,%20constraint=false];%20%22matmul1%22:f1%20-%3E%20%22matmul0%22:f0;%20%22softmax%22:f1%20-%3E%20%22matmul1%22:f0;%20label%20=%20%22prev_func%22;%20}%20})
 
-Chainer and Autograd uses the similar techniques to record the forward pass. For details please refer to the appendix.
+Chainer and Autograd use the similar techniques to record the forward pass. For details, please refer to the appendix.
 
-## Design choices
+## Comparison: List v.s. Graph
 
-### 1) Dynet's List vs Pytorch's Node Graph
+The list of DyNet could be considered the result of the topological sort of the graph of PyTorch. Or, the graph is the raw representation of the tape, which gives us the chance to *prune* part of the graph that is irrelevant with the backward pass before the topological sort [[2]](https://openreview.net/pdf?id=BJJsrmfCZ). Consider the following example, PyTorch only does backward on `SmallNet` while DyNet does both `SmallNet` and `BigNet`:
 
-What's good about List:
-1. It avoids a topological sort. One only needs to traverse the list of operators in reverse and calling the corresponding backward operator.
-1. It promises effient data parallelism implementations. One could count the time of usage of a certain variable during the construction list. Then in the play back, one knows the calculation of a variable has completed. This enables communication and computation overlapping.
-
-What's good about Node Graph:
-1. More flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [[2]](https://openreview.net/pdf?id=BJJsrmfCZ) Consider the following example, Pytorch only does backward on SmallNet while Dynet does both BigNet and SmallNet.
 ```python
 result = BigNet(data)
 loss = SmallNet(data)
 loss.backward()
 ```
 
-### 2) Dynet's Lazy evaluation vs Pytorch's Immediate evaluation
+## Lazy v.s. Immediate Evaluation
 
-Dynet builds the list in a symbolic matter. Consider the following example
+Another difference between DyNet and PyTorch is that DyNet lazily evaluates the forward pass, whereas PyTorch executes it immediately. Consider the following example:
+
 ```python
 for epoch in range(num_epochs):
     for in_words, out_label in training_data:
@@ -164,16 +164,17 @@ for epoch in range(num_epochs):
         loss_val = loss_sym.value()
         loss_sym.backward()
 ```
+
 The computation of `lookup`, `concat`, `matmul` and `softmax` didn't happen until the call of `loss_sym.value()`. This defered execution is useful because it allows some graph-like optimization possible, e.g. kernel fusion.
 
-Pytorch chooses immediate evaluation. It avoids ever materializing a "forward graph"/"tape" (no need to explicitly call `dy.renew_cg()` to reset the list), recording only what is necessary to differentiate the computation, i.e. `creator` and `prev_func`.
+PyTorch chooses immediate evaluation. It avoids ever materializing a "forward graph"/"tape" (no need to explicitly call `dy.renew_cg()` to reset the list), recording only what is necessary to differentiate the computation, i.e. `creator` and `prev_func`.
 
 
-## What can fluid learn from them?
+## Fluid: Learning the Lessons
 
 Please refer to `paddle/contrib/dynamic/`.
 
-# Appendix
+## Appendix
 
 ### Overview
 

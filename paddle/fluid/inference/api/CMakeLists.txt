@@ -17,90 +17,46 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager naive_executor ${GLOB_PASS_LIB})
 
-set(inference_deps paddle_inference_api paddle_fluid_api)
 if(WITH_GPU AND TENSORRT_FOUND)
-    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
+    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine analysis_predictor)
 endif()
 
-function(inference_api_test TARGET_NAME)
-    if (WITH_TESTING)
-        set(options "")
-        set(oneValueArgs SRC)
-        set(multiValueArgs ARGS)
-        cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-        set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-        cc_test(${TARGET_NAME}
-                SRCS ${inference_test_SRC}
-                DEPS "${inference_deps}"
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
-        if(inference_test_ARGS)
-            set_tests_properties(${TARGET_NAME}
-                    PROPERTIES DEPENDS "${inference_test_ARGS}")
-        endif()
-    endif(WITH_TESTING)
-endfunction(inference_api_test)
-
-cc_library(paddle_inference_api
-    SRCS api.cc api_impl.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
-if(NOT APPLE)
-  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/api.sym")
-  set_target_properties(paddle_inference_api PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-endif()
-
-# Here the shared library doesn't depend on other fluid libraries, or double free will occur.
-cc_library(paddle_inference_api_shared SHARED
-    SRCS api.cc api_impl.cc)
-add_dependencies(paddle_inference_api_shared ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
-set_target_properties(paddle_inference_api_shared PROPERTIES OUTPUT_NAME paddle_inference_api)
-
-if(NOT APPLE)
-  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/api.map")
-  set_target_properties(paddle_inference_api_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-  FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
-    "execute_process(COMMAND bash -c \"${CMAKE_CURRENT_SOURCE_DIR}/check_symbol.sh"
-    " ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_inference_api.so\" RESULT_VARIABLE symbol_res)\n"
-    "if(NOT \"\${symbol_res}\" STREQUAL \"0\")\n"
-    "  message(FATAL_ERROR \"Check symbol failed.\")\n"
-    "endif()\n")
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol"
-    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
-    DEPENDS paddle_inference_api_shared)
-  add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
-endif()
-
+cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS reset_tensor_array lod_tensor scope)
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor)
+cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS paddle_inference_api)
+cc_library(zero_copy_tensor_dummy SRCS details/zero_copy_tensor_dummy.cc DEPS paddle_inference_api)
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)
 
-inference_api_test(test_api_impl SRC api_impl_tester.cc
-                    ARGS test_word2vec test_image_classification)
+if(WITH_TESTING)
+  inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
+                      ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
+  set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
+endif()
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps} paddle_inference_api
+        ARGS --dirname=${PYTHON_TESTS_DIR}/book)
 
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
-        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
-
-inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
+        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter zero_copy_tensor_dummy)
+  if(WITH_TESTING)
+    inference_base_test(test_api_tensorrt_subgraph_engine SRCS api_tensorrt_subgraph_engine_tester.cc DEPS ${inference_deps}
+                      ARGS --dirname=${WORD2VEC_MODEL_DIR})
+  endif()
 endif()
 
-if (WITH_ANAKIN) # only needed in CI
-    # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
-    # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
+if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
-    nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
-    target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    target_compile_options(inference_anakin_api_shared BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-    target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
-    if (WITH_TESTING)
-        cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                                  ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                                  DEPS inference_anakin_api)
-        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-     endif(WITH_TESTING)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml scope zero_copy_tensor_dummy)
+    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber scope)
+    function(anakin_target target_name)
+      target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+    endfunction()
+    anakin_target(inference_anakin_api)
+    anakin_target(inference_anakin_api_shared)
 endif()

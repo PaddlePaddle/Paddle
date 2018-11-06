@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -39,7 +41,7 @@ class ConditionalBlockTest(unittest.TestCase):
         x = numpy.random.random(size=(10, 1)).astype('float32')
 
         outs = exe.run(feed={'X': x}, fetch_list=[out])[0]
-        print outs
+        print(outs)
         loss = layers.mean(out)
         append_backward(loss=loss)
         outs = exe.run(
@@ -47,7 +49,7 @@ class ConditionalBlockTest(unittest.TestCase):
             fetch_list=[
                 default_main_program().block(0).var(data.name + "@GRAD")
             ])[0]
-        print outs
+        print(outs)
 
 
 if __name__ == '__main__':

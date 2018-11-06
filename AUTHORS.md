@@ -46,6 +46,7 @@
 | tianbingsz | Tian-Bing Xu |
 | tpatejko | Tomasz Patejko |
 | typhoonzero | Yi Wu |
+| velconia | Qi-Yang Min |
 | wanghaoshuang | Hao-Shuang Wang |
 | wangyang59 | Yang Wang |
 | wangzhen-nlp | Zhen Wang |

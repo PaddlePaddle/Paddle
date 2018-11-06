@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -94,7 +96,8 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
         self.queue_capacity = 50
 
     def test(self):
-        for use_cuda in [False, True]:
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
             for use_parallel_executor in [False, True]:
                 for use_double_buffer in [False, True]:
                     print('Test Parameters:'),

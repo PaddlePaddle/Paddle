@@ -11,17 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import re
-import cStringIO
 import functools
 import warnings
 import string
 
+from six.moves import cStringIO
 from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable
 from ..layer_helper import LayerHelper
 
-__all__ = ['deprecated', 'generate_layer_fn', 'autodoc', 'templatedoc']
+__all__ = [
+    'deprecated', 'generate_layer_fn', 'generate_layer_fn_noattr', 'autodoc',
+    'templatedoc'
+]
 
 
 def _convert_(name):
@@ -56,7 +61,7 @@ def escape_math(text):
                                     _two_dollar_pattern_.sub(r"!!\1!!", text)))
 
 
-def _generate_doc_string_(op_proto):
+def _generate_doc_string_(op_proto, additional_args_lines=None):
     """
     Generate docstring by OpProto
 
@@ -70,7 +75,7 @@ def _generate_doc_string_(op_proto):
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = cStringIO.StringIO()
+    buf = cStringIO()
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
@@ -96,6 +101,13 @@ def _generate_doc_string_(op_proto):
         buf.write(escape_math(each_attr.comment))
         buf.write('\n')
 
+    if additional_args_lines is not None:
+        for line in additional_args_lines:
+            line = line.strip()
+            buf.write('    ')
+            buf.write(line)
+            buf.write('\n')
+
     if len(op_proto.outputs) != 0:
         buf.write('\nReturns:\n')
         buf.write('    ')
@@ -119,9 +131,9 @@ def generate_layer_fn(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
     not_intermediate_outputs = \
-        filter(lambda output: not output.intermediate, op_proto.outputs)
+        [output for output in op_proto.outputs if not output.intermediate]
     intermediate_outputs = \
-        filter(lambda output: output.intermediate, op_proto.outputs)
+        [output for output in op_proto.outputs if output.intermediate]
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError("Only one non intermediate output operator can be",
@@ -190,13 +202,38 @@ def generate_layer_fn(op_type):
             out_var = out[0] if (isinstance(out, list) or
                                  isinstance(out, tuple)) else out
         else:
-            out_var = helper.create_tmp_variable(dtype=dtype)
+            out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]
         for name in intermediate_output_names:
-            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
+            outputs[name] = [
+                helper.create_variable_for_type_inference(dtype=dtype)
+            ]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return helper.append_activation(out_var)
+
+    func.__name__ = op_type
+    func.__doc__ = _generate_doc_string_(op_proto)
+    return func
+
+
+def generate_layer_fn_noattr(op_type):
+    """Register the Python layer for an Operator without Attribute.
+
+    Args:
+       op_type: The name of the operator to be created.
+
+    This function takes in the operator type (sigmoid, exp , tanh etc) and
+    creates the operator functionality.
+
+    """
+    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+
+    def func(x, name=None):
+        helper = LayerHelper(op_type, **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
+        return output
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(op_proto)

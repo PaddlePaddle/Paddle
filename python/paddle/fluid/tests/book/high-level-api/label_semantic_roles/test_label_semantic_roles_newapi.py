@@ -16,6 +16,16 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import sys
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import numpy as np
 
 WORD_DICT, VERB_DICT, LABEL_DICT = paddle.dataset.conll05.get_dict()
@@ -149,7 +159,7 @@ def optimize_func():
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program, place=place, optimizer_func=optimize_func)
 
     feed_order = [
@@ -164,7 +174,7 @@ def train(use_cuda, train_program, params_dirname):
     #        place)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
+        if isinstance(event, EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.conll05.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
@@ -178,14 +188,15 @@ def train(use_cuda, train_program, params_dirname):
             if float(avg_cost) < 100.0:  # Large value to increase CI speed
                 trainer.save_params(params_dirname)
             else:
-                print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
-                                                              float(avg_cost)))
+                print(
+                    ('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                                                             float(avg_cost))))
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
 
-        elif isinstance(event, fluid.EndStepEvent):
+        elif isinstance(event, EndStepEvent):
             print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(np.array, event.metrics)))
+                event.step, event.epoch, list(map(np.array, event.metrics))))
             if event.step == 1:  # Run 2 iterations to speed CI
                 trainer.save_params(params_dirname)
                 trainer.stop()
@@ -203,18 +214,18 @@ def train(use_cuda, train_program, params_dirname):
 
 def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         inference_program, param_path=params_dirname, place=place)
 
     # Setup input by creating LoDTensor to represent sequence of words.
-    # Here each word is the basic element of the LoDTensor and the shape of 
-    # each word (base_shape) should be [1] since it is simply an index to 
+    # Here each word is the basic element of the LoDTensor and the shape of
+    # each word (base_shape) should be [1] since it is simply an index to
     # look up for the corresponding word vector.
     # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
-    # which has only one level of detail. Then the created LoDTensor will have only 
-    # one higher level structure (sequence of words, or sentence) than the basic 
-    # element (word). Hence the LoDTensor will hold data for three sentences of 
-    # length 3, 4 and 2, respectively. 
+    # which has only one level of detail. Then the created LoDTensor will have only
+    # one higher level structure (sequence of words, or sentence) than the basic
+    # element (word). Hence the LoDTensor will hold data for three sentences of
+    # length 3, 4 and 2, respectively.
     # Note that recursive_sequence_lengths should be a list of lists.
     recursive_seq_lens = [[3, 4, 2]]
     base_shape = [1]

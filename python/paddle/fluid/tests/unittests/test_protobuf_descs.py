@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
+import paddle.compat as cpt
 from paddle.fluid.framework import Program
 
 
@@ -35,40 +38,40 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(['z'], op.output("Out"))
         self.assertEqual(["Out"], op.output_names())
 
-        op.set_attr("int_attr", 1)
+        op._set_attr("int_attr", 1)
         self.assertEqual(1, op.attr("int_attr"))
         self.assertTrue(op.has_attr("int_attr"))
         self.assertEqual(core.AttrType.INT, op.attr_type("int_attr"))
 
-        op.set_attr("float_attr", -1.32)
+        op._set_attr("float_attr", -1.32)
         self.assertAlmostEqual(-1.32, op.attr("float_attr"), delta=1e-4)
         self.assertTrue(op.has_attr("float_attr"))
 
-        op.set_attr("bool_attr", False)
+        op._set_attr("bool_attr", False)
         self.assertFalse(op.attr("bool_attr"))
 
-        op.set_attr("string_attr", "abc")
+        op._set_attr("string_attr", "abc")
         self.assertEqual("abc", op.attr("string_attr"))
         self.assertTrue(op.has_attr("string_attr"))
 
-        op.set_attr("ints_attr", [1, 2, 3])
+        op._set_attr("ints_attr", [1, 2, 3])
         self.assertEqual([1, 2, 3], op.attr("ints_attr"))
 
         expected = [1.2, 2.3, 3.4]
-        op.set_attr("floats_attr", expected)
+        op._set_attr("floats_attr", expected)
         for e, a in zip(expected, op.attr("floats_attr")):
             self.assertAlmostEqual(e, a, delta=1e-4)
 
-        op.set_attr("strings_attr", ["a", "b", "c"])
+        op._set_attr("strings_attr", ["a", "b", "c"])
         self.assertEqual(["a", "b", "c"], op.attr("strings_attr"))
 
-        op.set_attr("bools_attr", [True, False, True])
+        op._set_attr("bools_attr", [True, False, True])
         self.assertEqual([True, False, True], op.attr("bools_attr"))
 
         self.assertEqual(8, len(op.attr_names()))
 
-        op.set_block_attr("block_attr", program_desc.block(0))
-        self.assertEqual(0, op.block_attr("block_attr"))
+        op.set_block_attr("_block_attr", program_desc.block(0))
+        self.assertEqual(0, op._block_attr_id("_block_attr"))
 
         mul_op = block.append_op()
         mul_op.set_type("mul")
@@ -108,7 +111,7 @@ class TestVarDesc(unittest.TestCase):
     def test_shape(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_var')
+        var = block.var(cpt.to_bytes('my_var'))
         var.set_type(core.VarDesc.VarType.SELECTED_ROWS)
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
@@ -119,7 +122,7 @@ class TestVarDesc(unittest.TestCase):
     def test_multiple_shape(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_reader')
+        var = block.var(cpt.to_bytes('my_reader'))
         var.set_type(core.VarDesc.VarType.READER)
         src_shapes = [[2, 3, 3], [4, 5], [6, 7, 8, 9]]
         var.set_shapes(src_shapes)
@@ -130,7 +133,7 @@ class TestVarDesc(unittest.TestCase):
     def test_dtype(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_var')
+        var = block.var(cpt.to_bytes('my_var'))
         var.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var.set_dtype(core.VarDesc.VarType.INT32)
         self.assertEqual(core.VarDesc.VarType.INT32, var.dtype())
@@ -139,7 +142,7 @@ class TestVarDesc(unittest.TestCase):
     def test_multiple_dtype(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_reader')
+        var = block.var(cpt.to_bytes('my_reader'))
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [
             core.VarDesc.VarType.INT32, core.VarDesc.VarType.FP64,
@@ -152,7 +155,7 @@ class TestVarDesc(unittest.TestCase):
     def test_multiple_lod_level(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_reader')
+        var = block.var(cpt.to_bytes('my_reader'))
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [3, 1, 2]
         var.set_lod_levels(src_types)
@@ -166,12 +169,12 @@ class TestBlockDesc(unittest.TestCase):
         self.assertIsNotNone(program_desc)
         block = program_desc.block(0)
         self.assertIsNotNone(block)
-        var1 = block.var("var1")
-        var2 = block.var("var2")
-        var3 = block.var("var3")
+        var1 = block.var(cpt.to_bytes("var1"))
+        var2 = block.var(cpt.to_bytes("var2"))
+        var3 = block.var(cpt.to_bytes("var3"))
         all_vars = block.all_vars()
         self.assertEqual(set(all_vars), {var1, var2, var3})
-        var2_re = block.find_var("var2")
+        var2_re = block.find_var(cpt.to_bytes("var2"))
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):
@@ -183,7 +186,7 @@ class TestBlockDesc(unittest.TestCase):
         op2 = block.append_op()
         op0 = block._prepend_op()
         all_ops = []
-        for idx in xrange(0, block.op_size()):
+        for idx in range(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
 
@@ -205,7 +208,7 @@ class TestBlockDesc(unittest.TestCase):
         program._sync_with_cpp()
 
         all_ops = []
-        for idx in xrange(0, block.op_size()):
+        for idx in range(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op2])
 

@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include <condition_variable>  // NOLINT
 #include <string>
 #include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
 
@@ -31,37 +33,36 @@ class RPCClient {
  public:
   RPCClient() {}
   virtual ~RPCClient() {}
-  virtual bool AsyncSendVar(const std::string& ep,
-                            const platform::DeviceContext& ctx,
-                            const framework::Scope& scope,
-                            const std::string& var_name,
-                            int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncSendVar(const std::string& ep,
+                                    const platform::DeviceContext& ctx,
+                                    const framework::Scope& scope,
+                                    const std::string& var_name,
+                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual bool AsyncGetVar(const std::string& ep,
-                           const platform::DeviceContext& ctx,
-                           const framework::Scope& scope,
-                           const std::string& var_name,
-                           int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncGetVar(const std::string& ep,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope& scope,
+                                   const std::string& var_name,
+                                   int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual bool AsyncPrefetchVar(const std::string& ep,
-                                const platform::DeviceContext& ctx,
-                                const framework::Scope& scope,
-                                const std::string& in_var_name,
-                                const std::string& out_var_name,
-                                int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncPrefetchVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& in_var_name,
+      const std::string& out_var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual void AsyncSendBatchBarrier(const std::string& ep,
-                                     int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncSendBatchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual void AsyncSendFetchBarrier(const std::string& ep,
-                                     int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncSendFetchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual void AsyncCheckpointNotify(const std::string& ep,
-                                     const std::string& dir,
-                                     int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncCheckpointNotify(
+      const std::string& ep, const std::string& dir,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual void AsyncSendComplete(const std::string& ep,
-                                 int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncSendComplete(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   // Complete tells all the pserver instances that finishe the training,
   // the pserver can reduce it's barrier count, and continue to train
@@ -71,14 +72,15 @@ class RPCClient {
   virtual bool Wait() = 0;
 
   template <typename T>
-  static RPCClient* GetInstance() {
-    std::call_once(init_flag_, &RPCClient::Init<T>);
+  static RPCClient* GetInstance(int trainer_id) {
+    std::call_once(init_flag_, &RPCClient::Init<T>, trainer_id);
     return rpc_client_.get();
   }
 
   // Init is called by GetInstance.
   template <typename T>
-  static void Init() {
+  static void Init(int trainer_id) {
+    trainer_id_ = trainer_id;
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());
       rpc_client_->InitImpl();
@@ -87,6 +89,8 @@ class RPCClient {
 
  protected:
   virtual void InitImpl() {}
+  // each trainer have exact one trainer id, it should be static
+  static int trainer_id_;
 
  private:
   static std::once_flag init_flag_;

@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -164,14 +163,11 @@ class ParallelDoOp : public framework::OperatorBase {
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
 
-      workers.emplace_back(
-          framework::Async([program, cur_scope, place, block, place_idx] {
-            // Give the thread an id to distinguish parallel block with same id.
-            platform::RecordThread rt(static_cast<int>(place_idx) + 1);
-            framework::Executor executor(place);
-            executor.Run(*program, cur_scope, block->ID(),
-                         false /*create_local_scope*/);
-          }));
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
+        executor.Run(*program, cur_scope, block->ID(),
+                     false /*create_local_scope*/);
+      }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -242,14 +238,11 @@ class ParallelDoGradOp : public framework::OperatorBase {
       auto *cur_scope = sub_scopes[i];
 
       // execute
-      workers.emplace_back(
-          framework::Async([program, cur_scope, place, block, i] {
-            // Give the thread an id to distinguish parallel block with same id.
-            platform::RecordThread rt(static_cast<int>(i) + 1);
-            framework::Executor executor(place);
-            executor.Run(*program, cur_scope, block->ID(),
-                         false /*create_local_scope*/);
-          }));
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
+        executor.Run(*program, cur_scope, block->ID(),
+                     false /*create_local_scope*/);
+      }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -362,6 +355,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
         grad->SetInput(framework::GradVarName(output_param), og_names);
       }
     }
+    grad->SetInput("Communicator", {"nccl_com__do_not_change_"});
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(kParallelBlock, grad_block_[0]);
 
@@ -403,6 +397,24 @@ class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
   }
 };
 
+class ParallelDoGradOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    framework::BlockDesc *sub_block =
+        boost::get<framework::BlockDesc *>(op_desc.GetAttr(kParallelBlock));
+    for (auto &out_vars : op_desc.Outputs()) {
+      for (auto &out_var : out_vars.second) {
+        auto &var = block->FindRecursiveOrCreateVar(out_var);
+        auto sub_var = sub_block->FindRecursiveOrCreateVar(out_var);
+        if (sub_var.GetType() != var.GetType()) {
+          var.SetType(sub_var.GetType());
+        }
+      }
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -410,4 +422,5 @@ REGISTER_OPERATOR(parallel_do, paddle::operators::ParallelDoOp,
                   paddle::operators::ParallelDoOpProtoMaker,
                   paddle::operators::ParallelDoGradOpDescMaker);
 REGISTER_OPERATOR(parallel_do_grad, paddle::operators::ParallelDoGradOp,
-                  paddle::operators::ParallelDoGradOpShapeInference);
+                  paddle::operators::ParallelDoGradOpShapeInference,
+                  paddle::operators::ParallelDoGradOpVarTypeInference);

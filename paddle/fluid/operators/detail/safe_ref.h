@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <vector>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -24,10 +24,22 @@ namespace detail {
  * and passed by `args`
  */
 template <typename T, typename... ARGS>
-inline T &Ref(T *ptr, ARGS &&... args) {
+inline T& Ref(T* ptr, ARGS&&... args) {
   PADDLE_ENFORCE(ptr != nullptr, args...);
   return *ptr;
 }
+
+template <typename T, typename... ARGS>
+inline std::vector<std::reference_wrapper<T>> VectorRef(
+    const std::vector<T*>& vec, ARGS&&... args) {
+  std::vector<std::reference_wrapper<T>> result;
+  result.reserve(vec.size());
+  for (auto* ptr : vec) {
+    result.emplace_back(Ref(ptr, args...));
+  }
+  return result;
+}
+
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle

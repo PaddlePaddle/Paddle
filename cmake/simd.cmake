@@ -10,6 +10,7 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID 
     set(SSE3_FLAG "-msse3")
     set(AVX_FLAG "-mavx")
     set(AVX2_FLAG "-mavx2")
+    set(AVX512F_FLAG "-mavx512f")
 elseif(MSVC)
     set(MMX_FLAG "/arch:MMX")
     set(SSE2_FLAG "/arch:SSE2")
@@ -81,5 +82,18 @@ int main()
     return 0;
 }" AVX2_FOUND)
 
+# Check AVX512F
+set(CMAKE_REQUIRED_FLAGS ${AVX512F_FLAG})
+set(AVX512F_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
+CHECK_CXX_SOURCE_RUNS("
+#include <immintrin.h>
+int main()
+{
+    __m512i a = _mm512_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4,
+                                  13, -5, 6, -7, 9, 2, -6, 3);
+    __m512i result = _mm512_abs_epi32 (a);
+    return 0;
+}" AVX512F_FOUND)
+
 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_RETAINED})
-mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND)
+mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND AVX512F_FOUND)

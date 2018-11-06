@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -415,7 +417,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             self.__assert_close(scale_grad, out[6], "scale_grad")
             self.__assert_close(bias_grad, out[7], "bias_grad")
 
-            print "op test forward passed: ", str(place), data_layout
+            print("op test forward passed: ", str(place), data_layout)
 
         places = [core.CPUPlace()]
 

@@ -15,6 +15,9 @@
 # Generate dot diagram file for the given paddle model config
 # The generated file can be viewed using Graphviz (http://graphviz.org)
 
+from __future__ import print_function
+
+import six
 import sys
 import traceback
 
@@ -61,9 +64,9 @@ def make_diagram_from_proto(model_config, dot_file):
                                              name2id[mem.link_name])
         return s
 
-    print >> f, 'digraph graphname {'
-    print >> f, 'node [width=0.375,height=0.25];'
-    for i in xrange(len(model_config.layers)):
+    print('digraph graphname {', file=f)
+    print('node [width=0.375,height=0.25];', file=f)
+    for i in six.moves.xrange(len(model_config.layers)):
         l = model_config.layers[i]
         name2id[l.name] = i
 
@@ -71,12 +74,12 @@ def make_diagram_from_proto(model_config, dot_file):
     for sub_model in model_config.sub_models:
         if sub_model.name == 'root':
             continue
-        print >> f, 'subgraph cluster_%s {' % i
-        print >> f, 'style=dashed;'
+        print('subgraph cluster_%s {' % i, file=f)
+        print('style=dashed;', file=f)
         label = '%s ' % sub_model.name
         if sub_model.reversed:
             label += '<=='
-        print >> f, 'label = "%s";' % label
+        print('label = "%s";' % label, file=f)
         i += 1
         submodel_layers.add(sub_model.name)
         for layer_name in sub_model.layer_names:
@@ -84,37 +87,41 @@ def make_diagram_from_proto(model_config, dot_file):
             lid = name2id[layer_name]
             layer_config = model_config.layers[lid]
             label = make_layer_label(layer_config)
-            print >> f, 'l%s [label="%s", shape=box];' % (lid, label)
-        print >> f, '}'
+            print('l%s [label="%s", shape=box];' % (lid, label), file=f)
+        print('}', file=f)
 
-    for i in xrange(len(model_config.layers)):
+    for i in six.moves.xrange(len(model_config.layers)):
         l = model_config.layers[i]
         if l.name not in submodel_layers:
             label = make_layer_label(l)
-            print >> f, 'l%s [label="%s", shape=box];' % (i, label)
+            print('l%s [label="%s", shape=box];' % (i, label), file=f)
 
     for sub_model in model_config.sub_models:
         if sub_model.name == 'root':
             continue
         for link in sub_model.in_links:
-            print >> f, make_link(link)
+            print(make_link(link), file=f)
         for link in sub_model.out_links:
-            print >> f, make_link(link)
+            print(make_link(link), file=f)
         for mem in sub_model.memories:
-            print >> f, make_mem(mem)
+            print(make_mem(mem), file=f)
 
-    for i in xrange(len(model_config.layers)):
+    for i in six.moves.xrange(len(model_config.layers)):
         for l in model_config.layers[i].inputs:
-            print >> f, 'l%s -> l%s [label="%s"];' % (
-                name2id[l.input_layer_name], i, l.input_parameter_name)
+            print(
+                'l%s -> l%s [label="%s"];' % (name2id[l.input_layer_name], i,
+                                              l.input_parameter_name),
+                file=f)
 
-    print >> f, '}'
+    print('}', file=f)
     f.close()
 
 
 def usage():
-    print >> sys.stderr, ("Usage: python show_model_diagram.py" +
-                          " CONFIG_FILE DOT_FILE [config_str]")
+    print(
+        ("Usage: python show_model_diagram.py" +
+         " CONFIG_FILE DOT_FILE [config_str]"),
+        file=sys.stderr)
     exit(1)
 
 

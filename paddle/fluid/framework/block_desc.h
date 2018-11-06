@@ -88,9 +88,8 @@ class BlockDesc {
   OpDesc *InsertOp(size_t index);
 
   /*
-   * Remove Op and its input/output variables.
-   * Note that for either input or output variable, if it is also an input or
-   * output variable of other ops, we should remain it.
+   * Only remove op itself,
+   * do nothing to its input and output variables
    */
   void RemoveOp(size_t s, size_t e);
 

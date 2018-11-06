@@ -2,53 +2,75 @@ if (NOT WITH_ANAKIN)
   return()
 endif()
 
-set(ANAKIN_INSTALL_DIR "${THIRD_PARTY_PATH}/install/anakin" CACHE PATH
-  "Anakin install path." FORCE)
-set(ANAKIN_INCLUDE "${ANAKIN_INSTALL_DIR}" CACHE STRING "root of Anakin header files")
-set(ANAKIN_LIBRARY "${ANAKIN_INSTALL_DIR}" CACHE STRING "path of Anakin library")
+option(ANAKIN_ENABLE_OP_TIMER      "Get more detailed information with Anakin op time"        OFF)
+if(ANAKIN_ENABLE_OP_TIMER)
+  add_definitions(-DPADDLE_ANAKIN_ENABLE_OP_TIMER)
+endif()
 
-set(ANAKIN_COMPILE_EXTRA_FLAGS 
-    -Wno-error=unused-variable -Wno-unused-variable 
+INCLUDE(ExternalProject)
+set(ANAKIN_SOURCE_DIR  ${THIRD_PARTY_PATH}/anakin)
+# the anakin install dir is only default one now
+set(ANAKIN_INSTALL_DIR ${THIRD_PARTY_PATH}/anakin/src/extern_anakin/output)
+set(ANAKIN_INCLUDE     ${ANAKIN_INSTALL_DIR})
+set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
+set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
+set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
+
+include_directories(${ANAKIN_INCLUDE})
+include_directories(${ANAKIN_INCLUDE}/saber/)
+include_directories(${ANAKIN_INCLUDE}/saber/core/)
+include_directories(${ANAKIN_INCLUDE}/saber/funcs/impl/x86/)
+include_directories(${ANAKIN_INCLUDE}/saber/funcs/impl/cuda/base/cuda_c/)
+
+set(ANAKIN_COMPILE_EXTRA_FLAGS
+    -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
+    -Wno-error=unused-variable -Wno-unused-variable
     -Wno-error=format-extra-args -Wno-format-extra-args
     -Wno-error=comment -Wno-comment 
     -Wno-error=format -Wno-format 
+    -Wno-error=maybe-uninitialized -Wno-maybe-uninitialized
     -Wno-error=switch -Wno-switch
-    -Wno-error=return-type -Wno-return-type 
+    -Wno-error=return-type -Wno-return-type
     -Wno-error=non-virtual-dtor -Wno-non-virtual-dtor
+    -Wno-error=ignored-qualifiers
+    -Wno-ignored-qualifiers
     -Wno-sign-compare
-    -Wno-reorder 
+    -Wno-reorder
     -Wno-error=cpp)
 
-set(ANAKIN_LIBRARY_URL "https://github.com/pangge/Anakin/releases/download/3.0/anakin_release_simple.tar.gz")
-
-# A helper function used in Anakin, currently, to use it, one need to recursively include
-# nearly all the header files.
-function(fetch_include_recursively root_dir)
-    if (IS_DIRECTORY ${root_dir})
-        include_directories(${root_dir})
-    endif()
-
-    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
-    foreach(sub ${ALL_SUB})
-        if (IS_DIRECTORY ${root_dir}/${sub})
-            fetch_include_recursively(${root_dir}/${sub})
-        endif()
-    endforeach()
-endfunction()
-
-if (NOT EXISTS "${ANAKIN_INSTALL_DIR}")
-    # download library
-    message(STATUS "Download Anakin library from ${ANAKIN_LIBRARY_URL}")
-    execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
-    execute_process(COMMAND bash -c "rm -rf ${ANAKIN_INSTALL_DIR}/*")
-    execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; wget -q ${ANAKIN_LIBRARY_URL}")
-    execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
-    execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; tar xzf anakin_release_simple.tar.gz")
+if(WITH_GPU)
+    set(CMAKE_ARGS_PREFIX -DUSE_GPU_PLACE=YES -DCUDNN_ROOT=${CUDNN_ROOT} -DCUDNN_INCLUDE_DIR=${CUDNN_INCLUDE_DIR})
+else()
+    set(CMAKE_ARGS_PREFIX -DUSE_GPU_PLACE=NO)
 endif()
+ExternalProject_Add(
+    extern_anakin
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    DEPENDS             ${MKLML_PROJECT}
+    GIT_REPOSITORY      "https://github.com/PaddlePaddle/Anakin"
+    GIT_TAG             "3c8554f4978628183566ab7dd6c1e7e66493c7cd"
+    PREFIX              ${ANAKIN_SOURCE_DIR}
+    UPDATE_COMMAND      ""
+    CMAKE_ARGS          ${CMAKE_ARGS_PREFIX}
+                        -DUSE_LOGGER=YES
+                        -DUSE_X86_PLACE=YES
+                        -DBUILD_WITH_UNIT_TEST=NO
+                        -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
+                        -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
+                        -DENABLE_OP_TIMER=${ANAKIN_ENABLE_OP_TIMER}
+                        ${EXTERNAL_OPTIONAL_ARGS}
+    CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
+)
 
-if (WITH_ANAKIN)
-    message(STATUS "Anakin for inference is enabled")
-    message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
-    fetch_include_recursively(${ANAKIN_INCLUDE})
-    link_directories(${ANAKIN_LIBRARY})
-endif()
+message(STATUS "Anakin for inference is enabled")
+message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
+
+add_library(anakin_shared SHARED IMPORTED GLOBAL)
+set_property(TARGET anakin_shared PROPERTY IMPORTED_LOCATION ${ANAKIN_SHARED_LIB})
+add_dependencies(anakin_shared extern_anakin protobuf mklml)
+
+add_library(anakin_saber SHARED IMPORTED GLOBAL)
+set_property(TARGET anakin_saber PROPERTY IMPORTED_LOCATION ${ANAKIN_SABER_LIB})
+add_dependencies(anakin_saber extern_anakin protobuf mklml)
+
+list(APPEND external_project_dependencies anakin_shared anakin_saber)

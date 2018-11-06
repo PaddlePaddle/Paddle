@@ -1,4 +1,0 @@
-digraph sample { 
-  graph [rankdir=TD]; node [shape=record];
-  op [label="{Operator| InferShape()=0\lRun()=0\l | map&#60;string, string[]&#62; inputs_\lmap&#60;string, string[]&#62; outputs_ \l AttributeMap attrs_\l}"]; 
-}

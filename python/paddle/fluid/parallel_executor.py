@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import core
+from __future__ import print_function
 import multiprocessing
-import framework
-import executor
+from . import core
+from . import framework
+from . import executor
+from .. import compat as cpt
 import warnings
 import sys
+import six
 import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
@@ -28,20 +31,38 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    ParallelExecutor can run program in parallel.
+    ParallelExecutor is designed for data parallelism, which focuses on distributing
+    the data across different nodes and every node operates on the data in parallel.
+    If you use ParallelExecutor to run the current program on GPU, the node means GPU
+    device, and ParallelExecutor will get the available GPU device automatically on
+    the current machine. If you use ParallelExecutor to run the current program on CPU,
+    the node means the CPU device, and you can specify the CPU device number by adding
+    'CPU_NUM' environment variable, for example 'CPU_NUM=4', if the environment variable
+    is not found, ParallelExecutor will call `multiprocessing.cpu_count` to get the number
+    of CPUs in the system.
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.
         loss_name (str): The loss name must set in training. Default None.
         main_program (Program): The program that need to run, if not provided,
             then default_main_program will be used. Default None.
-        share_vars_from(ParallelExecutor): If provied, it will share variables
+        share_vars_from(ParallelExecutor): If provide, it will share variables
             from the specified ParallelExecutor. Default None.
+        exec_strategy(ExecutionStrategy): exec_strategy is used to control how to run
+            the program in ParallelExecutor, for example how many threads are used to
+            execute the program, how many iterations to clean up the temp variables
+            which is generated during execution. For more information, please refer
+            to fluid.ExecutionStrategy. Default None.
+        build_strategy(BuildStrategy): build_strategy is used to control how to
+            build the SSA Graph in ParallelExecutor by setting the property,
+            for example reduce_strategy, gradient_scale_strategy. For more information,
+            please refer to fluid.BuildStrategy. Default None.
         num_trainers(int): If greater than 1, NCCL will be initialized with
             multiple rank of nodes, each node should have same number of GPUs.
             Distributed training will be enabled then. Default 1.
-        trainer_id(int: Must use together with num_trainers. trainer_id is the
+        trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
+        scope(Scope): scope to run with, default use fluid.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -70,31 +91,11 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
-                 **kwargs):
-        if len(kwargs) != 0:
-            err_msg = ""
-            for key in kwargs:
-                if key in dir(ExecutionStrategy):
-                    err_msg += \
-                        "Setting {0} by constructor is deprecated. Use " \
-                        "strategy=ExecutionStrategy(); strategy.{0}=xxx; " \
-                        "pe=ParallelExecutor(exec_strategy=strategy) " \
-                        "instead.\n ".format(key)
-                elif key in dir(BuildStrategy):
-                    err_msg += \
-                        "Setting {0} by constructor is deprecated. Use " \
-                        "strategy=BuildStrategy(); See help(" \
-                        "paddle.fluid.ParallelExecutor.BuildStrategy) \n".format(
-                            key)
-                else:
-                    err_msg += "Setting {0} by constructor is deprecated. Use strategy.\n".format(
-                        key)
-            raise ValueError(err_msg)
-
+                 scope=None):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in xrange(core.get_cuda_device_count()):
+            for i in six.moves.range(core.get_cuda_device_count()):
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
@@ -102,7 +103,7 @@ class ParallelExecutor(object):
         else:
             cpu_num = int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            for i in xrange(cpu_num):
+            for i in six.moves.range(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
@@ -121,19 +122,22 @@ class ParallelExecutor(object):
             else:
                 cpu_num = int(
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num
+                exec_strategy.num_threads = cpu_num * 2
+
+        # Set 1 thread num under nccl2 distribute 
+        #   env to make sure all gpus run ops in same order.
+        if num_trainers > 1:
+            assert (use_cuda)
+            # FIXME(gongwb): avoid this set.
+            exec_strategy.num_threads = 1
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
         main = main_program
         main = main if main else framework.default_main_program()
-        scope = executor.global_scope()
-        # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
-        # train program, call self.bcast_param() at the end of each mini-batch.
-        self.is_dist = True if "recv" in [
-            op.type for op in main.global_block().ops
-        ] else False
+        if scope == None:
+            scope = executor.global_scope()
 
         if share_vars_from and not isinstance(share_vars_from,
                                               ParallelExecutor):
@@ -143,20 +147,22 @@ class ParallelExecutor(object):
         ) if share_vars_from else []
 
         self.persistable_vars = [
-            v.name
-            for v in filter(
-                lambda var: var.persistable and var.type != core.VarDesc.VarType.RAW,
-                main.list_vars())
+            v.name for v in [
+                var for var in main.list_vars()
+                if var.persistable and var.type != core.VarDesc.VarType.RAW
+            ]
         ]
 
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                p.name for p in main.global_block()._iter_parameters()
+                cpt.to_text(p.name)
+                for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(self.persistable_vars), main.desc, loss_name
-            if loss_name else '', scope, local_scopes, exec_strategy,
+            set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
+            cpt.to_text(loss_name)
+            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
@@ -227,7 +233,9 @@ class ParallelExecutor(object):
         """
         if feed is None and feed_dict is not None:
             feed = feed_dict
-            print >> sys.stderr, "`feed_dict` is deprecated. Please use `feed=`"
+            print(
+                "`feed_dict` is deprecated. Please use `feed=`",
+                file=sys.stderr)
 
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
@@ -269,20 +277,10 @@ class ParallelExecutor(object):
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
-        if self.is_dist:
-            self.bcast_params()
-
         if return_numpy:
             return executor.as_numpy(arr)
 
         return [arr[i] for i in range(len(arr))]
-
-    def bcast_params(self):
-        """
-        Broadcast the parameters to other devices. It is used during
-        distributed training.
-        """
-        self.executor.bcast_params(set(self.persistable_vars))
 
     @property
     def device_count(self):

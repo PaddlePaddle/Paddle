@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #include <sys/time.h>
-#include <time.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -30,6 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/string/printf.h"
+
+DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 
 namespace paddle {
 namespace platform {
@@ -97,12 +98,6 @@ inline uint64_t GetTimeInNsec() {
       .count();
 }
 
-inline uint64_t PosixInNsec() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
-}
-
 Event::Event(EventType type, std::string name, uint32_t thread_id,
              const DeviceContext* dev_ctx)
     : type_(type), name_(name), thread_id_(thread_id), has_cuda_(false) {
@@ -110,6 +105,8 @@ Event::Event(EventType type, std::string name, uint32_t thread_id,
   has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
   if (has_cuda_) {
     auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
+    PADDLE_ENFORCE(cudaSetDevice(
+        boost::get<platform::CUDAPlace>(cuda_dev_ctx->GetPlace()).device));
     PADDLE_ENFORCE(cudaGetDevice(&device_));
     PADDLE_ENFORCE(cudaEventCreate(&event_));
     auto stream = cuda_dev_ctx->stream();
@@ -176,6 +173,7 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   dev_ctx_ = dev_ctx;
@@ -186,18 +184,27 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 }
 
 RecordEvent::~RecordEvent() {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
-                          BlockDepth(), CurThread());
+                          BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
 }
 
+RecordRPCEvent::RecordRPCEvent(const std::string& name,
+                               const DeviceContext* dev_ctx) {
+  if (FLAGS_enable_rpc_profiler) {
+    event_.reset(new platform::RecordEvent(name, dev_ctx));
+  }
+}
+
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   SetCurBlock(block_id);
@@ -205,25 +212,16 @@ RecordBlock::RecordBlock(int block_id)
 }
 
 RecordBlock::~RecordBlock() {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
     tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
-                          CurThread());
+                          g_thread_id);
   }
   ClearCurBlock();
-}
-
-RecordThread::RecordThread(int thread_id) {
-  if (g_state == ProfilerState::kDisabled) return;
-  SetCurThread(thread_id);
-}
-
-RecordThread::~RecordThread() {
-  if (g_state == ProfilerState::kDisabled) return;
-  ClearCurThread();
 }
 
 void EnableProfiler(ProfilerState state) {
@@ -281,12 +279,13 @@ struct EventItem {
   double min_time;
   double max_time;
   double ave_time;
+  float ratio;
 };
 
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                    const std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width) {
+                   const size_t data_width, bool merge_thread) {
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
@@ -302,6 +301,10 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
     PADDLE_THROW("Invalid profiler state", g_state);
   }
 
+  if (merge_thread) {
+    std::cout << "Note! This Report merge all thread info into one."
+              << std::endl;
+  }
   std::cout << "Place: " << place << std::endl;
   std::cout << "Time unit: ms" << std::endl;
   std::cout << "Sorted by " << sorted_domain
@@ -311,7 +314,8 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
             << "Calls" << std::setw(data_width) << "Total"
             << std::setw(data_width) << "Min." << std::setw(data_width)
-            << "Max." << std::setw(data_width) << "Ave." << std::endl;
+            << "Max." << std::setw(data_width) << "Ave."
+            << std::setw(data_width) << "Ratio." << std::endl;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       const EventItem& event_item = events_table[i][j];
@@ -320,7 +324,8 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.total_time
                 << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
-                << std::setw(data_width) << event_item.ave_time << std::endl;
+                << std::setw(data_width) << event_item.ave_time
+                << std::setw(data_width) << event_item.ratio << std::endl;
     }
   }
   std::cout << std::endl;
@@ -328,8 +333,10 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 
 // Parse the event list and output the profiling report
 void ParseEvents(const std::vector<std::vector<Event>>& events,
+                 bool merge_thread,
                  EventSortingKey sorted_by = EventSortingKey::kDefault) {
   if (g_state == ProfilerState::kDisabled) return;
+  if (merge_thread && events.size() < 2) return;
 
   std::string sorted_domain;
   std::function<bool(const EventItem&, const EventItem&)> sorted_func;
@@ -368,37 +375,61 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
       sorted_domain = "event first end time";
   }
 
+  const std::vector<std::vector<Event>>* analyze_events;
+  std::vector<std::vector<Event>> merged_events_list;
+  if (merge_thread) {
+    std::vector<Event> merged_events;
+    for (size_t i = 0; i < events.size(); ++i) {
+      for (size_t j = 0; j < events[i].size(); ++j) {
+        merged_events.push_back(events[i][j]);
+      }
+    }
+    merged_events_list.push_back(merged_events);
+    analyze_events = &merged_events_list;
+  } else {
+    analyze_events = &events;
+  }
+
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
-  for (size_t i = 0; i < events.size(); i++) {
+  for (size_t i = 0; i < (*analyze_events).size(); i++) {
+    double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
     std::unordered_map<std::string, int> event_idx;
 
-    for (size_t j = 0; j < events[i].size(); j++) {
-      if (events[i][j].type() == EventType::kPushRange) {
-        pushed_events.push_back(events[i][j]);
-      } else if (events[i][j].type() == EventType::kPopRange) {
+    for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
+      if ((*analyze_events)[i][j].type() == EventType::kPushRange) {
+        pushed_events.push_back((*analyze_events)[i][j]);
+      } else if ((*analyze_events)[i][j].type() == EventType::kPopRange) {
         std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
         while (rit != pushed_events.rend() &&
-               rit->name() != events[i][j].name()) {
+               rit->name() != (*analyze_events)[i][j].name()) {
           ++rit;
         }
 
         if (rit != pushed_events.rend()) {
           double event_time = (g_state == ProfilerState::kCUDA ||
                                g_state == ProfilerState::kAll)
-                                  ? rit->CudaElapsedMs(events[i][j])
-                                  : rit->CpuElapsedMs(events[i][j]);
+                                  ? rit->CudaElapsedMs((*analyze_events)[i][j])
+                                  : rit->CpuElapsedMs((*analyze_events)[i][j]);
+          total += event_time;
 
-          std::string event_name =
-              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
-          max_name_width = std::max(max_name_width, event_name.size());
+          std::string event_name;
+          if (merge_thread) {
+            event_name = rit->name();
+            max_name_width = std::max(max_name_width, event_name.size());
+          } else {
+            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
+                         rit->name();
+            max_name_width = std::max(max_name_width, event_name.size());
+          }
 
           if (event_idx.find(event_name) == event_idx.end()) {
             event_idx[event_name] = event_items.size();
             EventItem event_item = {event_name, 1,          event_time,
-                                    event_time, event_time, event_time};
+                                    event_time, event_time, event_time,
+                                    0.};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
@@ -417,7 +448,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
           pushed_events.erase((++rit).base());
         } else {
           LOG(WARNING) << "Cannot find the push marker of event \'"
-                       << events[i][j].name()
+                       << (*analyze_events)[i][j].name()
                        << "\', which will be ignored in profiling report.";
         }
       }
@@ -425,6 +456,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
     // average time
     for (auto& item : event_items) {
       item.ave_time = item.total_time / item.calls;
+      item.ratio = item.total_time / total;
     }
     // sort
     if (sorted_by != EventSortingKey::kDefault) {
@@ -442,7 +474,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12);
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12,
+                merge_thread);
 }
 
 void DisableProfiler(EventSortingKey sorted_key,
@@ -453,7 +486,8 @@ void DisableProfiler(EventSortingKey sorted_key,
   Mark("_stop_profiler_", nullptr);
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
-  ParseEvents(all_events, sorted_key);
+  ParseEvents(all_events, true, sorted_key);
+  ParseEvents(all_events, false, sorted_key);
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {

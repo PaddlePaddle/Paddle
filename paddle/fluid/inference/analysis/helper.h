@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <sys/stat.h>
 #include <cstdio>
+#include <fstream>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
@@ -134,6 +136,37 @@ static void ExecShellCommand(const std::string &cmd, std::string *message) {
       *message += buffer;
     }
   }
+}
+
+static framework::proto::ProgramDesc LoadProgramDesc(
+    const std::string &model_path) {
+  std::ifstream fin(model_path, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE(fin.is_open(), "Cannot open file %s", model_path);
+  fin.seekg(0, std::ios::end);
+  std::string buffer(fin.tellg(), ' ');
+  fin.seekg(0, std::ios::beg);
+  fin.read(&buffer[0], buffer.size());
+  fin.close();
+  framework::proto::ProgramDesc program_desc;
+  program_desc.ParseFromString(buffer);
+  return program_desc;
+}
+
+static bool FileExists(const std::string &filepath) {
+  std::ifstream file(filepath);
+  bool exists = file.is_open();
+  file.close();
+  return exists;
+}
+
+static bool PathExists(const std::string &path) {
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) != -1) {
+    if (S_ISDIR(statbuf.st_mode)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace analysis

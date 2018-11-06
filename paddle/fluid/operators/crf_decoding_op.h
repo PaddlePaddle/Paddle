@@ -16,6 +16,7 @@ limitations under the License. */
 #include <limits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/jit_kernel.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -69,9 +70,6 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto emission_dims = emission_weights.dims();
     const size_t seq_len = emission_dims[0];
     const size_t tag_num = emission_dims[1];
-
-    const size_t state_trans_base_idx = 2;
-
     const T* x = emission_weights.data<T>();
     const T* w = transition_weights.data<T>();
     int64_t* path = decoded_path->data<int64_t>();
@@ -84,27 +82,10 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     Tensor track;
     int* track_value =
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
-
-    for (size_t i = 0; i < tag_num; ++i) alpha_value[i] = w[i] + x[i];
-
-    for (size_t k = 1; k < seq_len; ++k) {
-      for (size_t i = 0; i < tag_num; ++i) {
-        T max_score = -std::numeric_limits<T>::max();
-        int max_j = 0;
-        for (size_t j = 0; j < tag_num; ++j) {
-          T score = alpha_value[(k - 1) * tag_num + j] +
-                    w[(j + state_trans_base_idx) * tag_num + i];
-          if (score > max_score) {
-            max_score = score;
-            max_j = j;
-          }
-        }
-
-        alpha_value[k * tag_num + i] = max_score + x[k * tag_num + i];
-        track_value[k * tag_num + i] = max_j;
-      }
-    }
-
+    const auto& ker = math::jitkernel::KernelPool::Instance()
+                          .template Get<math::jitkernel::CRFDecodeKernel<T>>(
+                              static_cast<int>(tag_num));
+    ker->Compute(static_cast<int>(seq_len), x, w, alpha_value, track_value);
     T max_score = -std::numeric_limits<T>::max();
     int max_i = 0;
     for (size_t i = 0; i < tag_num; ++i) {

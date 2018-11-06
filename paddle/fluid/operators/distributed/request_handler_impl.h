@@ -36,25 +36,34 @@ namespace distributed {
 
 class RequestSendHandler final : public RequestHandler {
  public:
-  explicit RequestSendHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  explicit RequestSendHandler(bool sync_mode, bool enable_dc_asgd = false)
+      : RequestHandler(sync_mode) {
+    enable_dc_asgd_ = enable_dc_asgd;
+  }
   virtual ~RequestSendHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
               const std::string& out_var_name = "") override;
-  void ResetSparseVarRecorder();
 
  private:
-  std::mutex mutex_sparse_vars_;
-  std::vector<framework::Variable*> sparse_vars_;
+  bool enable_dc_asgd_;
 };
 
 class RequestGetHandler final : public RequestHandler {
  public:
-  explicit RequestGetHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  explicit RequestGetHandler(bool sync_mode, bool enable_dc_asgd = false)
+      : RequestHandler(sync_mode) {
+    enable_dc_asgd_ = enable_dc_asgd;
+  }
   virtual ~RequestGetHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
               const std::string& out_var_name = "") override;
+
+ private:
+  bool enable_dc_asgd_;
 };
 
 class RequestPrefetchHandler final : public RequestHandler {
@@ -63,6 +72,7 @@ class RequestPrefetchHandler final : public RequestHandler {
   virtual ~RequestPrefetchHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
               const std::string& out_var_name = "") override;
 };
 
@@ -75,6 +85,7 @@ class RequestCheckpointHandler final : public RequestHandler {
   virtual ~RequestCheckpointHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
               const std::string& out_var_name = "") override;
 
  private:

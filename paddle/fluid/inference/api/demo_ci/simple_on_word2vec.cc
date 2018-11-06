@@ -18,10 +18,12 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
+#include <algorithm>
 #include <memory>
 #include <thread>  //NOLINT
-#include "paddle/fluid/inference/paddle_inference_api.h"
-#include "paddle/fluid/platform/enforce.h"
+
+#include "paddle/include/paddle_inference_api.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
@@ -40,17 +42,16 @@ void Main(bool use_gpu) {
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     //# 2. Prepare input.
     int64_t data[4] = {1, 2, 3, 4};
 
-    PaddleTensor tensor{.name = "",
-                        .shape = std::vector<int>({4, 1}),
-                        .data = PaddleBuf(data, sizeof(data)),
-                        .dtype = PaddleDType::INT64};
+    PaddleTensor tensor;
+    tensor.shape = std::vector<int>({4, 1});
+    tensor.data = PaddleBuf(data, sizeof(data));
+    tensor.dtype = PaddleDType::INT64;
 
     // For simplicity, we set all the slots with the same data.
     std::vector<PaddleTensor> slots(4, tensor);
@@ -60,16 +61,17 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    PADDLE_ENFORCE(outputs.size(), 1UL);
+    CHECK_EQ(outputs.size(), 1UL);
     // Check the output buffer size and result of each tid.
-    PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+    CHECK_EQ(outputs.front().data.length(), 33168UL);
     float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                        0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
-    for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-      PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
-                     result[i]);
+    for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
+         i++) {
+      CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
+                 0.001);
     }
   }
 }
@@ -82,8 +84,7 @@ void MainThreads(int num_threads, bool use_gpu) {
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
-  auto main_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   std::vector<std::thread> threads;
   for (int tid = 0; tid < num_threads; ++tid) {
@@ -94,27 +95,29 @@ void MainThreads(int num_threads, bool use_gpu) {
       for (int batch_id = 0; batch_id < num_batches; ++batch_id) {
         // 2. Dummy Input Data
         int64_t data[4] = {1, 2, 3, 4};
-        PaddleTensor tensor{.name = "",
-                            .shape = std::vector<int>({4, 1}),
-                            .data = PaddleBuf(data, sizeof(data)),
-                            .dtype = PaddleDType::INT64};
+        PaddleTensor tensor;
+        tensor.shape = std::vector<int>({4, 1});
+        tensor.data = PaddleBuf(data, sizeof(data));
+        tensor.dtype = PaddleDType::INT64;
+
         std::vector<PaddleTensor> inputs(4, tensor);
         std::vector<PaddleTensor> outputs;
         // 3. Run
         CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
-        PADDLE_ENFORCE(outputs.size(), 1UL);
+        CHECK_EQ(outputs.size(), 1UL);
         // Check the output buffer size and result of each tid.
-        PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+        CHECK_EQ(outputs.front().data.length(), 33168UL);
         float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                            0.000932706};
         const size_t num_elements =
             outputs.front().data.length() / sizeof(float);
         // The outputs' buffers are in CPU memory.
-        for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-          PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
-                         result[i]);
+        for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
+             i++) {
+          CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i],
+                     result[i], 0.001);
         }
       }
     });

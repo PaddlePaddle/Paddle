@@ -22,15 +22,15 @@
 #include <string>
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
-#include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
 /*
- * Transform a FluidDesc to a data flow graph.
+ * Transform a FluidDesc to a SSA.
  */
 class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
  public:
@@ -46,7 +46,7 @@ class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
     return "transform a fluid ProgramDesc to a data flow graph.";
   }
 
-  Pass *CreateGraphvizDebugerPass() const override;
+  AnalysisPass *CreateGraphvizDebugerPass() const override;
 
  private:
   framework::proto::ProgramDesc const *desc_;

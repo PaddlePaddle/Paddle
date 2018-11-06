@@ -19,11 +19,17 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "gflags/gflags.h"
+
 #include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
-#include "paddle/fluid/platform/profiler.h"
+
+DEFINE_int32(rpc_send_thread_num, 5, "number of threads for rpc send");
+DEFINE_int32(rpc_get_thread_num, 5, "number of threads for rpc get");
+DEFINE_int32(rpc_prefetch_thread_num, 5, "number of threads for rpc prefetch");
 
 namespace paddle {
 namespace operators {
@@ -57,17 +63,16 @@ static void ParallelExecuteBlocks(
     framework::ProgramDesc *program, framework::Scope *scope) {
   std::vector<std::future<void>> fs;
   for (size_t idx : parallel_blkids) {
-    fs.push_back(
-        framework::Async([&executor, &prepared, &program, &scope, idx]() {
-          int run_block = idx;  // thread local
-          try {
-            VLOG(3) << "running server block: " << run_block
-                    << "pointer: " << prepared[run_block].get();
-            executor->RunPreparedContext(prepared[run_block].get(), scope);
-          } catch (const std::exception &e) {
-            LOG(ERROR) << "run sub program error " << e.what();
-          }
-        }));
+    fs.push_back(framework::Async([&executor, &prepared, &scope, idx]() {
+      int run_block = idx;  // thread local
+      try {
+        VLOG(3) << "running server block: " << run_block
+                << "pointer: " << prepared[run_block].get();
+        executor->RunPreparedContext(prepared[run_block].get(), scope);
+      } catch (const std::exception &e) {
+        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
+      }
+    }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
@@ -100,9 +105,10 @@ static int64_t GetTimestamp() {
 
 void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
-    framework::Scope *recv_scope,
+    framework::Scope *recv_scope, platform::DeviceContext *dev_ctx,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
+  VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -121,8 +127,14 @@ void ListenAndServOp::RunSyncLoop(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
+  // Trainers will get all parameters from pserver in the
+  // startup program, so we will wait RequestGet first
+  rpc_service_->SetCond(distributed::kRequestGet);
+  rpc_service_->WaitBarrier(distributed::kRequestGet);
   rpc_service_->ResetBarrierCounter();
+
   while (true) {
+    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -158,35 +170,74 @@ void ListenAndServOp::RunSyncLoop(
                           recv_scope);
     VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
+    ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
+
     rpc_service_->SetCond(distributed::kRequestGet);
     rpc_service_->WaitBarrier(distributed::kRequestGet);
     rpc_service_->ResetBarrierCounter();
-    // reset received sparse vars to avoid reuse it in the next mini-batch
-    dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
-        ->ResetSparseVarRecorder();
   }  // while(true)
+}
+
+void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
+                                        platform::DeviceContext *dev_ctx,
+                                        bool reset_all) const {
+  for (auto &varname : sparse_vars_) {
+    auto var = recv_scope->FindVar(varname);
+    if (var == nullptr) {
+      VLOG(2) << "can not find var " << varname << " in received scope";
+      continue;
+    }
+    if (var->IsType<framework::SelectedRows>()) {
+      VLOG(3) << "reset sparse var: " << varname;
+      var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
+    } else {
+      PADDLE_THROW("The type of sparse var should be SelectedRows");
+    }
+  }
+  if (UNLIKELY(reset_all)) {
+    for (auto &varname : dense_vars_) {
+      auto var = recv_scope->FindVar(varname);
+      if (var == nullptr) {
+        VLOG(2) << "can not find var " << varname << " in received scope";
+        continue;
+      }
+      if (var->IsType<framework::LoDTensor>()) {
+        math::set_constant(*dev_ctx, var->GetMutable<framework::LoDTensor>(),
+                           static_cast<float>(0));
+      } else if (var->IsType<framework::Tensor>()) {
+        math::set_constant(*dev_ctx, var->GetMutable<framework::Tensor>(),
+                           static_cast<float>(0));
+      } else {
+        PADDLE_THROW("The type of dense var should be in [LoDTensor, Tensor]");
+      }
+    }
+  }
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
-  // grad name to block id
-  std::unordered_map<std::string, int32_t> grad_to_block_id;
-  std::unordered_map<int32_t, std::string> id_to_grad;
-
+  VLOG(2) << "RunAsyncLoop";
   auto grad_to_block_id_str =
       Attr<std::vector<std::string>>("grad_to_block_id");
-  for (const auto &grad_and_id : grad_to_block_id_str) {
+  DoubleFindMap<std::string, int32_t> grad_to_block_id;
+
+  auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
+                              const std::string &grad_and_id) {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
-    VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
+    VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
-    PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
+    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0);
 
     int block_id = std::stoi(pieces[1]);
-    grad_to_block_id[pieces[0]] = block_id;
-    id_to_grad[block_id] = pieces[0];
+    (*out_map)[pieces[0]] = block_id;
+  };
+
+  for (const auto &grad_and_id : grad_to_block_id_str) {
+    append_block_maps(&grad_to_block_id, grad_and_id);
   }
+
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
@@ -196,15 +247,22 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
-  // execute global block if needed
-  if (block_list[0] == 1 && id_to_grad.count(1) == 0) {
+  // execute global block if needed, block id 1 in the program is global
+  // block if it's not bind to a grad var for it's update.
+  if (block_list[0] == 1 &&
+      grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
+          grad_to_block_id.end()) {
     executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
   }
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
-      grad_to_prepared_ctx;
+      grad_to_prepared_ctx, param_to_prepared_ctx;
   for (size_t i = 0; i < block_list.size(); ++i) {
-    grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
+    auto blkid = block_list[i];
+    auto it = grad_to_block_id.find_value(blkid);
+    if (it != grad_to_block_id.end()) {
+      grad_to_prepared_ctx[it->first] = optimize_prepared[i];
+    }
   }
 
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
@@ -239,6 +297,25 @@ static void FillRequestCtx(
   h->SetCheckpointNotifyPreparedCtx(checkpoint_ctx);
 }
 
+void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
+                                    const framework::Scope &scope) const {
+  for (const auto &varname : varnames) {
+    auto var = scope.FindVar(varname);
+    PADDLE_ENFORCE(var != nullptr,
+                   "Received var should be initialized in the received scope.");
+    if (var->IsType<framework::SelectedRows>()) {
+      sparse_vars_.push_back(varname);
+    } else if (var->IsType<framework::LoDTensor>() ||
+               var->IsType<framework::Tensor>()) {
+      dense_vars_.push_back(varname);
+    } else {
+      PADDLE_THROW(
+          "The type of received var should be in [SelectedRows, LoDTensor, "
+          "Tensor].");
+    }
+  }
+}
+
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
   // Mark this as PS that it should decide profiling by listening from trainer.
@@ -248,7 +325,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   bool sync_mode = Attr<bool>("sync_mode");
+  bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
+  auto inputs = Inputs("X");
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
@@ -260,19 +339,24 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
-  request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
+  request_send_handler_.reset(
+      new distributed::RequestSendHandler(sync_mode, dc_sgd));
+  request_get_handler_.reset(
+      new distributed::RequestGetHandler(sync_mode, dc_sgd));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
       sync_mode, checkpoint_block_id));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
-                            request_send_handler_.get());
+                            request_send_handler_.get(),
+                            FLAGS_rpc_send_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestGet,
-                            request_get_handler_.get());
+                            request_get_handler_.get(),
+                            FLAGS_rpc_get_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
-                            request_prefetch_handler_.get());
+                            request_prefetch_handler_.get(),
+                            FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
 
@@ -339,11 +423,16 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
+  // Cache the type of the received vars as `sparse_vars_` and `dense_vars_`
+  // so that we can reset them at the end of each iteration.
+  // NOTE: only used in sync update
+  CacheVarsType(inputs, recv_scope);
+
   // Write to a file of server selected port for python use.
   SavePort();
   if (sync_mode) {
-    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list,
-                checkpoint_block_id);
+    RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
+                prefetch_block_id_list, checkpoint_block_id);
   } else {
     RunAsyncLoop(&executor, program, &recv_scope);
   }
@@ -367,6 +456,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
+    AddAttr<bool>("dc_asgd", "set to true will enable DC-ASGD training.")
+        .SetDefault(false);
     AddAttr<std::vector<framework::BlockDesc *>>(
         kOptimizeBlocks, "Optimize blocks to run on server side.")
         .SetDefault({});

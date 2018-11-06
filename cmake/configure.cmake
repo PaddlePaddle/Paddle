@@ -57,6 +57,29 @@ if(NOT CMAKE_CROSSCOMPILING)
     endif()
 endif()
 
+if(WIN32)
+  # windows header option for all targets.
+  add_definitions(-D_XKEYCHECK_H)
+  # Use symbols instead of absolute path, reduce the cmake link command length. 
+  SET(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  SET(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  SET(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+  SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+  SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
+  SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
+
+  # Specify the program to use when building static libraries
+  SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
+  SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
+
+  # set defination for the dll export
+  if (NOT MSVC)
+    message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
+  endif(NOT MSVC)
+endif(WIN32)
+
 if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)
@@ -96,6 +119,23 @@ if(WITH_GPU)
             message(FATAL_ERROR "Paddle needs TensorRT >= 4.0 to compile")
         endif()
         include_directories(${TENSORRT_INCLUDE_DIR})
+    endif()
+    if(WITH_ANAKIN)
+        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            message(WARNING "Anakin needs CUDA >= 8.0 to compile. Force WITH_ANAKIN=OFF")
+            set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when CUDA >= 8.0." FORCE)
+        endif()
+        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+            message(WARNING "Anakin needs CUDNN >= 7.0 to compile. Force WITH_ANAKIN=OFF")
+            set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when CUDNN >= 7.0." FORCE)
+        endif()
+    endif()
+    if(WITH_ANAKIN)
+        # NOTICE(minqiyang): the end slash is important because $CUDNN_INCLUDE_DIR
+        # is a softlink to real cudnn.h directory
+        set(ENV{CUDNN_INCLUDE_DIR} "${CUDNN_INCLUDE_DIR}/")
+        get_filename_component(CUDNN_LIBRARY_DIR ${CUDNN_LIBRARY} DIRECTORY)
+        set(ENV{CUDNN_LIBRARY} ${CUDNN_LIBRARY_DIR})
     endif()
 elseif(WITH_AMD_GPU)
     add_definitions(-DPADDLE_WITH_HIP)

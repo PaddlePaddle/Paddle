@@ -21,14 +21,11 @@
 
 #include <string>
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
-#include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
 namespace inference {
-
-DECLARE_int32(tensorrt_max_batchsize);
-DECLARE_int32(tensorrt_workspace_size);
 
 namespace analysis {
 class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
@@ -45,7 +42,7 @@ class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
     return "Transform a DFG to a Fluid ProgramDesc";
   }
 
-  Pass *CreateGraphvizDebugerPass() const override;
+  AnalysisPass *CreateGraphvizDebugerPass() const override;
 
  protected:
   // Add a Fluid Op into the ProgramDesc.

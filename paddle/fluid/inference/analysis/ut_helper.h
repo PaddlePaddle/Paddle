@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
 namespace inference {
@@ -32,27 +32,12 @@ namespace analysis {
 
 DEFINE_string(inference_model_dir, "", "inference test model dir");
 
-static framework::proto::ProgramDesc LoadProgramDesc(
-    const std::string& model_dir = FLAGS_inference_model_dir) {
-  std::string msg;
-  std::string net_file = FLAGS_inference_model_dir + "/__model__";
-  std::ifstream fin(net_file, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", net_file);
-  fin.seekg(0, std::ios::end);
-  msg.resize(fin.tellg());
-  fin.seekg(0, std::ios::beg);
-  fin.read(&(msg.at(0)), msg.size());
-  fin.close();
-  framework::proto::ProgramDesc program_desc;
-  program_desc.ParseFromString(msg);
-  return program_desc;
-}
-
 static DataFlowGraph ProgramDescToDFG(
     const framework::proto::ProgramDesc& desc) {
   DataFlowGraph graph;
   FluidToDataFlowGraphPass pass;
   Argument argument;
+  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
   argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
   pass.Initialize(&argument);
   pass.Run(&graph);
@@ -63,7 +48,7 @@ static DataFlowGraph ProgramDescToDFG(
 class DFG_Tester : public ::testing::Test {
  protected:
   void SetUp() override {
-    auto desc = LoadProgramDesc(FLAGS_inference_model_dir);
+    auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
     argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
   }
 
