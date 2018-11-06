@@ -10,8 +10,22 @@ function(pass_library TARGET DEST)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
+    set(targetPrefix "")
+
+    # Get optional argument
+    set(extraMacroArgs ${ARGN})
+    list(LENGTH extraMacroArgs numExtraMacroArgs)
+    if(numExtraMacroArgs GREATER 0)
+        list(GET extraMacroArgs 0 targetPrefix)
+    endif()
+
     cmake_parse_arguments(op_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cc_library(${TARGET} SRCS ${TARGET}.cc DEPS graph_pattern_detector pass fuse_pass_base ${op_library_DEPS})
+    if(targetPrefix)
+        cc_library(${TARGET} SRCS ${targetPrefix}/${TARGET}.cc DEPS graph_pattern_detector pass fuse_pass_base ${op_library_DEPS})
+    else()
+        cc_library(${TARGET} SRCS ${TARGET}.cc DEPS graph_pattern_detector pass fuse_pass_base ${op_library_DEPS})
+    endif()
+
     # add more DEST here, such as train, dist and collect USE_PASS into a file automatically.
     if (${DEST} STREQUAL "base" OR ${DEST} STREQUAL "inference")
         message(STATUS "add pass ${TARGET} ${DEST}")
@@ -51,6 +65,7 @@ pass_library(conv_elementwise_add2_act_fuse_pass inference)
 pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
+pass_library(identity_scale_op_clean_pass base)
 
 # There may be many transpose-flatten structures in a model, and the output of
 # these structures will be used as inputs to the concat Op. This pattern will
