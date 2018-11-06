@@ -90,8 +90,9 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
           memory(fc_usr_src_memory_pd, fc_src_memory.get_data_handle());
     }
 
-    auto fc_weights_md = platform::MKLDNNMemDesc(
-        fc_weights_tz, platform::MKLDNNGetDataType<T>(), w->format());
+    auto fc_weights_md =
+        platform::MKLDNNMemDesc(fc_weights_tz, platform::MKLDNNGetDataType<T>(),
+                                mkldnn::memory::format::oi);
     auto fc_weights_memory_pd =
         memory::primitive_desc(fc_weights_md, mkldnn_engine);
     auto fc_weights_memory =
