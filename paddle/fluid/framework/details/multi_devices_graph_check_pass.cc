@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -45,9 +46,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
     insert_pending_var(var);
   }
 
-  for (ir::Node *node : graph->Nodes()) {
-    if (!node->IsWrappedBy<OpHandleBase>()) continue;
-    OpHandleBase *op = &node->Wrapper<OpHandleBase>();
+  for (OpHandleBase *op : ir::GetFilteredNodes<OpHandleBase>(*graph)) {
     if (op->Inputs().empty()) {
       ready_ops.insert(op);
     } else {

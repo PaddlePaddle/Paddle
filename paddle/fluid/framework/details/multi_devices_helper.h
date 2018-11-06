@@ -35,7 +35,7 @@ namespace details {
 // The outside vector is the device vector. Each element of this vector is a
 // map from variable name to variables. The variables, who have the same name,
 // will have a differsent version. The offset in the
-// `std::vector<std::unique_ptr<VarHandle>>` is the version of varaibles.
+// `std::vector<VarHandle*>` is the version of varaibles.
 typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle*>>>
     GraphVars;
 const char kGraphVars[] = "vars";
