@@ -14,9 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <string>
-#include "paddle/fluid/operators/math/jit_code.h"
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
 #include "paddle/fluid/platform/enforce.h"
+
+#ifdef PADDLE_WITH_XBYAK
+#include "paddle/fluid/operators/math/jit_code.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -95,6 +98,7 @@ class VMulKernelImpl : public VMulKernel<T> {
  public:
   DECLARE_STATIC_FUNC;
   explicit VMulKernelImpl(int d) : VMulKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       // roughly estimate the size of code
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
@@ -103,6 +107,7 @@ class VMulKernelImpl : public VMulKernel<T> {
           jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
       return;
     }
+#endif
 #ifdef PADDLE_WITH_MKLML
     if (useMKL(d)) {
       this->Compute = VMulMKL<T>;
@@ -112,15 +117,21 @@ class VMulKernelImpl : public VMulKernel<T> {
     this->Compute = VMulRefer<T>;
   }
 
+#ifdef PADDLE_WITH_XBYAK
+
  private:
   std::unique_ptr<gen::VMulJitCode> jitcode_{nullptr};
+#endif
 };
 
+#ifdef PADDLE_WITH_XBYAK
 template <>
 bool VMulKernelImpl<float>::useJIT(int d) {
   return gen::VMulJitCode::init(d);
 }
+#endif
 
+#ifdef PADDLE_WITH_MKLML
 template <>
 bool VMulKernelImpl<float>::useMKL(int d) {
   return jit::MayIUse(jit::avx512f) && d > 512;
@@ -130,6 +141,7 @@ template <>
 bool VMulKernelImpl<double>::useMKL(int d) {
   return true;
 }
+#endif
 
 /* VAdd JitKernel */
 template <typename T>

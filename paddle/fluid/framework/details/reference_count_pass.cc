@@ -43,6 +43,23 @@ static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
   return nullptr;
 }
 
+static void AddDependencyBetween(OpHandleBase *in, OpHandleBase *out,
+                                 ir::Graph *graph) {
+  auto it = std::find_if(
+      in->Outputs().begin(), in->Outputs().end(), [](VarHandleBase *var) {
+        return dynamic_cast<DummyVarHandle *>(var) != nullptr;
+      });
+
+  if (it != in->Outputs().end()) {
+    out->AddInput(*it);
+  } else {
+    auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
+    in->AddOutput(dep_var);
+    out->AddInput(dep_var);
+  }
+}
+
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto &ref_cnts = Get<DeviceReferenceCountMap>(kGlobalReferenceCount);
@@ -133,12 +150,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
             auto *ref_cnt_handle = new ReferenceCountOpHandle(
                 ref_cnt_node, next_compute_op->GetScope(), place, {var_name},
                 gcs[place.device].get(), cur_ref_cnts[place.device].get());
-            if (next_compute_op->Outputs().empty()) {
-              auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-              next_compute_op->AddOutput(dep_var);
-              graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-            }
-            ref_cnt_handle->AddInput(next_compute_op->Outputs().front());
+            AddDependencyBetween(next_compute_op, ref_cnt_handle, graph.get());
             compute_ref_cnt_map[next_compute_op].reset(ref_cnt_handle);
           }
         }
@@ -160,12 +172,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     auto *ref_cnt_handle = new ReferenceCountOpHandle(
         ref_cnt_node, compute_op->GetScope(), place, in_var_names,
         gcs[place.device].get(), cur_ref_cnts[place.device].get());
-    if (compute_op->Outputs().empty()) {
-      auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-      compute_op->AddOutput(dep_var);
-      graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-    }
-    ref_cnt_handle->AddInput(compute_op->Outputs().front());
+    AddDependencyBetween(compute_op, ref_cnt_handle, graph.get());
     compute_ref_cnt_map[compute_op].reset(ref_cnt_handle);
   }
 
