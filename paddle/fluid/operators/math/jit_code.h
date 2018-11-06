@@ -45,15 +45,12 @@ class VMulJitCode : public JitCode {
   reg64_t param3{abi_param3};
 
   xmm_t xmm_src1 = xmm_t(0);
-  ymm_t ymm_src1 = ymm_t(0);
-  zmm_t zmm_src1 = zmm_t(0);
   xmm_t xmm_src2 = xmm_t(1);
-  ymm_t ymm_src2 = ymm_t(1);
-  zmm_t zmm_src2 = zmm_t(1);
-
   xmm_t xmm_dst = xmm_t(2);
+
+  ymm_t ymm_src1 = ymm_t(0);
+  ymm_t ymm_src2 = ymm_t(1);
   ymm_t ymm_dst = ymm_t(2);
-  zmm_t zmm_dst = zmm_t(2);
 };
 
 }  // namespace gen
