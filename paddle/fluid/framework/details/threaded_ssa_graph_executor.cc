@@ -110,6 +110,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
+        ClearFetchOp(graph_.get(), &fetch_ops);
         exception_holder_.ReThrow();
       } else {
         continue;
