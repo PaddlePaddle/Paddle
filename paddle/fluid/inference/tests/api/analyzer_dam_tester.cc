@@ -153,7 +153,7 @@ void SetConfig(contrib::AnalysisConfig *cfg) {
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->specify_input_name = true;
-  cfg->enable_ir_optim = false;
+  cfg->enable_ir_optim = true;
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -174,8 +174,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_dam, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
 
+  std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
@@ -195,7 +195,8 @@ TEST(Analyzer_dam, profile) {
 TEST(Analyzer_dam, fuse_statis) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (cfg.enable_ir_optim) {  // cfg.enable_ir_optim must be set true
+
+  if (FLAGS_use_analysis) {  // use_analysis must be set true
     int num_ops;
     auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
     auto fuse_statis = GetFuseStatis(
@@ -213,7 +214,10 @@ TEST(Analyzer_dam, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+
+  if (FLAGS_use_analysis) {
+    CompareNativeAndAnalysis(cfg, input_slots_all);
+  }
 }
 
 }  // namespace inference
