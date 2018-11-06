@@ -59,8 +59,8 @@ ThreadPool::~ThreadPool() {
     // notify all threads to stop running
     std::lock_guard<std::mutex> l(mutex_);
     running_ = false;
-    scheduled_.notify_all();
   }
+  scheduled_.notify_all();
 
   for (auto& t : threads_) {
     t->join();
@@ -75,8 +75,12 @@ void ThreadPool::TaskLoop() {
     scheduled_.wait(
         lock, [this] { return !this->tasks_.empty() || !this->running_; });
 
-    if (!running_ || tasks_.empty()) {
+    if (!running_ && tasks_.empty()) {
       return;
+    }
+
+    if (tasks_.empty()) {
+      PADDLE_THROW("This thread has no task to Run");
     }
 
     // pop a task from the task queue
