@@ -12,18 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/analysis_var_pass.h"
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <type_traits>
 #include <vector>
+#include <memory>
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/details/analysis_var_pass.h"
+
+DEFINE_bool(enable_subgraph_optimize, false,
+            "SubGraph also reuse global graph variables, it will reduce the memory occupation"
+            "but a higher risk of memory reuse error. default disabled.");
+DEFINE_bool(enable_early_delete_in_optimize, false,
+            "Memory pool contains a lot unlived variables."
+            "If these variable is reused in the future, it will be added to garbage"
+            "collector (gc). Which will be cleared early than the scope destruction."
+            "Enable it will tigger gc to the pool. default disabled.");
 
 namespace paddle {
 namespace framework {
 namespace details {
-
 using details::UnlivedNodePool;
 using details::ReusedNodePairMap;
 using details::ControlFlowGraph;
@@ -121,8 +131,6 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   auto nodes = graph->Nodes();
   auto subblock_output_vars = GetSubBlockOutputVars(nodes);
 
-  ControlFlowGraph cfg(*graph.get());
-  cfg.LiveVariableAnalysis();
   auto op_has_subblock = [&](OpDesc* desc) {
     const AttributeMap& attrs = desc->GetAttrMap();
     for (auto& attr : attrs) {
@@ -142,9 +150,10 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
         desc->GetShape().size() == 0) {
       return false;
     }
-    if (subblock_output_vars.count(node)) return false;
+    // Operation output vars can be @EMPTY@. For example, while_grad
+    if (node->Name() == "@EMPTY@") return false;
+    // op output force generated in cpu, instead of inferenced from input.
     for (auto* op : node->inputs) {
-      // fill_constant on cpu can not be shared.
       if (op->Name() == "fill_constant" && op->Op()->HasAttr("force_cpu")) {
         return framework::AttrReader(op->Op()->GetAttrMap())
                    .Get<bool>("force_cpu") != true;
@@ -153,19 +162,51 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     return true;
   };
 
+  ControlFlowGraph cfg(*graph.get());
+  cfg.LiveVariableAnalysis();
   for (auto& op : cfg.Ops()) {
     VLOG(3) << PrintIt(this, pool);
     VLOG(3) << op->Name();
     auto* op_desc = op->Op();
     if (op_has_subblock(op_desc)) {
-      VLOG(3) << op->Name() << " has subblock, skipped.";
-      continue;
+      if (FLAGS_enable_subgraph_optimize) {
+        // conditional block, while op
+        auto* sub_block_desc = AttrReader(op_desc->GetAttrMap()).Get<BlockDesc*>("sub_block");
+        for(auto* sub_op_desc : sub_block_desc->AllOps()) {
+          for(auto& sub_op_output_var_pair : sub_op_desc->Outputs()) {
+            for(auto& sub_op_output_var : sub_op_output_var_pair.second) {
+              auto* var_desc = sub_block_desc->FindVar(sub_op_output_var);
+              ir::Node* var = ir::CreateDummyNode(var_desc).get();
+              if (var_can_reused(var)) {
+                int node_idx_in_pool = -1;
+                ir::Node* cached_var = nullptr;
+                if (NodeMatch(var, &cached_var, &node_idx_in_pool)) {
+                  VLOG(3) << string::Sprintf(
+                                             "Hit Cache !!! cache pool index %d, var is %s, cached var %s",
+                                             node_idx_in_pool, DebugString(var), DebugString(cached_var));
+                  pool.erase(cached_var);
+                  // subblock is not in IR graph. Modify the block_desc immediately
+                  // to make the subblock variable reuse strategy take effect.
+                  sub_op_desc->Rename(var->Name(), cached_var->Name());
+                  if (sub_op_desc->Block()->HasVar(var->Name())) {
+                    sub_op_desc->Block()->RemoveVar(var->Name());
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        VLOG(3) << op->Name() << " has subblock, but disable subgraph optimize. skipped.";
+        continue;
+      }
     }
     graph_ops.push_back(op);
 
     for (auto& var : cfg.Def(op)) {
       VLOG(3) << "start var " << DebugString(var);
-      if (var_can_reused(var)) {
+      if (var_can_reused(var) && subblock_output_vars.count(var) == 0) {
+        // global op not reuse subblock output vars
         int node_idx_in_pool = -1;
         ir::Node* cached_var = nullptr;
         VLOG(3) << "match var " << DebugString(var);

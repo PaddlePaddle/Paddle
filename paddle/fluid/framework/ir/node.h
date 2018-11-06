@@ -68,6 +68,9 @@ class Node {
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                                  Node::Type type);
+  // Subblock can not construct as an IR Graph.
+  // Create DummyNode, need to note that the counter also increase.
+  friend std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc);
 
   explicit Node(const std::string& name, Type type)
       : name_(name),
@@ -100,6 +103,7 @@ class Node {
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);
+std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc);
 
 }  // namespace ir
 }  // namespace framework
