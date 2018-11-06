@@ -14,14 +14,15 @@
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_mkldnn_fuse_pass.h"
 #include <functional>
-#include <utility>
+#include <list>
+#include <map>
+#include <tuple>
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-namespace {
 
 // The function keeps the graph consistent by replacing
 // a node 'from' in the set of inputs nodes
@@ -51,12 +52,77 @@ void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
     }
   }
 }
-}  // namespace
-using graph_ptr = std::unique_ptr<ir::Graph>;
 
-graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
+  auto find_node = [](ir::Graph* graph, const Node* node) -> Node* {
+    for (auto n : graph->Nodes()) {
+      if (n == node) {
+        return n;
+      }
+    }
 
+    return nullptr;
+  };
+
+  if (from == to) {
+    return true;
+  }
+
+  std::map<Node*, bool> visited;
+
+  for (auto& node : GraphTraits::DFS(*graph)) {
+    visited[&node] = false;
+  }
+
+  visited[from] = true;
+
+  std::list<Node*> queue;
+  queue.push_back(from);
+
+  while (!queue.empty()) {
+    auto cur = find_node(graph, queue.front());
+    queue.pop_front();
+
+    if (!cur) return false;
+
+    for (auto n : cur->outputs) {
+      if (n == to) {
+        return true;
+      }
+
+      if (!visited[n]) {
+        visited[n] = true;
+        queue.push_back(n);
+      }
+    }
+  }
+  return false;
+}
+
+std::pair<bool, Node*> ResidualConnectionMKLDNNFusePass::HasBias(
+    const Node& op) const {
+  auto bias_input_names = op.Op()->Inputs();
+  auto bias_it = bias_input_names.find("Bias");
+
+  if (bias_it != std::end(bias_input_names)) {
+    bool has_bias = !bias_it->second.empty();
+
+    if (has_bias) {
+      auto bias_names = bias_it->second;
+      auto bias_names_it =
+          std::find_if(std::begin(op.inputs), std::end(op.inputs),
+                       [&bias_names](Node* n) -> bool {
+                         return n->Name() == bias_names[0];
+                       });
+      return std::make_pair(has_bias, *bias_names_it);
+    }
+  }
+
+  return std::make_pair(false, nullptr);
+}
+
+graph_ptr ResidualConnectionMKLDNNFusePass::FuseConvAsX(
+    const std::string& name_scope_, graph_ptr graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
 
@@ -64,91 +130,101 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
   auto conv_output = conv_pattern();
 
   patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope_};
-  elementwise_add_pattern(conv_output);
-
+  elementwise_add_pattern(
+      conv_output,
+      pattern->NewNode(elementwise_add_pattern.elementwise_add_y_repr()));
   conv_output->AsIntermediate();
 
-  auto conv_op_has_bias = [](const Node& conv_op) -> std::pair<bool, Node*> {
-    auto bias_input_names = conv_op.Op()->Inputs();
-    auto bias_it = bias_input_names.find("Bias");
+  auto get_node_from_conv = [](const patterns::Conv& conv_pattern,
+                               const GraphPatternDetector::subgraph_t& subgraph)
+      -> std::tuple<Node*, Node*, Node*, Node*> {
+        GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
-    if (bias_it != std::end(bias_input_names)) {
-      bool has_bias = !bias_it->second.empty();
+        return std::make_tuple(conv_op, conv_input, conv_filter, conv_output);
+      };
 
-      if (has_bias) {
-        auto conv_bias_names = bias_it->second;
-        auto conv_bias_names_it =
-            std::find_if(std::begin(conv_op.inputs), std::end(conv_op.inputs),
-                         [&conv_bias_names](Node* n) -> bool {
-                           return n->Name() == conv_bias_names[0];
-                         });
-        return std::make_pair(has_bias, *conv_bias_names_it);
-      }
-    }
+  auto get_node_from_elementwise_add = [](
+      const patterns::ElementwiseAdd& elementwise_add_pattern,
+      const GraphPatternDetector::subgraph_t& subgraph)
+      -> std::tuple<Node*, Node*, Node*> {
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_y, elementwise_add_y,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                                  elementwise_add_pattern);
 
-    return std::make_pair(false, nullptr);
-  };
+        return std::make_tuple(elementwise_add_op, elementwise_add_y,
+                               elementwise_add_out);
+      };
 
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
-
-    if (FindFuseOption(*conv_op, *elementwise_add_op) != FUSE_MKLDNN) return;
-
-    OpDesc op_desc;
-    op_desc.SetType("conv2d");
-
-    op_desc.SetInput("Input", {conv_input->Name()});
-    op_desc.SetInput("Filter", {conv_filter->Name()});
-    op_desc.SetInput("ResidualData", {elementwise_add_x->Name()});
-    op_desc.SetOutput("Output", {conv_output->Name()});
-
-    bool has_bias;
-    Node* conv_bias;
-
-    std::tie(has_bias, conv_bias) = conv_op_has_bias(*conv_op);
-
-    if (has_bias) {
-      op_desc.SetInput("Bias", {conv_bias->Name()});
-    }
-
-    for (const auto& attr : conv_op->Op()->GetAttrMap()) {
-      op_desc.SetAttr(attr.first, attr.second);
-    }
-
-    op_desc.SetAttr("fuse_residual_connection", true);
-
-    auto fused_conv_op = g->CreateOpNode(&op_desc);
-
-    IR_NODE_LINK_TO(conv_input, fused_conv_op);
-    IR_NODE_LINK_TO(conv_filter, fused_conv_op);
-    IR_NODE_LINK_TO(elementwise_add_x, fused_conv_op);
-    IR_NODE_LINK_TO(fused_conv_op, conv_output);
-
-    if (has_bias) {
-      IR_NODE_LINK_TO(conv_bias, fused_conv_op);
-    }
-
-    CorrectGraphEdges(g, elementwise_add_out, conv_output);
-    GraphSafeRemoveNodes(g, {elementwise_add_out, conv_op, elementwise_add_op});
-  };
-
+  auto handler =
+      GenerateFuseHandler(conv_pattern, elementwise_add_pattern,
+                          get_node_from_conv, get_node_from_elementwise_add);
   gpd(graph.get(), handler);
 
   return graph;
+}
+
+graph_ptr ResidualConnectionMKLDNNFusePass::FuseConvAsY(
+    const std::string& name_scope_, graph_ptr graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+
+  patterns::Conv conv_pattern{pattern, name_scope_};
+  auto conv_output = conv_pattern();
+
+  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope_};
+  elementwise_add_pattern(
+      pattern->NewNode(elementwise_add_pattern.elementwise_add_x_repr()),
+      conv_output);
+  conv_output->AsIntermediate();
+
+  auto get_node_from_conv = [](const patterns::Conv& conv_pattern,
+                               const GraphPatternDetector::subgraph_t& subgraph)
+      -> std::tuple<Node*, Node*, Node*, Node*> {
+        GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
+
+        return std::make_tuple(conv_op, conv_input, conv_filter, conv_output);
+      };
+
+  auto get_node_from_elementwise_add = [](
+      const patterns::ElementwiseAdd& elementwise_add_pattern,
+      const GraphPatternDetector::subgraph_t& subgraph)
+      -> std::tuple<Node*, Node*, Node*> {
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                                  elementwise_add_pattern);
+
+        return std::make_tuple(elementwise_add_op, elementwise_add_x,
+                               elementwise_add_out);
+      };
+
+  auto handler =
+      GenerateFuseHandler(conv_pattern, elementwise_add_pattern,
+                          get_node_from_conv, get_node_from_elementwise_add);
+  gpd(graph.get(), handler);
+
+  return graph;
+}
+
+graph_ptr ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
+  FusePassBase::Init(name_scope_, graph.get());
+
+  return FuseConvAsY(name_scope_, FuseConvAsX(name_scope_, std::move(graph)));
 }
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(conv_elementwise_add_mkldnn_fuse_pass,
-              paddle::framework::ir::ConvElementwiseAddMKLDNNFusePass);
+              paddle::framework::ir::ResidualConnectionMKLDNNFusePass);
