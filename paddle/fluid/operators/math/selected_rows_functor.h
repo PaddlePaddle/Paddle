@@ -64,6 +64,8 @@ struct SelectedRowsSumTo {
                   framework::SelectedRows* input2);
 };
 
+// FIXME: The result of SelectedRowsAddToTensor maybe non deterministic,
+// because it uses CudaAtomicAdd.
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
