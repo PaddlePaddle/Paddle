@@ -39,6 +39,13 @@ void VMulRefer(const T* x, const T* y, T* z, int n) {
   }
 }
 
+template <typename T>
+void VAddRefer(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] + y[i];
+  }
+}
+
 #ifdef PADDLE_WITH_MKLML
 template <typename T>
 void VMulMKL(const T* x, const T* y, T* z, int n);
@@ -47,22 +54,38 @@ template <>
 void VMulMKL<float>(const float* x, const float* y, float* z, int n) {
   platform::dynload::vsMul(n, x, y, z);
 }
+
 template <>
 void VMulMKL<double>(const double* x, const double* y, double* z, int n) {
   platform::dynload::vdMul(n, x, y, z);
 }
+
+template <typename T>
+void VAddMKL(const T* x, const T* y, T* z, int n);
+
+template <>
+void VAddMKL<float>(const float* x, const float* y, float* z, int n) {
+  platform::dynload::vsAdd(n, x, y, z);
+}
+
+template <>
+void VAddMKL<double>(const double* x, const double* y, double* z, int n) {
+  platform::dynload::vdAdd(n, x, y, z);
+}
 #endif
+
+#define DECLARE_STATIC_FUNC                                 \
+  static inline std::string name(int d) {                   \
+    PADDLE_THROW("DType should be either float or double"); \
+  }                                                         \
+  static inline bool useJIT(int d) { return false; }        \
+  static inline bool useMKL(int d) { return false; }
 
 /* VMUL JitKernel */
 template <typename T>
 class VMulKernelImpl : public VMulKernel<T> {
  public:
-  static inline std::string name(int d) {
-    PADDLE_THROW("DType should be either float or double");
-  }
-  static inline bool useJIT(int d) { return false; }
-  static inline bool useMKL(int d) { return false; }
-
+  DECLARE_STATIC_FUNC;
   explicit VMulKernelImpl(int d) : VMulKernel<T>() {
     if (useJIT(d)) {
       // roughly estimate the size of code
@@ -100,63 +123,51 @@ bool VMulKernelImpl<double>::useMKL(int d) {
   return true;
 }
 
-REGISTER_JITKERNEL(vmul, VMulKernel);
-
-/* VADD JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+/* VAdd JitKernel */
+template <typename T>
 class VAddKernelImpl : public VAddKernel<T> {
  public:
-  explicit VAddKernelImpl(int d) : VAddKernel<T>() { this->num_ = d; }
-  void Compute(const T* x, const T* y, T* z) const override {
-    for (int i = 0; i < this->num_; ++i) {
-      z[i] = x[i] + y[i];
+  DECLARE_STATIC_FUNC;
+  explicit VAddKernelImpl(int d) : VAddKernel<T>() {
+    if (useJIT(d)) {
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      jitcode_.reset(new gen::VAddJitCode(d, sz > 4096 ? sz : 4096));
+      this->Compute =
+          jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
+      return;
     }
+#ifdef PADDLE_WITH_MKLML
+    if (useMKL(d)) {
+      this->Compute = VAddMKL<T>;
+      return;
+    }
+#endif
+    this->Compute = VAddRefer<T>;
   }
+
+ private:
+  std::unique_ptr<gen::VAddJitCode> jitcode_{nullptr};
 };
 
-#ifdef PADDLE_WITH_MKLML
-#define MKL_FLOAT(isa, block)                           \
-  template <>                                           \
-  void VAddKernelImpl<float, isa, block>::Compute(      \
-      const float* x, const float* y, float* z) const { \
-    platform::dynload::vsAdd(this->num_, x, y, z);      \
-  }
+template <>
+bool VAddKernelImpl<float>::useJIT(int d) {
+  return gen::VAddJitCode::init(d);
+}
 
-#define MKL_DOUBLE(isa, block)                             \
-  template <>                                              \
-  void VAddKernelImpl<double, isa, block>::Compute(        \
-      const double* x, const double* y, double* z) const { \
-    platform::dynload::vdAdd(this->num_, x, y, z);         \
-  }
+template <>
+bool VAddKernelImpl<float>::useMKL(int d) {
+  return d > 512;
+}
 
-FOR_EACH_ISA(MKL_FLOAT, kGT16);
-FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
-#endif
+template <>
+bool VAddKernelImpl<double>::useMKL(int d) {
+  return true;
+}
 
-#define INTRI8_FLOAT(isa)                               \
-  template <>                                           \
-  void VAddKernelImpl<float, isa, kEQ8>::Compute(       \
-      const float* x, const float* y, float* z) const { \
-    __m256 tmpx, tmpy;                                  \
-    tmpx = _mm256_loadu_ps(x);                          \
-    tmpy = _mm256_loadu_ps(y);                          \
-    tmpx = _mm256_add_ps(tmpx, tmpy);                   \
-    _mm256_storeu_ps(z, tmpx);                          \
-  }
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx);
-#endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2);
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f);
-#endif
-// TODO(TJ): eq16 test and complete avx512
+#undef DECLARE_STATIC_FUNC
 
-#undef INTRI8_FLOAT
-#undef MKL_FLOAT
-#undef MKL_DOUBLE
+REGISTER_JITKERNEL(vmul, VMulKernel);
+REGISTER_JITKERNEL(vadd, VAddKernel);
 
 /* VSCAL JitKernel */
 template <typename T, platform::jit::cpu_isa_t isa, jit_block>
@@ -480,7 +491,6 @@ INTRI_COMMON_FLOAT(jit::avx512f, kGT16);
 #undef INTRI16_FLOAT
 #undef INTRI_COMMON_FLOAT
 
-REGISTER_JITKERNEL_DEPRECATED(vadd, VAddKernel);
 REGISTER_JITKERNEL_DEPRECATED(vscal, VScalKernel);
 REGISTER_JITKERNEL_DEPRECATED(vaddb, VAddBiasKernel);
 REGISTER_JITKERNEL_DEPRECATED(vrelu, VReluKernel);

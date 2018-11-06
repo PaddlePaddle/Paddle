@@ -66,6 +66,42 @@ void VMulJitCode::generate() {
   ret();
 }
 
+bool VAddJitCode::init(int d) { return MayIUse(avx); }
+
+void VAddJitCode::generate() {
+  int offset = 0;
+  for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
+    vmovups(ymm_src1, ptr[param1 + offset]);
+    vmovups(ymm_src2, ptr[param2 + offset]);
+    vaddps(ymm_dst, ymm_src1, ymm_src2);
+    vmovups(ptr[param3 + offset], ymm_dst);
+    offset += sizeof(float) * AVX_FLOAT_BLOCK;
+  }
+  int rest = num_ % AVX_FLOAT_BLOCK;
+  if (rest >= 4) {
+    vmovups(xmm_src1, ptr[param1 + offset]);
+    vmovups(xmm_src2, ptr[param2 + offset]);
+    vaddps(xmm_dst, xmm_src1, xmm_src2);
+    vmovups(ptr[param3 + offset], xmm_dst);
+    offset += sizeof(float) * 4;
+    rest -= 4;
+  }
+  if (rest >= 2) {
+    vmovq(xmm_src1, ptr[param1 + offset]);
+    vmovq(xmm_src2, ptr[param2 + offset]);
+    vaddps(xmm_dst, xmm_src1, xmm_src2);
+    vmovq(ptr[param3 + offset], xmm_dst);
+    offset += sizeof(float) * 2;
+    rest -= 2;
+  }
+  if (rest > 0) {
+    vmovss(xmm_src1, ptr[param1 + offset]);
+    vmovss(xmm_src2, ptr[param2 + offset]);
+    vaddss(xmm_dst, xmm_src1, xmm_src2);
+    vmovss(ptr[param3 + offset], xmm_dst);
+  }
+  ret();
+}
 }  // namespace gen
 }  // namespace jitkernel
 }  // namespace math
