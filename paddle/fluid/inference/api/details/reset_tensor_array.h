@@ -29,10 +29,6 @@ struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
     valid_types_.insert(typeid(framework::Tensor));
     valid_types_.insert(typeid(framework::LoDTensor));
-    // The vector<tensor> will be cleared, not reset to save the overhead of
-    // allocator.
-    valid_types_.insert(typeid(std::vector<framework::Tensor *>));
-    valid_types_.insert(typeid(std::vector<framework::LoDTensor *>));
   }
   // Collect the variables that are not Tensor or LoDTensor, and reset them to a
   // bool(trick), because some of them are containers, and some operators just

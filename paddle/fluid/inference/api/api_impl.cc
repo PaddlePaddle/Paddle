@@ -159,9 +159,6 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
-  // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
-  tensor_array_batch_cleaner_.ResetTensorArray();
   // For some other vector like containers not cleaned after each batch.
   tensor_array_batch_cleaner_.CollectNoTensorVars(scope_.get());
   tensor_array_batch_cleaner_.ResetNoTensorVars();
