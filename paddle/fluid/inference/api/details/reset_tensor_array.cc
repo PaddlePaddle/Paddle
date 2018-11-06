@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
-#include "reset_tensor_array.h"
 
 namespace paddle {
 namespace details {
@@ -27,7 +26,7 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
       if (var->Type() == typeid(framework::LoDTensorArray)) {
-        VLOG(4) << "collect " << var_name;
+        LOG(INFO) << "collect " << var_name;
         arrays_.push_back(var->GetMutable<framework::LoDTensorArray>());
       }
     }
