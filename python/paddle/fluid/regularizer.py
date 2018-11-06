@@ -61,6 +61,9 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                 params_and_grads.append((param, grad))
                 continue
 
+            new_grad = grad.block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+
             grad.block.append_op(
                 type='sum',
                 inputs={"X": [grad, regularization_term]},
