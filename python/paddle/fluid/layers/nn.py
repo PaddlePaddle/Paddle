@@ -18,6 +18,7 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
@@ -5645,7 +5646,7 @@ def image_resize(input,
     inputs = {"X": input}
     if out_shape is not None:
         if isinstance(out_shape, Variable):
-            print("Warning: out_shape as Variable type is deprecated, \
+            warnings.warn("out_shape as Variable type is deprecated, \
                     it is recommended to use actual_shape instead of \
                     out_shape to specify output shape dynamically.")
             inputs['OutSize'] = out_shape
