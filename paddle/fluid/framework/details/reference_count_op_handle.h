@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -97,6 +98,13 @@ class ReferenceCountOpHandle : public OpHandleBase {
           tensors.emplace_back(
               var->GetMutable<SelectedRows>()->mutable_value());
         }
+      } else if (var->IsType<LoDTensorArray>()) {
+        if (it->second.fetch_sub(pair.second) <= pair.second) {
+          auto &tensor_array = var->GetMutable<LoDTensorArray>();
+          for (auto &tensor : tensor_array) {
+            tensors.emplace_back(tensor);
+          }
+        }
       }
     }
 
@@ -132,6 +140,25 @@ class ReferenceCountOpHandle : public OpHandleBase {
   AtomicReferenceCountMap *ref_cnts_;  // not own
   cudaEvent_t event_;
 };
+
+static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
+  std::queue<VarHandleBase *> queue;
+  queue.push(var_in);
+  do {
+    auto *var = queue.front();
+    queue.pop();
+    for (auto *op : var->PendingOps()) {
+      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
+      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
+        return compute_op;
+      }
+      for (auto *out_var : op->Outputs()) {
+        queue.push(out_var);
+      }
+    }
+  } while (!queue.empty());
+  return nullptr;
+}
 
 }  // namespace details
 }  // namespace framework

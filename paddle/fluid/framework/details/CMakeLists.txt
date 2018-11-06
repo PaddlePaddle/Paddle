@@ -30,11 +30,13 @@ cc_library(data_balance_op_handle SRCS data_balance_op_handle.cc DEPS op_handle_
 cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor)
 cc_library(fuse_vars_op_handle SRCS fuse_vars_op_handle.cc DEPS op_handle_base scope)
 
+cc_library(memory_optimize_pass SRCS memory_reuse_pass.cc analysis_var_pass.cc cfg_graph.cc DEPS graph graph_helper pass)
 if(WITH_GPU)
   cc_library(reference_count_pass SRCS reference_count_pass.cc DEPS computation_op_handle scale_loss_grad_op_handle rpc_op_handle
           all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle graph graph_helper pass)
+  cc_library(memory_early_delete_pass SRCS memory_early_delete_pass.cc DEPS memory_optimize_pass computation_op_handle scale_loss_grad_op_handle rpc_op_handle
+          all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle graph graph_helper pass)
 endif()
-cc_library(memory_optimize_pass SRCS memory_reuse_pass.cc analysis_var_pass.cc cfg_graph.cc DEPS graph graph_helper pass)
 
 cc_library(sequential_execution_pass SRCS sequential_execution_pass.cc DEPS graph graph_helper pass)
 
@@ -42,7 +44,7 @@ cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_
         scale_loss_grad_op_handle rpc_op_handle all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle fused_broadcast_op_handle)
 
 if(WITH_GPU)
-  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto reference_count_pass sequential_execution_pass memory_optimize_pass)
+  cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto reference_count_pass sequential_execution_pass memory_optimize_pass memory_early_delete_pass)
 else()
   cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto sequential_execution_pass memory_optimize_pass)
 endif()

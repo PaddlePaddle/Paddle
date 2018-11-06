@@ -15,8 +15,8 @@
 #pragma once
 #include <algorithm>
 #include <list>
-#include <set>
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -48,7 +48,9 @@ struct NodeComparator {
   }
 };
 
-using UnlivedNodePool = std::set<ir::Node*, NodeComparator>;  // order matters
+using UnlivedNodePool = std::map<ir::Node*, /*var node*/
+                                 ir::Node* /*the last op which use var node*/,
+                                 NodeComparator>;  // order matters
 using ReusedNodePairMap =
     std::unordered_map<ir::Node* /*op*/,
                        std::pair<ir::Node* /*var*/, ir::Node* /*reused var*/>>;

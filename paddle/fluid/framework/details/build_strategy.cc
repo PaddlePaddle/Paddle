@@ -118,6 +118,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
   details::ReusedNodePairMap reuse_map;
   details::GraphReusedOps graph_ops;
+  graph->Set(details::kGlobalUnlivedNodePool, new details::UnlivedNodePool);
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
       pass->Erase("places");

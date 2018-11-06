@@ -24,25 +24,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
-  std::queue<VarHandleBase *> queue;
-  queue.push(var_in);
-  do {
-    auto *var = queue.front();
-    queue.pop();
-    for (auto *op : var->PendingOps()) {
-      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
-      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
-        return compute_op;
-      }
-      for (auto *out_var : op->Outputs()) {
-        queue.push(out_var);
-      }
-    }
-  } while (!queue.empty());
-  return nullptr;
-}
-
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto &ref_cnts = Get<DeviceReferenceCountMap>(kGlobalReferenceCount);
@@ -210,4 +191,4 @@ REGISTER_PASS(reference_count_pass,
     .RequirePassAttr(paddle::framework::details::kGlobalReferenceCount)
     .RequirePassAttr(paddle::framework::details::kCurReferenceCount)
     .RequirePassAttr(paddle::framework::details::kGarbageCollector)
-.RequirePassAttr(paddle::framework::details::kFetchedVars);
+    .RequirePassAttr(paddle::framework::details::kFetchedVars);
