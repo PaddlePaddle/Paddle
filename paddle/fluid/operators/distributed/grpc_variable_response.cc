@@ -22,9 +22,6 @@
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_string(rpc_server_profile_path, "/tmp/profile_ps",
-              "the profile log file path");
-
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -289,7 +286,6 @@ int GRPCVariableResponse::Parse(Source* source) {
           platform::EnableProfiler(platform::ProfilerState::kCPU);
         } else if (profiling == platform::kDisableProfiler &&
                    platform::IsProfileEnabled()) {
-          // TODO(panyx0718): Should we allow to customize file dir.
           platform::DisableProfiler(
               platform::EventSortingKey::kDefault,
               string::Sprintf("%s_%lld", FLAGS_rpc_server_profile_path,
