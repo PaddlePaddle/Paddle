@@ -891,5 +891,19 @@ class TestBook(unittest.TestCase):
         print(str(program))
 
 
+def test_conv2d_with_filter(self):
+    program = Program()
+    with program_guard(program):
+        x = layers.data(name="x", shape=[3, 14, 14], dtype="float32")
+        y = layers.data(
+            name="y",
+            shape=[10, 3, 14, 14],
+            dtype="float32",
+            append_batch_size=False)
+        out = layers.conv2d_with_filter(input=x, filter=y)
+        self.assertIsNotNone(out)
+    print(str(program))
+
+
 if __name__ == '__main__':
     unittest.main()
