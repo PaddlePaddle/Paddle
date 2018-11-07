@@ -143,9 +143,11 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
       // Currently tensor core is only enabled using this algo
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      VLOG(5) << "use cudnn_tensor_op_math";
     } else {
       CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
     }
 #endif
 
@@ -361,7 +363,8 @@ REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<double>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,

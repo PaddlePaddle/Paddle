@@ -65,7 +65,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            param = fluid.default_main_program().global_block().var('fc.w')
+            param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \

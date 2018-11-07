@@ -38,9 +38,20 @@ class ParallelExecutorPrivate {
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
       : places_(places) {}
 
+  ~ParallelExecutorPrivate() {
+    if (own_local_scope_) {
+      for (size_t i = 1; i < local_scopes_.size(); ++i) {
+        // Skip the first scope, since it is the global scope.
+        Scope *local_scope = local_scopes_[i];
+        if (global_scope_->HasKid(local_scope)) {
+          global_scope_->DeleteScope(local_scope);
+        }
+      }
+    }
+  }
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
-  Scope *global_scope_;
+  Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
 #ifdef PADDLE_WITH_CUDA
@@ -306,16 +317,6 @@ ParallelExecutor::~ParallelExecutor() {
   for (auto &p : member_->places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
-
-  if (member_->own_local_scope_) {
-    for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-      Scope *local_scope = member_->local_scopes_[i];
-      if (member_->global_scope_->HasKid(local_scope)) {
-        member_->global_scope_->DeleteScope(local_scope);
-      }
-    }
-  }
-
   // member_ must be destructed before gcs_ since the destructor of
   // ReferenceCountOpHandle use raw pointers of gcs_ inside.
   member_.reset();
