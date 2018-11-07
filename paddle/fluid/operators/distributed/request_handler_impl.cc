@@ -36,6 +36,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
                                 framework::Variable* invar,
                                 framework::Variable** outvar,
+                                const int trainer_id,
                                 const std::string& out_var_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
@@ -76,6 +77,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Scope* scope,
                                framework::Variable* invar,
                                framework::Variable** outvar,
+                               const int trainer_id,
                                const std::string& out_var_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
   if (sync_mode_) {
@@ -88,6 +90,19 @@ bool RequestGetHandler::Handle(const std::string& varname,
     }
   } else {
     if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
+      if (enable_dc_asgd_) {
+        // NOTE: the format is determined by distributed_transpiler.py
+        std::string param_bak_name =
+            string::Sprintf("%s.trainer_%d_bak", varname, trainer_id);
+        VLOG(3) << "getting " << param_bak_name << " trainer_id " << trainer_id;
+        auto var = scope_->FindVar(varname);
+        auto t_orig = var->Get<framework::LoDTensor>();
+        auto param_bak = scope_->Var(param_bak_name);
+        auto t = param_bak->GetMutable<framework::LoDTensor>();
+        t->mutable_data(dev_ctx_->GetPlace(), t_orig.type());
+        VLOG(3) << "copying " << varname << " to " << param_bak_name;
+        framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
+      }
       *outvar = scope_->FindVar(varname);
     }
   }
@@ -98,6 +113,7 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     framework::Scope* scope,
                                     framework::Variable* invar,
                                     framework::Variable** outvar,
+                                    const int trainer_id,
                                     const std::string& out_var_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
@@ -113,6 +129,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Scope* scope,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
+                                      const int trainer_id,
                                       const std::string& out_var_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,

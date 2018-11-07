@@ -44,7 +44,8 @@ class SendOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(place);
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
@@ -79,6 +80,7 @@ This operator will send variables to listen_and_serve op at the parameter server
                  "(int, default 0)"
                  "sync send or async send.")
         .SetDefault(0);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "

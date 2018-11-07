@@ -72,14 +72,15 @@ class RPCClient {
   virtual bool Wait() = 0;
 
   template <typename T>
-  static RPCClient* GetInstance() {
-    std::call_once(init_flag_, &RPCClient::Init<T>);
+  static RPCClient* GetInstance(int trainer_id) {
+    std::call_once(init_flag_, &RPCClient::Init<T>, trainer_id);
     return rpc_client_.get();
   }
 
   // Init is called by GetInstance.
   template <typename T>
-  static void Init() {
+  static void Init(int trainer_id) {
+    trainer_id_ = trainer_id;
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());
       rpc_client_->InitImpl();
@@ -88,6 +89,8 @@ class RPCClient {
 
  protected:
   virtual void InitImpl() {}
+  // each trainer have exact one trainer id, it should be static
+  static int trainer_id_;
 
  private:
   static std::once_flag init_flag_;

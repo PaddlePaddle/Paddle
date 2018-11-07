@@ -28,7 +28,7 @@ using paddle::framework::Tensor;
    public:                                                              \
     void Make() override {                                              \
       AddInput("X", "Input of " #OP_NAME " operator");                  \
-      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
+      AddOutput("Out", "Output of " #OP_NAME " operator");              \
       AddAttr<bool>("use_mkldnn",                                       \
                     "(bool, default false) Only used in mkldnn kernel") \
           .SetDefault(false);                                           \

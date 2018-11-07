@@ -80,8 +80,7 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of softmax, "
              "whose last dimension is the input_feature_dimensions.");
-    AddOutput("Out", "The normalized values with the same shape as X.")
-        .Reuse("X");
+    AddOutput("Out", "The normalized values with the same shape as X.");
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")

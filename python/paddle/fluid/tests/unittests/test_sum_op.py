@@ -24,15 +24,19 @@ from paddle.fluid.op import Operator
 class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "sum"
+        self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
-        x0 = np.random.random((3, 4)).astype('float32')
-        x1 = np.random.random((3, 4)).astype('float32')
-        x2 = np.random.random((3, 4)).astype('float32')
+        x0 = np.random.random((3, 4)).astype(self.dtype)
+        x1 = np.random.random((3, 4)).astype(self.dtype)
+        x2 = np.random.random((3, 4)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
+
+    def init_kernel_type(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -45,16 +49,33 @@ class TestSumOp(OpTest):
 
 
 class TestSelectedRowsSumOp(OpTest):
-    def check_with_place(self, place):
-        scope = core.Scope()
-        self.check_input_and_optput(scope, place, True, True, True)
-        self.check_input_and_optput(scope, place, False, True, True)
-        self.check_input_and_optput(scope, place, False, False, True)
-        self.check_input_and_optput(scope, place, False, False, False)
+    def check_with_place(self, place, inplace):
+        self.height = 10
+        self.row_numel = 12
+        self.rows = [0, 1, 2, 3, 4, 5, 6]
+
+        self.check_input_and_optput(core.Scope(), place, inplace, True, True,
+                                    True)
+        self.check_input_and_optput(core.Scope(), place, inplace, False, True,
+                                    True)
+        self.check_input_and_optput(core.Scope(), place, inplace, False, False,
+                                    True)
+        self.check_input_and_optput(core.Scope(), place, inplace, False, False,
+                                    False)
+
+    def init_kernel_type(self):
+        self.dtype = np.float32
+
+    def _get_array(self, row_num, row_numel):
+        array = np.ones((row_num, row_numel)).astype(self.dtype)
+        for i in range(row_num):
+            array[i] *= i
+        return array
 
     def check_input_and_optput(self,
                                scope,
                                place,
+                               inplace,
                                w1_has_data=False,
                                w2_has_data=False,
                                w3_has_data=False):
@@ -64,35 +85,43 @@ class TestSelectedRowsSumOp(OpTest):
         self.create_selected_rows(scope, place, "W3", w3_has_data)
 
         # create Out Variable
-        out = scope.var('Out').get_selected_rows()
+        if inplace:
+            out_var_name = "W1"
+        else:
+            out_var_name = "Out"
+        out = scope.var(out_var_name).get_selected_rows()
 
         # create and run sum operator
-        sum_op = Operator("sum", X=["W1", "W2", "W3"], Out='Out')
+        sum_op = Operator("sum", X=["W1", "W2", "W3"], Out=out_var_name)
         sum_op.run(scope, place)
 
         has_data_w_num = 0
-        for w in [w1_has_data, w2_has_data, w3_has_data]:
-            if not w:
+        for has_data in [w1_has_data, w2_has_data, w3_has_data]:
+            if has_data:
                 has_data_w_num += 1
 
-        self.assertEqual(7 * has_data_w_num, len(out.rows()))
+        if has_data_w_num > 0:
+            self.assertEqual(len(out.rows()), 7)
+            self.assertTrue(
+                np.array_equal(
+                    np.array(out.get_tensor()),
+                    self._get_array(len(self.rows), self.row_numel) *
+                    has_data_w_num))
+        else:
+            self.assertEqual(len(out.rows()), 0)
 
-    def create_selected_rows(self, scope, place, var_name, isEmpty):
+    def create_selected_rows(self, scope, place, var_name, has_data):
         # create and initialize W Variable
-        if not isEmpty:
-            rows = [0, 1, 2, 3, 4, 5, 6]
-            row_numel = 12
+        if has_data:
+            rows = self.rows
         else:
             rows = []
-            row_numel = 12
 
         var = scope.var(var_name)
         w_selected_rows = var.get_selected_rows()
-        w_selected_rows.set_height(len(rows))
+        w_selected_rows.set_height(self.height)
         w_selected_rows.set_rows(rows)
-        w_array = np.ones((len(rows), row_numel)).astype("float32")
-        for i in range(len(rows)):
-            w_array[i] *= i
+        w_array = self._get_array(len(rows), self.row_numel)
         w_tensor = w_selected_rows.get_tensor()
         w_tensor.set(w_array, place)
 
@@ -100,9 +129,42 @@ class TestSelectedRowsSumOp(OpTest):
 
     def test_w_is_selected_rows(self):
         places = [core.CPUPlace()]
-        # currently only support CPU
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_with_place(place)
+            for inplace in [True, False]:
+                self.check_with_place(place, inplace)
+
+
+class TestFP16SumOp(TestSumOp):
+    def init_kernel_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+    # FIXME: Because of the precision fp16, max_relative_error
+    # should be 0.15 here.
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad(['x0'], 'Out', max_relative_error=0.15)
+
+
+class TestFP16SelectedRowsSumOp(TestSelectedRowsSumOp):
+    def init_kernel_type(self):
+        self.dtype = np.float16
+
+    def test_w_is_selected_rows(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                for inplace in [True, False]:
+                    self.check_with_place(place, inplace)
 
 
 if __name__ == "__main__":
