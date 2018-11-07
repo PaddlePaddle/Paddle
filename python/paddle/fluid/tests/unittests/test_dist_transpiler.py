@@ -570,7 +570,6 @@ class TestDistLookupTable(TestDistLookupTableBase):
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'uniform_random',
             'uniform_random', 'recv', 'recv', 'recv', 'fetch_barrier', 'concat',
             'fake_init'
