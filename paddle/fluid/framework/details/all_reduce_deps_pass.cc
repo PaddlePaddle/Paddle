@@ -54,6 +54,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     }
   }
 
+  VLOG(11) << "cur_level_ops:" << cur_level_ops.size() << std::endl;
+
   while (!cur_level_ops.empty()) {
     std::unordered_set<OpHandleBase*> next_level_ops;
     std::unordered_set<AllReduceOpHandle*> next_level_allreduce_ops;
@@ -61,26 +63,32 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     for (auto* op : cur_level_ops) {
       auto* allreduce_op = dynamic_cast<AllReduceOpHandle*>(op);
       if (allreduce_op != nullptr) {
+        VLOG(11) << "all_reduce_op:" << allreduce_op->Name() << std::endl;
         next_level_allreduce_ops.insert(allreduce_op);
       }
 
       for (auto* pending_op : graph_view.PendingOps(op)) {
         next_level_ops.insert(pending_op);
       }
-
-      if (!next_level_allreduce_ops.empty()) {
-        allreduce_ops.emplace_back(std::move(next_level_allreduce_ops));
-      }
     }
 
+    if (!next_level_allreduce_ops.empty()) {
+      allreduce_ops.emplace_back(std::move(next_level_allreduce_ops));
+    }
+
+    VLOG(11) << "next_level_ops:" << next_level_ops.size() << std::endl;
     cur_level_ops.swap(next_level_ops);
+    VLOG(11) << "cur_level_ops:" << cur_level_ops.size() << std::endl;
   }
 
+  VLOG(11) << "allreduce_ops size:" << allreduce_ops.size() << std::endl;
   for (auto& s : allreduce_ops) {
     std::vector<AllReduceOpHandle*> op_list;
     for (auto* n : s) {
       op_list.emplace_back(n);
     }
+
+    VLOG(11) << "op_list size:" << op_list.size() << std::endl;
 
     // sort cur_level_ops by inputs[0].name
     std::sort(op_list.begin(), op_list.end(), less);
@@ -94,7 +102,7 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
       graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
 
       VLOG(10) << "Add all_reduce Sequential dependencies between "
-               << op_list[i - 1]->Name() << " and " << op_list[i]->Name();
+               << op_list[i - 1] << " and " << op_list[i];
     }
   }
 
