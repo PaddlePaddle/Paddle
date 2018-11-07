@@ -93,7 +93,6 @@ class TestDistSimnetBow2x2SparseAsync(TestDistBase):
 
 
 # FIXME(tangwei): Learningrate variable is not created on pserver.
-"""
 class TestDistSimnetBow2x2LookupTableSync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -146,7 +145,7 @@ class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
             delta=1e-5,
             check_error_log=False,
             need_envs=need_envs)
-"""
+
 
 if __name__ == "__main__":
     unittest.main()

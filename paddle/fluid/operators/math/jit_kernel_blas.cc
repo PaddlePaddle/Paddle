@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifdef PADDLE_WITH_XBYAK
+#include "paddle/fluid/operators/math/jit_code.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
@@ -27,65 +33,86 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
-
 namespace jit = platform::jit;
 
-/* VMUL JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
-class VMulKernelImpl : public VMulKernel<T> {
- public:
-  explicit VMulKernelImpl(int d) : VMulKernel<T>() { this->num_ = d; }
-  void Compute(const T* x, const T* y, T* z) const override {
-    for (int i = 0; i < this->num_; ++i) {
-      z[i] = x[i] * y[i];
-    }
+template <typename T>
+void VMulRefer(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
   }
-};
+}
 
 #ifdef PADDLE_WITH_MKLML
-#define MKL_FLOAT(isa, block)                           \
-  template <>                                           \
-  void VMulKernelImpl<float, isa, block>::Compute(      \
-      const float* x, const float* y, float* z) const { \
-    platform::dynload::vsMul(this->num_, x, y, z);      \
+template <typename T>
+void VMulMKL(const T* x, const T* y, T* z, int n);
+
+template <>
+void VMulMKL<float>(const float* x, const float* y, float* z, int n) {
+  platform::dynload::vsMul(n, x, y, z);
+}
+template <>
+void VMulMKL<double>(const double* x, const double* y, double* z, int n) {
+  platform::dynload::vdMul(n, x, y, z);
+}
+#endif
+
+/* VMUL JitKernel */
+template <typename T>
+class VMulKernelImpl : public VMulKernel<T> {
+ public:
+  static inline std::string name(int d) {
+    PADDLE_THROW("DType should be either float or double");
+  }
+  static inline bool useJIT(int d) { return false; }
+  static inline bool useMKL(int d) { return false; }
+
+  explicit VMulKernelImpl(int d) : VMulKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      // roughly estimate the size of code
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      jitcode_.reset(new gen::VMulJitCode(d, sz > 4096 ? sz : 4096));
+      this->Compute =
+          jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_MKLML
+    if (useMKL(d)) {
+      this->Compute = VMulMKL<T>;
+      return;
+    }
+#endif
+    this->Compute = VMulRefer<T>;
   }
 
-#define MKL_DOUBLE(isa, block)                             \
-  template <>                                              \
-  void VMulKernelImpl<double, isa, block>::Compute(        \
-      const double* x, const double* y, double* z) const { \
-    platform::dynload::vdMul(this->num_, x, y, z);         \
-  }
+#ifdef PADDLE_WITH_XBYAK
 
-FOR_EACH_ISA(MKL_FLOAT, kGT16);
-FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
+ private:
+  std::unique_ptr<gen::VMulJitCode> jitcode_{nullptr};
+#endif
+};
+
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool VMulKernelImpl<float>::useJIT(int d) {
+  return gen::VMulJitCode::init(d);
+}
 #endif
 
-#define INTRI8_FLOAT(isa)                               \
-  template <>                                           \
-  void VMulKernelImpl<float, isa, kEQ8>::Compute(       \
-      const float* x, const float* y, float* z) const { \
-    __m256 tmpx, tmpy;                                  \
-    tmpx = _mm256_loadu_ps(x);                          \
-    tmpy = _mm256_loadu_ps(y);                          \
-    tmpx = _mm256_mul_ps(tmpx, tmpy);                   \
-    _mm256_storeu_ps(z, tmpx);                          \
-  }
+#ifdef PADDLE_WITH_MKLML
+template <>
+bool VMulKernelImpl<float>::useMKL(int d) {
+  return jit::MayIUse(jit::avx512f) && d > 512;
+}
 
-// avx > for > mkl
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx);
+template <>
+bool VMulKernelImpl<double>::useMKL(int d) {
+  return true;
+}
 #endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2);
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f);
-#endif
-// TODO(TJ): eq16 test and complete avx512
-#undef INTRI8_FLOAT
-#undef MKL_FLOAT
-#undef MKL_DOUBLE
+
+REGISTER_JITKERNEL(vmul, VMulKernel);
 
 /* VADD JitKernel */
 template <typename T, platform::jit::cpu_isa_t isa, jit_block>
@@ -465,13 +492,12 @@ INTRI_COMMON_FLOAT(jit::avx512f, kGT16);
 #undef INTRI16_FLOAT
 #undef INTRI_COMMON_FLOAT
 
-REGISTER_JITKERNEL(vmul, VMulKernel);
-REGISTER_JITKERNEL(vadd, VAddKernel);
-REGISTER_JITKERNEL(vscal, VScalKernel);
-REGISTER_JITKERNEL(vaddb, VAddBiasKernel);
-REGISTER_JITKERNEL(vrelu, VReluKernel);
-REGISTER_JITKERNEL(vaddrelu, VAddReluKernel);
-REGISTER_JITKERNEL(videntity, VIdentityKernel);
+REGISTER_JITKERNEL_DEPRECATED(vadd, VAddKernel);
+REGISTER_JITKERNEL_DEPRECATED(vscal, VScalKernel);
+REGISTER_JITKERNEL_DEPRECATED(vaddb, VAddBiasKernel);
+REGISTER_JITKERNEL_DEPRECATED(vrelu, VReluKernel);
+REGISTER_JITKERNEL_DEPRECATED(vaddrelu, VAddReluKernel);
+REGISTER_JITKERNEL_DEPRECATED(videntity, VIdentityKernel);
 
 }  // namespace jitkernel
 }  // namespace math
