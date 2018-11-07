@@ -641,6 +641,12 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
                                             const std::string &varname) const {
   auto &sharded_var_device = graph.Get<ShardedVarDevice>(kShardedVarDevice);
   auto got = sharded_var_device.find(varname);
+  if (got == sharded_var_device.end()) {
+    auto pos = varname.find(framework::kNewGradSuffix);
+    if (pos != std::string::npos) {
+      got = sharded_var_device.find(varname.substr(0, pos));
+    }
+  }
   return got == sharded_var_device.end() ? -1 : got->second;
 }
 

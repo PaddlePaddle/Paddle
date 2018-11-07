@@ -63,22 +63,21 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
 
             new_grad = grad
             if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+                # the grad's type and name will be changed. But the gradient's name
+                # is used in ParallelExecutor Reduce mode, so I add a flag for
+                # the new_grad here.
                 new_grad = grad.block.create_var(
+                    name=grad.name + core.kNewGradSuffix(),
                     dtype=param.dtype,
                     shape=param.shape,
-                    lod_level=param.lod_level)
+                    lod_level=param.lod_level,
+                    type=core.VarDesc.VarType.LOD_TENSOR)
 
             grad.block.append_op(
                 type='sum',
                 inputs={"X": [grad, regularization_term]},
                 outputs={"Out": new_grad})
-
-            # FIXME(zcd): the grad's name should not be changed,
-            # because the name is used in ParallelExecutor Reduce mode.
-            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-                tmp_name = new_grad.name
-                new_grad.name = grad.name
-                grad.name = tmp_name
 
             params_and_grads.append((param, new_grad))
 

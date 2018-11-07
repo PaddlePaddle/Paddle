@@ -54,6 +54,9 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
+/// Variables with this suffix are the new Gradient.
+constexpr char kNewGradSuffix[] = "@NEWGRAD@";
+
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
