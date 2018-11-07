@@ -40,30 +40,6 @@ __all__ = [
 ]
 
 
-def _process_distribute_lookuptable(program, param_grads, learning_rate):
-    table_name = find_distributed_lookup_table(program)
-    table_param = None
-    table_grad = None
-    new_param_grads = []
-    for p, g in param_grads:
-        if p.name == table_name:
-            if table_param is not None:
-                raise RuntimeError(
-                    "multi dist table var found, only support one now!")
-            table_param = p
-            table_grad = g
-        else:
-            new_param_grads.append((p, g))
-    sgd_op = None
-    if table_param is not None:
-        with table_param.block.program._optimized_guard(
-            [table_param, table_grad]), framework.name_scope("optimizer"):
-            sgd_optimizer = SGD(learning_rate)
-            sgd_op = sgd_optimizer._append_optimize_op(table_param.block, (
-                table_param, table_grad))
-    return new_param_grads, (table_param, table_grad), sgd_op
-
-
 class Optimizer(object):
     """Optimizer Base class.
 
@@ -111,7 +87,7 @@ class Optimizer(object):
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(self._learning_rate),
-            dtype='float32' if self._dtype == None else self._dtype,
+            dtype='float32' if self._dtype is None else self._dtype,
             persistable=True)
 
     def _global_learning_rate(self, program=None):
@@ -251,7 +227,6 @@ class Optimizer(object):
             self.helper = LayerHelper(self.__class__.__name__)
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
-            self._create_global_learning_rate()
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
@@ -271,6 +246,40 @@ class Optimizer(object):
             end = len(global_block.ops)
             return global_block._slice_ops(start, end)
 
+    def _process_distribute_lookuptable(self, param_grads, loss,
+                                        startup_program):
+        program = loss.block.program
+        table_name = find_distributed_lookup_table(program)
+        table_param = None
+        table_grad = None
+        new_param_grads = []
+        for p, g in param_grads:
+            if p.name == table_name:
+                if table_param is not None:
+                    raise RuntimeError(
+                        "multi dist table var found, only support one now!")
+                table_param = p
+                table_grad = g
+            else:
+                new_param_grads.append((p, g))
+        sgd_op = None
+        if table_param is not None:
+            with program_guard(program, startup_program):
+                param_and_grad = [table_param, table_grad]
+                with table_param.block.program._optimized_guard(param_and_grad), \
+                     framework.name_scope("optimizer"):
+                    # create the optimize op
+                    sgd_op = loss.block.append_op(
+                        type='sgd',
+                        inputs={
+                            "Param": table_param,
+                            "Grad": table_grad,
+                            "LearningRate":
+                            self._create_param_lr(param_and_grad)
+                        },
+                        outputs={"ParamOut": param_and_grad[0]})
+        return new_param_grads, (table_param, table_grad), sgd_op
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -281,26 +290,29 @@ class Optimizer(object):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       [error_clip_callback])
+        with program_guard(loss.block.program, startup_program):
+            self._create_global_learning_rate()
 
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+            params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                           [error_clip_callback])
 
-        params_grads, table_param_and_grad, table_optimize_op = \
-            _process_distribute_lookuptable(loss.block.program, params_grads, self._learning_rate)
+            params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads = append_gradient_clip_ops(params_grads)
+            params_grads, table_param_and_grad, table_optimize_op = \
+                self._process_distribute_lookuptable(params_grads, loss, startup_program)
 
-        # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
+            params_grads = append_gradient_clip_ops(params_grads)
 
-        optimize_ops = self._create_optimization_pass(params_grads, loss,
-                                                      startup_program)
-        if table_optimize_op is not None:
-            optimize_ops.append(table_optimize_op)
-            params_grads.append(table_param_and_grad)
-        return optimize_ops, params_grads
+            # Add regularization if any
+            params_grads = append_regularization_ops(params_grads,
+                                                     self.regularization)
+
+            optimize_ops = self._create_optimization_pass(params_grads, loss,
+                                                          startup_program)
+            if table_optimize_op is not None:
+                optimize_ops.append(table_optimize_op)
+                params_grads.append(table_param_and_grad)
+            return optimize_ops, params_grads
 
 
 class SGDOptimizer(Optimizer):
