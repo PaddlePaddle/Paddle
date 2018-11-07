@@ -75,14 +75,14 @@ RUN pip3 install -U wheel && \
     pip3 install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
     easy_install -U pip && \
-    pip install -U wheel && \
+    pip install -U pip setuptools wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3 install pre-commit 'ipython==5.3.0' && \
+RUN pip3 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3 install opencv-python && \
-    pip install pre-commit 'ipython==5.3.0' && \
+    pip install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
 

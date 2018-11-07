@@ -865,6 +865,7 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+
     def test_conv2d_with_filter(self):
         program = Program()
         with program_guard(program):
@@ -876,6 +877,32 @@ class TestBook(unittest.TestCase):
                 append_batch_size=False)
             out = layers.conv2d_with_filter(input=x, filter=y)
             self.assertIsNotNone(out)
+        print(str(program))
+
+
+    def test_grid_sampler(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5, 7], dtype='float32')
+            grid = layers.data(name='grid', shape=[5, 7, 2], dtype='float32')
+            out = layers.grid_sampler(x, grid)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_affine_grid(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+
+            theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
+            out_shape = layers.data(
+                name="out_shape", shape=[-1], dtype="float32")
+            data_0 = layers.affine_grid(theta, out_shape)
+            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+
+            self.assertIsNotNone(data_0)
+            self.assertIsNotNone(data_1)
         print(str(program))
 
 
