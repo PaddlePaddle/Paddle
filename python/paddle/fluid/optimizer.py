@@ -13,21 +13,23 @@
 # limitations under the License.
 
 from __future__ import print_function
-import re
-import sys
+
 from collections import defaultdict
+from contextlib import contextmanager
+
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
+import paddle.fluid.transpiler.details.distribute_lookuptable_utils as distribute_lookuptable_utils
+
 from . import framework
 from . import layers
-from .backward import append_backward
-from .framework import program_guard
 from . import unique_name
+from .backward import append_backward
+from .clip import append_gradient_clip_ops, error_clip_callback
+from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
-from .regularizer import append_regularization_ops
-from .clip import append_gradient_clip_ops, error_clip_callback
-from contextlib import contextmanager
 from .layers import ops
+from .regularizer import append_regularization_ops
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -260,6 +262,9 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
+        params_grads, table_param_and_grad, table_optimize_op = \
+            distribute_lookuptable_utils.process_distribute_lookuptable(loss.block.program, params_grads, self._learning_rate)
+
         params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
@@ -268,6 +273,8 @@ class Optimizer(object):
 
         optimize_ops = self._create_optimization_pass(params_grads, loss,
                                                       startup_program)
+        optimize_ops.append(table_optimize_op)
+        params_grads.append(table_param_and_grad)
         return optimize_ops, params_grads
 
 
