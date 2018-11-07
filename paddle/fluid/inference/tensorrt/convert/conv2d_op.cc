@@ -18,6 +18,21 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+bool to_skip_merging_optimize(TensorRTEngine* engine_,
+                              const std::vector<int>& filters,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              std::string input_name) {
+  if (engine_->itensor_quote_num[input_name] > 0) {
+    return true;
+  }
+  if (filters[0] == 1 && filters[1] == 1 && strides[0] == 1 &&
+      strides[1] == 1 && paddings[0] == 0 && paddings[1] == 0)
+    engine_->itensor_quote_num[input_name] += 1;
+
+  return false;
+}
+
 class Conv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -31,6 +46,7 @@ class Conv2dOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1);
 
     auto* X = engine_->GetITensor(op_desc.Input("Input").front());
+
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
@@ -83,7 +99,10 @@ class Conv2dOpConverter : public OpConverter {
         std::move(weight_tensor);
     layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
+
+    if (test_mode ||
+        to_skip_merging_optimize(engine_, {filter_h, filter_w}, strides,
+                                 paddings, op_desc.Input("Input").front())) {
       engine_->DeclareOutput(output_name);
     }
   }
