@@ -82,26 +82,6 @@ inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_te
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50 
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
-# face
-set(FACE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/face")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_align1
-  "${FACE_INSTALL_DIR}/align1" analyzer_face_tester.cc "face%2Falign1_model.tar.gz")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_align2
-  "${FACE_INSTALL_DIR}/align2" analyzer_face_tester.cc "face%2Falign2_model.tar.gz")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_feature1
-  "${FACE_INSTALL_DIR}/feature1" analyzer_face_tester.cc "face%2Ffeature_id_model.tar.gz")
-# TODO(luotao): Disable this test due to analysis is timeout 10 minutes.
-# inference_analysis_api_test_with_fake_data(test_analyzer_face_feature2
-#  "${FACE_INSTALL_DIR}/feature2" analyzer_face_tester.cc "face%2Ffeature_life_model.tar.gz")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_detect
-  "${FACE_INSTALL_DIR}/detect" analyzer_face_tester.cc "face%2Fdetect_model.tar.gz")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_demark
-  "${FACE_INSTALL_DIR}/demark" analyzer_face_tester.cc "face%2Fdemark_model.tar.gz")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_score
-  "${FACE_INSTALL_DIR}/score" analyzer_face_tester.cc "face%2Fscore_model.tar.gz")
-inference_analysis_api_test_with_fake_data(test_analyzer_face_super_res
-  "${FACE_INSTALL_DIR}/super_res" analyzer_face_tester.cc "face%2Fsuper_res_model.tar.gz")
-
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    # anakin rnn1
