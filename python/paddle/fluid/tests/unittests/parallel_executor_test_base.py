@@ -18,6 +18,7 @@ import multiprocessing
 import os
 import unittest
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import time
 import numpy as np
 import math
@@ -40,7 +41,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   use_reduce=False,
                                   fuse_elewise_add_act_ops=False,
                                   optimizer=fluid.optimizer.Adam,
-                                  use_fast_executor=False):
+                                  use_fast_executor=False,
+                                  enable_sequential_execution=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -80,6 +82,9 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
+            build_strategy.enable_sequential_execution = enable_sequential_execution
+            if use_cuda and core.is_compiled_with_cuda():
+                build_strategy.remove_unnecessary_lock = True
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
