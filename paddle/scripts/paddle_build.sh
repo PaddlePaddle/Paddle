@@ -402,8 +402,9 @@ EOF
 }
 
 function assert_api_not_changed() {
-    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
-    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    local check_api_workspace=/.check_api_workspace
+    mkdir -p ${check_api_workspace}
+    cd ${check_api_workspace}
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
