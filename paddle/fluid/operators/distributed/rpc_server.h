@@ -23,8 +23,6 @@
 
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
-DECLARE_string(rpc_server_profile_path);
-
 namespace paddle {
 namespace operators {
 namespace distributed {
