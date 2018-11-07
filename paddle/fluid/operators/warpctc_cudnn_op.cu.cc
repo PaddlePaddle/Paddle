@@ -19,6 +19,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
+using ScopedCTCLossDescriptor = platform::ScopedCTCLossDescriptor;
+using DataLayout = platform::DataLayout;
+
 template <typename DeviceContext, typename T>
 class CudnnCTCKernel : public framework::OpKernel<T> {
  public:
@@ -26,8 +30,8 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     // =====================Copied code from warpctc===========================
     auto* logits = ctx.Input<LoDTensor>("Logits");
     auto* label = ctx.Input<LoDTensor>("Label");
-    auto* warpctc_grad = ctx.Output<Tensor>("WarpCTCGrad");
-    auto* loss = ctx.Output<Tensor>("Loss");
+    auto* warpctc_grad = ctx.Output<LoDTensor>("WarpCTCGrad");
+    auto* loss = ctx.Output<LoDTensor>("Loss");
 
     const size_t level = 0;
 
@@ -55,18 +59,32 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     auto loss_dims =
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
-    // warpctc needs sequences data stored in transposed padding format
-    Tensor warpctc_logits;
+    // ctc needs sequences data stored in transposed padding format
+    LoDTensor warpctc_logits;
     const size_t max_sequence_length =
-        math::MaximumSequenceLength(logits_lod, level);
+        math::MaximumSequenceLength(logits_lod[level]);
     auto warpctc_logits_dims =
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
+
+    LoDTensor cpu_pad_value;
+    T* pad_value_data =
+        cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
+    *pad_value_data = static_cast<T>(0);
+    LoDTensor pad_value;
+    if (platform::is_cpu_place(ctx.GetPlace())) {
+      pad_value = cpu_pad_value;
+    } else {
+      TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
+    }
+    VLOG(3) << "before pad";
+
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
-        false);
+        pad_value, -1, 0, false /* norm_by_times */, math::kLengthBatchWidth);
+    VLOG(3) << "end pad";
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
     framework::Vector<int> warpctc_label_lengths(num_sequences);
@@ -77,67 +95,69 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
       warpctc_logits_lengths[i] =
           logits_lod[level][i + 1] - logits_lod[level][i];
     }
-    // ========================================================================
-    // use name warpctc_grad_data for cudnn call for now, should be updated.
+
     T* warpctc_grad_data =
         warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
 
-    // TODO(typhoonzero): can remove set constant?
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), warpctc_grad,
         static_cast<T>(0));
+    // ========================================================================
 
     const int* label_data = label->data<int>();
-    T* loss_data = loss->data<T>();
+    T* loss_data = loss->mutable_data<T>(ctx.GetPlace());
 
-    const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
+    // const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
     ScopedTensorDescriptor logits_desc;
     ScopedTensorDescriptor grad_desc;
     ScopedCTCLossDescriptor ctcloss_desc;
+    // layout here doesn't have effect.
+    DataLayout layout = DataLayout::kNCHW;
 
     auto cu_logits_desc = logits_desc.descriptor<T>(
         layout, framework::vectorize2int(logits->dims()));
     auto cu_grad_desc = grad_desc.descriptor<T>(
         layout, framework::vectorize2int(warpctc_grad->dims()));
-    auto cu_ctcloss_desc = ctcloss_desc.descriptor<T>(CUDNN_DATA_FLOAT);
+    auto cu_ctcloss_desc = ctcloss_desc.descriptor<T>();
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    DataLayout layout = DataLayout::kNCHW;
+
     size_t workspace_size;
 
-    CUDNN_ENFORCE(platform::dynload::cudnn::cudnnGetCTCLossWorkspaceSize(
+    CUDNN_ENFORCE(platform::dynload::cudnnGetCTCLossWorkspaceSize(
         handle, cu_logits_desc, cu_grad_desc, label_data,
         warpctc_label_lengths.CUDAData(ctx.GetPlace()),
         warpctc_logits_lengths.CUDAData(ctx.GetPlace()),
         CUDNN_CTC_LOSS_ALGO_DETERMINISTIC, cu_ctcloss_desc, &workspace_size));
 
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     auto cudnn_func = [&](void* cudnn_workspace) {
-      CUDNN_ENFORCE(platform::dynload::cudnn::cudnnCTCLoss(
+      CUDNN_ENFORCE(platform::dynload::cudnnCTCLoss(
           handle, cu_logits_desc, warpctc_logits_data, label_data,
           warpctc_label_lengths.CUDAData(ctx.GetPlace()),
           warpctc_logits_lengths.CUDAData(ctx.GetPlace()), loss_data,
           cu_grad_desc, warpctc_grad_data, CUDNN_CTC_LOSS_ALGO_DETERMINISTIC,
           cu_ctcloss_desc, cudnn_workspace, workspace_size));
     };
-    dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+    workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
 };
 
 template <typename DeviceContext, typename T>
-class WarpCTCGradKernel : public framework::OpKernel<T> {
+class CudnnCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* warpctc_grad = ctx.Input<Tensor>("WarpCTCGrad");
+    auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
     const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
     math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), logits_grad,
-        *warpctc_grad, norm_by_times);
+        ctx.template device_context<DeviceContext>(), *warpctc_grad,
+        logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad->data<T>();
     math::ScaleLoDTensorFunctor<DeviceContext, T>()(
@@ -150,8 +170,11 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    cudnn_ctc, ops::CudnnCTCKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    cudnn_ctc_grad,
+namespace plat = paddle::platform;
+
+REGISTER_OP_KERNEL(
+    warpctc, CUDNN, plat::CUDAPlace,
+    ops::CudnnCTCKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_KERNEL(
+    warpctc_grad, CUDNN, plat::CUDAPlace,
     ops::CudnnCTCGradKernel<paddle::platform::CUDADeviceContext, float>);

@@ -387,11 +387,13 @@ class ScopedCTCLossDescriptor {
     PADDLE_ENFORCE(dynload::cudnnCreateCTCLossDescriptor(&desc_));
   }
   ~ScopedCTCLossDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyPoolingDescriptor(desc_));
+    PADDLE_ENFORCE(dynload::cudnnDestroyCTCLossDescriptor(desc_));
   }
 
-  inline cudnnPoolingDescriptor_t descriptor(const cudnnDataType_t type) {
-    PADDLE_ENFORCE(dynload::cudnnSetCTCLossDescriptor(desc_, type));
+  template <typename T>
+  inline cudnnCTCLossDescriptor_t descriptor() {
+    PADDLE_ENFORCE(
+        dynload::cudnnSetCTCLossDescriptor(desc_, CudnnDataType<T>::type));
     return desc_;
   }
 
@@ -400,18 +402,6 @@ class ScopedCTCLossDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
 };
 #endif
-
-inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
-  if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-  }
-#endif
-  return use_cudnn;
-}
 
 }  // namespace platform
 }  // namespace paddle
