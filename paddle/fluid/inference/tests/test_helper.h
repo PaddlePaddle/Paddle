@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -136,15 +135,6 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
   return feed_target_shapes;
 }
 
-void Compile(paddle::framework::ProgramDesc* program) {
-  std::unique_ptr<paddle::framework::ir::Graph> g(
-      new paddle::framework::ir::Graph(*program));
-  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
-      "graph_to_program_pass");
-  pass->SetNotOwned<paddle::framework::ProgramDesc>("program", program);
-  pass->Apply(std::move(g));
-}
-
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
@@ -182,7 +172,6 @@ void TestInference(const std::string& dirname,
         paddle::platform::DeviceContextPool::Instance().Get(place));
     inference_program = InitProgram(&executor, scope, dirname, is_combined);
   }
-  Compile(inference_program.get());
 
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
