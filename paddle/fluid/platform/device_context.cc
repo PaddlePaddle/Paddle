@@ -160,29 +160,26 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 };
 
 CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
-    : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+    : workspace_(nullptr), stream_(stream), place_(place) {
   PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
   PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
 }
 
 CudnnHolder::~CudnnHolder() {
   PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-  if (workspace_ != nullptr) {
-    paddle::memory::Free(place_, workspace_);
-  }
 }
 
 void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
-  if (required_workspace_len <= workspace_len_) {
+  if (required_workspace_len <= WorkspaceSize()) {
     return;
   }
   if (workspace_ != nullptr) {
     // Maybe someone is using the current workspace
     PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-    paddle::memory::Free(place_, workspace_);
+    workspace_.reset();
   }
-  workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
-  workspace_len_ = required_workspace_len;
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
+                                     paddle::memory::Allocator::kScratchpad);
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)

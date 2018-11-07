@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+#include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
@@ -85,17 +85,32 @@ class CudnnHolder {
 
   template <typename Callback>
   void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
-    if (required_workspace_len > workspace_len_) {
+    if (required_workspace_len > WorkspaceSize()) {
       ReallocateWorkspace(required_workspace_len);
     }
-    cudnn_func(workspace_);
+    cudnn_func(WorkspacePtr());
+  }
+
+  inline void* WorkspacePtr() {
+    if (workspace_) {
+      return workspace_->ptr();
+    } else {
+      return nullptr;
+    }
+  }
+
+  inline size_t WorkspaceSize() {
+    if (workspace_) {
+      return workspace_->size();
+    } else {
+      return 0;
+    }
   }
 
   std::mutex& Mutex() { return mtx_; }
 
   cudnnHandle_t cudnn_handle_;
-  void* workspace_;
-  size_t workspace_len_;
+  std::unique_ptr<memory::Allocation> workspace_;
 
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;
