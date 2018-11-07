@@ -167,8 +167,12 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 list(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
 message(STATUS "Added CUDA NVCC flags for: ${NVCC_FLAGS_EXTRA_readable}")
 
-# Set C++11 support
-set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+if (WIN32)
+  set(CUDA_PROPAGATE_HOST_FLAGS ON)
+else (WIN32)
+  # Set C++11 support
+  set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+endif (WIN32)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.

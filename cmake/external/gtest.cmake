@@ -44,7 +44,7 @@ IF(WITH_TESTING)
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS         ${GTEST_DEPENDS}
             #        GIT_REPOSITORY  "https://github.com/google/googletest.git"
-                    GIT_REPOSITORY  "http://admin@localhost:8080/r/gtest.git"
+                    GIT_REPOSITORY  "http://admin@172.20.90.14:8080/r/gtest.git"
 #        GIT_TAG         "release-1.8.0"
         PREFIX          ${GTEST_SOURCES_DIR}
         UPDATE_COMMAND  ""

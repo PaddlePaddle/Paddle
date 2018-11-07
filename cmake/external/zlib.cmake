@@ -32,7 +32,7 @@ ExternalProject_Add(
     extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
         #    GIT_REPOSITORY  "https://github.com/madler/zlib.git"
-            GIT_REPOSITORY  "http://admin@localhost:8080/r/zlib.git"
+            GIT_REPOSITORY  "http://admin@172.20.90.14:8080/r/zlib.git"
 #    GIT_TAG         "v1.2.8"
     PREFIX          ${ZLIB_SOURCES_DIR}
     UPDATE_COMMAND  ""

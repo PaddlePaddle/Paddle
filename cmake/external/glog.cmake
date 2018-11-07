@@ -34,7 +34,7 @@ ELSE()
   SET(GLOG_REPOSITORY "https://github.com/google/glog.git")
   SET(GLOG_TAG "v0.3.5")
 ENDIF()
-  SET(GLOG_REPOSITORY "http://admin@localhost:8080/r/glog.git")
+  SET(GLOG_REPOSITORY "http://admin@172.20.90.14:8080/r/glog.git")
 
 ExternalProject_Add(
     extern_glog
