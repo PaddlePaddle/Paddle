@@ -24,7 +24,7 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   ARGUMENT_CHECK_FIELD(argument, main_program);
   ARGUMENT_CHECK_FIELD(argument, scope);
 
-  auto* the_graph = argument->Release<Graph>(argument->k_main_graph());
+  auto* the_graph = argument->ReleaseMainGraph();
   auto graph = std::unique_ptr<Graph>(the_graph);
 
   // Apply passes.
@@ -32,7 +32,7 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   graph = the_ir_manager.Apply(std::move(graph));
   PADDLE_ENFORCE_GT(graph->Nodes().size(), 0);
   argument->SetIrAnalyzedProgram(new framework::proto::ProgramDesc(
-      the_ir_manager.AcquireProgram(&graph, *argument->main_program())));
+      the_ir_manager.AcquireProgram(&graph, argument->main_program())));
   argument->SetMainGraph(graph.release());
 }
 

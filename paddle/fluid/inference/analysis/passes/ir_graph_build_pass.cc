@@ -27,27 +27,27 @@ extern void ReadBinaryFile(const std::string &filename, std::string *contents);
 namespace analysis {
 
 void IrGraphBuildPass::RunImpl(Argument *argument) {
-  if (!argument->scope()) {
+  if (!argument->scope_valid()) {
     argument->SetScope(new framework::Scope);
   }
 
-  if (argument->model_dir()) {
-    auto program = LoadModel(*argument->model_dir(), argument->scope());
+  if (argument->model_dir_valid()) {
+    auto program = LoadModel(argument->model_dir(), argument->scope_ptr());
     argument->SetMainProgram(program.release());
-  } else if (argument->model_program_path() && argument->model_params_path()) {
-    auto program = LoadModel(*argument->model_program_path(),
-                             *argument->model_params_path(), argument->scope());
+  } else if (argument->model_program_path_valid() && argument->model_params_path_valid()) {
+    auto program = LoadModel(argument->model_program_path(),
+                             argument->model_params_path(), argument->scope_ptr());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
         "either model_dir or (program path and parameter path) should be set.");
   }
 
-  auto graph = std::unique_ptr<Graph>(new Graph(*argument->main_program()));
+  auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   LOG(INFO) << "Load " << graph->Nodes().size() << " nodes";
   argument->SetMainGraph(graph.release());
-  argument->main_graph()->Set(framework::ir::kParamScopeAttr,
-                              new framework::Scope *(argument->scope()));
+  argument->main_graph().Set(framework::ir::kParamScopeAttr,
+                              new framework::Scope *(argument->scope_ptr()));
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

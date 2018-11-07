@@ -44,31 +44,72 @@ struct Argument {
   Argument() = default;
   explicit Argument(const std::string& model_dir) { SetModelDir(model_dir); }
 
-// Declare an argument field with getter and setter.
+  using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
+  using fusion_statis_t = std::unordered_map<std::string, int>;
+
+  bool Has(const std::string& key) const { return valid_fields_.count(key); }
+
 #define DECL_ARGUMENT_FIELD(field__, Field, type__) \
-  DECL_ARGUMENT_GETTER(field__, type__);            \
+ public:                                            \
+  type__& field__() {                         \
+    PADDLE_ENFORCE(Has(#field__));                  \
+    return field__##_;                              \
+  }                                                 \
   void Set##Field(const type__& x) {                \
-    if (!Has(#field__)) {                           \
-      Set<type__>(#field__, new type__(x));         \
-    } else {                                        \
-      *field__() = x;                               \
-    }                                               \
-  }
+    field__##_ = x;                                 \
+    valid_fields_.insert(#field__);                 \
+  }                                                 \
+  DECL_ARGUMENT_FIELD_VALID(field__);               \
+  type__* field__##_ptr() { return &field__##_; }   \
+                                                    \
+ private:                                           \
+  type__ field__##_;
 
-#define DECL_ARGUMENT_GETTER(field__, type__)           \
-  static const char* k_##field__() { return #field__; } \
-  type__* field__() { return Has(#field__) ? &Get<type__>(#field__) : nullptr; }
+#define DECL_ARGUMENT_FIELD_VALID(field__) \
+  bool field__##_valid() { return Has(#field__); }
 
-#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__) \
-  DECL_ARGUMENT_GETTER(field__, type__)                    \
-  void Set##Field(type__* x) {                             \
-    LOG(INFO) << "set argument field " << #field__;        \
-    if (Has(#field__)) {                                   \
-      delete Release<type__>(#field__);                    \
-    }                                                      \
-    Set<type__>(#field__, x);                              \
-  }                                                        \
-  void Set##Field##NotOwned(type__* x) { SetNotOwned<type__>(#field__, x); }
+#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__)                \
+ public:                                                                  \
+  type__& field__() {                                               \
+    PADDLE_ENFORCE_NOT_NULL(field__##_);                                  \
+    PADDLE_ENFORCE(Has(#field__));                                        \
+    return *static_cast<type__*>(field__##_.get());                       \
+  }                                                                       \
+  void Set##Field(type__* x) {                                            \
+    field__##_ =                                                          \
+        unique_ptr_t(x, [](void* x) { delete static_cast<type__*>(x); }); \
+    valid_fields_.insert(#field__);                                       \
+  }                                                                       \
+  void Set##Field##NotOwned(type__* x) {                                  \
+    valid_fields_.insert(#field__);                                       \
+    field__##_ = unique_ptr_t(x, [](void* x) {});                         \
+  }                                                                       \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                     \
+  type__* field__##_ptr() {                                               \
+    PADDLE_ENFORCE(Has(#field__));                                        \
+    return static_cast<type__*>(field__##_.get());                        \
+  }                                                                       \
+  type__* Release##Field() {                                              \
+    PADDLE_ENFORCE(Has(#field__));                                        \
+    valid_fields_.erase(#field__); \
+    return static_cast<type__*>(field__##_.release());                    \
+  }                                                                       \
+                                                                          \
+ private:                                                                 \
+  unique_ptr_t field__##_;
+
+  /*
+  #define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__) \
+    DECL_ARGUMENT_GETTER(field__, type__)                    \
+    void Set##Field(type__* x) {                             \
+      LOG(INFO) << "set argument field " << #field__;        \
+      if (Has(#field__)) {                                   \
+        delete Release<type__>(#field__);                    \
+      }                                                      \
+      Set<type__>(#field__, x);                              \
+    }                                                        \
+    void Set##Field##NotOwned(type__* x) { SetNotOwned<type__>(#field__, x); }
+    */
 
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
@@ -77,7 +118,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
 
   // The overall graph to work on.
-  DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, Graph);
+  DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
   // The overall Scope to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(scope, Scope, framework::Scope);
 
@@ -93,64 +134,22 @@ struct Argument {
                       std::function<bool(const framework::ir::Node*)>);
   DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize,
                              int);
-  DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
+  DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize,
+                             int);
 
   // The program transformed by IR analysis phase.
   DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,
                              framework::proto::ProgramDesc);
 
-  using fusion_statis_t = std::unordered_map<std::string, int>;
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
 
-  // Support for any other attributes.
-  template <typename T>
-  void Set(const std::string& key, T* data) {
-    PADDLE_ENFORCE_NOT_NULL(data);
-    PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
-                   key);
-    attrs_[key] = unique_ptr_t(static_cast<void*>(data), [key](void* x) {
-      LOG(INFO) << "to delete attr " << key;
-      delete static_cast<T*>(x);
-      LOG(INFO) << "delete attr " << key;
-    });
-  }
-
-  template <typename T>
-  void SetNotOwned(const std::string& key, T* data) {
-    PADDLE_ENFORCE_NOT_NULL(data);
-
-    PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
-                   key);
-    attrs_[key] = unique_ptr_t(static_cast<void*>(data), [](void* x) {});
-  }
-
-  bool Has(const std::string& name) const { return attrs_.count(name); }
-
-  template <typename T>
-  T* Release(const std::string& key) {
-    LOG(INFO) << "Releasing Attr " << key;
-    PADDLE_ENFORCE(attrs_.count(key));
-    auto& res = attrs_[key];
-    return static_cast<T*>(res.release());
-  }
-
-  template <typename T>
-  T& Get(const std::string& key) {
-    PADDLE_ENFORCE(Has(key));
-    return *static_cast<T*>(attrs_.at(key).get());
-  }
-
-  ~Argument() {}
 
  private:
-  using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
-  std::unordered_map<std::string, unique_ptr_t> attrs_;
-  // std::unordered_map<std::string, boost::any> attrs_;
-  // std::unordered_map<std::string, std::function<void()>> attr_deleters_;
+  std::unordered_set<std::string> valid_fields_;
 };
 
 #define ARGUMENT_CHECK_FIELD(argument__, fieldname__) \
-  PADDLE_ENFORCE(argument__->fieldname__(),           \
+  PADDLE_ENFORCE(argument__->Has(#fieldname__),       \
                  "the argument field [%s] should be set", #fieldname__);
 
 }  // namespace analysis

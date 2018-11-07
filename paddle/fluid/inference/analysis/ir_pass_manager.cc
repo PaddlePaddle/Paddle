@@ -31,14 +31,14 @@ using string::Style;
 
 IRPassManager::IRPassManager(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, main_program);
-  graph_ = std::unique_ptr<Graph>(new Graph(*argument->main_program()));
-  if (argument->scope()) {
+  graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
+  if (argument->Has("scope")) {
     graph_->Set(framework::ir::kParamScopeAttr,
-                new framework::Scope *(argument->scope()));
+                new framework::Scope * (const_cast<framework::Scope*>(&argument->scope())));
   }
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
-  CreatePasses(argument, *argument->ir_analysis_passes());
+  CreatePasses(argument, argument->ir_analysis_passes());
 }
 
 void IRPassManager::CreatePasses(Argument *argument,
@@ -52,7 +52,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     if (pass_name == "ir_analysis_pass") {
       pass->Set("tensorrt_node_teller",
                 new SubgraphDetector::NodeInsideSubgraphTeller(
-                    *argument->tensorrt_node_teller()));
+                    argument->tensorrt_node_teller()));
     }
 
     if (pass_name == "graph_viz_pass") {
@@ -64,11 +64,11 @@ void IRPassManager::CreatePasses(Argument *argument,
     }
 
     if (pass_name == "tensorrt_subgraph_pass") {
-      PADDLE_ENFORCE(argument->tensorrt_node_teller());
+      PADDLE_ENFORCE(argument->tensorrt_node_teller_valid());
       pass->SetNotOwned("tensorrt_node_teller",
-                        argument->tensorrt_node_teller());
-      pass->Set("workspace_size", argument->tensorrt_workspace_size());
-      pass->Set("max_batch_size", argument->tensorrt_max_batch_size());
+                        argument->tensorrt_node_teller_ptr());
+      pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
+      pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
     }
 
     // graph_ = pass->Apply(std::move(graph_));

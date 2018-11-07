@@ -39,7 +39,7 @@ std::string IrAnalysisComposePass::repr() const {
 void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
   LOG(INFO) << "use tensorrt " << argument->use_tensorrt();
   LOG(INFO) << "use gpu " << argument->use_gpu();
-  if (argument->use_tensorrt() && *argument->use_tensorrt()) {
+  if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
     LOG(INFO) << "Initing TensorRT pass";
     argument->SetTensorRtNodeTeller([](const framework::ir::Node *node) {
       std::unordered_set<std::string> teller_set(
@@ -69,12 +69,12 @@ void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
 }
 
 void IrAnalysisComposePass::CollectFusionStatis(Argument *argument) {
-  if (!argument->main_graph()->Has(framework::ir::kFuseStatisAttr)) {
+  if (!argument->main_graph().Has(framework::ir::kFuseStatisAttr)) {
     LOG(INFO) << "argument has no fuse statis";
     return;
   }
   argument->SetFusionStatis(
-      argument->main_graph()->Get<Argument::fusion_statis_t>(
+      argument->main_graph().Get<Argument::fusion_statis_t>(
           framework::ir::kFuseStatisAttr));
 }
 
