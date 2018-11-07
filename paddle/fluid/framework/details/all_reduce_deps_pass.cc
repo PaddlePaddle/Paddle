@@ -30,38 +30,31 @@ namespace framework {
 namespace details {
 
 VarHandle* GetValidInput(const AllReduceOpHandle* a) {
-  VLOG(11) << "GetValidInput:" << a;
-  VLOG(11) << "GetValidInput, a:" << a->DebugString();
   for (auto p : a->Inputs()) {
     VarHandle* b = dynamic_cast<VarHandle*>(p);
     if (b) {
-      VLOG(11) << "pointer:" << b;
       return b;
     }
   }
 
-  PADDLE_ENFORCE(false, "not valid allreduce op");
-  VLOG(11) << "meets nullptr";
   return nullptr;
 }
 
 struct SortNode {
   SortNode(AllReduceOpHandle* op, std::unordered_map<std::string, int>* vars) {
     op_ = op;
-    // level_ = level;
     vars_ = vars;
   }
 
   AllReduceOpHandle* op_;
-  // int level_;
   std::unordered_map<std::string, int>* vars_;
 
   bool operator<(const SortNode& r) const {
     VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op_));
     VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(r.op_));
     if (i0 == nullptr || i1 == nullptr) {
-      VLOG(11) << op_->DebugString();
-      VLOG(11) << r.op_->DebugString();
+      LOG(ERROR) << op_->DebugString();
+      LOG(ERROR) << r.op_->DebugString();
     }
 
     PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr,
@@ -109,6 +102,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     }
   }
 
+  VLOG(10) << "allreduce_ops size:" << allreduce_ops.size() << std::endl;
+
   std::vector<SortNode> op_list;
   for (auto& op : allreduce_ops) {
     SortNode n(op.first, &vars);
@@ -120,7 +115,7 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   // add dependency.
   auto& sorted_ops = op_list;
   for (size_t i = 1; i < sorted_ops.size(); ++i) {
-    auto* dep_var = new dummyvarhandle(graph->CreateControlDepVar());
+    auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
 
     auto* pre_op = sorted_ops[i - 1].op_;
     auto* op = sorted_ops[i].op_;
@@ -131,112 +126,13 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
 
     VLOG(10) << "add all_reduce sequential dependencies between " << pre_op
              << " and " << op;
+
+    VLOG(10) << "pre_op:" << pre_op->DebugString()
+             << ", op:" << op->DebugString();
   }
 
   return graph;
 }
-
-/*
-struct SortNode {
-  SortNode(AllReduceOpHandle* op, int level) {
-    op_ = op;
-    level_ = level;
-  }
-
-  AllReduceOpHandle* op_;
-  int level_;
-
-  bool operator<(const SortNode& r) const {
-    if (level_ < r.level_) return true;
-
-    VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op_));
-    VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(r.op_));
-    if (i0 == nullptr || i1 == nullptr) {
-      VLOG(11) << op_->DebugString();
-      VLOG(11) << r.op_->DebugString();
-    }
-
-    PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr,
-                   "Convert to VarHandle error");
-
-    if (level_ == r.level_) {
-      return i0->name_ < i1->name_;
-    }
-
-    return false;
-  }
-};
-std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl2(
-    std::unique_ptr<ir::Graph> graph) const {
-  auto& graph_ops = graph->Get<GraphOps>(kGraphOps);
-  OpGraphView graph_view(graph_ops);
-  std::unordered_set<OpHandleBase*> cur_level_ops;
-  std::vector<std::unordered_set<AllReduceOpHandle*>> allreduce_ops;
-  std::unordered_map<AllReduceOpHandle*, int> visited;
-
-  for (auto* op : graph_view.AllOps()) {
-    if (graph_view.PrecedingOps(op).empty()) {
-      cur_level_ops.insert(op);
-    }
-  }
-  VLOG(11) << "cur_level_ops:" << cur_level_ops.size() << std::endl;
-
-  int level = 0;
-  while (!cur_level_ops.empty()) {
-    std::unordered_set<OpHandleBase*> next_level_ops;
-    std::unordered_set<AllReduceOpHandle*> next_level_allreduce_ops;
-
-    for (auto* op : cur_level_ops) {
-      if (op->Name() == "allreduce" || op->Name() == "all_reduce") {
-        auto* allreduce_op = dynamic_cast<AllReduceOpHandle*>(op);
-        PADDLE_ENFORCE(allreduce_op != nullptr,
-                       "Convert to allreduce_op error");
-        visited[allreduce_op] = level;
-      }
-
-      for (auto* pending_op : graph_view.PendingOps(op)) {
-        next_level_ops.insert(pending_op);
-      }
-    }
-
-    level++;
-    cur_level_ops.swap(next_level_ops);
-    VLOG(11) << "cur_level_ops:" << cur_level_ops.size() << std::endl;
-  }
-
-  std::vector<SortNode> op_list;
-  for (auto& it : visited) {
-    VLOG(11) << "allreduce_op:" << it.first << ", level:" << it.second;
-
-    SortNode n(it.first, it.second);
-    // n.op = it.first;
-    // n.level = it.second;
-    op_list.push_back(n);
-  }
-
-  std::sort(op_list.begin(), op_list.end());
-
-  // add dependency.
-  auto& sorted_ops = op_list;
-  for (size_t i = 1; i < sorted_ops.size(); ++i) {
-    auto* dep_var = new dummyvarhandle(graph->createcontroldepvar());
-
-    auto* pre_op = sorted_ops[i - 1].op_;
-    auto* op = sorted_ops[i].op_;
-
-    pre_op->addoutput(dep_var);
-    op->addinput(dep_var);
-    graph->get<graphdepvars>(kgraphdepvars).emplace(dep_var);
-
-    vlog(10) << "add all_reduce sequential dependencies between " << pre_op
-             << " and " << op;
-  }
-
-  // VLOG(11) << "allreduce_ops size:" << allreduce_ops.size() << std::endl;
-
-  return graph;
-}
-*/
 
 }  // namespace details
 }  // namespace framework
