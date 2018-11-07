@@ -7567,8 +7567,9 @@ def similarity_focus(input, axis, indexes, name=None):
     2. For each index, find the largest numbers in the tensor T, so that the same 
        row and same column has at most one number(what it means is that if the 
        largest number has been found in the i-th row and the j-th column, then 
-       the numbers in the i-th or j-th column will be skipped. Obviously there 
-       will be min(B, C) numbers), and mark the corresponding position of the 
+       the numbers in the i-th row or j-th column will be skipped. And then the 
+       next largest number will be selected from the remaining numbers. Obviously 
+       there will be min(B, C) numbers), and mark the corresponding position of the 
        3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
        each index.
     3. Broadcast the 3-D similarity focus mask to the same shape of input X.
