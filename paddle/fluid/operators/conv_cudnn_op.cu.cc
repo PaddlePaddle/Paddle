@@ -151,6 +151,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
     auto handle = dev_ctx.cudnn_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     bool half_float = false;
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
@@ -205,8 +206,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                       fwd_perf_stat.data(), cudnn_workspace,
                       workspace_size_limit));
             };
-            dev_ctx.RunCudnnFuncWithWorkspace(cudnn_find_func,
-                                              workspace_size_limit);
+            workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -233,7 +233,6 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     for (int i = 0; i < groups; i++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
         CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
@@ -354,6 +353,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
     auto handle = dev_ctx.cudnn_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       if (exhaustive_search) {
@@ -377,7 +377,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               std::array<cudnnConvolutionBwdDataAlgoPerf_t,
                          kNUM_CUDNN_BWD_DATA_ALGS>
                   data_perf_stat;
-              auto cudnn_find_func = [&](void* cudnn_workspace) {
+              auto cudnn_find_bd_data_func = [&](void* cudnn_workspace) {
                 CUDNN_ENFORCE(
                     platform::dynload::
                         cudnnFindConvolutionBackwardDataAlgorithmEx(
@@ -388,8 +388,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                             data_perf_stat.data(), cudnn_workspace,
                             workspace_size_limit));
               };
-              dev_ctx.RunCudnnFuncWithWorkspace(cudnn_find_func,
-                                                workspace_size_limit);
+              workspace_handle.RunFunc(cudnn_find_bd_data_func,
+                                       workspace_size_limit);
 
               VLOG(3) << "Perf result: (algo: stat, time, memory)";
               for (int i = 0; i < returned_algo_count; ++i) {
@@ -446,7 +446,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               std::array<cudnnConvolutionBwdFilterAlgoPerf_t,
                          kNUM_CUDNN_BWD_FILTER_ALGS>
                   filter_perf_stat;
-              auto cudnn_find_f_func = [&](void* cudnn_workspace) {
+              auto cudnn_find_bd_f_func = [&](void* cudnn_workspace) {
                 CUDNN_ENFORCE(
                     platform::dynload::
                         cudnnFindConvolutionBackwardFilterAlgorithmEx(
@@ -457,8 +457,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                             &returned_algo_count, filter_perf_stat.data(),
                             cudnn_workspace, workspace_size_limit));
               };
-              dev_ctx.RunCudnnFuncWithWorkspace(cudnn_find_f_func,
-                                                workspace_size_limit);
+              workspace_handle.RunFunc(cudnn_find_bd_f_func,
+                                       workspace_size_limit);
               return filter_perf_stat[0].algo;
             });
         VLOG(3) << "cuDNN backward filter algo " << filter_algo;
@@ -481,7 +481,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
