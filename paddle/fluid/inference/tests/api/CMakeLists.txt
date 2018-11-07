@@ -82,6 +82,14 @@ inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_te
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50 
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
+# mobilenet
+set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
+if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
+  inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddle-inference-dist.bj.bcebos.com/tensorrt_test" "mobilenet.tar.gz")
+endif()
+inference_analysis_test(test_analyzer_mobilenet SRCS analyzer_mobilenet_tester.cc
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS --infer_model=${MOBILENET_INSTALL_DIR}/mobilenet)
+
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    # anakin rnn1
