@@ -73,6 +73,13 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                 inputs={"X": [grad, regularization_term]},
                 outputs={"Out": new_grad})
 
+            # FIXME(zcd): the grad's name should not be changed,
+            # because the name is used in ParallelExecutor Reduce mode.
+            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                tmp_name = new_grad.name
+                new_grad.name = grad.name
+                grad.name = tmp_name
+
             params_and_grads.append((param, new_grad))
 
     return params_and_grads
