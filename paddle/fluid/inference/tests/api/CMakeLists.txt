@@ -1,18 +1,4 @@
-set(INFERENCE_URL "http://paddle-inference-dist.cdn.bcebos.com")
-set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
-    "A path setting inference demo download directories.")
 set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor)
-function (inference_download install_dir url filename)
-    message(STATUS "Download inference test stuff from ${url}/${filename}")
-    execute_process(COMMAND bash -c "mkdir -p ${install_dir}")
-    execute_process(COMMAND bash -c "cd ${install_dir} && wget -q ${url}/${filename}")
-    message(STATUS "finish downloading ${filename}")
-endfunction()
-
-function (inference_download_and_uncompress install_dir url filename)
-    inference_download(${install_dir} ${url} ${filename})
-    execute_process(COMMAND bash -c "cd ${install_dir} && tar xzf ${filename}")
-endfunction()
 
 function(download_model_and_data install_dir model_name data_name)
     if (NOT EXISTS ${install_dir})
@@ -42,6 +28,15 @@ endif()
 set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
 download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc)
+
+# DAM
+set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
+download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
+inference_analysis_test(test_analyzer_dam SRCS analyzer_dam_tester.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS
+        --infer_model=${DAM_INSTALL_DIR}/model
+        --infer_data=${DAM_INSTALL_DIR}/data.txt
+        --use_analysis=0)
 
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
