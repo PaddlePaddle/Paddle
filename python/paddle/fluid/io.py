@@ -165,6 +165,7 @@ def save_vars(executor,
 
         save_vars(
             executor,
+            main_program=main_program,
             dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
@@ -172,10 +173,17 @@ def save_vars(executor,
         save_program = Program()
         save_block = save_program.global_block()
 
+        if main_program is None:
+            main_program = default_main_program()
+        if not isinstance(main_program, Program):
+            raise TypeError("program should be as Program type or None")
+
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
+                continue
+            if each_var.name == main_program._distributed_lookup_table:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
@@ -197,6 +205,16 @@ def save_vars(executor,
                 inputs={'X': save_var_list},
                 outputs={},
                 attrs={'file_path': os.path.join(dirname, filename)})
+
+        # if there is lookup table, the trainer 0 will notify all pserver to save.
+        if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
+            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+            attrs = {}
+            attrs['epmap'] = main_program._endpoints
+            attrs['dir'] = lookup_table_filename
+            attrs['lookup_table'] = main_program._distributed_lookup_table
+            save_block.append_op(
+                type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
 
         executor.run(save_program)
 
@@ -379,6 +397,11 @@ def load_vars(executor,
         load_prog = Program()
         load_block = load_prog.global_block()
 
+        if main_program is None:
+            main_program = default_main_program()
+        if not isinstance(main_program, Program):
+            raise TypeError("program should be as Program type or None")
+
         load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
@@ -405,9 +428,6 @@ def load_vars(executor,
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
         executor.run(load_prog)
-
-        if main_program is None:
-            main_program = default_main_program()
 
         # load slice vars on pserver, if have it.
         _load_slice_up_vars(executor, dirname,
@@ -618,13 +638,6 @@ def save_inference_model(dirname,
     if main_program is None:
         main_program = default_main_program()
 
-    # if there is lookup table, the trainer 0 will notify all pserver to save.
-    if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
-        lookup_table_filename = os.path.join(dirname, "__lookup_table__")
-        _save_lookup_tables_by_notify(executor, lookup_table_filename,
-                                      main_program._distributed_lookup_table,
-                                      main_program._endpoints)
-
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     try:
         os.makedirs(dirname)
@@ -642,6 +655,9 @@ def save_inference_model(dirname,
     # it can only be loaded for inference directly. If it's false, the whole
     # original program and related meta are saved so that future usage can be
     # more flexible.
+
+    origin_program = main_program.clone()
+
     if export_for_deployment:
         main_program = main_program.clone()
         global_block = main_program.global_block()
@@ -666,8 +682,11 @@ def save_inference_model(dirname,
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
 
+    main_program._copy_dist_param_info_from(origin_program)
+
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
+
     save_persistables(executor, dirname, main_program, params_filename)
 
 
