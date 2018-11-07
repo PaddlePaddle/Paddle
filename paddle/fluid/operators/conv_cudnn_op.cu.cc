@@ -143,9 +143,11 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
       // Currently tensor core is only enabled using this algo
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      VLOG(5) << "use cudnn_tensor_op_math";
     } else {
       CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
     }
 #endif
 
@@ -160,6 +162,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     for (int i = 0; i < groups; i++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
         CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
@@ -168,7 +171,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
             cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes,
             &beta, cudnn_output_desc, output_data + i * group_offset_out));
       };
-      dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
     }
   }
 };
@@ -314,6 +317,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
@@ -327,7 +331,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               data_algo, cudnn_workspace, workspace_size_in_bytes, &beta,
               cudnn_input_desc, input_grad_data + i * group_offset_in));
         };
-        dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+        workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
       }
     }
     // ------------------- cudnn conv backward filter ---------------------
@@ -343,7 +347,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               filter_algo, cudnn_workspace, workspace_size_in_bytes, &beta,
               cudnn_filter_desc, filter_grad_data + i * group_offset_filter));
         };
-        dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+        workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
       }
     }
   }
@@ -359,7 +363,8 @@ REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<double>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,

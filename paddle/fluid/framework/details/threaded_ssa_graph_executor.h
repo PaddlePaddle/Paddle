@@ -48,10 +48,10 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   // Use topological sort algorithm
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
-  ~ThreadedSSAGraphExecutor() {}
+  ~ThreadedSSAGraphExecutor() final = default;
 
  private:
-  void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
+  void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
  private:

@@ -25,6 +25,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_model, "", "model path");
@@ -50,7 +51,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
     auto &ref_out = ref_outputs[i];
     size_t size = VecReduceToInt(out.shape);
     size_t ref_size = VecReduceToInt(ref_out.shape);
-    EXPECT_GT(size, 0);
+    EXPECT_GT(size, 0UL);
     EXPECT_EQ(size, ref_size);
     EXPECT_EQ(out.dtype, ref_out.dtype);
     switch (out.dtype) {
@@ -105,6 +106,34 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
   return fuse_statis;
 }
 
+void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
+                       const std::string &dirname) {
+  // Set fake_image_data
+  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
+  std::vector<std::vector<int64_t>> feed_target_shapes =
+      GetFeedTargetShapes(dirname, true, "model", "params");
+  int dim1 = feed_target_shapes[0][1];
+  int dim2 = feed_target_shapes[0][2];
+  int dim3 = feed_target_shapes[0][3];
+
+  PaddleTensor input;
+  std::vector<int> shape({FLAGS_batch_size, dim1, dim2, dim3});
+  input.shape = shape;
+  input.dtype = PaddleDType::FLOAT32;
+
+  // fill input data, for profile easily, do not use random data here.
+  size_t size = FLAGS_batch_size * dim1 * dim2 * dim3;
+  input.data.Resize(size * sizeof(float));
+  float *input_data = static_cast<float *>(input.data.data());
+  for (size_t i = 0; i < size; i++) {
+    *(input_data + i) = static_cast<float>(i) / size;
+  }
+
+  std::vector<PaddleTensor> input_slots;
+  input_slots.assign({input});
+  (*inputs).emplace_back(input_slots);
+}
+
 void TestOneThreadPrediction(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
@@ -139,6 +168,9 @@ void TestMultiThreadPrediction(
   }
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
+#ifdef PADDLE_WITH_MKLDNN
+      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
+#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;

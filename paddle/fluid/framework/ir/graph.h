@@ -160,6 +160,12 @@ class Graph {
     return nullptr;
   }
 
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
+
+  void ResolveHazard(
+      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
