@@ -45,11 +45,12 @@ class TestSumOp(OpTest):
 
 
 class TestSelectedRowsSumOp(OpTest):
-    def check_with_place(self, place, inplace):
+    def setUp(self):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 3, 4, 5, 6]
 
+    def check_with_place(self, place, inplace):
         self.check_input_and_optput(core.Scope(), place, inplace, True, True,
                                     True)
         self.check_input_and_optput(core.Scope(), place, inplace, False, True,
@@ -59,10 +60,10 @@ class TestSelectedRowsSumOp(OpTest):
         self.check_input_and_optput(core.Scope(), place, inplace, False, False,
                                     False)
 
-    def _get_array(self, row_num, row_numel):
-        array = np.ones((row_num, row_numel)).astype("float32")
-        for i in range(row_num):
-            array[i] *= i
+    def _get_array(self, rows, row_numel):
+        array = np.ones((len(rows), row_numel)).astype("float32")
+        for i in range(len(rows)):
+            array[i] *= rows[i]
         return array
 
     def check_input_and_optput(self,
@@ -98,7 +99,7 @@ class TestSelectedRowsSumOp(OpTest):
             self.assertTrue(
                 np.array_equal(
                     np.array(out.get_tensor()),
-                    self._get_array(len(self.rows), self.row_numel) *
+                    self._get_array(self.rows, self.row_numel) *
                     has_data_w_num))
         else:
             self.assertEqual(len(out.rows()), 0)
@@ -114,7 +115,7 @@ class TestSelectedRowsSumOp(OpTest):
         w_selected_rows = var.get_selected_rows()
         w_selected_rows.set_height(self.height)
         w_selected_rows.set_rows(rows)
-        w_array = self._get_array(len(rows), self.row_numel)
+        w_array = self._get_array(self.rows, self.row_numel)
         w_tensor = w_selected_rows.get_tensor()
         w_tensor.set(w_array, place)
 
@@ -127,6 +128,51 @@ class TestSelectedRowsSumOp(OpTest):
         for place in places:
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
+
+
+class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
+    def setUp(self):
+        self.height = 10
+        self.row_numel = 12
+        self.rows = [0, 1, 2, 2, 4, 5, 6]
+
+    def check_with_place(self, place, inplace):
+        scope = core.Scope()
+        if inplace:
+            self.create_lod_tensor(scope, place, "x1")
+            self.create_selected_rows(scope, place, "x2", True)
+            out = scope.var("x1").get_tensor()
+            out_name = "x1"
+        else:
+            self.create_selected_rows(scope, place, "x1", True)
+            self.create_lod_tensor(scope, place, "x2")
+            out = scope.var("out").get_tensor()
+            out_name = "out"
+
+        # create and run sum operator
+        sum_op = Operator("sum", X=["x1", "x2"], Out=out_name)
+        sum_op.run(scope, place)
+
+        result = np.ones((1, self.height)).astype(np.int32).tolist()[0]
+        for ele in self.rows:
+            result[ele] += 1
+
+        out_t = np.array(out)
+        self.assertEqual(out_t.shape[0], self.height)
+        self.assertTrue(
+            np.array_equal(out_t,
+                           self._get_array([i for i in range(
+                               self.height)], self.row_numel) * np.tile(
+                                   np.array(result).reshape(self.height, 1),
+                                   self.row_numel)))
+
+    def create_lod_tensor(self, scope, place, var_name):
+        var = scope.var(var_name)
+        w_tensor = var.get_tensor()
+        w_array = self._get_array([i for i in range(self.height)],
+                                  self.row_numel)
+        w_tensor.set(w_array, place)
+        return var
 
 
 if __name__ == "__main__":
