@@ -189,11 +189,6 @@ void Conv2DOpMaker::Make() {
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
       .SetDefault(4096);
-  AddAttr<bool>("exhaustive_search",
-                "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search ",
-                "for cuDNN convolution or not, defalut is False.")
-      .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -288,11 +283,7 @@ void Conv3DOpMaker::Make() {
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
       .SetDefault(4096);
-  AddAttr<bool>("exhaustive_search",
-                "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search ",
-                "for cuDNN convolution or not, defalut is False.")
-      .SetDefault(false);
+
   AddComment(R"DOC(
 Convolution3D Operator.
 
