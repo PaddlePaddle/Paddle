@@ -91,6 +91,8 @@ class TensorRTEngine : public EngineBase {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Check if the ITensor has been declared
+  bool HasDeclared(const std::string& name);
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
@@ -131,6 +133,16 @@ class TensorRTEngine : public EngineBase {
   // in advance, which affecting the construction of TRT Op.
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
+
+  // TODO: (NHZLX)
+  // In the normal case, the paddle-trt exists bug when runing the googlenet.
+  // When there are more than two convolutions of 1 * 1 with the same input, the
+  // paddle-tensorrt will do the merging optimization, which fuse those conv
+  // into
+  // one conv, and then trigger bug. So,  We should use strategy to avoid this
+  // optimization for the time being. This bug will be fixed in the future.
+  std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
+      itensor_quote_num;
 
  private:
   // the max batch size

@@ -133,6 +133,10 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
   buffer_sizes_[name] = 0;
 }
 
+bool TensorRTEngine::HasDeclared(const std::string &name) {
+  return buffer_sizes_.count(name) > 0;
+}
+
 void TensorRTEngine::DeclareOutput(const std::string &name) {
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
                     name);
