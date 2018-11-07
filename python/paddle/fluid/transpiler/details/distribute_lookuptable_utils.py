@@ -40,27 +40,3 @@ def find_distributed_lookup_table(program):
                     assert op.input("W")[0] != table_name
 
     return table_name
-
-
-def process_distribute_lookuptable(program, param_grads, learning_rate):
-    table_name = find_distributed_lookup_table(program)
-    table_param = None
-    table_grad = None
-    new_param_grads = []
-    for p, g in param_grads:
-        if p.name == table_name:
-            if table_param is not None:
-                raise RuntimeError(
-                    "multi dist table var found, only support one now!")
-            table_param = p
-            table_grad = g
-        else:
-            new_param_grads.append((p, g))
-    sgd_op = None
-    if table_param is not None:
-        with table_param.block.program._optimized_guard(
-            [table_param, table_grad]), framework.name_scope("optimizer"):
-            sgd_optimizer = optimizer.SGD(learning_rate)
-            sgd_op = sgd_optimizer._append_optimize_op(table_param.block, (
-                table_param, table_grad))
-    return new_param_grads, (table_param, table_grad), sgd_op
