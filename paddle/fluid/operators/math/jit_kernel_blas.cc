@@ -170,7 +170,9 @@ class VAddKernelImpl : public VAddKernel<T> {
   }
 
  private:
+#ifdef PADDLE_WITH_XBYAK
   std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
+#endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
@@ -212,7 +214,9 @@ class VAddReluKernelImpl : public VAddReluKernel<T> {
   }
 
  private:
+#ifdef PADDLE_WITH_XBYAK
   std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
+#endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
