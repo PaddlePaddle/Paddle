@@ -127,24 +127,18 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-    } else if (pass->Type() == "sequential_execution_pass") {
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
-    } else if (pass->Type() == "all_reduce_deps_pass") {
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
-    }
-
-    if (pass->Type() == "all_reduce_deps_pass" ||
-        pass->Type() == "sequential_execution_pass") {
-      VLOG(1) << "set sequential_execution_pass with SeqOnlyAllReduceOps:"
-              << SeqOnlyAllReduceOps(*this)
+    } else if (pass->Type() == "all_reduce_deps_pass" ||
+               pass->Type() == "sequential_execution_pass") {
+      VLOG(1) << "set enable_sequential_execution:"
+              << enable_sequential_execution_
+              << ", SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
               << ", num_trainers:" << num_trainers_
               << ", trainer_id:" << trainer_id_;
+
+      pass->Erase(kAllOpDescs);
+      pass->Set<const std::vector<OpDesc *>>(
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     }
     graph = pass->Apply(std::move(graph));
   }
