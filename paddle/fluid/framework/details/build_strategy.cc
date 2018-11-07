@@ -118,7 +118,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
   details::ReusedNodePairMap reuse_map;
   details::GraphReusedOps graph_ops;
-  graph->Set(details::kGlobalUnlivedNodePool, new details::UnlivedNodePool);
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
       pass->Erase("places");
@@ -142,8 +141,11 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "analysis_var_pass") {
+      UnlivedNodePool *g_pool = new details::UnlivedNodePool;
+      pass->SetNotOwned(details::kGlobalUnlivedNodePool, g_pool);
       pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
       pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+      graph->Set(details::kGlobalUnlivedNodePool, g_pool);  // take ownership
     } else if (pass->Type() == "memory_reuse_pass") {
       pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
       pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);

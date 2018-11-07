@@ -23,6 +23,11 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// "Memory pool contains a lot unlived variables."
+// "If these variable is reused in the future, it will be added to garbage"
+// "collector (gc). Which will be cleared early than the scope destruction."
+// "Enable it will tigger gc to the pool. default disabled."
+
 class MemoryReusePass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(

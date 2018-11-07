@@ -29,8 +29,9 @@ class EarlyDeleteOpHandle : public OpHandleBase {
  public:
   EarlyDeleteOpHandle(ir::Node* node, const Scope* scope,
                       const platform::CUDAPlace& place,
+                      const std::vector<std::string>& names,
                       GarbageCollector<Tensor>* gc)
-      : OpHandleBase(node), scope_(scope), gc_(gc) {
+      : OpHandleBase(node), scope_(scope), names_(names), gc_(gc) {
     if (IsStreamGarabageCollector()) {
       PADDLE_ENFORCE(cudaSetDevice(place.device));
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
@@ -51,18 +52,18 @@ class EarlyDeleteOpHandle : public OpHandleBase {
     auto* local_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope*>();
     std::vector<Tensor*> tensors;
     for (auto& var_name : names_) {
-      auto* var = local_scope->FindVar(name);
+      auto* var = local_scope->FindVar(var_name);
       PADDLE_ENFORCE(var != nullptr,
                      string::Sprintf("Local Scope not has var %s", var_name));
-    }
-    if (var->IsType<LoDTensor>()) {
-      tensors.emplace_back(var->GetMutable<LoDTensor>());
-    } else if (var->IsType<SelectedRows>()) {
-      tensors.emplace_back(var->GetMutable<SelectedRows>()->mutable_value());
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto& tensor_array = var->GetMutable<LoDTensorArray>();
-      for (auto& tensor : tensor_array) {
-        tensors.emplace_back(tensor);
+      if (var->IsType<LoDTensor>()) {
+        tensors.emplace_back(var->GetMutable<LoDTensor>());
+      } else if (var->IsType<SelectedRows>()) {
+        tensors.emplace_back(var->GetMutable<SelectedRows>()->mutable_value());
+      } else if (var->IsType<LoDTensorArray>()) {
+        LoDTensorArray* tensor_array = var->GetMutable<LoDTensorArray>();
+        for (auto& tensor : *tensor_array) {
+          tensors.emplace_back(static_cast<Tensor*>(&tensor));
+        }
       }
     }
     if (!tensors.empty()) {
@@ -92,8 +93,9 @@ class EarlyDeleteOpHandle : public OpHandleBase {
 
   const Scope* scope_;
   platform::CUDADeviceContext* dev_ctx_;
+  std::vector<std::string> names_;
   GarbageCollector<Tensor>* gc_;
-  cudaError_t event_;
+  cudaEvent_t event_;
 };
 
 }  // namespace details

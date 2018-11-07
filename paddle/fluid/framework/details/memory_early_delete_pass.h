@@ -21,6 +21,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+constexpr char kGarbageCollector[] = "garbage_collector";
+
 class MemoryEarlyDeletePass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(

@@ -181,7 +181,7 @@ class Graph {
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
-  std::set<ir::Node *> node_set_;  // order matters
+  std::set<ir::Node *, NodeComparator> node_set_;  // order matters
 };
 
 bool IsControlDepVar(const ir::Node &var);

@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/memory_early_delete_pass.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/reference_count_op_handle.h"
 
 namespace paddle {
@@ -36,7 +37,7 @@ std::unique_ptr<ir::Graph> MemoryEarlyDeletePass::ApplyImpl(
   // after the last use the unlived var op.
   auto compare_and_insert_early_delete_op = [&](
       const std::unique_ptr<OpHandleBase>& op,
-      const std::vector<VarHandleBase>& vars) {
+      const std::vector<VarHandleBase*>& vars) {
     if (unlived_vars.empty()) return;
     // unlived vars can be deleted after the last used op has finished.
     if (last_used_unlived_var_ops.count(op->Node()) != 0) {
@@ -45,7 +46,7 @@ std::unique_ptr<ir::Graph> MemoryEarlyDeletePass::ApplyImpl(
     auto* compute_op = dynamic_cast<ComputationOpHandle*>(op.get());
     for (auto& var : vars) {
       auto* var_handle = dynamic_cast<VarHandle*>(var);
-      auto& var_name = var->Node()->Name();
+      auto var_name = var->Node()->Name();
       auto& var_place = var_handle->place_;
       if (!platform::is_gpu_place(var_place)) continue;
       if (unlived_vars.count(var_name) == 0) continue;

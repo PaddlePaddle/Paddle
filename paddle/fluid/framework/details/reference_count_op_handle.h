@@ -20,8 +20,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -100,9 +103,10 @@ class ReferenceCountOpHandle : public OpHandleBase {
         }
       } else if (var->IsType<LoDTensorArray>()) {
         if (it->second.fetch_sub(pair.second) <= pair.second) {
-          auto &tensor_array = var->GetMutable<LoDTensorArray>();
-          for (auto &tensor : tensor_array) {
-            tensors.emplace_back(tensor);
+          LoDTensorArray *tensor_array = var->GetMutable<LoDTensorArray>();
+          for (auto &tensor : *tensor_array) {
+            // use static_cast avoid nullptr
+            tensors.emplace_back(static_cast<Tensor *>(&tensor));
           }
         }
       }

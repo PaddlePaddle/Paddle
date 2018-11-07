@@ -140,11 +140,13 @@ ParallelExecutor::ParallelExecutor(
       graph = ref_cnt_pass->Apply(std::move(graph));
       graph->SetNotOwned("garbage_collector", &gcs_);
 
-      // early delete pass also use gc
-      auto early_delete_pass =
-          ir::PassRegistry::Instance().Get("memory_early_delete_pass");
-      early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-      graph = early_delete_pass->Apply(std::move(graph));
+      if (build_strategy.memory_early_delete_) {
+        // early delete pass also use gc
+        auto early_delete_pass =
+            ir::PassRegistry::Instance().Get("memory_early_delete_pass");
+        early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+        graph = early_delete_pass->Apply(std::move(graph));
+      }
     }
   }
 #else

@@ -101,6 +101,10 @@ class Node {
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 
+struct NodeCompare {
+  bool operator()(Node* lhs, Node* rhs) const { return lhs.id() < rhs.id(); }
+};
+
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);
 std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc);
