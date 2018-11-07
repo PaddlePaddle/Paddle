@@ -65,7 +65,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            param = fluid.default_main_program().global_block().var('fc.w')
+            param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -625,8 +625,13 @@ def save_inference_model(dirname,
                                       main_program._distributed_lookup_table,
                                       main_program._endpoints)
 
-    if not os.path.isdir(dirname):
+    # when a pserver and a trainer running on the same machine, mkdir may conflict
+    try:
         os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     if model_filename is not None:
         model_basename = os.path.basename(model_filename)
     else:

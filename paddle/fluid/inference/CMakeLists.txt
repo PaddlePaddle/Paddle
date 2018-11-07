@@ -1,5 +1,5 @@
 if(WITH_TESTING)
-  include(test.cmake) # some generic cmake funtion for inference
+  include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.

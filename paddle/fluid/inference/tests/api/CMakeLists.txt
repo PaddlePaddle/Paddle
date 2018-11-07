@@ -1,5 +1,11 @@
 set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor)
 
+function(download_model install_dir model_name)
+    if (NOT EXISTS ${install_dir})
+        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${model_name})
+    endif()
+endfunction()
+
 function(download_model_and_data install_dir model_name data_name)
     if (NOT EXISTS ${install_dir})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${model_name})
@@ -11,6 +17,13 @@ function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
+endfunction()
+
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
+    download_model(${install_dir} ${model_name})
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${install_dir}/model)
 endfunction()
 
 # RNN1
@@ -28,6 +41,15 @@ endif()
 set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
 download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc)
+
+# DAM
+set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
+download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
+inference_analysis_test(test_analyzer_dam SRCS analyzer_dam_tester.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS
+        --infer_model=${DAM_INSTALL_DIR}/model
+        --infer_data=${DAM_INSTALL_DIR}/data.txt
+        --use_analysis=0)
 
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
@@ -52,17 +74,13 @@ inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} ana
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
-    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
+  inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
 # resnet50
-set(RESNET50_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
-if (NOT EXISTS ${RESNET50_INSTALL_DIR})
-    inference_download_and_uncompress(${RESNET50_INSTALL_DIR} ${INFERENCE_URL} "resnet50_model.tar.gz")
-endif()
-inference_analysis_test(test_analyzer_resnet50 SRCS analyzer_resnet50_tester.cc
-    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS --infer_model=${RESNET50_INSTALL_DIR}/model)
+inference_analysis_api_test_with_fake_data(test_analyzer_resnet50 
+  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI

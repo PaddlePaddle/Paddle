@@ -16,6 +16,9 @@
 #include <vector>
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
+DEFINE_string(rpc_server_profile_path, "./profile_ps",
+              "the profile log file path");
+
 namespace paddle {
 namespace operators {
 namespace distributed {
