@@ -102,7 +102,8 @@ class VMulKernelImpl : public VMulKernel<T> {
     if (useJIT(d)) {
       // roughly estimate the size of code
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
-      jitcode_.reset(new gen::VMulJitCode(d, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VVVJitCode(d, gen::operand_type::mul, false,
+                                         sz > 4096 ? sz : 4096));
       this->Compute =
           jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
       return;
@@ -120,14 +121,14 @@ class VMulKernelImpl : public VMulKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 
  private:
-  std::unique_ptr<gen::VMulJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
 #endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool VMulKernelImpl<float>::useJIT(int d) {
-  return gen::VMulJitCode::init(d);
+  return gen::VVVJitCode::init(d);
 }
 #endif
 
@@ -149,13 +150,16 @@ class VAddKernelImpl : public VAddKernel<T> {
  public:
   DECLARE_STATIC_FUNC;
   explicit VAddKernelImpl(int d) : VAddKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
-      jitcode_.reset(new gen::VAddJitCode(d, false, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VVVJitCode(d, gen::operand_type::add, false,
+                                         sz > 4096 ? sz : 4096));
       this->Compute =
           jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
       return;
     }
+#endif
 #ifdef PADDLE_WITH_MKLML
     if (useMKL(d)) {
       this->Compute = VAddMKL<T>;
@@ -166,14 +170,17 @@ class VAddKernelImpl : public VAddKernel<T> {
   }
 
  private:
-  std::unique_ptr<gen::VAddJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
 };
 
+#ifdef PADDLE_WITH_XBYAK
 template <>
 bool VAddKernelImpl<float>::useJIT(int d) {
-  return gen::VAddJitCode::init(d);
+  return gen::VVVJitCode::init(d);
 }
+#endif
 
+#ifdef PADDLE_WITH_MKLML
 template <>
 bool VAddKernelImpl<float>::useMKL(int d) {
   return d > 512;
@@ -183,6 +190,7 @@ template <>
 bool VAddKernelImpl<double>::useMKL(int d) {
   return true;
 }
+#endif
 
 /* VAddRelu JitKernel */
 template <typename T>
@@ -190,24 +198,29 @@ class VAddReluKernelImpl : public VAddReluKernel<T> {
  public:
   DECLARE_STATIC_FUNC;
   explicit VAddReluKernelImpl(int d) : VAddReluKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
-      jitcode_.reset(new gen::VAddJitCode(d, true, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VVVJitCode(d, gen::operand_type::add, true,
+                                         sz > 4096 ? sz : 4096));
       this->Compute =
           jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
       return;
     }
+#endif
     this->Compute = VAddReluRefer<T>;
   }
 
  private:
-  std::unique_ptr<gen::VAddJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
 };
 
+#ifdef PADDLE_WITH_XBYAK
 template <>
 bool VAddReluKernelImpl<float>::useJIT(int d) {
-  return gen::VAddJitCode::init(d);
+  return gen::VVVJitCode::init(d);
 }
+#endif
 
 #undef DECLARE_STATIC_FUNC
 
