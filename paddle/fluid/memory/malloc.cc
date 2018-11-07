@@ -73,8 +73,9 @@ struct NaiveAllocator {
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-  void* p = GetCPUBuddyAllocator()->Alloc(size);
-  // void* p = je_malloc(size);
+  // void* p = GetCPUBuddyAllocator()->Alloc(size);
+  void* p = malloc(size);
+  // LOG(ERROR) << "Allocate " << size << " bytes on " << platform::Place(place);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -85,8 +86,8 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  GetCPUBuddyAllocator()->Free(p);
-  // je_free(p);
+  // GetCPUBuddyAllocator()->Free(p);
+  free(p);
 }
 
 template <>

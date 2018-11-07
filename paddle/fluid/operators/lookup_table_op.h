@@ -26,6 +26,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+extern "C"
+{
+  // weak symbol: resolved at runtime by the linker if we are using jemalloc, nullptr otherwise
+  int mallctl(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) __attribute__((weak));
+}
+
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
@@ -37,6 +43,8 @@ template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    PADDLE_ENFORCE(mallctl != nullptr);
+
     auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
     auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");

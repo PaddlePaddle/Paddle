@@ -1,6 +1,9 @@
 add_subdirectory(detail)
 
 cc_library(malloc SRCS malloc.cc DEPS buddy_allocator place enforce jemalloc)
+include_directories(${JEMALLOC_INSTALL_DIR}/include)
+link_directories(${JEMALLOC_INSTALL_DIR}/lib)
+target_link_libraries(malloc "-ljemalloc ${JEMALLOC_LIBS}")
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
 cc_library(memory

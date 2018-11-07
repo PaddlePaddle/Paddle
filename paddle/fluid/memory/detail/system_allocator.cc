@@ -24,6 +24,8 @@ limitations under the License. */
 #include <stdlib.h>   // for malloc and free
 #include <algorithm>  // for std::max
 
+#include <jemalloc/jemalloc.h>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cpu_info.h"

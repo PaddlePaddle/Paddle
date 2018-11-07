@@ -7,7 +7,7 @@ set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 IF(WITH_STATIC_LIB)
   SET(BUILD_CMD make lib)
 ELSE()
-  SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib)
+  SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC -DXXH_CPU_LITTLE_ENDIAN -DXXH_FORCE_MEMORY_ACCESS=1/g" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib)
 ENDIF()
 
 ExternalProject_Add(

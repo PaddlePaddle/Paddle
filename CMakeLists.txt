@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+set(CMAKE_VERBOSE_MAKEFILE on)
+
 cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -162,6 +164,7 @@ if (REPLACE_ENFORCE_GLOG)
 endif()
 ########################################################################################
 
+include(external/jemalloc)    # download xxhash
 include(external/mklml)     # download mklml package
 include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
@@ -181,7 +184,6 @@ include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
 include(external/xxhash)    # download xxhash
-include(external/jemalloc)    # download xxhash
 
 if (NOT WIN32)
 # there is no official support of snappystream, warpctc, nccl, cupti in windows
