@@ -34,7 +34,7 @@ namespace operators {
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
 
-namespace { // NOLINT
+namespace {  // NOLINT
 
 TRT_DT FluidDataType2TRT(FluidDT type) {
   switch (type) {
@@ -60,7 +60,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
   return nvinfer1::DimsCHW(shape[1], 1, 1);
 }
 
-} // NOLINT  // namespace
+}  // NOLINT  // namespace
 
 using inference::Singleton;
 using inference::tensorrt::TRT_EngineManager;
