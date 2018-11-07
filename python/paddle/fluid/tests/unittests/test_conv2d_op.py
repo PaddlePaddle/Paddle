@@ -67,7 +67,6 @@ class TestConv2dOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
-        self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = False
         self.data_format = "AnyLayout"
@@ -99,8 +98,7 @@ class TestConv2dOp(OpTest):
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
-            'data_format': self.data_format,
-            'exhaustive_search': self.exhaustive_search
+            'data_format': self.data_format
         }
         self.outputs = {'Output': output}
 
@@ -367,12 +365,6 @@ class TestDepthwiseConvWithDilation2(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
-
-
-class TestCUDNNExhaustiveSearch(TestCUDNN):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.exhaustive_search = True
 
 
 # Please Don't remove the following code.

@@ -56,7 +56,6 @@ class MeanGradKernel : public framework::OpKernel<T> {
 
     T ig_size = static_cast<T>(IG->numel());
     Eigen::DSizes<int, 1> bcast(static_cast<int>(ig_size));
-    // EigenVector<T>::From can cast float to float16?
     EigenVector<T>::Flatten(*IG).device(
         *context.template device_context<DeviceContext>().eigen_device()) =
         (EigenVector<T>::From(*OG) / ig_size).broadcast(bcast);
