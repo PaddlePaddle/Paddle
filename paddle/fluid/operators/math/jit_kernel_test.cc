@@ -801,7 +801,11 @@ TEST(JitKernel, pool) {
               std::dynamic_pointer_cast<const jit::Kernel>(pvmul_d));
 
   const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulfjit4");
-  EXPECT_EQ(pvmul_f, pvmul_from_key);
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  EXPECT_EQ(pvmul_from_key, nullptr);
+#else
+  EXPECT_EQ(pvmul_from_key, pvmul_f);
+#endif
   const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulfjit");
   EXPECT_TRUE(pvmul_from_key2 == nullptr);
 }
