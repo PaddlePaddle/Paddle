@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
