@@ -40,11 +40,13 @@ class InterpolateOp : public framework::OperatorWithKernel {
     int out_w = ctx->Attrs().Get<int>("out_w");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
 
-    if (ctx->HasInput("OutSize")) {
+    if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
       auto out_size_dim = ctx->GetInputDim("OutSize");
       PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
                         "OutSize's dimension size must be 1");
       PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
+      ctx->ShareLoD("X", "Out");
+      return;
     }
     std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
     ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
@@ -86,7 +88,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           interpolation.
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in bot the 3rd dimention(in height direction) and the 4th dimention(in width 
+          in both the 3rd dimention(in height direction) and the 4th dimention(in width 
           direction) on input tensor.
             
           Bilinear interpolation is an extension of linear interpolation for 
