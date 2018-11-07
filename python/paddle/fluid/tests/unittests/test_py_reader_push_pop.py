@@ -36,24 +36,46 @@ class TestPyReader(unittest.TestCase):
         self.iterations = 20
 
     def test_single_thread_main(self):
-        self.main(use_thread=False)
+        self.main(use_thread=False, use_data_layer=False)
+
+    def test_single_thread_main2(self):
+        self.main(use_thread=False, use_data_layer=True)
 
     def test_multiple_thread_main(self):
-        self.main(use_thread=True)
+        self.main(use_thread=True, use_data_layer=False)
 
-    def main(self, use_thread=False):
+    def test_multiple_thread_main2(self):
+        self.main(use_thread=True, use_data_layer=True)
+
+    def main(self, use_thread=False, use_data_layer=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             executor = fluid.Executor(place)
 
-            data_file = fluid.layers.py_reader(
-                capacity=self.capacity,
-                dtypes=self.dtypes,
-                lod_levels=self.lod_levels,
-                shapes=self.shapes)
+            if use_data_layer:
+                cnt = 0
+                read_out_data = []
+                for shape, dtype, lod_level in zip(self.shapes, self.dtypes,
+                                                   self.lod_levels):
+                    read_out_data.append(
+                        fluid.layers.data(
+                            name=''.join(['x', str(cnt)]),
+                            shape=shape,
+                            dtype=dtype,
+                            lod_level=lod_level))
+                    cnt = cnt + 1
+                data_file = fluid.layers.build_py_reader_from_data(
+                    feed_list=read_out_data, capacity=self.capacity)
+            else:
+                data_file = fluid.layers.py_reader(
+                    capacity=self.capacity,
+                    dtypes=self.dtypes,
+                    lod_levels=self.lod_levels,
+                    shapes=self.shapes)
+                read_out_data = fluid.layers.read_file(data_file)
+
             feed_queue = data_file.queue
-            read_out_data = fluid.layers.read_file(data_file)
             self.inputs = []
 
             for i in range(self.iterations):

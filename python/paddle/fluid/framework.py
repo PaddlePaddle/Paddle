@@ -1601,6 +1601,16 @@ class Program(object):
     def _version(self):
         return self.desc._version()
 
+    def convert_to_test_program(self):
+        """
+        Create a new, duplicated program and prune read_ops. Users should
+        call this API before creating any optimizer.
+        """
+        p = self._inference_optimize(prune_read_op=True)
+        p._copy_param_info_from(self)
+        p._copy_data_info_from(self)
+        return p
+
     def clone(self, for_test=False):
         """
         Create a new, duplicated program.

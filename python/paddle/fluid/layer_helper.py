@@ -46,6 +46,10 @@ class LayerHelper(object):
     def startup_program(self):
         return default_startup_program()
 
+    def _insert_op(self, index, *args, **kwargs):
+        return self.main_program.current_block()._insert_op(
+            index=index, *args, **kwargs)
+
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
 

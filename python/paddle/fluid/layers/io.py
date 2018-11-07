@@ -17,6 +17,7 @@ import contextlib
 import multiprocessing
 import six
 import threading
+import os
 
 from ..data_feeder import DataFeeder
 from .control_flow import BlockGuard
@@ -30,7 +31,8 @@ from ..unique_name import generate as unique_name
 
 __all__ = [
     'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'py_reader', 'Preprocessor', 'load'
+    'random_data_generator', 'py_reader', 'build_py_reader_from_data',
+    'Preprocessor', 'load'
 ]
 
 
@@ -475,6 +477,139 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
+def _py_reader(capacity, shapes, dtypes, lod_levels, name, use_double_buffer,
+               append):
+    new_dtypes = []
+    for dt in dtypes:
+        if not isinstance(dt, core.VarDesc.VarType):
+            dt = convert_np_dtype_to_dtype_(dt)
+        new_dtypes.append(dt)
+
+    dtypes = new_dtypes
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    if lod_levels is None:
+        lod_levels = [0] * len(shapes)
+
+    if name is None:
+        queue_name = unique_name('lod_tensor_blocking_queue')
+        reader_name = unique_name('create_py_reader')
+        double_buffer_name = unique_name('double_buffer')
+    else:
+        queue_name = "_".join([name, "queue"])
+        reader_name = "_".join([name, "reader"])
+        double_buffer_name = "_".join([name, "double_buffer"])
+
+    var = global_scope().var(queue_name)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=reader_name)
+    startup_blk.append_op(
+        type='create_py_reader',
+        inputs={'blocking_queue': [queue_name]},
+        outputs={'Out': [startup_var]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+
+    reader = monkey_patch_reader_methods(main_prog_var)
+    if use_double_buffer:
+        double_buffer_reader = _double_buffer(
+            reader=reader, place=None, name=double_buffer_name, append=append)
+        # we return a double buffer reader. However, the reset method comes from
+        # py_reader.
+        double_buffer_reader.reset = reader.reset
+        reader = double_buffer_reader
+
+    # monkey patch py_reader special methods
+    reader.queue = feed_queue
+    current_reset_method = reader.reset
+    reader.thread = None
+    reader.tensor_provider = None
+    reader.exited = False
+
+    def start_provide_thread(func):
+        def __provider_thread__():
+            for tensors in func():
+                array = core.LoDTensorArray()
+                for item in tensors:
+                    if not isinstance(item, core.LoDTensor):
+                        tmp = core.LoDTensor()
+                        tmp.set(item, core.CPUPlace())
+                        item = tmp
+
+                    array.append(item)
+
+                if reader.exited:
+                    break
+                feed_queue.push(array)
+                if reader.exited:
+                    break
+            feed_queue.close()
+
+        reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread.daemon = True
+        reader.thread.start()
+
+    def __set_tensor_provider__(func):
+        reader.tensor_provider = func
+
+    def __set_paddle_reader__(paddle_reader):
+        with program_guard(Program(), Program()):
+            feed_list = []
+            counter = 0
+            for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
+                name = str(counter)
+                feed_list.append(
+                    data(
+                        name=name,
+                        dtype=dtype,
+                        shape=shape,
+                        lod_level=lod_level))
+                counter += 1
+
+            feeder = DataFeeder(feed_list=feed_list, place=core.CPUPlace())
+            paddle_reader = feeder.decorate_reader(
+                paddle_reader, multi_devices=False)
+
+        def __tensor_provider__():
+            for slots in paddle_reader():
+                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
+
+        __set_tensor_provider__(__tensor_provider__)
+
+    def __reset__():
+        current_reset_method()
+        if reader.thread is not None and reader.tensor_provider is not None:
+            reader.exited = True
+            reader.thread.join()
+            reader.exited = False
+
+    def __start__():
+        start_provide_thread(reader.tensor_provider)
+
+    reader.reset = __reset__
+    reader.decorate_tensor_provider = __set_tensor_provider__
+    reader.decorate_paddle_reader = __set_paddle_reader__
+    reader.start = __start__
+
+    return reader
+
+
 def py_reader(capacity,
               shapes,
               dtypes,
@@ -599,127 +734,41 @@ def py_reader(capacity,
         >>>     except fluid.core.EOFException:
         >>>         test_reader.reset()
     """
-    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
-    shape_concat = []
-    ranks = []
+    return _py_reader(
+        capacity=capacity,
+        shapes=shapes,
+        dtypes=dtypes,
+        lod_levels=lod_levels,
+        name=name,
+        use_double_buffer=use_double_buffer,
+        append=True)
 
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
 
-    if lod_levels is None:
-        lod_levels = [0] * len(shapes)
+def build_py_reader_from_data(capacity,
+                              feed_list,
+                              name=None,
+                              use_double_buffer=True):
+    for d in feed_list:
+        assert d.is_data,  \
+            '{} must be Variable created by fluid.layers.data(...)'.format(d.name)
 
-    if name is None:
-        queue_name = unique_name('lod_tensor_blocking_queue')
-        reader_name = unique_name('create_py_reader')
-        double_buffer_name = unique_name('double_buffer')
-    else:
-        queue_name = "_".join([name, "queue"])
-        reader_name = "_".join([name, "reader"])
-        double_buffer_name = "_".join([name, "double_buffer"])
-
-    var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
-
-    startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=reader_name)
-    startup_blk.append_op(
-        type='create_py_reader',
-        inputs={'blocking_queue': [queue_name]},
-        outputs={'Out': [startup_var]},
-        attrs={
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'ranks': ranks
-        })
-
-    startup_var.desc.set_dtypes(dtypes)
-    startup_var.persistable = True
-
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
-
-    reader = monkey_patch_reader_methods(main_prog_var)
-    if use_double_buffer:
-        double_buffer_reader = double_buffer(reader, name=double_buffer_name)
-        # we return a double buffer reader. However, the reset method comes from
-        # py_reader.
-        double_buffer_reader.reset = reader.reset
-        reader = double_buffer_reader
-
-    # monkey patch py_reader special methods
-    reader.queue = feed_queue
-    current_reset_method = reader.reset
-    reader.thread = None
-    reader.tensor_provider = None
-    reader.exited = False
-
-    def start_provide_thread(func):
-        def __provider_thread__():
-            for tensors in func():
-                array = core.LoDTensorArray()
-                for item in tensors:
-                    if not isinstance(item, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(item, core.CPUPlace())
-                        item = tmp
-
-                    array.append(item)
-
-                if reader.exited:
-                    break
-                feed_queue.push(array)
-                if reader.exited:
-                    break
-            feed_queue.close()
-
-        reader.thread = threading.Thread(target=__provider_thread__)
-        reader.thread.daemon = True
-        reader.thread.start()
-
-    def __set_tensor_provider__(func):
-        reader.tensor_provider = func
-
-    def __set_paddle_reader__(paddle_reader):
-        with program_guard(Program(), Program()):
-            feed_list = []
-            counter = 0
-            for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
-                name = str(counter)
-                feed_list.append(
-                    data(
-                        name=name,
-                        dtype=dtype,
-                        shape=shape,
-                        lod_level=lod_level))
-                counter += 1
-
-            feeder = DataFeeder(feed_list=feed_list, place=core.CPUPlace())
-            paddle_reader = feeder.decorate_reader(
-                paddle_reader, multi_devices=False)
-
-        def __tensor_provider__():
-            for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
-
-        __set_tensor_provider__(__tensor_provider__)
-
-    def __reset__():
-        current_reset_method()
-        if reader.thread is not None and reader.tensor_provider is not None:
-            reader.exited = True
-            reader.thread.join()
-            reader.exited = False
-
-    def __start__():
-        start_provide_thread(reader.tensor_provider)
-
-    reader.reset = __reset__
-    reader.decorate_tensor_provider = __set_tensor_provider__
-    reader.decorate_paddle_reader = __set_paddle_reader__
-    reader.start = __start__
-
+    shapes = [d.shape for d in feed_list]
+    dtypes = [d.dtype for d in feed_list]
+    lod_levels = [d.lod_level for d in feed_list]
+    reader = _py_reader(
+        capacity=capacity,
+        shapes=shapes,
+        dtypes=dtypes,
+        lod_levels=lod_levels,
+        name=name,
+        use_double_buffer=use_double_buffer,
+        append=False)
+    helper = LayerHelper('read_file')
+    helper._insert_op(
+        index=1 if use_double_buffer else 0,
+        type='read',
+        inputs={'Reader': [reader]},
+        outputs={'Out': feed_list})
     return reader
 
 
@@ -830,15 +879,26 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
+def __create_unshared_decorated_reader__(op_type,
+                                         reader,
+                                         attrs,
+                                         name=None,
+                                         append=True):
     new_reader_name = name if name is not None else unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
-    main_blk.append_op(
-        type=op_type,
-        inputs={'UnderlyingReader': reader},
-        outputs={'Out': [new_reader]},
-        attrs=attrs)
+    if append is True:
+        main_blk.append_op(
+            type=op_type,
+            inputs={'UnderlyingReader': reader},
+            outputs={'Out': [new_reader]},
+            attrs=attrs)
+    else:
+        main_blk._prepend_op(
+            type=op_type,
+            inputs={'UnderlyingReader': reader},
+            outputs={'Out': [new_reader]},
+            attrs=attrs)
     return monkey_patch_reader_methods(new_reader)
 
 
@@ -890,6 +950,14 @@ def batch(reader, batch_size):
         'create_batch_reader', reader, {'batch_size': int(batch_size)})
 
 
+def _double_buffer(reader, place, name, append):
+    attrs = dict()
+    if place is not None:
+        attrs['place'] = str(place).upper()
+    return __create_unshared_decorated_reader__(
+        'create_double_buffer_reader', reader, attrs, name=name, append=append)
+
+
 def double_buffer(reader, place=None, name=None):
     """
     Wrap a double buffer reader. The data will copy to target place with a
@@ -914,11 +982,7 @@ def double_buffer(reader, place=None, name=None):
         >>> reader = fluid.layers.double_buffer(reader)
         >>> img, label = fluid.layers.read_file(reader)
     """
-    attrs = dict()
-    if place is not None:
-        attrs['place'] = str(place).upper()
-    return __create_unshared_decorated_reader__(
-        'create_double_buffer_reader', reader, attrs, name=name)
+    return _double_buffer(reader=reader, place=place, name=name, append=True)
 
 
 def multi_pass(reader, pass_num):
