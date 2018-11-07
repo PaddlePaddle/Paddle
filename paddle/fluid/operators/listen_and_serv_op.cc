@@ -134,7 +134,6 @@ void ListenAndServOp::RunSyncLoop(
   rpc_service_->ResetBarrierCounter();
 
   while (true) {
-    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
