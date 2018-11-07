@@ -86,6 +86,7 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
 if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
   inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddle-inference-dist.bj.bcebos.com/tensorrt_test" "mobilenet.tar.gz")
+  file(RENAME ${MOBILENET_INSTALL_DIR}/mobilenet/__model__ ${MOBILENET_INSTALL_DIR}/mobilenet/model)
 endif()
 inference_analysis_test(test_analyzer_mobilenet SRCS analyzer_mobilenet_tester.cc
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS --infer_model=${MOBILENET_INSTALL_DIR}/mobilenet)
