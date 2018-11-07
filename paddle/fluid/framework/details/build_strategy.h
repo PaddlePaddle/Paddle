@@ -73,6 +73,8 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  bool remove_unnecessary_lock_{false};
+
   // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
   // from python side.
