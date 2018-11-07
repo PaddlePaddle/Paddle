@@ -20,10 +20,13 @@ from op_test import OpTest
 import paddle.fluid.core as core
 
 
-def bilinear_interp_np(input, out_h, out_w, out_size):
+def bilinear_interp_np(input, out_h, out_w, out_size, actual_shape):
     if out_size is not None:
         out_h = out_size[0]
         out_w = out_size[1]
+    if actual_shape is not None:
+        out_h = actual_shape[0]
+        out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
     if out_h > 1:
         ratio_h = (in_h - 1.0) / (out_h - 1.0)
@@ -56,14 +59,17 @@ def bilinear_interp_np(input, out_h, out_w, out_size):
 class TestBilinearInterpOp(OpTest):
     def setUp(self):
         self.out_size = None
+        self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
         output_np = bilinear_interp_np(input_np, self.out_h, self.out_w,
-                                       self.out_size)
+                                       self.out_size, self.actual_shape)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
         self.attrs = {'out_h': self.out_h, 'out_w': self.out_w}
         self.outputs = {'Out': output_np}
 
@@ -125,15 +131,25 @@ class TestCase6(TestBilinearInterpOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
+class TestBilinearInterpOpActualShape(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.out_size = np.array([65, 33]).astype("int32")
+        self.actual_shape = np.array([66, 40]).astype("int32")
+
+
 class TestBilinearInterpOpUint8(OpTest):
     def setUp(self):
         self.out_size = None
+        self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape).astype("uint8")
         output_np = bilinear_interp_np(input_np, self.out_h, self.out_w,
-                                       self.out_size)
+                                       self.out_size, self.actual_shape)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
