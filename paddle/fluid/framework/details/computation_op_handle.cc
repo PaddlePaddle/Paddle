@@ -29,15 +29,21 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
-  this->RunAndRecordEvent([this] {
+  auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
-  });
+  };
+
+  if (is_lock_and_record_event_free_) {
+    run_func();
+  } else {
+    this->RunAndRecordEvent(run_func);
+  }
 }
 
 bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
   bool need_wait =
       in_var && in_var->GeneratedOp() &&
-      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_[place_];
+      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_.at(place_);
   return need_wait;
 }
 

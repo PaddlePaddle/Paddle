@@ -7,7 +7,11 @@ set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 IF(WITH_STATIC_LIB)
   SET(BUILD_CMD make lib)
 ELSE()
-  SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib)
+  IF(APPLE)
+    SET(BUILD_CMD sed -i \"\" "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib)
+  ELSE(APPLE)
+    SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib)
+  ENDIF(APPLE)
 ENDIF()
 
 ExternalProject_Add(

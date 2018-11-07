@@ -174,7 +174,6 @@ class TestCRFModel(unittest.TestCase):
                 print(pe.run(feed=feeder.feed(cur_batch),
                              fetch_list=[avg_cost.name])[0])
 
-    @unittest.skip(reason="CI hangs")
     def test_update_sparse_parameter_all_reduce(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
@@ -183,7 +182,6 @@ class TestCRFModel(unittest.TestCase):
         self.check_network_convergence(
             is_sparse=True, build_strategy=build_strategy, use_cuda=False)
 
-    @unittest.skip(reason="CI hangs")
     def test_update_dense_parameter_all_reduce(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
@@ -192,7 +190,6 @@ class TestCRFModel(unittest.TestCase):
         self.check_network_convergence(
             is_sparse=False, build_strategy=build_strategy, use_cuda=False)
 
-    @unittest.skip(reason="CI hangs")
     def test_update_sparse_parameter_reduce(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
@@ -201,7 +198,6 @@ class TestCRFModel(unittest.TestCase):
         self.check_network_convergence(
             is_sparse=True, build_strategy=build_strategy, use_cuda=False)
 
-    @unittest.skip(reason="CI hangs")
     def test_update_dense_parameter_reduce(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
