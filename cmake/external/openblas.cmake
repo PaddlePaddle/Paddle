@@ -77,7 +77,7 @@ IF(NOT ${CBLAS_FOUND})
                 extern_openblas
                 ${EXTERNAL_PROJECT_LOG_ARGS}
     #              GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
-                GIT_REPOSITORY      http://admin@localhost:8080/r/openblas.git
+                GIT_REPOSITORY      http://admin@172.20.90.14:8080/r/openblas.git
     #              GIT_TAG             ${OPENBLAS_COMMIT}
                 PREFIX              ${CBLAS_SOURCES_DIR}
                 INSTALL_DIR         ${CBLAS_INSTALL_DIR}
@@ -105,7 +105,7 @@ IF(NOT ${CBLAS_FOUND})
                 extern_openblas
                 ${EXTERNAL_PROJECT_LOG_ARGS}
                 #  GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
-                GIT_REPOSITORY      http://admin@localhost:8080/r/openblas.git
+                GIT_REPOSITORY      http://admin@172.20.90.14:8080/r/openblas.git
                 #  GIT_TAG             ${OPENBLAS_COMMIT}
                 PREFIX              ${CBLAS_SOURCES_DIR}
                 INSTALL_DIR         ${CBLAS_INSTALL_DIR}

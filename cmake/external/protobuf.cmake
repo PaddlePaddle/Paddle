@@ -208,7 +208,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
 
    # SET(PROTOBUF_REPO "https://github.com/google/protobuf.git")
   #  SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
-    SET(PROTOBUF_REPO http://admin@localhost:8080/r/protobuf.git)
+    SET(PROTOBUF_REPO http://admin@172.20.90.14:8080/r/protobuf.git)
     IF(MOBILE_INFERENCE)
         # The reason why the official version is not used is described in
         # https://github.com/PaddlePaddle/Paddle/issues/6114
