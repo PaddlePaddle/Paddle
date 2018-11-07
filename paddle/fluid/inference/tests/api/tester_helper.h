@@ -107,12 +107,11 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
 }
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
-                       const std::string &dirname,
-                       const bool is_combined = true) {
+                       const std::string &dirname) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::vector<std::vector<int64_t>> feed_target_shapes =
-      GetFeedTargetShapes(dirname, is_combined);
+      GetFeedTargetShapes(dirname, true, "model", "params");
   int dim1 = feed_target_shapes[0][1];
   int dim2 = feed_target_shapes[0][2];
   int dim3 = feed_target_shapes[0][3];
