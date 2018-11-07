@@ -168,9 +168,11 @@ class VAddKernelImpl : public VAddKernel<T> {
 #endif
     this->Compute = VAddRefer<T>;
   }
+#ifdef PADDLE_WITH_XBYAK
 
  private:
   std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
+#endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
@@ -210,9 +212,11 @@ class VAddReluKernelImpl : public VAddReluKernel<T> {
 #endif
     this->Compute = VAddReluRefer<T>;
   }
+#ifdef PADDLE_WITH_XBYAK
 
  private:
   std::unique_ptr<gen::VVVJitCode> jitcode_{nullptr};
+#endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
