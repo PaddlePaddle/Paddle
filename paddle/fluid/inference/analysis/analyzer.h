@@ -66,7 +66,10 @@ class Analyzer : public OrderedRegistry<PassManager> {
   // merged in a larger fuse op. The small fusion will not break the pattern of
   // larger fusion.
   const std::vector<std::string> all_ir_passes_{{
-      // Manual update the passes here.
+// Manual update the passes here.
+#ifdef PADDLE_WITH_MKLDNN
+      "depthwise_conv_mkldnn_pass",  //
+#endif
       "attention_lstm_fuse_pass",       //
       "seqconv_eltadd_relu_fuse_pass",  //
       "embedding_fc_lstm_fuse_pass",    //
@@ -79,7 +82,6 @@ class Analyzer : public OrderedRegistry<PassManager> {
       "conv_bn_fuse_pass",              //
       "conv_eltwiseadd_bn_fuse_pass",   //
 #ifdef PADDLE_WITH_MKLDNN
-      "depthwise_conv_mkldnn_pass",             //
       "conv_bias_mkldnn_fuse_pass",             //
       "conv_relu_mkldnn_fuse_pass",             //
       "conv_elementwise_add_mkldnn_fuse_pass",  //
