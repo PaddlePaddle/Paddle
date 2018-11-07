@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/operators/reduce_min_max_op.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_min,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::MinFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::MinFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::MinFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::MinFunctor>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_max_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
+                                           float, ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
+                          ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
+                          ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
+                          ops::MaxOrMinGradFunctor>);
