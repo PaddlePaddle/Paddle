@@ -30,8 +30,8 @@ struct TestReduceOpHandle {
   Scope g_scope_;
   std::vector<Scope *> local_scopes_;
   std::vector<Scope *> param_scopes_;
-  std::unique_ptr<OpHandleBase> op_handle_;
-  std::vector<std::unique_ptr<VarHandleBase>> vars_;
+  OpHandleBase *op_handle_;
+  std::vector<VarHandleBase *> vars_;
   std::vector<p::Place> gpu_list_;
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
 

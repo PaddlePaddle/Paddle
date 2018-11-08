@@ -44,12 +44,18 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
-  int GetVarDeviceID(const ir::Graph &graph, const std::string &varname) const;
+  int GetVarDeviceID(
+      const ir::Graph &graph, const std::string &varname,
+      const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
-  int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
-  int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
+  int CreateRPCOp(
+      ir::Graph *result, ir::Node *node,
+      std::unordered_map<std::string, int> *sharded_var_device) const;
+  int CreateDistTrainOp(
+      ir::Graph *result, ir::Node *node,
+      std::unordered_map<std::string, int> *sharded_var_device) const;
 
   std::vector<std::string> FindDistTrainSendVars(
       const std::vector<ir::Node *> &nodes) const;
@@ -69,7 +75,9 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
                              int dev_id) const;
 
-  int GetOpDeviceID(const ir::Graph &graph, ir::Node *node) const;
+  int GetOpDeviceID(
+      const ir::Graph &graph, ir::Node *node,
+      const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
 
