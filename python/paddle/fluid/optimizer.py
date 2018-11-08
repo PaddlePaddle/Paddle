@@ -249,6 +249,15 @@ class Optimizer(object):
 
     def _process_distribute_lookuptable(self, param_grads, loss,
                                         startup_program):
+        """
+        Because distribute lookup table only support SGD optimizer for now, not support
+        other optimizer and regularization, so we should find the table parameter out,
+        and avoid to add regularization and other op for it, and add sgd optimize op
+        for it independently.
+        :param param_grads(list((Var, Var))): list of (param, grad) pair.
+        :param loss: the loss variable.
+        :param startup_program: the startup program
+        """
         program = loss.block.program
         table_name = find_distributed_lookup_table(program)
         table_param = None
