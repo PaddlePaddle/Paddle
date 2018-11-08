@@ -146,7 +146,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                               mkldnn_engine, ceil_mode, is_test);
 
       // save pool_pd into global device context to be referred in backward path
-      dev_ctx.SetBlob(key_pool_pd, pool_pd);
+      if (!is_test) dev_ctx.SetBlob(key_pool_pd, pool_pd);
 
       auto src_memory = std::make_shared<memory>(pool_pd->src_primitive_desc(),
                                                  to_void_cast<T>(input_data));
@@ -256,6 +256,10 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(out_grad->layout() == DataLayout::kMKLDNN &&
                        out_grad->format() != memory::format::format_undef,
                    "Wrong layout/format set for Input output_grad tensor");
+
+    PADDLE_ENFORCE(
+        !ctx.Attr<bool>("is_test"),
+        "is_test attribute should be set to False in training phase.");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");

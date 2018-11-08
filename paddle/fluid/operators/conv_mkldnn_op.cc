@@ -397,7 +397,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                      fuse_residual_conn, is_test);
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
-    dev_ctx.SetBlob(key_conv_pd, conv_pd);
+    if (!is_test) dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
     ConvMKLDNNHandler handler(conv_pd, dev_ctx, mkldnn_engine, key);
 
@@ -592,6 +592,10 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(output_grad->layout() == DataLayout::kMKLDNN &&
                        output_grad->format() != memory::format::format_undef,
                    "Wrong layout/format set for output_grad tensor");
+
+    PADDLE_ENFORCE(
+        !ctx.Attr<bool>("is_test"),
+        "is_test attribute should be set to False in training phase.");
 
     if (!input_grad && !filter_grad) return;
 

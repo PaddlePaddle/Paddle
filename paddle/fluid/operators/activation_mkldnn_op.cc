@@ -71,6 +71,10 @@ class MKLDNNActivationGradKernel
                        diff_y->format() != memory::format::format_undef,
                    "Wrong layout/format set for Input OutGrad tensor");
 
+    PADDLE_ENFORCE(
+        !ctx.Attr<bool>("is_test"),
+        "is_test attribute should be set to False in training phase.");
+
     Functor functor;
 
     auto attrs = functor.GetAttrs();
@@ -115,11 +119,13 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   const std::string key_fwd = key_with_layout + "@eltwise_fwd";
   const std::string key_fwd_pd = key_with_layout + "@eltwise_fwd_pd";
 
+  bool is_test = ctx.Attr<bool>("is_test");
+
   // save input data and layout to be referred in backward path
   auto p_src_data = std::make_shared<const T *>(x_data);
-  dev_ctx.SetBlob(key_src_data, p_src_data);
+  if (!is_test) dev_ctx.SetBlob(key_src_data, p_src_data);
   auto p_src_layout = std::make_shared<memory::format>(src_format);
-  dev_ctx.SetBlob(key_src_layout, p_src_layout);
+  if (!is_test) dev_ctx.SetBlob(key_src_layout, p_src_layout);
 
   auto p_fwd = std::static_pointer_cast<mkldnn::eltwise_forward>(
       dev_ctx.GetBlob(key_fwd));
@@ -136,7 +142,6 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
     dev_ctx.SetBlob(key_src_mem, src_memory);
 
     // create primitive descriptor for activation forward and save it
-    bool is_test = ctx.Attr<bool>("is_test");
     auto mkldnn_forward_prop_kind = is_test
                                         ? mkldnn::prop_kind::forward_inference
                                         : mkldnn::prop_kind::forward_training;
@@ -147,7 +152,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
         forward_desc, mkldnn_engine);
 
     // save prim desc into global device context to be referred in backward path
-    dev_ctx.SetBlob(key_fwd_pd, forward_pd);
+    if (!is_test) dev_ctx.SetBlob(key_fwd_pd, forward_pd);
 
     // create mkldnn memory for output y
     dst_memory =
