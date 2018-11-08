@@ -27,43 +27,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// poor replacement for C++17 std::optional and Boost.Optional
-struct InPlace {};
-InPlace in_place;
-
-template <typename T>
-class Maybe {
- private:
-  typename std::aligned_storage<sizeof(T), alignof(T)>::type data;
-  bool is_initialized{false};
-
- public:
-  template <typename... Args>
-  explicit Maybe(InPlace, Args&&... args) {
-    new (&data) T(std::forward<Args>(args)...);
-    is_initialized = true;
-  }
-
-  Maybe() {}
-
-  operator bool() { return is_initialized; }
-
-  T& value() { return *reinterpret_cast<T*>(&data); }
-
-  ~Maybe() { reinterpret_cast<T*>(&data)->~T(); }
-};
-
-template <typename T, typename... Args>
-Maybe<T> MakeMaybe(Args&&... args) {
-  return Maybe<T>(in_place, std::forward<Args>(args)...);
-}
-
 using graph_ptr = std::unique_ptr<ir::Graph>;
-using GraphWithStats = std::pair<ir::Graph*, Maybe<int>>;
+using GraphWithStats = std::pair<ir::Graph*, int>;
 
 void CorrectGraphEdges(Graph* graph, Node* from, Node* to);
 bool IsReachable(ir::Graph* graph, Node* from, Node* to);
-std::pair<bool, Node*> HasBias(const Node& op, const std::string& bias_name);
+boost::optional<Node*> HasBias(const Node& op, const std::string& bias_name);
 
 class ResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
@@ -78,6 +47,15 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
   using ConvFunc = GetNodeFunc<std::tuple<Node*, Node*, Node*, Node*>>;
   using ElementwiseAddFunc = GetNodeFunc<std::tuple<Node*, Node*, Node*>>;
   using CanFuseFunc = std::function<bool(Node*, Node*)>;
+
+  std::tuple<Node*, Node*, Node*, Node*> GetNodesFromConv(
+      const patterns::Conv& conv_pattern,
+      const GraphPatternDetector::subgraph_t& subgraph) const;
+
+  GraphWithStats ExecuteHandlerOnGraph(
+      GraphPatternDetector* gpd, const GraphWithStats& graph_with_stats,
+      const ConvFunc& get_node_from_conv,
+      const ElementwiseAddFunc& get_node_from_elementwise_add) const;
 
   struct FuseHandler {
     FuseHandler(const ConvFunc& get_node_from_conv_op,
