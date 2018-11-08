@@ -83,8 +83,7 @@ class VAddReluKernel : public Kernel {
 template <typename T>
 class VScalKernel : public Kernel {
  public:
-  virtual void Compute(const T a, const T *x, T *y) const = 0;
-  virtual void Compute(const T a, T *x) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
