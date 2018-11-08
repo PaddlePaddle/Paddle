@@ -43,7 +43,7 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 }
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
-  VLOG(5) << "destroy ExecutorPrepareContext";
+  VLOG(50) << "destroy ExecutorPrepareContext";
 }
 
 template <typename RefCntMap>
@@ -60,7 +60,7 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
         if ((it->second)-- == 1) {
           auto* var = scope.FindVar(name);
           if (var != nullptr) {
-            VLOG(10) << "Erase tensor \'" << name << "\'";
+            VLOG(100) << "Erase tensor \'" << name << "\'";
             if (var->IsType<LoDTensor>()) {
               erase_tensors.insert(var->GetMutable<LoDTensor>());
             } else if (var->IsType<SelectedRows>()) {
@@ -141,21 +141,21 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " global, which pointer is " << ptr;
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
+               << ptr;
     }
   }
 }
@@ -286,7 +286,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& feed_target : (*feed_targets)) {
       std::string var_name = feed_target.first;
-      VLOG(3) << "feed target's name: " << var_name;
+      VLOG(30) << "feed target's name: " << var_name;
 
       // prepend feed op
       auto* op = global_block->PrependOp();
@@ -309,7 +309,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& fetch_target : (*fetch_targets)) {
       std::string var_name = fetch_target.first;
-      VLOG(3) << "fetch target's name: " << var_name;
+      VLOG(30) << "fetch target's name: " << var_name;
 
       // append fetch op
       auto* op = global_block->AppendOp();
@@ -398,8 +398,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
 
     if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
+      VLOG(20) << "Memory used after operator " + op->Type() + " running: "
+               << memory::memory_usage(place_);
     }
   }
 
@@ -424,10 +424,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
+    VLOG(20) << "-------------------------------------------------------";
+    VLOG(20) << "Memory used after deleting local scope: "
+             << memory::memory_usage(place_);
+    VLOG(20) << "-------------------------------------------------------";
   }
 }
 
@@ -471,7 +471,7 @@ void Executor::RunPreparedContext(
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
+  VLOG(30) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {

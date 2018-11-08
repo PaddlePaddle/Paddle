@@ -71,7 +71,7 @@ void NaiveExecutor::Prepare(Scope *parent_scope,
 
 void NaiveExecutor::Run() {
   for (auto &op : ops_) {
-    VLOG(4) << "run " << op->Type();
+    VLOG(40) << "run " << op->Type();
     op->Run(*scope_, place_);
   }
 }
@@ -95,21 +95,21 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
       if (var->Persistable()) {
         auto *ptr = const_cast<Scope *>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " global, which pointer is " << ptr;
       } else {  // Create temporary variables in local scope.
         auto *ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto &var : global_block.AllVars()) {
       auto *ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
+               << ptr;
     }
   }
 }

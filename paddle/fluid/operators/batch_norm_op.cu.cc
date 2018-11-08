@@ -96,7 +96,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
 
-    VLOG(3) << "Setting descriptors.";
+    VLOG(30) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
     if (data_layout == DataLayout::kNCHW) {

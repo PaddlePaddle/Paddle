@@ -60,7 +60,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
 
  private:
   void AddPass(const std::string& name, AnalysisPass* pass) {
-    VLOG(3) << "Adding pass " << name;
+    VLOG(30) << "Adding pass " << name;
     Register(name, pass);
     AddGraphvizDebugerPass(pass);
   }
@@ -103,7 +103,7 @@ void Analyzer::Run(Argument* argument) {
   std::vector<std::string> passes;
 #ifdef PADDLE_WITH_MKLDNN
   if (use_mkldnn_) {
-    VLOG(3) << "Adding MKL-DNN placement pass";
+    VLOG(30) << "Adding MKL-DNN placement pass";
     passes.push_back("mkldnn_placement_pass");
   }
 #endif
