@@ -117,56 +117,5 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         }
 
 
-class TestElementWiseMulSelectedRows(OpTest):
-    def setUp(self):
-        self.rows = [0, 1, 2, 3, 4, 5, 6]
-        self.feature = 12
-        self.height = 100
-        self.input_shape = (len(self.rows), self.feature)
-
-    def prepare_input(self, scope, place):
-        self.input = {
-            "X": np.random.random(self.input_shape).astype("float32"),
-            "Y": np.random.random(self.input_shape).astype("float32")
-        }
-
-        def init_input(in_name):
-            x_selected_rows = scope.var(in_name).get_selected_rows()
-            x_selected_rows.set_height(self.height)
-            x_selected_rows.set_rows(self.rows)
-            x_array = self.input[in_name]
-            x_tensor = x_selected_rows.get_tensor()
-            x_tensor.set(x_array, place)
-
-        init_input("X")
-        init_input("Y")
-
-    def create_out_selected_row(self, scope):
-        return scope.var('Out').get_selected_rows()
-
-    def check_result(self, out_selected_rows):
-        assert out_selected_rows.height() == self.height
-        assert out_selected_rows.rows() == self.rows
-        out_tensor = np.array(out_selected_rows.get_tensor())
-        assert out_tensor.shape == self.input_shape
-
-    def check_with_place(self, place):
-        scope = core.Scope()
-        self.prepare_input(scope, place)
-
-        out_selected_rows = self.create_out_selected_row(scope)
-        out_selected_rows.set_height(0)
-        out_selected_rows.set_rows([])
-
-        elementwise_mul = Operator("elementwise_mul", X='X', Y='Y', Out='Out')
-        elementwise_mul.run(scope, place)
-        self.check_result(out_selected_rows)
-
-    def test_elewisemul_with_selected_rows_input(self):
-        places = [core.CPUPlace()]
-        for place in places:
-            self.check_with_place(place)
-
-
 if __name__ == '__main__':
     unittest.main()

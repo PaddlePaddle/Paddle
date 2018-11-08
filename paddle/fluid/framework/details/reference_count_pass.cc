@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/reference_count_pass.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -43,6 +44,23 @@ static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
   return nullptr;
 }
 
+static void AddDependencyBetween(OpHandleBase *in, OpHandleBase *out,
+                                 ir::Graph *graph) {
+  auto it = std::find_if(
+      in->Outputs().begin(), in->Outputs().end(), [](VarHandleBase *var) {
+        return dynamic_cast<DummyVarHandle *>(var) != nullptr;
+      });
+
+  if (it != in->Outputs().end()) {
+    out->AddInput(*it);
+  } else {
+    auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
+    in->AddOutput(dep_var);
+    out->AddInput(dep_var);
+  }
+}
+
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto &ref_cnts = Get<DeviceReferenceCountMap>(kGlobalReferenceCount);
@@ -54,14 +72,13 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   // Step 2: Find all variables in non-computation ops which refers to variables
   // in computation ops
   std::unordered_set<std::string> names;
-  std::unordered_map<OpHandleBase *, std::unique_ptr<ReferenceCountOpHandle>>
+  std::unordered_map<OpHandleBase *, ReferenceCountOpHandle *>
       compute_ref_cnt_map;
 
   auto get_ref_cnts_from_compute_op = [&](
-      const std::unique_ptr<OpHandleBase> &op,
-      const std::vector<VarHandleBase *> &vars) {
+      OpHandleBase *op, const std::vector<VarHandleBase *> &vars) {
     std::vector<std::string> var_names_in_op;
-    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op.get());
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
     if (compute_op == nullptr ||
         !platform::is_gpu_place(compute_op->GetPlace()))
       return var_names_in_op;
@@ -104,9 +121,8 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   };
 
   auto update_ref_cnts_from_non_compute_op = [&](
-      const std::unique_ptr<OpHandleBase> &op,
-      const std::vector<VarHandleBase *> &vars) {
-    if (dynamic_cast<ComputationOpHandle *>(op.get()) != nullptr) return;
+      OpHandleBase *op, const std::vector<VarHandleBase *> &vars) {
+    if (dynamic_cast<ComputationOpHandle *>(op) != nullptr) return;
     for (VarHandleBase *var_handle_base : vars) {
       auto *var_handle = dynamic_cast<VarHandle *>(var_handle_base);
       if (var_handle == nullptr || !var_handle->Node()->IsVar()) continue;
@@ -133,40 +149,30 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
             auto *ref_cnt_handle = new ReferenceCountOpHandle(
                 ref_cnt_node, next_compute_op->GetScope(), place, {var_name},
                 gcs[place.device].get(), cur_ref_cnts[place.device].get());
-            if (next_compute_op->Outputs().empty()) {
-              auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-              next_compute_op->AddOutput(dep_var);
-              graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-            }
-            ref_cnt_handle->AddInput(next_compute_op->Outputs().front());
-            compute_ref_cnt_map[next_compute_op].reset(ref_cnt_handle);
+            AddDependencyBetween(next_compute_op, ref_cnt_handle, graph.get());
+            compute_ref_cnt_map[next_compute_op] = ref_cnt_handle;
           }
         }
       }
     }
   };
 
-  auto &all_ops = graph->Get<GraphOps>(kGraphOps);
+  auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
   for (auto &op : all_ops) {
     auto in_var_names = get_ref_cnts_from_compute_op(op, op->Inputs());
     auto out_var_names = get_ref_cnts_from_compute_op(op, op->Outputs());
     if (in_var_names.empty() && out_var_names.empty()) continue;
     in_var_names.insert(in_var_names.end(), out_var_names.begin(),
                         out_var_names.end());
-    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op.get());
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
     auto place = boost::get<platform::CUDAPlace>(compute_op->GetPlace());
     ir::Node *ref_cnt_node =
         graph->CreateEmptyNode("reference_count", ir::Node::Type::kOperation);
     auto *ref_cnt_handle = new ReferenceCountOpHandle(
         ref_cnt_node, compute_op->GetScope(), place, in_var_names,
         gcs[place.device].get(), cur_ref_cnts[place.device].get());
-    if (compute_op->Outputs().empty()) {
-      auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-      compute_op->AddOutput(dep_var);
-      graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-    }
-    ref_cnt_handle->AddInput(compute_op->Outputs().front());
-    compute_ref_cnt_map[compute_op].reset(ref_cnt_handle);
+    AddDependencyBetween(compute_op, ref_cnt_handle, graph.get());
+    compute_ref_cnt_map[compute_op] = ref_cnt_handle;
   }
 
   for (auto &op : all_ops) {
@@ -174,11 +180,11 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     update_ref_cnts_from_non_compute_op(op, op->Outputs());
   }
 
-  std::vector<std::unique_ptr<OpHandleBase>> new_all_ops;
+  std::vector<OpHandleBase *> new_all_ops;
   new_all_ops.reserve(compute_ref_cnt_map.size() + all_ops.size());
   for (auto &op : all_ops) {
     new_all_ops.emplace_back(std::move(op));
-    auto it = compute_ref_cnt_map.find(new_all_ops.back().get());
+    auto it = compute_ref_cnt_map.find(new_all_ops.back());
     if (it != compute_ref_cnt_map.end()) {
       // Add LeafNode to ReferenceCountOpHandle
       auto *dummy_leaf = new DummyVarHandle(graph->CreateControlDepVar());
