@@ -68,6 +68,7 @@ class Analyzer : public OrderedRegistry<PassManager> {
   const std::vector<std::string> all_ir_passes_{{
 // Manual update the passes here.
 #ifdef PADDLE_WITH_MKLDNN
+      // This pass should run before any other convolution fuse.
       "depthwise_conv_mkldnn_pass",  //
 #endif
       "attention_lstm_fuse_pass",       //
