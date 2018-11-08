@@ -31,8 +31,7 @@ function(copy TARGET)
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
-        
-        if (WIN32) 
+        if (WIN32)
         # windows cmd shell will not expand wildcard automatically.
         # below expand the files,libs and copy them by rules.
         file(GLOB header_files ${src} "*.h")
@@ -47,14 +46,14 @@ function(copy TARGET)
           COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
           )
         foreach(src_file ${src_files})
-          add_custom_command(TARGET ${TARGET} PRE_BUILD
+          add_custom_command(TARGET ${TARGET} PRE_BUILD 
           COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
           COMMENT "copying ${src_file} -> ${dst}")
         endforeach()
-        else() # not windows
-        add_custom_command(TARGET ${TARGET} PRE_BUILD 
-          COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
-          COMMAND ${CMAKE_COMMAND} -E copy "${src_files}" "${dst}"
+        else(WIN32) # not windows
+          add_custom_command(TARGET ${TARGET} PRE_BUILD 
+          COMMAND mkdir -p "${dst}"
+          COMMAND cp -r "${src}" "${dst}"
           COMMENT "copying ${src} -> ${dst}")
         endif(WIN32)
     endforeach()

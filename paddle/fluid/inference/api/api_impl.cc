@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <fstream>
 #include <map>
 #include <set>
 #include <sstream>
@@ -24,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -31,16 +33,6 @@ DEFINE_bool(profile, false, "Turn on profiler for fluid");
 DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
-namespace {
-using paddle::inference::Timer;
-
-template <class T>
-std::string num2str(T a) {
-  std::stringstream istr;
-  istr << a;
-  return istr.str();
-}
-}  // namespace
 
 void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
@@ -63,7 +55,6 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
-  VLOG(3) << "Predictor::init()";
 #if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
@@ -91,21 +82,21 @@ bool NativePaddlePredictor::Init(
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
   }
-
   executor_.reset(new paddle::framework::Executor(place_));
-
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
+
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
+
   } else {
     LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
     return false;
@@ -135,7 +126,7 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
-  VLOG(3) << "Predictor::predict";
+  using Timer = paddle::inference::Timer;
   Timer timer;
   timer.tic();
   // set feed variable
@@ -147,11 +138,9 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
-  VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
                                 false /* don't create variable each time */);
-  VLOG(4) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
@@ -166,7 +155,6 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
-  VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
 
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
@@ -184,7 +172,6 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     framework::Scope *scope) {
-  VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
@@ -244,7 +231,6 @@ void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
 
 bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                      framework::Scope *scope) {
-  VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
@@ -269,25 +255,22 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
-  VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
         config.fraction_of_gpu_memory, 0.f,
-        "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+        "fraction_of_gpu_memory in the config should be set to range (0.,1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
       flags.push_back("dummpy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                         num2str<float>(config.fraction_of_gpu_memory);
+                         std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }
-
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;

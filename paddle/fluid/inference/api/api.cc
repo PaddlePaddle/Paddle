@@ -16,7 +16,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle_inference_api.h"
 
 namespace paddle {
 
