@@ -482,7 +482,8 @@ def _py_reader(capacity,
                lod_levels=None,
                name=None,
                use_double_buffer=True,
-               feed_list=None):
+               feed_list=None,
+               prepend=False):
 
     if feed_list is not None:
         if not isinstance(feed_list, list):
@@ -495,6 +496,7 @@ def _py_reader(capacity,
         shapes = []
 
         for feed_data in feed_list:
+            assert feed_data.is_data, "feed_list must be variables created by fluid.layers.data(...)"
             dtypes.append(feed_data.dtype)
             shape_concat.extend(feed_data.shape)
             ranks.append(len(feed_data.shape))
@@ -544,11 +546,20 @@ def _py_reader(capacity,
 
     reader = monkey_patch_reader_methods(main_prog_var)
     if use_double_buffer:
-        double_buffer_reader = double_buffer(reader, name=double_buffer_name)
+        double_buffer_reader = _double_buffer(
+            reader=reader, place=None, name=double_buffer_name, prepend=prepend)
         # we return a double buffer reader. However, the reset method comes from
         # py_reader.
         double_buffer_reader.reset = reader.reset
         reader = double_buffer_reader
+
+    if feed_list is not None:
+        helper = LayerHelper('read_file')
+        helper._insert_op(
+            index=1 if use_double_buffer else 0,
+            type='read',
+            inputs={'Reader': [reader]},
+            outputs={'Out': feed_list})
 
     # monkey patch py_reader special methods
     reader.queue = feed_queue
@@ -765,7 +776,8 @@ def py_reader(capacity,
 def create_py_reader_by_data(capacity,
                              feed_list,
                              name=None,
-                             use_double_buffer=True):
+                             use_double_buffer=True,
+                             prepend=False):
     """
     Create a Python reader for data feeding in Python
 
@@ -780,6 +792,7 @@ def create_py_reader_by_data(capacity,
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.
        use_double_buffer(bool): Whether use double buffer or not.
+       prepend(bool): Whether to prepend the reader in front of the main program.
 
     Returns:
        Variable: A Reader from which we can get feeding data.
@@ -797,8 +810,7 @@ def create_py_reader_by_data(capacity,
         >>> reader.decorate_paddle_reader(
         >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
-        >>> img, label = fluid.layers.read_file(reader)
-        >>> loss = network(img, label) # some network definition
+        >>> loss = network(image, label) # some network definition
         >>>
         >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
         >>>
@@ -818,7 +830,8 @@ def create_py_reader_by_data(capacity,
         lod_levels=None,
         name=name,
         use_double_buffer=use_double_buffer,
-        feed_list=feed_list)
+        feed_list=feed_list,
+        prepend=prepend)
 
 
 def open_files(filenames,
@@ -928,15 +941,26 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
+def __create_unshared_decorated_reader__(op_type,
+                                         reader,
+                                         attrs,
+                                         name=None,
+                                         prepend=False):
     new_reader_name = name if name is not None else unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
-    main_blk.append_op(
-        type=op_type,
-        inputs={'UnderlyingReader': reader},
-        outputs={'Out': [new_reader]},
-        attrs=attrs)
+    if prepend:
+        main_blk._prepend_op(
+            type=op_type,
+            inputs={'UnderlyingReader': reader},
+            outputs={'Out': [new_reader]},
+            attrs=attrs)
+    else:
+        main_blk.append_op(
+            type=op_type,
+            inputs={'UnderlyingReader': reader},
+            outputs={'Out': [new_reader]},
+            attrs=attrs)
     return monkey_patch_reader_methods(new_reader)
 
 
@@ -988,6 +1012,18 @@ def batch(reader, batch_size):
         'create_batch_reader', reader, {'batch_size': int(batch_size)})
 
 
+def _double_buffer(reader, place, name, prepend):
+    attrs = dict()
+    if place is not None:
+        attrs['place'] = str(place).upper()
+    return __create_unshared_decorated_reader__(
+        'create_double_buffer_reader',
+        reader,
+        attrs,
+        name=name,
+        prepend=prepend)
+
+
 def double_buffer(reader, place=None, name=None):
     """
     Wrap a double buffer reader. The data will copy to target place with a
@@ -1012,11 +1048,7 @@ def double_buffer(reader, place=None, name=None):
         >>> reader = fluid.layers.double_buffer(reader)
         >>> img, label = fluid.layers.read_file(reader)
     """
-    attrs = dict()
-    if place is not None:
-        attrs['place'] = str(place).upper()
-    return __create_unshared_decorated_reader__(
-        'create_double_buffer_reader', reader, attrs, name=name)
+    return _double_buffer(reader, place, name, prepend=False)
 
 
 def multi_pass(reader, pass_num):

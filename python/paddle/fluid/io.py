@@ -27,7 +27,8 @@ from . import core
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model'
+    'load_persistables', 'remove_inference_program_feed_fetch_ops',
+    'save_inference_model', 'load_inference_model'
 ]
 
 
@@ -522,6 +523,98 @@ def prepend_feed_ops(inference_program,
             inputs={'X': [feed_var]},
             outputs={'Out': [out]},
             attrs={'col': i})
+
+
+def remove_inference_program_feed_fetch_ops(inference_program):
+    """
+    Modify the given inference_program and prune the feed and fetch ops
+    Notice that this method would change the inference_program in-place.
+
+    Args:
+        inference_program(Program): The inference program to be pruned.
+                                    Usually it is a program load by 
+                                    :code:`load_inference_model` API. 
+
+    Returns:
+       Tuple(List(Variable)): List of feed variables, and list of
+                              fetch variables   
+    """
+
+    global_block = inference_program.global_block()
+    op_idx = []
+    feed_ops = []
+    for i, op in enumerate(global_block.ops):
+        if op.type == 'feed':
+            op_idx.append(i)
+            feed_ops.append(op)
+
+    feed_vars = []
+    if len(feed_ops) > 0:
+        feed_holder_name = None
+        feed_names = [None] * len(feed_ops)
+        for op in feed_ops:
+            if feed_holder_name is None:
+                feed_holder_name = op.input_arg_names[0]
+            else:
+                assert feed_holder_name == op.input_arg_names[0], \
+                    "feed_ops must have the same X({}), but found {}".format(feed_holder_name, op.input_arg_names[0])
+
+            col = op.attr('col')
+            assert col >= 0 and col < len(feed_ops), \
+                "col index out of bound [0, {})".format(len(feed_ops))
+            feed_names[col] = op.output_arg_names[0]
+
+        for i, var_name in enumerate(feed_names):
+            assert var_name is not None, \
+                "col {} of feed_ops not found".format(i)
+            var = global_block.var(var_name)
+            var.is_data = True
+            var.stop_gradient = True
+            feed_vars.append(var)
+
+        for i, idx in enumerate(op_idx):
+            global_block._remove_op(idx - i)
+
+        global_block._remove_var(feed_holder_name)
+        inference_program.desc.flush()
+
+    op_idx = []
+    fetch_ops = []
+    for i, op in enumerate(global_block.ops):
+        if op.type == 'fetch':
+            op_idx.append(i)
+            fetch_ops.append(op)
+
+    if len(fetch_ops) == 0:
+        return feed_vars, []
+
+    fetch_holder_name = None
+    fetch_names = [None] * len(fetch_ops)
+    for op in fetch_ops:
+        if fetch_holder_name is None:
+            fetch_holder_name = op.output_arg_names[0]
+        else:
+            assert fetch_holder_name == op.output_arg_names[0], \
+                "fetch_ops must have the same Out({}), but found {}".format(fetch_holder_name, op.output_arg_names[0])
+        col = op.attr('col')
+        assert col >= 0 and col < len(fetch_ops),   \
+            "col index out of bound [0, {})".format(len(fetch_ops))
+        fetch_names[col] = op.input_arg_names[0]
+
+    fetch_vars = []
+    for i, var_name in enumerate(fetch_names):
+        assert var_name is not None, \
+            "col {} of fetch_ops not found".format(i)
+        var = global_block.var(var_name)
+        fetch_vars.append(var)
+
+    for i, idx in enumerate(op_idx):
+        global_block._remove_op(idx - i)
+
+    global_block._remove_var(fetch_holder_name)
+    inference_program.desc.flush()
+
+    return feed_vars, fetch_vars
 
 
 def append_fetch_ops(inference_program,

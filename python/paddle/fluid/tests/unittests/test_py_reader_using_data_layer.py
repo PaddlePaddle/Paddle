@@ -54,18 +54,14 @@ def simple_fc_net(in_size,
                   batch_size,
                   queue_capacity,
                   use_double_buffer=False):
-    reader = fluid.layers.py_reader(
+    in_data = fluid.layers.data(
+        name='in_data', dtype='float32', shape=[-1, in_size])
+    label = fluid.layers.data(name='label', dtype='int64', shape=[-1, 1])
+    reader = fluid.layers.create_py_reader_by_data(
+        feed_list=[in_data, label],
         capacity=queue_capacity,
-        shapes=[[-1, in_size], [-1, 1]],
-        lod_levels=[0, 0],
-        dtypes=['float32', 'int64'],
-        use_double_buffer=False)
+        use_double_buffer=use_double_buffer)
     feed_queue = reader.queue
-    reader = fluid.layers.batch(reader, batch_size=batch_size)
-    if use_double_buffer:
-        reader = fluid.layers.double_buffer(reader)
-
-    in_data, label = fluid.layers.read_file(reader)
 
     hidden = in_data
     for hidden_size in hidden_sizes:
@@ -116,14 +112,16 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
             while True:
                 tensors = fluid.LoDTensorArray()
                 in_data = np.random.uniform(
-                    low=0, high=1, size=(1, self.in_size)).astype('float32')
+                    low=0, high=1,
+                    size=(self.batch_size, self.in_size)).astype('float32')
                 tensors.append(as_tensor(in_data))
                 label = np.random.random_integers(
-                    low=0, high=self.class_num - 1, size=(1, 1)).astype('int64')
+                    low=0, high=self.class_num - 1,
+                    size=(self.batch_size, 1)).astype('int64')
                 tensors.append(as_tensor(label))
 
-                if cnt < self.iterations * self.batch_size * self.batch_size_times:
-                    if cnt % (self.batch_size * self.batch_size_times) == 0:
+                if cnt < self.iterations * self.batch_size_times:
+                    if cnt % self.batch_size_times == 0:
                         self.inputs.append([in_data, label])
                     else:
                         self.inputs[-1][0] = np.concatenate(
