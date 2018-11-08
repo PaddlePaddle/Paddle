@@ -47,7 +47,6 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
-  VLOG(3) << "AllReduceOpHandle";
 
   if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
