@@ -32,7 +32,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/stream_callback_manager.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -173,6 +173,7 @@ class CUDADeviceContext : public DeviceContext {
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
 
+#ifndef _WIN32
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(callback_mtx_);
@@ -183,6 +184,16 @@ class CUDADeviceContext : public DeviceContext {
     std::lock_guard<std::mutex> guard(callback_mtx_);
     callback_manager_->Wait();
   }
+#else
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    // ugly empty functor.
+  }
+
+  void WaitStreamCallback() const {
+    // ugly empty functor.
+  }
+#endif
 
  private:
   CUDAPlace place_;
@@ -201,10 +212,12 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex mtx_;
 
+#ifndef _WIN32
   // This lock is only used by callback
   // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
   mutable std::mutex callback_mtx_;
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+#endif
 };
 
 template <>
