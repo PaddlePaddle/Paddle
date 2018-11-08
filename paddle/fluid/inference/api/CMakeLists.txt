@@ -24,7 +24,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
-cc_library(helper SRCS helper.cc DEPS reset_tensor_array lod_tensor scope)
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS reset_tensor_array lod_tensor scope)
 cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor)
 cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS paddle_inference_api)

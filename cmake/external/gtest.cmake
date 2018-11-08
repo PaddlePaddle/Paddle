@@ -51,7 +51,6 @@ IF(WITH_TESTING)
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
                         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                        -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                         -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}
                         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                         -DBUILD_GMOCK=ON
@@ -71,5 +70,6 @@ IF(WITH_TESTING)
     ADD_LIBRARY(gtest_main STATIC IMPORTED GLOBAL)
     SET_PROPERTY(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARIES})
     ADD_DEPENDENCIES(gtest_main extern_gtest)
+
     LIST(APPEND external_project_dependencies gtest gtest_main)
 ENDIF(WITH_TESTING)

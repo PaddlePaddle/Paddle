@@ -15,13 +15,12 @@
 #pragma once
 
 #include <cstdio>
-#include <memory>
-#include <memory>  // NOLINT
 #include <stdexcept>
+
+#include <memory>
 #include <string>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#define GOOGLE_GLOG_DLL_DECL
 #include "glog/logging.h"
 
 #if !defined(_WIN32)
@@ -62,6 +61,7 @@ static void *dlopen(const char *filename, int flag) {
   }
   return reinterpret_cast<void *>(hModule);
 }
+
 #endif  // !_WIN32
 
 static void ExecShellCommand(const std::string &cmd, std::string *message) {
