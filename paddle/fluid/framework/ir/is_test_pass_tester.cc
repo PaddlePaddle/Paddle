@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn_correct_test_phase_pass.h"
+#include "paddle/fluid/framework/ir/is_test_pass.h"
 
 #include <gtest/gtest.h>
 
@@ -87,12 +87,12 @@ ProgramDesc BuildProgramDesc() {
   return prog;
 }
 
-TEST(ConvReLUFusePass, basic) {
+TEST(IsTestPass, basic) {
   auto prog = BuildProgramDesc();
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  auto pass = PassRegistry::Instance().Get("mkldnn_correct_test_phase_pass");
+  auto pass = PassRegistry::Instance().Get("is_test_pass");
 
   graph = pass->Apply(std::move(graph));
 
@@ -114,4 +114,4 @@ TEST(ConvReLUFusePass, basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(mkldnn_correct_test_phase_pass);
+USE_PASS(is_test_pass);

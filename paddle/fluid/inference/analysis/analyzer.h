@@ -83,8 +83,8 @@ class Analyzer : public OrderedRegistry<PassManager> {
       "conv_bias_mkldnn_fuse_pass",             //
       "conv_relu_mkldnn_fuse_pass",             //
       "conv_elementwise_add_mkldnn_fuse_pass",  //
-      "mkldnn_correct_test_phase_pass",         //
 #endif
+      "is_test_pass",  //
   }};
 
   std::unordered_set<std::string> disabled_ir_passes_;

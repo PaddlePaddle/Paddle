@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MKLDNNCorrectTestPhasePass : public Pass {
+class IsTestPass : public Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;

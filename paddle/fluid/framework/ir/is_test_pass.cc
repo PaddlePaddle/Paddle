@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/mkldnn_correct_test_phase_pass.h"
+#include "paddle/fluid/framework/ir/is_test_pass.h"
 #include <string>
 #include <utility>
 
@@ -20,9 +20,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> MKLDNNCorrectTestPhasePass::ApplyImpl(
+std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  VLOG(3) << "Sets MKL-DNN is_test attrbiute.";
+  VLOG(3) << "Sets is_test attrbiute to true and if it is missing, inserts it "
+             "for activations and pooling.";
   std::array<std::string, 31> op_list = {
       "pool2d",      "sigmoid",      "logsigmoid",
       "softshrink",  "exp",          "brelu",
@@ -54,5 +55,4 @@ std::unique_ptr<ir::Graph> MKLDNNCorrectTestPhasePass::ApplyImpl(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(mkldnn_correct_test_phase_pass,
-              paddle::framework::ir::MKLDNNCorrectTestPhasePass);
+REGISTER_PASS(is_test_pass, paddle::framework::ir::IsTestPass);
