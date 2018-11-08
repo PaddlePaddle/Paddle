@@ -94,7 +94,7 @@ class TestPassBuilder(unittest.TestCase):
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
-        pass_builder = build_strategy._create_passes_from_strategy()
+        pass_builder = build_strategy._finalize_strategy_and_create_passes()
         origin_len = len(pass_builder.all_passes())
 
         viz_pass = pass_builder.append_pass("graph_viz_pass")

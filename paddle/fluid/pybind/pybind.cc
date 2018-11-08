@@ -855,10 +855,13 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
-      .def("_create_passes_from_strategy",
+      .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
-             return self.CreatePassesFromStrategy();
-           });
+             return self.CreatePassesFromStrategy(true);
+           },
+           R"DOC(Allow user to customized passes. Normally model-specific
+                optimization passes should be defined in this way. BuildStrategy
+                cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,

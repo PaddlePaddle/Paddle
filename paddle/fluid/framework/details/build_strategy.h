@@ -80,7 +80,8 @@ struct BuildStrategy {
   // from python side.
   // A new PassBuilder is created based on configs defined above and
   // passes are owned by the PassBuilder.
-  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy() const;
+  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy(
+      bool from_user) const;
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
@@ -97,6 +98,7 @@ struct BuildStrategy {
 #endif
 
  private:
+  mutable bool finalized_by_user_ = false;
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
 
