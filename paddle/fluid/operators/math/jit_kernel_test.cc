@@ -281,9 +281,10 @@ void vtanh_better(
         const paddle::operators::math::jitkernel::VAddBiasKernel<float>>&
         vaddbias,
     const int n, const float* x, float* y) {
-  vscal->Compute(2.f, x, y);
+  const float tmp1 = 2.f;
+  vscal->Compute(&tmp1, x, y, n);
   vsigmoid->Compute(y, y);
-  vscal->Compute(2.f, y);
+  vscal->Compute(&tmp1, y, y, n);
   vaddbias->Compute(-1.f, y, y);
 }
 
@@ -531,12 +532,12 @@ TEST(JitKernel, vscal) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(a, x_data, ztgt_data);
+      ker->Compute(&a, x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
     auto ttgts1 = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(a, y_data);
+      ker->Compute(&a, y_data, y_data, d);
     }
     auto ttgte1 = GetCurrentUS();
     VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
