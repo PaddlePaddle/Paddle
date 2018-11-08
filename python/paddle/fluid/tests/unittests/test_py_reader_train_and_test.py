@@ -18,11 +18,7 @@ import numpy as np
 import unittest
 
 
-def simple_fc_net(image,
-                  label,
-                  image_shape,
-                  class_num,
-                  hidden_sizes=[100, 50, 30]):
+def simple_fc_net(image, label, image_shape, class_num, hidden_sizes=[100]):
     hidden = image
     for hidden_size in hidden_sizes:
         hidden = fluid.layers.fc(
@@ -32,7 +28,10 @@ def simple_fc_net(image,
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)))
     hidden = fluid.layers.dropout(x=hidden, dropout_prob=0.1)
-    predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
+    predict_label = fluid.layers.fc(hidden,
+                                    size=class_num,
+                                    act='softmax',
+                                    bias_attr=False)
     loss = fluid.layers.mean(
         fluid.layers.cross_entropy(
             input=predict_label, label=label))
@@ -50,8 +49,8 @@ class TestPyReaderUsingDataLayerTrainAndTest(unittest.TestCase):
         self.test_batch_size = 32
         self.use_double_buffer, self.use_parallel_executor = self.initParameters(
         )
-        print('use_double_buffer', self.use_double_buffer)
-        print('use_parallel_executor', self.use_parallel_executor)
+        print('use_double_buffer', self.use_double_buffer,
+              'use_parallel_executor', self.use_parallel_executor)
 
     def random_train_reader(self):
         for _ in range(self.train_batch_size * 4):
@@ -96,8 +95,7 @@ class TestPyReaderUsingDataLayerTrainAndTest(unittest.TestCase):
         test_program = fluid.default_main_program().convert_to_test_program()
         for op in test_program.current_block().ops:
             self.assertTrue(
-                cmp(op.type, 'create_double_buffer_reader') != 0 and
-                cmp(op.type, 'read') != 0,
+                op.type != 'create_double_buffer_reader' and op.type != 'read',
                 "Find read_op or double_buffer_op in cloned program")
         test_startup = fluid.Program()
         with fluid.program_guard(test_program, test_startup):
@@ -129,7 +127,7 @@ class TestPyReaderUsingDataLayerTrainAndTest(unittest.TestCase):
                 use_cuda=use_cuda, loss_name=loss.name)
             test_exe = fluid.ParallelExecutor(
                 use_cuda=use_cuda,
-                loss_name=loss.name,
+                share_vars_from=train_exe,
                 main_program=test_program)
             fetch_list = [image.name, label.name]
         else:
