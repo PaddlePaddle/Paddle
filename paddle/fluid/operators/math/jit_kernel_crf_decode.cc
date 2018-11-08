@@ -16,9 +16,6 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 namespace paddle {
 namespace operators {
@@ -263,6 +260,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
     }                                                                          \
   }
 
+#ifndef _WIN32  // commented out crf decoding
 #ifdef __AVX__
 INTRIAVX_FLOAT(kEQ8);
 INTRIAVX_FLOAT(kGT8LT16);
@@ -275,6 +273,7 @@ INTRIAVX2_FLOAT(jit::avx2, kGT8LT16);
 INTRIAVX2_FLOAT(jit::avx2, kEQ16);
 INTRIAVX2_FLOAT(jit::avx2, kGT16);
 #endif
+#endif  // WIN32
 #ifdef __AVX512F__
 INTRIAVX2_FLOAT(jit::avx512f, kEQ8);
 INTRIAVX2_FLOAT(jit::avx512f, kGT8LT16);
@@ -288,7 +287,7 @@ INTRIAVX512_FLOAT(kGT16);
 #undef INIT_ALPHA
 #undef UPDATE_ALPHA
 
-REGISTER_JITKERNEL(crf_decode, CRFDecodeKernel);
+REGISTER_JITKERNEL_DEPRECATED(crf_decode, CRFDecodeKernel);
 
 }  // namespace jitkernel
 }  // namespace math

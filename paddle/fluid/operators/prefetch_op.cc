@@ -42,7 +42,8 @@ class PrefetchOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(place);
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
@@ -69,6 +70,7 @@ class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) result "
               "to be fetched from parameter server")
         .AsDuplicable();
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"

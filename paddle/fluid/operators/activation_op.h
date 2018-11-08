@@ -333,8 +333,7 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    const Out out_conj = Eigen::numext::conj(out);
-    dx.device(d) = static_cast<T>(0.5) * dout / out_conj;
+    dx.device(d) = static_cast<T>(0.5) * dout / out;
   }
 };
 
@@ -740,7 +739,7 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * static_cast<T>(factor) *
-                   x.pow(static_cast<T>(factor - static_cast<T>(1)));
+                   x.pow(static_cast<T>(factor) - static_cast<T>(1));
   }
 };
 

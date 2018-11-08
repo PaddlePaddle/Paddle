@@ -32,7 +32,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/stream_callback_manager.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -73,7 +73,60 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
-class CudnnHolder;
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place);
+  ~CudnnHolder();
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+ private:
+  friend class CudnnWorkspaceHandle;
+  void ReallocateWorkspace(size_t required_workspace_len);
+
+  template <typename Callback>
+  void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
+  std::mutex& Mutex() { return mtx_; }
+
+  cudnnHandle_t cudnn_handle_;
+  void* workspace_;
+  size_t workspace_len_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+class CudnnWorkspaceHandle {
+ public:
+  /*! \brief The lock would not be acquired when constructor calls.
+   *  The lock would be acquired when RunFunc() is called first time. */
+  inline explicit CudnnWorkspaceHandle(CudnnHolder* holder) : holder_(holder) {}
+
+  /*! \brief Thread which call RunFunc() would acquire the lock first
+   *  before invoking cudnn functions. */
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+  }
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  CudnnHolder* holder_;  // not own
+  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
+};
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -101,10 +154,14 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
-  /*! \brief  Run a cudnn function with the workspace provided by
-   * CUDADeviceContext */
-  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
-                                 size_t workspace_len) const;
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
+   *  sequential cudnn function calls. */
+  CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
@@ -116,6 +173,7 @@ class CUDADeviceContext : public DeviceContext {
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
 
+#ifndef _WIN32
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(callback_mtx_);
@@ -126,6 +184,16 @@ class CUDADeviceContext : public DeviceContext {
     std::lock_guard<std::mutex> guard(callback_mtx_);
     callback_manager_->Wait();
   }
+#else
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    // ugly empty functor.
+  }
+
+  void WaitStreamCallback() const {
+    // ugly empty functor.
+  }
+#endif
 
  private:
   CUDAPlace place_;
@@ -144,10 +212,12 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex mtx_;
 
+#ifndef _WIN32
   // This lock is only used by callback
   // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
   mutable std::mutex callback_mtx_;
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+#endif
 };
 
 template <>
