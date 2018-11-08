@@ -39,8 +39,8 @@ ExternalProject_Add(
                     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_C_FLAGS_DEBUG=${DCMAKE_C_FLAGS_DEBUG}
-                    -DCMAKE_C_FLAGS_RELEASE=${DCMAKE_C_FLAGS_RELEASE}
+                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                     -DBUILD_STATIC_LIBS=ON
                     -DCMAKE_INSTALL_PREFIX=${GFLAGS_INSTALL_DIR}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON

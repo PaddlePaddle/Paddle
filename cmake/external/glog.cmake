@@ -50,8 +50,8 @@ ExternalProject_Add(
                     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_C_FLAGS_DEBUG=${DCMAKE_C_FLAGS_DEBUG}
-                    -DCMAKE_C_FLAGS_RELEASE=${DCMAKE_C_FLAGS_RELEASE}
+                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                     -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
                     -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
