@@ -229,9 +229,8 @@ void ParallelExecutor::BCastParamsToDevices(
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
-          PADDLE_ENFORCE(
-              platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
-                                           nccl_ctx.comm_, nccl_ctx.stream()));
+          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
         }
         member_->nccl_ctxs_->WaitAll();
       }
