@@ -31,10 +31,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle_inference_api.h"  // NOLINT
 
 namespace paddle {
 
