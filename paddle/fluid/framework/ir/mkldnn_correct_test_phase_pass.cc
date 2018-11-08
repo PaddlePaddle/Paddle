@@ -38,14 +38,12 @@ std::unique_ptr<ir::Graph> MKLDNNCorrectTestPhasePass::ApplyImpl(
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr("use_mkldnn") && op->GetAttr("use_mkldnn")) {
-        if (op->HasAttr("is_test")) {
-          op->SetAttr("is_test", true);
-        } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
-                   end(op_list)) {
-          op->MutableAttrMap()->insert(
-              std::pair<std::string, Attribute>("is_test", true));
-        }
+      if (op->HasAttr("is_test")) {
+        op->SetAttr("is_test", true);
+      } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
+                 end(op_list)) {
+        op->MutableAttrMap()->insert(
+            std::pair<std::string, Attribute>("is_test", true));
       }
     }
   }
