@@ -128,7 +128,7 @@ TEST(JitKernel, vaddbias) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(a, x_data, ztgt_data);
+      ker->Compute(&a, x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -281,11 +281,11 @@ void vtanh_better(
         const paddle::operators::math::jitkernel::VAddBiasKernel<float>>&
         vaddbias,
     const int n, const float* x, float* y) {
-  const float tmp1 = 2.f;
-  vscal->Compute(&tmp1, x, y, n);
+  const float a = 2.f, b = -1.f;
+  vscal->Compute(&a, x, y, n);
   vsigmoid->Compute(y, y);
-  vscal->Compute(&tmp1, y, y, n);
-  vaddbias->Compute(-1.f, y, y);
+  vscal->Compute(&a, y, y, n);
+  vaddbias->Compute(&b, y, y, n);
 }
 
 TEST(JitKernel, vtanh) {

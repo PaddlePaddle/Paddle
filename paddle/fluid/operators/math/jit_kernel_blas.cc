@@ -60,6 +60,13 @@ void VScalRefer(const T* a, const T* x, T* y, int n) {
   }
 }
 
+template <typename T>
+void VAddBiasRefer(const T* a, const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = a[0] + x[i];
+  }
+}
+
 #ifdef PADDLE_WITH_MKLML
 template <typename T>
 void VMulMKL(const T* x, const T* y, T* z, int n);
@@ -300,62 +307,46 @@ bool VScalKernelImpl<double>::useMKL(int d) {
 }
 #endif
 
+/* VAddBias JitKernel */
+template <typename T>
+class VAddBiasKernelImpl : public VAddBiasKernel<T> {
+ public:
+  DECLARE_STATIC_FUNC;
+  explicit VAddBiasKernelImpl(int d) : VAddBiasKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 1, false,
+                                         sz > 4096 ? sz : 4096));
+      this->Compute =
+          jitcode_->getCode<void (*)(const T*, const T*, T*, int)>();
+      return;
+    }
+#endif
+
+    this->Compute = VAddBiasRefer<T>;
+  }
+#ifdef PADDLE_WITH_XBYAK
+
+ private:
+  std::unique_ptr<gen::VXXJitCode> jitcode_{nullptr};
+#endif
+};
+
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool VAddBiasKernelImpl<float>::useJIT(int d) {
+  return gen::VXXJitCode::init(d, 1);
+}
+#endif
+
 #undef DECLARE_STATIC_FUNC
 
 REGISTER_JITKERNEL(vmul, VMulKernel);
 REGISTER_JITKERNEL(vadd, VAddKernel);
-REGISTER_JITKERNEL(vscal, VScalKernel);
 REGISTER_JITKERNEL(vaddrelu, VAddReluKernel);
-
-/* VAddBias JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
-class VAddBiasKernelImpl : public VAddBiasKernel<T> {
- public:
-  explicit VAddBiasKernelImpl(int d) : VAddBiasKernel<T>() { this->num_ = d; }
-  void Compute(const T a, const T* x, T* y) const override {
-    for (int i = 0; i < this->num_; ++i) {
-      y[i] = x[i] + a;
-    }
-  }
-};
-
-#define INTRI8_FLOAT(isa)                              \
-  template <>                                          \
-  void VAddBiasKernelImpl<float, isa, kEQ8>::Compute(  \
-      const float a, const float* x, float* y) const { \
-    __m256 tmp = _mm256_loadu_ps(x);                   \
-    tmp = _mm256_add_ps(tmp, _mm256_set1_ps(a));       \
-    _mm256_storeu_ps(y, tmp);                          \
-  }
-
-#define INTRI16_FLOAT(isa)                             \
-  template <>                                          \
-  void VAddBiasKernelImpl<float, isa, kEQ16>::Compute( \
-      const float a, const float* x, float* y) const { \
-    __m256 tmp0 = _mm256_loadu_ps(x);                  \
-    __m256 tmp1 = _mm256_loadu_ps(x + 8);              \
-    tmp0 = _mm256_add_ps(tmp0, _mm256_set1_ps(a));     \
-    tmp1 = _mm256_add_ps(tmp1, _mm256_set1_ps(a));     \
-    _mm256_storeu_ps(y, tmp0);                         \
-    _mm256_storeu_ps(y + 8, tmp1);                     \
-  }
-
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx);
-INTRI16_FLOAT(jit::avx);
-#endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2);
-INTRI16_FLOAT(jit::avx2);
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f);
-INTRI16_FLOAT(jit::avx512f);
-#endif
-// TODO(TJ): eq16 test and complete avx512
-
-#undef INTRI8_FLOAT
-#undef INTRI16_FLOAT
+REGISTER_JITKERNEL(vscal, VScalKernel);
+REGISTER_JITKERNEL(vaddbias, VAddBiasKernel);
 
 /* VRelu JitKernel */
 template <typename T, platform::jit::cpu_isa_t isa, jit_block>
@@ -466,7 +457,6 @@ class VIdentityKernelImpl : public VIdentityKernel<T> {
   void Compute(const T* x, T* y) const override {}
 };
 
-REGISTER_JITKERNEL_DEPRECATED(vaddb, VAddBiasKernel);
 REGISTER_JITKERNEL_DEPRECATED(vrelu, VReluKernel);
 REGISTER_JITKERNEL_DEPRECATED(videntity, VIdentityKernel);
 

@@ -31,15 +31,25 @@ using Label = Xbyak::Label;
 
 typedef enum { mul = 0, add } operand_type;
 
-// function: vec = Operand(vec(scalar), vec(scalar)) (maybe with relu)
+// function: vec = Operand(vec(or scalar), vec(or scalar)) (maybe with relu)
 class VXXJitCode : public JitCode {
  public:
   const char* name() const override {
     std::string base = "VXXJitCode";
+    if (scalar_index_ == 1) {
+      base += "_Scalar";
+    } else {
+      base += "_Vec";
+    }
     if (type_ == operand_type::mul) {
       base += "_Mul";
     } else if (type_ == operand_type::add) {
       base += "_Add";
+    }
+    if (scalar_index_ == 2) {
+      base += "_Scalar";
+    } else {
+      base += "_Vec";
     }
     base += (with_relu_ ? "_Relu" : "");
     return base.c_str();
