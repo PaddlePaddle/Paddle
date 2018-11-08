@@ -147,6 +147,7 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
+
 ADD_LIBRARY(cblas STATIC ${dummyfile})
 
 IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")

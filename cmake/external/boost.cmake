@@ -33,42 +33,23 @@ MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
 
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
-if (WIN32)
-    set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}" CACHE PATH "boost include directory." FORCE)
-else(WIN32)
-    set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}/${BOOST_TAR}" CACHE PATH "boost include directory." FORCE)
-endif (WIN32)
-set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 
+set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}" CACHE PATH "boost include directory." FORCE)
+set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})
-if (WIN32)
-    ExternalProject_Add(
-        ${BOOST_PROJECT}
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-        URL      ${BOOST_URL}
-        DOWNLOAD_NO_PROGRESS  0
-        PREFIX                ${BOOST_SOURCES_DIR}
-        CONFIGURE_COMMAND     ""
-        BUILD_COMMAND         ""
-        INSTALL_COMMAND       ""
-        UPDATE_COMMAND        ""
-        )
-else()
-    ExternalProject_Add(
-        ${BOOST_PROJECT}
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-        DOWNLOAD_COMMAND      "wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz 
-            && tar zxf ${BOOST_TAR}.tar.gz"
-        DOWNLOAD_NO_PROGRESS  0
-        PREFIX                ${BOOST_SOURCES_DIR}
-        CONFIGURE_COMMAND     ""
-        BUILD_COMMAND         ""
-        INSTALL_COMMAND       ""
-        UPDATE_COMMAND        ""
-        )
-endif ()
+
+ExternalProject_Add(
+    ${BOOST_PROJECT}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
+    URL      ${BOOST_URL}
+    DOWNLOAD_NO_PROGRESS  0
+    PREFIX                ${BOOST_SOURCES_DIR}
+    CONFIGURE_COMMAND     ""
+    BUILD_COMMAND         ""
+    INSTALL_COMMAND       ""
+    UPDATE_COMMAND        ""
+    )
 
 if (${CMAKE_VERSION} VERSION_LESS "3.3.0" OR NOT WIN32)
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/boost_dummy.c)

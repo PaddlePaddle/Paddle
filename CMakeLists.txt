@@ -38,7 +38,6 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-
 include(simd)
 
 ################################ Configurations #######################################
@@ -77,7 +76,7 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
-option(WITH_PREBUILD_OPENBLAS "Make use of the pre-built openblas library"                         ON)
+option(WITH_PREBUILD_OPENBLAS "Make use of the pre-built openblas library"                         ${WIN32})
 
 # PY_VERSION
 if(NOT PY_VERSION)
