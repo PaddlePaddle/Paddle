@@ -371,7 +371,7 @@ void lstm_ctht_better(
   vtanh_d->Compute(gates, gates);
   vmul_d->Compute(gates, gates + d, gates + d, d);
   vmul_d->Compute(ct_1, gates + d2, gates + d2, d);
-  vadd_d->Compute(gates + d, gates + d2, ct);
+  vadd_d->Compute(gates + d, gates + d2, ct, d);
   /* H_t = act_cell(C_t) * ogated */
   vtanh_d->Compute(ct, gates + d2);
   vmul_d->Compute(gates + d2, gates + d * 3, ht, d);
@@ -695,7 +695,7 @@ TEST(JitKernel, vadd) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, y_data, ztgt_data);
+      ker->Compute(x_data, y_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -723,8 +723,8 @@ void vaddrelu_better(
         const paddle::operators::math::jitkernel::VAddKernel<float>>& vadd,
     const std::shared_ptr<
         const paddle::operators::math::jitkernel::VReluKernel<float>>& vrelu,
-    const float* x, const float* y, float* z) {
-  vadd->Compute(x, y, z);
+    const float* x, const float* y, float* z, int d) {
+  vadd->Compute(x, y, z, d);
   vrelu->Compute(z, z);
 }
 
@@ -752,12 +752,12 @@ TEST(JitKernel, vaddrelu) {
     auto trefe = GetCurrentUS();
     auto tmkls = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vaddrelu_better(vadd, vrelu, x_data, y_data, zref_data);
+      vaddrelu_better(vadd, vrelu, x_data, y_data, zref_data, d);
     }
     auto tmkle = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, y_data, ztgt_data);
+      ker->Compute(x_data, y_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
     VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
@@ -801,7 +801,11 @@ TEST(JitKernel, pool) {
               std::dynamic_pointer_cast<const jit::Kernel>(pvmul_d));
 
   const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulfjit4");
-  EXPECT_EQ(pvmul_f, pvmul_from_key);
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  EXPECT_EQ(pvmul_from_key, nullptr);
+#else
+  EXPECT_EQ(pvmul_from_key, pvmul_f);
+#endif
   const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulfjit");
   EXPECT_TRUE(pvmul_from_key2 == nullptr);
 }
