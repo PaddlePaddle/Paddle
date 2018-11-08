@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sys/time.h>
 #include <cmath>    // for exp
 #include <cstring>  // for memcpy
+#include <random>
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
@@ -368,12 +369,12 @@ void lstm_ctht_better(
   int d2 = d * 2;
   vsigmoid_3d->Compute(gates + d, gates + d);
   vtanh_d->Compute(gates, gates);
-  vmul_d->Compute(gates, gates + d, gates + d);
-  vmul_d->Compute(ct_1, gates + d2, gates + d2);
-  vadd_d->Compute(gates + d, gates + d2, ct);
+  vmul_d->Compute(gates, gates + d, gates + d, d);
+  vmul_d->Compute(ct_1, gates + d2, gates + d2, d);
+  vadd_d->Compute(gates + d, gates + d2, ct, d);
   /* H_t = act_cell(C_t) * ogated */
   vtanh_d->Compute(ct, gates + d2);
-  vmul_d->Compute(gates + d2, gates + d * 3, ht);
+  vmul_d->Compute(gates + d2, gates + d * 3, ht, d);
 }
 
 TEST(JitKernel, lstm) {
@@ -577,7 +578,7 @@ void vmul_mkl(const int n, const float* x, const float* y, float* z) {
 
 TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 256, 512}) {
+  for (int d : {7, 8, 15, 16, 20, 30, 256, 512, 1000, 1024}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data());
@@ -615,7 +616,7 @@ TEST(JitKernel, vmul) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, y_data, ztgt_data);
+      ker->Compute(x_data, y_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -694,7 +695,7 @@ TEST(JitKernel, vadd) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, y_data, ztgt_data);
+      ker->Compute(x_data, y_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -704,6 +705,63 @@ TEST(JitKernel, vadd) {
 #else
             << " us, "
 #endif
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
+  }
+}
+
+void vaddrelu_ref(const int n, const float* x, const float* y, float* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] + y[i];
+    z[i] = z[i] > 0 ? z[i] : 0;
+  }
+}
+void vaddrelu_better(
+    const std::shared_ptr<
+        const paddle::operators::math::jitkernel::VAddKernel<float>>& vadd,
+    const std::shared_ptr<
+        const paddle::operators::math::jitkernel::VReluKernel<float>>& vrelu,
+    const float* x, const float* y, float* z, int d) {
+  vadd->Compute(x, y, z, d);
+  vrelu->Compute(z, z);
+}
+
+TEST(JitKernel, vaddrelu) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 256, 512}) {
+    std::vector<float> x(d), y(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data());
+    RandomVec<float>(d, y.data());
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VAddReluKernel<float>>(d);
+    const auto& vadd =
+        jit::KernelPool::Instance().template Get<jit::VAddKernel<float>>(d);
+    const auto& vrelu =
+        jit::KernelPool::Instance().template Get<jit::VReluKernel<float>>(d);
+    const float* x_data = x.data();
+    const float* y_data = y.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vadd_ref(d, x_data, y_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+    auto tmkls = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vaddrelu_better(vadd, vrelu, x_data, y_data, zref_data, d);
+    }
+    auto tmkle = GetCurrentUS();
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(x_data, y_data, ztgt_data, d);
+    }
+    auto ttgte = GetCurrentUS();
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better takes: " << (tmkle - tmkls) / repeat << " us, "
             << "tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
@@ -742,8 +800,12 @@ TEST(JitKernel, pool) {
   EXPECT_TRUE(std::dynamic_pointer_cast<const jit::Kernel>(pvmul_f) !=
               std::dynamic_pointer_cast<const jit::Kernel>(pvmul_d));
 
-  const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulf4");
-  EXPECT_EQ(pvmul_f, pvmul_from_key);
-  const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulf5");
+  const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulfjit4");
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  EXPECT_EQ(pvmul_from_key, nullptr);
+#else
+  EXPECT_EQ(pvmul_from_key, pvmul_f);
+#endif
+  const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulfjit");
   EXPECT_TRUE(pvmul_from_key2 == nullptr);
 }

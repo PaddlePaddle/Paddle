@@ -38,9 +38,20 @@ class ParallelExecutorPrivate {
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
       : places_(places) {}
 
+  ~ParallelExecutorPrivate() {
+    if (own_local_scope_) {
+      for (size_t i = 1; i < local_scopes_.size(); ++i) {
+        // Skip the first scope, since it is the global scope.
+        Scope *local_scope = local_scopes_[i];
+        if (global_scope_->HasKid(local_scope)) {
+          global_scope_->DeleteScope(local_scope);
+        }
+      }
+    }
+  }
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
-  Scope *global_scope_;
+  Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
 #ifdef PADDLE_WITH_CUDA
@@ -109,18 +120,9 @@ ParallelExecutor::ParallelExecutor(
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-  // Startup Program has been run. All local scopes has correct parameters.
+// Startup Program has been run. All local scopes has correct parameters.
 
-  // Step 2. Create vars in each scope;
-  std::vector<details::VariableInfo> var_infos;
-  for (auto *var : main_program.Block(0).AllVars()) {
-    var_infos.emplace_back();
-    var_infos.back().name_ = var->Name();
-    var_infos.back().type_ = var->GetType();
-    var_infos.back().persistable_ = var->Persistable();
-  }
-
-// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
@@ -156,12 +158,21 @@ ParallelExecutor::ParallelExecutor(
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
 
-  if (VLOG_IS_ON(5)) {
-    // If the loss_var_name is given, the number of graph should be only one.
-    if (loss_var_name.size()) {
-      PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                        "The number of graph should be only one");
+  // Step 3. Create vars in each scope. Passes may also create new vars.
+  //         skip control vars and empty vars
+  std::vector<details::VariableInfo> var_infos;
+  for (auto &node : graph->Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      var_infos.emplace_back();
+      var_infos.back().name_ = node->Var()->Name();
+      var_infos.back().type_ = node->Var()->GetType();
+      var_infos.back().persistable_ = node->Var()->Persistable();
     }
+  }
+  // If the loss_var_name is given, the number of graph should be only one.
+  if (loss_var_name.size()) {
+    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                      "The number of graph should be only one");
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
@@ -187,6 +198,10 @@ void ParallelExecutor::BCastParamsToDevices(
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
+    if (!main_tensor.IsInitialized()) {
+      VLOG(3) << "one in var not inited, return!";
+      continue;
+    }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -299,15 +314,9 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 }
 
 ParallelExecutor::~ParallelExecutor() {
-  if (member_->own_local_scope_) {
-    for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-      Scope *local_scope = member_->local_scopes_[i];
-      if (member_->global_scope_->HasKid(local_scope)) {
-        member_->global_scope_->DeleteScope(local_scope);
-      }
-    }
+  for (auto &p : member_->places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
-
   // member_ must be destructed before gcs_ since the destructor of
   // ReferenceCountOpHandle use raw pointers of gcs_ inside.
   member_.reset();

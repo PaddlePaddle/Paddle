@@ -65,7 +65,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            param = fluid.default_main_program().global_block().var('fc.w')
+            param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -625,8 +625,13 @@ def save_inference_model(dirname,
                                       main_program._distributed_lookup_table,
                                       main_program._endpoints)
 
-    if not os.path.isdir(dirname):
+    # when a pserver and a trainer running on the same machine, mkdir may conflict
+    try:
         os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     if model_filename is not None:
         model_basename = os.path.basename(model_filename)
     else:
@@ -884,12 +889,13 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
 
     load_prog = Program()
     load_block = load_prog.global_block()
+    need_delete_vars = []
 
     for var_tuple in slice_vars_and_attrs:
         orig_var = var_tuple[0]
         start = var_tuple[1]
         slice_var = var_tuple[2]
-        end = start + reduce(lambda x, y: x * y, slice_var.shape)
+        end = start + slice_var.shape[0]
 
         clone_orig_var = load_block.create_var(
             name=orig_var.name,
@@ -917,5 +923,8 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
             attrs={'axes': [0],
                    'starts': [start],
                    'ends': [end]})
-
+        need_delete_vars.append(clone_orig_var)
+    load_block.append_op(
+        type='delete_var',
+        inputs={'X': need_delete_vars}, )
     executor.run(load_prog)
