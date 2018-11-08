@@ -32,7 +32,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA && !defined(_WIN32)
 #include "paddle/fluid/platform/stream_callback_manager.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
