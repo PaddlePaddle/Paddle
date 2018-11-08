@@ -227,6 +227,7 @@ class Optimizer(object):
             self.helper = LayerHelper(self.__class__.__name__)
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
+            self._create_global_learning_rate()
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
@@ -268,6 +269,7 @@ class Optimizer(object):
                 param_and_grad = [table_param, table_grad]
                 with table_param.block.program._optimized_guard(param_and_grad), \
                      framework.name_scope("optimizer"):
+                    self._create_global_learning_rate()
                     # create the optimize op
                     sgd_op = loss.block.append_op(
                         type='sgd',
@@ -291,7 +293,6 @@ class Optimizer(object):
         `create_optimization_pass()` into one.
         """
         with program_guard(loss.block.program, startup_program):
-            self._create_global_learning_rate()
 
             params_grads = append_backward(loss, parameter_list, no_grad_set,
                                            [error_clip_callback])
