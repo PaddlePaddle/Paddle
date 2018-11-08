@@ -103,7 +103,8 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         # test forward
         tensor_res = numpy.array(out[0])
         tensor_res_out_idx = numpy.array(out[1])
-        tensor_gt = numpy.array([0.0] + range(10), dtype='float32')
+        tensor_gt = numpy.array(
+            [0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float32')
 
         self.assertEqual(len(tensor_res), len(tensor_gt))
         self.assertEqual(len(tensor_res_out_idx), 10)

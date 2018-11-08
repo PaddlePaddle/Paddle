@@ -198,6 +198,28 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     This function concatenates the input LodTensorArray along the axis mentioned
     and returns that as the output.
 
+    A simple example as below:
+    
+    .. code-block:: text
+    
+        Given:
+
+        input.data = {[[0.6, 0.1, 0.3],
+                       [0.5, 0.3, 0.2]],
+                      [[1.3],
+                       [1.8]],
+                      [[2.3, 2.1],
+                       [2.5, 2.4]]}
+        
+        axis = 1
+    
+        Then:
+
+        output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                       [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+        output_index.data = [3, 1, 2]
+
     Args:
         input(list): Input LodTensorArray
         axis(int): Integer axis along which the tensors will be concatenated
@@ -211,7 +233,7 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-           out, out_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """
     helper = LayerHelper('tensor_array_concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
