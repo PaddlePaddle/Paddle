@@ -36,11 +36,11 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
 
     const bool is_test = context.Attr<bool>("is_test");
-    if( is_test == true) {
-      math::SoftmaxFunctor<DeviceContext, T,true>()(
+    if (is_test == true) {
+      math::SoftmaxFunctor<DeviceContext, T, true>()(
           context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
     } else {
-      math::SoftmaxFunctor<DeviceContext, T,false>()(
+      math::SoftmaxFunctor<DeviceContext, T, false>()(
           context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
     }
   }

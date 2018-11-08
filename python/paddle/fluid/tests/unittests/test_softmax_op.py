@@ -35,6 +35,7 @@ class TestSoftmaxOp(OpTest):
         self.op_type = "softmax"
         self.use_cudnn = False
         self.use_mkldnn = False
+        self.is_test = False
         self.dtype = np.float32
         self.init_kernel_type()
         self.shape = self.get_x_shape()
@@ -48,7 +49,8 @@ class TestSoftmaxOp(OpTest):
         self.outputs = {'Out': out}
         self.attrs = {
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'is_test': self.is_test
         }
 
     def init_kernel_type(self):
@@ -142,6 +144,11 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
 class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
+
+
+class TestSoftmaxInference(TestSoftmaxOp):
+    def init_kernel_type(self):
+        self.is_test = True
 
 
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
