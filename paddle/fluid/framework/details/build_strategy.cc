@@ -79,9 +79,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   BuildStrategy strategy_;
 };
 
-std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy()
-    const {
+std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
+    bool from_user) const {
+  if (finalized_by_user_) {
+    return pass_builder_;
+  }
   pass_builder_.reset(new ParallelExecutorPassBuilder(*this));
+  if (from_user) {
+    finalized_by_user_ = true;
+  }
   return pass_builder_;
 }
 
@@ -95,10 +101,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 #else
     const bool use_cuda) const {
 #endif
-  // Create a default one if not initialized by user.
-  if (!pass_builder_) {
-    CreatePassesFromStrategy();
-  }
+  // Create a default one if not finalized by user.
+  CreatePassesFromStrategy(false);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
