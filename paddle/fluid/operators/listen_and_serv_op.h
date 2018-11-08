@@ -18,6 +18,7 @@ limitations under the License. */
 #include <atomic>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
@@ -36,6 +37,17 @@ constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 constexpr char kCheckpointBlockId[] = "checkpint_block_id";
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service);
+
+template <class TKey, class TValue>
+class DoubleFindMap : public std::unordered_map<TKey, TValue> {
+ public:
+  typename std::unordered_map<TKey, TValue>::iterator find_value(TValue v) {
+    return std::find_if(this->begin(), this->end(),
+                        [&v](const std::pair<const std::string, int> p) {
+                          return p.second == v;
+                        });
+  }
+};
 
 class ListenAndServOp : public framework::OperatorBase {
  public:

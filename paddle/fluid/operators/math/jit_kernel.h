@@ -39,6 +39,7 @@ class Kernel {
  public:
   Kernel() = default;
   virtual ~Kernel() = default;
+  // TODO(TJ): below members should be deprecated.
   int num_{0};
   int end_{0};
   int rest_{0};
@@ -64,13 +65,19 @@ class KernelPool {
 template <typename T>
 class VMulKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
 class VAddKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
+};
+
+template <typename T>
+class VAddReluKernel : public Kernel {
+ public:
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
@@ -84,12 +91,6 @@ template <typename T>
 class VAddBiasKernel : public Kernel {
  public:
   virtual void Compute(const T a, const T *x, T *y) const = 0;
-};
-
-template <typename T>
-class VAddReluKernel : public Kernel {
- public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
 };
 
 template <typename T>

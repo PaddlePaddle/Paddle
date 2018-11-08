@@ -24,15 +24,19 @@ from paddle.fluid.op import Operator
 class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "sum"
+        self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
-        x0 = np.random.random((3, 4)).astype('float32')
-        x1 = np.random.random((3, 4)).astype('float32')
-        x2 = np.random.random((3, 4)).astype('float32')
+        x0 = np.random.random((3, 4)).astype(self.dtype)
+        x1 = np.random.random((3, 4)).astype(self.dtype)
+        x2 = np.random.random((3, 4)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
+
+    def init_kernel_type(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -59,8 +63,11 @@ class TestSelectedRowsSumOp(OpTest):
         self.check_input_and_optput(core.Scope(), place, inplace, False, False,
                                     False)
 
+    def init_kernel_type(self):
+        self.dtype = np.float32
+
     def _get_array(self, row_num, row_numel):
-        array = np.ones((row_num, row_numel)).astype("float32")
+        array = np.ones((row_num, row_numel)).astype(self.dtype)
         for i in range(row_num):
             array[i] *= i
         return array
@@ -127,6 +134,37 @@ class TestSelectedRowsSumOp(OpTest):
         for place in places:
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
+
+
+class TestFP16SumOp(TestSumOp):
+    def init_kernel_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+    # FIXME: Because of the precision fp16, max_relative_error
+    # should be 0.15 here.
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad(['x0'], 'Out', max_relative_error=0.15)
+
+
+class TestFP16SelectedRowsSumOp(TestSelectedRowsSumOp):
+    def init_kernel_type(self):
+        self.dtype = np.float16
+
+    def test_w_is_selected_rows(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                for inplace in [True, False]:
+                    self.check_with_place(place, inplace)
 
 
 if __name__ == "__main__":

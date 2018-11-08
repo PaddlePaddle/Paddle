@@ -27,6 +27,8 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
+DECLARE_string(rpc_server_profile_path);
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -91,6 +93,8 @@ class VariableResponse {
     }
     return scope_->FindVar(meta_.varname());
   }
+
+  int GetTrainerId() { return static_cast<int>(meta_.trainer_id()); }
 
  protected:
   bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
