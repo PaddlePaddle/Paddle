@@ -54,14 +54,6 @@ def get_numeric_gradient(place,
     def product(dim):
         return six.moves.reduce(lambda a, b: a * b, dim, 1)
 
-    def get_output():
-        sum = []
-        op.run(scope, place)
-        for output_name in output_names:
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).sum() / len(output_names)
-
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
@@ -76,6 +68,15 @@ def get_numeric_gradient(place,
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
+
+    def get_output():
+        sum = []
+        op.run(scope, place)
+        for output_name in output_names:
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).astype(
+                    tensor_to_check_dtype).mean())
+        return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 

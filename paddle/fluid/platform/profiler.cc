@@ -226,7 +226,7 @@ RecordBlock::~RecordBlock() {
 
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
-                 "Can't enbale profling, since the input state is ",
+                 "Can't enable profiling, since the input state is ",
                  "ProfilerState::kDisabled");
 
   std::lock_guard<std::mutex> l(profiler_mu);

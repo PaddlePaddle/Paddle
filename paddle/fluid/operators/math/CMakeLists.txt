@@ -75,7 +75,12 @@ if(WITH_GPU)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
-cc_library(jit_kernel 
-    SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_rnn.cc jit_kernel_crf_decode.cc
-    DEPS cpu_info cblas)
+
+set(JIT_KERNEL_SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_rnn.cc jit_kernel_crf_decode.cc)
+set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce)
+if(WITH_XBYAK)
+    list(APPEND JIT_KERNEL_SRCS jit_gen.cc jit_code.cc)
+    list(APPEND JIT_KERNEL_DEPS xbyak)
+endif()
+cc_library(jit_kernel SRCS ${JIT_KERNEL_SRCS} DEPS ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS jit_kernel_test.cc DEPS jit_kernel)

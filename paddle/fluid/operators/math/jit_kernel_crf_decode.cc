@@ -288,7 +288,7 @@ INTRIAVX512_FLOAT(kGT16);
 #undef INIT_ALPHA
 #undef UPDATE_ALPHA
 
-REGISTER_JITKERNEL(crf_decode, CRFDecodeKernel);
+REGISTER_JITKERNEL_DEPRECATED(crf_decode, CRFDecodeKernel);
 
 }  // namespace jitkernel
 }  // namespace math

@@ -18,6 +18,7 @@ import multiprocessing
 import os
 import unittest
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import time
 import numpy as np
 import math
@@ -82,6 +83,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
             build_strategy.enable_sequential_execution = enable_sequential_execution
+            if use_cuda and core.is_compiled_with_cuda():
+                build_strategy.remove_unnecessary_lock = True
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
