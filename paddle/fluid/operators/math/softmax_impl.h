@@ -32,8 +32,8 @@ struct ValueClip {
   }
 };
 
-template <typename DeviceContext, typename T>
-void SoftmaxFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
+template <typename DeviceContext, typename T, bool is_test>
+void SoftmaxFunctor<DeviceContext, T, is_test>::operator()(const DeviceContext& context,
                                                   const framework::Tensor* X,
                                                   framework::Tensor* Y) {
   auto logits = EigenMatrix<T>::From(*X);
@@ -64,6 +64,42 @@ void SoftmaxFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                                  .reshape(batch_by_one)
                                                  .broadcast(one_by_class));
 }
+
+template <typename DeviceContext, typename T>
+class SoftmaxFunctor<DeviceContext, T, true> {
+void operator()(const DeviceContext& context,
+                const framework::Tensor* X,
+                framework::Tensor* Y) {
+  auto logits = EigenMatrix<T>::From(*X);
+  auto softmax = EigenMatrix<T>::From(*Y);
+
+  const int kBatchDim = 0;
+  const int kClassDim = 1;
+
+  const int batch_size = logits.dimension(kBatchDim);
+  const int num_classes = logits.dimension(kClassDim);
+
+  Eigen::DSizes<int, 1> along_class(kClassDim);
+  Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
+  Eigen::DSizes<int, 2> one_by_class(1, num_classes);
+
+  auto shifted_logits = (logits -
+                         logits.maximum(along_class)
+                             .eval()
+                             .reshape(batch_by_one)
+                             .broadcast(one_by_class));
+
+  softmax.device(*context.eigen_device()) = shifted_logits.exp();
+  softmax.device(*context.eigen_device()) = (softmax *
+                                             softmax.sum(along_class)
+                                                 .inverse()
+                                                 .eval()
+                                                 .reshape(batch_by_one)
+                                                 .broadcast(one_by_class));
+}
+};
+
+
 
 template <typename DeviceContext, typename T>
 void SoftmaxGradFunctor<DeviceContext, T>::operator()(
