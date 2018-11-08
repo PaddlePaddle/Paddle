@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_graph_view.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -35,10 +36,10 @@ static bool IsLockAndRecordEventFreeComputationOpHandle(
 
 std::unique_ptr<ir::Graph> ModifyOpLockAndRecordEventPass::ApplyImpl(
     std::unique_ptr<ir::Graph> ir_graph) const {
-  auto &all_ops = ir_graph->Get<GraphOps>(kGraphOps);
+  auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*ir_graph);
   OpGraphView graph_view(all_ops);
   for (auto &op : all_ops) {
-    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op.get());
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
     if (compute_op == nullptr) continue;
     bool is_lock_and_record_event_free =
         IsLockAndRecordEventFreeComputationOpHandle(compute_op, graph_view);

@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -32,13 +33,11 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       pool_(strategy.num_threads_ +
             1),  // add one more thread for generate op_deps
       fetch_ctxs_(places) {
-  auto &ops = graph_->Get<details::GraphOps>("ops");
-
-  for (auto &op : ops) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
-    op_deps_.emplace(op.get(), dep);
+    op_deps_.emplace(op, dep);
     if (dep == 0) {
-      bootstrap_ops_.emplace_back(op.get());
+      bootstrap_ops_.emplace_back(op);
     }
   }
 
@@ -54,13 +53,13 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   paddle::framework::FeedFetchList fetches;
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-  std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
+  std::vector<FetchOpHandle *> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
+        fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
       }
     }
   }
@@ -110,7 +109,10 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
           complete_q->Pop();
         }
       }
-      exception_.ReThrow();
+      if (exception_.IsCaught()) {
+        ClearFetchOp(graph_.get(), &fetch_ops);
+        exception_.ReThrow();
+      }
     }
     num_complete += num_comp;
   }
