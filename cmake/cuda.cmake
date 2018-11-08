@@ -169,21 +169,18 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-
 if (NOT WIN32) # windows msvc2015 support c++11 natively. 
-# -std=c++11 -fPIC not recoginize by msvc
+# -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
-# in cuda9, suppress cuda warning on eigen with "-w"
-list(APPEND CUDA_NVCC_FLAGS "-w" "-Xcompiler -fPIC")
-else(NOT WIN32)
-list(APPEND CUDA_NVCC_FLAGS "-w" "-Xcompiler -fPIC" "-Xcompiler /w")
+list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
 if(WITH_FAST_MATH)
   # Make use of fast math library. https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
   list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
-endif(WITH_FAST_MATH)
-
+endif()
+# in cuda9, suppress cuda warning on eigen 
+list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 

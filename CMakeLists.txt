@@ -26,7 +26,6 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 if(WIN32)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "/MT") #create multithread dynamic library
 endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
@@ -34,6 +33,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
+
 include(simd)
 
 ################################ Configurations #######################################
@@ -178,10 +178,10 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
+include(external/xxhash)    # download xxhash
 
 if (NOT WIN32)
 # there is no official support of snappystream, warpctc, nccl, cupti in windows
-include(external/xxhash)    # download xxhash
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc

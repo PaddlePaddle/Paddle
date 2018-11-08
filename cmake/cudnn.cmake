@@ -48,6 +48,7 @@ find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
           NO_DEFAULT_PATH
     DOC "Path to cuDNN library.")
 
+
 if(CUDNN_INCLUDE_DIR AND CUDNN_LIBRARY)
     set(CUDNN_FOUND ON)
 else()
@@ -82,7 +83,7 @@ if(CUDNN_FOUND)
 
         if(NOT CUDNN_MAJOR_VERSION)
             set(CUDNN_VERSION "???")
-        else() 
+        else()
             math(EXPR CUDNN_VERSION
                 "${CUDNN_MAJOR_VERSION} * 1000 +
                  ${CUDNN_MINOR_VERSION} * 100 + ${CUDNN_PATCHLEVEL_VERSION}")

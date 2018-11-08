@@ -28,11 +28,7 @@ namespace ir {
 class Node {
  public:
   enum class Type { kOperation, kVariable };
-#if !defined(_WIN32)  // msvc not support constexpr correctly.
   static constexpr char kControlDepVarName[] = "__control_var";
-#else
-  static const char kControlDepVarName[];
-#endif
 
   Type NodeType() const { return type_; }
 
