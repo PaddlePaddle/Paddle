@@ -8057,9 +8057,9 @@ def bilinear_tensor_product(x,
                             param_attr=None,
                             bias_attr=None):
     """
-    **Add Position Encoding Layer**
+    **Add Bilinear Tensor Product Layer**
 
-    This layer performs tensor operation on two inputs.
+    This layer performs bilinear tensor product on two inputs.
     For example:
 
     .. math::
