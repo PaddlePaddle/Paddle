@@ -14,36 +14,21 @@
 
 #pragma once
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
 #include <glog/logging.h>
-#include <sys/time.h>
 #include <algorithm>
 #include <chrono>  // NOLINT
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/inference/api/timer.h"
+#include "paddle_inference_api.h"  //NOLINT
 
 namespace paddle {
 namespace inference {
-
-// Timer for timer
-class Timer {
- public:
-  std::chrono::high_resolution_clock::time_point start;
-  std::chrono::high_resolution_clock::time_point startu;
-
-  void tic() { start = std::chrono::high_resolution_clock::now(); }
-  double toc() {
-    startu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span =
-        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
-                                                                  start);
-    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
-    return used_time_ms;
-  }
-};
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {

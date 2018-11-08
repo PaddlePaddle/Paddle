@@ -116,6 +116,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
   if (platform::jit::MayIUse(platform::jit::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
@@ -157,15 +158,18 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
     AVX_GUIDE(AVX, NonAVX);
   }
 #endif
-
 #undef AVX_GUIDE
+
+#endif
 }
 
 void InitGLOG(const std::string &prog_name) {
   // glog will not hold the ARGV[0] inside.
   // Use strdup to alloc a new string.
   google::InitGoogleLogging(strdup(prog_name.c_str()));
+#if !defined(_WIN32)
   google::InstallFailureSignalHandler();
+#endif
 }
 
 }  // namespace framework

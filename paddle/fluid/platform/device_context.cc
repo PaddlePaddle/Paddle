@@ -55,7 +55,6 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -205,10 +204,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
                           << ", Runtime Version: " << runtime_version_ / 1000
                           << "." << (runtime_version_ % 100) / 10;
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
-  LOG(INFO) << "device: " << place_.device
-            << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
-            << (cudnn_dso_ver % 100) / 10 << ".";
+  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+                          << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
+                          << (cudnn_dso_ver % 100) / 10 << ".";
+#ifndef _WIN32
   callback_manager_.reset(new StreamCallbackManager(stream_));
+#endif  // NOT WIN32
 }
 
 CUDADeviceContext::~CUDADeviceContext() {

@@ -128,7 +128,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     size_t complete = 0;
     while (op_to_run != nullptr) {
       try {
-        op_to_run->Run(strategy_.use_cuda_);
+        if (LIKELY(!strategy_.dry_run_)) {
+          op_to_run->Run(strategy_.use_cuda_);
+        }
         ++complete;
       } catch (...) {
         exception_.Catch(std::current_exception());

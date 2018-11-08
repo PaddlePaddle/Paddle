@@ -127,7 +127,7 @@ struct EOFException : public std::exception {
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #else
 // there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition == 0)
+#define UNLIKELY(condition) ((condition) == 0)
 #endif
 
 #if !defined(_WIN32)

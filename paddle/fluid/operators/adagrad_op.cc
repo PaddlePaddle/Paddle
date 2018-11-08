@@ -119,8 +119,8 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
 
     // 2. m += g_m * g_m
-    math::scatter::Mul<platform::CPUDeviceContext, T> sqare_func;
-    auto grad_square = sqare_func(context, grad_merge, grad_merge);
+    auto grad_square =
+        SquareSelectedRows<platform::CPUDeviceContext, T>(context, grad_merge);
 
     math::SelectedRowsAddToTensor<platform::CPUDeviceContext, T> functor;
     functor(context, grad_square, moment);

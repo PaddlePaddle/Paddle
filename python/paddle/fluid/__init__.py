@@ -118,7 +118,6 @@ def __bootstrap__():
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
-        read_env_flags.append('rpc_server_profile_period')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
         read_env_flags.append('rpc_send_thread_num')
