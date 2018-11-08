@@ -223,7 +223,9 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
     // Add outputs
     for (auto& output : output_maps) {
-      engine->DeclareOutput(output);
+      if (!engine->HasDeclared(output)) {
+        engine->DeclareOutput(output);
+      }
     }
 
     engine->FreezeNetwork();

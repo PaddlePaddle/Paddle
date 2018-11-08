@@ -742,7 +742,12 @@ All parameter, weight, gradient are variables in Paddle.
                        will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
-              )DOC");
+              )DOC")
+      .def_property("_dry_run",
+                    [](const ExecutionStrategy &self) { return self.dry_run_; },
+                    [](ExecutionStrategy &self, bool dry_run) {
+                      self.dry_run_ = dry_run;
+                    });
 
   exec_strategy.def_property(
       "use_experimental_executor",
