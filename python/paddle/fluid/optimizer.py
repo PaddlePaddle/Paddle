@@ -292,28 +292,26 @@ class Optimizer(object):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        with program_guard(loss.block.program, startup_program):
+        params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                       [error_clip_callback])
 
-            params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                           [error_clip_callback])
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-            params_grads = sorted(params_grads, key=lambda x: x[0].name)
+        params_grads, table_param_and_grad, table_optimize_op = \
+            self._process_distribute_lookuptable(params_grads, loss, startup_program)
 
-            params_grads, table_param_and_grad, table_optimize_op = \
-                self._process_distribute_lookuptable(params_grads, loss, startup_program)
+        params_grads = append_gradient_clip_ops(params_grads)
 
-            params_grads = append_gradient_clip_ops(params_grads)
+        # Add regularization if any
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
 
-            # Add regularization if any
-            params_grads = append_regularization_ops(params_grads,
-                                                     self.regularization)
-
-            optimize_ops = self._create_optimization_pass(params_grads, loss,
-                                                          startup_program)
-            if table_optimize_op is not None:
-                optimize_ops.append(table_optimize_op)
-                params_grads.append(table_param_and_grad)
-            return optimize_ops, params_grads
+        optimize_ops = self._create_optimization_pass(params_grads, loss,
+                                                      startup_program)
+        if table_optimize_op is not None:
+            optimize_ops.append(table_optimize_op)
+            params_grads.append(table_param_and_grad)
+        return optimize_ops, params_grads
 
 
 class SGDOptimizer(Optimizer):
