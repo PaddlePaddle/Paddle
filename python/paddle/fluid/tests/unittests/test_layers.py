@@ -248,6 +248,17 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.softmax(hid))
         print(str(program))
 
+    def test_space_to_depth(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data',
+                shape=[32, 9, 6, 6],
+                append_batch_size=False,
+                dtype='float32')
+            self.assertIsNotNone(layers.space_to_depth(data, 3))
+        print(str(program))
+
     def test_sequence_unsqueeze(self):
         program = Program()
         with program_guard(program):
