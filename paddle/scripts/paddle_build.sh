@@ -777,6 +777,17 @@ function main() {
         test_fluid_lib
         assert_api_spec_approvals
         ;;
+      assert_api)
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        ;;
+      test_inference)
+        gen_capi_package
+        gen_fluid_lib
+        test_fluid_lib
+        ;;
+      assert_api_approvals)
+        assert_api_spec_approvals
+        ;;
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
