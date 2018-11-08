@@ -228,6 +228,7 @@ TEST(Analyzer_rnn1, profile) {
   contrib::AnalysisConfig cfg(false);
   SetConfig(&cfg);
   cfg.fraction_of_gpu_memory = 0.1;
+  cfg.pass_builder()->TurnOnDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

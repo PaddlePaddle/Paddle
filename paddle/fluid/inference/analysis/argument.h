@@ -98,19 +98,6 @@ struct Argument {
  private:                                                                 \
   unique_ptr_t field__##_;
 
-  /*
-  #define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__) \
-    DECL_ARGUMENT_GETTER(field__, type__)                    \
-    void Set##Field(type__* x) {                             \
-      LOG(INFO) << "set argument field " << #field__;        \
-      if (Has(#field__)) {                                   \
-        delete Release<type__>(#field__);                    \
-      }                                                      \
-      Set<type__>(#field__, x);                              \
-    }                                                        \
-    void Set##Field##NotOwned(type__* x) { SetNotOwned<type__>(#field__, x); }
-    */
-
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.
@@ -132,9 +119,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
                       std::function<bool(const framework::ir::Node*)>);
-  DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize,
+  DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize,
                              int);
-  DECL_ARGUMENT_UNIQUE_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize,
+  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize,
                              int);
 
   // The program transformed by IR analysis phase.

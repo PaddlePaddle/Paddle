@@ -216,8 +216,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   if (config_.use_gpu && config_.use_tensorrt_) {
     LOG(INFO) << "argument_ set TensorRT true";
     argument_.SetUseTensorRT(true);
-    argument_.SetTensorRtWorkspaceSize(new int(config_.tensorrt_workspace_size_));
-    argument_.SetTensorRtMaxBatchSize(new int(config_.tensorrt_max_batchsize_));
+    argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
+    argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();
@@ -225,6 +225,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
   Analyzer().Run(&argument_);
+
+  PADDLE_ENFORCE(argument_.scope_valid());
+  LOG(INFO) << "analyzed scope has vars " << argument_.scope().LocalVarNames().size();
 
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);

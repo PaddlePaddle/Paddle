@@ -71,7 +71,7 @@ void NaiveExecutor::Prepare(Scope *parent_scope,
 
 void NaiveExecutor::Run() {
   for (auto &op : ops_) {
-    VLOG(4) << "run " << op->Type();
+    VLOG(3) << "run " << op->Type();
     op->Run(*scope_, place_);
   }
 }
@@ -88,11 +88,15 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
 
   if (ancestor_scope != scope) {
     for (auto &var : global_block.AllVars()) {
+      LOG(INFO) << "creating var " << var->Name();
       if (var->Name() == framework::kEmptyVarName) {
         continue;
       }
       // Create persistable vars in ancestor scope.
       if (var->Persistable()) {
+        // Skip the parameters that has been created.
+        LOG(INFO) << "scope has " << scope->LocalVarNames().size();
+        if (scope->FindVar(var->Name())) continue;
         auto *ptr = const_cast<Scope *>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
@@ -107,6 +111,8 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
   } else {
     for (auto &var : global_block.AllVars()) {
       auto *ptr = scope->Var(var->Name());
+      // Skip the parameters that has been created.
+      if (var->Persistable() && scope->FindVar(var->Name())) continue;
       InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
               << ptr;

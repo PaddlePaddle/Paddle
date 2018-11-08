@@ -27,7 +27,9 @@ namespace analysis {
 
 void IrAnalysisComposePass::RunImpl(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
-  InitTensorRTAttrs(argument);
+  if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
+    InitTensorRTAttrs(argument);
+  }
   ApplyIrPasses(argument);
   CollectFusionStatis(argument);
 }
