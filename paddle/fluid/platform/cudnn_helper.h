@@ -59,6 +59,7 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
+#if !defined(_WIN32)
 #define CUDNN_ENFORCE(condition)                                     \
   do {                                                               \
     cudnnStatus_t status = condition;                                \
@@ -66,6 +67,16 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
       PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
     }                                                                \
   } while (false)
+#else
+// windows
+#define CUDNN_ENFORCE(condition)                                    \
+  do {                                                              \
+    cudnnStatus_t status = condition;                               \
+    if (status != CUDNN_STATUS_SUCCESS) {                           \
+      std::cerr << ::paddle::platform::cudnnGetErrorString(status); \
+    }                                                               \
+  } while (false)
+#endif
 
 enum class DataLayout {  // Not use
   kNHWC,
