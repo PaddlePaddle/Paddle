@@ -19,7 +19,6 @@ namespace framework {
 namespace details {
 
 constexpr char kAllOpDescs[] = "all_op_descs";
-constexpr char kAllReduceOpHandle[] = "all_reduce";
 
 }  // namespace details
 }  // namespace framework
