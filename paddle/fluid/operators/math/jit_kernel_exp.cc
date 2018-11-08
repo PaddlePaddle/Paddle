@@ -250,7 +250,7 @@ INTRI16_FLOAT(jit::avx512f, detail::ExpAVX2);
 #undef MKL_FLOAT
 #undef MKL_DOUBLE
 
-REGISTER_JITKERNEL(vexp, VExpKernel);
+REGISTER_JITKERNEL_DEPRECATED(vexp, VExpKernel);
 
 /* VSigmoid JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
@@ -396,7 +396,7 @@ INTRI16_FLOAT(jit::avx512f, detail::ExpAVX2);
 #undef INTRI_GT16_FLOAT
 #undef INTRI_VSIGMOID
 
-REGISTER_JITKERNEL(vsigmoid, VSigmoidKernel);
+REGISTER_JITKERNEL_DEPRECATED(vsigmoid, VSigmoidKernel);
 
 /* VTanh JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
@@ -531,7 +531,7 @@ INTRI16_FLOAT(jit::avx512f, detail::ExpAVX2);
 #undef INTRI_GT16_FLOAT
 #undef INTRI_VTANH
 
-REGISTER_JITKERNEL(vtanh, VTanhKernel);
+REGISTER_JITKERNEL_DEPRECATED(vtanh, VTanhKernel);
 
 #undef JITKERNEL_NEW_ACT_IMPL
 

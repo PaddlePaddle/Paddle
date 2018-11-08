@@ -53,6 +53,15 @@ class TestDistMnistAsync(TestDistBase):
         self.check_with_place("dist_mnist.py", delta=200)
 
 
+class TestDistMnistDcAsgd(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._dc_asgd = True
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_mnist.py", delta=200)
+
+
 # FIXME(typhoonzero): enable these tests once we have 4
 # 4 GPUs on CI machine, and the base class should be updated.
 #
