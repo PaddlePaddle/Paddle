@@ -61,7 +61,7 @@ class SumKernel : public framework::OpKernel<T> {
         if (start != 2) {
           math::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
-                           out, 0.0);
+                           out, static_cast<T>(0));
         }
       }
 

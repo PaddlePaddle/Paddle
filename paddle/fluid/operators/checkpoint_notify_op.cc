@@ -38,9 +38,10 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::string dir = Attr<std::string>("dir");
     std::string lookup_table_name = Attr<std::string>("lookup_table");
+    int trainer_id = Attr<int>("trainer_id");
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
     for (size_t i = 0; i < epmap.size(); i++) {
       auto lookup_table_save_dir =
           string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
@@ -63,6 +64,7 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
         "dir", "(string, default '') indicate the folder checkpoint will use");
     AddAttr<std::string>("lookup_table",
                          "(string, default '') the lookup table name");
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddComment(R"DOC(
 CheckpointNotify operator
 

@@ -29,6 +29,20 @@ struct SparseAdagradFunctor {
 };
 
 template <typename DeviceContext, typename T>
+framework::SelectedRows SquareSelectedRows(
+    const DeviceContext &context, const framework::SelectedRows &input) {
+  framework::SelectedRows out;
+  out.set_rows(input.rows());
+  out.set_height(input.height());
+  out.mutable_value()->mutable_data<T>(input.value().dims(),
+                                       context.GetPlace());
+  auto e_out = framework::EigenVector<T>::Flatten(*(out.mutable_value()));
+  auto e_in = framework::EigenVector<T>::Flatten(input.value());
+  e_out.device(*context.eigen_device()) = e_in.square();
+  return out;
+}
+
+template <typename DeviceContext, typename T>
 class AdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
