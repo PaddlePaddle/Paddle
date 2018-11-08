@@ -60,6 +60,7 @@ endif()
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
           DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+  target_link_libraries(paddle_fluid_shared shlwapi)
   if(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_fluid_origin ${cuda_modules})
   endif(WITH_GPU AND NOT WITH_DSO)

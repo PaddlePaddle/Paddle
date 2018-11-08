@@ -75,10 +75,6 @@ bool NativePaddlePredictor::Init(
   }
 #endif
 
-  // windows has no support for openblas multi-thread
-#ifdef _WIN32
-	FLAGS_paddle_num_threads = 1;
-#endif
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
 
