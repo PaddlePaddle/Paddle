@@ -9,3 +9,4 @@ PaddlePaddle 文档
   howto/index_cn.rst
   dev/index_cn.rst
   faq/index_cn.rst
+  mobile/index_cn.md
