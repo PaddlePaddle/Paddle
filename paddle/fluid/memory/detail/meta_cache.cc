@@ -29,7 +29,7 @@ MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
     return existing_desc->second;
   } else {
     auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
-    VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
+    VLOG(100) << "Load MemoryBlock::Desc type=" << desc->type;
     PADDLE_ASSERT(desc->check_guards());
     return *reinterpret_cast<const MemoryBlock::Desc*>(block);
   }
