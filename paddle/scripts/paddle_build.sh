@@ -367,7 +367,12 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        ctest --output-on-failure
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            ctest -V
+        else
+            ctest --output-on-failure
+        fi
+
         # make install should also be test when unittest
         make install -j `nproc`
         pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
