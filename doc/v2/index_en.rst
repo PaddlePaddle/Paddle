@@ -9,3 +9,4 @@ PaddlePaddle Documentation
   howto/index_en.rst
   dev/index_en.rst
   faq/index_en.rst
+  mobile/index_en.md
