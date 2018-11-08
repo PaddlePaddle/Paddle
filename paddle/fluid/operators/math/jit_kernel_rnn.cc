@@ -18,10 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
 namespace paddle {
 namespace operators {
 namespace math {

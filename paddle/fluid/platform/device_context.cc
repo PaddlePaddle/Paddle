@@ -55,7 +55,6 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -205,7 +204,9 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
                           << ", Runtime Version: " << runtime_version_ / 1000
                           << "." << (runtime_version_ % 100) / 10;
 
+#ifndef _WIN32
   callback_manager_.reset(new StreamCallbackManager(stream_));
+#endif  // NOT WIN32
 }
 
 CUDADeviceContext::~CUDADeviceContext() {

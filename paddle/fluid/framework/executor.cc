@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+
 #include "paddle/fluid/framework/executor.h"
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -46,6 +48,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
+#ifndef _WIN32
 template <typename RefCntMap>
 static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
                                 GarbageCollector<Tensor>* gc,
@@ -80,6 +83,7 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
     gc->Add(erase_tensors);
   }
 }
+#endif
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -367,6 +371,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
+#ifndef _WIN32
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector<Tensor>> gc;
   // WhileOp would set keep_kids to false
@@ -408,6 +413,16 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   } else {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
+#else   // WIN32
+  for (auto& op : ctx->ops_) {
+    op->Run(*local_scope, place_);
+    if (FLAGS_benchmark) {
+      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
+              << memory::memory_usage(place_);
+    }
+  }
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+#endif  // NOT WIN32
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);

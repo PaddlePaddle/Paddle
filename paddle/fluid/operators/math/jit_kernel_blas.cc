@@ -25,10 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
 namespace paddle {
 namespace operators {
 namespace math {

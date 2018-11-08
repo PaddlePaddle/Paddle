@@ -26,6 +26,7 @@
 #include <string>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -102,7 +103,6 @@ struct Argument {
   std::unordered_map<std::string, std::function<void()>> attr_deleters_;
 };
 
-#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #define ANALYSIS_ARGUMENT_CHECK_FIELD(field__)               \
   if (UNLIKELY(!(field__))) {                                \
     LOG(ERROR) << "field " << #field__ << " should be set."; \

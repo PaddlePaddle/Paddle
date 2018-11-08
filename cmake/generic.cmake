@@ -238,6 +238,7 @@ function(cc_library TARGET_NAME)
       # add libxxx.lib prefix in windows
       set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif(WIN32)
+
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
@@ -350,7 +351,11 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
+    if(WIN32) # in windows deps. shlwapi library.
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog shlwapi)
+    else(WIN32)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    endif(WIN32)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
@@ -421,7 +426,11 @@ function(nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    if(WIN32)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog shlwapi)
+    else(WIN32)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    endif(WIN32)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_test(${TARGET_NAME} ${TARGET_NAME})
     if (nv_test_SERIAL)
