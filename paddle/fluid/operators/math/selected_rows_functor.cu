@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
