@@ -110,7 +110,7 @@ class SaveOp : public framework::OperatorBase {
         lt_var != nullptr,
         "Can not find variable kLookupTablePath for SaveSelectedRows");
     std::string filename = lt_var->data();
-    VLOG(4) << "SaveSelectedRows get File name: " << filename;
+    VLOG(40) << "SaveSelectedRows get File name: " << filename;
 
     MkDirRecursively(DirName(filename).c_str());
 

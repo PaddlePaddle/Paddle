@@ -133,10 +133,10 @@ void AsyncBRPCServer::StartServer() {
 void AsyncBRPCServer::ShutDownImpl() { server_.Stop(1000); }
 
 void AsyncBRPCServer::WaitServerReady() {
-  VLOG(3) << "AsyncGRPCServer is wait server ready";
+  VLOG(30) << "AsyncGRPCServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(3) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(30) << "AsyncGRPCServer WaitSeverReady";
 }
 
 };  // namespace distributed

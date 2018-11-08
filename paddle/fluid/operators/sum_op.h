@@ -115,7 +115,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
       if (in_dim.empty()) {
-        VLOG(3) << "WARNING: all the inputs are empty";
+        VLOG(30) << "WARNING: all the inputs are empty";
         in_dim =
             framework::vectorize(get_selected_row(in_num - 1).value().dims());
       } else {

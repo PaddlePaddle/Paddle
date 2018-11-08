@@ -25,7 +25,7 @@ class SoftMaxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4)
+    VLOG(40)
         << "convert a fluid softmax op to tensorrt softmax layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

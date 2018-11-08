@@ -30,7 +30,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     if (!platform::is_cpu_place(place)) {
       PADDLE_THROW("MergeIds do not support GPU kernel");
     }
-    VLOG(3) << "run in MergeIdsOpKernel";
+    VLOG(30) << "run in MergeIdsOpKernel";
 
     const auto *ids_var = ctx.InputVar("Ids");
     PADDLE_ENFORCE(ids_var->IsType<framework::LoDTensor>(),
@@ -63,7 +63,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     const size_t shard_num = x_tensors.size();
 
     if (shard_num == 1) {
-      VLOG(3) << "only one shard, we can copy the data directly";
+      VLOG(30) << "only one shard, we can copy the data directly";
       TensorCopy(*x_tensors[0], place, out);
     } else {
       std::vector<int> in_indexs(shard_num, 0);

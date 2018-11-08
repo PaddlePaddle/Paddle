@@ -148,8 +148,8 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
         size_t start_offset = lod_and_offset.second.first;
         size_t end_offset = lod_and_offset.second.second;
-        VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " ["
-                 << ", " << end_offset << "]";
+        VLOG(100) << "idx=" << idx << " x_idx=" << x_idx << " ["
+                  << ", " << end_offset << "]";
         // Copy data
         PADDLE_ENFORCE_GE(end_offset, start_offset);
         size_t len = end_offset - start_offset;

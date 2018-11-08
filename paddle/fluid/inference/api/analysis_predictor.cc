@@ -36,7 +36,7 @@ using contrib::AnalysisConfig;
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
-  VLOG(3) << "Predictor::init()";
+  VLOG(30) << "Predictor::init()";
 #if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
@@ -87,7 +87,7 @@ bool AnalysisPredictor::Init(
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  VLOG(3) << "Predictor::predict";
+  VLOG(30) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
   // set feed variable
@@ -107,13 +107,13 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+  VLOG(30) << "predict cost: " << timer.toc() << "ms";
   return true;
 }
 
 bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                 framework::Scope *scope) {
-  VLOG(3) << "Predictor::set_feed";
+  VLOG(30) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
@@ -178,7 +178,7 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                  framework::Scope *scope) {
-  VLOG(3) << "Predictor::get_fetch";
+  VLOG(30) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
@@ -226,7 +226,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
 
   CHECK(argument_.transformed_program_desc);
-  VLOG(5) << "to prepare executor";
+  VLOG(50) << "to prepare executor";
   inference_program_.reset(
       new framework::ProgramDesc(*argument_.transformed_program_desc));
   if (argument_.Has(framework::ir::kParamScopeAttr)) {
@@ -240,7 +240,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
-  VLOG(3) << "create AnalysisConfig";
+  VLOG(30) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -254,7 +254,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(3) << "set flag: " << flag;
+      VLOG(30) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }

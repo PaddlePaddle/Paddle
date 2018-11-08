@@ -209,14 +209,14 @@ void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      if (VLOG_IS_ON(10)) {
-        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+      if (VLOG_IS_ON(100)) {
+        VLOG(100) << op << " " << op->Name() << " : " << op->DebugString();
       }
       op->Run(strategy_.use_cuda_);
-      VLOG(10) << op << " " << op->Name() << " Done ";
+      VLOG(100) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
-      VLOG(10) << op << " " << op->Name() << "Signal posted";
+      VLOG(100) << op << " " << op->Name() << "Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }

@@ -217,9 +217,9 @@ void single_test() {
     LOG(INFO) << "sequence_length = " << seq_offset[seq_offset.size() - 1];
 
     float* data_o = static_cast<float*>(outputs[0].data.data());
-    VLOG(3) << "outputs[0].data.length() = " << outputs[0].data.length();
+    VLOG(30) << "outputs[0].data.length() = " << outputs[0].data.length();
     for (size_t j = 0; j < outputs[0].data.length(); ++j) {
-      VLOG(3) << "output[" << j << "]: " << data_o[j];
+      VLOG(30) << "output[" << j << "]: " << data_o[j];
     }
   }
 }

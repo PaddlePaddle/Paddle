@@ -60,7 +60,7 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
-  VLOG(3) << "Predictor::init()";
+  VLOG(30) << "Predictor::init()";
 #if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
@@ -129,7 +129,7 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
-  VLOG(3) << "Predictor::predict";
+  VLOG(30) << "Predictor::predict";
   Timer timer;
   timer.tic();
   // set feed variable
@@ -141,22 +141,22 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
-  VLOG(4) << "Run prepared context";
+  VLOG(40) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
                                 false /* don't create variable each time */);
-  VLOG(4) << "Finish prepared context";
+  VLOG(40) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+  VLOG(30) << "predict cost: " << timer.toc() << "ms";
   return true;
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
-  VLOG(3) << "Predictor::clone";
+  VLOG(30) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
 
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
@@ -174,7 +174,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     framework::Scope *scope) {
-  VLOG(3) << "Predictor::set_feed";
+  VLOG(30) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
@@ -234,7 +234,7 @@ void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
 
 bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                      framework::Scope *scope) {
-  VLOG(3) << "Predictor::get_fetch";
+  VLOG(30) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
@@ -259,7 +259,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
-  VLOG(3) << "create NativePaddlePredictor";
+  VLOG(30) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -273,7 +273,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(3) << "set flag: " << flag;
+      VLOG(30) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }

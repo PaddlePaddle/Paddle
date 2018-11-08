@@ -121,7 +121,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
   int found_conv_bn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle ConvBN fuse";
+    VLOG(40) << "handle ConvBN fuse";
 
     // conv, batch_norm,
     // conv_weight, conv_out,
@@ -200,7 +200,7 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
   int found_conv_bn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle ConvBN fuse";
+    VLOG(40) << "handle ConvBN fuse";
 
     // conv, batch_norm,
     // conv_weight, conv_out,

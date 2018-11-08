@@ -60,7 +60,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
 
  private:
   void AddPass(const std::string& name, AnalysisPass* pass) {
-    VLOG(3) << "Adding pass " << name;
+    VLOG(30) << "Adding pass " << name;
     Register(name, pass);
     AddGraphvizDebugerPass(pass);
   }

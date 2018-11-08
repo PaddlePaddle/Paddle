@@ -42,7 +42,7 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
     if (closed_) {
-      VLOG(5)
+      VLOG(50)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
       return false;
     }
@@ -56,7 +56,7 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
     if (closed_) {
-      VLOG(5)
+      VLOG(50)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
       return false;
     }

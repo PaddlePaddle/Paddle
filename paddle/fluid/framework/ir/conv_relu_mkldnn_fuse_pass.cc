@@ -38,7 +38,7 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
   int found_conv_relu_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle ConvReLU fuse";
+    VLOG(40) << "handle ConvReLU fuse";
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
                               conv_relu_pattern);                      // Filter
     GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_relu_pattern);  // tmp

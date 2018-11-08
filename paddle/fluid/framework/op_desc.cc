@@ -82,7 +82,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
-      VLOG(3) << "input " << in << " is not LodTensor";
+      VLOG(30) << "input " << in << " is not LodTensor";
       return;
     }
     PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
@@ -496,13 +496,13 @@ void OpDesc::CheckAttrs() {
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {
-  VLOG(3) << "CompileTime infer shape on " << Type();
+  VLOG(30) << "CompileTime infer shape on " << Type();
   InitInferShapeFuncs();
   auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
   PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                  "%s's infer_shape has not been registered", this->Type());
   CompileTimeInferShapeContext ctx(*this, block);
-  if (VLOG_IS_ON(10)) {
+  if (VLOG_IS_ON(100)) {
     std::ostringstream sout;
     auto inames = this->InputArgumentNames();
     sout << " From [";
@@ -513,7 +513,7 @@ void OpDesc::InferShape(const BlockDesc &block) const {
     std::copy(onames.begin(), onames.end(),
               std::ostream_iterator<std::string>(sout, ", "));
     sout << "]";
-    VLOG(10) << sout.str();
+    VLOG(100) << sout.str();
   }
   infer_shape(&ctx);
 }
@@ -524,9 +524,9 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     info.infer_var_type_(*this, block);
   } else {
     // all output type is LoDTensor by default
-    VLOG(10) << this->Type()
-             << " has not registered InferVarType. Set output variables to "
-                "LOD_TENSOR";
+    VLOG(100) << this->Type()
+              << " has not registered InferVarType. Set output variables to "
+                 "LOD_TENSOR";
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->FindRecursiveOrCreateVar(out_var_name)
@@ -610,7 +610,7 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
     auto shape = var->GetShape();
     res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
   } catch (...) {
-    VLOG(5) << "GetDim of variable " << name << " error";
+    VLOG(50) << "GetDim of variable " << name << " error";
     std::rethrow_exception(std::current_exception());
   }
   return res;
@@ -627,7 +627,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
       res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
     }
   } catch (...) {
-    VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
+    VLOG(50) << "GetRepeatedDim of variable " << name << " error.";
     std::rethrow_exception(std::current_exception());
   }
   return res;

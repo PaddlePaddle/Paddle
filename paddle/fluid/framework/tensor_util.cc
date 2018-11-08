@@ -22,8 +22,8 @@ namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
+  VLOG(30) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+           << dst_place;
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -104,8 +104,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst) {
-  VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
-          << " to " << dst_place;
+  VLOG(30) << "TensorCopySync " << src.dims() << " from " << src.place()
+           << " to " << dst_place;
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());

@@ -41,12 +41,12 @@ class SendBarrierOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    VLOG(3) << "SendBarrierOp sync";
+    VLOG(30) << "SendBarrierOp sync";
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     for (auto& ep : eps) {
-      VLOG(3) << "send barrier, ep: " << ep;
+      VLOG(30) << "send barrier, ep: " << ep;
       rpc_client->AsyncSendBatchBarrier(ep);
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");

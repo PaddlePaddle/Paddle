@@ -203,7 +203,7 @@ class DeviceTracerImpl : public DeviceTracer {
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
                      uint64_t end_ns, int64_t device_id, int64_t thread_id) {
     if (anno.empty()) {
-      VLOG(1) << "Empty timeline annotation.";
+      VLOG(10) << "Empty timeline annotation.";
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
@@ -216,7 +216,7 @@ class DeviceTracerImpl : public DeviceTracer {
                      uint32_t correlation_id, uint64_t bytes) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start_ns == 0 || end_ns == 0) {
-      VLOG(3) << name << " cannot be traced";
+      VLOG(30) << name << " cannot be traced";
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
@@ -228,7 +228,7 @@ class DeviceTracerImpl : public DeviceTracer {
                         int64_t stream_id, uint32_t correlation_id) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start == 0 || end == 0) {
-      VLOG(3) << correlation_id << " cannot be traced";
+      VLOG(30) << correlation_id << " cannot be traced";
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
@@ -347,7 +347,7 @@ class DeviceTracerImpl : public DeviceTracer {
         tracer->AddAnnotation(cbInfo->correlationId, anno);
       }
     } else {
-      VLOG(1) << "Unhandled API Callback for " << domain << " " << cbid;
+      VLOG(10) << "Unhandled API Callback for " << domain << " " << cbid;
     }
   }
   CUpti_SubscriberHandle subscriber_;

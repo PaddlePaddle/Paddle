@@ -77,7 +77,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
 
   for (auto* var : global_block.AllVars()) {
     if (IsPersistable(var)) {
-      VLOG(3) << "persistable variable's name: " << var->Name();
+      VLOG(30) << "persistable variable's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->GetShape());
@@ -120,7 +120,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
-  VLOG(3) << "loading model from " << model_filename;
+  VLOG(30) << "loading model from " << model_filename;
   ReadBinaryFile(model_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
