@@ -92,13 +92,13 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 
   size_t num_complete = 0;
   remaining_ = 0;
-  BlockingQueue<size_t> complete_q;
+  auto complete_q = std::make_shared<BlockingQueue<size_t>>();
   for (auto op : bootstrap_ops_) {
-    RunOpAsync(op_deps.get(), op, &complete_q);
+    RunOpAsync(op_deps.get(), op, complete_q);
   }
 
   while (num_complete != op_deps->size()) {
-    size_t num_comp = complete_q.Pop();
+    size_t num_comp = complete_q->Pop();
     if (num_comp == -1UL) {
       int remaining = 0;
       while (true) {
@@ -107,7 +107,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
           break;
         }
         for (int i = 0; i < remaining; ++i) {
-          complete_q.Pop();
+          complete_q->Pop();
         }
       }
       exception_.ReThrow();
@@ -120,14 +120,17 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 }
 void FastThreadedSSAGraphExecutor::RunOpAsync(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
-    OpHandleBase *op, BlockingQueue<size_t> *complete_q) {
+    OpHandleBase *op,
+    const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
   this->pool_.enqueue([=] {
     OpHandleBase *op_to_run = op;
     size_t complete = 0;
     while (op_to_run != nullptr) {
       try {
-        op_to_run->Run(strategy_.use_cuda_);
+        if (LIKELY(!strategy_.dry_run_)) {
+          op_to_run->Run(strategy_.use_cuda_);
+        }
         ++complete;
       } catch (...) {
         exception_.Catch(std::current_exception());
@@ -144,7 +147,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
             } else {
-              this->RunOpAsync(op_deps, pending_op, complete_q);
+              RunOpAsync(op_deps, pending_op, complete_q);
             }
           }
         }
@@ -156,8 +159,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
 }
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
   atomic_op_deps_ = pool_.enqueue([&] {
-    std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps =
-        new std::unordered_map<OpHandleBase *, std::atomic<int>>;
+    auto *op_deps = new std::unordered_map<OpHandleBase *, std::atomic<int>>;
     for (auto &pair : op_deps_) {
       (*op_deps)[pair.first] = pair.second;
     }

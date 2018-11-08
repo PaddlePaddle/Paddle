@@ -39,7 +39,8 @@ class SendBarrierOp : public framework::OperatorBase {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
     VLOG(3) << "SendBarrierOp sync";
 
@@ -67,6 +68,7 @@ This operator will send a send barrier signal to list_and_serv op, so that
 the Parameter Server would knew all variables have been sent.
 )DOC");
 
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")

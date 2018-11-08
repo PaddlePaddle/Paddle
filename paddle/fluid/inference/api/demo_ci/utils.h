@@ -18,7 +18,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/paddle_inference_api.h"
+#include "paddle/include/paddle_inference_api.h"
 
 namespace paddle {
 namespace demo {

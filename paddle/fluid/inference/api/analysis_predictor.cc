@@ -77,15 +77,12 @@ bool AnalysisPredictor::Init(
     inference_program_ = program;
   }
 
-  if (config_._use_mkldnn) {
-    executor_->EnableMKLDNN(*inference_program_);
-  }
-
   executor_->Prepare(scope_.get(), *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
+
   return true;
 }
 
@@ -113,6 +110,10 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 
@@ -225,10 +226,24 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(
-      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
-      "Only kExclude is supported yet.");
-  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
+  switch (config_.ir_mode) {
+    case contrib::AnalysisConfig::IrPassMode::kExclude:
+      Analyzer()
+          .IncludeAllIrPasses()
+          .SetUseMkldnn(config_._use_mkldnn)
+          .DisableIrPasses(config_.ir_passes)
+          .Run(&argument_);
+      break;
+    case contrib::AnalysisConfig::IrPassMode::kInclude:
+      Analyzer()
+          .SetUseMkldnn(config_._use_mkldnn)
+          .IncludeIrPasses(config_.ir_passes)
+          .Run(&argument_);
+      break;
+    default:
+      LOG(ERROR) << "Only kExclude and kInclude modes are supoorted yet.";
+  }
 
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
@@ -312,6 +327,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 

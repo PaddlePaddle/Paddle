@@ -84,8 +84,8 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
     framework::Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
-    math::scatter::Mul<platform::CUDADeviceContext, T> sqare_func;
-    auto grad_square = sqare_func(context, grad_merge, grad_merge);
+    auto grad_square =
+        SquareSelectedRows<platform::CUDADeviceContext, T>(context, grad_merge);
 
     math::SelectedRowsAddToTensor<platform::CUDADeviceContext, T> functor;
     functor(context, grad_square, moment);

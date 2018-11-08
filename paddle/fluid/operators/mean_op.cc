@@ -34,7 +34,7 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) The input of mean op");
-    AddOutput("Out", "(Tensor) The output of mean op").Reuse("X");
+    AddOutput("Out", "(Tensor) The output of mean op");
     AddComment(R"DOC(
 Mean Operator calculates the mean of all elements in X.
 
