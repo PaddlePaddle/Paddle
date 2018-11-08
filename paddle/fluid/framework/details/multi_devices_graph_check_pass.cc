@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -36,20 +37,20 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
   for (auto &var_map : graph->Get<GraphVars>(kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        insert_pending_var(version_pair.get());
+        insert_pending_var(version_pair);
       }
     }
   }
 
   for (auto &var : graph->Get<GraphDepVars>(kGraphDepVars)) {
-    insert_pending_var(var.get());
+    insert_pending_var(var);
   }
 
-  for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
+  for (OpHandleBase *op : ir::FilterByNodeWrapper<OpHandleBase>(*graph)) {
     if (op->Inputs().empty()) {
-      ready_ops.insert(op.get());
+      ready_ops.insert(op);
     } else {
-      pending_ops.insert({op.get(), op.get()->NoDupInputSize()});
+      pending_ops.insert({op, op->NoDupInputSize()});
     }
   }
 
@@ -89,6 +90,4 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 REGISTER_PASS(multi_devices_check_pass,
               paddle::framework::details::SSAGraghBuilderWithChecker)
     .RequireGraphAttr(paddle::framework::details::kGraphVars)
-    .RequireGraphAttr(paddle::framework::details::kGraphDepVars)
-    .RequireGraphAttr(paddle::framework::details::kGraphOps)
-    .RequireGraphAttr(paddle::framework::details::kShardedVarDevice);
+    .RequireGraphAttr(paddle::framework::details::kGraphDepVars);

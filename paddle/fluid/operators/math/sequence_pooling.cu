@@ -16,17 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-#if defined(__FLT_MAX__)
-#define FLT_MAX __FLT_MAX__
-#else
-#include <float.h>
-#include <limits>
-#endif
 
 template <typename T>
 struct MaxPoolFunctor {
