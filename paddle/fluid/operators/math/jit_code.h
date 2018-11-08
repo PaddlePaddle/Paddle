@@ -31,11 +31,11 @@ using Label = Xbyak::Label;
 
 typedef enum { mul = 0, add } operand_type;
 
-// function: vec = Operand(vec, vec) (maybe with relu)
-class VVVJitCode : public JitCode {
+// function: vec = Operand(vec(scalar), vec(scalar)) (maybe with relu)
+class VXXJitCode : public JitCode {
  public:
   const char* name() const override {
-    std::string base = "VVVJitCode";
+    std::string base = "VXXJitCode";
     if (type_ == operand_type::mul) {
       base += "_Mul";
     } else if (type_ == operand_type::add) {
@@ -44,18 +44,21 @@ class VVVJitCode : public JitCode {
     base += (with_relu_ ? "_Relu" : "");
     return base.c_str();
   }
-  explicit VVVJitCode(int d, operand_type type, bool with_relu,
-                      size_t code_size = 256 * 1024, void* code_ptr = nullptr)
+  explicit VXXJitCode(int d, operand_type type, int scalar_index,
+                      bool with_relu, size_t code_size = 256 * 1024,
+                      void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr),
         num_(d),
         type_(type),
+        scalar_index_(scalar_index),
         with_relu_(with_relu) {}
-  static bool init(int d);
+  static bool init(int d, int scalar_index = 0);
   void generate() override;
 
  private:
   int num_;
   operand_type type_;
+  int scalar_index_;
   bool with_relu_;
   reg64_t param1{abi_param1};
   reg64_t param2{abi_param2};
@@ -63,39 +66,13 @@ class VVVJitCode : public JitCode {
 
   xmm_t xmm_src1 = xmm_t(0);
   xmm_t xmm_src2 = xmm_t(1);
-  xmm_t xmm_dst = xmm_t(1);
-  xmm_t xmm_zero = xmm_t(2);
+  xmm_t xmm_dst = xmm_t(2);
+  xmm_t xmm_zero = xmm_t(3);
 
   ymm_t ymm_src1 = ymm_t(0);
   ymm_t ymm_src2 = ymm_t(1);
-  ymm_t ymm_dst = ymm_t(1);
-  ymm_t ymm_zero = ymm_t(2);
-};
-
-class VScalJitCode : public JitCode {
- public:
-  DECLARE_JIT_CODE(VScalJitCode);
-  explicit VScalJitCode(int d, size_t code_size = 256 * 1024,
-                        void* code_ptr = nullptr)
-      : JitCode(code_size, code_ptr), num_(d) {}
-  static bool init(int d);
-  void generate() override;
-
- private:
-  int num_;
-  reg64_t param1{abi_param1};
-  reg64_t param2{abi_param2};
-  reg64_t param3{abi_param3};
-
-  xmm_t xmm_src1 = xmm_t(0);
-  xmm_t xmm_src2 = xmm_t(1);
-  xmm_t xmm_dst = xmm_t(1);
-  xmm_t xmm_zero = xmm_t(2);
-
-  ymm_t ymm_src1 = ymm_t(0);
-  ymm_t ymm_src2 = ymm_t(1);
-  ymm_t ymm_dst = ymm_t(1);
-  ymm_t ymm_zero = ymm_t(2);
+  ymm_t ymm_dst = ymm_t(2);
+  ymm_t ymm_zero = ymm_t(3);
 };
 
 }  // namespace gen
