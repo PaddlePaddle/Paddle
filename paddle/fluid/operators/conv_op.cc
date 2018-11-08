@@ -109,10 +109,9 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
-  AddAttr<bool>(
-      "is_test",
-      "(bool, default false) True if in test phase, false if in training."
-      "MKL-DNN may be faster if this is set to true.")
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
       .SetDefault(false);
   AddInput(
       "Input",
