@@ -409,11 +409,11 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     vaddbias_ = KernelPool::Instance().template Get<VAddBiasKernel<T>>(d);
   }
   void Compute(const T* x, T* y) const override {
-    const T a = static_cast<T>(2);
+    const T a = static_cast<T>(2), b = static_cast<T>(-1);
     vscal_->Compute(&a, x, y, this->num_);
     vsigmoid_->Compute(y, y);
     vscal_->Compute(&a, y, y, this->num_);
-    vaddbias_->Compute(static_cast<T>(-1), y, y);
+    vaddbias_->Compute(&b, y, y, this->num_);
   }
 
  private:
@@ -473,11 +473,11 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     _mm256_storeu_ps(y, tmp);                                                 \
     x += AVX_FLOAT_BLOCK;                                                     \
     y += AVX_FLOAT_BLOCK;                                                     \
-    const float a = 2.f;                                                      \
+    const float a = 2.f, b = -1.f;                                            \
     vscal_->Compute(&a, x, y, this->num_);                                    \
     vsigmoid_->Compute(y, y);                                                 \
     vscal_->Compute(&a, y, y, this->num_);                                    \
-    vaddbias_->Compute(-1.f, y, y);                                           \
+    vaddbias_->Compute(&b, y, y, this->num_);                                 \
   }
 
 #define INTRI_GT16_FLOAT(isa, expisa)                                         \
@@ -504,11 +504,11 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     }                                                                         \
     x += this->end_;                                                          \
     y += this->end_;                                                          \
-    const float a = 2.f;                                                      \
+    const float a = 2.f, b = -1.f;                                            \
     vscal_->Compute(&a, x, y, this->num_);                                    \
     vsigmoid_->Compute(y, y);                                                 \
     vscal_->Compute(&a, y, y, this->num_);                                    \
-    vaddbias_->Compute(-1.f, y, y);                                           \
+    vaddbias_->Compute(&b, y, y, this->num_);                                 \
   }
 
 #ifndef __WIN32
