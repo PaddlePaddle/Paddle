@@ -1,0 +1,1 @@
+../../v2/dev/contribute_to_paddle_cn.md
