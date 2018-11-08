@@ -144,11 +144,14 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-
 else(NOT WIN32)
 set(COMMON_FLAGS
+    -fPIC
+    -fno-omit-frame-pointer
     "/w") #disable all warnings.
 set(GPU_COMMON_FLAGS
+    -fPIC
+    -fno-omit-frame-pointer
     "/w") #disable all warnings
 endif(NOT WIN32)
 
@@ -164,8 +167,8 @@ endif(APPLE)
 if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
-        -Wextra
         -Werror
+        -Wextra
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
 
