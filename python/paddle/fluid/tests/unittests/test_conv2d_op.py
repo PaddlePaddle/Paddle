@@ -223,106 +223,81 @@ class TestWithInput1x1Filter1x1(TestConv2dOp):
 
 
 #----------------Conv2dCUDNN----------------
-class TestCUDNN(TestConv2dOp):
-    def init_kernel_type(self):
-        self.use_cudnn = True
 
 
-class TestFP16CUDNN(TestConv2dOp):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
+def create_test_cudnn_class(parent, cls_name):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNCase(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+    cls_name = "{0}".format(cls_name)
+    TestCUDNNCase.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNCase
+
+
+create_test_cudnn_class(TestConv2dOp, "TestPool2DCUDNNOp")
+create_test_cudnn_class(TestWithPad, "TestPool2DCUDNNOpCase1")
+create_test_cudnn_class(TestWithStride, "TestPool2DCUDNNOpCase2")
+create_test_cudnn_class(TestWithGroup, "TestPool2DCUDNNOpCase3")
+create_test_cudnn_class(TestWith1x1, "TestPool2DCUDNNOpCase4")
+create_test_cudnn_class(TestWithInput1x1Filter1x1, "TestPool2DCUDNNOpCase4")
+
+#----------------Conv2dCUDNN----------------
+
+
+def create_test_cudnn_fp16_class(parent, cls_name, grad_check=True):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestConv2DCUDNNFp16(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
+
+        def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Filter']))
 
-
-class TestCUDNNWithPad(TestWithPad):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWithPad(TestWithPad):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Input']))
+
+    cls_name = "{0}".format(cls_name)
+    TestConv2DCUDNNFp16.__name__ = cls_name
+    globals()[cls_name] = TestConv2DCUDNNFp16
 
 
-class TestCUDNNWithStride(TestWithStride):
-    def init_kernel_type(self):
-        self.use_cudnn = True
+create_test_cudnn_fp16_class(
+    TestConv2dOp, "TestPool2DCUDNNFp16Op", grad_check=False)
+create_test_cudnn_fp16_class(
+    TestWithPad, "TestPool2DCUDNNFp16OpCase1", grad_check=False)
+create_test_cudnn_fp16_class(
+    TestWithStride, "TestPool2DCUDNNFp16OpCase2", grad_check=False)
+create_test_cudnn_fp16_class(
+    TestWithGroup, "TestPool2DCUDNNFp16OpCase3", grad_check=False)
+create_test_cudnn_fp16_class(
+    TestWith1x1, "TestPool2DCUDNNFp16OpCase4", grad_check=False)
+create_test_cudnn_fp16_class(
+    TestWithInput1x1Filter1x1, "TestPool2DCUDNNFp16OpCase4", grad_check=False)
 
-
-class TestFP16CUDNNWithStride(TestWithStride):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
-
-
-class TestCUDNNWithGroup(TestWithGroup):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWithGroup(TestWithGroup):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
-
-
-class TestCUDNNWith1x1(TestWith1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWith1x1(TestWith1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
-
-
-class TestCUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+# -------TestDepthwiseConv
 
 
 class TestDepthwiseConv(TestConv2dOp):
