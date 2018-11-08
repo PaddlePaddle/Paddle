@@ -109,7 +109,11 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
-  AddAttr<bool>("is_test", "").SetDefault(false);
+  AddAttr<bool>(
+      "is_test",
+      "(bool, default false) True if in test phase, false if in training."
+      "MKL-DNN may be faster if this is set to true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "

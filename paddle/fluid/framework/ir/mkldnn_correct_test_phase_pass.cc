@@ -23,7 +23,6 @@ namespace ir {
 std::unique_ptr<ir::Graph> MKLDNNCorrectTestPhasePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Sets MKL-DNN is_test attrbiute.";
-  std::string attr_name = "is_test";
   std::array<std::string, 31> op_list = {
       "pool2d",      "sigmoid",      "logsigmoid",
       "softshrink",  "exp",          "brelu",
@@ -39,12 +38,14 @@ std::unique_ptr<ir::Graph> MKLDNNCorrectTestPhasePass::ApplyImpl(
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr(attr_name)) {
-        op->SetAttr(attr_name, true);
-      } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
-                 end(op_list)) {
-        op->MutableAttrMap()->insert(
-            std::pair<std::string, Attribute>("is_test", true));
+      if (op->HasAttr("use_mkldnn") && op->GetAttr("use_mkldnn")) {
+        if (op->HasAttr("is_test")) {
+          op->SetAttr("is_test", true);
+        } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
+                   end(op_list)) {
+          op->MutableAttrMap()->insert(
+              std::pair<std::string, Attribute>("is_test", true));
+        }
       }
     }
   }

@@ -22,23 +22,23 @@ namespace operators {
 
 using paddle::framework::Tensor;
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                     \
-  class OP_NAME##OpMaker                                                      \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {                  \
-   public:                                                                    \
-    void Make() override {                                                    \
-      AddInput("X", "Input of " #OP_NAME " operator");                        \
-      AddOutput("Out", "Output of " #OP_NAME " operator");                    \
-      AddAttr<bool>("use_mkldnn",                                             \
-                    "(bool, default false) Only used in mkldnn kernel")       \
-          .SetDefault(false);                                                 \
-      AddAttr<bool>("is_test",                                                \
-                    "(bool, default false) If true, the forward pass is not " \
-                    "part of training."                                       \
-                    "MKL-DNN might be faster if this is set to true.")        \
-          .SetDefault(false);                                                 \
-      AddComment(#OP_COMMENT);                                                \
-    }                                                                         \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                      \
+  class OP_NAME##OpMaker                                                       \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                   \
+   public:                                                                     \
+    void Make() override {                                                     \
+      AddInput("X", "Input of " #OP_NAME " operator");                         \
+      AddOutput("Out", "Output of " #OP_NAME " operator");                     \
+      AddAttr<bool>("use_mkldnn",                                              \
+                    "(bool, default false) Only used in mkldnn kernel")        \
+          .SetDefault(false);                                                  \
+      AddAttr<bool>(                                                           \
+          "is_test",                                                           \
+          "(bool, default false) True if in test phase, false if in training." \
+          "MKL-DNN may be faster if this is set to true.")                     \
+          .SetDefault(false);                                                  \
+      AddComment(#OP_COMMENT);                                                 \
+    }                                                                          \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \

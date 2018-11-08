@@ -215,9 +215,10 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("is_test",
-                  "Turns on memory optimization that optimizes away "
-                  "unnecessary memory allocations. Used by MKLDNN.")
+    AddAttr<bool>(
+        "is_test",
+        "(bool, default false) True if in test phase, false if in training."
+        "MKL-DNN may be faster if this is set to true.")
         .SetDefault(false);
 
     AddComment(R"DOC(
