@@ -26,21 +26,16 @@ namespace details {
 
 class OpGraphView {
  public:
-  explicit OpGraphView(const std::vector<std::unique_ptr<OpHandleBase>> &ops);
-
-  size_t OpNumber() const;
+  explicit OpGraphView(const std::vector<OpHandleBase *> &ops);
 
   std::unordered_set<OpHandleBase *> AllOps() const;
-
-  const std::unordered_set<OpHandleBase *> &PrecedingOps(
-      OpHandleBase *op) const;
 
   const std::unordered_set<OpHandleBase *> &PendingOps(OpHandleBase *op) const;
 
   bool HasOp(OpHandleBase *op) const;
 
  private:
-  void Build(const std::vector<std::unique_ptr<OpHandleBase>> &ops);
+  void Build(const std::vector<OpHandleBase *> &ops);
   void EnforceHasOp(OpHandleBase *op) const;
 
   std::unordered_map<OpHandleBase *, std::unordered_set<OpHandleBase *>>

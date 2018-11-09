@@ -155,6 +155,7 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'space_to_depth',
     'affine_grid',
     'sequence_reverse',
     'affine_channel',
@@ -7685,6 +7686,66 @@ def maxout(x, groups, name=None):
         type="maxout",
         inputs={"X": x},
         attrs={"groups": groups},
+        outputs={"Out": out})
+    return out
+
+
+def space_to_depth(x, blocksize, name=None):
+    """
+    Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
+    
+    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the 
+    input LoDtensor where values from the height and width dimensions are moved to the channel dimension. 
+    The attr blocksize indicates the input block size.
+    
+    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according 
+    to blocksize to construct output with shape [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
+    
+    space_to_depth is used to This operation is useful for resizing the activations between convolutions 
+    (but keeping all data)
+
+    - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
+    - The depth of the output tensor is block_size * block_size * input channel 
+    - The Y, X coordinates within each block of the input become the high order component of the output channel index
+    - channel should be divisible by square of blocksize
+    - height, width should be divsible by blocksize
+
+
+    Args:
+        x(variable): The input LoDtensor.
+        blocksize(variable): The blocksize to select the element on each feature map should be > 2
+
+    Returns:
+        Variable: The output LoDtensor.
+
+    Raises:
+        TypeError: blocksize type must be a long.
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(
+                name='data', shape=[1, 4, 2, 2], dtype='float32')
+            space_to_depthed = fluid.layers.space_to_depth(
+                x=data, blocksize=2)
+    """
+
+    helper = LayerHelper("space_to_depth", **locals())
+
+    if not (isinstance(blocksize, int)):
+        raise ValueError("blocksize must be a python Int")
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=x.dtype)  #fix create
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="space_to_depth",
+        inputs={"X": x},
+        attrs={"blocksize": blocksize},
         outputs={"Out": out})
     return out
 

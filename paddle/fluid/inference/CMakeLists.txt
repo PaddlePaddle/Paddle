@@ -16,10 +16,6 @@ cc_library(paddle_fluid_api
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB}) 
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-get_property(fluid_third_partys GLOBAL PROPERTY FLUID_THRID_PARTYS)
-if (WIN32)
-list(APPEND fluid_third_partys gflags glog protobuf cblas)
-endif(WIN32)
 
 # paddle_fluid_origin exclude inference api interface
 cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
@@ -37,11 +33,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 # Create static library
-if (WIN32)
-cc_library(paddle_fluid DEPS ${fluid_modules} ${fluid_third_partys} paddle_fluid_api paddle_inference_api)
-else(WIND32)
 cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
-endif(WIN32)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.

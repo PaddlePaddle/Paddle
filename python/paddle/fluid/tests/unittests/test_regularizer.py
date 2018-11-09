@@ -55,7 +55,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
         params_grads = optimizer.append_regularization_ops(params_grads)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(block.ops), count_ops + 2)
-        self.assertEqual(block.ops[-1].type, 'elementwise_add')
+        self.assertEqual(block.ops[-1].type, 'sum')
         self.assertEqual(block.ops[-2].type, 'scale')
 
 
@@ -92,7 +92,7 @@ class TestL1DecayRegularizer(unittest.TestCase):
         params_grads = optimizer.append_regularization_ops(params_grads)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(block.ops), count_ops + 3)
-        self.assertEqual(block.ops[-1].type, 'elementwise_add')
+        self.assertEqual(block.ops[-1].type, 'sum')
         self.assertEqual(block.ops[-2].type, 'scale')
         self.assertEqual(block.ops[-3].type, 'sign')
 
