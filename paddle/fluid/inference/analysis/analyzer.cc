@@ -101,6 +101,7 @@ Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
 
 void Analyzer::Run(Argument* argument) {
   std::vector<std::string> passes;
+  passes.push_back("graph_viz_pass");  // add graphviz for debug.
 #ifdef PADDLE_WITH_MKLDNN
   if (use_mkldnn_) {
     VLOG(3) << "Adding MKL-DNN placement pass";
@@ -110,13 +111,13 @@ void Analyzer::Run(Argument* argument) {
   // infer_clean_graph_pass should be the first default pass
   // after mkldnn_placement_pass.
   passes.push_back("infer_clean_graph_pass");
+  passes.push_back("graph_viz_pass");  // add graphviz for debug.
   for (auto& pass : ir_passes_) {
     if (!disabled_ir_passes_.count(pass)) {
       passes.push_back(pass);
       passes.push_back("graph_viz_pass");  // add graphviz for debug.
     }
   }
-  passes.push_back("graph_viz_pass");
   argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(passes));
 
   for (auto& x : data_) {

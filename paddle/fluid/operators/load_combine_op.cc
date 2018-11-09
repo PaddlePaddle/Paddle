@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
-#include <memory>
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -33,15 +32,9 @@ class LoadCombineOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
-    auto format = Attr<std::string>("format");
-    std::unique_ptr<std::ifstream> fin;
-    if (format == "windows") {
-      fin.reset(new std::ifstream(filename,
-                                  std::ios_base::in | std::ios_base::binary));
-    } else {
-      fin.reset(new std::ifstream(filename));
-    }
-    PADDLE_ENFORCE(static_cast<bool>(*fin),
+
+    std::ifstream fin(filename);
+    PADDLE_ENFORCE(static_cast<bool>(fin),
                    "Cannot open file %s for load_combine op", filename);
 
     auto out_var_names = Outputs("Out");
@@ -61,11 +54,11 @@ class LoadCombineOp : public framework::OperatorBase {
       auto *tensor = out_var->GetMutable<framework::LoDTensor>();
 
       // Error checking
-      PADDLE_ENFORCE(static_cast<bool>(*fin), "Cannot read more from file %s",
+      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
                      filename);
 
       // Get data from fin to tensor
-      DeserializeFromStream(*fin, tensor, dev_ctx);
+      DeserializeFromStream(fin, tensor, dev_ctx);
 
       auto in_dtype = framework::ToDataType(tensor->type());
       auto out_dtype =
@@ -110,18 +103,6 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          "LoDTensors will be loaded from \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddAttr<std::string>("format",
-                         R"DOC((windows|linux)" "saved model file format
-                         windows and linux file newline symbol is
-different. windows(newline is \n\r) or linux(newline is \r)
-So if you set attribute format to windows, then we saved model file in binary.
-It can be used both linux and windows. If you set format to linux,
-it will save file in normal file, newline symbol is \r. Need to note
-that these two format is not inter-compatible.)DOC")
-        .SetDefault("linux")
-        .AddCustomChecker([](const std::string &s) {
-          return s == "windows" || s == "linux";
-        });
     AddComment(R"DOC(
 LoadCombine Operator.
 
