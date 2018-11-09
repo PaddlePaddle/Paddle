@@ -44,17 +44,16 @@ from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
 from . import unique_name
-if os.name != 'nt':
-    from . import recordio_writer
-    from . import parallel_executor
-    from .parallel_executor import *
+from . import recordio_writer
+from . import parallel_executor
+from .parallel_executor import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-    lod_tensor.__all__ + [
+    parallel_executor.__all__ + lod_tensor.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -80,8 +79,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'recordio_writer',
         'Scope',
     ]
-if os.name != 'nt':
-    __all__ += parallel_executor.__all__
+
 
 def __bootstrap__():
     """
