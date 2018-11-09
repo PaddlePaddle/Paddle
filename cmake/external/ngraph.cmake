@@ -36,18 +36,13 @@ INCLUDE(ExternalProject)
 
 SET(NGRAPH_PROJECT         "extern_ngraph")
 SET(NGRAPH_VERSION         "0.9")
-SET(NGRAPH_TAG_VERSION     "0.9.1")
-SET(NGRAPH_GIT_TAG         "v${NGRAPH_TAG_VERSION}")
+SET(NGRAPH_GIT_TAG         "f9fd9d4cc318dc59dd4b68448e7fbb5f67a28bd0")
 SET(NGRAPH_SOURCES_DIR     ${THIRD_PARTY_PATH}/ngraph)
 SET(NGRAPH_INSTALL_DIR     ${THIRD_PARTY_PATH}/install/ngraph)
 SET(NGRAPH_INC_DIR         ${NGRAPH_INSTALL_DIR}/include)
-SET(NGRAPH_LIB_DIR         ${NGRAPH_INSTALL_DIR}/lib)
 SET(NGRAPH_SHARED_LIB_NAME libngraph.so.${NGRAPH_VERSION})
 SET(NGRAPH_CPU_LIB_NAME    libcpu_backend.so)
 SET(NGRAPH_TBB_LIB_NAME    libtbb.so.2)
-SET(NGRAPH_SHARED_LIB      ${NGRAPH_LIB_DIR}/${NGRAPH_SHARED_LIB_NAME})
-SET(NGRAPH_CPU_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_CPU_LIB_NAME})
-SET(NGRAPH_TBB_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_TBB_LIB_NAME})
 SET(NGRAPH_GIT_REPO        "https://github.com/NervanaSystems/ngraph.git")
 
 ExternalProject_Add(
@@ -67,6 +62,18 @@ ExternalProject_Add(
     CMAKE_ARGS          -DMKLDNN_INCLUDE_DIR=${MKLDNN_INC_DIR}
     CMAKE_ARGS          -DMKLDNN_LIB_DIR=${MKLDNN_INSTALL_DIR}/lib
 )
+
+if(UNIX AND NOT APPLE)
+    include(GNUInstallDirs)
+    SET(NGRAPH_LIB_DIR ${NGRAPH_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR})
+else()
+    SET(NGRAPH_LIB_DIR ${NGRAPH_INSTALL_DIR}/lib)
+endif()
+MESSAGE(STATUS "nGraph lib will be installed at: ${NGRAPH_LIB_DIR}")
+
+SET(NGRAPH_SHARED_LIB      ${NGRAPH_LIB_DIR}/${NGRAPH_SHARED_LIB_NAME})
+SET(NGRAPH_CPU_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_CPU_LIB_NAME})
+SET(NGRAPH_TBB_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_TBB_LIB_NAME})
 
 # Workaround for nGraph expecting mklml to be in mkldnn install directory.
 ExternalProject_Add_Step(
