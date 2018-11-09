@@ -64,8 +64,7 @@ class SplitIdsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.MultiInput<framework::Tensor>("Ids").front()->type()),
+        framework::GetDataTypeOfVar(ctx.MultiInputVar("Ids").front()),
         ctx.GetPlace());
   }
 };
