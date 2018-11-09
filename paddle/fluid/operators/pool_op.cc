@@ -264,7 +264,7 @@ Example:
 
 class PoolOpInferVarType : public framework::VarTypeInferenceHelper {
  protected:
-  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+  std::unordered_map<std::string, std::string> PassInputTypeAndDTypeToOutput()
       const override {
     return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }

@@ -172,7 +172,7 @@ The required data format for this layer is one of the following:
 
 class BatchNormOpInferVarType : public framework::VarTypeInferenceHelper {
  protected:
-  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+  std::unordered_map<std::string, std::string> PassInputTypeAndDTypeToOutput()
       const override {
     return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
   }
