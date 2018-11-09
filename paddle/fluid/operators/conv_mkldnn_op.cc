@@ -511,8 +511,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             src_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(
                 src_tz, memory::data_type::u8, chosen_memory_format)));
             weights_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(
-                weights_tz, memory::data_type::s8,
-                (g == 1) ? chosen_memory_format : mkldnn::memory::format::goihw)));
+                weights_tz, memory::data_type::s8, chosen_memory_format)));
             auto dst_dt = fuse_relu? paddle::framework::ToMKLDNNDataType(std::type_index(typeid(unsigned char))) : paddle::framework::ToMKLDNNDataType(std::type_index(typeid(signed char)));
             if(fuse_residual_conn){
                 auto residual = ctx.Input<Tensor>("ResidualData");
