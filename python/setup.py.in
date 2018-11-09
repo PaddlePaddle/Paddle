@@ -184,27 +184,27 @@ if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
 
-# change rpath of core.so, add $ORIGIN/../libs/ to it.
-# The reason is that libwarpctc.so, libiomp5.so etc are in paddle.libs, and
-# core.so is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+# change rpath of core.ext, add $ORIGIN/../libs/ to it.
+# The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
+# core.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 if '${CMAKE_BUILD_TYPE}' == 'Release':
     if os.name != 'nt':
-        # only change rpath in Release mode, since in Debug mode, core.so is too large to be changed.
+        # only change rpath in Release mode, since in Debug mode, core.xx is too large to be changed.
         if "@APPLE@" == "1":
             command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
         else:
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
         if os.system(command) != 0:
-            raise Exception("patch core.so failed, command: %s" % command)
+            raise Exception("patch core.%s failed, command: %s" % (ext_name, command))
         if '${WITH_FLUID_ONLY}'== 'OFF':
-            # change rpath of _swig_paddle.so.
+            # change rpath of _swig_paddle.xx.
             if "@APPLE@" == "1":
                 command = "install_name_tool -id \"@loader_path/../paddle/libs/\" ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle" + ext_name
             else:
                 command = "patchelf --set-rpath '$ORIGIN/../paddle/libs/' ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle" + ext_name
             if os.system(command) != 0:
-                raise Exception("patch _swig_paddle.so failed, command: %s" % command)
+                raise Exception("patch _swig_paddle.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
