@@ -8091,7 +8091,7 @@ def bilinear_tensor_product(x,
             If it is set to None, the bias is initialized zero. Default: None.
 
     Returns:
-        Variable: A 3-D Tensor of shape [N x M x P] with positional encoding.
+        Variable: A 2-D Tensor of shape [batch_size, size].
 
     Examples:
         .. code-block:: python
