@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/malloc.h"
-
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 DEFINE_bool(init_allocated_mem, false,
@@ -29,11 +29,6 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
-
-DEFINE_string(
-    allocator_strategy, "legacy",
-    "The allocation strategy. Legacy means the original allocator of Fluid."
-    "New means the experimental allocators of Fluid. in [legacy, new]");
 
 namespace paddle {
 namespace memory {
@@ -288,7 +283,8 @@ class LegacyAllocation : public Allocation {
 
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size, Allocator::Attr attr) {
-  if (FLAGS_allocator_strategy == "legacy") {
+  if (allocation::GetAllocatorStrategy() ==
+      allocation::AllocatorStrategy::kLegacy) {
     void* p = boost::apply_visitor(legacy::AllocVisitor(size), place);
     return std::shared_ptr<Allocation>(
         new legacy::LegacyAllocation(p, size, place));
@@ -300,7 +296,8 @@ std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
 
 std::unique_ptr<Allocation> Alloc(const platform::Place& place, size_t size,
                                   Allocator::Attr attr) {
-  if (FLAGS_allocator_strategy == "legacy") {
+  if (allocation::GetAllocatorStrategy() ==
+      allocation::AllocatorStrategy::kLegacy) {
     void* p = boost::apply_visitor(legacy::AllocVisitor(size), place);
     return std::unique_ptr<Allocation>(
         new legacy::LegacyAllocation(p, size, place));
