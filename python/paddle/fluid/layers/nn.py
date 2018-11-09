@@ -160,6 +160,7 @@ __all__ = [
     'affine_grid',
     'sequence_reverse',
     'affine_channel',
+    'similarity_focus',
     'hash',
     'grid_sampler',
     'log_loss',
@@ -7930,6 +7931,118 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
+    return out
+
+
+def similarity_focus(input, axis, indexes, name=None):
+    """  
+    SimilarityFocus Operator
+
+    Generate a similarity focus mask with the same shape of input using the following method:
+    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
+       to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
+       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+       is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
+    2. For each index, find the largest numbers in the tensor T, so that the same 
+       row and same column has at most one number(what it means is that if the 
+       largest number has been found in the i-th row and the j-th column, then 
+       the numbers in the i-th row or j-th column will be skipped. And then the 
+       next largest number will be selected from the remaining numbers. Obviously 
+       there will be min(B, C) numbers), and mark the corresponding position of the 
+       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+       each index.
+    3. Broadcast the 3-D similarity focus mask to the same shape of input X.
+
+    Refer to `Similarity Focus Layer <http://www.aclweb.org/anthology/N16-1108>`_
+
+    .. code-block:: text
+
+        * Example :
+
+            Given a 4-D tensor x with the shape (BatchSize, C, A, B), where C is
+            the number of channels and the shape of feature map is (A, B):
+                x.shape = (2, 3, 2, 2)
+                x.data = [[[[0.8, 0.1],
+                            [0.4, 0.5]],
+
+                           [[0.9, 0.7],
+                            [0.9, 0.9]],
+
+                           [[0.8, 0.9],
+                            [0.1, 0.2]]],
+
+
+                          [[[0.2, 0.5],
+                            [0.3, 0.4]],
+
+                           [[0.9, 0.7],
+                            [0.8, 0.4]],
+
+                           [[0.0, 0.2],
+                            [0.4, 0.7]]]]
+
+            Given axis: 1 (the axis of the channel)
+            Given indexes: [0]
+
+            then we get a 4-D tensor out with the same shape of input x:
+                out.shape = (2, 3, 2, 2)
+                out.data = [[[[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]]],
+
+                            [[[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]]]]
+
+    Args:
+        input(Variable): The input tensor variable(default float). It should 
+            be a 4-D tensor with shape [BatchSize, A, B, C].
+        axis(int): Indicating the dimension to be selected. It can only be
+            1, 2 or 3.
+        indexes(list): Indicating the indexes of the selected dimension.
+
+    Returns:
+        Variable: A tensor variable with the same shape and same type 
+            as the input.
+        
+    Examples:
+        .. code-block:: python
+            data = fluid.layers.data(
+              name='data', shape=[2, 3, 2, 2], dtype='float32')
+            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[0])
+    """
+    helper = LayerHelper('similarity_focus', **locals())
+    # check attrs
+    if isinstance(axis, int) is False:
+        raise TypeError("axis must be int type.")
+    if isinstance(indexes, list) is False:
+        raise TypeError("indexes must be list type.")
+    if axis != 1 and axis != 2 and axis != 3:
+        raise ValueError("axis must be 1, 2 or 3.")
+    if len(indexes) == 0:
+        raise ValueError("indexes can not be empty.")
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+    helper.append_op(
+        type='similarity_focus',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={"axis": axis,
+               "indexes": indexes})
     return out
 
 
