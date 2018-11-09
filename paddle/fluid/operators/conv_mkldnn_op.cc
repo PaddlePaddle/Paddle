@@ -566,8 +566,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             src_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(
                 src_tz, platform::MKLDNNGetDataType<float>(), chosen_memory_format)));
             weights_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(
-                weights_tz, platform::MKLDNNGetDataType<float>(),
-                (g == 1) ? chosen_memory_format : mkldnn::memory::format::goihw)));
+                weights_tz, platform::MKLDNNGetDataType<float>(), chosen_memory_format)));
             dst_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(
                 dst_tz, platform::MKLDNNGetDataType<float>(), chosen_memory_format)));
             mds[2] = src_md;
