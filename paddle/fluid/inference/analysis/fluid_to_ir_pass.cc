@@ -29,7 +29,7 @@ void FluidToIrPass::EnableParamModify(const std::string &model_dir,
   PADDLE_ENFORCE(argument_);
   argument_->Set(framework::ir::kParamScopeAttr, new framework::Scope);
   // Load parameters.
-  VLOG(3) << "Loading parameters from " << model_dir;
+  VLOG(30) << "Loading parameters from " << model_dir;
   LoadParams(&argument_->Get<framework::Scope>(framework::ir::kParamScopeAttr),
              model_dir, prog_file, param_file);
 }
