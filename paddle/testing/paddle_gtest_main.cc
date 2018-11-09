@@ -27,10 +27,12 @@ int main(int argc, char** argv) {
     new_argv.push_back(argv[i]);
   }
 #ifdef PADDLE_WITH_CUDA
-  new_argv.push_back(strdup("--tryfromenv=fraction_of_gpu_memory_to_use"));
+  new_argv.push_back(
+      strdup("--tryfromenv=fraction_of_gpu_memory_to_use,allocator_strategy"));
 #else
-  new_argv.push_back(strdup(
-      "--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_mb"));
+  new_argv.push_back(
+      strdup("--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_"
+             "mb,allocator_strategy"));
   new_argv.push_back(strdup("--undefok=use_mkldnn,initial_cpu_memory_in_mb"));
 #endif
   int new_argc = static_cast<int>(new_argv.size());

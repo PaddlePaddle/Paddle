@@ -30,9 +30,10 @@ DEFINE_bool(init_allocated_mem, false,
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
-DEFINE_bool(use_legacy_allocator, true,
-            "Whether to use the legacy allocator. If the new allocators have"
-            "been well tested, we should remove these flag.");
+DEFINE_string(
+    allocator_strategy, "legacy",
+    "The allocation strategy. Legacy means the original allocator of Fluid."
+    "New means the experimental allocators of Fluid. in [legacy, new]");
 
 namespace paddle {
 namespace memory {
@@ -274,15 +275,11 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace& cuda_pinned) const {
 #endif
 }
 
-size_t memory_usage(const platform::Place& p) {
-  return boost::apply_visitor(Usage(), p);
-}
-
 class LegacyAllocation : public Allocation {
  public:
   using Allocation::Allocation;
 
-  ~LegacyAllocation() {
+  ~LegacyAllocation() final {
     boost::apply_visitor(FreeVisitor(this->ptr()), this->place());
   }
 };
@@ -291,7 +288,7 @@ class LegacyAllocation : public Allocation {
 
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size, Allocator::Attr attr) {
-  if (FLAGS_use_legacy_allocator) {
+  if (FLAGS_allocator_strategy == "legacy") {
     void* p = boost::apply_visitor(legacy::AllocVisitor(size), place);
     return std::shared_ptr<Allocation>(
         new legacy::LegacyAllocation(p, size, place));
@@ -303,7 +300,7 @@ std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
 
 std::unique_ptr<Allocation> Alloc(const platform::Place& place, size_t size,
                                   Allocator::Attr attr) {
-  if (FLAGS_use_legacy_allocator) {
+  if (FLAGS_allocator_strategy == "legacy") {
     void* p = boost::apply_visitor(legacy::AllocVisitor(size), place);
     return std::unique_ptr<Allocation>(
         new legacy::LegacyAllocation(p, size, place));
