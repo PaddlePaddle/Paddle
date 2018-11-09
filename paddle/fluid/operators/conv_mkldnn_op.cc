@@ -339,6 +339,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
 
@@ -519,6 +520,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                 if(dst_dt != residual_dt)
                     dst_dt = residual_dt;
             }
+            if(force_fp32_output)
+                dst_dt = fuse_relu? paddle::framework::ToMKLDNNDataType(std::type_index(typeid(float)));
             dst_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(dst_tz, dst_dt, chosen_memory_format)));
             mds[2] = src_md;
             mds[3] = weights_md;
