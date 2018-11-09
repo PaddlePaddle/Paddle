@@ -4049,8 +4049,8 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[7], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
