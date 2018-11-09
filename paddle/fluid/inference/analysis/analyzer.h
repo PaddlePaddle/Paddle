@@ -55,9 +55,6 @@ class Analyzer final {
 
  protected:
   void RunIrAnalysis(Argument* argument);
-
- private:
-  std::vector<std::string> ir_passes_;
 };
 
 }  // namespace analysis

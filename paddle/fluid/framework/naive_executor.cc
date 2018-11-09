@@ -37,7 +37,7 @@ static void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -57,65 +57,58 @@ static void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   }
 }
 
-void NaiveExecutor::Prepare(Scope *parent_scope,
-                            const ProgramDesc &program_desc, int block_id,
-                            bool with_feed_fetch_ops) {
-  if (!parent_scope) {
+void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
+                            int block_id, bool with_feed_fetch_ops) {
+  if (!scope) {
     scope_ = new framework::Scope;
   } else {
-    scope_ = &parent_scope->NewScope();
+    scope_ = scope;
   }
-  CreateVariables(program_desc, scope_, block_id);
+
+  VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
 void NaiveExecutor::Run() {
   for (auto &op : ops_) {
-    VLOG(3) << "run " << op->Type();
+    VLOG(3) << std::this_thread::get_id() << " run " << op->Type()
+            << " on scope " << scope_;
     op->Run(*scope_, place_);
   }
 }
 
-void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
-                                    int block_id) {
-  PADDLE_ENFORCE(scope);
+void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
+                                    bool persistable, Scope *scope) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
+
   auto &global_block = desc.Block(block_id);
 
-  const Scope *ancestor_scope = scope;
-  while (ancestor_scope->parent()) {
-    ancestor_scope = ancestor_scope->parent();
+  const auto *anc = scope;
+  PADDLE_ENFORCE(anc->parent() != anc);
+  while (anc->parent()) {
+    anc = anc->parent();
+    LOG(INFO) << "get anc scope " << anc;
   }
 
-  if (ancestor_scope != scope) {
-    for (auto &var : global_block.AllVars()) {
-      LOG(INFO) << "creating var " << var->Name();
-      if (var->Name() == framework::kEmptyVarName) {
-        continue;
-      }
-      // Create persistable vars in ancestor scope.
-      if (var->Persistable()) {
-        // Skip the parameters that has been created.
-        LOG(INFO) << "scope has " << scope->LocalVarNames().size();
-        if (scope->FindVar(var->Name())) continue;
-        auto *ptr = const_cast<Scope *>(ancestor_scope)->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
-      } else {  // Create temporary variables in local scope.
-        auto *ptr = scope->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
-      }
+  for (auto &var : global_block.AllVars()) {
+    if (var->Name() == framework::kEmptyVarName) {
+      continue;
     }
-  } else {
-    for (auto &var : global_block.AllVars()) {
-      auto *ptr = scope->Var(var->Name());
-      // Skip the parameters that has been created.
-      if (var->Persistable() && scope->FindVar(var->Name())) continue;
-      InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+
+    if (persistable == var->Persistable()) {
+      if (persistable) {
+        if (!anc->FindVar(var->Name())) {
+          auto *ptr = const_cast<Scope *>(anc)->Var(var->Name());
+          VLOG(4) << scope << " Create persistable variable " << var->Name()
+                  << ", which pointer is " << ptr;
+          InitializeVariable(ptr, var->GetType());
+        }
+      } else {
+        auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
+        VLOG(4) << scope << " Create variable " << var->Name()
+                << ", which pointer is " << ptr;
+        InitializeVariable(ptr, var->GetType());
+      }
     }
   }
 }
@@ -150,23 +143,6 @@ void NaiveExecutor::CleanFeedFetchOps() {
     }
   }
   ops_.swap(ops);
-}
-
-void NaiveExecutor::EnableMKLDNN(const ProgramDesc &program) {
-#ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
-  for (size_t block_id = 0; block_id < program.Size(); ++block_id) {
-    auto *block = const_cast<ProgramDesc &>(program).MutableBlock(block_id);
-    for (auto *op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
-        op->SetAttr("use_mkldnn", true);
-      }
-    }
-  }
-#else
-  LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
-#endif
 }
 
 }  // namespace framework

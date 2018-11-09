@@ -20,17 +20,19 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type,
+void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs) {
+           const std::vector<std::string>& outputs, bool use_mkldnn = false) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   if (type == "conv2d") {
-    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("use_mkldnn", use_mkldnn);
+    op->SetAttr("name", name);
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     op->SetInput("Bias", {inputs[2]});
   } else if (type == "relu") {
+    op->SetAttr("use_mkldnn", use_mkldnn);
     op->SetInput("X", inputs);
   }
   op->SetOutput("Out", outputs);
@@ -43,7 +45,8 @@ void SetOp(ProgramDesc* prog, const std::string& type,
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
   for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g"})) {
+       std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g",
+                                 "h", "weights2", "bias2", "k", "l"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights" || v == "bias") {
@@ -51,14 +54,24 @@ ProgramDesc BuildProgramDesc() {
     }
   }
 
-  SetOp(&prog, "OP0", std::vector<std::string>({"a"}),
+  SetOp(&prog, "OP0", "op0", std::vector<std::string>({"a"}),
         std::vector<std::string>({"b"}));
-  SetOp(&prog, "OP1", std::vector<std::string>({"b"}),
+  SetOp(&prog, "OP1", "op1", std::vector<std::string>({"b"}),
         std::vector<std::string>({"c"}));
-  SetOp(&prog, "conv2d", std::vector<std::string>({"c", "weights", "bias"}),
-        std::vector<std::string>({"f"}));
-  SetOp(&prog, "relu", std::vector<std::string>({"f"}),
-        std::vector<std::string>({"g"}));
+  // conv+relu, both with MKL-DNN
+  SetOp(&prog, "conv2d", "conv1",
+        std::vector<std::string>({"c", "weights", "bias"}),
+        std::vector<std::string>({"f"}), true);
+  SetOp(&prog, "relu", "relu1", std::vector<std::string>({"f"}),
+        std::vector<std::string>({"g"}), true);
+  SetOp(&prog, "OP3", "op3", std::vector<std::string>({"g"}),
+        std::vector<std::string>({"h"}));
+  // conv+relu, only one with MKL-DNN
+  SetOp(&prog, "conv2d", "conv2",
+        std::vector<std::string>({"h", "weights2", "bias2"}),
+        std::vector<std::string>({"k"}), true);
+  SetOp(&prog, "relu", "relu2", std::vector<std::string>({"k"}),
+        std::vector<std::string>({"l"}));
 
   return prog;
 }
@@ -88,10 +101,16 @@ TEST(ConvReLUFusePass, basic) {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(boost::get<bool>(op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_relu"));
-      bool fuse_relu = boost::get<bool>(op->GetAttr("fuse_relu"));
-      if (fuse_relu) {
-        ++conv_relu_count;
+      // check if only "conv1" convolution is fused
+      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      if (op_name == "conv1") {
+        ASSERT_TRUE(op->HasAttr("fuse_relu"));
+        bool fuse_relu = boost::get<bool>(op->GetAttr("fuse_relu"));
+        if (fuse_relu) {
+          ++conv_relu_count;
+        }
+      } else if (op_name == "conv2") {
+        ASSERT_FALSE(op->HasAttr("fuse_relu"));
       }
     }
   }

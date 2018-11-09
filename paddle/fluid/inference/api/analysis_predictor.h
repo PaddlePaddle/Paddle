@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -51,6 +52,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   bool ZeroCopyRun() override;
 
+  void CreateFeedFetchVar(framework::Scope *scope);
   void PrepareFeedFetch();
 
   void OptimizeInferenceProgram();
@@ -59,11 +61,12 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  framework::Scope *scope() { return executor_->scope(); }
+  framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
  protected:
   bool LoadProgramDesc();
+  bool LoadParameters();
 
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);
@@ -72,6 +75,7 @@ class AnalysisPredictor : public PaddlePredictor {
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
+  ~AnalysisPredictor();
 
  private:
   contrib::AnalysisConfig config_;
@@ -87,6 +91,7 @@ class AnalysisPredictor : public PaddlePredictor {
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
+  details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
 };
 
 }  // namespace paddle

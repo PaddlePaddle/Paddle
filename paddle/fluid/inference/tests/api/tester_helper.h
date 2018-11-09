@@ -20,6 +20,7 @@
 #include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -50,7 +51,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
     auto &ref_out = ref_outputs[i];
     size_t size = VecReduceToInt(out.shape);
     size_t ref_size = VecReduceToInt(ref_out.shape);
-    EXPECT_GT(size, 0);
+    EXPECT_GT(size, 0UL);
     EXPECT_EQ(size, ref_size);
     EXPECT_EQ(out.dtype, ref_out.dtype);
     switch (out.dtype) {
@@ -77,11 +78,9 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const AnalysisConfig &config, bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig,
-                                 PaddleEngineKind::kAnalysis>(config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(config);
   } else {
-    return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-        config);
+    return CreatePaddlePredictor<NativeConfig>(config);
   }
 }
 
@@ -137,29 +136,47 @@ void TestMultiThreadPrediction(
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
-  // because AttentionLSTM's hard code nodeid will be damanged.
-  for (int tid = 0; tid < num_threads; ++tid) {
-    predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  // because AttentionLSTM's hard code nodeid will be damaged.
+  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  for (int tid = 1; tid < num_threads; ++tid) {
+    predictors.emplace_back(predictors.front()->Clone());
   }
+
+  size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
-      std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;
       std::vector<PaddleTensor> outputs_tid;
+      auto &predictor = predictors[tid];
+      LOG(INFO) << "running thread " << tid;
       Timer timer;
       timer.tic();
       for (int i = 0; i < num_times; i++) {
-        for (size_t j = 0; j < inputs_tid.size(); j++) {
-          predictors[tid]->Run(inputs_tid[j], &outputs_tid);
+        for (const auto &input : inputs) {
+          ASSERT_TRUE(predictor->Run(input, &outputs_tid));
         }
       }
-      PrintTime(batch_size, num_times, num_threads, tid,
-                timer.toc() / num_times, inputs_tid.size());
+
+      auto time = timer.toc();
+      total_time += time;
+      PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
+                inputs.size());
     });
   }
   for (int i = 0; i < num_threads; ++i) {
     threads[i].join();
+  }
+
+  if (FLAGS_test_all_data) {
+    LOG(INFO) << "threads average time: "
+              << static_cast<double>(total_time) /
+                     (num_threads * inputs.size() * batch_size * num_times);
+  } else {
+    LOG(INFO) << "threads average time: "
+              << static_cast<double>(total_time) /
+                     (num_threads * batch_size * num_times)
+              << " ms";
   }
 }
 
@@ -167,7 +184,8 @@ void TestPrediction(const AnalysisConfig &config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
-  LOG(INFO) << "use_analysis: " << use_analysis;
+  LOG(INFO) << "use_analysis: " << use_analysis
+            << ", use_mkldnn: " << config._use_mkldnn;
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -179,6 +197,7 @@ void TestPrediction(const AnalysisConfig &config,
 void CompareNativeAndAnalysis(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
+  LOG(INFO) << "use_mkldnn: " << config._use_mkldnn;
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);

@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence_pooling.h"
 #include <string>
+
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/sequence_pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -156,6 +158,31 @@ class FirstSeqPoolFunctor {
 };
 
 template <typename T>
+class SumSeqPoolGradFunctor {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& out_grad,
+                  framework::LoDTensor* in_grad) {
+    auto lod = in_grad->lod()[0];
+    int64_t out_w = out_grad.numel() / out_grad.dims()[0];
+    int64_t in_w = in_grad->numel() / in_grad->dims()[0];
+    PADDLE_ENFORCE(in_w == out_w);
+    const T* out_g_data = out_grad.data<T>();
+    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      int64_t in_offset = lod[i] * in_w;
+      const T* out_pos = out_g_data + i * out_w;
+      T* in_pos = in_g_data + in_offset;
+      for (int r = 0; r != h; ++r) {
+        blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
+      }
+    }
+  }
+};
+
+template <typename T>
 class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
   /* max pool has index output */
@@ -180,6 +207,7 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
     }
     auto lod = input.lod()[0];
     auto& place = *context.eigen_device();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       Tensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
@@ -191,7 +219,14 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       if (pooltype == "AVERAGE") {
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
       } else if (pooltype == "SUM") {
-        out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
+        if (h > 0) {
+          const T* in_data = in_t.data<T>();
+          T* out_data = out_t.mutable_data<T>(context.GetPlace());
+          blas.VCOPY(w, in_data, out_data);
+          for (int64_t r = 1; r != h; ++r) {
+            blas.AXPY(w, 1., in_data + r * w, out_data);
+          }
+        }
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
@@ -221,6 +256,13 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(context, in_grad, 0);
     }
+
+    if (pooltype == "SUM") {
+      math::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      sum_pool_grad(context, out_grad, in_grad);
+      return;
+    }
+
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
@@ -236,8 +278,6 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
       if (pooltype == "AVERAGE") {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
-      } else if (pooltype == "SUM") {
-        in_g_e.device(place) = (out_g_e).broadcast(bcast);
       } else if (pooltype == "SQRT") {
         in_g_e.device(place) =
             (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);

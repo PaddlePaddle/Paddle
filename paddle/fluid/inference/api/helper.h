@@ -156,6 +156,26 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
   return os.str();
 }
 
+static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name() << "]\n";
+
+  os << " - shape: " << to_string(tensor.shape()) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod()) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+  PaddlePlace place;
+  int size;
+  const auto *data = tensor.data<float>(&place, &size);
+  for (int i = 0; i < size; i++) {
+    os << data[i] << " ";
+  }
+  return os.str();
+}
+
 static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat

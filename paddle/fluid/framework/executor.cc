@@ -46,6 +46,41 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
+template <typename RefCntMap>
+static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
+                                GarbageCollector<Tensor>* gc,
+                                RefCntMap* ref_cnts) {
+  std::unordered_set<Tensor*> erase_tensors;
+
+  auto handler = [&](const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto it = ref_cnts->find(name);
+        if (it == ref_cnts->end()) continue;
+        if ((it->second)-- == 1) {
+          auto* var = scope.FindVar(name);
+          if (var != nullptr) {
+            VLOG(10) << "Erase tensor \'" << name << "\'";
+            if (var->IsType<LoDTensor>()) {
+              erase_tensors.insert(var->GetMutable<LoDTensor>());
+            } else if (var->IsType<SelectedRows>()) {
+              erase_tensors.insert(
+                  var->GetMutable<SelectedRows>()->mutable_value());
+            }
+          }
+        }
+      }
+    }
+  };
+
+  handler(op->Inputs());
+  handler(op->Outputs());
+
+  if (!erase_tensors.empty()) {
+    gc->Add(erase_tensors);
+  }
+}
+
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
@@ -66,7 +101,7 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope*>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -322,6 +357,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -331,9 +367,13 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
-
   std::unique_ptr<GarbageCollector<Tensor>> gc;
-  if (max_memory_size >= 0) {
+  // WhileOp would set keep_kids to false
+  // WhileGradOp would need the scopes created in WhileOp
+  // Perhaps, we should not perform eager deletion in WhileOp
+  // The scopes and variables created by WhileOp would be deleted
+  // in WhileGradOp.
+  if (max_memory_size >= 0 && !keep_kids) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
@@ -352,45 +392,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     op->Run(*local_scope, place_);
 
     if (gc != nullptr) {
-      std::vector<std::string> erase_vars;
-      for (auto& input : op->Inputs()) {
-        for (auto& input_name : input.second) {
-          auto it = ctx->cur_ref_cnts_.find(input_name);
-          if (it == ctx->cur_ref_cnts_.end()) continue;
-          if (it->second == 1) {  // should delete it
-            erase_vars.emplace_back(input_name);
-            ctx->cur_ref_cnts_.erase(input_name);
-          } else {
-            --(it->second);
-          }
-        }
-      }
-
-      for (auto& output : op->Outputs()) {
-        for (auto& output_name : output.second) {
-          auto it = ctx->cur_ref_cnts_.find(output_name);
-          if (it == ctx->cur_ref_cnts_.end()) continue;
-          if (it->second == 1) {
-            erase_vars.emplace_back(output_name);
-            ctx->cur_ref_cnts_.erase(output_name);
-          } else {
-            --(it->second);
-          }
-        }
-      }
-
-      if (!erase_vars.empty()) {
-        std::vector<framework::LoDTensor*> erase_tensors;
-        for (auto& name : erase_vars) {
-          auto* var = local_scope->FindVar(name);
-          if (var == nullptr) continue;
-          if (var->IsType<framework::LoDTensor>()) {
-            auto* tensor = var->GetMutable<framework::LoDTensor>();
-            erase_tensors.push_back(tensor);
-          }
-        }
-        if (!erase_tensors.empty()) gc->Add(erase_tensors);
-      }
+      DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
+                          &(ctx->cur_ref_cnts_));
     }
 
     if (FLAGS_benchmark) {

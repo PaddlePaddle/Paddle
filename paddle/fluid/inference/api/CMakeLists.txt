@@ -31,10 +31,17 @@ function(inference_api_test TARGET_NAME)
         set(multiValueArgs ARGS)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-        cc_test(${TARGET_NAME}
-                SRCS ${inference_test_SRC}
-                DEPS "${inference_deps}"
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+	if (WITH_GPU)
+		cc_test(${TARGET_NAME}
+			SRCS ${inference_test_SRC}
+			DEPS "${inference_deps}"
+			ARGS --dirname=${PYTHON_TESTS_DIR}/book/ --fraction_of_gpu_memory_to_use=0.15)
+        else()
+		cc_test(${TARGET_NAME}
+			SRCS ${inference_test_SRC}
+			DEPS "${inference_deps}"
+			ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+	endif()
         if(inference_test_ARGS)
             set_tests_properties(${TARGET_NAME}
                     PROPERTIES DEPENDS "${inference_test_ARGS}")
@@ -43,10 +50,11 @@ function(inference_api_test TARGET_NAME)
 endfunction(inference_api_test)
 
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope paddle_pass_builder)
+cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope paddle_pass_builder reset_tensor_array)
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor reset_tensor_array)
 cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS paddle_inference_api)
 cc_library(zero_copy_tensor_dummy SRCS details/zero_copy_tensor_dummy.cc DEPS paddle_inference_api)
-cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor ir_pass_manager)
 
 
 cc_test(test_paddle_inference_api

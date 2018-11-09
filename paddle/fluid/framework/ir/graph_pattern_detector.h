@@ -128,6 +128,15 @@ struct PDNode {
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
 
+  template <typename T>
+  PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
+    asserts_.emplace_back([=](Node* x) {
+      return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
+             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+    });
+    return this;
+  }
+
  private:
   PDNode(PDPattern* pattern, const std::string& name = "",
          Type type = Type::kVar)
@@ -434,6 +443,31 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// SEQCONV with Elementwise_Add ReLU
+// op: seqconv + elementwise_add + relu
+// named nodes:
+// seqconv_input, seqconv_weight,
+// seqconv_out, seqconv,
+// elementwise_add_bias, elementwise_add_out, elementwise_add
+// relu_out, relu
+struct SeqConvEltAddRelu : public PatternBase {
+  SeqConvEltAddRelu(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "seqconv_eltadd_relu") {}
+
+  PDNode* operator()(PDNode* seqconv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(seqconv);
+  PATTERN_DECL_NODE(eltadd);
+  PATTERN_DECL_NODE(relu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(seqconv_weight);
+  PATTERN_DECL_NODE(seqconv_out);
+  PATTERN_DECL_NODE(eltadd_bias);
+  PATTERN_DECL_NODE(eltadd_out);
+  PATTERN_DECL_NODE(relu_out);
+};
+
 // FC with bias
 // op: mul + elementwise_add
 // named nodes:
@@ -577,6 +611,65 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(d_ele_x);
   PATTERN_DECL_NODE(d_ele_y);
   PATTERN_DECL_NODE(ele_y);
+};
+
+// Conv with Elementwise_add as bias
+// op: conv + elementwise_add
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// eltwise_bias, eltwise_out,
+// elementwise_add
+struct ConvBias : public PatternBase {
+  ConvBias(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bias") {}
+  PDNode* operator()(PDNode* conv_input);
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(eltwise);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(eltwise_bias);
+  PATTERN_DECL_NODE(eltwise_out);
+};
+
+// Convolution op
+// Forward pass for convolution.
+// conv_input, conv_bias and conv_filter are inputs.
+// conv_output is a result of the operator.
+// residual_data is data used by skip connection.
+// If residual connection fusion is on, the formula is:
+// conv_output = conv_op(conv_filter, conv_input, conv_bias)
+//             + conv_residual_data
+// If the fusion is off, conv_residual_data is not added.
+struct Conv : public PatternBase {
+  Conv(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "convolution") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_input);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_residual_data);
+  PATTERN_DECL_NODE(conv_output);
+};
+
+// ElementwiseAdd used in residual connections.
+// y_var is used and convolution output.
+// The operator is removed, when residual
+// connection fusion is on.
+struct ElementwiseAdd : public PatternBase {
+  ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_add") {}
+
+  PDNode* operator()(PDNode* x_var);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_x);
+  PATTERN_DECL_NODE(elementwise_add_y);
+  PATTERN_DECL_NODE(elementwise_add_out);
 };
 }  // namespace patterns
 
