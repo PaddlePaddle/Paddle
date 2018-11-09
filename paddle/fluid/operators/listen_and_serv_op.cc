@@ -134,7 +134,6 @@ void ListenAndServOp::RunSyncLoop(
   rpc_service_->ResetBarrierCounter();
 
   while (true) {
-    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -218,23 +217,26 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
   VLOG(2) << "RunAsyncLoop";
-  // grad name to block id
-  std::unordered_map<std::string, int32_t> grad_to_block_id;
-  std::unordered_map<int32_t, std::string> id_to_grad;
-
   auto grad_to_block_id_str =
       Attr<std::vector<std::string>>("grad_to_block_id");
-  for (const auto &grad_and_id : grad_to_block_id_str) {
+  DoubleFindMap<std::string, int32_t> grad_to_block_id;
+
+  auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
+                              const std::string &grad_and_id) {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
-    VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
+    VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
-    PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
+    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0);
 
     int block_id = std::stoi(pieces[1]);
-    grad_to_block_id[pieces[0]] = block_id;
-    id_to_grad[block_id] = pieces[0];
+    (*out_map)[pieces[0]] = block_id;
+  };
+
+  for (const auto &grad_and_id : grad_to_block_id_str) {
+    append_block_maps(&grad_to_block_id, grad_and_id);
   }
+
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
@@ -244,15 +246,22 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
-  // execute global block if needed
-  if (block_list[0] == 1 && id_to_grad.count(1) == 0) {
+  // execute global block if needed, block id 1 in the program is global
+  // block if it's not bind to a grad var for it's update.
+  if (block_list[0] == 1 &&
+      grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
+          grad_to_block_id.end()) {
     executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
   }
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
-      grad_to_prepared_ctx;
+      grad_to_prepared_ctx, param_to_prepared_ctx;
   for (size_t i = 0; i < block_list.size(); ++i) {
-    grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
+    auto blkid = block_list[i];
+    auto it = grad_to_block_id.find_value(blkid);
+    if (it != grad_to_block_id.end()) {
+      grad_to_prepared_ctx[it->first] = optimize_prepared[i];
+    }
   }
 
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
@@ -315,6 +324,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   bool sync_mode = Attr<bool>("sync_mode");
+  bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
@@ -328,8 +338,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
-  request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
+  request_send_handler_.reset(
+      new distributed::RequestSendHandler(sync_mode, dc_sgd));
+  request_get_handler_.reset(
+      new distributed::RequestGetHandler(sync_mode, dc_sgd));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
@@ -443,6 +455,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
+    AddAttr<bool>("dc_asgd", "set to true will enable DC-ASGD training.")
+        .SetDefault(false);
     AddAttr<std::vector<framework::BlockDesc *>>(
         kOptimizeBlocks, "Optimize blocks to run on server side.")
         .SetDefault({});

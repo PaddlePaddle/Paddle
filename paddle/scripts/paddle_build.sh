@@ -147,7 +147,6 @@ function cmake_gen() {
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
-        -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
@@ -180,7 +179,6 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-        -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
@@ -369,7 +367,12 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        ctest --output-on-failure
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            ctest -V
+        else
+            ctest --output-on-failure
+        fi
+
         # make install should also be test when unittest
         make install -j `nproc`
         pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl

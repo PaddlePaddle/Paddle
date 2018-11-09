@@ -37,10 +37,15 @@ class TestDistRunnerBase(object):
             "get_model should be implemented by child classes.")
 
     @staticmethod
-    def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers,
-                       sync_mode):
+    def get_transpiler(trainer_id,
+                       main_program,
+                       pserver_endpoints,
+                       trainers,
+                       sync_mode,
+                       dc_asgd=False):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
+        config.enable_dc_asgd = dc_asgd
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
@@ -55,7 +60,7 @@ class TestDistRunnerBase(object):
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode)
+                                args.trainers, args.sync_mode, args.dc_asgd)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -75,8 +80,7 @@ class TestDistRunnerBase(object):
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
-                                    args.sync_mode)
-
+                                    args.sync_mode, args.dc_asgd)
             trainer_prog = t.get_trainer_program()
         else:
             trainer_prog = fluid.default_main_program()
@@ -94,16 +98,17 @@ class TestDistRunnerBase(object):
         strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
-        if args.batch_merge_repeat > 1:
-            pass_builder = build_stra._create_passes_from_strategy()
-            mypass = pass_builder.insert_pass(
-                len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
-            mypass.set_int("num_repeats", args.batch_merge_repeat)
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         else:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+
+        if args.batch_merge_repeat > 1:
+            pass_builder = build_stra._create_passes_from_strategy()
+            mypass = pass_builder.insert_pass(
+                len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
+            mypass.set_int("num_repeats", args.batch_merge_repeat)
 
         exe = fluid.ParallelExecutor(
             args.use_cuda,
@@ -155,6 +160,7 @@ def runtime_main(test_class):
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
+    parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -200,6 +206,7 @@ class TestDistBase(unittest.TestCase):
         self._enforce_place = None
         self._mem_opt = False
         self._use_reduce = False
+        self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._setup_config()
         self._after_setup_config()

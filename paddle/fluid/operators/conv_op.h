@@ -92,12 +92,12 @@ template <typename DeviceContext, typename T>
 class GemmConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<framework::LoDTensor>("Input");
+    const Tensor* input = context.Input<Tensor>("Input");
     // The filter will be reshaped in the calculations,
     // so here use an assignment operation,
     // that avoids modifying the variable in the Scope.
-    Tensor filter = *context.Input<framework::LoDTensor>("Filter");
-    Tensor* output = context.Output<framework::LoDTensor>("Output");
+    Tensor filter = *context.Input<Tensor>("Filter");
+    Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
     int groups = context.Attr<int>("groups");
