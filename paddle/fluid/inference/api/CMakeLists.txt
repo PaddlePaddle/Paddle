@@ -24,7 +24,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
-cc_library(helper SRCS helper.cc DEPS reset_tensor_array lod_tensor scope)
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS reset_tensor_array lod_tensor scope)
 cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor)
 cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS paddle_inference_api)
@@ -38,8 +37,8 @@ if(WITH_TESTING)
                       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
 endif()
-cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps} paddle_inference_api
-        ARGS --dirname=${PYTHON_TESTS_DIR}/book)
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps}
+        ARGS --dirname=${WORD2VEC_MODEL_DIR})
 
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
