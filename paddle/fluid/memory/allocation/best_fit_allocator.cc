@@ -104,8 +104,8 @@ BestFitAllocator::ListIt BestFitAllocator::SplitChunk(size_t request_size,
   return to_use_it;
 }
 
-void BestFitAllocator::Free(Allocation* allocation) {
-  auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
+void BestFitAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
+  auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation.get());
   auto chunk_it = bf_allocation->ChunkIterator();
   PADDLE_ENFORCE(!chunk_it->is_free);
   chunk_it->is_free = true;

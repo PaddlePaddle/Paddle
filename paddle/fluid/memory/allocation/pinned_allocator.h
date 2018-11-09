@@ -29,7 +29,7 @@ class CPUPinnedAllocation : public Allocation {
 class CPUPinnedAllocator : public UnmanagedAllocator {
  public:
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
-  void Free(Allocation* allocation) override;
+  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
   bool IsAllocThreadSafe() const override;
 };
 
