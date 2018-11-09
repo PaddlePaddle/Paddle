@@ -176,7 +176,7 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
   if (ids.numel() == 0) {
-    VLOG(3) << "keys is empty, please check data!";
+    VLOG(30) << "keys is empty, please check data!";
   } else {
     int64_t value_width = value_->numel() / value_->dims()[0];
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],

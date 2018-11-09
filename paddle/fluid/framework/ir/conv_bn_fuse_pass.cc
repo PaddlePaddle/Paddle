@@ -121,7 +121,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
   int found_conv_bn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle ConvBN fuse";
+    VLOG(40) << "handle ConvBN fuse";
 
     // conv, batch_norm,
     // conv_weight, conv_out,
@@ -133,7 +133,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *batch_norm);
     if (fuse_option == DO_NOT_FUSE) {
-      VLOG(3) << "do not perform conv+bn fuse";
+      VLOG(30) << "do not perform conv+bn fuse";
       return;
     }
 
@@ -241,7 +241,7 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
   int found_conv_bn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle ConvBN fuse";
+    VLOG(40) << "handle ConvBN fuse";
 
     // conv, batch_norm,
     // conv_weight, conv_out,

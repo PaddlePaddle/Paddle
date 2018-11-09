@@ -76,7 +76,7 @@ class Pass {
                    attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
+      VLOG(30) << "deleting " << attr_name;
       delete attr;
     };
   }
