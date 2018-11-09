@@ -8099,12 +8099,12 @@ def bilinear_tensor_product(x,
           position_tensor = fluid.layers.add_position_encoding(input=tensor)
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('x')
 
     param_shape = [size, x.shape[1], y.shape[1]]
 
     w = helper.create_parameter(
-        attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False)
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
