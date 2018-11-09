@@ -521,7 +521,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                     dst_dt = residual_dt;
             }
             if(force_fp32_output)
-                dst_dt = fuse_relu? paddle::framework::ToMKLDNNDataType(std::type_index(typeid(float)));
+                dst_dt = paddle::framework::ToMKLDNNDataType(std::type_index(typeid(float)));
             dst_md.reset(new mkldnn::memory::desc(platform::MKLDNNMemDesc(dst_tz, dst_dt, chosen_memory_format)));
             mds[2] = src_md;
             mds[3] = weights_md;
