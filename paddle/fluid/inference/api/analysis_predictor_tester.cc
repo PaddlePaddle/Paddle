@@ -21,8 +21,55 @@
 DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
-namespace inference {
 using contrib::AnalysisConfig;
+
+TEST(AnalysisPredictor, analysis_off) {
+  AnalysisConfig config(false);
+  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.enable_ir_optim = false;
+
+  auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
+
+  // Without analysis, the scope_ and sub_scope_ are created by predictor
+  // itself.
+  ASSERT_TRUE(predictor->scope_);
+  ASSERT_TRUE(predictor->sub_scope_);
+  ASSERT_EQ(predictor->scope_->parent(), nullptr);
+  ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
+  // ir is turned off, so program shouldn't be optimized.
+  ASSERT_FALSE(predictor->status_program_optimized_);
+  LOG(INFO) << "scope parameters " << predictor->scope_->LocalVarNames().size();
+
+  // 2. Dummy Input Data
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  // std::vector<PaddleTensor> inputs(4, tensor);
+  // std::vector<PaddleTensor> outputs;
+  // ASSERT_TRUE(predictor->Run(inputs, &outputs));
+}
+
+TEST(AnalysisPredictor, analysis_on) {
+  AnalysisConfig config(false);
+  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.enable_ir_optim = true;
+
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  // 2. Dummy Input Data
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> outputs;
+  ASSERT_TRUE(predictor->Run(inputs, &outputs));
+}
 
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
@@ -67,6 +114,7 @@ TEST(AnalysisPredictor, Clone) {
   AnalysisConfig config;
   config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
   config.use_feed_fetch_ops = true;
+  config.enable_ir_optim = true;
 
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   predictors.emplace_back(CreatePaddlePredictor(config));
@@ -117,5 +165,4 @@ TEST(AnalysisPredictor, Clone) {
   }
 }
 
-}  // namespace inference
 }  // namespace paddle

@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "analysis_predictor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -67,24 +68,29 @@ bool AnalysisPredictor::Init(
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
 
-  if (config_.use_gpu) {
-    place_ = paddle::platform::CUDAPlace(config_.device);
-  } else {
-    place_ = paddle::platform::CPUPlace();
+  if (!PrepareScope(parent_scope)) {
+    return false;
+  }
+  if (!PrepareProgram(program)) {
+    return false;
   }
 
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  LOG(INFO) << "scope_: " << scope_.get() << " parent: " << scope_->parent();
+  LOG(INFO) << "subscope_: " << sub_scope_
+            << " parent: " << sub_scope_->parent();
 
-  if (program) {
-    PADDLE_ENFORCE_NOT_NULL(
-        parent_scope,
-        "Both program and parent_scope should be set in Clone mode.");
-    scope_ = parent_scope;
-  } else {
-    paddle::framework::InitDevices(false);
-    scope_.reset(new paddle::framework::Scope());
+  if (!PrepareExecutor()) {
+    return true;
   }
 
+  // Get the feed_target_names and fetch_target_names
+  PrepareFeedFetch();
+
+  return true;
+}
+
+bool AnalysisPredictor::PrepareProgram(
+    const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
 
@@ -92,16 +98,15 @@ bool AnalysisPredictor::Init(
     // scope_.
     // This will change the scope_ address.
     if (config_.enable_ir_optim) {
+      status_ir_optim_enabled_ = true;
       OptimizeInferenceProgram();
     } else {
       // Load parameters
+      LOG(INFO) << "load parameters ";
       LoadParameters();
     }
-
-    LOG(INFO) << "scope_: " << scope_.get();
     // Create local variables
     sub_scope_ = &(scope_->NewScope());
-
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
@@ -109,6 +114,32 @@ bool AnalysisPredictor::Init(
     sub_scope_ = &(scope_->NewScope());
   }
 
+  return true;
+}
+bool AnalysisPredictor::PrepareScope(
+    const std::shared_ptr<framework::Scope> &parent_scope) {
+  if (parent_scope) {
+    PADDLE_ENFORCE_NOT_NULL(
+        parent_scope,
+        "Both program and parent_scope should be set in Clone mode.");
+    scope_ = parent_scope;
+    status_is_cloned_ = true;
+  } else {
+    paddle::framework::InitDevices(false);
+    scope_.reset(new paddle::framework::Scope());
+    status_is_cloned_ = false;
+  }
+  return true;
+}
+bool AnalysisPredictor::PrepareExecutor() {
+  if (config_.use_gpu) {
+    status_use_gpu_ = true;
+    place_ = paddle::platform::CUDAPlace(config_.device);
+  } else {
+    place_ = paddle::platform::CPUPlace();
+  }
+
+  executor_.reset(new paddle::framework::NaiveExecutor(place_));
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
@@ -121,9 +152,6 @@ bool AnalysisPredictor::Init(
   // So in both cases, just the local variables are needed to load, not the
   // parematers.
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-
-  // Get the feed_target_names and fetch_target_names
-  PrepareFeedFetch();
 
   return true;
 }
@@ -250,6 +278,8 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
+  status_program_optimized_ = true;
+
   argument_.SetUseGPU(config_.use_gpu);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
@@ -277,7 +307,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
-  LOG(INFO) << "analyzed scope has vars " << argument_.scope().LocalVarNames().size();
+  LOG(INFO) << "analyzed scope has vars "
+            << argument_.scope().LocalVarNames().size();
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
@@ -315,7 +346,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-  return predictor;
+  return std::move(predictor);
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {

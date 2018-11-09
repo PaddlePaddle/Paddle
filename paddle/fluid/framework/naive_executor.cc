@@ -88,9 +88,11 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
   while (anc->parent()) {
     anc = anc->parent();
     LOG(INFO) << "get anc scope " << anc;
+    break;
   }
 
   for (auto &var : global_block.AllVars()) {
+    LOG(INFO) << "check var " << var->Name();
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
@@ -99,13 +101,13 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
       if (persistable) {
         if (!anc->FindVar(var->Name())) {
           auto *ptr = const_cast<Scope *>(anc)->Var(var->Name());
-          VLOG(4) << scope << " Create persistable variable " << var->Name()
+          VLOG(3) << scope << " Create persistable variable " << var->Name()
                   << ", which pointer is " << ptr;
           InitializeVariable(ptr, var->GetType());
         }
       } else {
         auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
-        VLOG(4) << scope << " Create variable " << var->Name()
+        VLOG(3) << scope << " Create variable " << var->Name()
                 << ", which pointer is " << ptr;
         InitializeVariable(ptr, var->GetType());
       }
