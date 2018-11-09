@@ -189,6 +189,8 @@ void Conv2DOpMaker::Make() {
                 "whenever convolution output is as an input to residual "
                 "connection.")
       .SetDefault(false);
+  AddAttr<bool>("fuse_fp32_output", "(bool, default false) Force INT8 kernel output FP32, only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
