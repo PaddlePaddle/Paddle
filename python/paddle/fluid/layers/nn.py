@@ -27,6 +27,7 @@ from .tensor import concat
 from . import utils
 from .. import unique_name
 from functools import reduce
+from .. import core
 
 __all__ = [
     'fc',
@@ -1666,6 +1667,20 @@ def conv2d(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
+    if use_cudnn:
+        helper.create_variable(
+            name="kCUDNNFwdAlgoCache",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+        helper.create_variable(
+            name="kCUDNNBwdDataAlgoCache",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+        helper.create_variable(
+            name="kCUDNNBwdFilterAlgoCache",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
     helper.append_op(
         type=l_type,
         inputs={
@@ -1679,7 +1694,7 @@ def conv2d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False
+            'use_mkldnn': False,
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
