@@ -8063,13 +8063,13 @@ def bilinear_tensor_product(x,
     For example:
 
     .. math::
-       y_{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,K-1
+       out{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
 
     In this formular:
-      - :math:`x`: the first input contains M elements.
-      - :math:`y`: the second input contains N elements.
-      - :math:`y_{i}`: the i-th element of y.
+      - :math:`x`: the first input contains M elements, shape is [batch_size, M].
+      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
       - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
+      - :math:`out{i}`: the i-th element of out, shape is [batch_size, size].
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     The simple usage is:
@@ -8079,8 +8079,8 @@ def bilinear_tensor_product(x,
        tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
 
     Args:
-        x (Variable): 3-D input tensor with shape [N x M x P]
-        y (Variable): 3-D input tensor with shape [N x M x P]
+        x (Variable): 2-D input tensor with shape [batch_size, M]
+        y (Variable): 2-D input tensor with shape [batch_size, N]
         size (int): The dimension of this layer.
         act (str, default None): Activation to be applied to the output of this layer.
         name (str, default None): The name of this layer.
