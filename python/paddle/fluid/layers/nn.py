@@ -163,10 +163,6 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
 ]
-if os.name != 'nt':
-    __all__.append('dynamic_lstm')
-    __all__.append('crf_decoding')
-    __all__.append('roi_pool')
 
 
 def fc(input,
