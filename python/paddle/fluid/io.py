@@ -402,10 +402,16 @@ def load_vars(executor,
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
+        load_slice_vars = []
+        for each_var in main_program._slice_vars_and_attrs:
+            load_slice_vars.append(each_var[2].name)
+
         load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
+                continue
+            if each_var.name in load_slice_vars:
                 continue
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
