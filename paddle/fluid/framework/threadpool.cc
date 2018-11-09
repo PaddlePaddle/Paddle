@@ -39,7 +39,7 @@ void ThreadPool::Init() {
     int num_threads = std::thread::hardware_concurrency();
     if (FLAGS_dist_threadpool_size > 0) {
       num_threads = FLAGS_dist_threadpool_size;
-      VLOG(1) << "set dist_threadpool_size to " << num_threads;
+      VLOG(10) << "set dist_threadpool_size to " << num_threads;
     }
     PADDLE_ENFORCE_GT(num_threads, 0);
     threadpool_.reset(new ThreadPool(num_threads));

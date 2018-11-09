@@ -51,7 +51,7 @@ void ScaleLossGradOpHandle::RunImpl() {
                         ->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
-      VLOG(10) << place_ << "RUN Scale loss grad op";
+      VLOG(100) << place_ << "RUN Scale loss grad op";
     });
 #endif
   }
