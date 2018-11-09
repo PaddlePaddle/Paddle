@@ -134,13 +134,13 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
-              << " is set to SelectedRows";
+      VLOG(30) << "lookup_table_grad op " << framework::GradVarName("W")
+               << " is set to SelectedRows";
       block->Var(out_var_name)
           ->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
-      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+      VLOG(30) << "lookup_table_grad op " << framework::GradVarName("W")
+               << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
     block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
