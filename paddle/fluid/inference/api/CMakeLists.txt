@@ -37,8 +37,8 @@ if(WITH_TESTING)
                       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
 endif()
-cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps} paddle_inference_api
-        ARGS --dirname=${PYTHON_TESTS_DIR}/book)
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps}
+        ARGS --dirname=${WORD2VEC_MODEL_DIR})
 
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
