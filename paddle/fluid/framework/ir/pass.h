@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -196,7 +195,6 @@ struct PassRegistrar : public Registrar {
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
-#if !defined(_WIN32)
 // Register a new pass that can be applied on the IR.
 #define REGISTER_PASS(pass_type, pass_class)                          \
   STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
@@ -242,7 +240,6 @@ struct PassRegistrar : public Registrar {
   static int UNUSED(use_pass_itself_##pass_type##_) = \
       TouchPassRegistrar_##pass_type()
 
-#endif  // !_WIN32
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <sys/stat.h>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -25,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace inference {
@@ -124,6 +124,20 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   return *var->GetMutable<T>();
 }
 
+static void ExecShellCommand(const std::string &cmd, std::string *message) {
+  char buffer[128];
+  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+  if (!pipe) {
+    LOG(ERROR) << "error running command: " << cmd;
+    return;
+  }
+  while (!feof(pipe.get())) {
+    if (fgets(buffer, 128, pipe.get()) != nullptr) {
+      *message += buffer;
+    }
+  }
+}
+
 static framework::proto::ProgramDesc LoadProgramDesc(
     const std::string &model_path) {
   std::ifstream fin(model_path, std::ios::in | std::ios::binary);
@@ -143,6 +157,16 @@ static bool FileExists(const std::string &filepath) {
   bool exists = file.is_open();
   file.close();
   return exists;
+}
+
+static bool PathExists(const std::string &path) {
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) != -1) {
+    if (S_ISDIR(statbuf.st_mode)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace analysis

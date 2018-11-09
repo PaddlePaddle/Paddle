@@ -29,33 +29,46 @@ using ymm_t = const Xbyak::Ymm;
 using zmm_t = const Xbyak::Zmm;
 using Label = Xbyak::Label;
 
-// function: vec = Operand(vec, vec) (maybe with relu)
 typedef enum { mul = 0, add } operand_type;
 
-class VVVJitCode : public JitCode {
+// function: vec = Operand(vec(or scalar), vec(or scalar)) (maybe with relu)
+class VXXJitCode : public JitCode {
  public:
   const char* name() const override {
-    std::string base = "VVVJitCode";
+    std::string base = "VXXJitCode";
+    if (scalar_index_ == 1) {
+      base += "_Scalar";
+    } else {
+      base += "_Vec";
+    }
     if (type_ == operand_type::mul) {
       base += "_Mul";
     } else if (type_ == operand_type::add) {
       base += "_Add";
     }
-    base += (with_relu_ ? "_relu" : "");
+    if (scalar_index_ == 2) {
+      base += "_Scalar";
+    } else {
+      base += "_Vec";
+    }
+    base += (with_relu_ ? "_Relu" : "");
     return base.c_str();
   }
-  explicit VVVJitCode(int d, operand_type type, bool with_relu,
-                      size_t code_size = 256 * 1024, void* code_ptr = nullptr)
+  explicit VXXJitCode(int d, operand_type type, int scalar_index,
+                      bool with_relu, size_t code_size = 256 * 1024,
+                      void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr),
         num_(d),
         type_(type),
+        scalar_index_(scalar_index),
         with_relu_(with_relu) {}
-  static bool init(int d);
+  static bool init(int d, int scalar_index = 0);
   void generate() override;
 
  private:
   int num_;
   operand_type type_;
+  int scalar_index_;
   bool with_relu_;
   reg64_t param1{abi_param1};
   reg64_t param2{abi_param2};
@@ -63,13 +76,13 @@ class VVVJitCode : public JitCode {
 
   xmm_t xmm_src1 = xmm_t(0);
   xmm_t xmm_src2 = xmm_t(1);
-  xmm_t xmm_dst = xmm_t(1);
-  xmm_t xmm_zero = xmm_t(2);
+  xmm_t xmm_dst = xmm_t(2);
+  xmm_t xmm_zero = xmm_t(3);
 
   ymm_t ymm_src1 = ymm_t(0);
   ymm_t ymm_src2 = ymm_t(1);
-  ymm_t ymm_dst = ymm_t(1);
-  ymm_t ymm_zero = ymm_t(2);
+  ymm_t ymm_dst = ymm_t(2);
+  ymm_t ymm_zero = ymm_t(3);
 };
 
 }  // namespace gen

@@ -19,9 +19,9 @@ namespace framework {
 namespace ir {
 // msvc15 don't support constexpr in correct way.
 #if !defined(_WIN32)
-constexpr char Node::kControlDepVarName[];
+        constexpr char Node::kControlDepVarName[];
 #else
-const char Node::kControlDepVarName[] = "__control_var";
+        const char Node::kControlDepVarName[] = "__control_var";
 #endif
 int Node::count_ = 0;
 

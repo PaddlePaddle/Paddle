@@ -43,7 +43,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
     URL      ${BOOST_URL}
-    DOWNLOAD_NO_PROGRESS  0
+    DOWNLOAD_NO_PROGRESS  1
     PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""

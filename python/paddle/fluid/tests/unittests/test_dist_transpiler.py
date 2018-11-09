@@ -373,9 +373,8 @@ class TestL2Decay(TranspilerTest):
         self.assertEqual(len(pserver.blocks), 3)
         self.assertEqual([op.type for op in pserver.blocks[1].ops],
                          ["sum", "scale", "clip", "sgd"])
-        self.assertEqual(
-            [op.type for op in pserver.blocks[2].ops],
-            ["sum", "scale", "clip", "scale", "elementwise_add", "sgd"])
+        self.assertEqual([op.type for op in pserver.blocks[2].ops],
+                         ["sum", "scale", "clip", "scale", "sum", "sgd"])
         # TODO(typhoonzero): test clipping and L2Decay ops are removed from trainer
 
 
@@ -416,12 +415,10 @@ class TestL2DecayWithPiecewise(TranspilerTest):
             "logical_and", "conditional_block", "fill_constant",
             "conditional_block"
         ])
-        self.assertEqual(
-            [op.type for op in pserver.blocks[7].ops],
-            ["sum", "scale", "scale", "elementwise_add", "momentum"])
-        self.assertEqual(
-            [op.type for op in pserver.blocks[8].ops],
-            ["sum", "scale", "scale", "elementwise_add", "momentum"])
+        self.assertEqual([op.type for op in pserver.blocks[7].ops],
+                         ["sum", "scale", "scale", "sum", "momentum"])
+        self.assertEqual([op.type for op in pserver.blocks[8].ops],
+                         ["sum", "scale", "scale", "sum", "momentum"])
 
 
 class TestEmptyPserverOptimizeBlocks(TranspilerTest):
