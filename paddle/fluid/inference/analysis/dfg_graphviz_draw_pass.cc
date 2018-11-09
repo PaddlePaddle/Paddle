@@ -29,7 +29,7 @@ void DFG_GraphvizDrawPass::Run(DataFlowGraph *graph) {
 
   auto png_path = dot_path.substr(0, dot_path.size() - 4) + ".png";
   std::string message;
-  VLOG(3) << "draw to " << png_path;
+  VLOG(30) << "draw to " << png_path;
   ExecShellCommand("dot -Tpng " + dot_path + " -o " + png_path, &message);
 }
 

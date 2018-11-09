@@ -95,7 +95,7 @@ class ActivationGradKernel
       auto x = framework::EigenVector<T>::Flatten(*X);
       functor(*place, x, out, dout, dx);
     } else {
-      VLOG(10) << " Inplace activation ";
+      VLOG(100) << " Inplace activation ";
       auto x = framework::EigenVector<T>::Flatten(*dX);
       functor(*place, x, out, dout, dx);
     }

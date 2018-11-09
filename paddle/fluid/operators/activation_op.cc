@@ -91,9 +91,10 @@ class ActivationOp : public framework::OperatorWithKernel {
   }
 };
 
-class ActivationOpInferVarType : public framework::InferVarTypeHelper {
+class ActivationOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> ShareTypeAndDType()
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
       const override {
     return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }

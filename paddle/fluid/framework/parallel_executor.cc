@@ -199,7 +199,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
     auto &main_tensor = main_var->Get<LoDTensor>();
     if (!main_tensor.IsInitialized()) {
-      VLOG(3) << "one in var not inited, return!";
+      VLOG(30) << "one in var not inited, return!";
       continue;
     }
     auto &dims = main_tensor.dims();
