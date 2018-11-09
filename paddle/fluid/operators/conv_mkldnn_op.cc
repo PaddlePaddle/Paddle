@@ -655,6 +655,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                 //user_residual_md = GetMdMap(md_map, user_residual_md_key);
             }
             if(is_INT8){
+                PADDLE_ENFORCE(
+                      force_fp32_output == false,
+                      "Conv and sum does not support force_fp32_output");
+
                 if(residual_dt == mkldnn::memory::data_type::u8){
                     auto residual_param_data = residual_param->data<uint8_t>();
                     auto user_residual_memory_p = handler.AcquireResidualDataMemory(
