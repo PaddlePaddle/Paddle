@@ -66,9 +66,11 @@ static void CalcGridLocations(const platform::CPUDeviceContext& ctx,
   Tensor half_xmax;
   Tensor half_ymax;
   half_xmax.mutable_data<T>({n, h, w}, ctx.GetPlace());
-  auto half_xmax_t = EigenTensor<T, 3>::From(half_xmax).setConstant(0.5 * x_max);
+  auto half_xmax_t =
+          EigenTensor<T, 3>::From(half_xmax).setConstant(0.5 * x_max);
   half_ymax.mutable_data<T>({n, h, w}, ctx.GetPlace());
-  auto half_ymax_t = EigenTensor<T, 3>::From(half_ymax).setConstant(0.5 * y_max);
+  auto half_ymax_t =
+          EigenTensor<T, 3>::From(half_ymax).setConstant(0.5 * y_max);
 
   // scale grid to [0, h-1/w-1]
   auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
