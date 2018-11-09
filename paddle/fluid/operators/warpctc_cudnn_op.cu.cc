@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/warpctc_op.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
@@ -59,6 +60,16 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     auto loss_dims =
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
+    // NOTE: cudnn takes softmax input, calculate softmax first, then do padding
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    LoDTensor softmax_logits;
+    softmax_logits.mutable_data<T>(logits->dims(), ctx.GetPlace());
+    softmax_logits.set_lod(logits_lod);
+    int rank = logits->dims().size();
+    Tensor in_2d = framework::ReshapeToMatrix(*logits, rank - 1);
+    Tensor out_2d = framework::ReshapeToMatrix(softmax_logits, rank - 1);
+    math::SoftmaxFunctor<DeviceContext, T>()(dev_ctx, &in_2d, &out_2d);
+
     // ctc needs sequences data stored in transposed padding format
     // logits and grad using padding data of layout 'TNC'
     // T: max_sequence_length
@@ -85,8 +96,9 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     }
 
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
-        pad_value, -1, 0, false /* norm_by_times */, math::kLengthBatchWidth);
+        ctx.template device_context<DeviceContext>(), softmax_logits,
+        &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */,
+        math::kLengthBatchWidth);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
     std::vector<int> warpctc_label_lengths(num_sequences);
@@ -122,7 +134,6 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
         layout, framework::vectorize2int(warpctc_grad->dims()));
     auto cu_ctcloss_desc = ctcloss_desc.descriptor<T>();
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     size_t workspace_size;
 
@@ -172,10 +183,11 @@ class CudnnCTCGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
+#if CUDNN_VERSION >= 7001
 REGISTER_OP_KERNEL(
     warpctc, CUDNN, plat::CUDAPlace,
     ops::CudnnCTCKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_KERNEL(
     warpctc_grad, CUDNN, plat::CUDAPlace,
     ops::CudnnCTCGradKernel<paddle::platform::CUDADeviceContext, float>);
+#endif

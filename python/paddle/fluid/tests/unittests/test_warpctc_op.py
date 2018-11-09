@@ -247,9 +247,13 @@ class TestCudnnCTCOp(TestWarpCTCOp):
         self.num_classes = 8
         self.logits_lod = [[4, 1, 3, 3]]
         self.labels_lod = [[3, 1, 4, 4]]
-        self.blank = self.num_classes - 1
+        self.blank = 0
         self.norm_by_times = False
         self.use_cudnn = True
+
+    def test_check_grad(self):
+        self.outputs['WarpCTCGrad'] = self.gradient
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
 
 
 if __name__ == "__main__":
