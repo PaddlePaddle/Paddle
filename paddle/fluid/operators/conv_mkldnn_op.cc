@@ -785,7 +785,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    if(need_s8_to_u8){
+    if(need_s8_to_u8 && !force_fp32_output){
         output->mutable_data<uint8_t>(ctx.GetPlace());
     }
 
