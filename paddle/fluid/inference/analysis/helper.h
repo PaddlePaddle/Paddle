@@ -125,20 +125,6 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   return *var->GetMutable<T>();
 }
 
-static void ExecShellCommand(const std::string &cmd, std::string *message) {
-  char buffer[128];
-  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-  if (!pipe) {
-    LOG(ERROR) << "error running command: " << cmd;
-    return;
-  }
-  while (!feof(pipe.get())) {
-    if (fgets(buffer, 128, pipe.get()) != nullptr) {
-      *message += buffer;
-    }
-  }
-}
-
 static framework::proto::ProgramDesc LoadProgramDesc(
     const std::string &model_path) {
   std::ifstream fin(model_path, std::ios::in | std::ios::binary);
