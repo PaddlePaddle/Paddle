@@ -93,11 +93,16 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   }
 }
 
-TEST(trt_models_test, main) {
-  std::vector<std::string> infer_models = {"mobilenet", "resnet50",
-                                           "resnext50"};
-  for (auto &model_dir : infer_models) {
-    CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + model_dir);
-  }
+TEST(trt_models_test, mobilenet) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/mobilenet");
 }
+
+TEST(trt_models_test, resnet50) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/resnet50");
+}
+
+TEST(trt_models_test, resnext50) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/resnext50");
+}
+
 }  // namespace paddle
