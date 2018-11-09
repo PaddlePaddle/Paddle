@@ -38,9 +38,9 @@ class MulOp : public framework::OperatorWithKernel {
     int x_num_col_dims = ctx->Attrs().Get<int>("x_num_col_dims");
     int y_num_col_dims = ctx->Attrs().Get<int>("y_num_col_dims");
 
-    VLOG(30) << "mul operator x.shape=" << x_dims << " y.shape=" << y_dims
-             << " x_num_col_dims=" << x_num_col_dims
-             << " y_num_col_dims=" << y_num_col_dims;
+    VLOG(3) << "mul operator x.shape=" << x_dims << " y.shape=" << y_dims
+            << " x_num_col_dims=" << x_num_col_dims
+            << " y_num_col_dims=" << y_num_col_dims;
 
     PADDLE_ENFORCE_GT(
         x_dims.size(), x_num_col_dims,

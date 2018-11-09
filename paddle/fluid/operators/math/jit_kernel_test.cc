@@ -87,7 +87,7 @@ TEST(JitKernel, vrelu) {
         vrelu_intri8(d, x_data, zref_data);
       }
       auto si1 = GetCurrentUS();
-      VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
     }
 #endif
     auto ttgts = GetCurrentUS();
@@ -95,9 +95,8 @@ TEST(JitKernel, vrelu) {
       ker->Compute(x_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -133,9 +132,8 @@ TEST(JitKernel, vaddbias) {
     }
     auto ttgte = GetCurrentUS();
 
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -185,14 +183,13 @@ TEST(JitKernel, vexp) {
     }
     auto ttgte = GetCurrentUS();
 
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
 #ifdef PADDLE_WITH_MKLML
-             << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
+            << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
 #else
-             << " us, "
+            << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -257,10 +254,9 @@ TEST(JitKernel, vsigmoid) {
     }
     auto ttgte = GetCurrentUS();
 
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -325,10 +321,9 @@ TEST(JitKernel, vtanh) {
     }
     auto ttgte = GetCurrentUS();
 
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -446,10 +441,9 @@ TEST(JitKernel, lstm) {
       ker->ComputeCtHt(x_data, ct_1_data, ct_tgt_data, ht_tgt_data);
     }
     auto ttgte = GetCurrentUS();
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, better(jit) takes: " << (tmkle - tmkls) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better(jit) takes: " << (tmkle - tmkls) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
   }
 }
 
@@ -531,8 +525,8 @@ TEST(JitKernel, vscal) {
         vscal_inp_intri8(d, a, y_data);
       }
       auto si3 = GetCurrentUS();
-      VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat
-               << " us, inplace: " << (si3 - si2) / repeat;
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat
+              << " us, inplace: " << (si3 - si2) / repeat;
     }
 #endif
 
@@ -546,17 +540,15 @@ TEST(JitKernel, vscal) {
       ker->Compute(&a, y_data, y_data, d);
     }
     auto ttgte1 = GetCurrentUS();
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, inplace takes: " << (trefe1 - trefs1) / repeat
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, inplace takes: " << (trefe1 - trefs1) / repeat
 #ifdef PADDLE_WITH_MKLML
-             << " us, mkl inplace takes: " << (tmkle - tmkls) / repeat
-             << " us, "
+            << " us, mkl inplace takes: " << (tmkle - tmkls) / repeat << " us, "
 #else
-             << " us, "
+            << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat
-             << "us, tgt inplace takes: " << (ttgte1 - ttgts1) / repeat;
+            << "tgt takes: " << (ttgte - ttgts) / repeat
+            << "us, tgt inplace takes: " << (ttgte1 - ttgts1) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -619,7 +611,7 @@ TEST(JitKernel, vmul) {
         vmul_intri8(d, x_data, y_data, zref_data);
       }
       auto si1 = GetCurrentUS();
-      VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
     }
 #endif
 
@@ -629,14 +621,13 @@ TEST(JitKernel, vmul) {
     }
     auto ttgte = GetCurrentUS();
 
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
 #ifdef PADDLE_WITH_MKLML
-             << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
+            << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
 #else
-             << " us, "
+            << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -699,7 +690,7 @@ TEST(JitKernel, vadd) {
         vadd_intri8(d, x_data, y_data, zref_data);
       }
       auto si1 = GetCurrentUS();
-      VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
     }
 #endif
 
@@ -709,14 +700,13 @@ TEST(JitKernel, vadd) {
     }
     auto ttgte = GetCurrentUS();
 
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
 #ifdef PADDLE_WITH_MKLML
-             << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
+            << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
 #else
-             << " us, "
+            << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -771,10 +761,9 @@ TEST(JitKernel, vaddrelu) {
       ker->Compute(x_data, y_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
-    VLOG(30) << "Vec size " << d
-             << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, better takes: " << (tmkle - tmkls) / repeat << " us, "
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better takes: " << (tmkle - tmkls) / repeat << " us, "
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
