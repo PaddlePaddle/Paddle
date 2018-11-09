@@ -224,6 +224,15 @@ $$
 )DOC");
 }
 
+class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{
+        {"Input", /*->*/ "Output"}};
+  }
+};
+
 void Conv3DOpMaker::Make() {
   AddInput(
       "Input",
@@ -365,6 +374,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
+                  ops::ConvOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
@@ -372,7 +382,9 @@ REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
+                  ops::ConvOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 
