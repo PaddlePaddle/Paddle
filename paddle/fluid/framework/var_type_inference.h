@@ -27,11 +27,11 @@ class VarTypeInference {
   virtual void operator()(const OpDesc& op_desc, BlockDesc* block) const = 0;
 };
 
-class VarTypeInferenceHelper : public framework::VarTypeInference {
+class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc& op_desc,
                   framework::BlockDesc* block) const final {
-    auto in_out_var_names = this->PassInputTypeAndDTypeToOutput();
+    auto in_out_var_names = this->GetInputOutputWithSameType();
 
     for (auto& i_o_n : in_out_var_names) {
       auto& x_name = op_desc.Input(i_o_n.first).at(0);
@@ -46,7 +46,7 @@ class VarTypeInferenceHelper : public framework::VarTypeInference {
 
  protected:
   virtual std::unordered_map<std::string, std::string>
-  PassInputTypeAndDTypeToOutput() const = 0;
+  GetInputOutputWithSameType() const = 0;
 };
 
 }  // namespace framework

@@ -124,9 +124,9 @@ For each row $i$ and each column $j$ in the matrix, we have:
   }
 };
 
-class SoftmaxOpInferVarType : public framework::VarTypeInferenceHelper {
+class SoftmaxOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> PassInputTypeAndDTypeToOutput()
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
       const override {
     return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
