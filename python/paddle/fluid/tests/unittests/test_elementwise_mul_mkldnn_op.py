@@ -49,7 +49,7 @@ class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
-@unittest.skip("Not implemented yet.")
+@unittest.skip("Not implemented yet.") # TODO(mgallus): enable when implemented.
 class TestElementwiseMulMKLDNNOp_BroadcastNCHW8c(ElementwiseMulOp):
     def init_input_output(self):
         x = np.random.rand(1, 8, 2, 2).astype(self.dtype)
@@ -159,8 +159,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNoReorders(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
-@unittest.skip("Not implemented yet.")
-class TestElementwiseMulMKLDNNOp_FallbackWithReorder(ElementwiseMulOp):
+class TestElementwiseMulMKLDNNOp_FallbackWithReorder1(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
         y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
@@ -169,9 +168,64 @@ class TestElementwiseMulMKLDNNOp_FallbackWithReorder(ElementwiseMulOp):
         self.out = self.x * y
 
     def setUp(self):
-        super(TestElementwiseMulMKLDNNOp_FallbackNCHW16C, self).setUp()
+        super(TestElementwiseMulMKLDNNOp_FallbackWithReorder1, self).setUp()
         self.attrs["x_data_format"] = "nchw"
         self.attrs["y_data_format"] = "nchw16c"
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_axis(self):
+        self.axis = 0
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+class TestElementwiseMulMKLDNNOp_FallbackWithReorder2(ElementwiseMulOp):
+    def init_input_output(self):
+        self.y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
+        x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
+        self.x = x.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
+
+        self.out = x * self.y
+
+    def setUp(self):
+        super(TestElementwiseMulMKLDNNOp_FallbackWithReorder2, self).setUp()
+        self.attrs["x_data_format"] = "nchw16c"
+        self.attrs["y_data_format"] = "nchw"
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_axis(self):
+        self.axis = 0
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+class TestElementwiseMulMKLDNNOp_FallbackNoReorders2(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.rand(1, 16).astype(self.dtype)
+        self.y = np.random.rand(1, 16).astype(self.dtype)
+
+        self.out = self.x * self.y
+
+    def setUp(self):
+        super(TestElementwiseMulMKLDNNOp_FallbackNoReorders2, self).setUp()
+        self.attrs["x_data_format"] = "nc"
+        self.attrs["y_data_format"] = "nc"
 
     def init_kernel_type(self):
         self.use_mkldnn = True
