@@ -60,6 +60,10 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
     // ctc needs sequences data stored in transposed padding format
+    // logits and grad using padding data of layout 'TNC'
+    // T: max_sequence_length
+    // N: batch_size (num_sequences)
+    // C: width
     LoDTensor warpctc_logits;
     const size_t max_sequence_length =
         math::MaximumSequenceLength(logits_lod[level]);
@@ -79,16 +83,14 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     } else {
       TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
     }
-    VLOG(3) << "before pad";
 
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
         pad_value, -1, 0, false /* norm_by_times */, math::kLengthBatchWidth);
-    VLOG(3) << "end pad";
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
-    framework::Vector<int> warpctc_label_lengths(num_sequences);
-    framework::Vector<int> warpctc_logits_lengths(num_sequences);
+    std::vector<int> warpctc_label_lengths(num_sequences);
+    std::vector<int> warpctc_logits_lengths(num_sequences);
 
     for (size_t i = 0; i < num_sequences; ++i) {
       warpctc_label_lengths[i] = label_lod[level][i + 1] - label_lod[level][i];
@@ -102,12 +104,11 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), warpctc_grad,
         static_cast<T>(0));
+
+    Tensor warpctc_label;
+    TensorCopySync(*label, platform::CPUPlace(), &warpctc_label);
+    const int* warpctc_label_data = warpctc_label.data<int>();
     // ========================================================================
-
-    const int* label_data = label->data<int>();
-    T* loss_data = loss->mutable_data<T>(ctx.GetPlace());
-
-    // const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
     ScopedTensorDescriptor logits_desc;
     ScopedTensorDescriptor grad_desc;
@@ -116,30 +117,30 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
 
     auto cu_logits_desc = logits_desc.descriptor<T>(
-        layout, framework::vectorize2int(logits->dims()));
+        layout, framework::vectorize2int(warpctc_logits.dims()));
     auto cu_grad_desc = grad_desc.descriptor<T>(
         layout, framework::vectorize2int(warpctc_grad->dims()));
     auto cu_ctcloss_desc = ctcloss_desc.descriptor<T>();
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-
     size_t workspace_size;
 
     CUDNN_ENFORCE(platform::dynload::cudnnGetCTCLossWorkspaceSize(
-        handle, cu_logits_desc, cu_grad_desc, label_data,
-        warpctc_label_lengths.CUDAData(ctx.GetPlace()),
-        warpctc_logits_lengths.CUDAData(ctx.GetPlace()),
+        handle, cu_logits_desc, cu_grad_desc, warpctc_label_data,
+        warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
         CUDNN_CTC_LOSS_ALGO_DETERMINISTIC, cu_ctcloss_desc, &workspace_size));
+
+    T* loss_data = loss->mutable_data<T>(loss_dims, ctx.GetPlace());
 
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     auto cudnn_func = [&](void* cudnn_workspace) {
       CUDNN_ENFORCE(platform::dynload::cudnnCTCLoss(
-          handle, cu_logits_desc, warpctc_logits_data, label_data,
-          warpctc_label_lengths.CUDAData(ctx.GetPlace()),
-          warpctc_logits_lengths.CUDAData(ctx.GetPlace()), loss_data,
-          cu_grad_desc, warpctc_grad_data, CUDNN_CTC_LOSS_ALGO_DETERMINISTIC,
-          cu_ctcloss_desc, cudnn_workspace, workspace_size));
+          handle, cu_logits_desc, warpctc_logits_data, warpctc_label_data,
+          warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
+          loss_data, cu_grad_desc, warpctc_grad_data,
+          CUDNN_CTC_LOSS_ALGO_DETERMINISTIC, cu_ctcloss_desc, cudnn_workspace,
+          workspace_size));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
