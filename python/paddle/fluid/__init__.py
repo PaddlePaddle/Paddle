@@ -114,7 +114,7 @@ def __bootstrap__():
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
         "dist_threadpool_size", 'cpu_deterministic', 'eager_delete_tensor_gb',
-        'use_legacy_allocator', 'reader_queue_speed_test_mode'
+        'allocator_strategy', 'reader_queue_speed_test_mode'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')

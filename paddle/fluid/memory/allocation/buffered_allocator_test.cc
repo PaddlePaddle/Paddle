@@ -124,7 +124,7 @@ TEST(buffered_allocator, lazy_free) {
 
   {
     underlying_allocator->ResetCounter();
-    allocator->Flush();
+    allocator->ClearCache();
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kTwo);
   }

@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/platform/lock_guard_ptr.h"
 
 namespace paddle {
 namespace memory {
@@ -32,9 +33,6 @@ class BufferedAllocator : public UnmanagedAllocator {
  public:
   explicit BufferedAllocator(std::unique_ptr<Allocator>&& allocator);
 
-  BufferedAllocator(std::unique_ptr<Allocator>&& allocator,
-                    const std::vector<size_t>& division_plan);
-
   ~BufferedAllocator();
 
   std::unique_ptr<Allocation> Allocate(
@@ -44,31 +42,14 @@ class BufferedAllocator : public UnmanagedAllocator {
 
   bool IsAllocThreadSafe() const override;
 
-  const std::vector<size_t>& GetDivisionPlan() const;
-
-  void Flush();
+  // only used in unittest
+  inline void ClearCache() { FreeCache(-1UL); }
 
  private:
-  void InitAndEnforceCheck(std::unique_ptr<Allocator>&& allocator,
-                           const std::vector<size_t>& division_plan);
-
-  void InsertAllocation(std::unique_ptr<Allocation>&& allocation);
-  void InsertAllocationImpl(std::unique_ptr<Allocation>&& allocation);
-
-  static bool Match(size_t actual_size, size_t requested_size);
-  std::unique_ptr<Allocation> RemoveAllocation(size_t size);
-  std::unique_ptr<Allocation> RemoveAllocationImpl(size_t size);
-
-  void FreeAllocations(size_t size);
-  void FreeAllocationsImpl(size_t size);
-
-  void FlushImpl();
-
-  size_t GetListIndex(size_t size);
+  void FreeCache(size_t size);
 
   std::unique_ptr<UnmanagedAllocator> underlying_allocator_;
-  std::vector<std::multimap<size_t, std::unique_ptr<Allocation>>> allocations_;
-  std::vector<size_t> division_plan_;
+  std::multimap<size_t, std::unique_ptr<Allocation>> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };
 
