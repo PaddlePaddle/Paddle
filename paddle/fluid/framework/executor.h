@@ -17,14 +17,12 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#ifndef _WIN32
-#include "paddle/fluid/framework/garbage_collector.h"
-#endif
 
 namespace paddle {
 namespace framework {
