@@ -29,17 +29,18 @@ namespace platform {
  */
 template <typename LockType>
 class LockGuardPtr {
-  using LockGuardType = std::lock_guard<LockType>;
-
  public:
-  class LockGuardDeleter {
-   public:
-    void operator()(LockGuardType* guard) { guard->~LockGuardType(); }
-  };
-
   explicit LockGuardPtr(std::unique_ptr<LockType>& lock_ptr)  // NOLINT
-      : guard_ptr_(lock_ptr ? new (guard_buffer_) LockGuardType(*lock_ptr)
-                            : nullptr) {}
+      : lock_(lock_ptr.get()) {
+    if (lock_) {
+      lock_->lock();
+    }
+  }
+  ~LockGuardPtr() {
+    if (lock_) {
+      lock_->unlock();
+    }
+  }
 
   LockGuardPtr(const LockGuardPtr&) = delete;
   LockGuardPtr& operator=(const LockGuardPtr&) = delete;
@@ -47,8 +48,7 @@ class LockGuardPtr {
   LockGuardPtr& operator=(LockGuardPtr&&) = delete;
 
  private:
-  uint8_t guard_buffer_[sizeof(LockGuardType)];
-  std::unique_ptr<LockGuardType, LockGuardDeleter> guard_ptr_;
+  LockType* lock_;
 };
 
 }  // namespace platform
