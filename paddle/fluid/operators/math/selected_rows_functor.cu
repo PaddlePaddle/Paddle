@@ -81,7 +81,7 @@ template <typename T, int block_size>
 __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
                                             const int64_t* rows, T* tensor_out,
                                             int64_t row_numel) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
 
   selected_rows += ty * row_numel;
@@ -123,7 +123,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid(1, in1_rows.size());
+    dim3 grid(in1_rows.size(), 1);
     SelectedRowsAddTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
         in1_data, in1_rows.CUDAData(context.GetPlace()), out_data,
@@ -188,7 +188,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
                                               const int64_t* rows,
                                               T* tensor_out,
                                               int64_t row_numel) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
 
   selected_rows += ty * row_numel;
@@ -221,7 +221,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     auto* in2_data = input2->data<T>();
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid(1, in1_rows.size());
+    dim3 grid(in1_rows.size(), 1);
     SelectedRowsAddToTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
         in1_data, in1_rows.CUDAData(context.GetPlace()), in2_data,
@@ -388,7 +388,7 @@ template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,
                                      const int64_t* rows, const ScatterOps& op,
                                      T* tensor_out, int64_t row_numel) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
 
   selected_rows += ty * row_numel;
@@ -457,7 +457,7 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
     auto* in2_data = input2->data<T>();
 
     dim3 threads(platform::PADDLE_CUDA_NUM_THREADS, 1);
-    dim3 grid(1, in1_rows.size());
+    dim3 grid(in1_rows.size(), 1);
     UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS><<<
         grid, threads, 0, context.stream()>>>(in1_data, in1_rows.cuda_data(),
                                               op, in2_data, in1_row_numel);
