@@ -68,8 +68,8 @@ struct Argument {
                    key);
     attrs_[key] = data;
     attr_deleters_[key] = [data, key]() {
-      VLOG(3) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-      VLOG(3) << "argument delete attr: " << key;
+      VLOG(30) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+      VLOG(30) << "argument delete attr: " << key;
       delete data;
     };
   }

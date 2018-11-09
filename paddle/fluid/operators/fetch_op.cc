@@ -57,7 +57,7 @@ class FetchOp : public framework::OperatorBase {
     TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
     dst_item.set_lod(src_item.lod());
 
-    VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
+    VLOG(30) << "Fetch variable " << fetch_var_name << " to " << out_name;
   }
 };
 

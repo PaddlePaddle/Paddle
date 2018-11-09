@@ -129,15 +129,15 @@ class WhileGradOp : public framework::OperatorBase {
 
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
-      VLOG(3) << "Start backward at time_step "
-              << cur_scope_iter - step_scopes->rbegin();
+      VLOG(30) << "Start backward at time_step "
+               << cur_scope_iter - step_scopes->rbegin();
       framework::Scope &cur_scope = **cur_scope_iter;
       // Link OG from outside to inside
       for (size_t i = 0; i < outside_og_names.size(); ++i) {
         auto outside_og_name = outside_og_names[i];
         auto inside_og_name = inside_og_names[i];
-        VLOG(8) << "Linking outside " << outside_og_name << " --> inside "
-                << inside_og_name;
+        VLOG(80) << "Linking outside " << outside_og_name << " --> inside "
+                 << inside_og_name;
         if (scope.FindVar(outside_og_name) == nullptr) {
           continue;
         }
@@ -159,11 +159,11 @@ class WhileGradOp : public framework::OperatorBase {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
-          VLOG(8) << outside_og_name << " size = " << outside_array.size();
+          VLOG(80) << outside_og_name << " size = " << outside_array.size();
           inside_array.resize(outside_array.size());
 
           for (size_t j = 0; j < inside_array.size(); ++j) {
-            VLOG(8) << j << " " << outside_array[j].numel();
+            VLOG(80) << j << " " << outside_array[j].numel();
             if (outside_array[j].numel() != 0) {
               inside_array[j].set_lod(outside_array[j].lod());
               inside_array[j].ShareDataWith(outside_array[j]);
@@ -289,7 +289,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
     for (auto &each_ig : igs) {
       if (inner_op_outputs.find(each_ig) == inner_op_outputs.end()) {
-        VLOG(8) << "Ignore " << each_ig;
+        VLOG(80) << "Ignore " << each_ig;
         each_ig = framework::kEmptyVarName;
       }
     }
@@ -353,8 +353,8 @@ class WhileGradOpVarTypeInference : public framework::VarTypeInference {
       auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
       auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
       if (g_var != nullptr) {  // Gradient could be @EMPTY@
-        VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                << " type: " << p_var.GetType();
+        VLOG(50) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
+                 << " type: " << p_var.GetType();
         g_var->SetType(p_var.GetType());
         g_var->SetDataType(p_var.GetDataType());
       }
