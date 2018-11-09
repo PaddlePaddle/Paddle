@@ -31,7 +31,9 @@ class StubAllocator : public UnmanagedAllocator {
     return std::unique_ptr<Allocation>(
         new Allocation(nullptr, size, platform::CPUPlace()));
   }
-  void Free(Allocation* allocation) override { counter_.fetch_sub(1); }
+  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override {
+    counter_.fetch_sub(1);
+  }
   bool IsAllocThreadSafe() const override { return true; }
 
   std::atomic<int> counter_{0};

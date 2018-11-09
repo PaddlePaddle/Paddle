@@ -2,6 +2,8 @@ cc_library(allocator SRCS allocator.cc DEPS place)
 cc_library(cpu_allocator SRCS cpu_allocator.cc DEPS allocator)
 cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
+cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)
+cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS best_fit_allocator locked_allocator buffered_allocator cpu_allocator)
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
@@ -51,7 +53,8 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         auto_increment_allocator
         zero_size_allocator
         conditional_allocator
-        retry_allocator)
+        retry_allocator
+        buffered_allocator)
 
 nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
 

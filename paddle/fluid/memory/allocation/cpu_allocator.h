@@ -36,7 +36,7 @@ class CPUAllocator : public UnmanagedAllocator {
   constexpr static size_t kAlignment = 64u;
   std::unique_ptr<Allocation> Allocate(size_t size,
                                        Attr attr = kDefault) override;
-  void Free(Allocation* allocation) override;
+  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
   bool IsAllocThreadSafe() const override;
 };
 }  // namespace allocation
