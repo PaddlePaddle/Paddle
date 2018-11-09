@@ -60,7 +60,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle SeqConv EltAdd Relu fuse";
+    VLOG(40) << "handle SeqConv EltAdd Relu fuse";
     GET_IR_NODE_FROM_SUBGRAPH(seqconv, seqconv, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(seqconv_weight, seqconv_weight, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(seqconv_out, seqconv_out, fuse_pattern);
