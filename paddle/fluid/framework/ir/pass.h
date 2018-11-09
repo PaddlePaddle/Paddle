@@ -217,28 +217,6 @@ struct PassRegistrar : public Registrar {
   extern int TouchPassRegistrar_##pass_type();                        \
   static int use_pass_itself_##pass_type##_ __UNUSED__() = \
       TouchPassRegistrar_##pass_type()
-#else
-#define REGISTER_PASS(pass_type, pass_class)                        \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                              \
-      __reg_pass__##pass_type,                                      \
-      "REGISTER_PASS must be called in global namespace");          \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>         \
-      __pass_registrar_##pass_type##__(#pass_type);                 \
-  int TouchPassRegistrar_##pass_type() {                            \
-    __pass_registrar_##pass_type##__.Touch();                       \
-    return 0;                                                       \
-  }                                                                 \
-  static ::paddle::framework::ir::PassRegistrar<pass_class> UNUSED( \
-      &__pass_tmp_registrar_##pass_type##__) =                      \
-      __pass_registrar_##pass_type##__
-
-#define USE_PASS(pass_type)                           \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \
-      __use_pass_itself_##pass_type,                  \
-      "USE_PASS must be called in global namespace"); \
-  extern int TouchPassRegistrar_##pass_type();        \
-  static int UNUSED(use_pass_itself_##pass_type##_) = \
-      TouchPassRegistrar_##pass_type()
 
 }  // namespace ir
 }  // namespace framework
