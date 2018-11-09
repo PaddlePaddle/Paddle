@@ -12,10 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-
-#include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -426,8 +426,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "same dimension sizes");
 
       if (residual_param->format() != handler.GetDstFormat()) {
-        auto output_data =
-            output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+        auto output_data = output->mutable_data<T>(
+            ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
+            handler.GetDstMemorySize());
         auto residual_data_tz =
             paddle::framework::vectorize2int(residual_param->dims());
         auto residual_data_type =
