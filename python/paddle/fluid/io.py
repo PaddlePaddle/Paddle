@@ -379,10 +379,21 @@ def load_vars(executor,
         load_prog = Program()
         load_block = load_prog.global_block()
 
+        if main_program is None:
+            main_program = default_main_program()
+        if not isinstance(main_program, Program):
+            raise TypeError("program should be as Program type or None")
+
+        load_slice_vars = []
+        for each_var in main_program._slice_vars_and_attrs:
+            load_slice_vars.append(each_var[2].name)
+
         load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
+                continue
+            if each_var.name in load_slice_vars:
                 continue
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
@@ -897,6 +908,9 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
         slice_var = var_tuple[2]
         end = start + slice_var.shape[0]
 
+        orig_var_name = orig_var.name
+        orig_var.name = "{}.origin".format(orig_var_name)
+
         clone_orig_var = load_block.create_var(
             name=orig_var.name,
             type=orig_var.type,
@@ -915,7 +929,7 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
             type='load',
             inputs={},
             outputs={'Out': [clone_orig_var]},
-            attrs={'file_path': os.path.join(dirname, clone_orig_var.name)})
+            attrs={'file_path': os.path.join(dirname, orig_var_name)})
         load_block.append_op(
             type="slice",
             inputs={'Input': clone_orig_var},

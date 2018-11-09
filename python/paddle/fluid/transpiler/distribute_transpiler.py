@@ -644,6 +644,9 @@ in a single call.")
             else:
                 recv_inputs.append(single_trainer_var)
 
+        self._slice_params_and_optimizes = self._get_slice_vars_and_attrs(
+            endpoint)
+
         # step 3
         # Create a union-find data structure from optimize ops,
         # If two ops are connected, we could add these two ops
@@ -766,7 +769,7 @@ in a single call.")
                                                grad_to_block_id, merged_var,
                                                lr_ops)
 
-# dedup grad to ids list
+        # dedup grad to ids list
         grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
@@ -827,8 +830,8 @@ in a single call.")
             attrs=attrs)
 
         # add distributed attrs
-        pserver_program._slice_vars_and_attrs = self._get_slice_vars_and_attrs(
-            endpoint)
+        pserver_program._slice_vars_and_attrs = self._slice_params_and_optimizes.values(
+        )
 
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
@@ -941,12 +944,12 @@ to transpile() call.")
                     outputs={"Out": startup_tmpvar})
 
         # add slice vars
-        s_prog._slice_vars_and_attrs = self._get_slice_vars_and_attrs(endpoint)
+        s_prog._slice_vars_and_attrs = pserver_program._slice_vars_and_attrs
 
         return s_prog
 
     def _get_slice_vars_and_attrs(self, endpoint):
-        slice_vars_and_attrs = []
+        slice_vars_and_attrs = {}
         block_suffix = "block"
         for param in self.param_grad_ep_mapping[endpoint]["params"]:
             orig_var_name, block_name, _ = self._get_varname_parts(param.name)
@@ -960,8 +963,7 @@ to transpile() call.")
             slice_vars = self.param_var_mapping[orig_var_name]
             for slice_var in slice_vars[:block_idx]:
                 skip_dim0 += slice_var.shape[0]
-            slice_vars_and_attrs.append([orig_var, skip_dim0, param])
-
+            slice_vars_and_attrs[param.name] = [orig_var, skip_dim0, param]
         return slice_vars_and_attrs
 
     # ====================== private transpiler functions =====================
@@ -1685,16 +1687,23 @@ to transpile() call.")
             if key in ["Param", "Grad", "LearningRate"]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
+            param_var = new_inputs["Param"]
             # update accumulator variable shape
-            param_shape = new_inputs["Param"].shape
-            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
-                                                        var.shape, param_shape)
+            new_shape = self._get_optimizer_input_shape(
+                opt_op.type, key, var.shape, param_var.shape)
             tmpvar = pserver_block.create_var(
                 name=var.name,
                 persistable=var.persistable,
                 dtype=var.dtype,
                 shape=new_shape)
             new_inputs[key] = tmpvar
+
+            # var shape been changed
+            if new_shape != var.shape:
+                slice_var_args = self._slice_params_and_optimizes[
+                    param_var.name]
+                self._slice_params_and_optimizes[
+                    var.name] = [var, slice_var_args[1], tmpvar]
 
         # change output's ParamOut variable
         outputs = self._get_output_map_from_op(
