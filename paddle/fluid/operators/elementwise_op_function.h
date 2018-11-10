@@ -365,7 +365,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   int j = blockIdx.x;
   int i = threadIdx.x;
   int tid = threadIdx.x;
-  T val = 0;
+  T val(0);
 
   do {
     int x_offset = i * w + j;
@@ -433,7 +433,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
   int tid = threadIdx.x;
   int j = blockIdx.x;
 
-  T val = 0;
+  T val(0);
   int ttid = tid;
 
   while (true) {

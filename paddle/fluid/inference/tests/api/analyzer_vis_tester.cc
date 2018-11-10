@@ -27,7 +27,7 @@ struct Record {
 };
 
 Record ProcessALine(const std::string &line) {
-  VLOG(3) << "process a line";
+  VLOG(30) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
   CHECK_EQ(columns.size(), 2UL)
@@ -45,8 +45,8 @@ Record ProcessALine(const std::string &line) {
   for (auto &s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
-  VLOG(3) << "data size " << record.data.size();
-  VLOG(3) << "data shape size " << record.shape.size();
+  VLOG(30) << "data size " << record.data.size();
+  VLOG(30) << "data shape size " << record.shape.size();
   return record;
 }
 

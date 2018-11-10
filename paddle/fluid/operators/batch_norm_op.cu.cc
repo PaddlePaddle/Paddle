@@ -96,7 +96,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
 
-    VLOG(3) << "Setting descriptors.";
+    VLOG(30) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
     if (data_layout == DataLayout::kNCHW) {
@@ -219,8 +219,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    d_scale->mutable_data<T>(ctx.GetPlace());
-    d_bias->mutable_data<T>(ctx.GetPlace());
+    d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     if ((N * H * W * D) == 1) {
@@ -272,8 +272,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
-    const void *saved_mean_data = saved_mean->template data<T>();
-    const void *saved_var_data = saved_var->template data<T>();
+    const void *saved_mean_data =
+        saved_mean->template data<BatchNormParamType<T>>();
+    const void *saved_var_data =
+        saved_var->template data<BatchNormParamType<T>>();
 
     CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
         dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
@@ -281,10 +283,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
         data_desc_, d_y->template data<T>(), data_desc_,
         d_x->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-        scale->template data<T>(),
-        d_scale->template mutable_data<T>(ctx.GetPlace()),
-        d_bias->template mutable_data<T>(ctx.GetPlace()), epsilon,
-        saved_mean_data, saved_var_data));
+        scale->template data<BatchNormParamType<T>>(),
+        d_scale->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+        d_bias->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+        epsilon, saved_mean_data, saved_var_data));
 
     // clean when exit.
     CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
@@ -304,4 +306,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, double>);
+    ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
+    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);

@@ -160,7 +160,7 @@ class RecurrentBase : public framework::OperatorBase {
                                      Callback callback) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
-      VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
+      VLOG(100) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
     }
   }
@@ -176,7 +176,7 @@ class RecurrentBase : public framework::OperatorBase {
                                      Callback callback) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
-      VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
+      VLOG(100) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
     }
   }
@@ -230,7 +230,7 @@ class RecurrentOp : public RecurrentBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
-    VLOG(3) << "Static RNN input sequence length = " << seq_len;
+    VLOG(30) << "Static RNN input sequence length = " << seq_len;
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
 
@@ -241,7 +241,7 @@ class RecurrentOp : public RecurrentBase {
 
     for (size_t i = 0; i < seq_len; ++i) {
       size_t seq_offset = reverse ? seq_len - i - 1 : i;
-      VLOG(3) << "Recurrent operate at the time step " << seq_offset;
+      VLOG(30) << "Recurrent operate at the time step " << seq_offset;
 
       auto &cur_scope = scopes.CurScope();
 
@@ -334,7 +334,7 @@ class RecurrentGradOp : public RecurrentBase {
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
-      VLOG(3) << "Recurrent backward operate at the time step " << seq_offset;
+      VLOG(30) << "Recurrent backward operate at the time step " << seq_offset;
       auto &cur_scope = scopes.CurScope();
       // Link outside::output_grads --> inside::output_grads
       //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
@@ -348,11 +348,11 @@ class RecurrentGradOp : public RecurrentBase {
           });
       auto og_set = List2Set(Inputs(kOutputGrads));
 
-      if (VLOG_IS_ON(10)) {
+      if (VLOG_IS_ON(100)) {
         std::ostringstream sout;
         std::copy(og_set.begin(), og_set.end(),
                   std::ostream_iterator<std::string>(sout, ","));
-        VLOG(10) << " RNN output gradients = [" << sout.str() << "]";
+        VLOG(100) << " RNN output gradients = [" << sout.str() << "]";
       }
 
       // Link states
@@ -374,7 +374,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto &ex_tensor =
               ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
 
-          VLOG(10) << " RNN link " << cur_grad << " from " << ex_grad;
+          VLOG(100) << " RNN link " << cur_grad << " from " << ex_grad;
           auto *cur_grad_var = cur_scope.Var(cur_grad);
           auto cur_grad_tensor =
               cur_grad_var->GetMutable<framework::LoDTensor>();
@@ -382,12 +382,12 @@ class RecurrentGradOp : public RecurrentBase {
         }
       }
 
-      VLOG(5) << "Recurrent memory linking finished ";
+      VLOG(50) << "Recurrent memory linking finished ";
       // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/);
 
-      VLOG(5) << "executor.Run finished ";
+      VLOG(50) << "executor.Run finished ";
 
       auto local_var_names = LocalVarNames(cur_scope);
 
@@ -436,7 +436,7 @@ class RecurrentGradOp : public RecurrentBase {
           cur_scope.Rename(new_inside_name, inside_grad_name);
         }
       }
-      VLOG(5) << "Accumulate Parameter finished ";
+      VLOG(50) << "Accumulate Parameter finished ";
 
       // Copy input gradient from inside to outside
       //   outside::input_grad[seq_offset: seq_offset + 1] = inside::input_grad
@@ -455,7 +455,7 @@ class RecurrentGradOp : public RecurrentBase {
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(inside, place, dev_ctx, &dst);
           });
-      VLOG(5) << "Link outside gradient finished ";
+      VLOG(50) << "Link outside gradient finished ";
 
       if (step_id + 1 == seq_len) {  // at_end
         // copy initialize states gradient from inside to outside
@@ -468,7 +468,7 @@ class RecurrentGradOp : public RecurrentBase {
               outside->mutable_data(place, inside.type());
               framework::TensorCopy(inside, place, dev_ctx, outside);
             });
-        VLOG(5) << "Link initialize state gradient finished ";
+        VLOG(50) << "Link initialize state gradient finished ";
       }
       scopes.Next();
     }

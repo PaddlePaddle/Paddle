@@ -33,7 +33,7 @@ enum class OpRole {
   // used for distributed training.
   kDist = 0x0008,
   // Tag all learning rate scheduler operators.
-  kLRSched = 0x0016,
+  kLRSched = 0x0010,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and

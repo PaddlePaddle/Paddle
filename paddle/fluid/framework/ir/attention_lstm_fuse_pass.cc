@@ -147,19 +147,19 @@ void PrepareParameters(Graph* graph, const Param& param) {
   scope->Var(param.LSTMX)->GetMutable<LoDTensor>();
   scope->Var(param.LSTMOUT)->GetMutable<LoDTensor>();
 
-#define GATE_W(name__)                                               \
-  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");            \
-  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");            \
-  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");            \
-  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);       \
-  VLOG(4) << #name__ "_w0"                                           \
-          << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_w1"                                           \
-          << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_b0"                                           \
-          << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
-  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();       \
-  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();       \
+#define GATE_W(name__)                                                \
+  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");             \
+  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");             \
+  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");             \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);        \
+  VLOG(40) << #name__ "_w0"                                           \
+           << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
+  VLOG(40) << #name__ "_w1"                                           \
+           << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
+  VLOG(40) << #name__ "_b0"                                           \
+           << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();        \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();        \
   auto& W_##name__##_b0_t = W_##name__##_b0->Get<LoDTensor>();
 
   GATE_W(forget);
@@ -208,7 +208,7 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
   out->Resize(make_ddim({D + M, 4 * D}));
-  VLOG(3) << "LSTMWeight resized to " << out->dims();
+  VLOG(30) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
   std::array<const float*, 4> tensors(

@@ -42,11 +42,12 @@ class RecvOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(place);
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+      VLOG(30) << "getting " << outs[i] << " from " << epmap[i];
       rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
     }
     if (sync_mode) {
@@ -73,6 +74,7 @@ This operator can get variables from server side.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<int>("sync_mode",
                  "(int, default 0)"
                  "sync recv or async recv.")

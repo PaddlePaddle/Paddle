@@ -93,7 +93,7 @@ TEST(AnalysisPredictor, analysis_on) {
 
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
-  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.model_dir = FLAGS_dirname;
   config.use_feed_fetch_ops = false;
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);

@@ -147,13 +147,11 @@ function cmake_gen() {
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
-        -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
-        -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
@@ -181,12 +179,10 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-        -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-        -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
@@ -371,7 +367,12 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        ctest --output-on-failure
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            ctest -V
+        else
+            ctest --output-on-failure
+        fi
+
         # make install should also be test when unittest
         make install -j `nproc`
         pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
@@ -613,7 +614,24 @@ EOF
         CMD='"true"'
     fi
 
-    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    if [ "$1" == "cp35-cp35m" ]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    ADD python/dist/*.whl /
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
+        pip3 install opencv-python && pip3 install /*.whl; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f /*.whl && \
+        ${PADDLE_VERSION} && \
+        ldconfig
+    ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
+    ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
+EOF
+    else
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
@@ -628,6 +646,8 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
+    fi
+
     if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
         ADD go/cmd/pserver/pserver /usr/bin/
@@ -653,7 +673,7 @@ function gen_capi_package() {
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Generating fluid library for train and inference ...
@@ -666,7 +686,7 @@ EOF
 }
 
 function tar_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Taring fluid library for train and inference ...
@@ -681,7 +701,7 @@ EOF
 }
 
 function test_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
         cat <<EOF
     ========================================
     Testing fluid library for inference ...
@@ -702,7 +722,7 @@ function main() {
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        gen_dockerfile
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       build_android)
         build_android
@@ -729,7 +749,7 @@ function main() {
         gen_html
         ;;
       dockerfile)
-        gen_dockerfile
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       capi)
         cmake_gen ${PYTHON_ABI:-""}

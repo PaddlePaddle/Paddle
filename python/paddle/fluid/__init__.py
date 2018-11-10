@@ -118,13 +118,16 @@ def __bootstrap__():
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
-        read_env_flags.append('rpc_server_profile_period')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
+        read_env_flags.append('rpc_send_thread_num')
+        read_env_flags.append('rpc_get_thread_num')
+        read_env_flags.append('rpc_prefetch_thread_num')
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'conv_workspace_size_limit', 'cudnn_exhaustive_search'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
