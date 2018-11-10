@@ -106,6 +106,43 @@ TEST(trt_models_test, resnext50) {
   CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "resnext50");
 }
 
+TEST(trt_models_test, raw_gpu) {
+  std::string model_dir = FLAGS_dirname + "/" + "mobilenet";
+  auto config0 = GetConfigNative();
+  config0.model_dir = model_dir;
+  int batch_size = 2;
+
+  AnalysisConfig config1(true);
+  config1.fraction_of_gpu_memory = 0.1;
+  config1.enable_ir_optim = true;
+  config1.model_dir = model_dir;
+
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor(config1);
+
+  // Prepare inputs
+  std::vector<PaddleTensor> paddle_tensor_feeds(1);
+  PrepareInputs(&paddle_tensor_feeds, batch_size);
+
+  // Prepare outputs
+  std::vector<PaddleTensor> outputs0;
+  std::vector<PaddleTensor> outputs1;
+  CHECK(predictor0->Run(paddle_tensor_feeds, &outputs0));
+  CHECK(predictor1->Run(paddle_tensor_feeds, &outputs1, batch_size));
+
+  const size_t num_elements = outputs0.front().data.length() / sizeof(float);
+  const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
+  EXPECT_EQ(num_elements, num_elements1);
+
+  auto *data0 = static_cast<float *>(outputs0.front().data.data());
+  auto *data1 = static_cast<float *>(outputs1.front().data.data());
+
+  ASSERT_GT(num_elements, 0UL);
+  for (size_t i = 0; i < std::min(num_elements, num_elements1); i++) {
+    EXPECT_NEAR(data0[i], data1[i], 1e-3);
+  }
+}
+
 }  // namespace paddle
 
 USE_PASS(tensorrt_subgraph_pass);

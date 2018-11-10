@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
@@ -48,9 +49,9 @@ TEST(AnalysisPredictor, analysis_off) {
   tensor.data.Reset(data, sizeof(data));
   tensor.dtype = PaddleDType::INT64;
 
-  // std::vector<PaddleTensor> inputs(4, tensor);
-  // std::vector<PaddleTensor> outputs;
-  // ASSERT_TRUE(predictor->Run(inputs, &outputs));
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> outputs;
+  ASSERT_TRUE(predictor->Run(inputs, &outputs));
 }
 
 TEST(AnalysisPredictor, analysis_on) {
@@ -58,7 +59,15 @@ TEST(AnalysisPredictor, analysis_on) {
   config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
   config.enable_ir_optim = true;
 
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
+
+  ASSERT_TRUE(predictor->scope_);
+  ASSERT_TRUE(predictor->sub_scope_);
+  ASSERT_EQ(predictor->scope_->parent(), nullptr);
+  ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
+  // ir is turned on, so program should be optimized.
+  ASSERT_TRUE(predictor->status_program_optimized_);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -69,6 +78,17 @@ TEST(AnalysisPredictor, analysis_on) {
   std::vector<PaddleTensor> inputs(4, tensor);
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
+
+  for (auto& output : outputs) {
+    LOG(INFO) << inference::DescribeTensor(output);
+  }
+
+  // compare with NativePredictor
+  auto naive_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  std::vector<PaddleTensor> naive_outputs;
+  ASSERT_TRUE(naive_predictor->Run(inputs, &naive_outputs));
+  ASSERT_EQ(naive_outputs.size(), 1UL);
+  inference::CompareTensor(outputs.front(), naive_outputs.front());
 }
 
 TEST(AnalysisPredictor, ZeroCopy) {

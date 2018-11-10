@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "analysis_predictor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -71,14 +70,14 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
+  if (!CreateExecutor()) {
+    return false;
+  }
   if (!PrepareProgram(program)) {
     return false;
   }
 
-  LOG(INFO) << "scope_: " << scope_.get() << " parent: " << scope_->parent();
-  LOG(INFO) << "subscope_: " << sub_scope_
-            << " parent: " << sub_scope_->parent();
-
+  // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
     return true;
   }
@@ -89,33 +88,6 @@ bool AnalysisPredictor::Init(
   return true;
 }
 
-bool AnalysisPredictor::PrepareProgram(
-    const std::shared_ptr<framework::ProgramDesc> &program) {
-  if (!program) {
-    if (!LoadProgramDesc()) return false;
-
-    // Optimize the program, and load parameters and modify them in the
-    // scope_.
-    // This will change the scope_ address.
-    if (config_.enable_ir_optim) {
-      status_ir_optim_enabled_ = true;
-      OptimizeInferenceProgram();
-    } else {
-      // Load parameters
-      LOG(INFO) << "load parameters ";
-      LoadParameters();
-    }
-    // Create local variables
-    sub_scope_ = &(scope_->NewScope());
-  } else {
-    // If the program is passed from external, no need to optimize it, this
-    // logic is used in the clone scenario.
-    inference_program_ = program;
-    sub_scope_ = &(scope_->NewScope());
-  }
-
-  return true;
-}
 bool AnalysisPredictor::PrepareScope(
     const std::shared_ptr<framework::Scope> &parent_scope) {
   if (parent_scope) {
@@ -129,29 +101,59 @@ bool AnalysisPredictor::PrepareScope(
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
+  sub_scope_ = &scope_->NewScope();
   return true;
 }
-bool AnalysisPredictor::PrepareExecutor() {
+bool AnalysisPredictor::PrepareProgram(
+    const std::shared_ptr<framework::ProgramDesc> &program) {
+  if (!program) {
+    if (!LoadProgramDesc()) return false;
+
+    // Optimize the program, and load parameters and modify them in the
+    // scope_.
+    // This will change the scope_ address.
+    if (config_.enable_ir_optim) {
+      status_ir_optim_enabled_ = true;
+      OptimizeInferenceProgram();
+    } else {
+      // If the parent_scope is passed, we assert that the persistable variables
+      // are already created, so just create the no persistable variables.
+
+      // If not cloned, the parameters should be loaded
+      // OptimizeInferenceProgram.
+      // So in both cases, just the local variables are needed to load, not the
+      // parematers.
+      executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+
+      // Load parameters
+      LOG(INFO) << "load parameters ";
+      LoadParameters();
+    }
+  } else {
+    // If the program is passed from external, no need to optimize it, this
+    // logic is used in the clone scenario.
+    inference_program_ = program;
+  }
+
+  executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
+
+  return true;
+}
+bool AnalysisPredictor::CreateExecutor() {
   if (config_.use_gpu) {
     status_use_gpu_ = true;
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  return true;
+}
+bool AnalysisPredictor::PrepareExecutor() {
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_);
-
-  // If the parent_scope is passed, we assert that the persistable variables
-  // are already created, so just create the no persistable variables.
-
-  // If not cloned, the parameters should be loaded OptimizeInferenceProgram.
-  // So in both cases, just the local variables are needed to load, not the
-  // parematers.
-  executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   return true;
 }
@@ -294,7 +296,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_gpu && config_.use_tensorrt_) {
-    LOG(INFO) << "argument_ set TensorRT true";
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
@@ -307,16 +308,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
-  LOG(INFO) << "analyzed scope has vars "
-            << argument_.scope().LocalVarNames().size();
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
-  if (argument_.scope_valid()) {
-    // Update scope.
-    scope_.reset(argument_.ReleaseScope());
-  }
   LOG(INFO) << "== optimize end ==";
 }
 
@@ -498,6 +493,7 @@ bool AnalysisPredictor::LoadParameters() {
   framework::NaiveExecutor e(place);
   e.Prepare(scope_.get(), *load_program, 0, false);
   e.Run();
+  VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
 
   return true;
 }

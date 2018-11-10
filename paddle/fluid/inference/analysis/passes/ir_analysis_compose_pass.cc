@@ -64,7 +64,7 @@ void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
       "ir_graph_build_pass", "ir_analysis_pass",
   });
   for (const auto &pass : passes) {
-    LOG(INFO) << "Run pass " << pass;
+    VLOG(2) << "Run pass " << pass;
     auto *the_pass = PassRegistry::Global().Retreive(pass);
     the_pass->Run(argument);
   }

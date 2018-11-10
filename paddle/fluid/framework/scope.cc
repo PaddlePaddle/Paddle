@@ -45,7 +45,7 @@ DEFINE_double(
 #ifdef ON_INFER
 #define SCOPE_LOCK_GUARD
 #else
-#define SCOPE_LOCK_GUARD //std::lock_guard<std::mutex> lock(mutex_);
+#define SCOPE_LOCK_GUARD std::lock_guard<std::mutex> lock(mutex_);
 #endif
 
 namespace paddle {
@@ -197,7 +197,6 @@ Variable* Scope::FindVarInternal(const std::string& name) const {
 }
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
-  LOG(INFO) << "vars_.size " << vars_.size();
   auto it = vars_.find(name);
   if (it != vars_.end()) return it->second.get();
   return nullptr;

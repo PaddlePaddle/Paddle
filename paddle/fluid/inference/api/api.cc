@@ -160,13 +160,13 @@ contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
   pass_builder_ = std::move(other.pass_builder_);
 }
 
-void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size, int max_batch_size) {
+void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
+                                                   int max_batch_size) {
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   // Append after the infer_clean pass.
   pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
 }
-
 
 }  // namespace paddle

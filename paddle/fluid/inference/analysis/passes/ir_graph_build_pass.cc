@@ -34,9 +34,11 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (argument->model_dir_valid()) {
     auto program = LoadModel(argument->model_dir(), argument->scope_ptr());
     argument->SetMainProgram(program.release());
-  } else if (argument->model_program_path_valid() && argument->model_params_path_valid()) {
-    auto program = LoadModel(argument->model_program_path(),
-                             argument->model_params_path(), argument->scope_ptr());
+  } else if (argument->model_program_path_valid() &&
+             argument->model_params_path_valid()) {
+    auto program =
+        LoadModel(argument->model_program_path(), argument->model_params_path(),
+                  argument->scope_ptr());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
@@ -44,10 +46,9 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   }
 
   auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
-  LOG(INFO) << "Load " << graph->Nodes().size() << " nodes";
   argument->SetMainGraph(graph.release());
   argument->main_graph().Set(framework::ir::kParamScopeAttr,
-                              new framework::Scope *(argument->scope_ptr()));
+                             new framework::Scope *(argument->scope_ptr()));
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

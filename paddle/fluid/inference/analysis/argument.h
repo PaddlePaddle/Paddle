@@ -51,7 +51,7 @@ struct Argument {
 
 #define DECL_ARGUMENT_FIELD(field__, Field, type__) \
  public:                                            \
-  type__& field__() {                         \
+  type__& field__() {                               \
     PADDLE_ENFORCE(Has(#field__));                  \
     return field__##_;                              \
   }                                                 \
@@ -70,7 +70,7 @@ struct Argument {
 
 #define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__)                \
  public:                                                                  \
-  type__& field__() {                                               \
+  type__& field__() {                                                     \
     PADDLE_ENFORCE_NOT_NULL(field__##_);                                  \
     PADDLE_ENFORCE(Has(#field__));                                        \
     return *static_cast<type__*>(field__##_.get());                       \
@@ -91,7 +91,7 @@ struct Argument {
   }                                                                       \
   type__* Release##Field() {                                              \
     PADDLE_ENFORCE(Has(#field__));                                        \
-    valid_fields_.erase(#field__); \
+    valid_fields_.erase(#field__);                                        \
     return static_cast<type__*>(field__##_.release());                    \
   }                                                                       \
                                                                           \
@@ -119,17 +119,14 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
                       std::function<bool(const framework::ir::Node*)>);
-  DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize,
-                             int);
-  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize,
-                             int);
+  DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
 
   // The program transformed by IR analysis phase.
   DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,
                              framework::proto::ProgramDesc);
 
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
-
 
  private:
   std::unordered_set<std::string> valid_fields_;

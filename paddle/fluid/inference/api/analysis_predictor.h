@@ -70,10 +70,8 @@ class AnalysisPredictor : public PaddlePredictor {
  protected:
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
+  bool CreateExecutor();
   bool PrepareExecutor();
-
-
-
 
   bool LoadProgramDesc();
   bool LoadParameters();
@@ -92,6 +90,7 @@ class AnalysisPredictor : public PaddlePredictor {
 #if PADDLE_WITH_TESTING
   FRIEND_TEST(AnalysisPredictor, analysis_off);
   FRIEND_TEST(AnalysisPredictor, analysis_on);
+  FRIEND_TEST(AnalysisPredictor, with_gpu);
 #endif
 
  private:

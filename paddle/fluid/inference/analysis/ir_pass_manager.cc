@@ -34,7 +34,8 @@ IRPassManager::IRPassManager(Argument *argument) {
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
     graph_->Set(framework::ir::kParamScopeAttr,
-                new framework::Scope * (const_cast<framework::Scope*>(&argument->scope())));
+                new framework::Scope *(
+                    const_cast<framework::Scope *>(&argument->scope())));
   }
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);

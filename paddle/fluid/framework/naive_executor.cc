@@ -87,12 +87,9 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
   PADDLE_ENFORCE(anc->parent() != anc);
   while (anc->parent()) {
     anc = anc->parent();
-    LOG(INFO) << "get anc scope " << anc;
-    break;
   }
 
   for (auto &var : global_block.AllVars()) {
-    LOG(INFO) << "check var " << var->Name();
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
