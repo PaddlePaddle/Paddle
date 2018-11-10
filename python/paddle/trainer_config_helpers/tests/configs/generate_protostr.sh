@@ -2,7 +2,6 @@
 
 set -e
 cd `dirname $0`
-export PYTHONPATH=$PWD/../../../../
 
 protostr=$PWD/protostr
 . file_list.sh

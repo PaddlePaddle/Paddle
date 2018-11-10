@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,6 +60,13 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
+IF(WIN32)
+  IF(NOT EXISTS "${GLOG_INSTALL_DIR}/lib/libglog.lib")
+    add_custom_command(TARGET extern_glog POST_BUILD
+    COMMAND cmake -E rename ${GLOG_INSTALL_DIR}/lib/glog.lib ${GLOG_INSTALL_DIR}/lib/libglog.lib
+  )
+  ENDIF()
+ENDIF(WIN32)
 
 ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
@@ -68,7 +75,7 @@ LINK_LIBRARIES(glog gflags)
 
 LIST(APPEND external_project_dependencies glog)
 
-IF(WITH_C_API OR WITH_FLUID)
+IF(WITH_C_API)
   INSTALL(DIRECTORY ${GLOG_INCLUDE_DIR} DESTINATION third_party/glog)
   IF(ANDROID)
     INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib/${ANDROID_ABI})

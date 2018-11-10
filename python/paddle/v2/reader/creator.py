@@ -16,7 +16,7 @@ Creator package contains some simple reader creator, which could
 be used in user program.
 """
 
-__all__ = ['np_array', 'text_file', "cloud_reader"]
+__all__ = ['np_array', 'text_file', 'recordio', 'cloud_reader']
 
 
 def np_array(x):

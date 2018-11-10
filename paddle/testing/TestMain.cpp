@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "TestUtil.h"
 #include <gflags/gflags.h>
-#include "paddle/math/SparseMatrix.h"
+#include "paddle/legacy/math/SparseMatrix.h"
 
 DEFINE_int32(fixed_seq_length, 0, "Produce some sequence of fixed length");
 
@@ -118,7 +118,7 @@ void generateSequenceStartPositions(size_t batchSize,
     }
     buf[i] = pos;
     pos += len;
-    VLOG(1) << " len=" << len;
+    VLOG(10) << " len=" << len;
   }
   buf[numSeqs] = batchSize;
 }

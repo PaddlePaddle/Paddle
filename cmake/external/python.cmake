@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ ENDIF()
 
 INCLUDE(python_module)
 
-FIND_PACKAGE(PythonInterp 2.7)
-FIND_PACKAGE(PythonLibs 2.7)
+FIND_PACKAGE(PythonInterp ${PY_VERSION})
+FIND_PACKAGE(PythonLibs ${PY_VERSION})
+
 # Fixme: Maybe find a static library. Get SHARED/STATIC by FIND_PACKAGE.
 ADD_LIBRARY(python SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})

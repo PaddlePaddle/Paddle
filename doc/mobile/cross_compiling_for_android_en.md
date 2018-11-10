@@ -25,12 +25,18 @@ Users can directly use the published Docker image.
 $ docker pull paddlepaddle/paddle:latest-dev-android
 ```
 
+For users in China, we provide a faster mirror.
+
+```bash
+$ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
+```
+
 ### Build the Inference Library
 
 We can run the Docker image we just created to build the inference library of PaddlePaddle for Android using the command below:
 
 ```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android
+$ docker run -it --rm -v $PWD:/paddle -w /paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android ./paddle/scripts/paddle_build.sh build_android
 ```
 
 The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
@@ -64,7 +70,7 @@ The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
 
 The ARM-64 architecture (`arm64-v8a`) requires at least level 21 of Android API.
 
-The default entry-point of the Docker image, [`paddle/scripts/docker/build_android.sh`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
+The build command, [`paddle/scripts/paddle_build.sh build_android`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/paddle_build.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
 
 The above command generates and outputs the inference library in `$PWD/install_android` and puts third-party libraries in `$PWD/install_android/third_party`.
 
@@ -86,19 +92,19 @@ Android NDK includes everything we need to build the [*standalone toolchain*](ht
 
 - To build the standalone toolchain for `armeabi-v7a` and Android API level 21:
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
-  ```
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
+```
   
   The generated standalone toolchain will be in `your/path/to/arm_standalone_toolchain`.
 
 - To build the standalone toolchain for `arm64-v8a` and Android API level 21:
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
-  ```
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
+```
 
   The generated standalone toolchain will be in `your/path/to/arm64_standalone_toolchain`.
 

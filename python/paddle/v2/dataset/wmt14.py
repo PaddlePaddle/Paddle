@@ -15,7 +15,7 @@
 WMT14 dataset.
 The original WMT14 dataset is too large and a small set of data for set is
 provided. This module will download dataset from
-http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
+http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz and
 parse training set and test set into paddle reader creators.
 
 """
@@ -37,11 +37,10 @@ URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and
 # will be add later.
-URL_TRAIN = ('http://paddlepaddle.cdn.bcebos.com/demo/'
-             'wmt_shrinked_data/wmt14.tgz')
+URL_TRAIN = ('http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz')
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
-URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
+URL_MODEL = 'http://paddlemodels.bj.bcebos.com/wmt%2Fwmt14.tgz'
 MD5_MODEL = '0cb4a5366189b6acba876491c8724fa3'
 
 START = "<s>"

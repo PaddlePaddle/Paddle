@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
 IF(WIN32 OR APPLE)
-    MESSAGE(WARNING 
+    MESSAGE(WARNING
         "Windows or Mac is not supported with MKLDNN in Paddle yet."
         "Force WITH_MKLDNN=OFF")
     SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in Windows and MacOS" FORCE)
@@ -36,7 +36,8 @@ MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/lib to runtime path")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/lib")
 
-INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR})
+INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
+INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include mkldnn.h
 
 IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
     SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
@@ -44,21 +45,26 @@ IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
 ELSE()
     MESSAGE(FATAL_ERROR "Should enable MKLML when build MKLDNN")
 ENDIF()
-
-SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} -Wno-error=strict-overflow")
-SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} -Wno-error=strict-overflow")
+SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds")
+SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
+SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
+SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
-    GIT_TAG             "v0.11"
+    GIT_TAG             "21fb5f2af1dd14e132af4f1b79160977ee487818"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
+    CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
+    CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}
     CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
     CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
+    CMAKE_ARGS          -DWITH_TEST=OFF -DWITH_EXAMPLE=OFF
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )

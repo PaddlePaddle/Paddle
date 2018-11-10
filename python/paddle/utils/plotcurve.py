@@ -44,6 +44,7 @@ To use this script to generate plot for AvgCost, error:
    python plotcurve.py -i paddle.INFO -o figure.png AvgCost error
 """
 
+import six
 import sys
 import matplotlib
 # the following line is added immediately after import matplotlib
@@ -91,7 +92,7 @@ def plot_paddle_curve(keys, inputfile, outputfile, format='png',
         sys.stderr.write("No data to plot. Exiting!\n")
         return
     m = len(keys) + 1
-    for i in xrange(1, m):
+    for i in six.moves.xrange(1, m):
         pyplot.plot(
             x[:, 0],
             x[:, i],

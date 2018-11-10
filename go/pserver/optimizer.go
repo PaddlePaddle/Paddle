@@ -1,4 +1,4 @@
-// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ package pserver
 
 // #cgo CFLAGS: -I ../../
 // #cgo LDFLAGS: ${SRCDIR}/client/c/libpaddle_go_optimizer.a -lstdc++ -lm
-// #include "paddle/optimizer/optimizer.h"
+// #include "paddle/legacy/optimizer/optimizer.h"
 // #include <stdlib.h>
 // #include <string.h>
 import "C"

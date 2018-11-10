@@ -2,9 +2,8 @@
 
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html)
-[![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/PaddlePaddle/Paddle?branch=develop)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://paddlepaddle.org/documentation/docs/en/1.1/getstarted/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://paddlepaddle.org/documentation/docs/zh/1.1/beginners_guide/index.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -18,6 +17,22 @@ learning to many products at Baidu.
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest feature of PaddlePaddle.
+
+
+### Latest PaddlePaddle Release: [Fluid 1.1.0](https://github.com/PaddlePaddle/Paddle/tree/release/1.1)
+### Install Latest Stable Release:
+```
+# Linux CPU
+pip install paddlepaddle
+# Linux GPU cuda9cudnn7
+pip install paddlepaddle-gpu
+# Linux GPU cuda8cudnn7
+pip install paddlepaddle-gpu==1.1.0.post87
+# Linux GPU cuda8cudnn5
+pip install paddlepaddle-gpu==1.1.0.post85
+
+# For installation on other platform, refer to http://paddlepaddle.org/
+```
 
 ## Features
 
@@ -61,33 +76,26 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 
 ## Installation
 
-It is recommended to check out the
-[Docker installation guide](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/docker_install_en.html)
-before looking into the
-[build from source guide](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/build_from_source_en.html).
+It is recommended to read [this doc](http://paddlepaddle.org/documentation/docs/zh/1.1/beginners_guide/index.html) on our website.
 
 ## Documentation
 
-We provide [English](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html) and
-[Chinese](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html) documentation.
+We provide [English](http://paddlepaddle.org/documentation/docs/en/1.1/getstarted/index_en.html) and
+[Chinese](http://paddlepaddle.org/documentation/docs/zh/1.1/beginners_guide/index.html) documentation.
 
-- [Deep Learning 101](http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.html)
+- [Deep Learning 101](https://github.com/PaddlePaddle/book)
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/usage/cluster/cluster_train_en.html)
+- [Distributed Training](http://paddlepaddle.org/documentation/docs/zh/1.1/user_guides/howto/training/cluster_howto.html)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Distributed Training on Kubernetes](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/usage/cluster/k8s_en.html)
-
-   You can also run distributed training jobs on Kubernetes clusters.
-
-- [Python API](http://www.paddlepaddle.org/docs/develop/documentation/en/api/index_en.html)
+- [Python API](http://paddlepaddle.org/documentation/api/zh/1.1/fluid.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/dev/contribute_to_paddle_en.html)
+- [How to Contribute](http://paddlepaddle.org/documentation/docs/zh/1.1/advanced_usage/development/contribute_to_paddle.html)
 
    We appreciate your contributions!
 

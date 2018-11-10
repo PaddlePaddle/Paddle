@@ -36,7 +36,7 @@ __all__ = [
     'cifar',
     'movielens',
     'conll05',
-    'sentiment'
+    'sentiment',
     'uci_housing',
     'wmt14',
     'wmt16',

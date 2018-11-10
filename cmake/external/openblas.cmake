@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,12 @@ IF(USE_EIGEN_FOR_BLAS)
 ENDIF(USE_EIGEN_FOR_BLAS)
 
 INCLUDE(cblas)
+# IF(WIN32 AND NOT ${CBLAS_FOUND})
+
+
 
 IF(NOT ${CBLAS_FOUND})
+
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
@@ -29,6 +33,13 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
+    ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
+    IF (WIN32)
+        SET(CBLAS_FOUND true)
+        MESSAGE(WARNING, "In windows, openblas only support msvc build, please build it manually and put it at " ${CBLAS_INSTALL_DIR})
+    ENDIF(WIN32)
+
+    IF (NOT WIN32)
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
     SET(OPENBLAS_COMMIT "v0.2.20")
 
@@ -67,7 +78,6 @@ IF(NOT ${CBLAS_FOUND})
     ENDIF()
 
     SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
-
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -77,10 +87,13 @@ IF(NOT ${CBLAS_FOUND})
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
-        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
+        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
+                            && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
+    ELSE()
+    ENDIF(NOT WIN32)
     SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
@@ -100,15 +113,11 @@ IF(NOT ${CBLAS_FOUND})
                 \"${CBLAS_INSTALL_DIR}/lib -> ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}\"
             )"
         )
-        INSTALL(CODE "execute_process(
-            COMMAND rm -r ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/cmake
-                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/pkgconfig
-            )"
-        )
     ENDIF()
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
+MESSAGE(STATUS "BLAS Include: ${CBLAS_INC_DIR}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
 # FIXME(gangliao): generate cblas target to track all high performance
@@ -116,7 +125,17 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
 ADD_LIBRARY(cblas STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+
+IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+  TARGET_LINK_LIBRARIES(cblas dynload_mklml)
+ELSE()
+  TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+ENDIF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+
+IF(WITH_LIBXSMM)
+  TARGET_LINK_LIBRARIES(cblas ${LIBXSMM_LIBS})
+  ADD_DEPENDENCIES(cblas extern_libxsmm)
+ENDIF()
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)

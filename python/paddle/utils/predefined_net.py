@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import six
 import os
 from paddle.trainer.config_parser import *
 from paddle.utils.preprocess_img import \
@@ -112,7 +113,7 @@ def simple_conv_net(data_conf, is_color=False):
         num_classes: num of classes.
         is_color: whether the input images are color.
     """
-    for k, v in data_conf.iteritems():
+    for k, v in six.iteritems(data_conf):
         globals()[k] = v
     data_input, label_input, num_image_channels = \
         image_data_layers(image_size, num_classes, is_color, is_predict)
@@ -340,7 +341,7 @@ def small_vgg(data_conf, is_predict=False):
         num_classes: num of classes.
         is_color: whether the input images are color.
     """
-    for k, v in data_conf.iteritems():
+    for k, v in six.iteritems(data_conf):
         globals()[k] = v
     vgg_conv_net(image_size, num_classes,
                  num_layers=[2, 2, 3, 3],

@@ -361,6 +361,7 @@ def settings(batch_size,
              learning_rate_decay_b=0.,
              learning_rate_schedule='poly',
              learning_rate_args='',
+             async_lagged_grad_discard_ratio=1.5,
              learning_method=None,
              regularization=None,
              is_async=False,
@@ -396,6 +397,10 @@ def settings(batch_size,
                                         value larger than some value, will be
                                         clipped.
     :type gradient_clipping_threshold: float
+    :param async_lagged_grad_discard_ratio: async SGD gradient commit control,
+          when async_lagged_grad_discard_ratio * num_gradient_servers commit passed, 
+          the current async SGD gradient is discarded.
+    :type async_lagged_grad_discard_ratio: float
     """
     if isinstance(regularization, BaseRegularization):
         regularization = [regularization]
@@ -409,7 +414,7 @@ def settings(batch_size,
     args = [
         'batch_size', 'learning_rate', 'learning_rate_decay_a',
         'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args',
-        'gradient_clipping_threshold'
+        'gradient_clipping_threshold', 'async_lagged_grad_discard_ratio'
     ]
     kwargs = dict()
     kwargs['algorithm'] = algorithm

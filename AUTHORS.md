@@ -1,12 +1,16 @@
 | Github account | name |
 |---|---|
+| abhinavarora | Abhinav Arora |
 | backyes | Yan-Fei Wang |
+| baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
-| Canpio | Jia-Yi Feng |
+| ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | dzhwinter | Zhi-Hong Dong |
+| dragonwarrior | Long Wang |
+| dyning | Yuning Du |
 | emailweixu | Wei Xu |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
@@ -15,6 +19,10 @@
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | jacquesqiao | Long-Fei Qiao |
+| jczaja | Jacek Czaja |
+| JiayiFeng | Jia-Yi Feng |
+| kbinias | Krzysztof Binias |
+| kexinzhao | Ke-Xin Zhao |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
 | lipeng-unisound | Peng Li |
@@ -23,16 +31,22 @@
 | llxxxll | Yong-Feng Liu |
 | luotao01 | Tao Luo |
 | lzhao4ever | Liang Zhao |
+| mozga-intel | Mateusz Ozga |
 | NHZlX | Zhao-Long Xing |
+| Noplz | Yuan Gao |
 | pakchoi | Chuan-Jiang Song |
+| panyx0718 | Xin Pan |
 | pengli09 | Peng Li |
 | pkuyym | Ya-Ming Yang |
+| pzelazko-intel | Pawel Zelazko |
 | QiJune | Jun Qi |
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
 | Superjom | Chun-Wei Yan |
 | tianbingsz | Tian-Bing Xu |
+| tpatejko | Tomasz Patejko |
 | typhoonzero | Yi Wu |
+| velconia | Qi-Yang Min |
 | wanghaoshuang | Hao-Shuang Wang |
 | wangyang59 | Yang Wang |
 | wangzhen-nlp | Zhen Wang |
