@@ -10,7 +10,6 @@ add_subdirectory(passes)
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES})
 
 cc_library(argument SRCS argument.cc DEPS scope proto_desc)
-#cc_library(tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass.cc DEPS ${inference_analyzer} DEPS subgraph_splitter)
 cc_library(analysis_pass SRCS analysis_pass.cc)
 
 message("analysis_deps: ${analysis_deps}")

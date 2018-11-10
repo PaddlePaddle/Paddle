@@ -27,7 +27,9 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#if PADDLE_WITH_CUDA
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#endif
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"

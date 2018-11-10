@@ -27,10 +27,6 @@ set(SHARED_INFERENCE_SRCS
     io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
-if (WITH_GPU AND TENSORRT_FOUND)
-  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS})
-  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS})
-endif()
 
 # Create static library
 cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
