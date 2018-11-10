@@ -44,8 +44,16 @@ static inline T CalcMSEWithMask(const Tensor& x, const Tensor& y,
   auto x_t = EigenVector<T>::Flatten(x);
   auto y_t = EigenVector<T>::Flatten(y);
   auto mask_t = EigenVector<T>::Flatten(mask);
-  auto result = ((x_t - y_t) * mask_t).pow(2).sum().eval();
-  return result(0);
+
+  T error_sum = 0.0;
+  T points = 0.0;
+  for (int i = 0; i < x_t.dimensions()[0]; i++) {
+    if (mask_t(i)) {
+      error_sum += pow(x_t(i) - y_t(i), 2);
+      points += 1;
+    }
+  }
+  return (error_sum / points);
 }
 
 template <typename T>
@@ -55,27 +63,24 @@ static inline T CalcBCEWithMask(const Tensor& x, const Tensor& y,
   auto y_t = EigenVector<T>::Flatten(y);
   auto mask_t = EigenVector<T>::Flatten(mask);
 
-  auto result =
-      ((y_t * (x_t.log()) + (1.0 - y_t) * ((1.0 - x_t).log())) * mask_t)
-          .sum()
-          .eval();
-  return result;
+  T error_sum = 0.0;
+  T points = 0.0;
+  for (int i = 0; i < x_t.dimensions()[0]; i++) {
+    if (mask_t(i)) {
+      error_sum +=
+          -1.0 * (y_t(i) * log(x_t(i)) + (1.0 - y_t(i)) * log(1.0 - x_t(i)));
+      points += 1;
+    }
+  }
+  return (error_sum / points);
 }
 
 template <typename T>
-static inline T CalcCEWithMask(const Tensor& x, const Tensor& y,
-                               const Tensor& mask) {
-  auto x_t = EigenVector<T>::Flatten(x);
-  auto y_t = EigenVector<T>::Flatten(y);
-  auto mask_t = EigenVector<T>::Flatten(mask);
-}
-
-template <typename T>
-static void CalcPredResult(const Tensor& input, Tensor* pred_boxes,
-                           Tensor* pred_confs, Tensor* pred_classes,
-                           Tensor* pred_x, Tensor* pred_y, Tensor* pred_w,
-                           Tensor* pred_h, std::vector<int> anchors,
-                           const int class_num, const int stride) {
+static void CalcPredResult(const Tensor& input, Tensor* pred_confs,
+                           Tensor* pred_classes, Tensor* pred_x, Tensor* pred_y,
+                           Tensor* pred_w, Tensor* pred_h,
+                           std::vector<int> anchors, const int class_num,
+                           const int stride) {
   const int n = input.dims()[0];
   const int c = input.dims()[1];
   const int h = input.dims()[2];
@@ -84,7 +89,7 @@ static void CalcPredResult(const Tensor& input, Tensor* pred_boxes,
   const int box_attr_num = 5 + class_num;
 
   auto input_t = EigenTensor<T, 4>::From(input);
-  auto pred_boxes_t = EigenTensor<T, 5>::From(*pred_boxes);
+  // auto pred_boxes_t = EigenTensor<T, 5>::From(*pred_boxes);
   auto pred_confs_t = EigenTensor<T, 4>::From(*pred_confs);
   auto pred_classes_t = EigenTensor<T, 5>::From(*pred_classes);
   auto pred_x_t = EigenTensor<T, 4>::From(*pred_x);
@@ -104,16 +109,16 @@ static void CalcPredResult(const Tensor& input, Tensor* pred_boxes,
           pred_y_t(i, an_idx, j, k) =
               sigmod(input_t(i, box_attr_num * an_idx + 1, j, k));
           pred_w_t(i, an_idx, j, k) =
-              sigmod(input_t(i, box_attr_num * an_idx + 2, j, k));
+              input_t(i, box_attr_num * an_idx + 2, j, k);
           pred_h_t(i, an_idx, j, k) =
-              sigmod(input_t(i, box_attr_num * an_idx + 3, j, k));
+              input_t(i, box_attr_num * an_idx + 3, j, k);
 
-          pred_boxes_t(i, an_idx, j, k, 0) = pred_x_t(i, an_idx, j, k) + k;
-          pred_boxes_t(i, an_idx, j, k, 1) = pred_y_t(i, an_idx, j, k) + j;
-          pred_boxes_t(i, an_idx, j, k, 2) =
-              exp(pred_w_t(i, an_idx, j, k)) * an_w;
-          pred_boxes_t(i, an_idx, j, k, 3) =
-              exp(pred_h_t(i, an_idx, j, k)) * an_h;
+          // pred_boxes_t(i, an_idx, j, k, 0) = pred_x_t(i, an_idx, j, k) + k;
+          // pred_boxes_t(i, an_idx, j, k, 1) = pred_y_t(i, an_idx, j, k) + j;
+          // pred_boxes_t(i, an_idx, j, k, 2) =
+          //     exp(pred_w_t(i, an_idx, j, k)) * an_w;
+          // pred_boxes_t(i, an_idx, j, k, 3) =
+          //     exp(pred_h_t(i, an_idx, j, k)) * an_h;
 
           pred_confs_t(i, an_idx, j, k) =
               sigmod(input_t(i, box_attr_num * an_idx + 4, j, k));
@@ -129,40 +134,27 @@ static void CalcPredResult(const Tensor& input, Tensor* pred_boxes,
 }
 
 template <typename T>
-static T CalcBoxIoU(std::vector<T> box1, std::vector<T> box2,
-                    bool center_mode) {
-  T b1_x1, b1_x2, b1_y1, b1_y2;
-  T b2_x1, b2_x2, b2_y1, b2_y2;
-  if (center_mode) {
-    b1_x1 = box1[0] - box1[2] / 2;
-    b1_x2 = box1[0] + box1[2] / 2;
-    b1_y1 = box1[1] - box1[3] / 2;
-    b1_y2 = box1[1] + box1[3] / 2;
-    b2_x1 = box2[0] - box2[2] / 2;
-    b2_x2 = box2[0] + box2[2] / 2;
-    b2_y1 = box2[1] - box2[3] / 2;
-    b2_y2 = box2[1] + box2[3] / 2;
-  } else {
-    b1_x1 = box1[0];
-    b1_x2 = box1[1];
-    b1_y1 = box1[2];
-    b1_y2 = box1[3];
-    b2_x1 = box2[0];
-    b2_x2 = box2[0];
-    b2_y1 = box2[1];
-    b2_y2 = box2[1];
-  }
-  T b1_area = (b1_x2 - b1_x1 + 1.0) * (b1_y2 - b1_y1 + 1.0);
-  T b2_area = (b2_x2 - b2_x1 + 1.0) * (b2_y2 - b2_y1 + 1.0);
+static T CalcBoxIoU(std::vector<T> box1, std::vector<T> box2) {
+  T b1_x1 = box1[0] - box1[2] / 2;
+  T b1_x2 = box1[0] + box1[2] / 2;
+  T b1_y1 = box1[1] - box1[3] / 2;
+  T b1_y2 = box1[1] + box1[3] / 2;
+  T b2_x1 = box2[0] - box2[2] / 2;
+  T b2_x2 = box2[0] + box2[2] / 2;
+  T b2_y1 = box2[1] - box2[3] / 2;
+  T b2_y2 = box2[1] + box2[3] / 2;
+
+  T b1_area = (b1_x2 - b1_x1) * (b1_y2 - b1_y1);
+  T b2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1);
 
   T inter_rect_x1 = std::max(b1_x1, b2_x1);
   T inter_rect_y1 = std::max(b1_y1, b2_y1);
   T inter_rect_x2 = std::min(b1_x2, b2_x2);
   T inter_rect_y2 = std::min(b1_y2, b2_y2);
-  T inter_area = std::max(inter_rect_x2 - inter_rect_x1 + 1.0, 0.0) *
-                 std::max(inter_rect_y2 - inter_rect_y1 + 1.0, 0.0);
+  T inter_area = std::max(inter_rect_x2 - inter_rect_x1, static_cast<T>(0.0)) *
+                 std::max(inter_rect_y2 - inter_rect_y1, static_cast<T>(0.0));
 
-  return inter_area / (b1_area + b2_area - inter_area + 1e-16);
+  return inter_area / (b1_area + b2_area - inter_area);
 }
 
 template <typename T>
@@ -181,23 +173,18 @@ static inline int GetPredLabel(const Tensor& pred_classes, int n,
 }
 
 template <typename T>
-static void CalcPredBoxWithGTBox(
-    const Tensor& pred_boxes, const Tensor& pred_confs,
-    const Tensor& pred_classes, const Tensor& gt_boxes,
-    std::vector<int> anchors, const float ignore_thresh, const int img_height,
-    int* gt_num, int* correct_num, Tensor* mask_true, Tensor* mask_false,
-    Tensor* tx, Tensor* ty, Tensor* tw, Tensor* th, Tensor* tconf,
-    Tensor* tclass) {
+static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
+                            std::vector<int> anchors, const int img_height,
+                            const int grid_size, Tensor* obj_mask,
+                            Tensor* noobj_mask, Tensor* tx, Tensor* ty,
+                            Tensor* tw, Tensor* th, Tensor* tconf,
+                            Tensor* tclass) {
   const int n = gt_boxes.dims()[0];
   const int b = gt_boxes.dims()[1];
-  const int grid_size = pred_boxes.dims()[1];
   const int anchor_num = anchors.size() / 2;
-  auto pred_boxes_t = EigenTensor<T, 5>::From(pred_boxes);
-  auto pred_confs_t = EigenTensor<T, 4>::From(pred_confs);
-  auto pred_classes_t = EigenTensor<T, 5>::From(pred_classes);
   auto gt_boxes_t = EigenTensor<T, 3>::From(gt_boxes);
-  auto mask_true_t = EigenTensor<int, 4>::From(*mask_true).setConstant(0.0);
-  auto mask_false_t = EigenTensor<int, 4>::From(*mask_false).setConstant(1.0);
+  auto obj_mask_t = EigenTensor<int, 4>::From(*obj_mask).setConstant(0);
+  auto noobj_mask_t = EigenTensor<int, 4>::From(*noobj_mask).setConstant(1);
   auto tx_t = EigenTensor<T, 4>::From(*tx).setConstant(0.0);
   auto ty_t = EigenTensor<T, 4>::From(*ty).setConstant(0.0);
   auto tw_t = EigenTensor<T, 4>::From(*tw).setConstant(0.0);
@@ -205,8 +192,6 @@ static void CalcPredBoxWithGTBox(
   auto tconf_t = EigenTensor<T, 4>::From(*tconf).setConstant(0.0);
   auto tclass_t = EigenTensor<T, 5>::From(*tclass).setConstant(0.0);
 
-  *gt_num = 0;
-  *correct_num = 0;
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < b; j++) {
       if (isZero(gt_boxes_t(i, j, 0)) && isZero(gt_boxes_t(i, j, 1)) &&
@@ -214,12 +199,11 @@ static void CalcPredBoxWithGTBox(
         continue;
       }
 
-      *(gt_num)++;
       int gt_label = gt_boxes_t(i, j, 0);
-      T gx = gt_boxes_t(i, j, 1);
-      T gy = gt_boxes_t(i, j, 2);
-      T gw = gt_boxes_t(i, j, 3);
-      T gh = gt_boxes_t(i, j, 4);
+      T gx = gt_boxes_t(i, j, 1) * grid_size;
+      T gy = gt_boxes_t(i, j, 2) * grid_size;
+      T gw = gt_boxes_t(i, j, 3) * grid_size;
+      T gh = gt_boxes_t(i, j, 4) * grid_size;
       int gi = static_cast<int>(gx);
       int gj = static_cast<int>(gy);
 
@@ -230,43 +214,26 @@ static void CalcPredBoxWithGTBox(
       for (int an_idx = 0; an_idx < anchor_num; an_idx++) {
         std::vector<T> anchor_shape({0, 0, static_cast<T>(anchors[2 * an_idx]),
                                      static_cast<T>(anchors[2 * an_idx + 1])});
-        iou = CalcBoxIoU(gt_box, anchor_shape, false);
+        iou = CalcBoxIoU<T>(gt_box, anchor_shape);
         if (iou > max_iou) {
           max_iou = iou;
           best_an_index = an_idx;
         }
         if (iou > ignore_thresh) {
-          mask_false_t(b, an_idx, gj, gi) = 0;
+          noobj_mask_t(b, an_idx, gj, gi) = 0;
         }
       }
-      mask_true_t(b, best_an_index, gj, gi) = 1;
-      mask_false_t(b, best_an_index, gj, gi) = 1;
+      obj_mask_t(b, best_an_index, gj, gi) = 1;
+      noobj_mask_t(b, best_an_index, gj, gi) = 1;
       tx_t(i, best_an_index, gj, gi) = gx - gi;
       ty_t(i, best_an_index, gj, gi) = gy - gj;
-      tw_t(i, best_an_index, gj, gi) =
-          log(gw / anchors[2 * best_an_index] + 1e-16);
-      th_t(i, best_an_index, gj, gi) =
-          log(gh / anchors[2 * best_an_index + 1] + 1e-16);
+      tw_t(i, best_an_index, gj, gi) = log(gw / anchors[2 * best_an_index]);
+      th_t(i, best_an_index, gj, gi) = log(gh / anchors[2 * best_an_index + 1]);
       tclass_t(b, best_an_index, gj, gi, gt_label) = 1;
       tconf_t(b, best_an_index, gj, gi) = 1;
-
-      std::vector<T> pred_box({
-          pred_boxes_t(i, best_an_index, gj, gi, 0),
-          pred_boxes_t(i, best_an_index, gj, gi, 1),
-          pred_boxes_t(i, best_an_index, gj, gi, 2),
-          pred_boxes_t(i, best_an_index, gj, gi, 3),
-      });
-      gt_box[0] = gx;
-      gt_box[1] = gy;
-      iou = CalcBoxIoU(gt_box, pred_box, true);
-      int pred_label = GetPredLabel<T>(pred_classes, i, best_an_index, gj, gi);
-      T score = pred_confs_t(i, best_an_index, gj, gi);
-      if (iou > 0.5 && pred_label == gt_label && score > 0.5) {
-        (*correct_num)++;
-      }
     }
   }
-  mask_false_t = mask_true_t - mask_false_t;
+  noobj_mask_t = noobj_mask_t - obj_mask_t;
 }
 
 template <typename DeviceContext, typename T>
@@ -275,7 +242,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
     auto* gt_boxes = ctx.Input<Tensor>("GTBox");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* loss = ctx.Output<Tensor>("Loss");
     int img_height = ctx.Attr<int>("img_height");
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
     int class_num = ctx.Attr<int>("class_num");
@@ -286,44 +253,44 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     const int h = input->dims()[2];
     const int w = input->dims()[3];
     const int an_num = anchors.size() / 2;
-    const float stride = static_cast<float>(img_height) / h;
+    const T stride = static_cast<T>(img_height) / h;
 
     Tensor pred_x, pred_y, pred_w, pred_h;
-    Tensor pred_boxes, pred_confs, pred_classes;
+    Tensor pred_confs, pred_classes;
     pred_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_boxes.mutable_data<T>({n, an_num, h, w, 4}, ctx.GetPlace());
     pred_confs.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_classes.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    CalcPredResult<T>(*input, &pred_boxes, &pred_confs, &pred_classes, &pred_x,
-                      &pred_y, &pred_w, &pred_h, anchors, class_num, stride);
+    CalcPredResult<T>(*input, &pred_confs, &pred_classes, &pred_x, &pred_y,
+                      &pred_w, &pred_h, anchors, class_num, stride);
 
-    Tensor mask_true, mask_false;
+    Tensor obj_mask, noobj_mask;
     Tensor tx, ty, tw, th, tconf, tclass;
-    mask_true.mutable_data<int>({n, an_num, h, w}, ctx.GetPlace());
-    mask_false.mutable_data<int>({n, an_num, h, w}, ctx.GetPlace());
+    obj_mask.mutable_data<int>({n, an_num, h, w}, ctx.GetPlace());
+    noobj_mask.mutable_data<int>({n, an_num, h, w}, ctx.GetPlace());
     tx.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     ty.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tw.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     th.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    int gt_num = 0;
-    int correct_num = 0;
-    CalcPredBoxWithGTBox<T>(pred_boxes, pred_confs, pred_classes, *gt_boxes,
-                            anchors, ignore_thresh, img_height, &gt_num,
-                            &correct_num, &mask_true, &mask_false, &tx, &ty,
-                            &tw, &th, &tconf, &tclass);
+    PrePorcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, img_height, h,
+                       &obj_mask, &noobj_mask, &tx, &ty, &tw, &th, &tconf,
+                       &tclass);
 
-    T loss_x = CalcMSEWithMask<T>(pred_x, tx, mask_true);
-    T loss_y = CalcMSEWithMask<T>(pred_y, ty, mask_true);
-    T loss_w = CalcMSEWithMask<T>(pred_w, tw, mask_true);
-    T loss_h = CalcMSEWithMask<T>(pred_h, th, mask_true);
-    T loss_conf_true = CalcBCEWithMask<T>(pred_confs, tconf, mask_true);
-    T loss_conf_false = CalcBCEWithMask<T>(pred_confs, tconf, mask_false);
-    // T loss_class = CalcCEWithMask<T>()
+    T loss_x = CalcMSEWithMask<T>(pred_x, tx, obj_mask);
+    T loss_y = CalcMSEWithMask<T>(pred_y, ty, obj_mask);
+    T loss_w = CalcMSEWithMask<T>(pred_w, tw, obj_mask);
+    T loss_h = CalcMSEWithMask<T>(pred_h, th, obj_mask);
+    T loss_conf_true = CalcBCEWithMask<T>(pred_confs, tconf, obj_mask);
+    T loss_conf_false = CalcBCEWithMask<T>(pred_confs, tconf, noobj_mask);
+    T loss_class = CalcBCEWithMask<T>(pred_classes, tclass, obj_mask);
+
+    auto* loss_data = loss->mutable_data<T>({1}, ctx.GetPlace());
+    loss_data[0] = loss_x + loss_y + loss_w + loss_h + loss_conf_true +
+                   loss_conf_false + loss_class;
   }
 };
 
