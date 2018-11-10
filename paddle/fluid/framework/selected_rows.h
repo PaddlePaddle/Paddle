@@ -133,7 +133,8 @@ class SelectedRows {
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
-  std::unordered_map<int64_t, int64_t> id_to_index_;
+  std::unordered_map<int64_t, int64_t>
+      id_to_index_;  // should not be used when ids has duplicate member
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
   std::unique_ptr<RWLock> rwlock_{nullptr};

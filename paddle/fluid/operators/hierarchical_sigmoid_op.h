@@ -16,6 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
@@ -34,12 +35,21 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* w = ctx.Input<framework::Tensor>("W");
+    auto* path = ctx.Input<framework::Tensor>("PTable");
+    auto* code = ctx.Input<framework::Tensor>("PCode");
     auto* label = ctx.Input<framework::Tensor>("Label");
     auto* bias = ctx.Input<framework::Tensor>("Bias");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* pre_out = ctx.Output<framework::Tensor>("PreOut");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
-    int64_t code_length = math::FindLastSet(num_classes - 1);
+    bool is_custom = false;
+    if (path) {
+      is_custom = true;
+    } else {
+      is_custom = false;
+    }
+    int64_t code_length =
+        path ? path->dims()[1] : math::FindLastSet(num_classes - 1);
     int64_t batch_size = in->dims()[0];
     framework::Tensor sum;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -52,7 +62,15 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     zero(dev_ctx, pre_out, static_cast<T>(0.0));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     math::RowwiseSum<DeviceContext, T> row_sum;
-    math::MatrixBitCodeFunctor<T> bit_code(num_classes, label->data<int64_t>());
+
+    std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
+    if (!is_custom) {
+      bit_code.reset(new math::MatrixBitCodeFunctor<T>(num_classes,
+                                                       label->data<int64_t>()));
+    } else {
+      bit_code.reset(new math::MatrixBitCodeFunctor<T>(path, code,
+                                                       label->data<int64_t>()));
+    }
 
     std::vector<int64_t> sum_dims({batch_size, 1UL});
     sum.mutable_data<T>(framework::make_ddim(sum_dims), ctx.GetPlace());
@@ -60,15 +78,15 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     auto out_mat = framework::EigenVector<T>::Flatten(*out);
     if (bias) {
-      bit_code.Add(pre_out, *bias);
+      bit_code->Add(pre_out, *bias);
     }
-    bit_code.Mul(pre_out, *w, *in);
+    bit_code->Mul(pre_out, *w, *in);
     // clip to [-40, 40]
     Transform<DeviceContext> trans;
     trans(ctx.template device_context<DeviceContext>(), pre_out_data,
           pre_out_data + pre_out->numel(), pre_out_data,
           ClipFunctor<T>(static_cast<T>(-40.0), static_cast<T>(40.0)));
-    bit_code.Sum(*pre_out, out, static_cast<T>(-1));
+    bit_code->Sum(*pre_out, out, static_cast<T>(-1));
     // use softrelu to calculate cross entropy
     pre_out_mat.device(place) = (static_cast<T>(1.0) + pre_out_mat.exp()).log();
     row_sum(dev_ctx, *pre_out, &sum);
@@ -86,6 +104,8 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* w = ctx.Input<framework::Tensor>("W");
+    auto* path = ctx.Input<framework::Tensor>("PTable");
+    auto* code = ctx.Input<framework::Tensor>("PCode");
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* w_grad = ctx.Output<framework::Tensor>(framework::GradVarName("W"));
     auto* bias_grad =
@@ -105,7 +125,22 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     zero(dev_ctx, w_grad, static_cast<T>(0.0));
 
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
-    math::MatrixBitCodeFunctor<T> bit_code(num_classes, label->data<int64_t>());
+
+    bool is_custom = false;
+    if (path) {
+      is_custom = true;
+    } else {
+      is_custom = false;
+    }
+
+    std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
+    if (!is_custom) {
+      bit_code.reset(new math::MatrixBitCodeFunctor<T>(num_classes,
+                                                       label->data<int64_t>()));
+    } else {
+      bit_code.reset(new math::MatrixBitCodeFunctor<T>(path, code,
+                                                       label->data<int64_t>()));
+    }
 
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
@@ -116,7 +151,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     // softrelu derivative
     pre_out_grad_mat.device(place) =
         static_cast<T>(1.0) - static_cast<T>(1.0) / pre_out_mat.exp();
-    bit_code.Sub(&pre_out_grad);  // the gradient of clip(w * x + b)
+    bit_code->Sub(&pre_out_grad);  // the gradient of clip(w * x + b)
     pre_out_grad_mat.device(place) =
         pre_out_grad_mat * out_grad_mat.broadcast(bcast);
     // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
@@ -124,10 +159,10 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     if (bias_grad) {
       bias_grad->mutable_data<T>(ctx.GetPlace());
       zero(dev_ctx, bias_grad, static_cast<T>(0.0));
-      bit_code.AddGrad(pre_out_grad, bias_grad);
+      bit_code->AddGrad(pre_out_grad, bias_grad);
     }
-    bit_code.MulGradWeight(pre_out_grad, w_grad, *in);
-    bit_code.MulGradError(pre_out_grad, *w, in_grad);
+    bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
+    bit_code->MulGradError(pre_out_grad, *w, in_grad);
   }
 };
 

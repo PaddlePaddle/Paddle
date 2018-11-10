@@ -21,14 +21,13 @@ namespace math {
 template <typename T>
 void MatrixBitCodeFunctor<T>::Add(framework::Tensor* tmat,
                                   const framework::Tensor& vec) {
-  SimpleCodeTable code_table(num_classes_);
   size_t batch_size = tmat->dims()[0];
   size_t width = tmat->dims()[1];
   for (size_t i = 0; i < batch_size; ++i) {
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      size_t index = code.calc_index(j);
+      size_t index = code->calc_index(j);
       tmat->data<T>()[i * width + j] += vec.data<T>()[index];
     }
   }
@@ -37,14 +36,13 @@ void MatrixBitCodeFunctor<T>::Add(framework::Tensor* tmat,
 template <typename T>
 void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
                                       framework::Tensor* vec) {
-  SimpleCodeTable code_table(num_classes_);
   size_t batch_size = tmat.dims()[0];
   size_t width = tmat.dims()[1];
   for (size_t i = 0; i < batch_size; ++i) {
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      size_t index = code.calc_index(j);
+      size_t index = code->calc_index(j);
       vec->data<T>()[index] += tmat.data<T>()[i * width + j];
     }
   }
@@ -53,15 +51,14 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
 template <typename T>
 void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
                                   framework::Tensor* sum, T scale_sum) {
-  SimpleCodeTable code_table(num_classes_);
   size_t num_samples = tmat.dims()[0];
   size_t o_width = tmat.dims()[1];
   for (size_t i = 0; i < num_samples; ++i) {
     T sm = static_cast<T>(0.0);
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      if (code.calc_bit(j)) {
+      if (code->calc_bit(j)) {
         // calc_bit starts from right most bit, while data in tmat[i] is in the
         // reverse order.
         sm += tmat.data<T>()[i * o_width + j];
@@ -75,7 +72,6 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::Mul(framework::Tensor* tmat,
                                   const framework::Tensor& weight,
                                   const framework::Tensor& input) {
-  SimpleCodeTable code_table(num_classes_);
   size_t num_samples = tmat->dims()[0];
   size_t tmat_width = tmat->dims()[1];
   size_t input_width = input.dims()[1];
@@ -84,10 +80,10 @@ void MatrixBitCodeFunctor<T>::Mul(framework::Tensor* tmat,
   auto weight_value = weight.data<T>();
   auto input_value = input.data<T>();
   for (size_t i = 0; i < num_samples; ++i) {
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      size_t index = code.calc_index(j);
+      size_t index = code->calc_index(j);
       T sum = static_cast<T>(0.0);
       for (size_t k = 0; k < input_width; ++k) {
         sum += weight_value[weight_width * index + k] *
@@ -102,7 +98,6 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor& tmat,
                                             framework::Tensor* weight,
                                             const framework::Tensor& input) {
-  SimpleCodeTable code_table(num_classes_);
   size_t num_samples = tmat.dims()[0];
   size_t input_width = input.dims()[1];
   size_t tmat_width = tmat.dims()[1];
@@ -111,10 +106,10 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor& tmat,
   auto weight_value = weight->data<T>();
   auto input_value = input.data<T>();
   for (size_t i = 0; i < num_samples; ++i) {
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      size_t index = code.calc_index(j);
+      size_t index = code->calc_index(j);
 
       for (size_t k = 0; k < input_width; ++k) {
         weight_value[weight_width * index + k] +=
@@ -128,7 +123,6 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor& tmat,
                                            const framework::Tensor& weight,
                                            framework::Tensor* input) {
-  SimpleCodeTable code_table(num_classes_);
   size_t num_samples = tmat.dims()[0];
   size_t tmat_width = tmat.dims()[1];
   size_t input_width = input->dims()[1];
@@ -138,10 +132,10 @@ void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor& tmat,
   auto input_value = input->data<T>();
 
   for (size_t i = 0; i < num_samples; ++i) {
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      size_t index = code.calc_index(j);
+      size_t index = code->calc_index(j);
 
       for (size_t k = 0; k < input_width; ++k) {
         input_value[input_width * i + k] +=
@@ -154,14 +148,13 @@ void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor& tmat,
 
 template <typename T>
 void MatrixBitCodeFunctor<T>::Sub(framework::Tensor* tmat) {
-  SimpleCodeTable code_table(num_classes_);
   size_t num_samples = tmat->dims()[0];
   size_t o_width = tmat->dims()[1];
   for (size_t i = 0; i < num_samples; ++i) {
-    auto code = code_table(static_cast<size_t>(ids_[i]));
-    int code_length = code.get_length();
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
-      if (code.calc_bit(j)) {
+      if (code->calc_bit(j)) {
         tmat->data<T>()[i * o_width + j] -= 1;
       }
     }

@@ -4349,6 +4349,8 @@ def nce(input,
 def hsigmoid(input,
              label,
              num_classes,
+             ptabl=None,
+             pcode=None,
              param_attr=None,
              bias_attr=None,
              name=None):
@@ -4372,6 +4374,12 @@ def hsigmoid(input,
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
         num_classes: (int), The number of classes, must not be less than 2.
+        ptable: (Variable|None) this variable can store each batch of samples' path to root, 
+            it should be in leaf -> root order
+            ptable should have the same shape with pcode, and for each sample i ptable[i] indicates a np.array like 
+            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
+        pcode:  (Variable|None) this variable can store each batch of samples' code, 
+            each code consist with every code of parent nodes. it should be in leaf -> root order
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -4403,12 +4411,25 @@ def hsigmoid(input,
     dim = input.shape[1]
     if num_classes < 2:
         raise ValueError("num_classes must not be less than 2.")
+    if (ptable is not None) and (pcode is None):
+        raise ValueError("pcode should not be None when ptable has been set")
+    elif (ptable is None) and (pcode is not None):
+        raise ValueError("ptable should not be None when pcode has been set")
+    else:
+        pass
+
     weights = helper.create_parameter(
         attr=helper.param_attr,
         shape=[num_classes - 1, dim],
         is_bias=False,
         dtype=input.dtype)
-    inputs = {"X": input, "W": weights, "Label": label}
+    inputs = {
+        "X": input,
+        "W": weights,
+        "PTable": ptable,
+        "PCode": pcode,
+        "Label": label
+    }
     if helper.bias_attr:
         bias = helper.create_parameter(
             attr=helper.bias_attr,
