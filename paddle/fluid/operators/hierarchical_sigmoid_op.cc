@@ -91,10 +91,19 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W",
              "(Tensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is a 2-D tensor, the shape is"
-             "[num_classes - 1, D].");
+             "[K, D]. Which K is the num of non-leaf node in Path Tree");
     AddInput("Label",
              "(Tensor, required), The labels of training data. It's a"
              "tensor with shape [N, 1].");
+    AddInput("PTable",
+             "(Tensor, optional), The Path Table from root to current word"
+             "it should have shape like [N, L], L is the length of the Path")
+        .AsDispensable();
+    AddInput("PCode",
+             "(Tensor, optional), The Code on each Node of the Path from root "
+             "to current word"
+             "it should have shape like [N, L], L is the length of the Path")
+        .AsDispensable();
     AddInput("Bias",
              "(Tensor, optional), The bias is a tensor with shape"
              "[1, num_classes - 1].");
