@@ -16,10 +16,6 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
-
-constexpr char kAllOpDescs[] = "all_op_descs";
-
-}  // namespace details
+namespace details {}  // namespace details
 }  // namespace framework
 }  // namespace paddle

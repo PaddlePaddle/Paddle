@@ -52,22 +52,14 @@ struct SortNode {
   bool operator<(const SortNode& r) const {
     VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op_));
     VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(r.op_));
-    if (i0 == nullptr || i1 == nullptr) {
-      LOG(ERROR) << op_->DebugString();
-      LOG(ERROR) << r.op_->DebugString();
-    }
 
-    PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr,
-                   "Convert to VarHandle error");
+    PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
+                   op_->DebugString(), r.op_->DebugString());
 
     auto l_it = vars_->find(i0->name_);
     auto r_it = vars_->find(i1->name_);
 
     if (l_it->second < r_it->second) return true;
-
-    if (l_it->second == r_it->second) {
-      return i0->name_ < i1->name_;
-    }
 
     return false;
   }
@@ -75,10 +67,11 @@ struct SortNode {
 
 std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  auto& graph_ops = graph->Get<GraphOps>(kGraphOps);
+  constexpr char kAllOpDescs[] = "all_op_descs";
+  auto& graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph)
 
-  // get vars level
-  int level = 0;
+      // get vars level
+      int level = 0;
   std::unordered_map<std::string, int> vars;
   auto& ops = Get<const std::vector<OpDesc*>>(kAllOpDescs);
   for (auto* op_desc : ops) {
@@ -86,20 +79,20 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     for (auto& o_it : outputs) {
       for (auto& v : o_it.second) {  // values
         vars[v] = level;
+        level++;
       }
     }
-
-    level++;
   }
 
   std::unordered_map<AllReduceOpHandle*, int> allreduce_ops;
   // get allreduce ops.
   for (auto& op : graph_ops) {
-    if (op->Name() == "allreduce" || op->Name() == "all_reduce") {
-      auto* allreduce_op = dynamic_cast<AllReduceOpHandle*>(op.get());
-      PADDLE_ENFORCE(allreduce_op != nullptr, "Convert to allreduce_op error");
-      allreduce_ops[allreduce_op] = 0;
+    auto* allreduce_op = dynamic_cast<AllReduceOpHandle*>(op);
+    if (allreduce_op == nullptr) {
+      continue;
     }
+
+    allreduce_ops[allreduce_op] = 0;
   }
 
   VLOG(10) << "allreduce_ops size:" << allreduce_ops.size() << std::endl;
