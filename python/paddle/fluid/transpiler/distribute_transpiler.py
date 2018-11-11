@@ -41,7 +41,7 @@ from ..framework import Program, default_main_program, \
     default_startup_program, Block, \
     Parameter, grad_var_name
 from .details import *
-from .details.distribute_lookuptable_utils import find_distributed_lookup_table
+from ..distribute_lookup_table import find_distributed_lookup_table
 from functools import reduce
 
 LOOKUP_TABLE_TYPE = "lookup_table"
