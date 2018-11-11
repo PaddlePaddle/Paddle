@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <glog/logging.h>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -73,7 +72,6 @@ class PassStrategy : public PaddlePassBuilder {
 class CpuPassStrategy : public PassStrategy {
  public:
   CpuPassStrategy() : PassStrategy({}) {
-    LOG(INFO) << "Using CPU pass strategy";
     // NOTE the large fusions should be located in the front, so that they will
     // not be damaged by smaller ones.
     passes_.assign({
@@ -107,10 +105,9 @@ class CpuPassStrategy : public PassStrategy {
 class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
-    LOG(INFO) << "Using GPU pass strategy";
     passes_.assign({
         "infer_clean_graph_pass",
-        "conv_bn_fuse_pass",  // some bug here, will turn on latter.
+        "conv_bn_fuse_pass",
     });
   }
 
