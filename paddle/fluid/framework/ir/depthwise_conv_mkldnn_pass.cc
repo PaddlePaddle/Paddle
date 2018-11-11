@@ -39,7 +39,7 @@ std::unique_ptr<ir::Graph> DepthwiseConvMKLDNNPass::ApplyImpl(
   int found_depthwise_conv_mkldnn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(3) << "handle DepthwiseConvMKLDNN fuse";
+    VLOG(30) << "handle DepthwiseConvMKLDNN fuse";
     GET_NODE(depthwise_conv, (*pattern));
     depthwise_conv->Op()->SetType("conv2d");
     found_depthwise_conv_mkldnn_count++;

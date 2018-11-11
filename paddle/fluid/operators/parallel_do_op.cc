@@ -48,7 +48,7 @@ static void SplitTensorAndMoveTensorToScopes(
     auto lod_tensors = tensor.SplitLoDTensor(places);
 
     for (auto &lod : lod_tensors) {
-      VLOG(3) << lod.dims();
+      VLOG(30) << lod.dims();
     }
     if (num_sub_scopes == 0) {
       num_sub_scopes = lod_tensors.size();
@@ -263,7 +263,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
       if (s == framework::kEmptyVarName) {
         continue;
       }
-      VLOG(3) << "Moving " << s;
+      VLOG(30) << "Moving " << s;
       CopyOrShare(*sub_scopes[0]->FindVar(s), place, scope.FindVar(s));
     }
     WaitOnPlaces(places);
@@ -277,7 +277,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
       if (s == framework::kEmptyVarName) {
         continue;
       }
-      VLOG(3) << "Accumulating " << s;
+      VLOG(30) << "Accumulating " << s;
       if (s == framework::kEmptyVarName) continue;
       std::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
@@ -289,7 +289,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{{"use_mkldnn", {false}}});
-        VLOG(10) << sum_op->DebugStringEx(sub_scopes[0]);
+        VLOG(100) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);
       }
@@ -316,7 +316,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
     auto *grad = new framework::OpDesc();
     grad->SetType("parallel_do_grad");
     for (auto &input_param : this->InputNames()) {
-      VLOG(3) << input_param;
+      VLOG(30) << input_param;
       grad->SetInput(input_param, this->Input(input_param));
       if (input_param != kPlaces) {
         grad->SetOutput(framework::GradVarName(input_param),

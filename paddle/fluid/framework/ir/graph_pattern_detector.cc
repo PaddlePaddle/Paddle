@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <vector>
@@ -91,19 +92,19 @@ void GraphPatternDetector::operator()(Graph *graph,
   PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
   int id = 0;
   for (auto &g : subgraphs) {
-    VLOG(3) << "optimizing #" << id++ << " subgraph";
+    VLOG(30) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
 
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
-  VLOG(3) << "mark pdnodes in graph";
+  VLOG(30) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "pdnode " << pdnode->name() << " marked";
+        VLOG(40) << "pdnode " << pdnode->name() << " marked";
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -111,7 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   // Check to early stop if some PDNode can't find matched Node.
   for (auto &pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
-      VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
+      VLOG(40) << pdnode->name() << " can't find matched Node, early stop";
       // return false;
     }
   }
@@ -120,7 +121,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
       GetMarkedNodes(const_cast<Graph *>(&graph)).insert(n);
     }
   }
-  VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
+  VLOG(30) << pdnodes2nodes_.size() << " nodes marked";
 
   return !pdnodes2nodes_.empty();
 }
@@ -213,7 +214,7 @@ GraphPatternDetector::DetectPatterns() {
   // Extend a PDNode to subgraphs by deducing the connection relations defined
   // in edges of PDNodes.
   for (const auto &edge : pattern_.edges()) {
-    VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();
+    VLOG(40) << "check " << edge.first->name() << " -> " << edge.second->name();
     // TODO(Superjomn) Fix bug here, the groups might be duplicate here.
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
@@ -224,7 +225,7 @@ GraphPatternDetector::DetectPatterns() {
     // source -> target
     for (Node *source : pdnodes2nodes_[edge.first]) {
       for (Node *target : pdnodes2nodes_[edge.second]) {
-        VLOG(8) << "check " << source->id() << " -- " << target->id();
+        VLOG(80) << "check " << source->id() << " -- " << target->id();
         // TODO(Superjomn) add some prune strategies.
         for (const auto &group : pre_groups) {
           HitGroup new_group = group;
@@ -240,12 +241,13 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    VLOG(3) << "step " << step << " get records: " << cur_groups.size();
+    VLOG(30) << "step " << step << " get records: " << cur_groups.size();
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
-        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
+        VLOG(40) << "node " << item.second->id() << " as "
+                 << item.first->name();
       }
-      VLOG(4) << "=========================================================";
+      VLOG(40) << "=========================================================";
     }
   }
 

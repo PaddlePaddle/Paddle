@@ -49,11 +49,11 @@ void Main(bool use_gpu) {
     config.fraction_of_gpu_memory = 0.1;  // set by yourself
   }
 
-  VLOG(3) << "init predictor";
+  VLOG(30) << "init predictor";
   predictor = CreatePaddlePredictor<NativeConfig>(config);
   analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
-  VLOG(3) << "begin to process data";
+  VLOG(30) << "begin to process data";
   // Just a single batch of data.
   std::string line;
   std::ifstream file(FLAGS_data);
@@ -68,13 +68,13 @@ void Main(bool use_gpu) {
       PaddleBuf(record.data.data(), record.data.size() * sizeof(float));
   input.dtype = PaddleDType::FLOAT32;
 
-  VLOG(3) << "run executor";
+  VLOG(30) << "run executor";
   std::vector<PaddleTensor> output, analysis_output;
   predictor->Run({input}, &output, 1);
 
-  VLOG(3) << "output.size " << output.size();
+  VLOG(30) << "output.size " << output.size();
   auto& tensor = output.front();
-  VLOG(3) << "output: " << SummaryTensor(tensor);
+  VLOG(30) << "output: " << SummaryTensor(tensor);
 
   // compare with reference result
   CheckOutput(FLAGS_refer, tensor);
