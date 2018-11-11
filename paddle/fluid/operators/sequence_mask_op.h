@@ -127,7 +127,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     auto x_numel = x->numel();
     if (maxlen < 0) {
 #ifdef __NVCC__
-      VLOG(10)
+      VLOG(100)
           << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
       maxlen = static_cast<int>(
           thrust::reduce(thrust::device_pointer_cast(x_data),
