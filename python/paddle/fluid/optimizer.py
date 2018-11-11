@@ -18,7 +18,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
-from paddle.fluid.transpiler.details.distribute_lookuptable_utils import find_distributed_lookup_table
+from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 
 from . import framework
 from . import layers
