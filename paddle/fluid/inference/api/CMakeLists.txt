@@ -25,9 +25,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
+cc_library(analysis_config SRCS analysis_config.cc DEPS lod_tensor paddle_pass_builder)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope paddle_pass_builder reset_tensor_array)
-cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor reset_tensor_array)
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config)
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor reset_tensor_array analysis_config)
 cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS paddle_inference_api)
 cc_library(zero_copy_tensor_dummy SRCS details/zero_copy_tensor_dummy.cc DEPS paddle_inference_api)
 
@@ -46,8 +47,8 @@ cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_
 
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml scope zero_copy_tensor_dummy)
-    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber scope)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml zero_copy_tensor_dummy)
+    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber zero_copy_tensor_dummy)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endfunction()
