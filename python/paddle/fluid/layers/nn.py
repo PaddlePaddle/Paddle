@@ -164,6 +164,7 @@ __all__ = [
     'hash',
     'grid_sampler',
     'log_loss',
+    'yolov3_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
 ]
@@ -8240,6 +8241,33 @@ def log_loss(input, label, epsilon=1e-4, name=None):
                 'Labels': [label]},
         outputs={'Loss': [loss]},
         attrs={'epsilon': epsilon})
+    return loss
+
+
+def yolov3_loss(x, gtbox, img_height, anchors, ignore_thresh, name=None):
+    """
+    **YOLOv3 Loss Layer**
+
+    This layer 
+    """
+    helper = LayerHelper('yolov3_loss', **locals())
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type='yolov3_loss',
+        inputs={'X': x,
+                "GTBox": gtbox},
+        outputs={'Loss': loss},
+        attrs={
+            "img_height": img_height,
+            "anchors": anchors,
+            "ignore_thresh": ignore_thresh,
+        })
     return loss
 
 

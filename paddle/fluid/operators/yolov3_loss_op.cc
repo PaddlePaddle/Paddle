@@ -34,7 +34,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     auto dim_gt = ctx->GetInputDim("GTBox");
     auto img_height = ctx->Attrs().Get<int>("img_height");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
-    auto box_num = ctx->Attrs().Get<int>("box_num");
     auto class_num = ctx->Attrs().Get<int>("class_num");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(dim_x[2], dim_x[3],
@@ -50,8 +49,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                       "Attr(anchors) length should be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
                       "Attr(anchors) length should be even integer.");
-    PADDLE_ENFORCE_GT(box_num, 0,
-                      "Attr(box_num) should be an integer greater then 0.");
     PADDLE_ENFORCE_GT(class_num, 0,
                       "Attr(class_num) should be an integer greater then 0.");
 
@@ -73,23 +70,19 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of bilinear interpolation, "
              "This is a 4-D tensor with shape of [N, C, H, W]");
-    AddInput(
-        "GTBox",
-        "The input tensor of ground truth boxes, "
-        "This is a 3-D tensor with shape of [N, max_box_num, 5 + class_num], "
-        "max_box_num is the max number of boxes in each image, "
-        "class_num is the number of classes in data set. "
-        "In the third dimention, stores x, y, w, h, confidence, classes "
-        "one-hot key. "
-        "x, y is the center cordinate of boxes and w, h is the width and "
-        "height, "
-        "and all of them should be divided by input image height to scale to "
-        "[0, 1].");
+    AddInput("GTBox",
+             "The input tensor of ground truth boxes, "
+             "This is a 3-D tensor with shape of [N, max_box_num, 5], "
+             "max_box_num is the max number of boxes in each image, "
+             "In the third dimention, stores label, x, y, w, h, "
+             "label is an integer to specify box class, x, y is the "
+             "center cordinate of boxes and w, h is the width and height"
+             "and x, y, w, h should be divided by input image height to "
+             "scale to [0, 1].");
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
               "This is a 1-D tensor with shape of [1]");
 
-    AddAttr<int>("box_num", "The number of boxes generated in each grid.");
     AddAttr<int>("class_num", "The number of classes to predict.");
     AddAttr<std::vector<int>>("anchors",
                               "The anchor width and height, "

@@ -25,8 +25,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-using Array2 = Eigen::DSizes<int64_t, 2>;
-using Array4 = Eigen::DSizes<int64_t, 4>;
+using Array5 = Eigen::DSizes<int64_t, 5>;
 
 template <typename T>
 static inline bool isZero(T x) {
@@ -43,7 +42,7 @@ static inline T CalcMSEWithMask(const Tensor& x, const Tensor& y,
                                 const Tensor& mask) {
   auto x_t = EigenVector<T>::Flatten(x);
   auto y_t = EigenVector<T>::Flatten(y);
-  auto mask_t = EigenVector<T>::Flatten(mask);
+  auto mask_t = EigenVector<int>::Flatten(mask);
 
   T error_sum = 0.0;
   T points = 0.0;
@@ -61,7 +60,7 @@ static inline T CalcBCEWithMask(const Tensor& x, const Tensor& y,
                                 const Tensor& mask) {
   auto x_t = EigenVector<T>::Flatten(x);
   auto y_t = EigenVector<T>::Flatten(y);
-  auto mask_t = EigenVector<T>::Flatten(mask);
+  auto mask_t = EigenVector<int>::Flatten(mask);
 
   T error_sum = 0.0;
   T points = 0.0;
@@ -89,7 +88,6 @@ static void CalcPredResult(const Tensor& input, Tensor* pred_confs,
   const int box_attr_num = 5 + class_num;
 
   auto input_t = EigenTensor<T, 4>::From(input);
-  // auto pred_boxes_t = EigenTensor<T, 5>::From(*pred_boxes);
   auto pred_confs_t = EigenTensor<T, 4>::From(*pred_confs);
   auto pred_classes_t = EigenTensor<T, 5>::From(*pred_classes);
   auto pred_x_t = EigenTensor<T, 4>::From(*pred_x);
@@ -112,13 +110,6 @@ static void CalcPredResult(const Tensor& input, Tensor* pred_confs,
               input_t(i, box_attr_num * an_idx + 2, j, k);
           pred_h_t(i, an_idx, j, k) =
               input_t(i, box_attr_num * an_idx + 3, j, k);
-
-          // pred_boxes_t(i, an_idx, j, k, 0) = pred_x_t(i, an_idx, j, k) + k;
-          // pred_boxes_t(i, an_idx, j, k, 1) = pred_y_t(i, an_idx, j, k) + j;
-          // pred_boxes_t(i, an_idx, j, k, 2) =
-          //     exp(pred_w_t(i, an_idx, j, k)) * an_w;
-          // pred_boxes_t(i, an_idx, j, k, 3) =
-          //     exp(pred_h_t(i, an_idx, j, k)) * an_h;
 
           pred_confs_t(i, an_idx, j, k) =
               sigmod(input_t(i, box_attr_num * an_idx + 4, j, k));
@@ -199,7 +190,7 @@ static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
         continue;
       }
 
-      int gt_label = gt_boxes_t(i, j, 0);
+      int gt_label = static_cast<int>(gt_boxes_t(i, j, 0));
       T gx = gt_boxes_t(i, j, 1) * grid_size;
       T gy = gt_boxes_t(i, j, 2) * grid_size;
       T gw = gt_boxes_t(i, j, 3) * grid_size;
@@ -207,7 +198,7 @@ static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
       int gi = static_cast<int>(gx);
       int gj = static_cast<int>(gy);
 
-      T max_iou = static_cast<T>(-1);
+      T max_iou = static_cast<T>(0);
       T iou;
       int best_an_index = -1;
       std::vector<T> gt_box({0, 0, gw, gh});
@@ -220,20 +211,33 @@ static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
           best_an_index = an_idx;
         }
         if (iou > ignore_thresh) {
-          noobj_mask_t(b, an_idx, gj, gi) = 0;
+          noobj_mask_t(i, an_idx, gj, gi) = 0;
         }
       }
-      obj_mask_t(b, best_an_index, gj, gi) = 1;
-      noobj_mask_t(b, best_an_index, gj, gi) = 1;
+      obj_mask_t(i, best_an_index, gj, gi) = 1;
+      noobj_mask_t(i, best_an_index, gj, gi) = 0;
       tx_t(i, best_an_index, gj, gi) = gx - gi;
       ty_t(i, best_an_index, gj, gi) = gy - gj;
       tw_t(i, best_an_index, gj, gi) = log(gw / anchors[2 * best_an_index]);
       th_t(i, best_an_index, gj, gi) = log(gh / anchors[2 * best_an_index + 1]);
-      tclass_t(b, best_an_index, gj, gi, gt_label) = 1;
-      tconf_t(b, best_an_index, gj, gi) = 1;
+      tclass_t(i, best_an_index, gj, gi, gt_label) = 1;
+      tconf_t(i, best_an_index, gj, gi) = 1;
     }
   }
-  noobj_mask_t = noobj_mask_t - obj_mask_t;
+}
+
+static void ExpandObjMaskByClassNum(Tensor* obj_mask_expand,
+                                    const Tensor& obj_mask) {
+  const int n = obj_mask_expand->dims()[0];
+  const int an_num = obj_mask_expand->dims()[1];
+  const int h = obj_mask_expand->dims()[2];
+  const int w = obj_mask_expand->dims()[3];
+  const int class_num = obj_mask_expand->dims()[4];
+  auto obj_mask_expand_t = EigenTensor<int, 5>::From(*obj_mask_expand);
+  auto obj_mask_t = EigenTensor<int, 4>::From(obj_mask);
+
+  obj_mask_expand_t = obj_mask_t.reshape(Array5(n, an_num, h, w, 1))
+                          .broadcast(Array5(1, 1, 1, 1, class_num));
 }
 
 template <typename DeviceContext, typename T>
@@ -280,17 +284,30 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
                        &obj_mask, &noobj_mask, &tx, &ty, &tw, &th, &tconf,
                        &tclass);
 
+    Tensor obj_mask_expand;
+    obj_mask_expand.mutable_data<int>({n, an_num, h, w, class_num},
+                                      ctx.GetPlace());
+    ExpandObjMaskByClassNum(&obj_mask_expand, obj_mask);
+
     T loss_x = CalcMSEWithMask<T>(pred_x, tx, obj_mask);
     T loss_y = CalcMSEWithMask<T>(pred_y, ty, obj_mask);
     T loss_w = CalcMSEWithMask<T>(pred_w, tw, obj_mask);
     T loss_h = CalcMSEWithMask<T>(pred_h, th, obj_mask);
-    T loss_conf_true = CalcBCEWithMask<T>(pred_confs, tconf, obj_mask);
-    T loss_conf_false = CalcBCEWithMask<T>(pred_confs, tconf, noobj_mask);
-    T loss_class = CalcBCEWithMask<T>(pred_classes, tclass, obj_mask);
+    T loss_conf_obj = CalcBCEWithMask<T>(pred_confs, tconf, obj_mask);
+    T loss_conf_noobj = CalcBCEWithMask<T>(pred_confs, tconf, noobj_mask);
+    T loss_class = CalcBCEWithMask<T>(pred_classes, tclass, obj_mask_expand);
+
+    // LOG(ERROR) << "loss_x: " << loss_x;
+    // LOG(ERROR) << "loss_y: " << loss_y;
+    // LOG(ERROR) << "loss_w: " << loss_w;
+    // LOG(ERROR) << "loss_h: " << loss_h;
+    // LOG(ERROR) << "loss_conf_obj: " << loss_conf_obj;
+    // LOG(ERROR) << "loss_conf_noobj: " << loss_conf_noobj;
+    // LOG(ERROR) << "loss_class: " << loss_class;
 
     auto* loss_data = loss->mutable_data<T>({1}, ctx.GetPlace());
-    loss_data[0] = loss_x + loss_y + loss_w + loss_h + loss_conf_true +
-                   loss_conf_false + loss_class;
+    loss_data[0] = loss_x + loss_y + loss_w + loss_h + loss_conf_obj +
+                   loss_conf_noobj + loss_class;
   }
 };
 
