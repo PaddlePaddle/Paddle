@@ -886,13 +886,6 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
-    def test_mask_extract(self):
-        program = Program()
-        with program_guard(program):
-            x_data = layers.data(name="x", shape=[16], dtype="float32")
-            mask = layers.data(name="mask", shape=[1], dtype="int64")
-            out = layers.mask_extract(x_data, mask)
-
     def test_grid_sampler(self):
         program = Program()
         with program_guard(program):

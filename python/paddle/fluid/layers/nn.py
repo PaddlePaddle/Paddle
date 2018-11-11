@@ -83,7 +83,6 @@ __all__ = [
     'beam_search',
     'row_conv',
     'multiplex',
-    'mask_extract',
     'layer_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
@@ -163,7 +162,6 @@ __all__ = [
     'affine_channel',
     'similarity_focus',
     'hash',
-    'mask_lm',
     'grid_sampler',
     'log_loss',
     'add_position_encoding',
@@ -723,11 +721,11 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate,
-            reset gate and candidate calculations. If it is set to None or one
-            attribute of ParamAttr, dynamic_gru will create ParamAttr as
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
@@ -844,11 +842,11 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate,
-            reset gate and candidate calculations. If it is set to None or one
-            attribute of ParamAttr, gru_unit will create ParamAttr as
+            If it is set to False, no bias will be applied to the update gate, 
+            reset gate and candidate calculations. If it is set to None or one 
+            attribute of ParamAttr, gru_unit will create ParamAttr as 
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
@@ -1057,9 +1055,9 @@ def dropout(x,
                                            inference: out = input
                                            (make is a tensor same shape with input, value is 0 or 1
                                             ratio of 0 is dropout_prob)
-                                           dropout op can be removed from the program.
+                                           dropout op can be removed from the program. 
                                            the program will be efficient
-
+                                        
 
 
     Returns:
@@ -2142,7 +2140,7 @@ def pool2d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling 
                           mode, default is true
 
     Returns:
@@ -2233,7 +2231,7 @@ def pool3d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling 
                           mode, default is true
 
     Returns:
@@ -4502,9 +4500,9 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra
+            # use append_batch_size=False to avoid prepending extra 
             # batch size in shape
-            x = fluid.layers.data(name='x', shape=[5, 10, 15],
+            x = fluid.layers.data(name='x', shape=[5, 10, 15], 
                             dtype='float32', append_batch_size=False)
             x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
@@ -4739,73 +4737,6 @@ def multiplex(inputs, index):
     return out
 
 
-def mask_extract(input, mask, name=None):
-    """
-    **Mask Extract Layer**
-
-    In the training of masked language model, one usual approach is masking some
-    input tokens at random, and predicting only those masked tokens. This layer
-    extracts the representations and indices of these masked tokens from an
-    entire input sequence and feeds them to some loss layer.
-
-    :attr:`mask` must have the same first dimension with :attr:`input`, in which
-    the valid indices indicate the chosen masked tokens. While the reset invalid
-    indices, here including all the negative integers, stand for the unmasked
-    tokens.
-
-    See more in `BERT <https://arxiv.org/abs/1810.04805>`_
-
-    Example:
-
-        Given the Variable :attr:`input`
-
-            input.data = [0.1, 0.2, 0.3, 0.4, 0.5],
-            input.dim = (5, 1)
-
-        and the :attr:`mask`
-
-            mask.data = [-1, 0, 2, -1, 5],
-            mask.dim = (5, 1)
-
-        the output should be
-
-            out.data = [0.2, 0.3, 0.5],
-            out.dim = (3, 1)
-
-            ids.data = [0, 2, 5]
-            ids.dim = (3, 1)
-
-    Args:
-        input (Variable): The input representations.
-        mask (Variable): The indices of masked tokens.
-        name (str|None): A name for this layer (optional). If set None, the layer
-             will be named automatically. Default: None.
-
-    Returns:
-        Tuple of two Variables: the extracted representations and indices.
-
-    Examples:
-        .. code-block:: python
-
-            emb = fluid.layers.data(name='emb', shape=[128], dtype='float32')
-            mask = fluid.layers.data(name='mask', shape=[1], dtype='int64')
-            out, ids = fluid.layers.mask_extract(input=emb, mask=mask)
-    """
-
-    helper = LayerHelper('mask_extract', **locals())
-    out = helper.create_variable_for_type_inference(input.dtype)
-    ids = helper.create_variable_for_type_inference(mask.dtype)
-    offset = helper.create_variable_for_type_inference(mask.dtype)
-    helper.append_op(
-        type='mask_extract',
-        inputs={"X": input,
-                "Mask": mask},
-        outputs={'Out': out,
-                 'Offset': offset,
-                 'Ids': ids})
-    return out, ids
-
-
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
@@ -4847,7 +4778,7 @@ def softmax_with_cross_entropy(logits,
     3) If numeric_stable_mode is True, softmax is calculated first by:
 
     .. math::
-
+        
         max_j = \\max_{i=0}^{K}{\\text{logit}_i}
 
         log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
@@ -4870,9 +4801,9 @@ def softmax_with_cross_entropy(logits,
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
                                     when soft_label is False and GPU is used.
-                                    When soft_label is True or CPU is used,
-                                    the algorithm is always numerically stable.
-                                    Note that the speed may be slower when use
+                                    When soft_label is True or CPU is used, 
+                                    the algorithm is always numerically stable. 
+                                    Note that the speed may be slower when use 
                                     stable algorithm. Default: False
 
     Returns:
@@ -6391,15 +6322,15 @@ def affine_grid(theta, out_shape, name=None):
                         [x_14, x_15, x_16]]
                        [[x_21, x_22, x_23]
                         [x_24, x_25, x_26]]]
-
+      
               out_shape = [2, 3, 5, 5]
-
+      
           Step 1:
-
+      
               Generate normalized coordinates according to out_shape.
               The values of the normalized coordinates are in the interval between -1 and 1.
               The shape of the normalized coordinates is [2, H, W] as below:
-
+      
               C = [[[-1.  -1.  -1.  -1.  -1. ]
                     [-0.5 -0.5 -0.5 -0.5 -0.5]
                     [ 0.   0.   0.   0.   0. ]
@@ -7937,7 +7868,7 @@ def space_to_depth(x, blocksize, name=None):
 
 @templatedoc()
 def sequence_reverse(x, name=None):
-    """
+    """ 
     ${comment}
 
     Args:
@@ -8183,60 +8114,15 @@ def hash(input, hash_size, num_hash=1, name=None):
     return out
 
 
-def mask_lm(x,
-            mask_id,
-            voc_size,
-            masked_prob,
-            seed=None,
-            name=None,
-            fix_seed=False):
-    """
-    Computes dropout.
-
-    Examples:
-
-        .. code-block:: python
-
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-            droped = fluid.layers.dropout(x, dropout_prob=0.5)
-    """
-
-    helper = LayerHelper('mask_lm', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    mask = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    mask_pos = helper.create_variable_for_type_inference(
-        dtype='int64', stop_gradient=True)
-
-    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
-        seed = helper.main_program.random_seed
-
-    helper.append_op(
-        type='mask_lm',
-        inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'Mask': [mask],
-                 'MaskPos': [mask_pos]},
-        attrs={
-            'mask_id': mask_id,
-            'voc_size': voc_size,
-            'masked_prob': masked_prob,
-            'fix_seed': fix_seed,
-            'seed': seed if seed is not None else 0
-        })
-    return out, mask, mask_pos
-
-
 @templatedoc()
 def grid_sampler(x, grid, name=None):
     """
-    This operation samples input X by using bilinear interpolation based on
+    This operation samples input X by using bilinear interpolation based on 
     flow field grid, which is usually gennerated by affine_grid. The grid of
-    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates
-    with shape [N, H, W] each, where grid_x is indexing the 4th dimension
-    (in width dimension) of input data x and grid_y is indexng the 3rd
-    dimention (in height dimension), finally results is the bilinear
+    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates 
+    with shape [N, H, W] each, where grid_x is indexing the 4th dimension 
+    (in width dimension) of input data x and grid_y is indexng the 3rd 
+    dimention (in height dimension), finally results is the bilinear 
     interpolation value of 4 nearest corner points.
 
     Step 1:
@@ -8246,7 +8132,7 @@ def grid_sampler(x, grid, name=None):
     grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
     Step 2:
-    Indices input data X with grid (x, y) in each [H, W] area, and bilinear
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear 
     interpolate point value by 4 nearest points.
 
       wn ------- y_n ------- en
@@ -8283,7 +8169,7 @@ def grid_sampler(x, grid, name=None):
         name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): Output of shape [N, C, H, W] data samples input X
+        out(Variable): Output of shape [N, C, H, W] data samples input X 
         using bilnear interpolation based on input grid.
 
     Exmples:
