@@ -96,8 +96,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   for (size_t i = 1; i < sorted_ops.size(); ++i) {
     auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
 
-    auto* pre_op = sorted_ops[i - 1].op_;
-    auto* op = sorted_ops[i].op_;
+    auto* pre_op = sorted_ops[i - 1];
+    auto* op = sorted_ops[i];
 
     pre_op->AddOutput(dep_var);
     op->AddInput(dep_var);
