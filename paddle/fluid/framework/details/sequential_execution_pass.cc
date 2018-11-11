@@ -40,6 +40,7 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
       "send", "recv", "send_barrier", "fetch_barrier"};
 
   auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
+
   std::vector<ir::Node *> op_node_list;
   op_node_list.reserve(ops.size());
 

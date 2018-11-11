@@ -22,7 +22,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class SequentialExecutionPass : public ir::Pass {
+// TODO(gongwb): overlap allreduce with backward computation.
+class AllReduceDepsPass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
