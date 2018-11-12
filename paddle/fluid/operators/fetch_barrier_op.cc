@@ -43,7 +43,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
 
     for (auto& ep : eps) {
-      VLOG(3) << "fetch barrier, ep: " << ep;
+      VLOG(30) << "fetch barrier, ep: " << ep;
       rpc_client->AsyncSendFetchBarrier(ep);
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");

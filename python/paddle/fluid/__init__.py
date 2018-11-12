@@ -34,6 +34,7 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
@@ -126,7 +127,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'conv_workspace_size_limit', 'cudnn_exhaustive_search'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

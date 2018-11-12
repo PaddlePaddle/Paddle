@@ -34,7 +34,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
     FLAGS_IA_enable_tensorrt_subgraph_engine = true;
-    VLOG(3) << "Predictor::init()";
+    VLOG(30) << "Predictor::init()";
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
     } else {
@@ -70,7 +70,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     OptimizeInferenceProgram();
     ctx_ = executor_->Prepare(*inference_program_, 0);
 
-    VLOG(5) << "to create variables";
+    VLOG(50) << "to create variables";
     executor_->CreateVariables(*inference_program_,
                                sub_scope_ ? sub_scope_ : scope_.get(), 0);
     // Get the feed_target_names and fetch_target_names
@@ -114,9 +114,9 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
         new ProgramDesc(*inference_program_->Proto()));
     Singleton<Analyzer>::Global().Run(&argument);
     CHECK(argument.transformed_program_desc);
-    VLOG(5) << "transformed program:\n"
-            << argument.transformed_program_desc->SerializeAsString();
-    VLOG(5) << "to prepare executor";
+    VLOG(50) << "transformed program:\n"
+             << argument.transformed_program_desc->SerializeAsString();
+    VLOG(50) << "to prepare executor";
     inference_program_.reset(
         new framework::ProgramDesc(*argument.transformed_program_desc));
   }
@@ -129,7 +129,7 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<MixedRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
     const MixedRTConfig& config) {
-  VLOG(3) << "create TensorRTSubgraphPredictor";
+  VLOG(30) << "create TensorRTSubgraphPredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -143,7 +143,7 @@ CreatePaddlePredictor<MixedRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(3) << "set flag: " << flag;
+      VLOG(30) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }

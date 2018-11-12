@@ -61,10 +61,10 @@ size_t VarDesc::GetTensorDescNum() const {
 void VarDesc::SetShapes(
     const std::vector<std::vector<int64_t>> &multiple_dims) {
   if (multiple_dims.size() != GetTensorDescNum()) {
-    VLOG(3) << "WARNING: The number of given shapes(" << multiple_dims.size()
-            << ") doesn't match the existing tensor number("
-            << GetTensorDescNum()
-            << "). The Reader is going to be reinitialized.";
+    VLOG(30) << "WARNING: The number of given shapes(" << multiple_dims.size()
+             << ") doesn't match the existing tensor number("
+             << GetTensorDescNum()
+             << "). The Reader is going to be reinitialized.";
     SetTensorDescNum(multiple_dims.size());
   }
   std::vector<proto::VarType::TensorDesc *> tensors = mutable_tensor_descs();
@@ -94,11 +94,11 @@ void VarDesc::SetDataType(proto::VarType::Type data_type) {
 void VarDesc::SetDataTypes(
     const std::vector<proto::VarType::Type> &multiple_data_type) {
   if (multiple_data_type.size() != GetTensorDescNum()) {
-    VLOG(3) << "WARNING: The number of given data types("
-            << multiple_data_type.size()
-            << ") doesn't match the existing tensor number("
-            << GetTensorDescNum()
-            << "). The Reader is going to be reinitialized.";
+    VLOG(30) << "WARNING: The number of given data types("
+             << multiple_data_type.size()
+             << ") doesn't match the existing tensor number("
+             << GetTensorDescNum()
+             << "). The Reader is going to be reinitialized.";
     SetTensorDescNum(multiple_data_type.size());
   }
   std::vector<proto::VarType::TensorDesc *> tensor_descs =
@@ -139,11 +139,11 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
 
 void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
   if (multiple_lod_level.size() != GetTensorDescNum()) {
-    VLOG(3) << "WARNING: The number of given lod_levels("
-            << multiple_lod_level.size()
-            << ") doesn't match the existing tensor number("
-            << GetTensorDescNum()
-            << "). The Reader is going to be reinitialized.";
+    VLOG(30) << "WARNING: The number of given lod_levels("
+             << multiple_lod_level.size()
+             << ") doesn't match the existing tensor number("
+             << GetTensorDescNum()
+             << "). The Reader is going to be reinitialized.";
     SetTensorDescNum(multiple_lod_level.size());
   }
   switch (desc_.type().type()) {
