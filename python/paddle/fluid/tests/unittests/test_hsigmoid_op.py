@@ -88,7 +88,6 @@ def hsigmoid(x, w, label, bias, num_classes):
     # clip[-40.0, 40.0]
     pre_output = np.clip(pre_output, -40.0, 40.0)
     # out(i, 0) = \sum_j  bit(i, j) * preout(i, j)
-    pre_output = -1 * pre_output
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -126,7 +125,6 @@ def hsigmoidWithCustomTree(x, w, ptable, pcode, label, bias, num_classes):
             pre_output[i][j] += np.dot(w[idx], x[i])
     # clip[-40.0, 40.0]
     pre_output = np.clip(pre_output, -40.0, 40.0)
-    pre_output = -1 * pre_output
     # out(i, 0) = \sum_j  bit(i, j) * preout(i, j)
     for i in range(batch_size):
         code_table = CodeTableWithCustomTree(ptable, pcode, i)
