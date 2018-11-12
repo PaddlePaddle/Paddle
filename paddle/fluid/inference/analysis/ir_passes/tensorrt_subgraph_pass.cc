@@ -51,35 +51,6 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
-      // remove intermediate output from TensorRT op's output
-      /*
-      std::unordered_set<std::string> valid_outputs;
-      nodes2remove.clear();
-      std::unordered_set<std::string> outputs;
-      for (auto &item : node->Op()->Output("Ys")) {
-        outputs.insert(item);
-      }
-
-      for (auto it = graph->Nodes().begin(); it != graph->Nodes().end(); it++) {
-        if (outputs.count((*it)->Name())) {
-          // Get an intermediate output.
-          if (!(*it)->outputs.empty()) {
-            LOG(INFO) << "valid output " << (*it)->Name();
-            valid_outputs.insert((*it)->Name());
-          } else {
-            nodes2remove.insert(*it);
-          }
-        }
-      }
-      //DEBUG
-      valid_outputs.clear();
-      valid_outputs.insert("fc_0.tmp_2");
-
-      node->Op()->SetOutput(
-          "Ys",
-          std::vector<std::string>(valid_outputs.begin(), valid_outputs.end()));
-      framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
-       */
     }
   }
 
@@ -110,8 +81,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     auto *op = block_desc.AppendOp();
     *op->Proto() = *node->Op()->Proto();
   }
-
-  LOG(INFO) << "all ops " << block_desc.OpSize();
 
   // collect inputs
   std::unordered_set<std::string> input_names;
