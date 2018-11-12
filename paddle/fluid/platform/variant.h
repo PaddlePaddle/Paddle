@@ -45,8 +45,8 @@ limitations under the License. */
 
 // some platform-independent defintion
 #if defined(_WIN32)
-#define __UNUSED__()
+#define UNUSED
 #define __builtin_expect(EXP, C)  (EXP)
 #else
-#define __UNUSED__() __attribute__((unused))
+#define UNUSED __attribute__((unused))
 #endif

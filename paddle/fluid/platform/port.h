@@ -24,42 +24,38 @@
 #include "glog/logging.h"
 
 #if !defined(_WIN32)
-    #define UNUSED __attribute__((unused))
-    #include <dlfcn.h>     //  dladdr
-    #include <execinfo.h>  // backtrace
-    #include <sys/stat.h>
-    #include <algorithm>  // std::accumulate
+  #include <dlfcn.h>     //  dladdr
+  #include <execinfo.h>  // backtrace
+  #include <sys/stat.h>
+  #include <algorithm>  // std::accumulate
 #else
-    #include <stdio.h>
-    #include <io.h>  // _popen, _pclose
-    #include <windows.h>
-    #include <numeric>  // std::accumulate in msvc
-    // windows version of __attribute__((unused))
-    #define UNUSED __pragma(warning(suppress : 4100))
+  #include <stdio.h>
+  #include <io.h>  // _popen, _pclose
+  #include <windows.h>
+  #include <numeric>  // std::accumulate in msvc
+  #ifndef S_ISDIR  // windows port for sys/stat.h
+  #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
+  #endif  // S_ISDIR
 
-    #ifndef S_ISDIR  // windows port for sys/stat.h
-    #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
-    #endif  // S_ISDIR
+  static void *dlsym(void *handle, const char *symbol_name) {
+    FARPROC found_symbol;
+    found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
 
-    static void *dlsym(void *handle, const char *symbol_name) {
-      FARPROC found_symbol;
-      found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
-
-      if (found_symbol == NULL) {
-        throw std::runtime_error(std::string(symbol_name) + " not found.");
-      }
-      return reinterpret_cast<void *>(found_symbol);
+    if (found_symbol == NULL) {
+      throw std::runtime_error(std::string(symbol_name) + " not found.");
     }
+    return reinterpret_cast<void *>(found_symbol);
+  }
 
-    static void *dlopen(const char *filename, int flag) {
-      std::string file_name(filename);
-      file_name.replace(0, file_name.size() - 1, '/', '\\');
-      HMODULE hModule = LoadLibrary(file_name.c_str());
-      if (!hModule) {
-        throw std::runtime_error(file_name + " not found.");
-      }
-      return reinterpret_cast<void *>(hModule);
+  static void *dlopen(const char *filename, int flag) {
+    std::string file_name(filename);
+    file_name.replace(0, file_name.size() - 1, '/', '\\');
+    HMODULE hModule = LoadLibrary(file_name.c_str());
+    if (!hModule) {
+      throw std::runtime_error(file_name + " not found.");
     }
+    return reinterpret_cast<void *>(hModule);
+  }
 
 #endif  // !_WIN32
 

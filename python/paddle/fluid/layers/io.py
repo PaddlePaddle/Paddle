@@ -348,6 +348,7 @@ def _copy_reader_create_op_(block, op):
 
 
 if os.name != 'nt':
+
     @templatedoc(op_type='create_recordio_file_reader')
     def open_recordio_file(filename,
                            shapes,
@@ -405,8 +406,8 @@ if os.name != 'nt':
 
         startup_var.desc.set_dtypes(dtypes)
         startup_var.persistable = True
-        main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                          startup_var)
+        main_prog_var = _copy_reader_var_(
+            default_main_program().current_block(), startup_var)
 
         if pass_num > 1:
             main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)

@@ -105,7 +105,6 @@ if os.name != 'nt':
 
     _cum_sum_ = generate_layer_fn('cumsum')
 
-
     def cumsum(x, axis=None, exclusive=None, reverse=None):
         locals_var = locals().keys()
         kwargs = dict()
@@ -114,7 +113,6 @@ if os.name != 'nt':
             if val is not None:
                 kwargs[name] = val
         return _cum_sum_(**kwargs)
-
 
     cumsum.__doc__ = _cum_sum_.__doc__ + """
     Examples:
