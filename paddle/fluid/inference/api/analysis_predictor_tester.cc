@@ -26,7 +26,7 @@ using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config(false);
-  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.model_dir = FLAGS_dirname;
   config.enable_ir_optim = false;
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
@@ -56,7 +56,7 @@ TEST(AnalysisPredictor, analysis_off) {
 
 TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config(false);
-  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.model_dir = FLAGS_dirname;
   config.enable_ir_optim = true;
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
@@ -132,7 +132,7 @@ TEST(AnalysisPredictor, ZeroCopy) {
 
 TEST(AnalysisPredictor, Clone) {
   AnalysisConfig config;
-  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.model_dir = FLAGS_dirname;
   config.use_feed_fetch_ops = true;
   config.enable_ir_optim = true;
 
