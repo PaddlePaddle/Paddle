@@ -149,10 +149,7 @@ class Node {
                                                  Node::Type type);
 
   explicit Node(const std::string& name, Type type)
-      : name_(name),
-        var_desc_(nullptr),
-        op_desc_(nullptr),
-        type_(type) {}
+      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
