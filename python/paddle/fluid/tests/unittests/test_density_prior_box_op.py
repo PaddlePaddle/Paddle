@@ -97,7 +97,6 @@ class TestDensityPriorBoxOp(OpTest):
         out_var = np.zeros(out_dim).astype('float32')
 
         step_average = int((self.step_w + self.step_h) * 0.5)
-        a = 0
         for h in range(self.layer_h):
             for w in range(self.layer_w):
                 idx = 0
@@ -127,10 +126,7 @@ class TestDensityPriorBoxOp(OpTest):
                                             / self.image_h, 1)
                                     ]
                                     idx += 1
-                                    a = idx
 
-        print("number of boxes,python ", a)
-        print(out_boxes)
         if self.clip:
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
         out_var = np.tile(self.variances, (self.layer_h, self.layer_w,
