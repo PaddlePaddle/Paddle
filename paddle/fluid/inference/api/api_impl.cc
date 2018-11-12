@@ -147,11 +147,20 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
+  if (FLAGS_profile) {
 #if !defined(_WIN32)
-  paddle::platform::RecordEvent record_event(
-      "run_predictor", platform::DeviceContextPool::Instance().Get(place_));
+    paddle::platform::RecordEvent record_event(
+        "run_predictor", platform::DeviceContextPool::Instance().Get(place_));
 #endif
+    return RunImpl(inputs, output_data, batch_size);
+  } else {
+    return RunImpl(inputs, output_data, batch_size);
+  }
+}
 
+bool NativePaddlePredictor::RunImpl(const std::vector<PaddleTensor> &inputs,
+                                    std::vector<PaddleTensor> *output_data,
+                                    int batch_size) {
   VLOG(3) << "Predictor::predict";
   // set feed variable
   std::vector<framework::LoDTensor> feeds;
@@ -163,13 +172,16 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Run the inference program
   // if share variables, we need not create variables
   VLOG(4) << "Run prepared context";
-  {
+  if (FLAGS_profile) {
 #if !defined(_WIN32)
     paddle::platform::RecordEvent record_event(
         "run_prepared_context",
         platform::DeviceContextPool::Instance().Get(place_));
 #endif
-
+    executor_->RunPreparedContext(ctx_.get(), scope,
+                                  false, /* don't create local scope each time*/
+                                  false /* don't create variable each time */);
+  } else {
     executor_->RunPreparedContext(ctx_.get(), scope,
                                   false, /* don't create local scope each time*/
                                   false /* don't create variable each time */);
