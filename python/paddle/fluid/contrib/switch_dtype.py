@@ -17,19 +17,39 @@ from __future__ import print_function
 import numpy as np
 import contextlib
 
-from .. import core
-
 from .. import framework
 from .. import unique_name
 
 __all__ = ['switch_dtype_block', ]
 
 
+def _rename_arg_(cur_block, old_name, new_name, begin_idx=None, end_idx=None):
+    """
+    Traverse all ops in op_descs[begin_idx : end_idx],
+    if any op has inputs/outputs named "old_name", rename it as 'new_name'
+    """
+    if begin_idx is None:
+        begin_idx = 0
+    if end_idx is None:
+        end_idx = len(cur_block.ops)
+    for i in range(begin_idx, end_idx):
+        op_desc = cur_block.ops[i].desc
+        if isinstance(op_desc, tuple):
+            op_desc = op_desc[0]
+        op_desc._rename_input(old_name, new_name)
+        op_desc._rename_output(old_name, new_name)
+
+
+def _create_tmp_variable_(cur_block, name, dtype, stop_gradient=False):
+    return cur_block.create_var(
+        name=unique_name.generate(".".join([name, 'tmp'])),
+        dtype=dtype,
+        persistable=False,
+        stop_gradient=stop_gradient)
+
+
 @contextlib.contextmanager
-def switch_dtype_block(main_program,
-                       dtype=np.float16,
-                       enable_tensor_core=None,
-                       **kwargs):
+def switch_dtype_block(main_program, dtype=np.float16, enable_tensor_core=None):
 
     pre_op_idx = len(main_program.current_block().ops)
     yield
@@ -90,32 +110,3 @@ def switch_dtype_block(main_program,
         # ReInfer the output var's type and dtype
         op.desc.infer_var_type(cur_block.desc)
         # op.desc.infer_shape(cur_block.desc)
-
-    # Node: Some output doesn't need convert data type
-    # Temporally doesn't cast data to origin type, because some
-    # output may be not used.
-
-
-def _rename_arg_(cur_block, old_name, new_name, begin_idx=None, end_idx=None):
-    """
-    Traverse all ops in op_descs[begin_idx : end_idx],
-    if any op has inputs/outputs named "old_name", rename it as 'new_name'
-    """
-    if begin_idx is None:
-        begin_idx = 0
-    if end_idx is None:
-        end_idx = len(cur_block.ops)
-    for i in range(begin_idx, end_idx):
-        op_desc = cur_block.ops[i].desc
-        if isinstance(op_desc, tuple):
-            op_desc = op_desc[0]
-        op_desc._rename_input(old_name, new_name)
-        op_desc._rename_output(old_name, new_name)
-
-
-def _create_tmp_variable_(cur_block, name, dtype, stop_gradient=False):
-    return cur_block.create_var(
-        name=unique_name.generate(".".join([name, 'tmp'])),
-        dtype=dtype,
-        persistable=False,
-        stop_gradient=stop_gradient)
