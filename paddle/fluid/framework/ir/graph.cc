@@ -82,7 +82,10 @@ void CheckProgram(const ProgramDesc &program) {
 }
 }  // namespace
 
-Graph::Graph(const ProgramDesc &program) : program_(program) {
+Graph::Graph(const ProgramDesc &program) : Graph(program, ProgramDesc()) {}
+
+Graph::Graph(const ProgramDesc &program, const ProgramDesc &startup_program)
+    : program_(program), startup_program_(startup_program) {
   CheckProgram(program_);
   // Make the nodes id start from 0.
   Node::ResetId();

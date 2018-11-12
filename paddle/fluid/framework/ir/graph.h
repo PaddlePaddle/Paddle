@@ -62,7 +62,10 @@ namespace ir {
  */
 class Graph {
  public:
+  // Default init with an empty startup program.
   explicit Graph(const ProgramDesc &program);
+  explicit Graph(const ProgramDesc &program,
+                 const ProgramDesc &startup_program);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -71,6 +74,8 @@ class Graph {
     attrs_.clear();
     attr_dels_.clear();
   }
+
+  ProgramDesc GetStartupProgram() const { return startup_program_; }
 
   bool Has(const std::string &attr_name) const {
     return attrs_.find(attr_name) != attrs_.end();
@@ -186,6 +191,7 @@ class Graph {
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
+  ProgramDesc startup_program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;

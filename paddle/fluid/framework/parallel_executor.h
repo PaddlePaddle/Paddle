@@ -49,6 +49,7 @@ class ParallelExecutor {
                             const std::unordered_set<std::string> &params,
                             const std::unordered_set<std::string> &bcast_vars,
                             const ProgramDesc &main_program,
+                            const ProgramDesc &startup_program,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,

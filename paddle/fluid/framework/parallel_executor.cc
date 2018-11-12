@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -70,8 +71,9 @@ ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
-    const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes,
+    const ProgramDesc &main_program, const ProgramDesc &startup_program,
+    const std::string &loss_var_name, Scope *scope,
+    const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
     size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
@@ -86,8 +88,7 @@ ParallelExecutor::ParallelExecutor(
                    "the number of places must be greater than 1.");
   }
 
-  // Step 1. Bcast the params to devs.
-  // Create local scopes
+  // Step 1. Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
     member_->local_scopes_.emplace_back(member_->global_scope_);
@@ -103,7 +104,6 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->use_cuda_) {
-// Bcast Parameters to all GPUs
 #ifdef PADDLE_WITH_CUDA
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     ncclUniqueId *nccl_id = nullptr;
@@ -117,16 +117,11 @@ ParallelExecutor::ParallelExecutor(
 #endif
   }
 
-  if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevices(bcast_vars);
-  }
-// Startup Program has been run. All local scopes has correct parameters.
-
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, params,
+      main_program, startup_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
 
   auto max_memory_size = GetEagerDeletionThreshold();
@@ -153,12 +148,33 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 #else
-  std::unique_ptr<ir::Graph> graph =
-      build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           params, member_->local_scopes_, member_->use_cuda_);
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+      main_program, startup_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_);
 #endif
 
-  // Step 3. Create vars in each scope. Passes may also create new vars.
+  // If the loss_var_name is given, the number of graph should be only one.
+  if (loss_var_name.size()) {
+    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                      "The number of graph should be only one");
+  }
+
+  // Step 3. Run init_program after all passes, so that passes can manipulate
+  //         initialization operations.
+  // NOTE: This should not affect original API usage, run startup program
+  //       for multiple times still make the initialization the same.
+  //       Loading model from file should also be appended to startup program
+  //       to achieve this.
+  auto startup_exe = Executor(member_->places_.at(0));
+  startup_exe.Run(graph->GetStartupProgram(), member_->local_scopes_.at(0), 0);
+
+  //  Step 4. Broadcast Parameters to all GPUs
+  if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
+    BCastParamsToDevices(bcast_vars);
+  }
+  // Startup Program has been run. All local scopes has correct parameters.
+
+  // Step 5. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
   for (auto &node : graph->Nodes()) {
@@ -168,11 +184,6 @@ ParallelExecutor::ParallelExecutor(
       var_infos.back().type_ = node->Var()->GetType();
       var_infos.back().persistable_ = node->Var()->Persistable();
     }
-  }
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
-                      "The number of graph should be only one");
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {

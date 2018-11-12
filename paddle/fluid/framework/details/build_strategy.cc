@@ -86,7 +86,8 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy()
 }
 
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
-    const ProgramDesc &main_program, const std::vector<platform::Place> &places,
+    const ProgramDesc &main_program, const ProgramDesc &startup_program,
+    const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &param_names,
     const std::vector<Scope *> &local_scopes,
@@ -100,7 +101,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     CreatePassesFromStrategy();
   }
 
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+  std::unique_ptr<ir::Graph> graph(
+      new ir::Graph(main_program, startup_program));
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {

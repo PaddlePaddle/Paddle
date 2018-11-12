@@ -86,6 +86,7 @@ class ParallelExecutor(object):
                  use_cuda,
                  loss_name=None,
                  main_program=None,
+                 startup_program=None,
                  share_vars_from=None,
                  exec_strategy=None,
                  build_strategy=None,
@@ -136,6 +137,8 @@ class ParallelExecutor(object):
 
         main = main_program
         main = main if main else framework.default_main_program()
+        startup = startup_program
+        startup = startup if startup else framework.default_startup_program()
         if scope == None:
             scope = executor.global_scope()
 
@@ -160,7 +163,8 @@ class ParallelExecutor(object):
                 for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
+            set(cpt.to_text(var)
+                for var in self.persistable_vars), main.desc, startup.desc,
             cpt.to_text(loss_name)
             if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
