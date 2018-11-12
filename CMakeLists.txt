@@ -41,6 +41,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
+option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -62,7 +63,6 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
-option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
@@ -104,6 +104,8 @@ if(ANDROID OR IOS)
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL when cross-compiling for Android and iOS" FORCE)
+    set(WITH_NGRAPH OFF CACHE STRING
+        "Disable nGraph when cross-compiling for Android and iOS" FORCE)
     set(WITH_GOLANG OFF CACHE STRING
         "Disable golang when cross-compiling for Android and iOS" FORCE)
 
@@ -172,6 +174,7 @@ include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
+include(external/ngraph)    # download, build, install nGraph
 include(external/swig)      # download, build, install swig
 include(external/boost)     # download boost
 include(external/any)       # download libn::any

@@ -346,7 +346,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
       // sparse update maybe empty.
       if (grad->rows().size() == 0) {
-        VLOG(3) << "Grad SelectedRows contains no data!";
+        VLOG(30) << "Grad SelectedRows contains no data!";
         return;
       }
       auto* merged_grad = const_cast<framework::Scope&>(ctx.scope())

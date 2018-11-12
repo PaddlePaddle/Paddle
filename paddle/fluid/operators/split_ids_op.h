@@ -44,7 +44,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
         batch_size += ids_tensors[i]->dims()[0];
       }
-      VLOG(4) << "Get Total BatchSize is: " << batch_size;
+      VLOG(40) << "Get Total BatchSize is: " << batch_size;
 
       std::vector<T> all_ids(batch_size);
       int offset = 0;
@@ -113,6 +113,10 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
                  row_width * sizeof(T));
         }
       }
+    } else {
+      PADDLE_THROW(
+          "% should be LoDTensor or SelectedRows, but the received type is %s",
+          ctx.Inputs("Ids")[0], ids_var->Type().name());
     }
   }
 };
