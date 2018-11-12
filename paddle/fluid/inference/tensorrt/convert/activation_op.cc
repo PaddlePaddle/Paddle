@@ -27,7 +27,7 @@ class ActivationOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO)
+    VLOG(3)
         << "convert a fluid Activation op to tensorrt activation layer whose "
            "type is "
         << op_type_;
