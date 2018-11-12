@@ -103,20 +103,31 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
                       "GradOp is only callable when is_test is false");
 
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mask"), "Mask must not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) must not be null.");
 
-    auto x_dims = ctx->GetInputDim("X");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(x_dims, out_dims,
-                      "Dimensions of Input(X) and Out@Grad must be the same.");
     auto mask_dims = ctx->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(x_dims, mask_dims,
                       "Dimensions of Input(X) and Mask must be the same.");
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
+  }
+};
+
+class DropoutGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
+    grad_op->SetType("dropout_grad");
+    grad_op->SetInput("Mask", Output("Mask"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -125,7 +136,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::DropoutGradMaker);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 REGISTER_OP_CPU_KERNEL(
     dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>,
