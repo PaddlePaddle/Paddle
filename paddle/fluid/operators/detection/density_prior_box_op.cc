@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -34,44 +34,24 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
                       "The width of input must smaller than image.");
-
-    auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
-    auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
-    auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
-    bool flip = ctx->Attrs().Get<bool>("flip");
+
     auto fixed_sizes = ctx->Attrs().Get<std::vector<float>>("fixed_sizes");
     auto fixed_ratios = ctx->Attrs().Get<std::vector<float>>("fixed_ratios");
     auto densities = ctx->Attrs().Get<std::vector<int>>("densities");
-    std::vector<float> aspect_ratios_vec;
-    ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
-    size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
     PADDLE_ENFORCE_EQ(fixed_sizes.size(), densities.size(),
                       "The number of fixed_sizes and densities must be equal.");
-
+    size_t num_priors = 0;
     if (fixed_sizes.size() > 0) {
       if (densities.size() > 0) {
         for (size_t i = 0; i < densities.size(); ++i) {
           if (fixed_ratios.size() > 0) {
             num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
-          } else {
-            num_priors += (aspect_ratios_vec.size()) * (pow(densities[i], 2));
           }
         }
       }
     }
-    if (max_sizes.size() > 0) {
-      PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
-                        "The number of min_size and max_size must be equal.");
-      num_priors += max_sizes.size();
-      for (size_t i = 0; i < max_sizes.size(); ++i) {
-        PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
-                          "max_size[%d] must be greater than min_size[%d].", i,
-                          i);
-      }
-    }
-
     std::vector<int64_t> dim_vec(4);
     dim_vec[0] = input_dims[2];
     dim_vec[1] = input_dims[3];
@@ -110,26 +90,6 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
               "DensityPriorBoxOp. The layout is [H, W, num_priors, 4]. "
               "H is the height of input, W is the width of input, num_priors "
               "is the box count of each position.");
-
-    AddAttr<std::vector<float>>("min_sizes",
-                                "(vector<float>) List of min sizes "
-                                "of generated density prior boxes.")
-        .AddCustomChecker([](const std::vector<float>& min_sizes) {
-          PADDLE_ENFORCE_GT(min_sizes.size(), 0,
-                            "Size of min_sizes must be at least 1.");
-          for (size_t i = 0; i < min_sizes.size(); ++i) {
-            PADDLE_ENFORCE_GT(min_sizes[i], 0.0,
-                              "min_sizes[%d] must be positive.", i);
-          }
-        });
-    AddAttr<std::vector<float>>(
-        "max_sizes",
-        "(vector<float>) List of max sizes of generated density prior boxes.")
-        .SetDefault(std::vector<float>{});
-    AddAttr<std::vector<float>>("aspect_ratios",
-                                "(vector<float>) List of aspect ratios of "
-                                "generated density prior boxes.");
-
     AddAttr<std::vector<float>>("variances",
                                 "(vector<float>) List of variances to be "
                                 "encoded in density prior boxes.")
@@ -141,8 +101,6 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                               "variance[%d] must be greater than 0.", i);
           }
         });
-    AddAttr<bool>("flip", "(bool) Whether to flip aspect ratios.")
-        .SetDefault(true);
     AddAttr<bool>("clip", "(bool) Whether to clip out-of-boundary boxes.")
         .SetDefault(true);
 
@@ -197,25 +155,12 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                               "densities[%d] should be larger than 0.", i);
           }
         });
-
-    AddAttr<bool>(
-        "min_max_aspect_ratios_order",
-        "(bool) If set True, the output prior box is in order of"
-        "[min, max, aspect_ratios], which is consistent with Caffe."
-        "Please note, this order affects the weights order of convolution layer"
-        "followed by and does not affect the final detection results.")
-        .SetDefault(false);
     AddComment(R"DOC(
         Density Prior box operator
         Generate density prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
-        Each position of the input produce N prior boxes, N is determined by
-        the count of fixed_sizes, fixed_ratios, densities, min_sizes, max_sizes and aspect_ratios,
-        Generate the density prior boxes by fixed_sizes, fixed rstios, densities, 
-        if the fixed_sizes, fixed_ratios and densities is supported, the calculation of shift is as follows:
-        $$shift = \frac{StepAverage}{density}$$, which step_average is a harmonic value of step_w and step_h
-        if the fixed_ratios is not supported, the calculation of shift is changed to:
-        $$shift= \frac{FixedSize}{density}$$
-        and then generate prior box.
+        Each position of the input produce N density prior boxes, N is determined by
+        the count of fixed_sizes, fixed_ratios, densities, the calculation of shift is as follows:
+        $$shift = \frac{StepAverage}{density}$$, which step_average is a harmonic value of step_w and step_h.
         )DOC");
   }
 };
