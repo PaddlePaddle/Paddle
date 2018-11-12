@@ -13,21 +13,23 @@
 # limitations under the License.
 
 from __future__ import print_function
-import re
-import sys
+
 from collections import defaultdict
+from contextlib import contextmanager
+
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
+from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+
 from . import framework
 from . import layers
-from .backward import append_backward
-from .framework import program_guard
 from . import unique_name
+from .backward import append_backward
+from .clip import append_gradient_clip_ops, error_clip_callback
+from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
-from .regularizer import append_regularization_ops
-from .clip import append_gradient_clip_ops, error_clip_callback
-from contextlib import contextmanager
 from .layers import ops
+from .regularizer import append_regularization_ops
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -85,7 +87,7 @@ class Optimizer(object):
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(self._learning_rate),
-            dtype='float32' if self._dtype == None else self._dtype,
+            dtype='float32' if self._dtype is None else self._dtype,
             persistable=True)
 
     def _global_learning_rate(self, program=None):
@@ -245,6 +247,50 @@ class Optimizer(object):
             end = len(global_block.ops)
             return global_block._slice_ops(start, end)
 
+    def _process_distribute_lookuptable(self, param_grads, loss,
+                                        startup_program):
+        """
+        Because distribute lookup table only support SGD optimizer for now, not support
+        other optimizer and regularization, so we should find the table parameter out,
+        and avoid to add regularization and other op for it, and add sgd optimize op
+        for it independently.
+        :param param_grads(list((Var, Var))): list of (param, grad) pair.
+        :param loss: the loss variable.
+        :param startup_program: the startup program
+        """
+        program = loss.block.program
+        table_name = find_distributed_lookup_table(program)
+        table_param = None
+        table_grad = None
+        new_param_grads = []
+        for p, g in param_grads:
+            if p.name == table_name:
+                if table_param is not None:
+                    raise RuntimeError(
+                        "multi dist table var found, only support one now!")
+                table_param = p
+                table_grad = g
+            else:
+                new_param_grads.append((p, g))
+        sgd_op = None
+        if table_param is not None:
+            with program_guard(program, startup_program):
+                param_and_grad = [table_param, table_grad]
+                with table_param.block.program._optimized_guard(param_and_grad), \
+                     framework.name_scope("optimizer"):
+                    self._create_global_learning_rate()
+                    # create the optimize op
+                    sgd_op = loss.block.append_op(
+                        type='sgd',
+                        inputs={
+                            "Param": table_param,
+                            "Grad": table_grad,
+                            "LearningRate":
+                            self._create_param_lr(param_and_grad)
+                        },
+                        outputs={"ParamOut": param_and_grad[0]})
+        return new_param_grads, (table_param, table_grad), sgd_op
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -260,6 +306,9 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
+        params_grads, table_param_and_grad, table_optimize_op = \
+            self._process_distribute_lookuptable(params_grads, loss, startup_program)
+
         params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
@@ -268,6 +317,9 @@ class Optimizer(object):
 
         optimize_ops = self._create_optimization_pass(params_grads, loss,
                                                       startup_program)
+        if table_optimize_op is not None:
+            optimize_ops.append(table_optimize_op)
+            params_grads.append(table_param_and_grad)
         return optimize_ops, params_grads
 
 
