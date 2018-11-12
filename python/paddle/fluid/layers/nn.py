@@ -165,6 +165,7 @@ __all__ = [
     'grid_sampler',
     'log_loss',
     'add_position_encoding',
+    'bilinear_tensor_product',
 ]
 
 
@@ -8289,3 +8290,72 @@ def add_position_encoding(input, alpha, beta, name=None):
         attrs={"alpha": alpha,
                "beta": beta})
     return out
+
+
+def bilinear_tensor_product(x,
+                            y,
+                            size,
+                            act=None,
+                            name=None,
+                            param_attr=None,
+                            bias_attr=None):
+    """
+    **Add Bilinear Tensor Product Layer**
+
+    This layer performs bilinear tensor product on two inputs.
+    For example:
+
+    .. math::
+       out{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
+
+    In this formula:
+      - :math:`x`: the first input contains M elements, shape is [batch_size, M].
+      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
+      - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
+      - :math:`out{i}`: the i-th element of out, shape is [batch_size, size].
+      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
+
+    Args:
+        x (Variable): 2-D input tensor with shape [batch_size, M]
+        y (Variable): 2-D input tensor with shape [batch_size, N]
+        size (int): The dimension of this layer.
+        act (str, default None): Activation to be applied to the output of this layer.
+        name (str, default None): The name of this layer.
+        param_attr (ParamAttr, default None): The parameter attribute for the learnable w.
+            parameters/weights of this layer.
+        bias_attr (ParamAttr, default None): The parameter attribute for the bias
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
+
+    Returns:
+        Variable: A 2-D Tensor of shape [batch_size, size].
+
+    Examples:
+        .. code-block:: python
+
+          tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+    """
+    helper = LayerHelper('bilinear_tensor_product', **locals())
+    dtype = helper.input_dtype('x')
+
+    param_shape = [size, x.shape[1], y.shape[1]]
+
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    inputs = {"X": x, "Y": y, "Weight": w}
+    if helper.bias_attr:
+        bias_size = [1, size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs["Bias"] = bias
+    helper.append_op(
+        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out})
+
+    # add activation
+    return helper.append_activation(out)
