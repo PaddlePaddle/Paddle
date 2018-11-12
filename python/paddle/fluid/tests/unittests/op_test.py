@@ -138,11 +138,8 @@ class OpTest(unittest.TestCase):
         cls.dtype = "float32"
         cls.outputs = {}
 
-        # np.random.seed(123)
-        # random.seed(124)
-
-        np.random.seed(190)
-        random.seed(200)
+        np.random.seed(123)
+        random.seed(124)
 
     @classmethod
     def tearDownClass(cls):
