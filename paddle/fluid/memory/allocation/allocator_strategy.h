@@ -22,6 +22,9 @@ enum class AllocatorStrategy { kLegacy, kNaiveBestFit };
 
 extern AllocatorStrategy GetAllocatorStrategy();
 
+// Do nothing, just make sure linker do not prune this file.
+extern void UseAllocatorStrategyGFlag();
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

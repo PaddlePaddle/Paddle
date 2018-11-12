@@ -16,10 +16,12 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/init.h"
 
 int main(int argc, char** argv) {
+  paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
   std::string gflags_env;
