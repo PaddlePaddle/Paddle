@@ -33,8 +33,20 @@ static inline bool isZero(T x) {
 }
 
 template <typename T>
-static inline T sigmod(T x) {
+static inline T sigmoid(T x) {
   return 1.0 / (exp(-1.0 * x) + 1.0);
+}
+
+template <typename T>
+static inline T CalcMaskPointNum(const Tensor& mask) {
+  auto mask_t = EigenVector<int>::Flatten(mask);
+  T count = 0.0;
+  for (int i = 0; i < mask_t.dimensions()[0]; i++) {
+    if (mask_t(i)) {
+      count += 1.0;
+    }
+  }
+  return count;
 }
 
 template <typename T>
@@ -53,6 +65,21 @@ static inline T CalcMSEWithMask(const Tensor& x, const Tensor& y,
     }
   }
   return (error_sum / points);
+}
+
+template <typename T>
+static void CalcMSEGradWithMask(Tensor* grad, const Tensor& x, const Tensor& y,
+                                const Tensor& mask, T mf) {
+  auto grad_t = EigenVector<T>::Flatten(*grad).setConstant(0.0);
+  auto x_t = EigenVector<T>::Flatten(x);
+  auto y_t = EigenVector<T>::Flatten(y);
+  auto mask_t = EigenVector<int>::Flatten(mask);
+
+  for (int i = 0; i < x_t.dimensions()[0]; i++) {
+    if (mask_t(i)) {
+      grad_t(i) = 2.0 * (x_t(i) - y_t(i)) / mf;
+    }
+  }
 }
 
 template <typename T>
@@ -75,21 +102,34 @@ static inline T CalcBCEWithMask(const Tensor& x, const Tensor& y,
 }
 
 template <typename T>
-static void CalcPredResult(const Tensor& input, Tensor* pred_confs,
-                           Tensor* pred_classes, Tensor* pred_x, Tensor* pred_y,
-                           Tensor* pred_w, Tensor* pred_h,
-                           std::vector<int> anchors, const int class_num,
-                           const int stride) {
+static inline void CalcBCEGradWithMask(Tensor* grad, const Tensor& x,
+                                       const Tensor& y, const Tensor& mask,
+                                       T mf) {
+  auto grad_t = EigenVector<T>::Flatten(*grad).setConstant(0.0);
+  auto x_t = EigenVector<T>::Flatten(x);
+  auto y_t = EigenVector<T>::Flatten(y);
+  auto mask_t = EigenVector<int>::Flatten(mask);
+
+  for (int i = 0; i < x_t.dimensions()[0]; i++) {
+    if (mask_t(i)) {
+      grad_t(i) = ((1.0 - y_t(i)) / (1.0 - x_t(i)) - y_t(i) / x_t(i)) / mf;
+    }
+  }
+}
+
+template <typename T>
+static void CalcPredResult(const Tensor& input, Tensor* pred_conf,
+                           Tensor* pred_class, Tensor* pred_x, Tensor* pred_y,
+                           Tensor* pred_w, Tensor* pred_h, const int anchor_num,
+                           const int class_num) {
   const int n = input.dims()[0];
-  const int c = input.dims()[1];
   const int h = input.dims()[2];
   const int w = input.dims()[3];
-  const int anchor_num = anchors.size() / 2;
   const int box_attr_num = 5 + class_num;
 
   auto input_t = EigenTensor<T, 4>::From(input);
-  auto pred_confs_t = EigenTensor<T, 4>::From(*pred_confs);
-  auto pred_classes_t = EigenTensor<T, 5>::From(*pred_classes);
+  auto pred_conf_t = EigenTensor<T, 4>::From(*pred_conf);
+  auto pred_class_t = EigenTensor<T, 5>::From(*pred_class);
   auto pred_x_t = EigenTensor<T, 4>::From(*pred_x);
   auto pred_y_t = EigenTensor<T, 4>::From(*pred_y);
   auto pred_w_t = EigenTensor<T, 4>::From(*pred_w);
@@ -97,26 +137,23 @@ static void CalcPredResult(const Tensor& input, Tensor* pred_confs,
 
   for (int i = 0; i < n; i++) {
     for (int an_idx = 0; an_idx < anchor_num; an_idx++) {
-      float an_w = anchors[an_idx * 2] / stride;
-      float an_h = anchors[an_idx * 2 + 1] / stride;
-
       for (int j = 0; j < h; j++) {
         for (int k = 0; k < w; k++) {
           pred_x_t(i, an_idx, j, k) =
-              sigmod(input_t(i, box_attr_num * an_idx, j, k));
+              sigmoid(input_t(i, box_attr_num * an_idx, j, k));
           pred_y_t(i, an_idx, j, k) =
-              sigmod(input_t(i, box_attr_num * an_idx + 1, j, k));
+              sigmoid(input_t(i, box_attr_num * an_idx + 1, j, k));
           pred_w_t(i, an_idx, j, k) =
               input_t(i, box_attr_num * an_idx + 2, j, k);
           pred_h_t(i, an_idx, j, k) =
               input_t(i, box_attr_num * an_idx + 3, j, k);
 
-          pred_confs_t(i, an_idx, j, k) =
-              sigmod(input_t(i, box_attr_num * an_idx + 4, j, k));
+          pred_conf_t(i, an_idx, j, k) =
+              sigmoid(input_t(i, box_attr_num * an_idx + 4, j, k));
 
           for (int c = 0; c < class_num; c++) {
-            pred_classes_t(i, an_idx, j, k, c) =
-                sigmod(input_t(i, box_attr_num * an_idx + 5 + c, j, k));
+            pred_class_t(i, an_idx, j, k, c) =
+                sigmoid(input_t(i, box_attr_num * an_idx + 5 + c, j, k));
           }
         }
       }
@@ -149,26 +186,10 @@ static T CalcBoxIoU(std::vector<T> box1, std::vector<T> box2) {
 }
 
 template <typename T>
-static inline int GetPredLabel(const Tensor& pred_classes, int n,
-                               int best_an_index, int gj, int gi) {
-  auto pred_classes_t = EigenTensor<T, 5>::From(pred_classes);
-  T score = 0.0;
-  int label = -1;
-  for (int i = 0; i < pred_classes.dims()[4]; i++) {
-    if (pred_classes_t(n, best_an_index, gj, gi, i) > score) {
-      score = pred_classes_t(n, best_an_index, gj, gi, i);
-      label = i;
-    }
-  }
-  return label;
-}
-
-template <typename T>
 static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
-                            std::vector<int> anchors, const int img_height,
-                            const int grid_size, Tensor* obj_mask,
-                            Tensor* noobj_mask, Tensor* tx, Tensor* ty,
-                            Tensor* tw, Tensor* th, Tensor* tconf,
+                            std::vector<int> anchors, const int grid_size,
+                            Tensor* obj_mask, Tensor* noobj_mask, Tensor* tx,
+                            Tensor* ty, Tensor* tw, Tensor* th, Tensor* tconf,
                             Tensor* tclass) {
   const int n = gt_boxes.dims()[0];
   const int b = gt_boxes.dims()[1];
@@ -240,6 +261,61 @@ static void ExpandObjMaskByClassNum(Tensor* obj_mask_expand,
                           .broadcast(Array5(1, 1, 1, 1, class_num));
 }
 
+template <typename T>
+static void AddAllGradToInputGrad(
+    Tensor* grad, T loss, const Tensor& pred_x, const Tensor& pred_y,
+    const Tensor& pred_conf, const Tensor& pred_class, const Tensor& grad_x,
+    const Tensor& grad_y, const Tensor& grad_w, const Tensor& grad_h,
+    const Tensor& grad_conf_obj, const Tensor& grad_conf_noobj,
+    const Tensor& grad_class, const int class_num) {
+  const int n = pred_x.dims()[0];
+  const int an_num = pred_x.dims()[1];
+  const int h = pred_x.dims()[2];
+  const int w = pred_x.dims()[3];
+  const int attr_num = class_num + 5;
+  auto grad_t = EigenTensor<T, 4>::From(*grad).setConstant(0.0);
+  auto pred_x_t = EigenTensor<T, 4>::From(pred_x);
+  auto pred_y_t = EigenTensor<T, 4>::From(pred_y);
+  auto pred_conf_t = EigenTensor<T, 4>::From(pred_conf);
+  auto pred_class_t = EigenTensor<T, 5>::From(pred_class);
+  auto grad_x_t = EigenTensor<T, 4>::From(grad_x);
+  auto grad_y_t = EigenTensor<T, 4>::From(grad_y);
+  auto grad_w_t = EigenTensor<T, 4>::From(grad_w);
+  auto grad_h_t = EigenTensor<T, 4>::From(grad_h);
+  auto grad_conf_obj_t = EigenTensor<T, 4>::From(grad_conf_obj);
+  auto grad_conf_noobj_t = EigenTensor<T, 4>::From(grad_conf_noobj);
+  auto grad_class_t = EigenTensor<T, 5>::From(grad_class);
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < an_num; j++) {
+      for (int k = 0; k < h; k++) {
+        for (int l = 0; l < w; l++) {
+          grad_t(i, j * attr_num, k, l) = grad_x_t(i, j, k, l) *
+                                          pred_x_t(i, j, k, l) *
+                                          (1.0 - pred_x_t(i, j, k, l)) * loss;
+          grad_t(i, j * attr_num + 1, k, l) =
+              grad_y_t(i, j, k, l) * pred_y_t(i, j, k, l) *
+              (1.0 - pred_y_t(i, j, k, l)) * loss;
+          grad_t(i, j * attr_num + 2, k, l) = grad_w_t(i, j, k, l) * loss;
+          grad_t(i, j * attr_num + 3, k, l) = grad_h_t(i, j, k, l) * loss;
+          grad_t(i, j * attr_num + 4, k, l) =
+              grad_conf_obj_t(i, j, k, l) * pred_conf_t(i, j, k, l) *
+              (1.0 - pred_conf_t(i, j, k, l)) * loss;
+          grad_t(i, j * attr_num + 4, k, l) +=
+              grad_conf_noobj_t(i, j, k, l) * pred_conf_t(i, j, k, l) *
+              (1.0 - pred_conf_t(i, j, k, l)) * loss;
+
+          for (int c = 0; c < class_num; c++) {
+            grad_t(i, j * attr_num + 5 + c, k, l) =
+                grad_class_t(i, j, k, l, c) * pred_class_t(i, j, k, l, c) *
+                (1.0 - pred_class_t(i, j, k, l, c)) * loss;
+          }
+        }
+      }
+    }
+  }
+}
+
 template <typename DeviceContext, typename T>
 class Yolov3LossKernel : public framework::OpKernel<T> {
  public:
@@ -247,28 +323,25 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* gt_boxes = ctx.Input<Tensor>("GTBox");
     auto* loss = ctx.Output<Tensor>("Loss");
-    int img_height = ctx.Attr<int>("img_height");
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
     int class_num = ctx.Attr<int>("class_num");
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
 
     const int n = input->dims()[0];
-    const int c = input->dims()[1];
     const int h = input->dims()[2];
     const int w = input->dims()[3];
     const int an_num = anchors.size() / 2;
-    const T stride = static_cast<T>(img_height) / h;
 
     Tensor pred_x, pred_y, pred_w, pred_h;
-    Tensor pred_confs, pred_classes;
+    Tensor pred_conf, pred_class;
     pred_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     pred_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_confs.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_classes.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    CalcPredResult<T>(*input, &pred_confs, &pred_classes, &pred_x, &pred_y,
-                      &pred_w, &pred_h, anchors, class_num, stride);
+    pred_conf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    pred_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
+    CalcPredResult<T>(*input, &pred_conf, &pred_class, &pred_x, &pred_y,
+                      &pred_w, &pred_h, an_num, class_num);
 
     Tensor obj_mask, noobj_mask;
     Tensor tx, ty, tw, th, tconf, tclass;
@@ -280,9 +353,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     th.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    PrePorcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, img_height, h,
-                       &obj_mask, &noobj_mask, &tx, &ty, &tw, &th, &tconf,
-                       &tclass);
+    PrePorcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, h, &obj_mask,
+                       &noobj_mask, &tx, &ty, &tw, &th, &tconf, &tclass);
 
     Tensor obj_mask_expand;
     obj_mask_expand.mutable_data<int>({n, an_num, h, w, class_num},
@@ -293,17 +365,9 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     T loss_y = CalcMSEWithMask<T>(pred_y, ty, obj_mask);
     T loss_w = CalcMSEWithMask<T>(pred_w, tw, obj_mask);
     T loss_h = CalcMSEWithMask<T>(pred_h, th, obj_mask);
-    T loss_conf_obj = CalcBCEWithMask<T>(pred_confs, tconf, obj_mask);
-    T loss_conf_noobj = CalcBCEWithMask<T>(pred_confs, tconf, noobj_mask);
-    T loss_class = CalcBCEWithMask<T>(pred_classes, tclass, obj_mask_expand);
-
-    // LOG(ERROR) << "loss_x: " << loss_x;
-    // LOG(ERROR) << "loss_y: " << loss_y;
-    // LOG(ERROR) << "loss_w: " << loss_w;
-    // LOG(ERROR) << "loss_h: " << loss_h;
-    // LOG(ERROR) << "loss_conf_obj: " << loss_conf_obj;
-    // LOG(ERROR) << "loss_conf_noobj: " << loss_conf_noobj;
-    // LOG(ERROR) << "loss_class: " << loss_class;
+    T loss_conf_obj = CalcBCEWithMask<T>(pred_conf, tconf, obj_mask);
+    T loss_conf_noobj = CalcBCEWithMask<T>(pred_conf, tconf, noobj_mask);
+    T loss_class = CalcBCEWithMask<T>(pred_class, tclass, obj_mask_expand);
 
     auto* loss_data = loss->mutable_data<T>({1}, ctx.GetPlace());
     loss_data[0] = loss_x + loss_y + loss_w + loss_h + loss_conf_obj +
@@ -315,8 +379,76 @@ template <typename DeviceContext, typename T>
 class Yolov3LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* d_input_t = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_output_t = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input = ctx.Input<Tensor>("X");
+    auto* gt_boxes = ctx.Input<Tensor>("GTBox");
+    auto anchors = ctx.Attr<std::vector<int>>("anchors");
+    int class_num = ctx.Attr<int>("class_num");
+    float ignore_thresh = ctx.Attr<float>("ignore_thresh");
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+    const T loss = output_grad->data<T>()[0];
+
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
+    const int h = input->dims()[2];
+    const int w = input->dims()[3];
+    const int an_num = anchors.size() / 2;
+
+    Tensor pred_x, pred_y, pred_w, pred_h;
+    Tensor pred_conf, pred_class;
+    pred_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    pred_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    pred_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    pred_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    pred_conf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    pred_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
+    CalcPredResult<T>(*input, &pred_conf, &pred_class, &pred_x, &pred_y,
+                      &pred_w, &pred_h, an_num, class_num);
+
+    Tensor obj_mask, noobj_mask;
+    Tensor tx, ty, tw, th, tconf, tclass;
+    obj_mask.mutable_data<int>({n, an_num, h, w}, ctx.GetPlace());
+    noobj_mask.mutable_data<int>({n, an_num, h, w}, ctx.GetPlace());
+    tx.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    ty.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    tw.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    th.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
+    PrePorcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, h, &obj_mask,
+                       &noobj_mask, &tx, &ty, &tw, &th, &tconf, &tclass);
+
+    Tensor obj_mask_expand;
+    obj_mask_expand.mutable_data<int>({n, an_num, h, w, class_num},
+                                      ctx.GetPlace());
+    ExpandObjMaskByClassNum(&obj_mask_expand, obj_mask);
+
+    Tensor grad_x, grad_y, grad_w, grad_h;
+    Tensor grad_conf_obj, grad_conf_noobj, grad_class;
+    grad_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    grad_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    grad_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    grad_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    grad_conf_obj.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    grad_conf_noobj.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
+    grad_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
+    T obj_mf = CalcMaskPointNum<int>(obj_mask);
+    T noobj_mf = CalcMaskPointNum<int>(noobj_mask);
+    T obj_expand_mf = CalcMaskPointNum<int>(obj_mask_expand);
+    CalcMSEGradWithMask<T>(&grad_x, pred_x, tx, obj_mask, obj_mf);
+    CalcMSEGradWithMask<T>(&grad_y, pred_y, ty, obj_mask, obj_mf);
+    CalcMSEGradWithMask<T>(&grad_w, pred_w, tw, obj_mask, obj_mf);
+    CalcMSEGradWithMask<T>(&grad_h, pred_h, th, obj_mask, obj_mf);
+    CalcBCEGradWithMask<T>(&grad_conf_obj, pred_conf, tconf, obj_mask, obj_mf);
+    CalcBCEGradWithMask<T>(&grad_conf_noobj, pred_conf, tconf, noobj_mask,
+                           noobj_mf);
+    CalcBCEGradWithMask<T>(&grad_class, pred_class, tclass, obj_mask_expand,
+                           obj_expand_mf);
+
+    input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
+    AddAllGradToInputGrad<T>(
+        input_grad, loss, pred_x, pred_y, pred_conf, pred_class, grad_x, grad_y,
+        grad_w, grad_h, grad_conf_obj, grad_conf_noobj, grad_class, class_num);
   }
 };
 

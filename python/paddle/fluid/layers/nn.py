@@ -8244,13 +8244,54 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     return loss
 
 
-def yolov3_loss(x, gtbox, img_height, anchors, ignore_thresh, name=None):
+@templatedoc(op_type="yolov3_loss")
+def yolov3_loss(x, gtbox, anchors, class_num, ignore_thresh, name=None):
     """
-    **YOLOv3 Loss Layer**
+    ${comment}
 
-    This layer 
+    Args:
+        x (Variable): ${x_comment}
+        gtbox (Variable): groud truth boxes, shoulb be in shape of [N, B, 5],
+                          in the third dimenstion, class_id, x, y, w, h should
+                          be stored and x, y, w, h should be relative valud of
+                          input image.
+        anchors (list|tuple): ${anchors_comment}
+        class_num (int): ${class_num_comment}
+        ignore_thresh (float): ${ignore_thresh_comment}
+        name (string): the name of yolov3 loss
+
+    Returns:
+        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+
+    Raises:
+        TypeError: Input x of yolov3_loss must be Variable
+        TypeError: Input gtbox of yolov3_loss must be Variable"
+        TypeError: Attr anchors of yolov3_loss must be list or tuple
+        TypeError: Attr class_num of yolov3_loss must be an integer
+        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+
+    Examples:
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[10, 255, 13, 13], dtype='float32')
+        gtbox = fluid.layers.data(name='gtbox', shape=[10, 6, 5], dtype='float32')
+        anchors = [10, 13, 16, 30, 33, 23]
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
+                                        anchors=anchors, ignore_thresh=0.5)
     """
     helper = LayerHelper('yolov3_loss', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError("Input x of yolov3_loss must be Variable")
+    if not isinstance(gtbox, Variable):
+        raise TypeError("Input gtbox of yolov3_loss must be Variable")
+    if not isinstance(anchors, list) and not isinstance(anchors, tuple):
+        raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr class_num of yolov3_loss must be an integer")
+    if not isinstance(ignore_thresh, float):
+        raise TypeError(
+            "Attr ignore_thresh of yolov3_loss must be a float number")
 
     if name is None:
         loss = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -8264,8 +8305,8 @@ def yolov3_loss(x, gtbox, img_height, anchors, ignore_thresh, name=None):
                 "GTBox": gtbox},
         outputs={'Loss': loss},
         attrs={
-            "img_height": img_height,
             "anchors": anchors,
+            "class_num": class_num,
             "ignore_thresh": ignore_thresh,
         })
     return loss

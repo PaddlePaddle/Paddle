@@ -911,6 +911,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(data_1)
         print(str(program))
 
+    def test_yolov3_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
+            gtbox = layers.data(name='gtbox', shape=[10, 5], dtype='float32')
+            loss = layers.yolov3_loss(x, gtbox, [10, 13, 30, 13], 10, 0.5)
+
+            self.assertIsNotNone(loss)
+
     def test_bilinear_tensor_product_layer(self):
         program = Program()
         with program_guard(program):

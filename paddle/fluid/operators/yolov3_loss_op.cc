@@ -20,8 +20,6 @@ using framework::Tensor;
 class Yolov3LossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of Yolov3LossOp should not be null.");
@@ -32,7 +30,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_gt = ctx->GetInputDim("GTBox");
-    auto img_height = ctx->Attrs().Get<int>("img_height");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
     auto class_num = ctx->Attrs().Get<int>("class_num");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
@@ -43,8 +40,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                       "+ class_num)).");
     PADDLE_ENFORCE_EQ(dim_gt.size(), 3, "Input(GTBox) should be a 3-D tensor");
     PADDLE_ENFORCE_EQ(dim_gt[2], 5, "Input(GTBox) dim[2] should be 5");
-    PADDLE_ENFORCE_GT(img_height, 0,
-                      "Attr(img_height) value should be greater then 0");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
                       "Attr(anchors) length should be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
@@ -87,13 +82,43 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("anchors",
                               "The anchor width and height, "
                               "it will be parsed pair by pair.");
-    AddAttr<int>("img_height",
-                 "The input image height after crop of yolov3 network.");
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.");
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
          truth boxes.
+         
+         The output of previous network is in shape [N, C, H, W], while H and W
+         should be the same, specify the grid size, each grid point predict given
+         number boxes, this given number is specified by anchors, it should be 
+         half anchors length, which following will be represented as S. In the 
+         second dimention(the channel dimention), C should be S * (class_num + 5),
+         class_num is the box categoriy number of source dataset(such as coco), 
+         so in the second dimention, stores 4 box location coordinates x, y, w, h 
+         and confidence score of the box and class one-hot key of each anchor box.
+
+         While the 4 location coordinates if $$tx, ty, tw, th$$, the box predictions
+         correspnd to:
+
+         $$
+         b_x = \sigma(t_x) + c_x
+         b_y = \sigma(t_y) + c_y
+         b_w = p_w e^{t_w}
+         b_h = p_h e^{t_h}
+         $$
+
+         While $$c_x, c_y$$ is the left top corner of current grid and $$p_w, p_h$$
+         is specified by anchors.
+
+         As for confidence score, it is the logistic regression value of IoU between
+         anchor boxes and ground truth boxes, the score of the anchor box which has 
+         the max IoU should be 1, and if the anchor box has IoU bigger then ignore 
+         thresh, the confidence score loss of this anchor box will be ignored.
+
+         Therefore, the yolov3 loss consist of three major parts, box location loss,
+         confidence score loss, and classification loss. The MSE loss is used for 
+         box location, and binary cross entropy loss is used for confidence score 
+         loss and classification loss.
          )DOC");
   }
 };
@@ -101,8 +126,6 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
 class Yolov3LossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
@@ -113,10 +136,31 @@ class Yolov3LossOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+ protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
+  }
+};
+
+class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType("yolov3_loss_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("GTBox", Input("GTBox"));
+    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+
+    op->SetAttrMap(Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("GTBox"), {});
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 
@@ -125,7 +169,7 @@ class Yolov3LossOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(yolov3_loss, ops::Yolov3LossOp, ops::Yolov3LossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::Yolov3LossGradMaker);
 REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
 REGISTER_OP_CPU_KERNEL(
     yolov3_loss,
