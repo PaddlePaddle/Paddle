@@ -1,6 +1,6 @@
 unset(analysis_deps CACHE)
 set(analysis_deps # analysis_deps can be extended accross the project
-        framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log
+        framework_proto proto_desc graph pass paddle_fluid_api executor pretty_log
         ir_pass_manager
         CACHE INTERNAL "")
 
