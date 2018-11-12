@@ -27,7 +27,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#if PADDLE_WITH_CUDA
+#if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -527,8 +527,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
 
 }  // namespace paddle
 
-// TODO(Superjomn) add an definition PADDLE_WITH_TENSORRT.
-#if PADDLE_WITH_CUDA
+#if PADDLE_WITH_TENSORRT
 USE_TRT_CONVERTER(elementwise_add_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
