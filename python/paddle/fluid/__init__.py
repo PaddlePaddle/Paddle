@@ -34,6 +34,7 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
