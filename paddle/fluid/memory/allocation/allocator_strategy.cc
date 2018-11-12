@@ -34,6 +34,8 @@ AllocatorStrategy GetAllocatorStrategy() {
   static AllocatorStrategy strategy = GetStrategyFromFlag();
   return strategy;
 }
+
+void UseAllocatorStrategyGFlag() {}
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
