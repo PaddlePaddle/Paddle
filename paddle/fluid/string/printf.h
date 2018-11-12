@@ -72,6 +72,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
 
@@ -100,6 +101,18 @@ std::string Sprintf(const char* fmt, const Args&... args) {
 template <typename... Args>
 void Printf(const char* fmt, const Args&... args) {
   Fprintf(std::cout, fmt, args...);
+}
+
+std::string HumanReadableSize(size_t size) {
+  int i = 0;
+  const vector<std::string> units(
+      {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"});
+  while (size > 1024) {
+    size /= 1024;
+    i++;
+  }
+  PADDLE_ENFORCE_LT(i, units.size());
+  return Sprintf("%d.%d%s", i, size, units[i]);
 }
 
 }  // namespace string
