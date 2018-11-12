@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/argument.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
 namespace inference {
@@ -90,53 +91,91 @@ class SubGraphFuser {
   int min_subgraph_size_;
 };
 
-const char kUnionFindParent[] = "_sub_graph_splitter_union_find_parent_";
-const char kDetectedSubgraph[] = "_detected_sub_graph_";
-const char kSubgraph[] = "_subgraph_";
+struct NodeWrapper {
+  bool deleted{false};
+  bool marked{false};
+  int union_find_parent{-1};
+  std::vector<framework::ir::Node *> subgraph;
+};
+
 /*
  * ir::Node agent for subgraph detector.
  */
 struct Agent {
-  Agent(framework::ir::Node *x) : x_(x) {}
+  explicit Agent(framework::ir::Node *x) : x_(x) {}
 
-  bool deleted() { return GetBool(framework::ir::kNodeDeleted); }
-  void set_deleted(bool x) { SetBool(framework::ir::kNodeDeleted, x); }
+  NodeWrapper &wrapper() {
+    if (!x_->IsWrappedBy<NodeWrapper>()) {
+      x_->WrappedBy<NodeWrapper>(new NodeWrapper);
+    }
+    return x_->template Wrapper<NodeWrapper>();
+  }
 
-  bool marked() { return GetBool(kSubgraphSplitterMarkerAttrName); }
-  void set_marked(bool x) { SetBool(kSubgraphSplitterMarkerAttrName, x); }
+  bool deleted() { return wrapper().deleted; }
+  void set_deleted(bool x) { wrapper().deleted = x; }
+
+  bool marked() { return wrapper().marked; }
+  void set_marked(bool x) { wrapper().marked = x; }
 
   void set_subgraph(const std::vector<framework::ir::Node *> &x) {
-    if (!x_->Has(kSubgraph)) {
-      x_->Set(kSubgraph, new std::vector<framework::ir::Node *>(x));
-    } else {
-      x_->Get<std::vector<framework::ir::Node *>>(kSubgraph) = x;
-    }
+    wrapper().subgraph = x;
   }
 
-  std::vector<framework::ir::Node *> *subgraph() {
-    if (!x_->Has(kSubgraph)) return nullptr;
-    return &x_->Get<std::vector<framework::ir::Node *>>(kSubgraph);
-  }
+  int union_find_parent() { return wrapper().union_find_parent; }
+  void set_union_find_parent(int v) { wrapper().union_find_parent = v; }
 
+  std::vector<framework::ir::Node *> *subgraph() { return &wrapper().subgraph; }
   std::vector<framework::ir::Node *> &inputs() { return x_->inputs; }
   std::vector<framework::ir::Node *> &outputs() { return x_->outputs; }
 
  private:
-  void SetBool(const std::string &key, bool x) {
-    if (x_->Has(key)) {
-      x_->Get<bool>(key) = x;
-    } else {
-      x_->Set(key, new bool(x));
-    }
-  }
-
-  bool GetBool(const std::string &key) {
-    return x_->Has(key) && x_->Get<bool>(key);
-  }
-
- private:
   framework::ir::Node *x_;
 };
+
+// Topological sorting iterator on nodes.
+struct NodesTSIterator
+    : public std::iterator<std::forward_iterator_tag, framework::ir::Node *> {
+  NodesTSIterator() = default;
+  explicit NodesTSIterator(const std::vector<framework::ir::Node *> &source);
+  NodesTSIterator(NodesTSIterator &&other)
+      : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
+    other.cursor_ = 0;
+  }
+  NodesTSIterator(const NodesTSIterator &other);
+
+  framework::ir::Node &operator*();
+  NodesTSIterator &operator++();
+  // TODO(Superjomn) current implementation just compare the first
+  // element, need to compare the graph and all the elements in the queue and
+  // set.
+  NodesTSIterator &operator=(const NodesTSIterator &other);
+  bool operator==(const NodesTSIterator &other);
+  bool operator!=(const NodesTSIterator &other) { return !(*this == other); }
+  framework::ir::Node *operator->();
+
+ private:
+  std::vector<framework::ir::Node *> sorted_;
+  size_t cursor_{0};
+};
+
+// The nodes those have no input will be treated as start points.
+static std::vector<framework::ir::Node *> ExtractStartPoints(const Graph &g) {
+  std::vector<framework::ir::Node *> result;
+  for (auto *node : g.Nodes()) {
+    if (node->inputs.empty()) {
+      result.push_back(node);
+    }
+  }
+  return result;
+}
+
+static iterator_range<NodesTSIterator> TopologicalSort(const Graph &g) {
+  auto start_points = ExtractStartPoints(g);
+  PADDLE_ENFORCE(!start_points.empty());
+  NodesTSIterator x(start_points);
+  return iterator_range<NodesTSIterator>(NodesTSIterator(start_points),
+                                         NodesTSIterator());
+}
 
 }  // namespace analysis
 }  // namespace inference

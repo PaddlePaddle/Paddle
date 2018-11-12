@@ -102,7 +102,6 @@ framework::proto::ProgramDesc IRPassManager::AcquireProgram(
   pass->Set("program_proto", new framework::proto::ProgramDesc);
   auto *the_graph = graph->release();
   *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
-  LOG(INFO) << "the graph has nodes " << (*graph)->Nodes().size();
   return pass->Get<framework::proto::ProgramDesc>("program_proto");
 }
 

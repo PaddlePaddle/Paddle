@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -35,17 +36,11 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   auto teller =
       Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
 
-  LOG(INFO) << "origin graph size " << graph->Nodes().size();
-  for (auto *node : graph->Nodes()) {
-    if (Agent(node).deleted()) {
-    }
-  }
   SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
   fuser();
 
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && Agent(node).subgraph()) {
-      LOG(INFO) << "get one subgraph node " << node;
+    if (node->IsOp() && !Agent(node).subgraph()->empty()) {
       CreateTensorRTOp(node, graph.get());
 
       std::unordered_set<const Node *> nodes2remove(
@@ -99,7 +94,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
   }
 
-  LOG(INFO) << "get outputs " << output_names.size();
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   op_desc->SetType("tensorrt_engine");

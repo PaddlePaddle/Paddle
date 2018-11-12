@@ -109,28 +109,6 @@ class Node {
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
-  template <typename AttrType>
-  AttrType& Get(const std::string& attr_name) const {
-    PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
-                   attr_name);
-    return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
-  }
-
-  template <typename AttrType>
-  void Set(const std::string& attr_name, AttrType* attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
-                   attr_name);
-    attrs_[attr_name] = attr;
-    attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
-      delete attr;
-    };
-  }
-
-  bool Has(const std::string& attr_name) const {
-    return attrs_.find(attr_name) != attrs_.end();
-  }
-
  protected:
   const std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
@@ -142,8 +120,6 @@ class Node {
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
 
-  std::map<std::string, boost::any> attrs_;
-  std::map<std::string, std::function<void(void)>> attr_dels_;
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                                  Node::Type type);
