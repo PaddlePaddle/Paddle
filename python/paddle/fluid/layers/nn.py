@@ -8065,18 +8065,12 @@ def bilinear_tensor_product(x,
     .. math::
        out{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
 
-    In this formular:
+    In this formula:
       - :math:`x`: the first input contains M elements, shape is [batch_size, M].
       - :math:`y`: the second input contains N elements, shape is [batch_size, N].
       - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
       - :math:`out{i}`: the i-th element of out, shape is [batch_size, size].
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
-
-    The simple usage is:
-
-    .. code-block:: python
-
-       tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
 
     Args:
         x (Variable): 2-D input tensor with shape [batch_size, M]
@@ -8084,9 +8078,9 @@ def bilinear_tensor_product(x,
         size (int): The dimension of this layer.
         act (str, default None): Activation to be applied to the output of this layer.
         name (str, default None): The name of this layer.
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+        param_attr (ParamAttr, default None): The parameter attribute for the learnable w.
             parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
+        bias_attr (ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
 
@@ -8096,7 +8090,7 @@ def bilinear_tensor_product(x,
     Examples:
         .. code-block:: python
 
-          position_tensor = fluid.layers.add_position_encoding(input=tensor)
+          tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
