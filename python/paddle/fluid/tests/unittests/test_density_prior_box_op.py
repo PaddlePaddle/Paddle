@@ -38,7 +38,6 @@ class TestDensityPriorBoxOp(OpTest):
             'fixed_sizes': self.fixed_sizes,
             'fixed_ratios': self.fixed_ratios
         }
-
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
     def test_check_output(self):
@@ -74,12 +73,11 @@ class TestDensityPriorBoxOp(OpTest):
 
         self.clip = True
         self.num_priors = 0
-        if len(self.fixed_sizes) > 0:
-            if len(self.densities) > 0:
-                for density in self.densities:
-                    if len(self.fixed_ratios) > 0:
-                        self.num_priors += len(self.fixed_ratios) * (pow(
-                            density, 2))
+        if len(self.fixed_sizes) > 0 and len(self.densities) > 0:
+            for density in self.densities:
+                if len(self.fixed_ratios) > 0:
+                    self.num_priors += len(self.fixed_ratios) * (pow(density,
+                                                                     2))
         self.offset = 0.5
 
     def init_test_input(self):
@@ -105,7 +103,6 @@ class TestDensityPriorBoxOp(OpTest):
                 # Generate density prior boxes with fixed size
                 for density, fixed_size in zip(self.densities,
                                                self.fixed_sizes):
-                    box_width = box_height = fixed_size
                     if (len(self.fixed_ratios) > 0):
                         for ar in self.fixed_ratios:
                             shift = int(step_average / density)
@@ -126,16 +123,15 @@ class TestDensityPriorBoxOp(OpTest):
                                             / self.image_h, 1)
                                     ]
                                     idx += 1
-
         if self.clip:
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
-        out_var = np.tile(self.variances, (self.layer_h, self.layer_w,
-                                           self.num_priors, 1))
+        out_var = np.tile(self.variances,
+                          (self.layer_h, self.layer_w, self.num_priors, 1))
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
 
 
-class TestDensityPriorBoxWithDensityBox(TestDensityPriorBoxOp):
+class TestDensityPriorBox(TestDensityPriorBoxOp):
     def set_density(self):
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]

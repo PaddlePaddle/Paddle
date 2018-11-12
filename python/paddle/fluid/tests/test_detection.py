@@ -129,7 +129,7 @@ class TestPriorBox(unittest.TestCase):
 
 
 class TestDensityPriorBox(unittest.TestCase):
-    def test_denity_prior_box(self):
+    def test_density_prior_box(self):
         data_shape = [3, 224, 224]
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
@@ -137,12 +137,9 @@ class TestDensityPriorBox(unittest.TestCase):
         box, var = layers.density_prior_box(
             input=conv1,
             image=images,
-            min_sizes=[100.],
-            aspect_ratios=[1.],
             densities=[3, 4],
             fixed_sizes=[50., 60.],
-            fixed_ratios=[2.0, 1.0, 1.0 / 2.0],
-            flip=True,
+            fixed_ratios=[1.0],
             clip=True)
         assert len(box.shape) == 4
         assert box.shape == var.shape

@@ -43,12 +43,10 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(fixed_sizes.size(), densities.size(),
                       "The number of fixed_sizes and densities must be equal.");
     size_t num_priors = 0;
-    if (fixed_sizes.size() > 0) {
-      if (densities.size() > 0) {
-        for (size_t i = 0; i < densities.size(); ++i) {
-          if (fixed_ratios.size() > 0) {
-            num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
-          }
+    if ((fixed_sizes.size() > 0) && (densities.size() > 0)) {
+      for (size_t i = 0; i < densities.size(); ++i) {
+        if (fixed_ratios.size() > 0) {
+          num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
         }
       }
     }
@@ -157,10 +155,10 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddComment(R"DOC(
         Density Prior box operator
-        Generate density prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
         Each position of the input produce N density prior boxes, N is determined by
-        the count of fixed_sizes, fixed_ratios, densities, the calculation of shift is as follows:
-        $$shift = \frac{StepAverage}{density}$$, which step_average is a harmonic value of step_w and step_h.
+        the count of fixed_ratios, densities, the calculation of N is as follows:
+        for density in densities:
+        N += size(fixed_ratios)*density^2
         )DOC");
   }
 };

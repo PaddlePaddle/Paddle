@@ -12,19 +12,10 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/fluid/operators/detection/prior_box_op.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct ClipFunctor {
-  HOSTDEVICE inline T operator()(T in) const {
-    return std::min<T>(std::max<T>(in, 0.), 1.);
-  }
-};
 
 template <typename T>
 class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
