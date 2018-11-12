@@ -170,6 +170,15 @@ The required data format for this layer is one of the following:
   }
 };
 
+class BatchNormOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
+  }
+};
+
 template <typename T>
 class BatchNormKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
@@ -525,7 +534,7 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormGradMaker);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(
