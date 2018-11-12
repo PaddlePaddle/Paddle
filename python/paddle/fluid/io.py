@@ -391,6 +391,14 @@ def load_vars(executor,
                     inputs={},
                     outputs={'Out': [new_var]},
                     attrs={'file_path': os.path.join(dirname, new_var.name)})
+                # NOTE: also append load operators in startup program, so when
+                # ParallelExecutor runs startup program automatically, the loaded
+                # won't be overwritten by ramdom init op.
+                default_startup_program().global_block().append_op(
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [new_var]},
+                    attrs={'file_path': os.path.join(dirname, new_var.name)})
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -400,6 +408,12 @@ def load_vars(executor,
                 load_var_list.append(load_var_map[name])
 
             load_block.append_op(
+                type='load_combine',
+                inputs={},
+                outputs={"Out": load_var_list},
+                attrs={'file_path': os.path.join(dirname, filename)})
+            # NOTE: same as above, also append to startup program
+            default_startup_program().global_block().append_op(
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
@@ -923,8 +937,21 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
             attrs={'axes': [0],
                    'starts': [start],
                    'ends': [end]})
+        # NOTE: also append in startup program
+        default_startup_program().global_block().append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [clone_orig_var]},
+            attrs={'file_path': os.path.join(dirname, clone_orig_var.name)})
+        default_startup_program().global_block().append_op(
+            type="slice",
+            inputs={'Input': clone_orig_var},
+            outputs={'Out': clone_slice_var},
+            attrs={'axes': [0],
+                   'starts': [start],
+                   'ends': [end]})
         need_delete_vars.append(clone_orig_var)
-    load_block.append_op(
-        type='delete_var',
-        inputs={'X': need_delete_vars}, )
+    load_block.append_op(type='delete_var', inputs={'X': need_delete_vars})
+    default_startup_program().global_block().append_op(
+        type='delete_var', inputs={'X': need_delete_vars})
     executor.run(load_prog)
