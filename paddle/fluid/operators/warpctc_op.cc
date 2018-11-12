@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/warpctc_op.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {
