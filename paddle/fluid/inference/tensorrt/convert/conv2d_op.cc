@@ -37,8 +37,7 @@ class Conv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    LOG(INFO)
-        << "convert a fluid conv2d op to tensorrt conv layer without bias";
+    VLOG(3) << "convert a fluid conv2d op to tensorrt conv layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
