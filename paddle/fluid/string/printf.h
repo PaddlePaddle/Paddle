@@ -103,15 +103,19 @@ void Printf(const char* fmt, const Args&... args) {
   Fprintf(std::cout, fmt, args...);
 }
 
-std::string HumanReadableSize(size_t size) {
-  int i = 0;
-  const vector<std::string> units(
+template <typename T>
+std::string HumanReadableSize(T size) {
+  size_t i = 0;
+  T orig = size;
+  const std::vector<std::string> units(
       {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"});
   while (size > 1024) {
     size /= 1024;
     i++;
   }
-  PADDLE_ENFORCE_LT(i, units.size());
+  if (i >= units.size()) {
+    return Sprintf("%dB", static_cast<size_t>(orig));
+  }
   return Sprintf("%d.%d%s", i, size, units[i]);
 }
 

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/string/pringf.h"
+#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
