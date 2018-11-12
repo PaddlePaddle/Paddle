@@ -261,14 +261,16 @@ GraphPatternDetector::DetectPatterns() {
   return result;
 }
 
-bool GraphItemCMP(const std::pair<PDNode *, Node *> &a,
+struct GraphItemLessThan {
+  bool operator()(const std::pair<PDNode *, Node *> &a,
                   const std::pair<PDNode *, Node *> &b) {
-  if (a.first != b.first) {
-    return a.first < b.first;
-  } else {
-    return a.second < b.second;
+    if (a.first != b.first) {
+      return a.first < b.first;
+    } else {
+      return a.second < b.second;
+    }
   }
-}
+};
 
 // TODO(Superjomn) enhance the function as it marks unique unique as duplicates
 // see https://github.com/PaddlePaddle/Paddle/issues/13550
@@ -282,7 +284,7 @@ void GraphPatternDetector::UniquePatterns(
   for (auto &g : *subgraphs) {
     // Sort the items in the sub-graph, and transform to a string key.
     std::vector<std::pair<PDNode *, Node *>> sorted_keys(g.begin(), g.end());
-    std::sort(sorted_keys.begin(), sorted_keys.end(), GraphItemCMP);
+    std::sort(sorted_keys.begin(), sorted_keys.end(), GraphItemLessThan());
     std::stringstream ss;
     for (auto &item : sorted_keys) {
       ss << item.first << ":" << item.second;
