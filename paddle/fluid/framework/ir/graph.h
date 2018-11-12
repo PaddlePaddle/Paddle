@@ -89,7 +89,7 @@ class Graph {
                    attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
+      VLOG(30) << "deleting " << attr_name;
       delete attr;
     };
   }
@@ -100,6 +100,15 @@ class Graph {
                    attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = []() {};
+  }
+
+  template <typename AttrType>
+  void Erase(const std::string &attr_name) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) != 0, "%s not set in the graph",
+                   attr_name);
+    attr_dels_[attr_name]();
+    attrs_.erase(attr_name);
+    attr_dels_.erase(attr_name);
   }
 
   const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }

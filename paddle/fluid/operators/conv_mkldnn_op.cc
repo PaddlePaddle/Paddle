@@ -18,6 +18,8 @@
 #include <unordered_map>
 #include <map>
 
+#include "paddle/fluid/framework/data_layout_transform.h"
+
 namespace paddle {
 namespace operators {
 
@@ -60,6 +62,11 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
     return conv_pd_->dst_primitive_desc().get_size();
   }
   
+  mkldnn::memory::format GetDstFormat() const {
+    return static_cast<mkldnn::memory::format>(
+        conv_pd_->dst_primitive_desc().desc().data.format);
+  }
+
   mkldnn::memory::format GetDstFormat() const {
     return static_cast<mkldnn::memory::format>(
         conv_pd_->dst_primitive_desc().desc().data.format);
@@ -116,7 +123,6 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
                                "@data-weights_mem_p", pipeline);
   }
 
-
   std::shared_ptr<mkldnn::memory> AcquireResidualDataMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_residual_data_mem_p");
@@ -130,7 +136,7 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
                                this->AcquireDstMemoryFromPrimitive(dst_ptr),
                                "@residual_data_mem_p", pipeline);
   }
-  
+
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromDataPrimitive(
       void* ptr) {
     return this->AcquireMemoryFromPrimitive(
@@ -761,7 +767,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
               scale_bias_data.resize(count);
               #pragma omp parallel for if (count > 1)
               for(int i=0; i<count; i++){
-                  scale_bias_data[i] = scale_in_data[0] * scale_weights_data[i];
+                  if (scale_weights_data[i] == 0.0)
+                      scale_bias_data[i] = 1.0;
+                  else
+                      scale_bias_data[i] = scale_in_data[0] * scale_weights_data[i];
               }
               scale_datas[3] = scale_bias_data;
               //SetScaleMap(scale_map, scale_bias_key, scale_bias_data);

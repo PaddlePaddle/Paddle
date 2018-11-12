@@ -61,9 +61,9 @@ struct variant_caster<V<Ts...>> {
       if (std::is_same<T, std::vector<float>>::value) {
         auto caster_ints = make_caster<std::vector<int64_t>>();
         if (caster_ints.load(src, convert)) {
-          VLOG(4) << "This value are floats and int64_ts satisfy "
-                     "simultaneously, will set it's type to "
-                     "std::vector<int64_t>";
+          VLOG(40) << "This value are floats and int64_ts satisfy "
+                      "simultaneously, will set it's type to "
+                      "std::vector<int64_t>";
           value = cast_op<std::vector<int64_t>>(caster_ints);
           return true;
         }
