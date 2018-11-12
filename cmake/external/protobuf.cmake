@@ -30,66 +30,61 @@ UNSET_VAR(PROTOBUF_LITE_LIBRARY)
 UNSET_VAR(PROTOBUF_LIBRARY)
 UNSET_VAR(PROTOBUF_INCLUDE_DIR)
 UNSET_VAR(Protobuf_PROTOC_EXECUTABLE)
+function(protobuf_generate_python SRCS)
+    # shameless copy from https://github.com/Kitware/CMake/blob/master/Modules/FindProtobuf.cmake
+    if(NOT ARGN)
+        message(SEND_ERROR "Error: PROTOBUF_GENERATE_PYTHON() called without any proto files")
+        return()
+    endif()
 
-if(NOT COMMAND protobuf_generate_python)  # before cmake 3.4, protobuf_genrerate_python is not defined.
-    function(protobuf_generate_python SRCS)
-        # shameless copy from https://github.com/Kitware/CMake/blob/master/Modules/FindProtobuf.cmake
-        if(NOT ARGN)
-            message(SEND_ERROR "Error: PROTOBUF_GENERATE_PYTHON() called without any proto files")
-            return()
-        endif()
-
-        if(PROTOBUF_GENERATE_CPP_APPEND_PATH)
-            # Create an include path for each file specified
-            foreach(FIL ${ARGN})
-                get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
-                get_filename_component(ABS_PATH ${ABS_FIL} PATH)
-                list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
-                if(${_contains_already} EQUAL -1)
-                    list(APPEND _protobuf_include_path -I ${ABS_PATH})
-                endif()
-            endforeach()
-        else()
-            set(_protobuf_include_path -I ${CMAKE_CURRENT_SOURCE_DIR})
-        endif()
-
-        if(DEFINED PROTOBUF_IMPORT_DIRS AND NOT DEFINED Protobuf_IMPORT_DIRS)
-            set(Protobuf_IMPORT_DIRS "${PROTOBUF_IMPORT_DIRS}")
-        endif()
-
-        if(DEFINED Protobuf_IMPORT_DIRS)
-            foreach(DIR ${Protobuf_IMPORT_DIRS})
-                get_filename_component(ABS_PATH ${DIR} ABSOLUTE)
-                list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
-                if(${_contains_already} EQUAL -1)
-                    list(APPEND _protobuf_include_path -I ${ABS_PATH})
-                endif()
-            endforeach()
-        endif()
-
-        set(${SRCS})
+    if(PROTOBUF_GENERATE_CPP_APPEND_PATH)
+        # Create an include path for each file specified
         foreach(FIL ${ARGN})
             get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
-            get_filename_component(FIL_WE ${FIL} NAME_WE)
-            if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
-                get_filename_component(FIL_DIR ${FIL} DIRECTORY)
-                if(FIL_DIR)
-                    set(FIL_WE "${FIL_DIR}/${FIL_WE}")
-                endif()
+            get_filename_component(ABS_PATH ${ABS_FIL} PATH)
+            list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
+            if(${_contains_already} EQUAL -1)
+                list(APPEND _protobuf_include_path -I ${ABS_PATH})
             endif()
-
-            list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py")
-            add_custom_command(
-                    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py"
-                    COMMAND  ${Protobuf_PROTOC_EXECUTABLE} --python_out ${CMAKE_CURRENT_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
-                    DEPENDS ${ABS_FIL} ${Protobuf_PROTOC_EXECUTABLE}
-                    COMMENT "Running Python protocol buffer compiler on ${FIL}"
-                    VERBATIM )
         endforeach()
+    else()
+        set(_protobuf_include_path -I ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+    if(DEFINED PROTOBUF_IMPORT_DIRS AND NOT DEFINED Protobuf_IMPORT_DIRS)
+        set(Protobuf_IMPORT_DIRS "${PROTOBUF_IMPORT_DIRS}")
+    endif()
 
-        set(${SRCS} ${${SRCS}} PARENT_SCOPE)
-    endfunction()
-endif()
+    if(DEFINED Protobuf_IMPORT_DIRS)
+        foreach(DIR ${Protobuf_IMPORT_DIRS})
+            get_filename_component(ABS_PATH ${DIR} ABSOLUTE)
+            list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
+            if(${_contains_already} EQUAL -1)
+                list(APPEND _protobuf_include_path -I ${ABS_PATH})
+            endif()
+        endforeach()
+    endif()
+
+    set(${SRCS})
+    foreach(FIL ${ARGN})
+        get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+        get_filename_component(FIL_WE ${FIL} NAME_WE)
+        if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
+            get_filename_component(FIL_DIR ${FIL} DIRECTORY)
+            if(FIL_DIR)
+                set(FIL_WE "${FIL_DIR}/${FIL_WE}")
+            endif()
+        endif()
+        list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py")
+        add_custom_command(
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py"
+                COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${CMAKE_CURRENT_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
+                DEPENDS ${ABS_FIL} ${PROTOBUF_PROTOC_EXECUTABLE}
+                COMMENT "Running Python protocol buffer compiler on ${FIL}"
+                VERBATIM )
+    endforeach()
+
+    set(${SRCS} ${${SRCS}} PARENT_SCOPE)
+endfunction()
 
 # Print and set the protobuf library information,
 # finish this cmake process and exit from this file.
@@ -126,6 +121,7 @@ macro(PROMPT_PROTOBUF_LIB)
     # FIND_Protobuf.cmake uses `Protobuf_PROTOC_EXECUTABLE`.
     # make `protobuf_generate_cpp` happy.
     SET(Protobuf_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE})
+
     FOREACH(dep ${protobuf_DEPS})
         ADD_DEPENDENCIES(protobuf ${dep})
         ADD_DEPENDENCIES(protobuf_lite ${dep})
