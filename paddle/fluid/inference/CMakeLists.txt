@@ -29,7 +29,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
 
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
