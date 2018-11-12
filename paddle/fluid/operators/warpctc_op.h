@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/dynload/warpctc.h"
 
 namespace paddle {

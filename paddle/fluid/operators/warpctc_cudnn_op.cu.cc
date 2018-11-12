@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/operators/warpctc_op.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
