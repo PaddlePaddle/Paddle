@@ -77,7 +77,8 @@ class CpuPassStrategy : public PassStrategy {
     passes_.assign({
         "infer_clean_graph_pass",    //
         "attention_lstm_fuse_pass",  //
-        // "embedding_fc_lstm_fuse_pass", disable by default.
+        // "seqconv_eltadd_relu_fuse_pass",  //
+        // "embedding_fc_lstm_fuse_pass", //
         "fc_lstm_fuse_pass",             //
         "mul_lstm_fuse_pass",            //
         "fc_gru_fuse_pass",              //
@@ -91,7 +92,13 @@ class CpuPassStrategy : public PassStrategy {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
     if (use_mkldnn_) {
-      passes_.push_back("conv_relu_mkldnn_fuse_pass");
+      for (auto &pass : std::vector<std::string>(
+               {"depthwise_conv_mkldnn_pass",  //
+                "conv_bias_mkldnn_fuse_pass",  //
+                "conv_relu_mkldnn_fuse_pass",  //
+                "conv_elementwise_add_mkldnn_fuse_pass"})) {
+        passes_.push_back(pass);
+      }
     }
 #endif
   }
