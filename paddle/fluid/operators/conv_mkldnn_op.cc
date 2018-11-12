@@ -67,11 +67,6 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
         conv_pd_->dst_primitive_desc().desc().data.format);
   }
 
-  mkldnn::memory::format GetDstFormat() const {
-    return static_cast<mkldnn::memory::format>(
-        conv_pd_->dst_primitive_desc().desc().data.format);
-  }
-
   size_t GetDiffWeightsMemorySize() const {
     return conv_bwd_weights_pd_->diff_weights_primitive_desc().get_size();
   }
