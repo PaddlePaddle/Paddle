@@ -17,7 +17,7 @@
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     yolov3_loss,
-    ops::Yolov3LossOpKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::Yolov3LossKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     yolov3_loss_grad,
-    ops::Yolov3LossGradOpKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::Yolov3LossGradKernel<paddle::platform::CUDADeviceContext, float>);

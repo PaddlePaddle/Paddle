@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+
 import unittest
 import numpy as np
 from op_test import OpTest
+
+from paddle.fluid import core
 
 
 def sigmoid(x):
@@ -65,10 +69,9 @@ def box_iou(box1, box2):
 def build_target(gtboxs, attrs, grid_size):
     n, b, _ = gtboxs.shape
     ignore_thresh = attrs["ignore_thresh"]
-    img_height = attrs["img_height"]
     anchors = attrs["anchors"]
     class_num = attrs["class_num"]
-    an_num = len(anchors) / 2
+    an_num = len(anchors) // 2
     obj_mask = np.zeros((n, an_num, grid_size, grid_size)).astype('float32')
     noobj_mask = np.ones((n, an_num, grid_size, grid_size)).astype('float32')
     tx = np.zeros((n, an_num, grid_size, grid_size)).astype('float32')
@@ -120,7 +123,7 @@ def build_target(gtboxs, attrs, grid_size):
 
 def YoloV3Loss(x, gtbox, attrs):
     n, c, h, w = x.shape
-    an_num = len(attrs['anchors']) / 2
+    an_num = len(attrs['anchors']) // 2
     class_num = attrs["class_num"]
     x = x.reshape((n, an_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
     pred_x = sigmoid(x[:, :, :, :, 0])
@@ -144,13 +147,6 @@ def YoloV3Loss(x, gtbox, attrs):
                           noobj_mask)
     loss_class = bce(pred_cls * obj_mask_expand, tcls * obj_mask_expand,
                      obj_mask_expand)
-    # print "loss_x: ", loss_x
-    # print "loss_y: ", loss_y
-    # print "loss_w: ", loss_w
-    # print "loss_h: ", loss_h
-    # print "loss_conf_obj: ", loss_conf_obj
-    # print "loss_conf_noobj: ", loss_conf_noobj
-    # print "loss_class: ", loss_class
 
     return loss_x + loss_y + loss_w + loss_h + loss_conf_obj + loss_conf_noobj + loss_class
 
@@ -165,29 +161,35 @@ class TestYolov3LossOp(OpTest):
                                            self.gtbox_shape[:2])
 
         self.attrs = {
-            "img_height": self.img_height,
             "anchors": self.anchors,
             "class_num": self.class_num,
             "ignore_thresh": self.ignore_thresh,
         }
 
         self.inputs = {'X': x, 'GTBox': gtbox}
-        self.outputs = {'Loss': np.array([YoloV3Loss(x, gtbox, self.attrs)])}
-        print self.outputs
+        self.outputs = {
+            'Loss':
+            np.array([YoloV3Loss(x, gtbox, self.attrs)]).astype('float32')
+        }
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        place = core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-3)
 
-    # def test_check_grad_normal(self):
-    #     self.check_grad(['X', 'Grid'], 'Output', max_relative_error=0.61)
+    def test_check_grad_ignore_gtbox(self):
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X'],
+            'Loss',
+            no_grad_set=set("GTBox"),
+            max_relative_error=0.1)
 
     def initTestCase(self):
-        self.img_height = 608
-        self.anchors = [10, 13, 16, 30, 33, 23]
+        self.anchors = [10, 13, 12, 12]
         self.class_num = 10
         self.ignore_thresh = 0.5
-        self.x_shape = (5, len(self.anchors) / 2 * (5 + self.class_num), 7, 7)
-        self.gtbox_shape = (5, 10, 5)
+        self.x_shape = (5, len(self.anchors) // 2 * (5 + self.class_num), 7, 7)
+        self.gtbox_shape = (5, 5, 5)
 
 
 if __name__ == "__main__":
