@@ -4813,7 +4813,7 @@ def softmax_with_cross_entropy(logits,
         Variable or Tuple of two Variables: Return the cross entropy loss if 
                               `return_softmax` is False, otherwise the tuple 
                               (loss, softmax), where the cross entropy loss is 
-                              2-D tensor with shape [N x 1], and softmax is a 
+                              a 2-D tensor with shape [N x 1], and softmax is a 
                               2-D tensor with shape [N x K].
 
     Examples:

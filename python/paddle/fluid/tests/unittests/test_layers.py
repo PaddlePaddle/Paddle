@@ -373,6 +373,8 @@ class TestBook(unittest.TestCase):
                 x, y, return_softmax=True)
             self.assertIsNotNone(loss)
             self.assertIsNotNone(softmax)
+            loss = layers.softmax_with_cross_entropy(x, y)
+            self.assertIsNotNone(loss)
         print(str(program))
 
     def test_smooth_l1(self):
