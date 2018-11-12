@@ -173,6 +173,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
       }
     }
   }
+
   // When tensorrt engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
   // to Tensor.
