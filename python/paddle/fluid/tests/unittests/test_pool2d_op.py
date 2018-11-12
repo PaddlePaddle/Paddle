@@ -81,7 +81,7 @@ def avg_pool2D_forward_naive(x,
     return out
 
 
-class TestPool2d_Op(OpTest):
+class TestPool2D_Op(OpTest):
     def setUp(self):
         self.op_type = "pool2d"
         self.use_cudnn = False
@@ -160,7 +160,7 @@ class TestPool2d_Op(OpTest):
         self.exclusive = True
 
 
-class TestCase1(TestPool2d_Op):
+class TestCase1(TestPool2D_Op):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -175,7 +175,7 @@ class TestCase1(TestPool2d_Op):
         self.global_pool = False
 
 
-class TestCase2(TestPool2d_Op):
+class TestCase2(TestPool2D_Op):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -190,7 +190,7 @@ class TestCase2(TestPool2d_Op):
         self.global_pool = False
 
 
-class TestCase3(TestPool2d_Op):
+class TestCase3(TestPool2D_Op):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -208,127 +208,98 @@ class TestCase5(TestCase2):
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-#--------------------test pool2d--------------------
-class TestCUDNNCase1(TestPool2d_Op):
-    def init_kernel_type(self):
-        self.use_cudnn = True
+#--------------------test pool2d cudnn--------------------
 
 
-class TestFP16CUDNNCase1(TestPool2d_Op):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
+def create_test_cudnn_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNCase(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOp")
+    TestCUDNNCase.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNCase
+
+
+create_test_cudnn_class(TestPool2D_Op)
+create_test_cudnn_class(TestCase1)
+create_test_cudnn_class(TestCase2)
+create_test_cudnn_class(TestCase3)
+create_test_cudnn_class(TestCase4)
+create_test_cudnn_class(TestCase5)
+
+#--------------------test pool2d cudnn_fp16--------------------
+
+
+def create_test_cudnn_fp16_class(parent, check_grad=True):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNFp16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=1e-3)
+
+        def test_check_grad(self):
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+            if core.is_float16_supported(
+                    place) and self.pool_type != "max" and check_grad:
+                self.check_grad_with_place(
+                    place, set(['X']), 'Out', max_relative_error=0.07)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
+    TestCUDNNFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNFp16Case
 
 
-class TestCUDNNCase2(TestCase1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
+create_test_cudnn_fp16_class(TestPool2D_Op)
+create_test_cudnn_fp16_class(TestCase1, check_grad=False)
+create_test_cudnn_fp16_class(TestCase2)
+create_test_cudnn_fp16_class(TestCase3)
+create_test_cudnn_fp16_class(TestCase4)
+create_test_cudnn_fp16_class(TestCase5)
+
+#--------------------test pool2d use ceil mode--------------------
 
 
-class TestFP16CUDNNCase2(TestCase1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
+def create_test_cudnn_use_ceil_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestPool2DUseCeilCase(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+        def init_ceil_mode(self):
+            self.ceil_mode = True
 
-
-class TestCUDNNCase3(TestCase2):
-    def init_kernel_type(self):
-        self.use_cudnn = True
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOpCeilMode")
+    TestPool2DUseCeilCase.__name__ = cls_name
+    globals()[cls_name] = TestPool2DUseCeilCase
 
 
-class TestFP16CUDNNCase3(TestCase2):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+create_test_cudnn_use_ceil_class(TestPool2D_Op)
+create_test_cudnn_use_ceil_class(TestCase1)
 
 
-class TestCUDNNCase4(TestCase3):
-    def init_kernel_type(self):
-        self.use_cudnn = True
+def create_test_use_ceil_class(parent):
+    class TestPool2DUseCeilCase(parent):
+        def init_ceil_mode(self):
+            self.ceil_mode = True
+
+    cls_name = "{0}_{1}".format(parent.__name__, "CeilModeCast")
+    TestPool2DUseCeilCase.__name__ = cls_name
+    globals()[cls_name] = TestPool2DUseCeilCase
 
 
-class TestFP16CUDNNCase4(TestCase3):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestCUDNNCase5(TestCase4):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNCase5(TestCase4):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestCUDNNCase6(TestCase5):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNCase6(TestCase5):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestCeilModeCase1(TestCUDNNCase1):
-    def init_ceil_mode(self):
-        self.ceil_mode = True
-
-
-class TestCeilModeCase2(TestCUDNNCase2):
-    def init_ceil_mode(self):
-        self.ceil_mode = True
-
-
-class TestCeilModeCase3(TestCase1):
-    def init_ceil_mode(self):
-        self.ceil_mode = True
-
-
-class TestCeilModeCase4(TestCase2):
-    def init_ceil_mode(self):
-        self.ceil_mode = True
+create_test_use_ceil_class(TestCase1)
+create_test_use_ceil_class(TestCase2)
 
 
 class TestAvgInclude(TestCase2):
@@ -336,7 +307,10 @@ class TestAvgInclude(TestCase2):
         self.exclusive = False
 
 
-class TestCUDNNAvgInclude(TestCUDNNCase3):
+class TestCUDNNAvgInclude(TestCase2):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+
     def init_exclusive(self):
         self.exclusive = False
 

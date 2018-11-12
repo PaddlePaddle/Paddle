@@ -139,6 +139,7 @@ function cmake_gen() {
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
+        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
@@ -171,6 +172,7 @@ EOF
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
+        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
@@ -367,7 +369,12 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        ctest --output-on-failure
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            ctest -V
+        else
+            ctest --output-on-failure
+        fi
+
         # make install should also be test when unittest
         make install -j `nproc`
         pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
@@ -609,7 +616,24 @@ EOF
         CMD='"true"'
     fi
 
-    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    if [ "$1" == "cp35-cp35m" ]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    ADD python/dist/*.whl /
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
+        pip3 install opencv-python && pip3 install /*.whl; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f /*.whl && \
+        ${PADDLE_VERSION} && \
+        ldconfig
+    ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
+    ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
+EOF
+    else
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
@@ -624,6 +648,8 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
+    fi
+
     if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
         ADD go/cmd/pserver/pserver /usr/bin/
@@ -698,7 +724,7 @@ function main() {
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        gen_dockerfile
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       build_android)
         build_android
@@ -725,7 +751,7 @@ function main() {
         gen_html
         ;;
       dockerfile)
-        gen_dockerfile
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       capi)
         cmake_gen ${PYTHON_ABI:-""}

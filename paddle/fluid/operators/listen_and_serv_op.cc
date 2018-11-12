@@ -36,7 +36,7 @@ namespace operators {
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
-  VLOG(4) << "RunServer thread end";
+  VLOG(40) << "RunServer thread end";
 }
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -66,8 +66,8 @@ static void ParallelExecuteBlocks(
     fs.push_back(framework::Async([&executor, &prepared, &scope, idx]() {
       int run_block = idx;  // thread local
       try {
-        VLOG(3) << "running server block: " << run_block
-                << "pointer: " << prepared[run_block].get();
+        VLOG(30) << "running server block: " << run_block
+                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
         LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
@@ -108,7 +108,7 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope, platform::DeviceContext *dev_ctx,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
-  VLOG(2) << "RunSyncLoop";
+  VLOG(20) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -134,7 +134,6 @@ void ListenAndServOp::RunSyncLoop(
   rpc_service_->ResetBarrierCounter();
 
   while (true) {
-    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -168,7 +167,7 @@ void ListenAndServOp::RunSyncLoop(
     }
     ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared, program,
                           recv_scope);
-    VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
+    VLOG(20) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
@@ -184,11 +183,11 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
   for (auto &varname : sparse_vars_) {
     auto var = recv_scope->FindVar(varname);
     if (var == nullptr) {
-      VLOG(2) << "can not find var " << varname << " in received scope";
+      VLOG(20) << "can not find var " << varname << " in received scope";
       continue;
     }
     if (var->IsType<framework::SelectedRows>()) {
-      VLOG(3) << "reset sparse var: " << varname;
+      VLOG(30) << "reset sparse var: " << varname;
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     } else {
       PADDLE_THROW("The type of sparse var should be SelectedRows");
@@ -198,7 +197,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
     for (auto &varname : dense_vars_) {
       auto var = recv_scope->FindVar(varname);
       if (var == nullptr) {
-        VLOG(2) << "can not find var " << varname << " in received scope";
+        VLOG(20) << "can not find var " << varname << " in received scope";
         continue;
       }
       if (var->IsType<framework::LoDTensor>()) {
@@ -217,24 +216,27 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
-  VLOG(2) << "RunAsyncLoop";
-  // grad name to block id
-  std::unordered_map<std::string, int32_t> grad_to_block_id;
-  std::unordered_map<int32_t, std::string> id_to_grad;
-
+  VLOG(20) << "RunAsyncLoop";
   auto grad_to_block_id_str =
       Attr<std::vector<std::string>>("grad_to_block_id");
-  for (const auto &grad_and_id : grad_to_block_id_str) {
+  DoubleFindMap<std::string, int32_t> grad_to_block_id;
+
+  auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
+                              const std::string &grad_and_id) {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
-    VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
+    VLOG(30) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
-    PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
+    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0);
 
     int block_id = std::stoi(pieces[1]);
-    grad_to_block_id[pieces[0]] = block_id;
-    id_to_grad[block_id] = pieces[0];
+    (*out_map)[pieces[0]] = block_id;
+  };
+
+  for (const auto &grad_and_id : grad_to_block_id_str) {
+    append_block_maps(&grad_to_block_id, grad_and_id);
   }
+
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
@@ -244,15 +246,22 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
-  // execute global block if needed
-  if (block_list[0] == 1 && id_to_grad.count(1) == 0) {
+  // execute global block if needed, block id 1 in the program is global
+  // block if it's not bind to a grad var for it's update.
+  if (block_list[0] == 1 &&
+      grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
+          grad_to_block_id.end()) {
     executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
   }
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
-      grad_to_prepared_ctx;
+      grad_to_prepared_ctx, param_to_prepared_ctx;
   for (size_t i = 0; i < block_list.size(); ++i) {
-    grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
+    auto blkid = block_list[i];
+    auto it = grad_to_block_id.find_value(blkid);
+    if (it != grad_to_block_id.end()) {
+      grad_to_prepared_ctx[it->first] = optimize_prepared[i];
+    }
   }
 
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
@@ -261,7 +270,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
   while (true) {
     if (rpc_service_->IsExit()) {
-      VLOG(4) << "get exit!rpc_processor break!";
+      VLOG(40) << "get exit!rpc_processor break!";
       break;
     }
 
@@ -315,6 +324,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   bool sync_mode = Attr<bool>("sync_mode");
+  bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
@@ -322,14 +332,16 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   std::string endpoint = Attr<std::string>("endpoint");
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
 
-  VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
-          << ", end_point:" << endpoint
-          << ", checkpoint_block_id: " << checkpoint_block_id;
+  VLOG(40) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
+           << ", end_point:" << endpoint
+           << ", checkpoint_block_id: " << checkpoint_block_id;
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
-  request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
+  request_send_handler_.reset(
+      new distributed::RequestSendHandler(sync_mode, dc_sgd));
+  request_get_handler_.reset(
+      new distributed::RequestGetHandler(sync_mode, dc_sgd));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
@@ -371,8 +383,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
        prefetch_var_name_to_block_id_str) {
     std::vector<std::string> pieces;
     split(prefetch_var_name_and_id, ':', &pieces);
-    VLOG(3) << "after split, prefetch_var = " << pieces[0]
-            << ", id=" << pieces[1];
+    VLOG(30) << "after split, prefetch_var = " << pieces[0]
+             << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
 
     int block_id = std::stoi(pieces[1]);
@@ -403,7 +415,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
-  VLOG(3) << "wait server thread to become ready...";
+  VLOG(30) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
@@ -443,6 +455,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
+    AddAttr<bool>("dc_asgd", "set to true will enable DC-ASGD training.")
+        .SetDefault(false);
     AddAttr<std::vector<framework::BlockDesc *>>(
         kOptimizeBlocks, "Optimize blocks to run on server side.")
         .SetDefault({});

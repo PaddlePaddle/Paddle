@@ -60,11 +60,10 @@ template <typename DeviceContext, typename T>
 class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == y->numel()) {
       elementwise_mul<DeviceContext, T>(ctx, x, y, z);

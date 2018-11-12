@@ -27,6 +27,7 @@ from .tensor import concat
 from . import utils
 from .. import unique_name
 from functools import reduce
+from .. import core
 
 __all__ = [
     'fc',
@@ -101,6 +102,7 @@ __all__ = [
     'image_resize',
     'image_resize_short',
     'resize_bilinear',
+    'resize_nearest',
     'gather',
     'scatter',
     'sequence_scatter',
@@ -154,13 +156,16 @@ __all__ = [
     'mul',
     'sigmoid_cross_entropy_with_logits',
     'maxout',
+    'space_to_depth',
     'affine_grid',
     'sequence_reverse',
     'affine_channel',
+    'similarity_focus',
     'hash',
     'grid_sampler',
     'log_loss',
     'add_position_encoding',
+    'bilinear_tensor_product',
 ]
 
 
@@ -1664,6 +1669,20 @@ def conv2d(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
+    if use_cudnn:
+        helper.create_variable(
+            name="kCUDNNFwdAlgoCache",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+        helper.create_variable(
+            name="kCUDNNBwdDataAlgoCache",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+        helper.create_variable(
+            name="kCUDNNBwdFilterAlgoCache",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
     helper.append_op(
         type=l_type,
         inputs={
@@ -1677,7 +1696,7 @@ def conv2d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False
+            'use_mkldnn': False,
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -3060,7 +3079,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             x = fluid.layers.data(name='y', shape=[10, 5],
                              dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(
-                input=numpy.array([0], dtype=numpy.float32))
+                input=numpy.array([0.0], dtype=numpy.float32))
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
     """
 
@@ -5639,7 +5658,8 @@ def image_resize(input,
                  out_shape=None,
                  scale=None,
                  name=None,
-                 resample='BILINEAR'):
+                 resample='BILINEAR',
+                 actual_shape=None):
     """
     **Resize a Batch of Images**
 
@@ -5649,6 +5669,7 @@ def image_resize(input,
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+        'NEAREST' : Nearest neighbor interpolation
 
     Args:
         input (Variable): The input tensor of image resize layer,
@@ -5663,25 +5684,51 @@ def image_resize(input,
                          Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It can only be 'BILINEAR' currently.
+        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST' 
+                       currently.
                        Default: 'BILINEAR'
+        actual_shape(Variable): An optional input to specify output shape 
+                                dynamically. If provided, image resize  
+                                according to this given shape rather than 
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the 
+                                highest priority. It is recommended to use 
+                                actual_shape instead of :attr:`out_shape` if you 
+                                want to specify output shape dynamically. When 
+                                using actual_shape to specify output shape, one of 
+                                :attr:`out_shape` and :attr:`scale` should also be 
+                                set, otherwise errors would be occured in graph 
+                                constructing stage.
+                                Default: None
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
         (num_batches, channls, out_h, out_w).
+
+    Raises:
+        TypeError: out_shape should be a list or tuple or Variable.
+        TypeError: actual_shape should either be Variable or None.
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR' 
+                    or 'NEAREST' currently.
+        ValueError: One of out_shape and scale must not be None.
+        ValueError: out_shape length should be 2.
 
     Examples:
         .. code-block:: python
 
             out = fluid.layers.image_resize(input, out_shape=[12, 12])
     """
-    resample_methods = {'BILINEAR': 'bilinear_interp'}
+    resample_methods = {
+        'BILINEAR': 'bilinear',
+        'NEAREST': 'nearest',
+    }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR' currently.")
+            "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
+        )
     if out_shape is None and scale is None:
-        raise ValueError("One of out_shape and scale must not be None")
-    helper = LayerHelper('bilinear_interp', **locals())
+        raise ValueError("One of out_shape and scale must not be None.")
+    helper = LayerHelper('interpolate', **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -5691,33 +5738,60 @@ def image_resize(input,
     out_w = 0
     inputs = {"X": input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape) and
-                len(out_shape) == 2) and not isinstance(out_shape, Variable):
-            raise ValueError('out_shape should be a list or tuple or variable')
-        if _is_list_or_turple_(out_shape):
-            out_shape = list(map(int, out_shape))
-            out_h = out_shape[0]
-            out_w = out_shape[1]
-        else:
+        if isinstance(out_shape, Variable):
+            warnings.warn("out_shape as Variable type is deprecated, \
+                    it is recommended to use actual_shape instead of \
+                    out_shape to specify output shape dynamically.")
             inputs['OutSize'] = out_shape
+        elif not (_is_list_or_turple_(out_shape)):
+            raise TypeError("out_shape should be a list or tuple or Variable.")
+        elif len(out_shape) != 2:
+            raise ValueError("out_shape length should be 2.")
+
+        out_shape = list(map(int, out_shape))
+        out_h = out_shape[0]
+        out_w = out_shape[1]
     else:
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
 
+    if isinstance(actual_shape, Variable):
+        inputs["OutSize"] = actual_shape
+    elif actual_shape is not None:
+        raise TypeError("actual_shape should either be Variable or None.")
+
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type=resample_methods[resample],
+        type='interpolate',
         inputs=inputs,
         outputs={"Out": out},
-        attrs={"out_h": out_h,
-               "out_w": out_w})
+        attrs={
+            "out_h": out_h,
+            "out_w": out_w,
+            "interp_method": resample_methods[resample]
+        })
     return out
 
 
-@templatedoc(op_type="bilinear_interp")
-def resize_bilinear(input, out_shape=None, scale=None, name=None):
+@templatedoc(op_type="interpolate")
+def resize_bilinear(input,
+                    out_shape=None,
+                    scale=None,
+                    name=None,
+                    actual_shape=None):
     """
-    ${comment}
+    Resize input by performing bilinear interpolation based on given 
+    output shape which specified by actual_shape, out_shape and scale 
+    in priority order.
+
+    Bilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of two variables (e.g. H-direction and 
+    W-direction in this op) on a rectilinear 2D grid. The key idea is 
+    to perform linear interpolation first in one direction, and then 
+    again in the other direction.
+
+    For details of bilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Bilinear_interpolation
 
     Args:
         input(${x_type}): ${x_comment}.
@@ -5729,12 +5803,71 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
              a higher priority than scale. Default: None.
 
         name(str|None): The output variable name.
+        actual_shape(Variable): An optional input to specify output shape 
+                                dynamically. If provided, image resize  
+                                according to this given shape rather than 
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the 
+                                highest priority. It is recommended to use 
+                                actual_shape instead of :attr:`out_shape` if you 
+                                want to specify output shape dynamically. When 
+                                using actual_shape to specify output shape, one of 
+                                :attr:`out_shape` and :attr:`scale` should also be 
+                                set, otherwise errors would be occured in graph 
+                                constructing stage.
+                                Default: None
 
     Returns:
         ${out_comment}.
     """
 
-    return image_resize(input, out_shape, scale, name, 'BILINEAR')
+    return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
+
+
+@templatedoc(op_type="interpolate")
+def resize_nearest(input,
+                   out_shape=None,
+                   scale=None,
+                   name=None,
+                   actual_shape=None):
+    """
+    Resize input by performing nearest neighbor interpolation in both the
+    3rd dimention(in height direction) and the 4th dimention(in width 
+    direction) based on given output shape which specified by actual_shape, 
+    out_shape and scale in priority order.
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
+
+    Args:
+        input(${x_type}): ${x_comment}.
+
+        out_shape(${out_size_type}): ${out_size_comment}.
+
+        scale(float|None): The multiplier for the input height or width. At
+             least one of out_shape or scale must be set. And out_shape has
+             a higher priority than scale. Default: None.
+
+        name(str|None): The output variable name.
+        actual_shape(Variable): An optional input to specify output shape 
+                                dynamically. If provided, image resize  
+                                according to this given shape rather than 
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the 
+                                highest priority. It is recommended to use 
+                                actual_shape instead of :attr:`out_shape` if you 
+                                want to specify output shape dynamically. When 
+                                using actual_shape to specify output shape, one of 
+                                :attr:`out_shape` and :attr:`scale` should also be 
+                                set, otherwise errors would be occured in graph 
+                                constructing stage.
+                                Default: None
+
+    Returns:
+        ${out_comment}.
+    """
+
+    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
@@ -7674,6 +7807,66 @@ def maxout(x, groups, name=None):
     return out
 
 
+def space_to_depth(x, blocksize, name=None):
+    """
+    Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
+    
+    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the 
+    input LoDtensor where values from the height and width dimensions are moved to the channel dimension. 
+    The attr blocksize indicates the input block size.
+    
+    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according 
+    to blocksize to construct output with shape [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
+    
+    space_to_depth is used to This operation is useful for resizing the activations between convolutions 
+    (but keeping all data)
+
+    - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
+    - The depth of the output tensor is block_size * block_size * input channel 
+    - The Y, X coordinates within each block of the input become the high order component of the output channel index
+    - channel should be divisible by square of blocksize
+    - height, width should be divsible by blocksize
+
+
+    Args:
+        x(variable): The input LoDtensor.
+        blocksize(variable): The blocksize to select the element on each feature map should be > 2
+
+    Returns:
+        Variable: The output LoDtensor.
+
+    Raises:
+        TypeError: blocksize type must be a long.
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(
+                name='data', shape=[1, 4, 2, 2], dtype='float32')
+            space_to_depthed = fluid.layers.space_to_depth(
+                x=data, blocksize=2)
+    """
+
+    helper = LayerHelper("space_to_depth", **locals())
+
+    if not (isinstance(blocksize, int)):
+        raise ValueError("blocksize must be a python Int")
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=x.dtype)  #fix create
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="space_to_depth",
+        inputs={"X": x},
+        attrs={"blocksize": blocksize},
+        outputs={"Out": out})
+    return out
+
+
 @templatedoc()
 def sequence_reverse(x, name=None):
     """ 
@@ -7739,6 +7932,118 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
+    return out
+
+
+def similarity_focus(input, axis, indexes, name=None):
+    """  
+    SimilarityFocus Operator
+
+    Generate a similarity focus mask with the same shape of input using the following method:
+    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
+       to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
+       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+       is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
+    2. For each index, find the largest numbers in the tensor T, so that the same 
+       row and same column has at most one number(what it means is that if the 
+       largest number has been found in the i-th row and the j-th column, then 
+       the numbers in the i-th row or j-th column will be skipped. And then the 
+       next largest number will be selected from the remaining numbers. Obviously 
+       there will be min(B, C) numbers), and mark the corresponding position of the 
+       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+       each index.
+    3. Broadcast the 3-D similarity focus mask to the same shape of input X.
+
+    Refer to `Similarity Focus Layer <http://www.aclweb.org/anthology/N16-1108>`_
+
+    .. code-block:: text
+
+        * Example :
+
+            Given a 4-D tensor x with the shape (BatchSize, C, A, B), where C is
+            the number of channels and the shape of feature map is (A, B):
+                x.shape = (2, 3, 2, 2)
+                x.data = [[[[0.8, 0.1],
+                            [0.4, 0.5]],
+
+                           [[0.9, 0.7],
+                            [0.9, 0.9]],
+
+                           [[0.8, 0.9],
+                            [0.1, 0.2]]],
+
+
+                          [[[0.2, 0.5],
+                            [0.3, 0.4]],
+
+                           [[0.9, 0.7],
+                            [0.8, 0.4]],
+
+                           [[0.0, 0.2],
+                            [0.4, 0.7]]]]
+
+            Given axis: 1 (the axis of the channel)
+            Given indexes: [0]
+
+            then we get a 4-D tensor out with the same shape of input x:
+                out.shape = (2, 3, 2, 2)
+                out.data = [[[[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]]],
+
+                            [[[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]]]]
+
+    Args:
+        input(Variable): The input tensor variable(default float). It should 
+            be a 4-D tensor with shape [BatchSize, A, B, C].
+        axis(int): Indicating the dimension to be selected. It can only be
+            1, 2 or 3.
+        indexes(list): Indicating the indexes of the selected dimension.
+
+    Returns:
+        Variable: A tensor variable with the same shape and same type 
+            as the input.
+        
+    Examples:
+        .. code-block:: python
+            data = fluid.layers.data(
+              name='data', shape=[2, 3, 2, 2], dtype='float32')
+            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[0])
+    """
+    helper = LayerHelper('similarity_focus', **locals())
+    # check attrs
+    if isinstance(axis, int) is False:
+        raise TypeError("axis must be int type.")
+    if isinstance(indexes, list) is False:
+        raise TypeError("indexes must be list type.")
+    if axis != 1 and axis != 2 and axis != 3:
+        raise ValueError("axis must be 1, 2 or 3.")
+    if len(indexes) == 0:
+        raise ValueError("indexes can not be empty.")
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+    helper.append_op(
+        type='similarity_focus',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={"axis": axis,
+               "indexes": indexes})
     return out
 
 
@@ -7985,3 +8290,72 @@ def add_position_encoding(input, alpha, beta, name=None):
         attrs={"alpha": alpha,
                "beta": beta})
     return out
+
+
+def bilinear_tensor_product(x,
+                            y,
+                            size,
+                            act=None,
+                            name=None,
+                            param_attr=None,
+                            bias_attr=None):
+    """
+    **Add Bilinear Tensor Product Layer**
+
+    This layer performs bilinear tensor product on two inputs.
+    For example:
+
+    .. math::
+       out{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
+
+    In this formula:
+      - :math:`x`: the first input contains M elements, shape is [batch_size, M].
+      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
+      - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
+      - :math:`out{i}`: the i-th element of out, shape is [batch_size, size].
+      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
+
+    Args:
+        x (Variable): 2-D input tensor with shape [batch_size, M]
+        y (Variable): 2-D input tensor with shape [batch_size, N]
+        size (int): The dimension of this layer.
+        act (str, default None): Activation to be applied to the output of this layer.
+        name (str, default None): The name of this layer.
+        param_attr (ParamAttr, default None): The parameter attribute for the learnable w.
+            parameters/weights of this layer.
+        bias_attr (ParamAttr, default None): The parameter attribute for the bias
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
+
+    Returns:
+        Variable: A 2-D Tensor of shape [batch_size, size].
+
+    Examples:
+        .. code-block:: python
+
+          tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+    """
+    helper = LayerHelper('bilinear_tensor_product', **locals())
+    dtype = helper.input_dtype('x')
+
+    param_shape = [size, x.shape[1], y.shape[1]]
+
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    inputs = {"X": x, "Y": y, "Weight": w}
+    if helper.bias_attr:
+        bias_size = [1, size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs["Bias"] = bias
+    helper.append_op(
+        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out})
+
+    # add activation
+    return helper.append_activation(out)

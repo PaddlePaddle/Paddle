@@ -35,23 +35,14 @@ namespace details {
 // The outside vector is the device vector. Each element of this vector is a
 // map from variable name to variables. The variables, who have the same name,
 // will have a differsent version. The offset in the
-// `std::vector<std::unique_ptr<VarHandle>>` is the version of varaibles.
-typedef std::vector<
-    std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
+// `std::vector<VarHandle*>` is the version of varaibles.
+typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle*>>>
     GraphVars;
 const char kGraphVars[] = "vars";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
-typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
+typedef std::unordered_set<VarHandleBase*> GraphDepVars;
 const char kGraphDepVars[] = "dep_vars";
-
-// all operators. NOTE that even we use a vector here, the operators is
-// unordered.
-typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
-const char kGraphOps[] = "ops";
-
-typedef std::unordered_map<std::string, int> ShardedVarDevice;
-const char kShardedVarDevice[] = "sharded_var_device";
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -16,13 +16,14 @@
 
 #include <glog/logging.h>
 #include <sys/time.h>
+#include <algorithm>
 #include <chrono>  // NOLINT
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle_inference_api.h"
 
 namespace paddle {
 namespace inference {
