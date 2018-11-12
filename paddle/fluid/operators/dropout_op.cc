@@ -34,6 +34,20 @@ class DropoutOp : public framework::OperatorWithKernel {
     }
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout("AnyLayout"), library_);
+  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -42,6 +56,10 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddInput("Cache",
+             "The cache(states) of dropout op, which is used in dropout cudnn "
+             "kernel.")
+        .AsDispensable();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
@@ -58,6 +76,10 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
@@ -113,6 +135,21 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                       "Dimensions of Input(X) and Mask must be the same.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<Tensor>(framework::GradVarName("Out"))->type()),
+        ctx.GetPlace(), framework::StringToDataLayout("AnyLayout"), library_);
   }
 };
 

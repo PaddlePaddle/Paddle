@@ -1023,6 +1023,7 @@ def dropout(x,
             dropout_prob,
             is_test=False,
             seed=None,
+            use_cudnn=False,
             name=None,
             dropout_implementation="downgrade_in_infer"):
     """
@@ -1042,6 +1043,8 @@ def dropout(x,
                     parameter is set to None, a random seed is used.
                     NOTE: If an integer seed is given, always the same output
                     units will be dropped. DO NOT use a fixed seed in training.
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+                          library is installed. Default: False.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
         dropout_implementation(string): ['downgrade_in_infer'(defauld)|'upscale_in_train']
@@ -1075,13 +1078,17 @@ def dropout(x,
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
+    if use_cudnn:
+        cache = helper.create_variable(
+            persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
 
     helper.append_op(
         type='dropout',
-        inputs={'X': [x]},
+        inputs={'X': [x],
+                'Cache': [cache]} if use_cudnn else {'X': [x]},
         outputs={'Out': [out],
                  'Mask': [mask]},
         attrs={

@@ -226,6 +226,16 @@ class ScopedTensorDescriptor {
                       groups);
   }
 
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const DataLayout& order,
+                                            const int n, const int c,
+                                            const int h, const int w) {
+    PADDLE_ENFORCE(dynload::cudnnSetTensor4dDescriptor(
+        desc_, GetCudnnTensorFormat(order), CudnnDataType<T>::type, n, c, h,
+        w));
+    return desc_;
+  }
+
  private:
   cudnnTensorDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);

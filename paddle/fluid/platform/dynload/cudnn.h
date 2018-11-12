@@ -113,6 +113,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
   __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
   __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
+  __macro(cudnnCreateDropoutDescriptor);                  \
+  __macro(cudnnDestroyDropoutDescriptor);                 \
+  __macro(cudnnSetDropoutDescriptor);                     \
+  __macro(cudnnDropoutForward);                           \
+  __macro(cudnnDropoutBackward);                          \
+  __macro(cudnnDropoutGetReserveSpaceSize);               \
+  __macro(cudnnDropoutGetStatesSize);                     \
   __macro(cudnnGetErrorString);
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
@@ -154,7 +161,8 @@ CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #if CUDNN_VERSION >= 7001
 #define CUDNN_DNN_ROUTINE_EACH_R7(__macro) \
   __macro(cudnnSetConvolutionGroupCount);  \
-  __macro(cudnnSetConvolutionMathType);
+  __macro(cudnnSetConvolutionMathType);    \
+  __macro(cudnnRestoreDropoutDescriptor);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
