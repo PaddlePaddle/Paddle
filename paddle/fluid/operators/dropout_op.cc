@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dropout_op.h"
-#include <string>
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -41,7 +44,12 @@ class DropoutOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
+#if CUDNN_VERSION >= 7001
+      // cudnnSetDropoutDescriptor needs expensive precomputation to initialize
+      // the random number generator states, so cache the states and use
+      // cudnnRestoreDropoutDescriptor to restore which is added in cuDNN v7
       library_ = framework::LibraryType::kCUDNN;
+#endif
     }
 #endif
     return framework::OpKernelType(
@@ -57,8 +65,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
     AddInput("Cache",
-             "The cache(states) of dropout op, which is used in dropout cudnn "
-             "kernel.")
+             "The cache(states) of dropout op(random number generator), which "
+             "is used in dropout cudnn kernel.")
         .AsDispensable();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
@@ -76,10 +84,6 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
-    AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(false);
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
@@ -103,6 +107,11 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
               "dropout_implementation can only be downgrade_in_infer or "
               "upscale_in_train");
         });
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default false) Only used in cudnn kernel, need "
+                  "install cudnn. Note that cudnn dropout kernel use the "
+                  "upscale_in_train mode.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Dropout Operator.
@@ -130,10 +139,6 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) must not be null.");
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto mask_dims = ctx->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(x_dims, mask_dims,
-                      "Dimensions of Input(X) and Mask must be the same.");
-
     ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
   }
 
@@ -143,7 +148,12 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
+#if CUDNN_VERSION >= 7001
+      // cudnnSetDropoutDescriptor needs expensive precomputation to initialize
+      // the random number generator states, so cache the states and use
+      // cudnnRestoreDropoutDescriptor to restore which is added in cuDNN v7
       library_ = framework::LibraryType::kCUDNN;
+#endif
     }
 #endif
     return framework::OpKernelType(
@@ -161,6 +171,7 @@ class DropoutGradMaker : public framework::SingleGradOpDescMaker {
     auto* grad_op = new framework::OpDesc();
     grad_op->SetType("dropout_grad");
     grad_op->SetInput("Mask", Output("Mask"));
+    grad_op->SetInput("Cache", Input("Cache"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     grad_op->SetAttrMap(Attrs());

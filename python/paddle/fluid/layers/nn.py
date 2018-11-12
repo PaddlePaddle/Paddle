@@ -1023,9 +1023,9 @@ def dropout(x,
             dropout_prob,
             is_test=False,
             seed=None,
-            use_cudnn=False,
             name=None,
-            dropout_implementation="downgrade_in_infer"):
+            dropout_implementation="downgrade_in_infer",
+            use_cudnn=False):
     """
     Computes dropout.
 
@@ -1043,8 +1043,6 @@ def dropout(x,
                     parameter is set to None, a random seed is used.
                     NOTE: If an integer seed is given, always the same output
                     units will be dropped. DO NOT use a fixed seed in training.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-                          library is installed. Default: False.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
         dropout_implementation(string): ['downgrade_in_infer'(defauld)|'upscale_in_train']
@@ -1060,6 +1058,9 @@ def dropout(x,
                                             ratio of 0 is dropout_prob)
                                            dropout op can be removed from the program. 
                                            the program will be efficient
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the \
+                          cudnn library is installed. Note that cudnn dropout \
+                          kernel use the upscale_in_train mode. Default: False.
                                         
 
 
@@ -1079,8 +1080,7 @@ def dropout(x,
     mask = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
     if use_cudnn:
-        cache = helper.create_variable(
-            persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+        cache = helper.create_variable(persistable=True, stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
@@ -1096,6 +1096,7 @@ def dropout(x,
             'is_test': is_test,
             'fix_seed': seed is not None,
             'seed': seed if seed is not None else 0,
+            'use_cudnn': use_cudnn,
             'dropout_implementation': dropout_implementation,
         })
     return out
