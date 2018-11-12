@@ -62,7 +62,7 @@ VarDesc UpdateGradVarDesc(
         string::Sprintf("%s.repeat.%d", var_desc->Name(), repeat);
     VarDesc repeated_var = CopyVarDesc(var_desc);
     repeated_var.SetName(new_gname);
-    VLOG(3) << "update " << var_desc->Name() << " to repeat " << repeat;
+    VLOG(30) << "update " << var_desc->Name() << " to repeat " << repeat;
     return repeated_var;
   }
   return *var_desc;
@@ -78,7 +78,7 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
 
   std::vector<ir::Node*> nodes = TopologySortOperations(*graph);
   auto origin_nodes = graph->ReleaseNodes();
-  VLOG(3) << "origin nodes count: " << origin_nodes.size();
+  VLOG(30) << "origin nodes count: " << origin_nodes.size();
   ir::Graph& result = *graph;
 
   // 1. record op nodes of different roles
@@ -137,8 +137,8 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
             "%s.repeat.%d", repeated_op.Input("Variance")[0], i);
         bn_vars_need_rename.insert(repeated_op.Input("Mean")[0]);
         bn_vars_need_rename.insert(repeated_op.Input("Variance")[0]);
-        VLOG(3) << "renaming " << repeated_op.Input("Mean")[0] << " to "
-                << new_mean_name;
+        VLOG(30) << "renaming " << repeated_op.Input("Mean")[0] << " to "
+                 << new_mean_name;
         repeated_op.RenameInput(repeated_op.Input("Mean")[0], new_mean_name);
         repeated_op.RenameInput(repeated_op.Input("Variance")[0], new_var_name);
         repeated_op.RenameOutput(repeated_op.Output("MeanOut")[0],

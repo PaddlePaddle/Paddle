@@ -60,7 +60,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
 
  private:
   void AddPass(const std::string& name, AnalysisPass* pass) {
-    VLOG(3) << "Adding pass " << name;
+    VLOG(30) << "Adding pass " << name;
     Register(name, pass);
     AddGraphvizDebugerPass(pass);
   }
@@ -104,7 +104,7 @@ void Analyzer::Run(Argument* argument) {
   passes.push_back("graph_viz_pass");  // add graphviz for debug.
 #ifdef PADDLE_WITH_MKLDNN
   if (use_mkldnn_) {
-    VLOG(3) << "Adding MKL-DNN placement pass";
+    VLOG(30) << "Adding MKL-DNN placement pass";
     passes.push_back("mkldnn_placement_pass");
   }
 #endif
@@ -113,7 +113,9 @@ void Analyzer::Run(Argument* argument) {
   passes.push_back("infer_clean_graph_pass");
   passes.push_back("graph_viz_pass");  // add graphviz for debug.
   for (auto& pass : ir_passes_) {
-    if (!disabled_ir_passes_.count(pass)) {
+    // skip mkldnn pass when use_mkldnn_ = false;
+    bool skip_pass = (!use_mkldnn_) && pass.find("mkldnn") != std::string::npos;
+    if (!disabled_ir_passes_.count(pass) && !skip_pass) {
       passes.push_back(pass);
       passes.push_back("graph_viz_pass");  // add graphviz for debug.
     }

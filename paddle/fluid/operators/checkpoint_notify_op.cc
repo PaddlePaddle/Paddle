@@ -46,8 +46,8 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       auto lookup_table_save_dir =
           string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
       rpc_client->AsyncCheckpointNotify(epmap[i], lookup_table_save_dir);
-      VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
-              << " and dir:" << dir << " to " << epmap[i];
+      VLOG(30) << "checkpoint notify sending lookup table: "
+               << lookup_table_name << " and dir:" << dir << " to " << epmap[i];
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }

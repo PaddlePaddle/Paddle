@@ -64,7 +64,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
     for (auto& ep : endpoint_list) {
-      VLOG(3) << "sending nccl id to " << ep;
+      VLOG(30) << "sending nccl id to " << ep;
       client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
     }
     client->Wait();
@@ -72,7 +72,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       client->AsyncSendBatchBarrier(ep);
     }
     client->Wait();
-    VLOG(3) << "sending completed...";
+    VLOG(30) << "sending completed...";
   }
 
   void GetIdByServer(framework::Scope* scope,
@@ -99,11 +99,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
     rpc_service->SetCond(distributed::kRequestSend);
-    VLOG(3) << "start getting nccl id from trainer 0...";
+    VLOG(30) << "start getting nccl id from trainer 0...";
     rpc_service->WaitBarrier(distributed::kRequestSend);
-    VLOG(3) << "got nccl id and stop server...";
+    VLOG(30) << "got nccl id and stop server...";
     rpc_service->ShutDown();
-    VLOG(3) << "rpc server stopped";
+    VLOG(30) << "rpc server stopped";
     server_thread.join();
   }
 };

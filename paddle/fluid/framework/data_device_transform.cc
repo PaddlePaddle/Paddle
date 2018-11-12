@@ -18,8 +18,8 @@ namespace framework {
 
 void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
                      Tensor *out) {
-  VLOG(3) << "DeviceTransform in, src_place " << in.place()
-          << " dst_place: " << dst_place;
+  VLOG(30) << "DeviceTransform in, src_place " << in.place()
+           << " dst_place: " << dst_place;
 
   PADDLE_ENFORCE_NE(
       in.place().which(), dst_place.which(),

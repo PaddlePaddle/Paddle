@@ -23,7 +23,7 @@ namespace analysis {
 bool PassManager::Initialize(Argument* argument) {
   argument_ = argument;
   for (auto& pass : data_) {
-    VLOG(3) << "Initializing pass [" << pass->repr() << "]";
+    VLOG(30) << "Initializing pass [" << pass->repr() << "]";
     if (!pass->Initialize(argument)) {
       LOG(ERROR) << "Failed to initialize pass [" << pass->repr() << "]";
       return false;
@@ -34,7 +34,7 @@ bool PassManager::Initialize(Argument* argument) {
 
 void DfgPassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
-  VLOG(3) << "Total " << data_.size() << " Analysys passes";
+  VLOG(30) << "Total " << data_.size() << " Analysys passes";
   for (auto& pass : data_) {
     string::PrettyLogEndl(string::Style::H1(), "* Running Analysis pass [%s]",
                           pass->repr());
