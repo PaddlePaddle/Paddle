@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/warpctc_op.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
