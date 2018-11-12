@@ -36,18 +36,14 @@ BufferedAllocator::~BufferedAllocator() { FreeCache(-1UL); }
 
 std::unique_ptr<Allocation> BufferedAllocator::Allocate(size_t size,
                                                         Allocator::Attr attr) {
-  std::unique_ptr<Allocation> result;
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
     if (it != allocations_.end() && it->first < size * 2) {
-      result = std::move(it->second);
+      std::unique_ptr<Allocation> result(std::move(it->second));
       allocations_.erase(it);
+      return result;
     }
-  }
-
-  if (result) {
-    return result;
   }
 
   try {
