@@ -37,7 +37,7 @@ class ConcatOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
     if (n == 1) {
-      VLOG(3) << "Warning: concat op have only one input, may waste memory";
+      VLOG(30) << "Warning: concat op have only one input, may waste memory";
     }
 
     auto out_dims = ins[0];

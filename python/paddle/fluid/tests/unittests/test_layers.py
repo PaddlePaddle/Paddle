@@ -496,6 +496,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_resize_nearest(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_nearest(x, out_shape=[12, 12])
+            self.assertIsNotNone(output)
+            output = layers.resize_nearest(x, scale=3)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_polygon_box_transform(self):
         program = Program()
         with program_guard(program):
@@ -899,6 +909,16 @@ class TestBook(unittest.TestCase):
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
+        print(str(program))
+
+    def test_bilinear_tensor_product_layer(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[4], dtype="float32")
+
+            theta = layers.data(name="theta", shape=[5], dtype="float32")
+            out = layers.bilinear_tensor_product(data, theta, 6)
+
         print(str(program))
 
 
