@@ -48,7 +48,7 @@ class RowwiseMean2D<platform::CUDADeviceContext, T> {
                   const framework::Tensor& input, framework::Tensor* out) {
     math::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
         false, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
-        out.data<T>());
+        out->data<T>());
   }
 
  private:
@@ -95,7 +95,7 @@ class ColwiseSum2D<platform::CUDADeviceContext, T> {
                   const framework::Tensor& input, framework::Tensor* out) {
     math::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
         true, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
-        out.data<T>());
+        out->data<T>());
   }
 
  private:
