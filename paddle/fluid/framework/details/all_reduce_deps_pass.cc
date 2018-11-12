@@ -56,9 +56,9 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     for (auto& o_it : outputs) {
       for (auto& v : o_it.second) {  // values
         vars[v] = level;
-        level++;
       }
     }
+    level++;
   }
 
   std::vector<AllReduceOpHandle*> allreduce_ops;
@@ -87,6 +87,10 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
               auto r_it = vars.find(i1->name_);
 
               if (l_it->second < r_it->second) return true;
+
+              if (l_it->second == r_it->second) {
+                return i0->name_ < i1->name_;
+              }
 
               return false;
             });
