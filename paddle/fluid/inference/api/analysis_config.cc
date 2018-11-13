@@ -20,7 +20,7 @@
 
 namespace paddle {
 
-PaddlePassBuilder *contrib::AnalysisConfig::pass_builder() const {
+PassStrategy *contrib::AnalysisConfig::pass_builder() const {
   PADDLE_ENFORCE(
       pass_builder_.get(),
       "Should call constructor first, that will init the pass_builder_.");
@@ -49,7 +49,6 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   // fields from this.
   enable_ir_optim = other.enable_ir_optim;
   use_feed_fetch_ops = other.use_feed_fetch_ops;
-  _use_mkldnn = other._use_mkldnn;
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
@@ -76,11 +75,20 @@ contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
   // fields from this.
   enable_ir_optim = other.enable_ir_optim;
   use_feed_fetch_ops = other.use_feed_fetch_ops;
-  _use_mkldnn = other._use_mkldnn;
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
   pass_builder_ = std::move(other.pass_builder_);
+}
+
+void contrib::AnalysisConfig::EnableMKLDNN() {
+#ifdef PADDLE_WITH_MKLDNN
+  pass_builder()->EnableMKLDNN();
+  use_mkldnn_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+  use_mkldnn_ = false;
+#endif
 }
 
 void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,

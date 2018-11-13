@@ -37,7 +37,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg._use_mkldnn = use_mkldnn;
+  cfg.EnableMKLDNN();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -65,7 +65,9 @@ TEST(Analyzer_resnet50, fuse_statis) {
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg._use_mkldnn = use_mkldnn;
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

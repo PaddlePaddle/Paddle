@@ -57,13 +57,12 @@ class PassStrategy : public PaddlePassBuilder {
  public:
   explicit PassStrategy(const std::vector<std::string> &passes)
       : PaddlePassBuilder(passes) {}
+
   // The MKLDNN control exists in both CPU and GPU mode, because there can be
   // still some CPU kernels running in CPU mode.
-  void EnableMKLDNN() { use_mkldnn_ = true; }
-  void DisableMklDNN() { use_mkldnn_ = false; }
+  virtual void EnableMKLDNN() = 0;
 
- protected:
-  bool use_mkldnn_;
+  virtual ~PassStrategy() = default;
 };
 
 /*
@@ -88,19 +87,21 @@ class CpuPassStrategy : public PassStrategy {
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
     });
+  }
 
+  virtual ~CpuPassStrategy() = default;
+
+  virtual void EnableMKLDNN() override {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
-    if (use_mkldnn_) {
-      passes_.insert(passes_.begin(), "mkldnn_placement_pass");
+    passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
-      for (auto &pass : std::vector<std::string>(
-               {"depthwise_conv_mkldnn_pass",  //
-                "conv_bias_mkldnn_fuse_pass",  //
-                "conv_relu_mkldnn_fuse_pass",  //
-                "conv_elementwise_add_mkldnn_fuse_pass"})) {
-        passes_.push_back(pass);
-      }
+    for (auto &pass :
+         std::vector<std::string>({"depthwise_conv_mkldnn_pass",  //
+                                   "conv_bias_mkldnn_fuse_pass",  //
+                                   "conv_relu_mkldnn_fuse_pass",  //
+                                   "conv_elementwise_add_mkldnn_fuse_pass"})) {
+      passes_.push_back(pass);
     }
 #endif
   }
@@ -121,6 +122,10 @@ class GpuPassStrategy : public PassStrategy {
 
   GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {}
+
+  virtual void EnableMKLDNN() override;
+
+  virtual ~GpuPassStrategy() = default;
 };
 
 }  // namespace paddle

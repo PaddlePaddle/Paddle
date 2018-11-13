@@ -42,24 +42,26 @@ struct AnalysisConfig : public NativeConfig {
   bool enable_ir_optim = true;
 
   // Get a pass builder for customize the passes in IR analysis phase.
-  PaddlePassBuilder* pass_builder() const;
+  PassStrategy* pass_builder() const;
 
   // NOT stable yet.
   bool use_feed_fetch_ops{true};
 
-  // NOTE this is just for internal development, please not use it.
-  // NOT stable yet.
-  bool _use_mkldnn{false};
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1);
+  // NOTE this is just for internal development, please not use it.
+  // NOT stable yet.
+  void EnableMKLDNN();
+  bool use_mkldnn() const { return use_mkldnn_; }
 
   friend class ::paddle::AnalysisPredictor;
 
  protected:
   bool use_tensorrt_{false};
+  bool use_mkldnn_{false};
   int tensorrt_workspace_size_;
   int tensorrt_max_batchsize_;
-  std::unique_ptr<PaddlePassBuilder> pass_builder_;
+  std::unique_ptr<PassStrategy> pass_builder_;
 };
 
 // Configurations for Anakin engine.
