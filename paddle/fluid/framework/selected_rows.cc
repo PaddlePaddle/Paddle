@@ -70,7 +70,7 @@ struct TensorFillVisitor {
 
   template <typename T>
   void apply() const {
-    // TODO(Yancey1989): support other place
+    // TODO(qiao): support other place
     platform::CPUPlace cpu;
     auto* tensor_data = dst_->mutable_data<T>(cpu);
     auto* start = tensor_data + dst_offset_;

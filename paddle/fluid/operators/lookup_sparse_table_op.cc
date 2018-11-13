@@ -94,7 +94,7 @@ class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<bool>("is_test",
                   "In test mode, lookup_sparse_table will "
-                  "return a default value for unknown id")
+                  "return a 0 for unknown id")
         .SetDefault(false);
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.
