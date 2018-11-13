@@ -81,7 +81,10 @@ def get_optimizer():
     return optimizer
 
 
-def train_network(batch_size, is_distributed=False, is_sparse=False):
+def train_network(batch_size,
+                  is_distributed=False,
+                  is_sparse=False,
+                  is_self_contained_lr=False):
     # query
     q = fluid.layers.data(
         name="query_ids", shape=[1], dtype="int64", lod_level=1)
@@ -93,7 +96,9 @@ def train_network(batch_size, is_distributed=False, is_sparse=False):
         param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__emb__",
-            learning_rate=emb_lr),
+            learning_rate=emb_lr) if is_self_contained_lr else fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01),
+                name="__emb__"),
         is_sparse=is_sparse)
     ## vsum
     q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
@@ -119,7 +124,9 @@ def train_network(batch_size, is_distributed=False, is_sparse=False):
         param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__emb__",
-            learning_rate=emb_lr),
+            learning_rate=emb_lr) if is_self_contained_lr else fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01),
+                name="__emb__"),
         is_sparse=is_sparse)
     ## vsum
     pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
@@ -144,7 +151,9 @@ def train_network(batch_size, is_distributed=False, is_sparse=False):
         param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__emb__",
-            learning_rate=emb_lr),
+            learning_rate=emb_lr) if is_self_contained_lr else fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01),
+                name="__emb__"),
         is_sparse=is_sparse)
     ## vsum
     nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
@@ -220,7 +229,10 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
         # Train program
         avg_cost, acc, predict = \
-            train_network(batch_size, bool(int(os.environ["IS_DISTRIBUTED"])), bool(int(os.environ["IS_SPARSE"])))
+            train_network(batch_size,
+                          bool(int(os.environ["IS_DISTRIBUTED"])),
+                          bool(int(os.environ["IS_SPARSE"])),
+                          bool(int(os.environ["IS_SELF_CONTAINED_LR"])))
 
         inference_program = fluid.default_main_program().clone()
 

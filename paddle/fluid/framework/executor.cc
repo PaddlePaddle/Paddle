@@ -43,15 +43,52 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 }
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
-  VLOG(5) << "destroy ExecutorPrepareContext";
+  VLOG(50) << "destroy ExecutorPrepareContext";
+}
+
+template <typename RefCntMap>
+static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
+                                GarbageCollector<Tensor>* gc,
+                                RefCntMap* ref_cnts) {
+  std::unordered_set<Tensor*> erase_tensors;
+
+  auto handler = [&](const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto it = ref_cnts->find(name);
+        if (it == ref_cnts->end()) continue;
+        if ((it->second)-- == 1) {
+          auto* var = scope.FindVar(name);
+          if (var != nullptr) {
+            VLOG(100) << "Erase tensor \'" << name << "\'";
+            if (var->IsType<LoDTensor>()) {
+              erase_tensors.insert(var->GetMutable<LoDTensor>());
+            } else if (var->IsType<SelectedRows>()) {
+              erase_tensors.insert(
+                  var->GetMutable<SelectedRows>()->mutable_value());
+            }
+          }
+        }
+      }
+    }
+  };
+
+  handler(op->Inputs());
+  handler(op->Outputs());
+
+  if (!erase_tensors.empty()) {
+    gc->Add(erase_tensors);
+  }
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
+  // TODO(typhoonzero): complete message will need to use real trainer_id,
+  // except 0.
   ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
+      ::paddle::operators::distributed::GRPCClient>(0)
       ->SendComplete();
 #endif
 }
@@ -66,7 +103,7 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope*>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -104,21 +141,21 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " global, which pointer is " << ptr;
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
+               << ptr;
     }
   }
 }
@@ -249,7 +286,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& feed_target : (*feed_targets)) {
       std::string var_name = feed_target.first;
-      VLOG(3) << "feed target's name: " << var_name;
+      VLOG(30) << "feed target's name: " << var_name;
 
       // prepend feed op
       auto* op = global_block->PrependOp();
@@ -272,7 +309,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& fetch_target : (*fetch_targets)) {
       std::string var_name = fetch_target.first;
-      VLOG(3) << "fetch target's name: " << var_name;
+      VLOG(30) << "fetch target's name: " << var_name;
 
       // append fetch op
       auto* op = global_block->AppendOp();
@@ -331,9 +368,13 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
-
   std::unique_ptr<GarbageCollector<Tensor>> gc;
-  if (max_memory_size >= 0) {
+  // WhileOp would set keep_kids to false
+  // WhileGradOp would need the scopes created in WhileOp
+  // Perhaps, we should not perform eager deletion in WhileOp
+  // The scopes and variables created by WhileOp would be deleted
+  // in WhileGradOp.
+  if (max_memory_size >= 0 && !keep_kids) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
@@ -352,50 +393,13 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     op->Run(*local_scope, place_);
 
     if (gc != nullptr) {
-      std::vector<std::string> erase_vars;
-      for (auto& input : op->Inputs()) {
-        for (auto& input_name : input.second) {
-          auto it = ctx->cur_ref_cnts_.find(input_name);
-          if (it == ctx->cur_ref_cnts_.end()) continue;
-          if (it->second == 1) {  // should delete it
-            erase_vars.emplace_back(input_name);
-            ctx->cur_ref_cnts_.erase(input_name);
-          } else {
-            --(it->second);
-          }
-        }
-      }
-
-      for (auto& output : op->Outputs()) {
-        for (auto& output_name : output.second) {
-          auto it = ctx->cur_ref_cnts_.find(output_name);
-          if (it == ctx->cur_ref_cnts_.end()) continue;
-          if (it->second == 1) {
-            erase_vars.emplace_back(output_name);
-            ctx->cur_ref_cnts_.erase(output_name);
-          } else {
-            --(it->second);
-          }
-        }
-      }
-
-      if (!erase_vars.empty()) {
-        std::vector<framework::LoDTensor*> erase_tensors;
-        for (auto& name : erase_vars) {
-          auto* var = local_scope->FindVar(name);
-          if (var == nullptr) continue;
-          if (var->IsType<framework::LoDTensor>()) {
-            auto* tensor = var->GetMutable<framework::LoDTensor>();
-            erase_tensors.push_back(tensor);
-          }
-        }
-        if (!erase_tensors.empty()) gc->Add(erase_tensors);
-      }
+      DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
+                          &(ctx->cur_ref_cnts_));
     }
 
     if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
+      VLOG(20) << "Memory used after operator " + op->Type() + " running: "
+               << memory::memory_usage(place_);
     }
   }
 
@@ -420,10 +424,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
+    VLOG(20) << "-------------------------------------------------------";
+    VLOG(20) << "Memory used after deleting local scope: "
+             << memory::memory_usage(place_);
+    VLOG(20) << "-------------------------------------------------------";
   }
 }
 
@@ -467,7 +471,7 @@ void Executor::RunPreparedContext(
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
+  VLOG(30) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {

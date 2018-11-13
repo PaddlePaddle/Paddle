@@ -51,7 +51,8 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::atomic<int> remaining_;
 
   void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
-                  OpHandleBase *op, BlockingQueue<size_t> *complete_q);
+                  OpHandleBase *op,
+                  const std::shared_ptr<BlockingQueue<size_t>> &complete_q);
 
   void PrepareAtomicOpDeps();
 

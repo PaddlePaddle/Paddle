@@ -18,11 +18,7 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
-#include <fstream>
-#include <iostream>
-
-// #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/inference/demo_ci/utils.h"
+#include "utils.h"  // NOLINT
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -38,70 +34,13 @@ DEFINE_bool(use_gpu, false, "Whether use gpu.");
 namespace paddle {
 namespace demo {
 
-struct Record {
-  std::vector<float> data;
-  std::vector<int32_t> shape;
-};
-
-void split(const std::string& str, char sep, std::vector<std::string>* pieces);
-
-Record ProcessALine(const std::string& line) {
-  VLOG(3) << "process a line";
-  std::vector<std::string> columns;
-  split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
-
-  Record record;
-  std::vector<std::string> data_strs;
-  split(columns[0], ' ', &data_strs);
-  for (auto& d : data_strs) {
-    record.data.push_back(std::stof(d));
-  }
-
-  std::vector<std::string> shape_strs;
-  split(columns[1], ' ', &shape_strs);
-  for (auto& s : shape_strs) {
-    record.shape.push_back(std::stoi(s));
-  }
-  VLOG(3) << "data size " << record.data.size();
-  VLOG(3) << "data shape size " << record.shape.size();
-  return record;
-}
-
-void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
-  std::string line;
-  std::ifstream file(referfile);
-  std::getline(file, line);
-  auto refer = ProcessALine(line);
-  file.close();
-
-  size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
-  VLOG(3) << "predictor output numel " << numel;
-  VLOG(3) << "reference output numel " << refer.data.size();
-  CHECK_EQ(numel, refer.data.size());
-  switch (output.dtype) {
-    case PaddleDType::INT64: {
-      for (size_t i = 0; i < numel; ++i) {
-        CHECK_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
-      }
-      break;
-    }
-    case PaddleDType::FLOAT32:
-      for (size_t i = 0; i < numel; ++i) {
-        CHECK_LT(
-            fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
-            1e-5);
-      }
-      break;
-  }
-}
-
+using contrib::AnalysisConfig;
 /*
- * Use the native fluid engine to inference the demo.
+ * Use the native and analysis fluid engine to inference the demo.
  */
 void Main(bool use_gpu) {
-  NativeConfig config;
+  std::unique_ptr<PaddlePredictor> predictor, analysis_predictor;
+  AnalysisConfig config;
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
   config.use_gpu = use_gpu;
@@ -110,11 +49,11 @@ void Main(bool use_gpu) {
     config.fraction_of_gpu_memory = 0.1;  // set by yourself
   }
 
-  VLOG(3) << "init predictor";
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  VLOG(30) << "init predictor";
+  predictor = CreatePaddlePredictor<NativeConfig>(config);
+  analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
-  VLOG(3) << "begin to process data";
+  VLOG(30) << "begin to process data";
   // Just a single batch of data.
   std::string line;
   std::ifstream file(FLAGS_data);
@@ -129,16 +68,20 @@ void Main(bool use_gpu) {
       PaddleBuf(record.data.data(), record.data.size() * sizeof(float));
   input.dtype = PaddleDType::FLOAT32;
 
-  VLOG(3) << "run executor";
-  std::vector<PaddleTensor> output;
-  predictor->Run({input}, &output);
+  VLOG(30) << "run executor";
+  std::vector<PaddleTensor> output, analysis_output;
+  predictor->Run({input}, &output, 1);
 
-  VLOG(3) << "output.size " << output.size();
+  VLOG(30) << "output.size " << output.size();
   auto& tensor = output.front();
-  VLOG(3) << "output: " << SummaryTensor(tensor);
+  VLOG(30) << "output: " << SummaryTensor(tensor);
 
   // compare with reference result
   CheckOutput(FLAGS_refer, tensor);
+
+  // the analysis_output has some diff with native_output,
+  // TODO(luotao): add CheckOutput for analysis_output later.
+  analysis_predictor->Run({input}, &analysis_output, 1);
 }
 
 }  // namespace demo
@@ -146,9 +89,10 @@ void Main(bool use_gpu) {
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  paddle::demo::Main(false /* use_gpu*/);
   if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/);
+  } else {
+    paddle::demo::Main(false /*use_gpu*/);
   }
   return 0;
 }
