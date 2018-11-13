@@ -320,6 +320,14 @@ op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
 op_library(concat_op DEPS concat_and_split)
 
+set(DEPS_OPS ${DEPS_OPS} warpctc_op)
+if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+    # cudnn ctc only support version > 7
+    op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
+else()
+    op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
+endif()
+
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 
 foreach(src ${GENERAL_OPS})
