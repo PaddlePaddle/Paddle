@@ -55,7 +55,8 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        platform::CPUPlace());
   }
 };
 
@@ -63,8 +64,11 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor of bilinear interpolation, "
-             "This is a 4-D tensor with shape of [N, C, H, W]");
+             "The input tensor of YOLO v3 loss operator, "
+             "This is a 4-D tensor with shape of [N, C, H, W]."
+             "H and W should be same, and the second dimention(C) stores"
+             "box locations, confidence score and classification one-hot"
+             "key of each anchor box");
     AddInput("GTBox",
              "The input tensor of ground truth boxes, "
              "This is a 3-D tensor with shape of [N, max_box_num, 5], "
@@ -84,6 +88,20 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
                               "it will be parsed pair by pair.");
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.");
+    AddAttr<float>("lambda_xy", "The weight of x, y location loss.")
+        .SetDefault(1.0);
+    AddAttr<float>("lambda_wh", "The weight of w, h location loss.")
+        .SetDefault(1.0);
+    AddAttr<float>(
+        "lambda_conf_obj",
+        "The weight of confidence score loss in locations with target object.")
+        .SetDefault(1.0);
+    AddAttr<float>("lambda_conf_noobj",
+                   "The weight of confidence score loss in locations without "
+                   "target object.")
+        .SetDefault(1.0);
+    AddAttr<float>("lambda_class", "The weight of classification loss.")
+        .SetDefault(1.0);
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
          truth boxes.
@@ -119,6 +137,15 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          confidence score loss, and classification loss. The MSE loss is used for 
          box location, and binary cross entropy loss is used for confidence score 
          loss and classification loss.
+
+         Final loss will be represented as follow.
+
+         $$
+         loss = \lambda_{xy} * loss_{xy} + \lambda_{wh} * loss_{wh}
+              + \lambda_{conf_obj} * loss_{conf_obj}
+              + \lambda_{conf_noobj} * loss_{conf_noobj}
+              + \lambda_{class} * loss_{class}
+         $$
          )DOC");
   }
 };
@@ -140,7 +167,8 @@ class Yolov3LossOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        platform::CPUPlace());
   }
 };
 

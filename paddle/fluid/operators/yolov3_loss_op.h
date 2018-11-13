@@ -267,7 +267,9 @@ static void AddAllGradToInputGrad(
     const Tensor& pred_conf, const Tensor& pred_class, const Tensor& grad_x,
     const Tensor& grad_y, const Tensor& grad_w, const Tensor& grad_h,
     const Tensor& grad_conf_obj, const Tensor& grad_conf_noobj,
-    const Tensor& grad_class, const int class_num) {
+    const Tensor& grad_class, const int class_num, const float lambda_xy,
+    const float lambda_wh, const float lambda_conf_obj,
+    const float lambda_conf_noobj, const float lambda_class) {
   const int n = pred_x.dims()[0];
   const int an_num = pred_x.dims()[1];
   const int h = pred_x.dims()[2];
@@ -290,25 +292,27 @@ static void AddAllGradToInputGrad(
     for (int j = 0; j < an_num; j++) {
       for (int k = 0; k < h; k++) {
         for (int l = 0; l < w; l++) {
-          grad_t(i, j * attr_num, k, l) = grad_x_t(i, j, k, l) *
-                                          pred_x_t(i, j, k, l) *
-                                          (1.0 - pred_x_t(i, j, k, l)) * loss;
+          grad_t(i, j * attr_num, k, l) =
+              grad_x_t(i, j, k, l) * pred_x_t(i, j, k, l) *
+              (1.0 - pred_x_t(i, j, k, l)) * loss * lambda_xy;
           grad_t(i, j * attr_num + 1, k, l) =
               grad_y_t(i, j, k, l) * pred_y_t(i, j, k, l) *
-              (1.0 - pred_y_t(i, j, k, l)) * loss;
-          grad_t(i, j * attr_num + 2, k, l) = grad_w_t(i, j, k, l) * loss;
-          grad_t(i, j * attr_num + 3, k, l) = grad_h_t(i, j, k, l) * loss;
+              (1.0 - pred_y_t(i, j, k, l)) * loss * lambda_xy;
+          grad_t(i, j * attr_num + 2, k, l) =
+              grad_w_t(i, j, k, l) * loss * lambda_wh;
+          grad_t(i, j * attr_num + 3, k, l) =
+              grad_h_t(i, j, k, l) * loss * lambda_wh;
           grad_t(i, j * attr_num + 4, k, l) =
               grad_conf_obj_t(i, j, k, l) * pred_conf_t(i, j, k, l) *
-              (1.0 - pred_conf_t(i, j, k, l)) * loss;
+              (1.0 - pred_conf_t(i, j, k, l)) * loss * lambda_conf_obj;
           grad_t(i, j * attr_num + 4, k, l) +=
               grad_conf_noobj_t(i, j, k, l) * pred_conf_t(i, j, k, l) *
-              (1.0 - pred_conf_t(i, j, k, l)) * loss;
+              (1.0 - pred_conf_t(i, j, k, l)) * loss * lambda_conf_noobj;
 
           for (int c = 0; c < class_num; c++) {
             grad_t(i, j * attr_num + 5 + c, k, l) =
                 grad_class_t(i, j, k, l, c) * pred_class_t(i, j, k, l, c) *
-                (1.0 - pred_class_t(i, j, k, l, c)) * loss;
+                (1.0 - pred_class_t(i, j, k, l, c)) * loss * lambda_class;
           }
         }
       }
@@ -326,6 +330,11 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
     int class_num = ctx.Attr<int>("class_num");
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
+    float lambda_xy = ctx.Attr<float>("lambda_xy");
+    float lambda_wh = ctx.Attr<float>("lambda_wh");
+    float lambda_conf_obj = ctx.Attr<float>("lambda_conf_obj");
+    float lambda_conf_noobj = ctx.Attr<float>("lambda_conf_noobj");
+    float lambda_class = ctx.Attr<float>("lambda_class");
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
@@ -370,8 +379,10 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     T loss_class = CalcBCEWithMask<T>(pred_class, tclass, obj_mask_expand);
 
     auto* loss_data = loss->mutable_data<T>({1}, ctx.GetPlace());
-    loss_data[0] = loss_x + loss_y + loss_w + loss_h + loss_conf_obj +
-                   loss_conf_noobj + loss_class;
+    loss_data[0] =
+        lambda_xy * (loss_x + loss_y) + lambda_wh * (loss_w + loss_h) +
+        lambda_conf_obj * loss_conf_obj + lambda_conf_noobj * loss_conf_noobj +
+        lambda_class * loss_class;
   }
 };
 
@@ -387,6 +398,11 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
     const T loss = output_grad->data<T>()[0];
+    float lambda_xy = ctx.Attr<float>("lambda_xy");
+    float lambda_wh = ctx.Attr<float>("lambda_wh");
+    float lambda_conf_obj = ctx.Attr<float>("lambda_conf_obj");
+    float lambda_conf_noobj = ctx.Attr<float>("lambda_conf_noobj");
+    float lambda_class = ctx.Attr<float>("lambda_class");
 
     const int n = input->dims()[0];
     const int c = input->dims()[1];
@@ -448,7 +464,8 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
     AddAllGradToInputGrad<T>(
         input_grad, loss, pred_x, pred_y, pred_conf, pred_class, grad_x, grad_y,
-        grad_w, grad_h, grad_conf_obj, grad_conf_noobj, grad_class, class_num);
+        grad_w, grad_h, grad_conf_obj, grad_conf_noobj, grad_class, class_num,
+        lambda_xy, lambda_wh, lambda_conf_obj, lambda_conf_noobj, lambda_class);
   }
 };
 

@@ -20,6 +20,7 @@ from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
+from ..framework import Variable
 from . import tensor
 from . import nn
 from . import ops
@@ -45,6 +46,7 @@ __all__ = [
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
+    'yolov3_loss',
 ]
 
 
@@ -402,6 +404,102 @@ def polygon_box_transform(input, name=None):
         attrs={},
         outputs={"Output": output})
     return output
+
+
+@templatedoc(op_type="yolov3_loss")
+def yolov3_loss(x,
+                gtbox,
+                anchors,
+                class_num,
+                ignore_thresh,
+                lambda_xy=None,
+                lambda_wh=None,
+                lambda_conf_obj=None,
+                lambda_conf_noobj=None,
+                lambda_class=None,
+                name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        gtbox (Variable): groud truth boxes, shoulb be in shape of [N, B, 5],
+                          in the third dimenstion, class_id, x, y, w, h should
+                          be stored and x, y, w, h should be relative valud of
+                          input image.
+        anchors (list|tuple): ${anchors_comment}
+        class_num (int): ${class_num_comment}
+        ignore_thresh (float): ${ignore_thresh_comment}
+        lambda_xy (float|None): ${lambda_xy_comment}
+        lambda_wh (float|None): ${lambda_wh_comment}
+        lambda_conf_obj (float|None): ${lambda_conf_obj_comment}
+        lambda_conf_noobj (float|None): ${lambda_conf_noobj_comment}
+        lambda_class (float|None): ${lambda_class_comment}
+        name (string): the name of yolov3 loss
+
+    Returns:
+        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+
+    Raises:
+        TypeError: Input x of yolov3_loss must be Variable
+        TypeError: Input gtbox of yolov3_loss must be Variable"
+        TypeError: Attr anchors of yolov3_loss must be list or tuple
+        TypeError: Attr class_num of yolov3_loss must be an integer
+        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+
+    Examples:
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[10, 255, 13, 13], dtype='float32')
+        gtbox = fluid.layers.data(name='gtbox', shape=[10, 6, 5], dtype='float32')
+        anchors = [10, 13, 16, 30, 33, 23]
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
+                                        anchors=anchors, ignore_thresh=0.5)
+    """
+    helper = LayerHelper('yolov3_loss', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError("Input x of yolov3_loss must be Variable")
+    if not isinstance(gtbox, Variable):
+        raise TypeError("Input gtbox of yolov3_loss must be Variable")
+    if not isinstance(anchors, list) and not isinstance(anchors, tuple):
+        raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr class_num of yolov3_loss must be an integer")
+    if not isinstance(ignore_thresh, float):
+        raise TypeError(
+            "Attr ignore_thresh of yolov3_loss must be a float number")
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    attrs = {
+        "anchors": anchors,
+        "class_num": class_num,
+        "ignore_thresh": ignore_thresh,
+    }
+
+    if lambda_xy is not None and isinstance(lambda_xy, float):
+        self.attrs['lambda_xy'] = lambda_xy
+    if lambda_wh is not None and isinstance(lambda_wh, float):
+        self.attrs['lambda_wh'] = lambda_wh
+    if lambda_conf_obj is not None and isinstance(lambda_conf_obj, float):
+        self.attrs['lambda_conf_obj'] = lambda_conf_obj
+    if lambda_conf_noobj is not None and isinstance(lambda_conf_noobj, float):
+        self.attrs['lambda_conf_noobj'] = lambda_conf_noobj
+    if lambda_class is not None and isinstance(lambda_class, float):
+        self.attrs['lambda_class'] = lambda_class
+
+    helper.append_op(
+        type='yolov3_loss',
+        inputs={'X': x,
+                "GTBox": gtbox},
+        outputs={'Loss': loss},
+        attrs=attrs)
+    return loss
 
 
 @templatedoc()
