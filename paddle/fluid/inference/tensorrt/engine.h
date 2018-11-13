@@ -126,7 +126,7 @@ class TensorRTEngine : public EngineBase {
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
   int GetDevice() { return device_; }
-  nvinfer1::IPluginLayer* addPlugin(nvinfer1::ITensor* const* inputs,
+  nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int nbInputs, PluginTensorRT*);
 
   // A pointer to CPU memory is needed of the TRT weight.

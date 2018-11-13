@@ -19,23 +19,23 @@ namespace inference {
 namespace tensorrt {
 
 void PluginTensorRT::serializeBase(void*& buffer) {
-  serialize_value(&buffer, input_dims_);
-  serialize_value(&buffer, max_batch_size_);
-  serialize_value(&buffer, data_type_);
-  serialize_value(&buffer, data_format_);
+  SerializeValue(&buffer, input_dims_);
+  SerializeValue(&buffer, max_batch_size_);
+  SerializeValue(&buffer, data_type_);
+  SerializeValue(&buffer, data_format_);
 }
 
 void PluginTensorRT::deserializeBase(void const*& serialData,
                                      size_t& serialLength) {
-  deserialize_value(&serialData, &serialLength, &input_dims_);
-  deserialize_value(&serialData, &serialLength, &max_batch_size_);
-  deserialize_value(&serialData, &serialLength, &data_type_);
-  deserialize_value(&serialData, &serialLength, &data_format_);
+  DeserializeValue(&serialData, &serialLength, &input_dims_);
+  DeserializeValue(&serialData, &serialLength, &max_batch_size_);
+  DeserializeValue(&serialData, &serialLength, &data_type_);
+  DeserializeValue(&serialData, &serialLength, &data_format_);
 }
 
 size_t PluginTensorRT::getBaseSerializationSize() {
-  return (serialized_size(input_dims_) + serialized_size(max_batch_size_) +
-          serialized_size(data_type_) + serialized_size(data_format_));
+  return (SerializedSize(input_dims_) + SerializedSize(max_batch_size_) +
+          SerializedSize(data_type_) + SerializedSize(data_format_));
 }
 
 bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,

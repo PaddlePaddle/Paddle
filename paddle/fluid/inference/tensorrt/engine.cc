@@ -254,7 +254,7 @@ void TensorRTEngine::freshDeviceId() {
   cudaSetDevice(device_);
 }
 
-nvinfer1::IPluginLayer *TensorRTEngine::addPlugin(
+nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
     nvinfer1::ITensor *const *inputs, int nbInputs, PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
   return infer_network_.get()->addPluginExt(inputs, nbInputs, *plugin);

@@ -41,11 +41,7 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   size_t getWorkspaceSize(int) const override { return 0; }
   void terminate() override {}
   virtual ~PluginTensorRT() {}
-
-  // The following functions need to be overrided in the subclass.
-  virtual nvinfer1::IPluginExt* clone() const = 0;
-  virtual const char* getPluginType() const = 0;
-  int initialize() override { return 0; }
+  // Check format support. The default is FLOAT32 and NCHW.
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override;
   void configureWithFormat(const nvinfer1::Dims* inputDims, int nbInputs,
@@ -53,12 +49,24 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
                            nvinfer1::DataType type,
                            nvinfer1::PluginFormat format,
                            int maxBatchSize) override;
+
+  // *NOTE* The following functions need to be overrided in the subclass.
+  virtual nvinfer1::IPluginExt* clone() const = 0;
+  virtual const char* getPluginType() const = 0;
+  // Initialize the layer for execution. This is called when the engine is
+  // created.
+  int initialize() override { return 0; }
+  // Serialize the layer config to buffer.
   virtual void serialize(void* buffer) = 0;
   virtual size_t getSerializationSize() = 0;
+  virtual int enqueue(int batchSize, const void* const* inputs, void** outputs,
+                      void* workspace, cudaStream_t stream) = 0;
 
  protected:
+  // Deserialize input_dims, max_batch_size, data_type, data_format
   void deserializeBase(void const*& serialData, size_t& serialLength);
   size_t getBaseSerializationSize();
+  // Serialize input_dims, max_batch_size, data_type, data_format
   void serializeBase(void*& buffer);
 
   std::vector<nvinfer1::Dims> input_dims_;

@@ -37,7 +37,6 @@ int SplitPlugin::initialize() {
     segment_offsets.push_back(segment_offsets.back() + output_length_[i]);
   }
   segment_offsets_ = segment_offsets;
-  d_segment_offsets_ = segment_offsets;
   nvinfer1::Dims dims = this->getInputDims(0);
   nx_ = 1;
   for (int i = dims.nbDims - 1; i > axis_; --i) {
@@ -55,8 +54,6 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
                          void** outputs, void* workspace, cudaStream_t stream) {
   auto const& input_dims = this->getInputDims(0);
   int input_size = 0;
-  int const* d_segment_offsets_ptr =
-      thrust::raw_pointer_cast(&d_segment_offsets_[0]);
   float const* idata = reinterpret_cast<float const*>(inputs[0]);
   float** odatas = reinterpret_cast<float**>(outputs);
 
