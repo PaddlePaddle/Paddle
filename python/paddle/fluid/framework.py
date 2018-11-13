@@ -49,6 +49,16 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
+_imperative_tracer_ = None
+
+
+def _in_imperative_mode():
+    return _imperative_tracer_ is not None
+
+
+def _imperative_tracer():
+    return _imperative_tracer_
+
 
 class NameScope(object):
     def __init__(self, name="", parent=None):
@@ -1203,6 +1213,12 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
+        if _in_imperative_mode():
+            op_desc = core.OpDesc()
+            op = Operator(block=self, desc=op_desc, *args, **kwargs)
+            _imperative_tracer().trace(op.desc)
+            return
+
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.append(op)
@@ -2208,3 +2224,12 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@contextlib.contextmanager
+def _imperative_guard():
+    global _imperative_tracer_
+    tmp_trace = _imperative_tracer_
+    _imperative_tracer_ = core.Tracer()
+    yield
+    _imperative_tracer_ = tmp_trace

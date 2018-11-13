@@ -13,7 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/imperative/tracer.h"
 
 namespace paddle {
-namespace pybind {}  // namespace pybind11
+namespace pybind {
+
+// Bind Methods
+void BindTracer(pybind11::module *m) {
+  pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
+      .def(pybind11::init<>())
+      .def("trace", &imperative::Tracer::Trace);
+}
+
+}  // namespace pybind
 }  // namespace paddle

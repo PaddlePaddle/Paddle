@@ -11,28 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import unittest
-import sys
-import paddle.fluid as fluid
+import contextlib
 from paddle.fluid import core
+from paddle.fluid import framework
+
+__all__ = ['enabled', 'guard']
 
 
-class TestImperative(unittest.TestCase):
-    def test_layer(self):
-        cl = core.Layer()
-        cl.forward()
-        l = fluid.imperative.PyLayer()
-        l.forward()
-
-    def test_imperative_trace(self):
-        with fluid.imperative.guard():
-            self.assertTrue(fluid.imperative.enabled())
-            x = fluid.layers.data(name='x', shape=[3, 4], dtype='float32')
-            x = fluid.layers.relu(x)
-            x = fluid.layers.elementwise_mul(x, x)
-            self.assertIsNotNone(x)
+def enabled():
+    return framework._in_imperative_mode()
 
 
-if __name__ == '__main__':
-    unittest.main()
+@contextlib.contextmanager
+def guard():
+    train = framework.Program()
+    startup = framework.Program()
+    with framework.program_guard(train, startup):
+        with framework.unique_name.guard():
+            with framework._imperative_guard():
+                yield
+    # TODO: check train, startup not changed.

@@ -14,22 +14,23 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
+#include <vector>
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/imperative/engine.h"
 
 namespace paddle {
 namespace imperative {
 
-class TensorFuture {
+class Tracer {
  public:
-};
+  Tracer() {}
 
-class Layer {
- public:
-  virtual ~Layer() {}
+  void Trace(framework::OpDesc* op_desc) {
+    LOG(ERROR) << "tracing " << op_desc->Type();
+  }
 
-  virtual void Forward() { LOG(ERROR) << "forward at cpp."; }
-
-  virtual void Backward() { LOG(ERROR) << "backward at cpp."; }
+ private:
+  std::vector<Runnable*> runnables_;
 };
 
 }  // namespace imperative
