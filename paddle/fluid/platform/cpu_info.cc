@@ -22,9 +22,13 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
+
+#elif defined(_WIN32)
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#include <windows.h>
 #else
 #include <unistd.h>
-#endif
+#endif  // _WIN32
 
 #include <algorithm>
 #include "gflags/gflags.h"
@@ -32,16 +36,20 @@ limitations under the License. */
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
-
+#if !defined(_WIN32)
 DEFINE_uint64(initial_cpu_memory_in_mb,
 #ifdef PADDLE_WITH_MKLDNN
               /* Aligned with mozga-intel, MKLDNN need at least 5000 MB
                * to obtain the best performance*/
-              5000,
+              5000ul,
 #else
-              500,
+              500ul,
 #endif
               "Initial CPU memory for PaddlePaddle, in MD unit.");
+#else
+DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
+              "Initial CPU memory for PaddlePaddle, in MD unit.");
+#endif  // !defined(_WIN32)
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
@@ -60,6 +68,11 @@ inline size_t CpuTotalPhysicalMemory() {
   size_t len = sizeof(size);
   if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
   return 0L;
+#elif defined(_WIN32)
+  MEMORYSTATUSEX sMeminfo;
+  sMeminfo.dwLength = sizeof(sMeminfo);
+  GlobalMemoryStatusEx(&sMeminfo);
+  return sMeminfo.ullTotalPhys;
 #else
   int64_t pages = sysconf(_SC_PHYS_PAGES);
   int64_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -103,18 +116,19 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
-#ifdef PADDLE_WITH_XBYAK
 namespace jit {
-
+#ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
   using namespace Xbyak::util;  // NOLINT
   switch (cpu_isa) {
     case sse42:
       return cpu.has(Cpu::tSSE42);
+    case avx:
+      return cpu.has(Cpu::tAVX);
     case avx2:
       return cpu.has(Cpu::tAVX2);
-    case avx512_common:
+    case avx512f:
       return cpu.has(Cpu::tAVX512F);
     case avx512_core:
       return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
@@ -134,8 +148,16 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   }
   return false;
 }
+#else
+bool MayIUse(const cpu_isa_t cpu_isa) {
+  if (cpu_isa == isa_any) {
+    return true;
+  } else {
+    return false;
+  }
+}
+#endif
 
 }  // namespace jit
-#endif
 }  // namespace platform
 }  // namespace paddle

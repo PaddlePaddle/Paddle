@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import errno
 import time
 import shutil
 import six
 
+from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
 from . import core
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model',
-    'get_inference_program'
+    'load_persistables', 'save_inference_model', 'load_inference_model'
 ]
 
 
@@ -63,7 +65,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            param = fluid.default_main_program().global_block().var('fc.w')
+            param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -370,6 +372,7 @@ def load_vars(executor,
         load_vars(
             executor,
             dirname=dirname,
+            main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
@@ -401,8 +404,14 @@ def load_vars(executor,
                 inputs={},
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
-
         executor.run(load_prog)
+
+        if main_program is None:
+            main_program = default_main_program()
+
+        # load slice vars on pserver, if have it.
+        _load_slice_up_vars(executor, dirname,
+                            main_program._slice_vars_and_attrs)
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
@@ -494,23 +503,6 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def get_inference_program(target_vars, main_program=None):
-    if main_program is None:
-        main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
-    vars = []
-    for var in target_vars:
-        if isinstance(var, Evaluator):
-            vars.extend(var.states)
-            vars.extend(var.metrics)
-        else:
-            vars.append(var)
-    pruned_program = main_program.prune(targets=vars)
-    inference_program = pruned_program.inference_optimize()
-    return inference_program
-
-
 def prepend_feed_ops(inference_program,
                      feed_target_names,
                      feed_holder_name='feed'):
@@ -578,8 +570,11 @@ def save_inference_model(dirname,
         params_filename(str|None): The name of file to save all related parameters.
                                    If it is setted None, parameters will be saved
                                    in separate files .
-        export_for_deployment(bool): remove the read ops that are added by py_reader
-                                    for cpp inference lib. Default True
+        export_for_deployment(bool): If True, programs are modified to only support
+                                     direct inference deployment. Otherwise,
+                                     more information will be stored for flexible
+                                     optimization and re-training. Currently, only
+                                     True is supported.
 
     Returns:
         None
@@ -603,75 +598,84 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.binary_type):
+    if isinstance(feeded_var_names, six.string_types):
         feeded_var_names = [feeded_var_names]
-    elif isinstance(feeded_var_names, six.text_type):
-        feeded_var_names = [feeded_var_names.encode()]
-    else:
+    elif export_for_deployment:
         if len(feeded_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
             if not (bool(feeded_var_names) and all(
-                    isinstance(name, six.binary_type)
+                    isinstance(name, six.string_types)
                     for name in feeded_var_names)):
-                if not (all(
-                        isinstance(name, six.text_type)
-                        for name in feeded_var_names)):
-                    raise ValueError(
-                        "'feed_var_names' should be a list of str.")
-                else:
-                    feeded_var_names = [
-                        name.encode() for name in feeded_var_names
-                    ]
+                raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
-    else:
+    elif export_for_deployment:
         if not (bool(target_vars) and all(
                 isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
     if main_program is None:
         main_program = default_main_program()
-    copy_program = main_program.clone()
 
-    if not os.path.isdir(dirname):
+    # if there is lookup table, the trainer 0 will notify all pserver to save.
+    if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
+        lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+        _save_lookup_tables_by_notify(executor, lookup_table_filename,
+                                      main_program._distributed_lookup_table,
+                                      main_program._endpoints)
+
+    # when a pserver and a trainer running on the same machine, mkdir may conflict
+    try:
         os.makedirs(dirname)
-
-    # Clear the is_target information and remove the existed feed and fetch op
-    global_block = copy_program.global_block()
-    for i, op in enumerate(global_block.ops):
-        op.desc.set_is_target(False)
-        if op.type == "feed" or op.type == "fetch":
-            global_block._remove_op(i)
-    copy_program.desc.flush()
-
-    pruned_program = copy_program.prune(targets=target_vars)
-    inference_program = pruned_program.inference_optimize(
-        export_for_deployment=export_for_deployment)
-    fetch_var_names = [v.name for v in target_vars]
-
-    prepend_feed_ops(inference_program, feeded_var_names)
-    append_fetch_ops(inference_program, fetch_var_names)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
     if model_filename is not None:
-        model_filename = os.path.basename(model_filename)
+        model_basename = os.path.basename(model_filename)
     else:
-        model_filename = "__model__"
-    model_filename = os.path.join(dirname, model_filename)
+        model_basename = "__model__"
+    model_basename = os.path.join(dirname, model_basename)
+
+    # When export_for_deployment is true, we modify the program online so that
+    # it can only be loaded for inference directly. If it's false, the whole
+    # original program and related meta are saved so that future usage can be
+    # more flexible.
+    if export_for_deployment:
+        main_program = main_program.clone()
+        global_block = main_program.global_block()
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                global_block._remove_op(i)
+        main_program.desc.flush()
+
+        main_program = main_program._prune(targets=target_vars)
+        main_program = main_program._inference_optimize(prune_read_op=True)
+        fetch_var_names = [v.name for v in target_vars]
+
+        prepend_feed_ops(main_program, feeded_var_names)
+        append_fetch_ops(main_program, fetch_var_names)
+
+        with open(model_basename, "wb") as f:
+            f.write(main_program.desc.serialize_to_string())
+    else:
+        # TODO(panyx0718): Save more information so that it can also be used
+        # for training and more flexible post-processing.
+        with open(model_basename + ".main_program", "wb") as f:
+            f.write(main_program.desc.serialize_to_string())
 
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
-
-    with open(model_filename, "wb") as f:
-        f.write(inference_program.desc.serialize_to_string())
-
-    save_persistables(executor, dirname, inference_program, params_filename)
+    save_persistables(executor, dirname, main_program, params_filename)
 
 
 def load_inference_model(dirname,
                          executor,
                          model_filename=None,
-                         params_filename=None):
+                         params_filename=None,
+                         pserver_endpoints=None):
     """
     Load inference model from a directory
 
@@ -687,6 +691,10 @@ def load_inference_model(dirname,
                                    parameters were saved in a single binary
                                    file. If parameters were saved in separate
                                    files, set it as 'None'.
+        pserver_endpoints(list|None): This only need by distributed inference.
+                                    When use distributed look up table in training,
+                                    We also need it in inference.The parameter is
+                                    a list of pserver endpoints.
 
     Returns:
         tuple: The return of this function is a tuple with three elements:
@@ -705,11 +713,15 @@ def load_inference_model(dirname,
 
             exe = fluid.Executor(fluid.CPUPlace())
             path = "./infer_model"
+            endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
             [inference_program, feed_target_names, fetch_targets] =
                 fluid.io.load_inference_model(dirname=path, executor=exe)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
+
+            # if we need lookup table, we will use:
+            fluid.io.load_inference_model(dirname=path, executor=exe, pserver_endpoints=endpoints)
 
             # In this exsample, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
@@ -735,7 +747,14 @@ def load_inference_model(dirname,
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
+    if not core._is_program_version_supported(program._version()):
+        raise ValueError("Unsupported program version: %d\n" %
+                         program._version())
+    # Binary data also need versioning.
     load_persistables(executor, dirname, program, params_filename)
+
+    if pserver_endpoints:
+        program = _endpoints_replacement(program, pserver_endpoints)
 
     feed_target_names = program.desc.get_feed_target_names()
     fetch_target_names = program.desc.get_fetch_target_names()
@@ -744,6 +763,61 @@ def load_inference_model(dirname,
     ]
 
     return [program, feed_target_names, fetch_targets]
+
+
+def _save_lookup_tables_by_notify(executor, dirname, lookup_table,
+                                  pserver_endpoints):
+    """
+    This function will send checkpoint notify message from Trainer 0
+    to all the pservers.
+    The checkpoint notify message contains lookup table name,
+    the absolute path on pserver to save lookup_table.
+
+    Args:
+        executor(Executor): The executor to run for send checkpoint notify.
+        dirname(str): The folder where to save.
+        lookup_table(string): the lookup table name, when use distribute
+            lookup table, we can get lookup table name by DistributeTranspiler.
+            table_name
+        ps_endpoint_list(list): the parameter server ip:port list.
+            when use distribute lookup table, we can get ps_endpoint_list by
+            distribute arguments.
+    Return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            param_path = "./my_paddle_model"
+            table_name = "share_w"
+            ps_endpoints = ["127.0.0.1:6000","127.0.0.1:6001"]
+
+            _save_pserver_vars_by_notify(executor=exe,
+                    dirname=param_path, lookup_table=table_name,
+                    pserver_endpoints=ps_endpoints)
+    """
+
+    pserver_notify_program = Program()
+    pserver_notify_block = pserver_notify_program.global_block()
+
+    attrs = {}
+    attrs['epmap'] = pserver_endpoints
+    attrs['dir'] = dirname
+    attrs['lookup_table'] = lookup_table
+
+    pserver_notify_block.append_op(
+        type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
+    executor.run(pserver_notify_program)
+
+
+def _endpoints_replacement(program, endpoints):
+    ENDPOINT_MAP = "epmap"
+    for op in program.global_block().ops:
+        if op.has_attr(ENDPOINT_MAP):
+            op.set_attr(ENDPOINT_MAP, endpoints)
+    program._sync_with_cpp()
+    return program
 
 
 def get_parameter_value(para, executor):
@@ -807,3 +881,50 @@ def get_parameter_value_by_name(name, executor, program=None):
         program = default_main_program()
     var = program.global_block().var(name)
     return get_parameter_value(var, executor)
+
+
+def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
+    if not slice_vars_and_attrs:
+        return
+
+    load_prog = Program()
+    load_block = load_prog.global_block()
+    need_delete_vars = []
+
+    for var_tuple in slice_vars_and_attrs:
+        orig_var = var_tuple[0]
+        start = var_tuple[1]
+        slice_var = var_tuple[2]
+        end = start + slice_var.shape[0]
+
+        clone_orig_var = load_block.create_var(
+            name=orig_var.name,
+            type=orig_var.type,
+            shape=orig_var.shape,
+            dtype=orig_var.dtype,
+            persistable=True)
+
+        clone_slice_var = load_block.create_var(
+            name=slice_var.name,
+            type=slice_var.type,
+            shape=slice_var.shape,
+            dtype=slice_var.dtype,
+            persistable=True)
+
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [clone_orig_var]},
+            attrs={'file_path': os.path.join(dirname, clone_orig_var.name)})
+        load_block.append_op(
+            type="slice",
+            inputs={'Input': clone_orig_var},
+            outputs={'Out': clone_slice_var},
+            attrs={'axes': [0],
+                   'starts': [start],
+                   'ends': [end]})
+        need_delete_vars.append(clone_orig_var)
+    load_block.append_op(
+        type='delete_var',
+        inputs={'X': need_delete_vars}, )
+    executor.run(load_prog)

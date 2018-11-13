@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu

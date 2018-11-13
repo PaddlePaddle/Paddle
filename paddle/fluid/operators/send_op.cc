@@ -15,6 +15,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -43,20 +44,22 @@ class SendOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(place);
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
+    std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        // TODO(Yancey1989): we need to use an IO threadpool which has
-        // a larger number of threads than the computing threadpool.
-        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]);
+        VLOG(30) << "sending " << ins[i] << " to " << epmap[i];
+        rets.push_back(rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
       } else {
-        VLOG(3) << "don't send no-initialied variable: " << ins[i];
+        VLOG(30) << "don't send no-initialied variable: " << ins[i];
       }
     }
     if (sync_send) {
-      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      }
     }
   }
 };
@@ -65,6 +68,8 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
+        .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
 Send operator
@@ -75,6 +80,7 @@ This operator will send variables to listen_and_serve op at the parameter server
                  "(int, default 0)"
                  "sync send or async send.")
         .SetDefault(0);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "

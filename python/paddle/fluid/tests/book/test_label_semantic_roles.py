@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import contextlib
 import math
 import numpy as np
@@ -36,7 +38,7 @@ depth = 8
 mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
-PASS_NUM = 10
+PASS_NUM = 1
 BATCH_SIZE = 10
 
 embedding_name = 'emb'

@@ -17,7 +17,8 @@ import argparse
 __all__ = ['parse_args', ]
 
 BENCHMARK_MODELS = [
-    "machine_translation", "resnet", "vgg", "mnist", "stacked_dynamic_lstm"
+    "machine_translation", "resnet", "se_resnext", "vgg", "mnist",
+    "stacked_dynamic_lstm", "resnet_with_preprocess"
 ]
 
 
@@ -67,12 +68,12 @@ def parse_args():
         '--cpus',
         type=int,
         default=1,
-        help='If cpus > 1, will use ParallelDo to run, else use Executor.')
+        help='If cpus > 1, will set ParallelExecutor to use multiple threads.')
     parser.add_argument(
         '--data_set',
         type=str,
         default='flowers',
-        choices=['cifar10', 'flowers'],
+        choices=['cifar10', 'flowers', 'imagenet'],
         help='Optional dataset for benchmark.')
     parser.add_argument(
         '--infer_only', action='store_true', help='If set, run forward only.')
@@ -123,6 +124,11 @@ def parse_args():
         default="",
         help='Directory that contains all the training recordio files.')
     parser.add_argument(
+        '--test_data_path',
+        type=str,
+        default="",
+        help='Directory that contains all the test data (NOT recordio).')
+    parser.add_argument(
         '--use_inference_transpiler',
         action='store_true',
         help='If set, use inference transpiler to optimize the program.')
@@ -130,5 +136,16 @@ def parse_args():
         '--no_random',
         action='store_true',
         help='If set, keep the random seed and do not shuffle the data.')
+    parser.add_argument(
+        '--reduce_strategy',
+        type=str,
+        choices=['reduce', 'all_reduce'],
+        default='all_reduce',
+        help='Specify the reduce strategy, can be reduce, all_reduce')
+    parser.add_argument(
+        '--fuse_broadcast_op',
+        action='store_true',
+        help='If set, would fuse multiple broadcast operators into one fused_broadcast operator.'
+    )
     args = parser.parse_args()
     return args

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
+import numpy as np
 import six
 
 import paddle.fluid.core as core
@@ -99,10 +102,14 @@ class OpDescCreationMethod(object):
                 new_attr = op_desc.attrs.add()
                 new_attr.name = attr.name
                 new_attr.type = attr.type
+                if isinstance(user_defined_attr, np.ndarray):
+                    user_defined_attr = user_defined_attr.tolist()
                 if attr.type == framework_pb2.INT:
                     new_attr.i = user_defined_attr
                 elif attr.type == framework_pb2.FLOAT:
                     new_attr.f = user_defined_attr
+                elif attr.type == framework_pb2.LONG:
+                    new_attr.l = user_defined_attr
                 elif attr.type == framework_pb2.STRING:
                     new_attr.s = user_defined_attr
                 elif attr.type == framework_pb2.BOOLEAN:
@@ -115,6 +122,8 @@ class OpDescCreationMethod(object):
                     new_attr.strings.extend(user_defined_attr)
                 elif attr.type == framework_pb2.BOOLEANS:
                     new_attr.bools.extend(user_defined_attr)
+                elif attr.type == framework_pb2.LONGS:
+                    new_attr.longs.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
                         pair = new_attr.int_pairs.add()

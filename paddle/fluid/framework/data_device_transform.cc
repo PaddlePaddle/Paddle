@@ -18,12 +18,16 @@ namespace framework {
 
 void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
                      Tensor *out) {
-  VLOG(3) << "DeviceTransform in, src_place " << in.place()
-          << " dst_place: " << dst_place;
+  VLOG(30) << "DeviceTransform in, src_place " << in.place()
+           << " dst_place: " << dst_place;
 
   PADDLE_ENFORCE_NE(
       in.place().which(), dst_place.which(),
       "Currently, model parallelism is only supported between CPU and CUDA");
+
+  // NOTE(yy): TransDataDevice should wait for computation of input.
+  platform::DeviceContextPool::Instance().Get(in.place())->Wait();
+  platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
 
   // FIXME(zcd): TransDataDevice is used to transform data from GPU to CPU and
   // the enforced checkings have been done in GetDeviceContext, so the

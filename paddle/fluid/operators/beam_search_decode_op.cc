@@ -74,11 +74,14 @@ struct BeamSearchDecodeFunctor {
   }
 
   template <typename T>
-  void operator()() const;
+  void apply() const;
 
   bool tensor_on_gpu_;
   size_t beam_size_;
   int end_id_;
+  // TODO(Superjomn) Here might result serious performance issue in the
+  // concurrency
+  // scenarios.
   const LoDTensorArray& step_ids_origin_;
   const LoDTensorArray& step_scores_origin_;
   LoDTensorArray step_ids_ = LoDTensorArray();
@@ -88,7 +91,7 @@ struct BeamSearchDecodeFunctor {
 };
 
 template <typename T>
-void BeamSearchDecodeFunctor::operator()() const {
+void BeamSearchDecodeFunctor::apply() const {
   BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
   // Check if the tensor is on GPU. If so, use the CPU copy instead
   if (tensor_on_gpu_) {
@@ -101,7 +104,7 @@ void BeamSearchDecodeFunctor::operator()() const {
 }
 
 template <>
-void BeamSearchDecodeFunctor::operator()<bool>() const {
+void BeamSearchDecodeFunctor::apply<bool>() const {
   PADDLE_THROW("beam search decode op does not support bool!");
 }
 

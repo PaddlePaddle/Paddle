@@ -19,41 +19,32 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename T, bool NormByTimes, bool Padding>
-__global__ void SequencePaddingKernel(T* padding, T* sequence,
-                                      const size_t* sequence_start_positions,
-                                      const size_t sequence_width,
-                                      const size_t max_sequence_length,
-                                      const size_t num_sequences) {
-  size_t padding_idx = blockIdx.y;
-  size_t start_pos = sequence_start_positions[padding_idx];
-  size_t sequence_length =
-      sequence_start_positions[padding_idx + 1] - start_pos;
+template <typename T, CopyType Type>
+__global__ void SequencePaddingKernel(
+    T* dst, const T* src, const T* pad_value, bool is_constant_pad,
+    const size_t* seq_offsets, const size_t seq_num, const size_t pad_seq_len,
+    const size_t step_width, bool norm_by_len, const PadLayout layout) {
+  size_t seq_idx = blockIdx.y;
+  size_t seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
 
-  size_t sequence_idx = blockIdx.x * blockDim.y + threadIdx.y;
-  size_t padding_base_idx =
-      (sequence_idx * num_sequences + padding_idx) * sequence_width;
-  size_t sequence_base_idx = (start_pos + sequence_idx) * sequence_width;
+  size_t step_idx = blockIdx.x * blockDim.y + threadIdx.y;
+  size_t seq_data_offset = (seq_offsets[seq_idx] + step_idx) * step_width;
+  size_t pad_data_offset = layout == kBatchLengthWidth
+                               ? (seq_idx * pad_seq_len + step_idx) * step_width
+                               : (step_idx * seq_num + seq_idx) * step_width;
 
-  if (sequence_idx < sequence_length) {
-    T scale = NormByTimes ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
-    if (Padding) {
-      /* sequence -> padding */
-      for (size_t i = threadIdx.x; i < sequence_width; i += blockDim.x) {
-        padding[padding_base_idx + i] = scale * sequence[sequence_base_idx + i];
-      }
-    } else {
-      /* padding -> sequence */
-      for (size_t i = threadIdx.x; i < sequence_width; i += blockDim.x) {
-        sequence[sequence_base_idx + i] = scale * padding[padding_base_idx + i];
-      }
+  T* dst_data = dst + (Type == kSeqToPad ? pad_data_offset : seq_data_offset);
+  const T* src_data =
+      src + (Type == kSeqToPad ? seq_data_offset : pad_data_offset);
+
+  if (step_idx < seq_len) {
+    float scale = norm_by_len ? (1.0f / static_cast<float>(seq_len)) : 1.0f;
+    for (size_t i = threadIdx.x; i < step_width; i += blockDim.x) {
+      dst_data[i] = scale * src_data[i];
     }
-  } else if (sequence_idx < max_sequence_length) {
-    if (Padding) {
-      /* sequence -> padding */
-      for (size_t i = threadIdx.x; i < sequence_width; i += blockDim.x) {
-        padding[padding_base_idx + i] = 0;
-      }
+  } else if (step_idx < pad_seq_len && Type == kSeqToPad) {
+    for (size_t i = threadIdx.x; i < step_width; i += blockDim.x) {
+      dst_data[i] = is_constant_pad ? pad_value[0] : pad_value[i];
     }
   }
 }
@@ -62,74 +53,59 @@ template <typename T>
 class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::LoDTensor& seq, framework::Tensor* padding,
-                  bool norm_by_times) {
-    auto lod = seq.lod();
-    PADDLE_ENFORCE_GT(lod.size(), 0UL,
-                      "The lod of LoDTensor seq should not be null.");
+                  const framework::LoDTensor& seq_tensor,
+                  framework::LoDTensor* pad_tensor,
+                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth) {
+    auto seq_lod = seq_tensor.lod();
+    const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
+    const auto& seq_tensor_dims = seq_tensor.dims();
+    const auto& pad_tensor_dims = pad_tensor->dims();
+    int max_seq_len = MaximumSequenceLength(seq_offsets);
+    if (pad_seq_len == -1) {
+      pad_seq_len = max_seq_len;
+    }
+    PADDLE_ENFORCE_GE(pad_seq_len, max_seq_len,
+                      "The pad_seq_len must be equal to or greater than the "
+                      "original max sequence length.");
+    int step_width = seq_tensor.numel() / seq_tensor_dims[0];
+    int seq_num = seq_offsets.size() - 1;
 
-    const size_t level = 0;
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
+              step_width, layout);
+    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
+                   "The numel of 'pad_value' can only be 1 or be equal to the "
+                   "'step_width'.");
 
-    auto seq_dims = seq.dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0],
-                      static_cast<int64_t>(abs_offset_lod[level].back()),
-                      "The first dimension of LoDTensor seq should be "
-                      "equal to the sum of all sequences's length.");
-
-    auto padding_dims = padding->dims();
-    PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
-                      "The input padding should be a 3-D Tensor of shape "
-                      "[max_sequence_length, num_sequences, sequence_width].");
-
-    int64_t max_sequence_length = MaximumSequenceLength(lod, level);
-    PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
-                      "The first dimension of Tensor padding should be the "
-                      "maximum length of all sequences in LoDTensor seq.");
-
-    const int64_t num_sequences = abs_offset_lod[level].size() - 1;
-    PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
-                      "The second dimension of Tensor padding should be the "
-                      "number of sequences in LoDTensor seq.");
-
-    const int64_t sequence_width = seq.numel() / seq_dims[0];
-    PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
-                      "The third dimension of Tensor padding should be the "
-                      "width of sequence in LoDTensor seq.");
-
-    if (!norm_by_times && num_sequences == 1UL) {
-      TensorCopy(seq, context.GetPlace(), context, padding);
-      padding->Resize(padding_dims);
+    if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
+      TensorCopy(seq_tensor, context.GetPlace(), context, pad_tensor);
+      pad_tensor->Resize(pad_tensor_dims);
       return;
     }
 
-    const int64_t kBlockSize = 512;
+    const int kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
      */
     size_t block_dim_x =
-        std::min(((((sequence_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
+        std::min(((((step_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
     size_t block_dim_y = kBlockSize / block_dim_x;
     dim3 threads(block_dim_x, block_dim_y);
 
-    size_t grid_dim_x = (max_sequence_length + block_dim_y - 1) / block_dim_y;
-    size_t grid_dim_y = num_sequences;
+    size_t grid_dim_x = (pad_seq_len + block_dim_y - 1) / block_dim_y;
+    size_t grid_dim_y = seq_num;
     dim3 grid(grid_dim_x, grid_dim_y);
 
-    const T* seq_data = seq.data<T>();
-    T* padding_data = padding->data<T>();
-    if (norm_by_times) {
-      SequencePaddingKernel<T, 1, 1><<<grid, threads, 0, context.stream()>>>(
-          padding_data, const_cast<T*>(seq_data),
-          abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
-          max_sequence_length, num_sequences);
-    } else {
-      SequencePaddingKernel<T, 0, 1><<<grid, threads, 0, context.stream()>>>(
-          padding_data, const_cast<T*>(seq_data),
-          abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
-          max_sequence_length, num_sequences);
-    }
+    const T* seq_data = seq_tensor.data<T>();
+    T* pad_data = pad_tensor->data<T>();
+    const T* pad_value_data = pad_value.data<T>();
+
+    SequencePaddingKernel<T, kSeqToPad><<<grid, threads, 0, context.stream()>>>(
+        pad_data, seq_data, pad_value_data, pad_value.numel() == 1,
+        seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
+        step_width, norm_by_times, layout);
   }
 };
 
@@ -137,79 +113,62 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  framework::LoDTensor* seq, const framework::Tensor& padding,
-                  bool norm_by_times) {
-    auto lod = seq->lod();
-    PADDLE_ENFORCE_GT(lod.size(), 0UL,
-                      "The lod of LoDTensor seq should not be null.");
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth) {
+    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    const auto& seq_tensor_dims = seq_tensor->dims();
+    const auto& pad_tensor_dims = pad_tensor.dims();
+    int max_seq_len = MaximumSequenceLength(seq_offsets);
+    if (pad_seq_len == -1) {
+      pad_seq_len = max_seq_len;
+    }
+    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int seq_num = seq_offsets.size() - 1;
 
-    const size_t level = 0;
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
+              step_width, layout);
 
-    auto seq_dims = seq->dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0],
-                      static_cast<int64_t>(abs_offset_lod[level].back()),
-                      "The first dimension of LoDTensor seq should be "
-                      "equal to the sum of all sequences's length.");
-
-    auto padding_dims = padding.dims();
-    PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
-                      "The input padding should be a 3-D Tensor of shape "
-                      "[max_sequnece_length, num_sequences, sequence_width].");
-
-    int64_t max_sequence_length = MaximumSequenceLength(lod, level);
-    PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
-                      "The first dimension of Tensor padding should be "
-                      "the maximum length of all sequences in LoDTensor seq.");
-
-    const int64_t num_sequences = abs_offset_lod[level].size() - 1;
-    PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
-                      "The second dimension of Tensor padding should be "
-                      "the number of sequences in LoDTensor seq.");
-
-    const int64_t sequence_width = seq->numel() / seq_dims[0];
-    PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
-                      "The third dimension of Tensor padding should be the "
-                      "width of sequence in LoDTensor seq.");
-
-    if (!norm_by_times && num_sequences == 1UL) {
-      TensorCopy(padding, context.GetPlace(), context, seq);
-      seq->Resize(seq_dims);
+    if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
+      TensorCopy(pad_tensor, context.GetPlace(), context, seq_tensor);
+      seq_tensor->Resize(seq_tensor_dims);
       return;
     }
 
-    const int64_t kBlockSize = 512;
+    const int kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
      */
     size_t block_dim_x =
-        std::min(((((sequence_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
+        std::min(((((step_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
     size_t block_dim_y = kBlockSize / block_dim_x;
     dim3 threads(block_dim_x, block_dim_y);
 
-    size_t grid_dim_x = (max_sequence_length + block_dim_y - 1) / block_dim_y;
-    size_t grid_dim_y = num_sequences;
+    size_t grid_dim_x = (pad_seq_len + block_dim_y - 1) / block_dim_y;
+    size_t grid_dim_y = seq_num;
     dim3 grid(grid_dim_x, grid_dim_y);
 
-    const T* padding_data = padding.data<T>();
-    T* seq_data = seq->data<T>();
-    if (norm_by_times) {
-      SequencePaddingKernel<T, 1, 0><<<grid, threads, 0, context.stream()>>>(
-          const_cast<T*>(padding_data), seq_data,
-          abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
-          max_sequence_length, num_sequences);
-    } else {
-      SequencePaddingKernel<T, 0, 0><<<grid, threads, 0, context.stream()>>>(
-          const_cast<T*>(padding_data), seq_data,
-          abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
-          max_sequence_length, num_sequences);
-    }
+    const T* pad_data = pad_tensor.data<T>();
+    T* seq_data = seq_tensor->data<T>();
+
+    SequencePaddingKernel<T, kPadToSeq><<<grid, threads, 0, context.stream()>>>(
+        seq_data, pad_data, nullptr, false,
+        seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
+        step_width, norm_by_times, layout);
   }
 };
 
+template class PaddingLoDTensorFunctor<platform::CUDADeviceContext, int>;
+template class PaddingLoDTensorFunctor<platform::CUDADeviceContext, int64_t>;
 template class PaddingLoDTensorFunctor<platform::CUDADeviceContext, float>;
+template class PaddingLoDTensorFunctor<platform::CUDADeviceContext, double>;
+
+template class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, int>;
+template class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, int64_t>;
 template class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, float>;
+template class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

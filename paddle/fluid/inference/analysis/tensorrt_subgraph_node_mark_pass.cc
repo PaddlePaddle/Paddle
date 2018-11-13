@@ -68,9 +68,9 @@ class DfgDebuggerPass : public DFG_GraphvizDrawPass {
   }
 };
 
-Pass *TensorRTSubgraphNodeMarkPass::CreateGraphvizDebugerPass() const {
-  DFG_GraphvizDrawPass::Config config(
-      FLAGS_inference_analysis_graphviz_log_root, "tensorrt_marked_node");
+AnalysisPass *TensorRTSubgraphNodeMarkPass::CreateGraphvizDebugerPass() const {
+  DFG_GraphvizDrawPass::Config config(FLAGS_IA_graphviz_log_root,
+                                      "tensorrt_marked_node");
   return new DfgDebuggerPass(config);
 }
 bool TensorRTSubgraphNodeMarkPass::Finalize() { return true; }

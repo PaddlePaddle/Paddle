@@ -31,7 +31,8 @@ size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
 }
 
-void* Tensor::mutable_data(platform::Place place, std::type_index type) {
+void* Tensor::mutable_data(platform::Place place, std::type_index type,
+                           size_t requested_size) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
@@ -39,7 +40,11 @@ void* Tensor::mutable_data(platform::Place place, std::type_index type) {
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
                     "Please check Tensor::Resize has been called first.");
-  int64_t size = numel() * SizeOfType(type);
+  size_t size = numel() * SizeOfType(type);
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size, size);
+    size = requested_size;
+  }
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
@@ -68,10 +73,10 @@ void* Tensor::mutable_data(platform::Place place, std::type_index type) {
                                  offset_);
 }
 
-void* Tensor::mutable_data(platform::Place place) {
+void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing.");
-  return mutable_data(place, holder_->type());
+  return mutable_data(place, holder_->type(), requested_size);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -112,5 +117,6 @@ Tensor& Tensor::Resize(const DDim& dims) {
 const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
+
 }  // namespace framework
 }  // namespace paddle

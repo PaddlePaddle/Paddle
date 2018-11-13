@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import contextlib
 from . import core
@@ -38,9 +40,6 @@ def convert_reader_to_recordio_file(
         feed_order=None):
     """
     Convert a Python Reader to a recordio file.
-
-    Please see :ref:`api_guide_python_reader` and :ref:`api_guide_reader_op` for
-    details.
 
     Examples:
 

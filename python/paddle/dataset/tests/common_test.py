@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.dataset.common
 import unittest
 import tempfile
 import glob
+from six.moves import range
 
 
 class TestCommon(unittest.TestCase):

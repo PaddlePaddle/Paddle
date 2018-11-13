@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import argparse
 import time
@@ -44,7 +46,8 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant()))
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.01)))
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -52,7 +55,8 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant()))
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.01)))
 
     SIZE = 10
     input_shape = conv_pool_2.shape
@@ -64,8 +68,7 @@ def cnn_model(data):
         size=SIZE,
         act="softmax",
         param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.NormalInitializer(
-                loc=0.0, scale=scale, seed=1)))
+            initializer=fluid.initializer.Constant(value=0.01)))
     return predict
 
 
@@ -87,12 +90,14 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.001, beta1=0.9, beta2=0.999)
+        # TODO(typhoonzero): fix distributed adam optimizer
+        # opt = fluid.optimizer.AdamOptimizer(
+        #     learning_rate=0.001, beta1=0.9, beta2=0.999)
+        opt = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         opt.minimize(avg_cost)

@@ -37,11 +37,7 @@ class OpDesc {
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
-  OpDesc(const OpDesc &other, BlockDesc *block) {
-    *this = other;
-    block_ = block;
-    need_update_ = true;
-  }
+  OpDesc(const OpDesc &other, BlockDesc *block);
 
   void CopyFrom(const OpDesc &op_desc);
 
@@ -81,6 +77,8 @@ class OpDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
+  const proto::OpProto::Attr &GetProtoAttr(const std::string &name) const;
+
   Attribute GetNullableAttr(const std::string &name) const;
 
   int GetBlockAttrId(const std::string &name) const;
@@ -102,16 +100,6 @@ class OpDesc {
   std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
-  void SetInputMap(const VariableNameMap &input) {
-    this->inputs_ = input;
-    this->need_update_ = true;
-  }
-
-  void SetOutputMap(const VariableNameMap &output) {
-    this->outputs_ = output;
-    this->need_update_ = true;
-  }
-
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
@@ -132,10 +120,6 @@ class OpDesc {
   void Flush();
 
   BlockDesc *Block() { return this->block_; }
-
-  const BlockDesc &BlockRef() const { return *this->block_; }
-
-  void SetBlock(BlockDesc *block) { this->block_ = block; }
 
  private:
   template <typename MapType>

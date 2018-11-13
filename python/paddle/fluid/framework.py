@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import collections
 import contextlib
 import re
@@ -19,6 +21,7 @@ import six
 
 import numpy as np
 
+from .. import compat as cpt
 from .proto import framework_pb2
 try:
     from . import core
@@ -27,25 +30,93 @@ except ImportError as e:
         """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + e.message)
+    directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
 
 __all__ = [
     'Program',
-    'Operator',
-    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
-    'get_var',
+    'name_scope',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+
+class NameScope(object):
+    def __init__(self, name="", parent=None):
+        self._children = dict()
+        self._name = name
+        self._parent = parent
+
+    def child(self, prefix):
+        if prefix not in self._children:
+            new_child = NameScope(prefix, self)
+            self._children[prefix] = [new_child]
+        else:
+            new_child = NameScope(prefix + "_%d" % len(self._children[prefix]),
+                                  self)
+            self._children[prefix].append(new_child)
+        return new_child
+
+    def parent(self):
+        return self._parent
+
+    def name(self):
+        return self._name
+
+
+_name_scope = NameScope()
+
+
+@contextlib.contextmanager
+def name_scope(prefix=None):
+    """
+    Generate hierarchical name prefix for the operators.
+
+    Note: This should only used for debugging and visualization purpose.
+    Don't use it for serious analysis such as graph/program transformations.
+
+    Args:
+        prefix(str): prefix.
+
+    Examples:
+        .. code-block:: python
+          with name_scope("encoder"):
+             ...
+          with name_scope("decoder"):
+             ...
+             with name_scope("attention"):
+                ...
+    """
+    # TODO(panyx0718): Only [0-9a-z].
+    assert prefix, "namescope prefix cannot be empty."
+    global _name_scope
+    _name_scope = _name_scope.child(prefix)
+    yield
+    _name_scope = _name_scope.parent()
+
+
+def _full_name_scope():
+    global _name_scope
+    scope = _name_scope
+    name = ""
+    while scope:
+        name = scope.name() + "/" + name
+        scope = scope.parent()
+    return name
+
+
+def generate_control_dev_var_name():
+    import random
+    return CONTROL_DEP_VAR_PREFIX + "@" + str(random.random())
 
 
 def grad_var_name(var_name):
@@ -86,8 +157,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
     else:
-        raise ValueError("Not supported numpy dtype " + six.binary_type(dtype))
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -198,11 +271,11 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        name = name if isinstance(name, six.binary_type) else name.encode()
-        self.desc = self.block.desc.find_var(name)
+        name = cpt.to_text(name)
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
         if self.desc is None:
-            self.desc = self.block.desc.var(name)
+            self.desc = self.block.desc.var(cpt.to_bytes(name))
             is_new_var = True
 
         if is_new_var:
@@ -325,7 +398,7 @@ class Variable(object):
 
     @property
     def name(self):
-        return self.desc.name()
+        return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
@@ -413,7 +486,8 @@ class OpProtoHolder(object):
     def generated_op_attr_names():
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
-            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
         }
 
 
@@ -463,8 +537,7 @@ class Operator(object):
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
         'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'channel_create', 'channel_close', 'channel_send',
-        'channel_recv', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -504,6 +577,9 @@ class Operator(object):
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 
+        namescope_var_name = op_maker.kOpNameScopeAttrName()
+        op_attrs[namescope_var_name] = _full_name_scope()
+
         def find_name(var_list, name):
             for var_name in var_list:
                 if var_list[var_name] is not None and var_name == name:
@@ -531,14 +607,7 @@ class Operator(object):
                         elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            if isinstance(arg.name, six.string_types):
-                                in_arg_names.append(arg.name)
-                            elif isinstance(arg.name, six.binary_type):
-                                in_arg_names.append(arg.name.decode())
-                            else:
-                                raise TypeError(
-                                    "arguments require unicode, str or bytes, but get %s instead."
-                                    % (type(arg.name)))
+                            in_arg_names.append(cpt.to_text(arg.name))
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -567,14 +636,7 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    if isinstance(arg.name, six.string_types):
-                        out_arg_names.append(arg.name)
-                    elif isinstance(arg.name, six.binary_type):
-                        out_arg_names.append(arg.name.decode())
-                    else:
-                        raise TypeError(
-                            "arguments require unicode, str or bytes, but get %s instead."
-                            % (type(arg.name)))
+                    out_arg_names.append(cpt.to_text(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -589,11 +651,11 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
-        if self.has_kernel(type):
+        if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
-    def has_kernel(self, op_type):
+    def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
     def to_string(self, throw_on_error):
@@ -634,7 +696,7 @@ class Operator(object):
         """
         return self.desc.input(name)
 
-    def rename_input(self, old_name, new_name):
+    def _rename_input(self, old_name, new_name):
         """
         Rename the `old_name` to `new_name`.
 
@@ -645,9 +707,9 @@ class Operator(object):
         Returns:
             None
         """
-        self.desc.rename_input(old_name, new_name)
+        self.desc._rename_input(old_name, new_name)
 
-    def rename_output(self, old_name, new_name):
+    def _rename_output(self, old_name, new_name):
         """
         Rename the `old_name` to `new_name`.
 
@@ -658,7 +720,7 @@ class Operator(object):
         Returns:
             None
         """
-        self.desc.rename_output(old_name, new_name)
+        self.desc._rename_output(old_name, new_name)
 
     @property
     def input_names(self):
@@ -722,7 +784,7 @@ class Operator(object):
         """
         return self.desc.attr_type(name)
 
-    def set_attr(self, name, val):
+    def _set_attr(self, name, val):
         """
         Set the value of attribute by attribute's name.
 
@@ -755,7 +817,7 @@ class Operator(object):
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
-            self.desc.set_attr(name, val)
+            self.desc._set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -774,7 +836,7 @@ class Operator(object):
         """
         return self.desc.attr(name)
 
-    def block_attr_id(self, name):
+    def _block_attr_id(self, name):
         """
         Get the block attribute's id by name.
 
@@ -784,9 +846,9 @@ class Operator(object):
         Returns:
             int: the block index.
         """
-        return self.desc.block_attr_id(name)
+        return self.desc._block_attr_id(name)
 
-    def block_attr(self, name):
+    def _block_attr(self, name):
         """
         Get the block attribute  by name.
 
@@ -797,11 +859,11 @@ class Operator(object):
             block: the block attribute.
         """
 
-        id = self.block_attr_id(name)
+        id = self._block_attr_id(name)
         assert (id >= 0 and id < len(self.block.program.blocks))
         return self.block.program.blocks[id]
 
-    def blocks_attr(self, name):
+    def _blocks_attr(self, name):
         """
         Get the blocks attribute  by name.
 
@@ -812,13 +874,13 @@ class Operator(object):
             list: list of the blocks attribute.
         """
         attrs = []
-        for i in self.blocks_attr_ids(name):
+        for i in self._blocks_attr_ids(name):
             assert (i >= 0 and i < len(self.block.program.blocks))
             attrs.append(self.block.program.blocks[i])
 
         return attrs
 
-    def blocks_attr_ids(self, name):
+    def _blocks_attr_ids(self, name):
         """
         Get the blocks attribute's ids by name.
 
@@ -829,7 +891,7 @@ class Operator(object):
             list: list of the blocks ids.
         """
 
-        return self.desc.blocks_attr_ids(name)
+        return self.desc._blocks_attr_ids(name)
 
     def all_attrs(self):
         """
@@ -843,11 +905,11 @@ class Operator(object):
         for n in attr_names:
             attr_type = self.desc.attr_type(n)
             if attr_type == core.AttrType.BLOCK:
-                attr_map[n] = self.block_attr(n)
+                attr_map[n] = self._block_attr(n)
                 continue
 
             if attr_type == core.AttrType.BLOCKS:
-                attr_map[n] = self.blocks_attr(n)
+                attr_map[n] = self._blocks_attr(n)
                 continue
 
             attr_map[n] = self.attr(n)
@@ -870,7 +932,7 @@ class Block(object):
 
     Notes:
         The constructor of Block should not be invoked directly. Please
-        use `Program.create_block()` to create a block.
+        use `Program._create_block()` to create a block.
 
     Examples:
         .. code-block:: python
@@ -970,10 +1032,9 @@ class Block(object):
             Variable: the Variable with the giving name.
         """
         if not isinstance(name, six.string_types):
-            if not isinstance(name, six.binary_type):
-                raise TypeError(
-                    "var require string as parameter, but get %s instead." %
-                    (type(name)))
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
@@ -1024,7 +1085,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in list(self.vars.items())
+        return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
@@ -1052,6 +1113,9 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
+        name = cpt.to_text(name)
+        new_name = cpt.to_text(new_name)
+
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
         v = self.var(name)
@@ -1070,9 +1134,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(name, new_name)
+        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(new_name)
+        d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
             var = Parameter(
                 self,
@@ -1103,7 +1167,7 @@ class Block(object):
 
     def _remove_var(self, name):
         self._sync_with_cpp()
-        self.desc._remove_var(name)
+        self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -1205,7 +1269,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(var):
+            if not self.desc.find_var(cpt.to_bytes(var)):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -1372,6 +1436,13 @@ class Program(object):
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
 
+        # for distribute
+        self._is_distributed = False
+        self._is_chief = False
+        self._slice_vars_and_attrs = []
+        self._endpoints = []
+        self._distributed_lookup_table = None
+
     @property
     def op_role(self):
         """
@@ -1409,7 +1480,7 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimized_guard(self, param_and_grads):
+    def _optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
@@ -1422,9 +1493,12 @@ class Program(object):
         Examples:
 
             >>> p, g = backward(...)
-            >>> with program.optimized_guard([p,g]):
+            >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
         self._op_role_var = [
@@ -1432,8 +1506,42 @@ class Program(object):
             for var in param_and_grads
         ]
         yield
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
+
+    @contextlib.contextmanager
+    def _lr_schedule_guard(self, is_with_opt=False):
+        """
+        A with guard to set :code:`LRSched` :code:`OpRole` and
+        :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
+        set to the target learning rate.
+
+        Notes: This is a very low level API. Users should not use it directly.
+
+        Args:
+            is_with_opt: Only set to true if these ops a in the middle
+                 of a bunch of optimize ops so that it can be treated
+                 correctly. For example, sgd->lr_op->sgd->lr_op->sgd.
+
+        Examples:
+
+            >>> p, g = backward(...)
+            >>> with program.lr_schedule_guard():
+            >>>     lr = lr * decay
+        """
+
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.LRSched
+        if is_with_opt:
+            self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
+        # TODO(typhoonzero): how to set target learning rate var
         self._op_role_var = []
-        self._current_role = OpRole.Forward
+        yield
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
 
     def __str__(self):
         """
@@ -1480,7 +1588,7 @@ class Program(object):
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
-    def get_desc(self):
+    def _get_desc(self):
         """
         Get the C++ side of `ProgramDesc` object pointer. The C++ object is
         exposed by :code:`pybind`.
@@ -1489,6 +1597,9 @@ class Program(object):
         directly.
         """
         return self.desc
+
+    def _version(self):
+        return self.desc._version()
 
     def clone(self, for_test=False):
         """
@@ -1570,13 +1681,15 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize(export_for_deployment=False)
+            p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
             p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.blocks = [
+                Block(p, i) for i in six.moves.range(self.desc.num_blocks())
+            ]
 
             p._current_role = self._current_role
             p._op_role_var = self._op_role_var
@@ -1584,10 +1697,10 @@ class Program(object):
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
-        p.copy_data_info_from(self)
+        p._copy_data_info_from(self)
         return p
 
-    def prune(self, targets):
+    def _prune(self, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -1632,11 +1745,13 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self, export_for_deployment=True):
+    def _inference_optimize(self, prune_read_op=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1648,8 +1763,8 @@ class Program(object):
         information will be lost.
 
         Args:
-            export_for_deployment(bool): remove the read ops that are added by py_reader
-                                        for cpp inference library
+            prune_read_op(bool): remove the read ops that are added by py_reader
+                                 for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1657,15 +1772,13 @@ class Program(object):
         Returns:
             Program: The new program.
         """
-        # this is an alternative implement before
-        # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
 
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        if export_for_deployment:
+        if prune_read_op:
             while True:
                 if read_op_idx >= root_block.op_size() or root_block.op(
                         read_op_idx).type() == 'read':
@@ -1675,16 +1788,18 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(var.name())
+                    root_block._remove_var(cpt.to_bytes(var.name()))
 
         # change all `is_test` attributes to True
-        for i in range(res.desc.num_blocks()):
+        for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
-            for j in range(block.op_size()):
+            for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
-                    op.set_attr('is_test', True)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+                    op._set_attr('is_test', True)
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
@@ -1704,7 +1819,7 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
-        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
 
@@ -1758,7 +1873,7 @@ class Program(object):
         """
         return self.blocks[self.current_block_idx]
 
-    def create_block(self, parent_idx=None):
+    def _create_block(self, parent_idx=None):
         """
         Create a new block with the :code:`parent_idx` and change the current block
         to new block.
@@ -1777,7 +1892,7 @@ class Program(object):
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
 
-    def rollback(self):
+    def _rollback(self):
         """
         Exit a code block, i.e., roll back to the parent block.
         Returns:
@@ -1823,7 +1938,7 @@ class Program(object):
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
-    def copy_data_info_from(self, other):
+    def _copy_data_info_from(self, other):
         """
         Copy the information of data variables from other program.
 
@@ -2055,7 +2170,7 @@ def program_guard(main_program, startup_program=None):
         switch_startup_program(startup_program)
 
 
-def get_var(name, program=None):
+def _get_var(name, program=None):
     """
     Get a variable by name from the global block of a program.
 

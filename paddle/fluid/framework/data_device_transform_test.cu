@@ -49,10 +49,10 @@ class TestOpWithKernel : public OperatorWithKernel {
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     if (Attr<bool>("use_gpu")) {
-      VLOG(3) << "force use gpu kernel";
+      VLOG(30) << "force use gpu kernel";
       return OpKernelType(proto::VarType::FP32, platform::CUDAPlace(0));
     } else {
-      VLOG(3) << "use default kernel";
+      VLOG(30) << "use default kernel";
       return OpKernelType(proto::VarType::FP32,
                           ctx.Input<Tensor>("input")->place());
     }
@@ -148,7 +148,7 @@ TEST(Operator, CPUtoGPU) {
   // get output
   auto* output2 = scope.Var("OUT2");
   gpu_op->Run(scope, cuda_place);
-  VLOG(3) << "after gpu_op run";
+  VLOG(30) << "after gpu_op run";
 
   // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
   paddle::platform::DeviceContextPool& pool =

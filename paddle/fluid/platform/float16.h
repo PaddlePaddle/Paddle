@@ -56,7 +56,11 @@ limitations under the License. */
 #include <immintrin.h>
 #endif  // PADDLE_ARM
 
+#if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x) /*do nothing*/
+#endif
 
 namespace paddle {
 namespace platform {

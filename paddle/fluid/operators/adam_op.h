@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -174,12 +176,13 @@ struct SparseAdamFunctor {
 
   const int64_t* rows_;
   int64_t row_numel_;
+  int64_t row_count_;
 
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
                     const T* param, T* param_out, const int64_t* rows,
-                    int64_t row_numel)
+                    int64_t row_numel, int64_t row_count)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -194,28 +197,33 @@ struct SparseAdamFunctor {
         param_(param),
         param_out_(param_out),
         rows_(rows),
-        row_numel_(row_numel) {}
+        row_numel_(row_numel),
+        row_count_(row_count) {}
 
   inline HOSTDEVICE void operator()(size_t i) const {
+    auto row_idx =
+        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+    T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
+
+    // The following code is the same as dense
+    T mom1 = moment1_[i];
+    T mom2 = moment2_[i];
+    T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
-    for (int64_t j = 0; j < row_numel_; ++j) {
-      T g = grad_[i * row_numel_ + j];
-      T mom1 = moment1_[rows_[i] * row_numel_ + j];
-      T mom2 = moment2_[rows_[i] * row_numel_ + j];
-      T lr = *lr_;
-      T p = param_[rows_[i] * row_numel_ + j];
+    T p = param_[i];
 
-      lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+    // Calculation
+    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-      mom1 = beta1_ * mom1 + (1 - beta1_) * g;
-      mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-      p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
+    p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
 
-      moment1_out_[rows_[i] * row_numel_ + j] = mom1;
-      moment2_out_[rows_[i] * row_numel_ + j] = mom2;
-      param_out_[rows_[i] * row_numel_ + j] = p;
-    }  // for col id
+    // Write back to global memory
+    moment1_out_[i] = mom1;
+    moment2_out_[i] = mom2;
+    param_out_[i] = p;
   }
 };
 
@@ -223,6 +231,12 @@ template <typename DeviceContext, typename T>
 class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const auto* param_var = ctx.InputVar("Param");
+    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Param").front(), param_var->Type().name());
+
     using paddle::framework::LoDTensor;
     using paddle::operators::detail::Ref;
 
@@ -283,24 +297,46 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
       if (grad.rows().size() == 0) {
-        VLOG(3) << "grad row size is 0!!";
+        VLOG(30) << "grad row size is 0!!";
         return;
       }
-      // merge duplicated rows if any.
-      scatter::MergeAdd<DeviceContext, T> merge_func;
-      auto grad_merge =
-          merge_func(ctx.template device_context<DeviceContext>(), grad);
+
+      std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
+      bool is_strict_sorted = true;
+      for (size_t i = 1; i < cpu_rows.size(); ++i) {
+        if (cpu_rows[i - 1] >= cpu_rows[i]) {
+          is_strict_sorted = false;
+          break;
+        }
+      }
+
+      const framework::SelectedRows* grad_merge_ptr;
+      if (is_strict_sorted) {
+        grad_merge_ptr = &grad;
+      } else {
+        // merge duplicated rows if any.
+        // The rows of grad_merge have been sorted inside MergeAdd functor
+        scatter::MergeAdd<DeviceContext, T> merge_func;
+        auto* grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
+                                   .Var()
+                                   ->GetMutable<framework::SelectedRows>();
+        merge_func(ctx.template device_context<DeviceContext>(), grad,
+                   grad_merge_var);
+        grad_merge_ptr = grad_merge_var;
+      }
+
+      auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      int64_t* rows = nullptr;
-// When compiled without CUDA, the CUDAMutableData() interface should not be
+      const int64_t* rows = nullptr;
+// When compiled without CUDA, the CUDAData() interface should not be
 // provided.
 #if defined(PADDLE_WITH_CUDA)
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = grad_merge.mutable_rows()->CUDAMutableData(ctx.GetPlace());
+        rows = grad_merge.rows().CUDAData(ctx.GetPlace());
       } else {
 #endif
-        rows = grad_merge.mutable_rows()->data();
+        rows = grad_merge.rows().data();
 
 #if defined(PADDLE_WITH_CUDA)
       }
@@ -314,10 +350,11 @@ class AdamOpKernel : public framework::OpKernel<T> {
           mom2.template data<T>(),
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           lr.template data<T>(), grad_data, param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel);
+          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+          grad_merge.rows().size());
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(ctx.device_context()),
-          grad_merge.rows().size());
+          param.numel());
       for_range(functor);
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");

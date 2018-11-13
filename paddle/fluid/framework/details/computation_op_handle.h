@@ -32,6 +32,12 @@ struct ComputationOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  const Scope *GetScope() const { return scope_; }
+
+  const platform::Place &GetPlace() const { return place_; }
+
+  void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }
+
  protected:
   void RunImpl() override;
 
@@ -41,6 +47,7 @@ struct ComputationOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
   platform::Place place_;
+  bool is_lock_and_record_event_free_{false};
 };
 }  // namespace details
 }  // namespace framework

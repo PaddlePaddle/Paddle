@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -27,7 +26,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO) << "convert a fluid elementwise op to tensorrt IScaleLayer";
+    VLOG(3) << "convert a fluid elementwise op to tensorrt IScaleLayer";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
@@ -40,10 +39,17 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-    auto* weight_data = Y_t->mutable_data<float>(platform::CPUPlace());
+
+    platform::CPUPlace cpu_place;
+    std::unique_ptr<framework::LoDTensor> weight_tensor(
+        new framework::LoDTensor());
+    weight_tensor->Resize(Y_t->dims());
+    TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
+    auto* weight_data =
+        weight_tensor->mutable_data<float>(platform::CPUPlace());
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
-    std::vector<int> dims_y = framework::vectorize2int(Y_t->dims());
+    std::vector<int> dims_y = framework::vectorize2int(weight_tensor->dims());
     if (static_cast<int>(dims_y.size()) == dims_x.nbDims + 1) {
       if (dims_y[0] == 1) dims_y.erase(dims_y.begin());
     }
@@ -70,9 +76,9 @@ class ElementwiseWeightOpConverter : public OpConverter {
       PADDLE_THROW("TensorRT unsupported weight Shape for Elementwise op!");
     }
 
-    TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
-                                         static_cast<void*>(weight_data),
-                                         Y_t->memory_size() / sizeof(float)};
+    TensorRTEngine::Weight shift_weights{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+        weight_tensor->memory_size() / sizeof(float)};
     TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT, nullptr,
                                          0};
     TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
@@ -82,6 +88,10 @@ class ElementwiseWeightOpConverter : public OpConverter {
         engine_, Scale, *const_cast<nvinfer1::ITensor*>(X), scale_mode,
         shift_weights.get(), scale_weights.get(), power_weights.get());
     auto output_name = op_desc.Output("Out")[0];
+
+    layer->setName(("elementwise_add (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
+    engine_->weight_map[op_desc.Input("Y").front()] = std::move(weight_tensor);
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.
@@ -98,7 +108,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO) << "convert a fluid elementwise op to tensorrt IScaleLayer";
+    VLOG(3) << "convert a fluid elementwise op to tensorrt IScaleLayer";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
@@ -129,6 +139,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
         *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
 
     auto output_name = op_desc.Output("Out")[0];
+    layer->setName(("elementwise (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.

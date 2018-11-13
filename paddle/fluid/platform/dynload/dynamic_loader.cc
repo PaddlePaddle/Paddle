@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
-#include <dlfcn.h>
-
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -23,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
@@ -73,8 +72,8 @@ static inline std::string join(const std::string& part1,
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
-  VLOG(3) << "Try to find library: " << dso_path
-          << " from default system path.";
+  VLOG(30) << "Try to find library: " << dso_path
+           << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
@@ -108,7 +107,11 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
                                                const std::string& dso_name,
                                                bool throw_on_error = true) {
+#if !defined(_WIN32)
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
+#else
+  int dynload_flags = 0;
+#endif  // !_WIN32
   void* dso_handle = nullptr;
 
   std::string dlPath = dso_name;
@@ -118,10 +121,21 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     // search xxx.so from custom path
     dlPath = join(search_root, dso_name);
     dso_handle = dlopen(dlPath.c_str(), dynload_flags);
+#if !defined(_WIN32)
+    auto errorno = dlerror();
+#else
+    auto errorno = GetLastError();
+#endif  // !_WIN32
     // if not found, search from default path
     if (nullptr == dso_handle) {
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
-                   << dlerror() << ")";
+                   << errorno << ")";
+      if (dlPath.find("nccl") != std::string::npos) {
+        std::cout
+            << "You may need to install 'nccl2' from NVIDIA official website: "
+            << "https://developer.nvidia.com/nccl/nccl-download"
+            << "before install PaddlePaddle" << std::endl;
+      }
       dlPath = dso_name;
       dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
     }
@@ -134,10 +148,15 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
       "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
+#if !defined(_WIN32)
+  auto errorno = dlerror();
+#else
+  auto errorno = GetLastError();
+#endif  // !_WIN32
   if (throw_on_error) {
-    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, dlerror());
+    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, errorno);
   } else if (nullptr == dso_handle) {
-    LOG(WARNING) << string::Sprintf(error_msg, dlPath, dlerror());
+    LOG(WARNING) << string::Sprintf(error_msg, dlPath, errorno);
   }
 
   return dso_handle;

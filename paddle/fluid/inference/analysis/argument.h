@@ -26,6 +26,7 @@
 #include <string>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace inference {
@@ -58,6 +59,47 @@ struct Argument {
 
   // The output storage path of ModelStorePass.
   std::unique_ptr<std::string> model_output_store_path;
+
+  // Support for any other attributes.
+  template <typename T>
+  void Set(const std::string& key, T* data) {
+    PADDLE_ENFORCE_NOT_NULL(data);
+    PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
+                   key);
+    attrs_[key] = data;
+    attr_deleters_[key] = [data, key]() {
+      VLOG(30) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+      VLOG(30) << "argument delete attr: " << key;
+      delete data;
+    };
+  }
+
+  bool Has(const std::string& name) const { return attrs_.count(name); }
+
+  template <typename T>
+  T* Release(const std::string& key) {
+    PADDLE_ENFORCE(attrs_.count(key));
+    auto* res = boost::any_cast<T*>(attrs_.at(key));
+    attrs_.erase(key);
+    attr_deleters_.erase(key);
+    return res;
+  }
+
+  template <typename T>
+  T& Get(const std::string& key) {
+    PADDLE_ENFORCE(Has(key));
+    return *boost::any_cast<T*>(attrs_.at(key));
+  }
+
+  ~Argument() {
+    for (auto& item : attr_deleters_) {
+      item.second();
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, boost::any> attrs_;
+  std::unordered_map<std::string, std::function<void()>> attr_deleters_;
 };
 
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)

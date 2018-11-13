@@ -380,7 +380,8 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    depthwiseConv(dev_ctx, *input, filter, strides, paddings, output);
+    depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                  output);
   }
 };
 
@@ -415,14 +416,14 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
       depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                             paddings, input_grad);
+                             paddings, dilations, input_grad);
     }
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
       depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides, paddings,
-                              filter_grad);
+                              dilations, filter_grad);
     }
   }
 };

@@ -57,6 +57,18 @@ struct variant_caster<V<Ts...>> {
     auto caster = make_caster<T>();
     if (!load_success_ && caster.load(src, convert)) {
       load_success_ = true;
+
+      if (std::is_same<T, std::vector<float>>::value) {
+        auto caster_ints = make_caster<std::vector<int64_t>>();
+        if (caster_ints.load(src, convert)) {
+          VLOG(40) << "This value are floats and int64_ts satisfy "
+                      "simultaneously, will set it's type to "
+                      "std::vector<int64_t>";
+          value = cast_op<std::vector<int64_t>>(caster_ints);
+          return true;
+        }
+      }
+
       value = cast_op<T>(caster);
       return true;
     }
@@ -137,7 +149,10 @@ void BindProgramDesc(pybind11::module *m) {
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
-           });
+           })
+      .def("_version", [](pd::ProgramDesc &self) -> int64_t {
+        return self.Proto()->version().version();
+      });
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -205,18 +220,12 @@ void BindBlockDesc(pybind11::module *m) {
 void BindVarDsec(pybind11::module *m) {
   pybind11::class_<pd::VarDesc> var_desc(*m, "VarDesc", "");
   var_desc
-      .def("name",
-           [](pd::VarDesc &self) {
-             pybind11::bytes name = self.Name();
-             return name;
-           },
-           pybind11::return_value_policy::reference)
+      .def("name", &pd::VarDesc::Name, pybind11::return_value_policy::reference)
       .def("set_name", &pd::VarDesc::SetName)
       .def("set_shape", &pd::VarDesc::SetShape)
       .def("set_shapes", &pd::VarDesc::SetShapes)
       .def("set_dtype", &pd::VarDesc::SetDataType)
       .def("set_dtypes", &pd::VarDesc::SetDataTypes)
-      .def("set_capacity", &pd::VarDesc::SetCapacity)
       .def("shape", &pd::VarDesc::GetShape,
            pybind11::return_value_policy::reference)
       .def("shapes", &pd::VarDesc::GetShapes,
@@ -239,6 +248,7 @@ void BindVarDsec(pybind11::module *m) {
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)
       .value("UINT8", pd::proto::VarType::UINT8)
+      .value("INT8", pd::proto::VarType::INT8)
       .value("INT16", pd::proto::VarType::INT16)
       .value("INT32", pd::proto::VarType::INT32)
       .value("INT64", pd::proto::VarType::INT64)
@@ -252,7 +262,6 @@ void BindVarDsec(pybind11::module *m) {
       .value("STEP_SCOPES", pd::proto::VarType::STEP_SCOPES)
       .value("LOD_RANK_TABLE", pd::proto::VarType::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", pd::proto::VarType::LOD_TENSOR_ARRAY)
-      .value("CHANNEL", pd::proto::VarType::CHANNEL)
       .value("PLACE_LIST", pd::proto::VarType::PLACE_LIST)
       .value("READER", pd::proto::VarType::READER)
       .value("RAW", pd::proto::VarType::RAW);
@@ -262,6 +271,8 @@ void BindOpDesc(pybind11::module *m) {
   pybind11::enum_<pd::proto::AttrType>(*m, "AttrType", "")
       .value("INT", pd::proto::AttrType::INT)
       .value("INTS", pd::proto::AttrType::INTS)
+      .value("LONG", pd::proto::AttrType::LONG)
+      .value("LONGS", pd::proto::AttrType::LONGS)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
       .value("STRING", pd::proto::AttrType::STRING)
@@ -286,12 +297,12 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_output", &pd::OpDesc::SetOutput)
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
-      .def("rename_input", &pd::OpDesc::RenameInput)
-      .def("rename_output", &pd::OpDesc::RenameOutput)
+      .def("_rename_input", &pd::OpDesc::RenameInput)
+      .def("_rename_output", &pd::OpDesc::RenameOutput)
       .def("has_attr", &pd::OpDesc::HasAttr)
       .def("attr_type", &pd::OpDesc::GetAttrType)
       .def("attr_names", &pd::OpDesc::AttrNames)
-      .def("set_attr", &pd::OpDesc::SetAttr)
+      .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
@@ -301,8 +312,8 @@ void BindOpDesc(pybind11::module *m) {
              std::string ser(seriralized);
              self.SetAttr(name, ser);
            })
-      .def("block_attr_id", &pd::OpDesc::GetBlockAttrId)
-      .def("blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
+      .def("_block_attr_id", &pd::OpDesc::GetBlockAttrId)
+      .def("_blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)

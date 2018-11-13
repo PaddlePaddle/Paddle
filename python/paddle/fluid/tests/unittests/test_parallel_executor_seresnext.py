@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
 import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu
@@ -46,7 +48,7 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
 
     squeeze = fluid.layers.fc(input=pool,
-                              size=num_channels / reduction_ratio,
+                              size=num_channels // reduction_ratio,
                               act='relu')
     excitation = fluid.layers.fc(input=squeeze,
                                  size=num_channels,
@@ -62,7 +64,7 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         num_filters=num_filters,
         filter_size=filter_size,
         stride=stride,
-        padding=(filter_size - 1) / 2,
+        padding=(filter_size - 1) // 2,
         groups=groups,
         act=None,
         bias_attr=False)
@@ -228,6 +230,46 @@ class TestResnet(TestParallelExecutorBase):
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
+        if not use_cuda:
+            return
+
+        all_reduce_first_loss_seq, all_reduce_last_loss_seq = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            use_reduce=False,
+            optimizer=optimizer,
+            enable_sequential_execution=True)
+
+        reduce_first_loss_seq, reduce_last_loss_seq = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            use_reduce=True,
+            optimizer=optimizer,
+            enable_sequential_execution=True)
+
+        for loss in zip(all_reduce_first_loss, all_reduce_first_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        for loss in zip(all_reduce_last_loss, all_reduce_last_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
+        for loss in zip(reduce_first_loss, reduce_first_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        for loss in zip(reduce_last_loss, reduce_last_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
+        for loss in zip(all_reduce_first_loss_seq, reduce_first_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
     def _check_resnet_convergence(self,

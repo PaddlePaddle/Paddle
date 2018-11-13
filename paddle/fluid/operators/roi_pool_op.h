@@ -72,7 +72,7 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     int64_t* argmax_data = argmax->mutable_data<int64_t>(ctx.GetPlace());
 
-    const int64_t* rois_data = rois->data<int64_t>();
+    const T* rois_data = rois->data<T>();
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_id = roi_batch_id_data[n];
       int roi_start_w = round(rois_data[0] * spatial_scale);
@@ -171,7 +171,7 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      const int64_t* rois_data = rois->data<int64_t>();
+      const T* rois_data = rois->data<T>();
       const T* out_grad_data = out_grad->data<T>();
       const int64_t* argmax_data = argmax->data<int64_t>();
       T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());

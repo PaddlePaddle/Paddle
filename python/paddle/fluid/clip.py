@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import copy
 import six
 
@@ -73,8 +75,8 @@ class ErrorClipByValue(BaseErrorClipAttr):
         clip_op_desc.set_type("clip")
         clip_op_desc.set_input("X", [grad_name])
         clip_op_desc.set_output("Out", [grad_name])
-        clip_op_desc.set_attr("min", self.min)
-        clip_op_desc.set_attr("max", self.max)
+        clip_op_desc._set_attr("min", self.min)
+        clip_op_desc._set_attr("max", self.max)
 
 
 def error_clip_callback(block, context):
@@ -269,7 +271,8 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                     "All parameters' 'clip_norm' of a same group should be the same"
                 )
 
-        local_norm_var = layers.reduce_sum(input=layers.pow(x=grad, factor=2.0))
+        square = grad * grad
+        local_norm_var = layers.reduce_sum(input=square)
         context[self.group_name].append(local_norm_var)
 
         self.context = context
@@ -278,7 +281,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
-            layers.sqrt(x=group_norm_var, out=group_norm_var)
+            group_norm_var = layers.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,
@@ -329,7 +332,8 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program.optimized_guard([p, g]):
+        with p.block.program._optimized_guard(
+            [p, g]), framework.name_scope('append_clip'):
             clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
             if clip_attr is None:
                 clip_attr = NullGradientClipAttr()
@@ -344,7 +348,8 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program.optimized_guard([p, g]):
+        with p.block.program._optimized_guard(
+            [p, g]), framework.name_scope('append_graident_clip'):
             res.append(clip_attr._create_operators(param=p, grad=g))
 
     return res

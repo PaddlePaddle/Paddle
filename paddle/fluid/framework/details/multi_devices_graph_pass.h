@@ -40,28 +40,22 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
                          size_t device_id) const;
   void Init() const;
 
- private:
-  mutable std::string loss_var_name_;
-  mutable std::vector<platform::Place> places_;
-  mutable std::vector<Scope *> local_scopes_;
-  mutable std::unordered_set<std::string> grad_names_;
-
 #ifdef PADDLE_WITH_CUDA
   mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
-  int GetVarDeviceID(const ir::Graph &graph, const std::string &varname) const;
+  int GetVarDeviceID(
+      const ir::Graph &graph, const std::string &varname,
+      const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
-  void CreateRPCOp(ir::Graph *result, ir::Node *node) const;
-  void CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
-
-  /**
-   * Is this operator as the end-point operator before/after send operator.
-   */
-  bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
-                     const std::vector<std::string> &recv_vars) const;
+  int CreateRPCOp(
+      ir::Graph *result, ir::Node *node,
+      std::unordered_map<std::string, int> *sharded_var_device) const;
+  int CreateDistTrainOp(
+      ir::Graph *result, ir::Node *node,
+      std::unordered_map<std::string, int> *sharded_var_device) const;
 
   std::vector<std::string> FindDistTrainSendVars(
       const std::vector<ir::Node *> &nodes) const;
@@ -69,25 +63,21 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   std::vector<std::string> FindDistTrainRecvVars(
       const std::vector<ir::Node *> &nodes) const;
 
-  void ConnectOp(ir::Graph *result, OpHandleBase *op,
-                 const std::string &prev_op_name) const;
-
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
   void CreateScaleLossGradOp(ir::Graph *result,
-                             const std::string &loss_grad_name) const;
+                             const std::string &loss_grad_name,
+                             ir::Node *out_var_node) const;
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
                              int dev_id) const;
 
-  bool IsParameterGradientOnce(
-      const std::string &og,
-      std::unordered_set<std::string> *og_has_been_broadcast) const;
-
-  int GetOpDeviceID(const ir::Graph &graph, ir::Node *node) const;
+  int GetOpDeviceID(
+      const ir::Graph &graph, ir::Node *node,
+      const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
 
@@ -97,18 +87,26 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
+  void CreateFusedBroadcastOp(
+      ir::Graph *result,
+      const std::vector<std::unordered_set<std::string>> &bcast_varnames) const;
+
   bool IsSparseGradient(const std::string &og) const;
 
   size_t GetAppropriateDeviceID(
       const std::vector<std::string> &var_names) const;
 
- private:
+  void SetCommunicationContext(OpHandleBase *op_handle,
+                               const platform::Place &p) const;
+
+  mutable std::string loss_var_name_;
+  mutable std::vector<platform::Place> places_;
+  mutable std::vector<Scope *> local_scopes_;
+  mutable std::unordered_set<std::string> grad_names_;
+
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
   mutable std::vector<int64_t> balance_vars_;
-
-  void SetCommunicationContext(OpHandleBase *op_handle,
-                               const platform::Place &p) const;
 };
 }  // namespace details
 }  // namespace framework

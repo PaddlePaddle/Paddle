@@ -14,9 +14,9 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
-#include <dlfcn.h>
 
 #include <mutex>  // NOLINT
+#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
@@ -44,7 +44,7 @@ extern void *curand_dso_handle;
   struct DynLoad__##__name {                     \
     template <typename... Args>                  \
     curandStatus_t operator()(Args... args) {    \
-      return __name(args...);                    \
+      return ::__name(args...);                  \
     }                                            \
   };                                             \
   extern DynLoad__##__name __name

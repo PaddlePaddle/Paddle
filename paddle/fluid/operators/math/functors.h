@@ -18,6 +18,19 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+// MulFunctor
+template <typename T>
+struct MulFunctor {
+  // out = x * y;
+  inline HOSTDEVICE T operator()(T x, T y) { return x * y; }
+};
+
+template <typename T>
+struct MulGradFunctor {
+  inline HOSTDEVICE T Dx(T x, T y) { return y; }
+  inline HOSTDEVICE T Dy(T x, T y) { return x; }
+};
+
 // AddFunctor
 template <typename T>
 struct AddFunctor {
@@ -27,9 +40,8 @@ struct AddFunctor {
 
 template <typename T>
 struct AddGradFunctor {
-  inline HOSTDEVICE T operator()(T x, T y) { return 1; }
-
-  inline HOSTDEVICE T operator()(T x, T y, T out) const { return 1; }
+  inline HOSTDEVICE T Dx(T x, T y) { return 1; }
+  inline HOSTDEVICE T Dy(T x, T y) { return 1; }
 };
 
 template <typename T>
@@ -46,9 +58,9 @@ template <typename T>
 struct ScaleGradFunctor {
   explicit ScaleGradFunctor(T coeff) : coeff_(coeff) {}
 
-  inline HOSTDEVICE T operator()(T x) { return coeff_; }
-
-  inline HOSTDEVICE T operator()(T x, T out) { return coeff_; }
+  inline HOSTDEVICE T UseX(T x) { return coeff_; }
+  inline HOSTDEVICE T UseOut(T out) { return coeff_; }
+  inline HOSTDEVICE T UseXAndOut(T x, T out) { return coeff_; }
 
  private:
   T coeff_;
@@ -61,9 +73,9 @@ struct ReluFunctor {
 
 template <typename T>
 struct ReluGradFunctor {
-  inline HOSTDEVICE T operator()(T x) { return x > 0 ? 1 : 0; }
-
-  inline HOSTDEVICE T operator()(T x, T out) { return x > 0 ? 1 : 0; }
+  inline HOSTDEVICE T UseX(T x) { return x > 0 ? 1 : 0; }
+  inline HOSTDEVICE T UseOut(T out) { return out > 0 ? 1 : 0; }
+  inline HOSTDEVICE T UseXAndOut(T x, T out) { return out > 0 ? 1 : 0; }
 };
 
 }  // namespace math

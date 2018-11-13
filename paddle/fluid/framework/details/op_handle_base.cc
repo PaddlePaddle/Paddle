@@ -103,7 +103,7 @@ void OpHandleBase::WaitInputVarGenerated() {
 void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
   for (auto *in : inputs_) {
     if (NeedWait(in)) {
-      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[place]);
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(place));
     }
   }
 }
@@ -156,6 +156,16 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
 #else
   callback();
 #endif
+}
+
+size_t OpHandleBase::NotReadyInputSize() const {
+  std::unordered_set<VarHandleBase *> res;
+  for (auto *var : inputs_) {
+    if (var->GeneratedOp() != nullptr) {
+      res.emplace(var);
+    }
+  }
+  return res.size();
 }
 
 }  // namespace details

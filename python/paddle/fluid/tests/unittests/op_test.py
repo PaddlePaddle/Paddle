@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import random
+import six
 import time
 import itertools
 import collections
@@ -26,15 +29,13 @@ from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
-from functools import reduce
-from six.moves import zip
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
         0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
     prob_sum = prob.sum(axis=1)
-    for i in range(len(prob)):
+    for i in six.moves.xrange(len(prob)):
         prob[i] /= prob_sum[i]
     return prob
 
@@ -51,15 +52,7 @@ def get_numeric_gradient(place,
     set_input(scope, op, inputs, place)
 
     def product(dim):
-        return reduce(lambda a, b: a * b, dim, 1)
-
-    def get_output():
-        sum = []
-        for output_name in output_names:
-            op.run(scope, place)
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).mean()
+        return six.moves.reduce(lambda a, b: a * b, dim, 1)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -75,6 +68,15 @@ def get_numeric_gradient(place,
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
+
+    def get_output():
+        sum = []
+        op.run(scope, place)
+        for output_name in output_names:
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).astype(
+                    tensor_to_check_dtype).mean())
+        return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 
@@ -103,7 +105,7 @@ def get_numeric_gradient(place,
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
-    for i in range(tensor_size):
+    for i in six.moves.xrange(tensor_size):
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -161,7 +163,7 @@ class OpTest(unittest.TestCase):
             assert isinstance(
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
-            for var_name, var_value in numpy_dict.items():
+            for var_name, var_value in six.iteritems(numpy_dict):
                 if isinstance(var_value, (np.ndarray, np.generic)):
                     self.try_call_once(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):
@@ -225,7 +227,7 @@ class OpTest(unittest.TestCase):
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
-        for name, value in numpy_inputs.items():
+        for name, value in six.iteritems(numpy_inputs):
             if isinstance(value, list):
                 var_list = [
                     block.var(sub_name) for sub_name, sub_value in value
@@ -245,7 +247,7 @@ class OpTest(unittest.TestCase):
         outs, _ = self._calc_output(place)
         return outs
 
-    def _calc_output(self, place, parallel=False):
+    def _calc_output(self, place, parallel=False, no_check_set=None):
 
         program = Program()
         block = program.global_block()
@@ -268,7 +270,9 @@ class OpTest(unittest.TestCase):
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
         if len(fetch_list) == 0:
-            for var_name, var in outputs.items():
+            for var_name, var in six.iteritems(outputs):
+                if no_check_set is not None and var_name in no_check_set:
+                    continue
                 if isinstance(var, list):
                     for v in var:
                         fetch_list.append(v)
@@ -287,10 +291,16 @@ class OpTest(unittest.TestCase):
                             return_numpy=False)
         return outs, fetch_list
 
-    def check_output_with_place(self, place, atol):
-        outs, fetch_list = self._calc_output(place)
+    def check_output_with_place(self,
+                                place,
+                                atol,
+                                no_check_set=None,
+                                equal_nan=False):
+        outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
+                continue
+            if no_check_set is not None and out_name in no_check_set:
                 continue
 
             def find_actual(target_name, fetch_list):
@@ -317,7 +327,7 @@ class OpTest(unittest.TestCase):
                         if isinstance(expect, tuple) else expect
                     self.assertTrue(
                         np.allclose(
-                            actual_t, expect_t, atol=atol),
+                            actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
                     if isinstance(expect, tuple):
@@ -333,10 +343,10 @@ class OpTest(unittest.TestCase):
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
                     np.allclose(
-                        actual_t, expect_t, atol=atol),
+                        actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
-                    str(actual_t))
+                    str(actual_t) + " in class " + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
@@ -356,22 +366,23 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_output(self, atol=1e-5):
+    def check_output(self, atol=1e-5, no_check_set=None, equal_nan=False):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol)
+            self.check_output_with_place(place, atol, no_check_set, equal_nan)
 
     def check_output_customized(self, checker):
         places = self._get_places()
         for place in places:
             outs = self.calc_output(place)
             outs = [np.array(out) for out in outs]
+            outs.sort(key=len)
             checker(outs)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
 
-        for a, b, name in zip(numeric_grads, analytic_grads, names):
+        for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
             abs_a[abs_a < 1e-3] = 1
 

@@ -24,9 +24,9 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceEraseOp should not be null.");
+                   "Input(X) of SequenceErase operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceEraseOp should not be null.");
+                   "Output(Out) of SequenceErase operator should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
                    "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "

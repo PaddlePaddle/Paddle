@@ -18,12 +18,26 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+bool to_skip_merging_optimize(TensorRTEngine* engine_,
+                              const std::vector<int>& filters,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              std::string input_name) {
+  if (engine_->itensor_quote_num[input_name] > 0) {
+    return true;
+  }
+  if (filters[0] == 1 && filters[1] == 1 && strides[0] == 1 &&
+      strides[1] == 1 && paddings[0] == 0 && paddings[1] == 0)
+    engine_->itensor_quote_num[input_name] += 1;
+
+  return false;
+}
+
 class Conv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    LOG(INFO)
-        << "convert a fluid conv2d op to tensorrt conv layer without bias";
+    VLOG(3) << "convert a fluid conv2d op to tensorrt conv layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
@@ -31,16 +45,25 @@ class Conv2dOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1);
 
     auto* X = engine_->GetITensor(op_desc.Input("Input").front());
+
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-    auto* weight_data = Y_t->mutable_data<float>(platform::CPUPlace());
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL);
-    const int n_output = Y_t->dims()[0];
-    const int filter_h = Y_t->dims()[2];
-    const int filter_w = Y_t->dims()[3];
+    platform::CPUPlace cpu_place;
+    std::unique_ptr<framework::LoDTensor> weight_tensor(
+        new framework::LoDTensor());
+    weight_tensor->Resize(Y_t->dims());
+    TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
+
+    auto* weight_data =
+        weight_tensor->mutable_data<float>(platform::CPUPlace());
+
+    PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
+    const int n_output = weight_tensor->dims()[0];
+    const int filter_h = weight_tensor->dims()[2];
+    const int filter_w = weight_tensor->dims()[3];
 
     const int groups = boost::get<int>(op_desc.GetAttr("groups"));
     const std::vector<int> dilations =
@@ -57,7 +80,7 @@ class Conv2dOpConverter : public OpConverter {
 
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
-                                  Y_t->memory_size() / sizeof(float)};
+                                  weight_tensor->memory_size() / sizeof(float)};
 
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
     auto* layer = TRT_ENGINE_ADD_LAYER(
@@ -70,8 +93,15 @@ class Conv2dOpConverter : public OpConverter {
     layer->setNbGroups(groups);
 
     auto output_name = op_desc.Output("Output").front();
+    layer->setName(("conv2d (Output: " + output_name + ")").c_str());
+    engine_->weight_map[op_desc.Input("Filter").front()] =
+        std::move(weight_tensor);
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
+
+    if (test_mode ||
+        to_skip_merging_optimize(engine_, {filter_h, filter_w}, strides,
+                                 paddings, op_desc.Input("Input").front())) {
       engine_->DeclareOutput(output_name);
     }
   }

@@ -98,10 +98,10 @@ class SGDOpKernel : public framework::OpKernel<T> {
 
       auto param_row_width = param.value().dims()[1];
       auto grad_row_width = grad.value().dims()[1];
-      VLOG(4) << " param rows: " << param.rows().size()
-              << " param memory rows: " << param.value().dims()[0]
-              << " grad rows: " << grad.rows().size()
-              << " grad memory rows: " << grad.value().dims()[0];
+      VLOG(40) << " param rows: " << param.rows().size()
+               << " param memory rows: " << param.value().dims()[0]
+               << " grad rows: " << grad.rows().size()
+               << " grad memory rows: " << grad.value().dims()[0];
       PADDLE_ENFORCE_EQ(param_row_width, grad_row_width,
                         "param_row should have the same size with grad_row");
 
@@ -111,7 +111,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < grad.rows().size(); i++) {
         PADDLE_ENFORCE(grad.rows()[i] < grad.height(),
                        "Input rows index should less than height");
-        int64_t id_index = param.Index(grad.rows()[i]);
+        int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {

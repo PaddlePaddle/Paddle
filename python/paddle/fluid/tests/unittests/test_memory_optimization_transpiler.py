@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 
+import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
@@ -65,6 +66,35 @@ class TestMemoryTranspiler2(unittest.TestCase):
         result_program = memory_optimize(self.program)
         print("after optimization")
         print(str(result_program))
+
+
+class TestMemoryTranspiler3(unittest.TestCase):
+    def setUp(self):
+        program = Program()
+        with program_guard(program, startup_program=Program()):
+            word = fluid.layers.data(name='word', shape=[1], dtype='int64')
+            emb = [
+                fluid.layers.embedding(
+                    word, size=[65536, 256], param_attr='emb') for _ in range(6)
+            ]
+
+            left = emb.pop(0)
+            while len(emb) != 0:
+                right = emb.pop(0)
+                left = fluid.layers.concat([left, right])
+            emb = fluid.layers.mean(left)
+            fluid.backward.append_backward(emb)
+        self.program = program
+
+    def test_cascade_reuse(self):
+        block = self.program.block(0)
+        # variable reuse in programdesc
+        # TODO(dzhwinter): confirm cascade strategy. disable temporialy
+        self.assertTrue("concat_4.tmp_0@GRAD" in block.vars)
+        # self.assertTrue("concat_3.tmp_0@GRAD" not in block.vars)
+        # self.assertTrue("concat_2.tmp_0@GRAD" not in block.vars)
+        # self.assertTrue("concat_1.tmp_0@GRAD" not in block.vars)
+        # self.assertTrue("concat_0.tmp_0@GRAD" not in block.vars)
 
 
 if __name__ == "__main__":

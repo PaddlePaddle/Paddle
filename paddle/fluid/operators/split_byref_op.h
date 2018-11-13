@@ -32,7 +32,7 @@ class SplitByrefOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < outs.size(); ++i) {
       // NOTE: no need to call mutable_data here to allocate memory.
       auto* out = outs[i];
-      VLOG(3) << "spliting by ref: " << row_offset << " " << out->dims()[0];
+      VLOG(30) << "spliting by ref: " << row_offset << " " << out->dims()[0];
       *out = in->Slice(row_offset, row_offset + out->dims()[0]);
       row_offset += out->dims()[0];
     }

@@ -46,19 +46,28 @@ inline T* Tensor::data() {
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
+inline T* Tensor::mutable_data(DDim dims, platform::Place place,
+                               size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
-  return mutable_data<T>(place);
+  return mutable_data<T>(place, requested_size);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place) {
+inline T* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, typeid(T)));
+  return reinterpret_cast<T*>(mutable_data(place, typeid(T), requested_size));
 }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
+  int rank = src.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank, 2,
+      "'ReshapeToMatrix()' is only used for flatten high rank "
+      "tensors to matrixs. Can not be used in reshaping vectors.");
+  if (rank == 2) {
+    return src;
+  }
   Tensor res;
   res.ShareDataWith(src);
   res.Resize(flatten_to_2d(src.dims(), num_col_dims));

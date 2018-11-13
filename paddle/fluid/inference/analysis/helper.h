@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <sys/stat.h>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -149,6 +150,23 @@ static framework::proto::ProgramDesc LoadProgramDesc(
   framework::proto::ProgramDesc program_desc;
   program_desc.ParseFromString(buffer);
   return program_desc;
+}
+
+static bool FileExists(const std::string &filepath) {
+  std::ifstream file(filepath);
+  bool exists = file.is_open();
+  file.close();
+  return exists;
+}
+
+static bool PathExists(const std::string &path) {
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) != -1) {
+    if (S_ISDIR(statbuf.st_mode)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace analysis

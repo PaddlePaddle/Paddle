@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/node.h"
 
@@ -63,8 +64,11 @@ class SubGraphFuse {
  public:
   using NodeInsideSubgraphTeller = SubGraphSplitter::NodeInsideSubgraphTeller;
 
-  SubGraphFuse(DataFlowGraph *graph, const NodeInsideSubgraphTeller &teller)
-      : graph_(graph), node_inside_subgraph_teller_(teller) {}
+  SubGraphFuse(DataFlowGraph *graph, const NodeInsideSubgraphTeller &teller,
+               Argument *argument)
+      : graph_(graph),
+        node_inside_subgraph_teller_(teller),
+        argument_(argument) {}
 
   // The main method which run all the logic.
   void operator()();
@@ -76,6 +80,7 @@ class SubGraphFuse {
  private:
   DataFlowGraph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
+  Argument *argument_;
 };
 
 }  // namespace analysis

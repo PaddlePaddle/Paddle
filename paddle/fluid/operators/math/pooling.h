@@ -18,14 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-#define FLT_MAX \
-  __FLT_MAX__  // TODO(zcd) :It might need to be placed in another file, but I'm
-               // still wondering where to put it.
 
 /*
  * \brief Extracting simple operations from pooling.
@@ -92,7 +89,7 @@ class Pool2dFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* output);
+                  bool exclusive, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -104,7 +101,7 @@ class Pool2dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* input_grad);
+                  bool exclusive, framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, class T>
@@ -126,7 +123,7 @@ class Pool3dFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* output);
+                  bool exclusive, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -138,7 +135,7 @@ class Pool3dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* input_grad);
+                  bool exclusive, framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, class T>

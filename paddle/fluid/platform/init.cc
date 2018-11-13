@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -44,7 +45,7 @@ void InitGflags(std::vector<std::string> argv) {
       line += ' ';
     }
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
+    VLOG(10) << "Init commandline: " << line;
   });
 }
 
@@ -84,9 +85,6 @@ void InitDevices(bool init_p2p) {
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
-#else
-  LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
 #endif
   InitDevices(init_p2p, devices);
 }
@@ -100,9 +98,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
-#else
-  LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
 #endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
@@ -119,6 +114,52 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   platform::DeviceContextPool::Init(places);
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
+#endif
+
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
+  if (platform::jit::MayIUse(platform::jit::avx)) {
+#ifndef __AVX__
+    LOG(WARNING) << "AVX is available, Please re-compile on local machine";
+#endif
+  }
+
+// Throw some informations when CPU instructions mismatch.
+#define AVX_GUIDE(compiletime, runtime)                                     \
+  LOG(FATAL)                                                                \
+      << "This version is compiled on higher instruction(" #compiletime     \
+         ") system, you may encounter illegal instruction error running on" \
+         " your local CPU machine. Please reinstall the " #runtime          \
+         " version or compile from source code."
+
+#ifdef __AVX512F__
+  if (!platform::jit::MayIUse(platform::jit::avx512f)) {
+    if (platform::jit::MayIUse(platform::jit::avx2)) {
+      AVX_GUIDE(AVX512, AVX2);
+    } else if (platform::jit::MayIUse(platform::jit::avx)) {
+      AVX_GUIDE(AVX512, AVX);
+    } else {
+      AVX_GUIDE(AVX512, NonAVX);
+    }
+  }
+#endif
+
+#ifdef __AVX2__
+  if (!platform::jit::MayIUse(platform::jit::avx2)) {
+    if (platform::jit::MayIUse(platform::jit::avx)) {
+      AVX_GUIDE(AVX2, AVX);
+    } else {
+      AVX_GUIDE(AVX2, NonAVX);
+    }
+  }
+#endif
+
+#ifdef __AVX__
+  if (!platform::jit::MayIUse(platform::jit::avx)) {
+    AVX_GUIDE(AVX, NonAVX);
+  }
+#endif
+#undef AVX_GUIDE
+
 #endif
 }
 

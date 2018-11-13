@@ -25,7 +25,7 @@ struct FillOpVisitor {
       : tensor_(tensor), value_(value) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     platform::CPUPlace cpu;
     auto *data = tensor_->mutable_data<T>(cpu);
     std::transform(value_.data(), value_.data() + tensor_->numel(), data,

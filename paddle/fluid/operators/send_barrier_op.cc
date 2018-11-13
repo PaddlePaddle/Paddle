@@ -37,28 +37,30 @@ class SendBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-    bool sync_mode = Attr<bool>("sync_mode");
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
-    VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
+    VLOG(30) << "SendBarrierOp sync";
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
-    if (sync_mode) {
-      for (auto& ep : eps) {
-        VLOG(3) << "send barrier, ep: " << ep;
-        rpc_client->AsyncSendBatchBarrier(ep);
-      }
-      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+    for (auto& ep : eps) {
+      VLOG(30) << "send barrier, ep: " << ep;
+      rpc_client->AsyncSendBatchBarrier(ep);
     }
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 
 class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
+        .AsDuplicable();
     AddComment(R"DOC(
 SendBarrier operator
 
@@ -66,11 +68,11 @@ This operator will send a send barrier signal to list_and_serv op, so that
 the Parameter Server would knew all variables have been sent.
 )DOC");
 
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 

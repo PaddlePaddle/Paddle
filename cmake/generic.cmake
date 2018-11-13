@@ -110,6 +110,20 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction(find_fluid_modules)
 
+# find all third_party modules is used for paddle static library
+# for reduce the dependency when building the inference libs.
+set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY)
+function(find_fluid_thirdparties TARGET_NAME)
+  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
+  string(FIND "${__target_path}" "third_party" pos)
+  if(pos GREATER 1)
+    get_property(fluid_ GLOBAL PROPERTY FLUID_THIRD_PARTY)
+    set(fluid_third_partys ${fluid_third_partys} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
+  endif()
+endfunction(find_fluid_thirdparties)
+
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
@@ -148,7 +162,8 @@ function(merge_static_libs TARGET_NAME)
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
       )
-  else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+  endif(APPLE)
+  if(LINUX) # general UNIX: use "ar" to extract objects and re-add to a common lib
     set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
 
     foreach(lib ${libs})
@@ -187,7 +202,31 @@ function(merge_static_libs TARGET_NAME)
         COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
         COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
         WORKING_DIRECTORY ${target_DIR})
-  endif()
+  endif(LINUX)
+  if(WIN32) # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    endforeach()
+    # msvc will put libarary in directory of "/Release/xxxlib" by default 
+    #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
+      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib ${libfiles}
+      )
+  endif(WIN32)
 endfunction(merge_static_libs)
 
 function(cc_library TARGET_NAME)
@@ -195,6 +234,10 @@ function(cc_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(WIN32)
+      # add libxxx.lib prefix in windows
+      set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
+  endif(WIN32)
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
@@ -218,10 +261,17 @@ function(cc_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} mklml)
         target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
       endif()
+      # remove link to python, see notes at:
+      # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
+      if("${cc_library_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cc_library_DEPS python)
+        add_dependencies(${TARGET_NAME} python)
+        target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
+      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
-    
+
     # cpplint code style
     foreach(source_file ${cc_library_SRCS})
       string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
@@ -264,11 +314,12 @@ function(cc_test TARGET_NAME)
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (${cc_test_SERIAL})
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-
+    endif()
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    endif()
+    # No unit test should exceed 10 minutes.
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()
 endfunction(cc_test)
 
@@ -332,11 +383,10 @@ function(nv_test TARGET_NAME)
     add_test(${TARGET_NAME} ${TARGET_NAME})
     if (nv_test_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-
+    endif()
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    endif()
   endif()
 endfunction(nv_test)
 
@@ -524,26 +574,26 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${HDRS})
 
   if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")  
+      set(EXTRA_FLAG "lite:")
   else()
-      set(EXTRA_FLAG "") 
+      set(EXTRA_FLAG "")
   endif()
 
   foreach(FIL ${ARGN})
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
-    
+
     set(_protobuf_protoc_src "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
     set(_protobuf_protoc_hdr "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
     list(APPEND ${SRCS} "${_protobuf_protoc_src}")
     list(APPEND ${HDRS} "${_protobuf_protoc_hdr}")
-    
+
     add_custom_command(
       OUTPUT "${_protobuf_protoc_src}"
              "${_protobuf_protoc_hdr}"
 
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
       --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
@@ -588,6 +638,8 @@ function(py_test TARGET_NAME)
              PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    # No unit test should exceed 10 minutes.
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()
 endfunction()
 
@@ -612,7 +664,7 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
   #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
-  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here 
+  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
   protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")

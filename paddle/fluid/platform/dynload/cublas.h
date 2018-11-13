@@ -17,10 +17,10 @@
 #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -55,7 +55,7 @@ extern void *cublas_dso_handle;
   struct DynLoad__##__name {                         \
     template <typename... Args>                      \
     inline cublasStatus_t operator()(Args... args) { \
-      return __name(args...);                        \
+      return ::__name(args...);                      \
     }                                                \
   };                                                 \
   extern DynLoad__##__name __name

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from . import core
 import numpy
 import os
@@ -69,7 +71,7 @@ class DataToLoDTensorConverter(object):
 
     def done(self):
         arr = numpy.array(self.data, dtype=self.dtype)
-        if self.shape:
+        if self.shape and len(arr.shape) != len(self.shape):
             arr = arr.reshape(self.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)

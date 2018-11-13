@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import contextlib
 import six
@@ -320,8 +322,9 @@ class Executor(object):
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
-                assert isinstance(var, Variable) or isinstance(var, str), (
-                    "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
+                assert isinstance(var, Variable) or isinstance(
+                    var, six.string_types), (
+                        "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
                 global_block.append_op(
                     type='fetch',
                     inputs={'X': [var]},
@@ -346,7 +349,7 @@ class Executor(object):
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in range(len(fetch_list))
+            for i in six.moves.range(len(fetch_list))
         ]
         return outs
 

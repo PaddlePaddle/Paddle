@@ -100,20 +100,19 @@ struct NCCLContextMap {
       return;
     }
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
-    // if pass nccl_id here, can assume we are doing multi node training
-    if (nccl_id == nullptr) {
+    // if num_trainers == 1, should create a new nccl id for local comms.
+    if (num_trainers == 1) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
       PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
-      PADDLE_ENFORCE_GT(num_trainers, 1);
-      // TODO(wuyi): need to ensure each node have same number of GPUs
+      PADDLE_ENFORCE_NOT_NULL(nccl_id);
       {
         int nranks = num_trainers * order_.size();
         NCCLGroupGuard gurad;
         for (auto &gpu_id : order_) {
           int rank = trainer_id * order_.size() + gpu_id;
-          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks;
+          VLOG(30) << "init nccl rank: " << rank << " nranks: " << nranks;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
               comms.get() + gpu_id, nranks, *nccl_id, rank));

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -38,6 +40,9 @@ class TestSliceOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 class TestCase1(TestSliceOp):

@@ -23,6 +23,8 @@ http://research.microsoft.com/en-us/um/beijing/projects/letor/LETOR4.0/Data/MQ20
 
 """
 
+from __future__ import print_function
+
 import os
 import functools
 import rarfile

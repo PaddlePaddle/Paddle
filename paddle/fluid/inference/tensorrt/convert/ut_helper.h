@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -48,11 +49,17 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements, 0);
-  auto* data = tensor->mutable_data<float>(place);
+
+  platform::CPUPlace cpu_place;
+  framework::LoDTensor temp_tensor;
+  temp_tensor.Resize(dims);
+  auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
 
   for (size_t i = 0; i < num_elements; i++) {
-    *(data + i) = random(0., 1.);
+    *(temp_data + i) = random(0., 1.);
   }
+
+  TensorCopySync(temp_tensor, place, tensor);
 }
 
 /*
@@ -91,9 +98,17 @@ class TRTConvertValidation {
     engine_->DeclareInput(name, nvinfer1::DataType::kFLOAT, dims);
   }
 
+  void DeclParamVar(const std::string& name, const std::vector<int> dim_vec) {
+    DeclVar(name, dim_vec);
+  }
+
   // Declare a parameter varaible in the scope.
   void DeclParamVar(const std::string& name, const nvinfer1::Dims& dims) {
     DeclVar(name, dims, true);
+  }
+
+  void DeclOutputVar(const std::string& name, const std::vector<int> dim_vec) {
+    DeclVar(name, dim_vec);
   }
 
   void DeclOutputVar(const std::string& name, const nvinfer1::Dims& dims) {
@@ -101,8 +116,8 @@ class TRTConvertValidation {
   }
 
   void DeclVar(const std::string& name, const std::vector<int> dim_vec) {
-    platform::CPUPlace place;
-    platform::CPUDeviceContext ctx(place);
+    platform::CUDAPlace place;
+    platform::CUDADeviceContext ctx(place);
 
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
@@ -141,18 +156,22 @@ class TRTConvertValidation {
       PADDLE_ENFORCE(var);
       auto tensor = var->GetMutable<framework::LoDTensor>();
 
-      engine_->SetInputFromCPU(
+      engine_->SetInputFromGPU(
           input, static_cast<void*>(tensor->data<void>()),
           sizeof(float) *
               analysis::AccuDims(tensor->dims(), tensor->dims().size()));
     }
   }
 
-  void Execute(int batch_size) {
+  // We use the set 'neglected_output' here, because some Ops like batch norm,
+  // the outputs specified in the op des are only used during training,
+  // so we should neglect those output during inference.
+  void Execute(int batch_size,
+               std::unordered_set<std::string> neglected_output = {}) {
     // Execute Fluid Op
     PADDLE_ENFORCE_LE(batch_size, max_batch_size_);
-    platform::CPUPlace place;
-    platform::CPUDeviceContext ctx(place);
+    platform::CUDAPlace place;
+    platform::CUDADeviceContext ctx(place);
     op_->Run(scope_, place);
     // Execute TRT.
     engine_->Execute(batch_size);
@@ -161,6 +180,7 @@ class TRTConvertValidation {
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
     const size_t output_space_size = 3000;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
+      if (neglected_output.count(output)) continue;
       std::vector<float> fluid_out;
       std::vector<float> trt_out(output_space_size);
       engine_->GetOutputInCPU(output, &trt_out[0], output_space_size);

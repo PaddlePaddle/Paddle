@@ -31,16 +31,18 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    auto dims = X->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_x;
-    framework::LoDTensor flattened_out;
-    flattened_x.ShareDataWith(*X).Resize(flattened_dims);
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    int rank = X->dims().size();
+    Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
+    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
 
-    math::SoftmaxFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), &flattened_x,
-        &flattened_out);
+    const bool is_test = context.Attr<bool>("is_test");
+    if (is_test == true) {
+      math::SoftmaxFunctor<DeviceContext, T, true>()(
+          context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
+    } else {
+      math::SoftmaxFunctor<DeviceContext, T, false>()(
+          context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
+    }
   }
 };
 
@@ -55,18 +57,14 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    auto dims = Out->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_out;
-    framework::LoDTensor flattened_d_out;
-    framework::LoDTensor flattened_d_x;
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
-    flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
-    flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
+    int rank = Out->dims().size();
+    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+    Tensor dOut_2d = framework::ReshapeToMatrix(*dOut, rank - 1);
+    Tensor dX_2d = framework::ReshapeToMatrix(*dX, rank - 1);
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), &flattened_out,
-        &flattened_d_out, &flattened_d_x);
+        context.template device_context<DeviceContext>(), &Out_2d, &dOut_2d,
+        &dX_2d);
   }
 };
 

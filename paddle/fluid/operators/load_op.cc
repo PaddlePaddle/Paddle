@@ -92,6 +92,7 @@ class LoadOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
+    selectedRows->SyncIndex();
   }
 };
 

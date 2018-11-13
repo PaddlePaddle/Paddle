@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -35,7 +37,7 @@ def PolygonBoxRestore(input):
     indexes = indexes.repeat(
         [batch_size], axis=0)  # [batch_size, geo_channels/2, 2, h, w]
     return indexes.reshape(
-        input.shape) - input  # [batch_size, geo_channels, h, w]
+        input.shape) * 4 - input  # [batch_size, geo_channels, h, w]
 
 
 class TestPolygonBoxRestoreOp(OpTest):

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -24,18 +26,50 @@ struct MulFunctor {
 };
 
 template <typename DeviceContext, typename T>
+void default_elementwise_mul(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                        MulFunctor<T>(), z);
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_mul(const framework::ExecutionContext& ctx,
+                const framework::Tensor* x, const framework::Tensor* y,
+                framework::Tensor* z) {
+  auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  blas.VMUL(x->numel(), x->data<T>(), y->data<T>(),
+            z->mutable_data<T>(ctx.GetPlace()));
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    !std::is_floating_point<T>::value ||
+    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_mul(const framework::ExecutionContext& ctx,
+                const framework::Tensor* x, const framework::Tensor* y,
+                framework::Tensor* z) {
+  default_elementwise_mul<DeviceContext, T>(ctx, x, y, z);
+}
+
+template <typename DeviceContext, typename T>
 class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          MulFunctor<T>(), z);
+    if (x->numel() == y->numel()) {
+      elementwise_mul<DeviceContext, T>(ctx, x, y, z);
+    } else {
+      default_elementwise_mul<DeviceContext, T>(ctx, x, y, z);
+    }
   }
 };
 
@@ -50,15 +84,16 @@ struct MulGradDY {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMulGradKernel : public framework::OpKernel<T> {
+class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = dout;  // out is not necessary
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");

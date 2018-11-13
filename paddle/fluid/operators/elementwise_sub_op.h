@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
 
 namespace paddle {
@@ -27,11 +28,10 @@ template <typename DeviceContext, typename T>
 class ElementwiseSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
@@ -50,9 +50,10 @@ struct SubGradDY {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseSubGradKernel : public framework::OpKernel<T> {
+class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
