@@ -123,9 +123,11 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   // save input data and layout to be referred in backward path
   auto p_src_data = std::make_shared<const T *>(x_data);
-  if (!is_test) dev_ctx.SetBlob(key_src_data, p_src_data);
   auto p_src_layout = std::make_shared<memory::format>(src_format);
-  if (!is_test) dev_ctx.SetBlob(key_src_layout, p_src_layout);
+  if (!is_test) {
+    dev_ctx.SetBlob(key_src_data, p_src_data);
+    dev_ctx.SetBlob(key_src_layout, p_src_layout);
+  }
 
   auto p_fwd = std::static_pointer_cast<mkldnn::eltwise_forward>(
       dev_ctx.GetBlob(key_fwd));
