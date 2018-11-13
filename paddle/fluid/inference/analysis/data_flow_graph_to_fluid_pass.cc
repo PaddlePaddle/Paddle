@@ -239,9 +239,10 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   framework::BlockDesc block_desc(nullptr, &proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
-  VLOG(4) << "origin variable size: "
-          << argument_->origin_program_desc->blocks(0).vars().size();
-  VLOG(4) << "transformed variable size: " << block_desc.Proto()->vars().size();
+  VLOG(40) << "origin variable size: "
+           << argument_->origin_program_desc->blocks(0).vars().size();
+  VLOG(40) << "transformed variable size: "
+           << block_desc.Proto()->vars().size();
   // copy ops.
 
   for (auto *node : block_node->subgraph) {

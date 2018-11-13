@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
+#include <set>
+#include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -159,10 +162,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
   std::set<std::string> acts({"sigmoid", "tanh", "relu", "identity"});
   PDNode* act = pattern->NewNode(
-      [=](Node* x) {
-        return x && x->IsOp() && acts.count(x->Op()->Type());
-
-      },
+      [=](Node* x) { return x && x->IsOp() && acts.count(x->Op()->Type()); },
       "act");
 
   PDNode* fc_out = pattern->NewNode(
@@ -196,7 +196,7 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
 
   detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
                             Graph* graph) {
-    VLOG(4) << "get one concat pattern";
+    VLOG(40) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());
     GET_NODE(fc_bias, detector.pattern());

@@ -135,15 +135,13 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization").Reuse("X");
+    AddOutput("Y", "result after normalization");
     AddOutput("MeanOut",
               "Share memory with Mean. "
-              "Store the global mean when training")
-        .Reuse("Mean");
+              "Store the global mean when training");
     AddOutput("VarianceOut",
               "Share memory with Variance. "
-              "Store the global Variance when training")
-        .Reuse("Variance");
+              "Store the global Variance when training");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
               "will apply to output when training")
@@ -169,6 +167,15 @@ The required data format for this layer is one of the following:
 2. NCHW `[batch, in_channels, in_height, in_width]`
 
 )DOC");
+  }
+};
+
+class BatchNormOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
   }
 };
 
@@ -527,7 +534,7 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormGradMaker);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

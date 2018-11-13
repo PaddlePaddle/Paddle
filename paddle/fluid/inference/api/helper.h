@@ -16,13 +16,14 @@
 
 #include <glog/logging.h>
 #include <sys/time.h>
+#include <algorithm>
 #include <chrono>  // NOLINT
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle_inference_api.h"
 
 namespace paddle {
 namespace inference {
@@ -160,7 +161,8 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
-            << ", latency: " << latency << "ms ======";
+            << ", latency: " << latency << "ms, fps: " << 1 / (latency / 1000.f)
+            << " ======";
   if (epoch > 1) {
     int samples = batch_size * epoch;
     LOG(INFO) << "====== sample number: " << samples
