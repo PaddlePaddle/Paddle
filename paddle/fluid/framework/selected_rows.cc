@@ -213,9 +213,10 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
     for (int i = 0; i < ids.numel(); ++i) {
-      int64_t index =
-          AutoGrownIndex(ids.data<int64_t>()[i], auto_grown, is_test);
+      auto id = ids.data<int64_t>()[i];
+      int64_t index = AutoGrownIndex(id, auto_grown, is_test);
       if (index < 0) {
+        VLOG(5) << "id " << id << " not in the table, return 0";
         framework::VisitDataType(
             framework::ToDataType(value_->type()),
             TensorFillVisitor(value, i * value_width, value_width, 0.0));
