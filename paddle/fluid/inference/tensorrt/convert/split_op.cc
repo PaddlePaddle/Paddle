@@ -35,6 +35,7 @@ class SplitOpConverter : public OpConverter {
     int input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
 
+    // Get Attrs
     PADDLE_ENFORCE(input_num == 1);
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     std::vector<int> output_lengths =
@@ -48,9 +49,10 @@ class SplitOpConverter : public OpConverter {
 
     PADDLE_ENFORCE(output_lengths.size() == output_num);
 
+    //
     SplitPlugin* plugin = new SplitPlugin(axis, output_lengths);
     nvinfer1::IPluginLayer* layer =
-        engine_->addPlugin(&input, input_num, plugin);
+        engine_->AddPlugin(&input, input_num, plugin);
 
     std::string layer_name = "split (Output: ";
     for (size_t i = 0; i < output_num; i++) {

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <thrust/device_vector.h>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -25,19 +24,21 @@ class SplitPlugin : public PluginTensorRT {
   int axis_;
   std::vector<int> output_length_;
   int nx_, ny_, nz_;
-  thrust::device_vector<int> d_segment_offsets_;
   std::vector<int> segment_offsets_;
 
  protected:
   virtual size_t getSerializationSize() override {
-    return serialized_size(axis_) + serialized_size(output_length_) +
+    return SerializedSize(axis_) + SerializedSize(output_length_) +
            getBaseSerializationSize();
   }
 
+  // TRT will call this func when we need to serialize the configuration of
+  // tensorrt.
+  // It should not be called by users.
   virtual void serialize(void *buffer) override {
     serializeBase(buffer);
-    serialize_value(&buffer, axis_);
-    serialize_value(&buffer, output_length_);
+    SerializeValue(&buffer, axis_);
+    SerializeValue(&buffer, output_length_);
   }
 
  public:
@@ -46,10 +47,12 @@ class SplitPlugin : public PluginTensorRT {
     assert(axis <= nvinfer1::Dims::MAX_DIMS);
   }
 
+  // It was used for tensorrt deserialization.
+  // It should not be called by users.
   SplitPlugin(void const *serialData, size_t serialLength) {
     deserializeBase(serialData, serialLength);
-    deserialize_value(&serialData, &serialLength, &axis_);
-    deserialize_value(&serialData, &serialLength, &output_length_);
+    DeserializeValue(&serialData, &serialLength, &axis_);
+    DeserializeValue(&serialData, &serialLength, &output_length_);
   }
 
   SplitPlugin *clone() const override {
@@ -64,12 +67,6 @@ class SplitPlugin : public PluginTensorRT {
   virtual int initialize() override;
   virtual int enqueue(int batchSize, const void *const *inputs, void **outputs,
                       void *workspace, cudaStream_t stream) override;
-
-  void setAxis(int axis) { axis_ = axis; }
-
-  void setOutputLengths(const std::vector<int> &output_lengths) {
-    output_length_ = output_lengths;
-  }
 };
 
 }  // tensorrt
