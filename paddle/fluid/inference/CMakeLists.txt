@@ -39,7 +39,7 @@ endif()
 
 # Create shared library
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-    DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+    DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE)
