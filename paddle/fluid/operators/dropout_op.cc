@@ -44,12 +44,7 @@ class DropoutOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
-#if CUDNN_VERSION >= 7001
-      // cudnnSetDropoutDescriptor needs expensive precomputation to initialize
-      // the random number generator states, so cache the states and use
-      // cudnnRestoreDropoutDescriptor to restore which is added in cuDNN v7
       library_ = framework::LibraryType::kCUDNN;
-#endif
     }
 #endif
     return framework::OpKernelType(
@@ -65,8 +60,9 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
     AddInput("Cache",
-             "The cache(states) of dropout op(random number generator), which "
-             "is used in dropout cudnn kernel.")
+             "The cache of dropout op, a RAW type variable including random "
+             "number generator states and some descriptors, which is used in "
+             "dropout cudnn kernel.")
         .AsDispensable();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
@@ -148,12 +144,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
-#if CUDNN_VERSION >= 7001
-      // cudnnSetDropoutDescriptor needs expensive precomputation to initialize
-      // the random number generator states, so cache the states and use
-      // cudnnRestoreDropoutDescriptor to restore which is added in cuDNN v7
       library_ = framework::LibraryType::kCUDNN;
-#endif
     }
 #endif
     return framework::OpKernelType(

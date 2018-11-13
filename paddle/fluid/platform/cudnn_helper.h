@@ -390,9 +390,10 @@ class ScopedDropoutDescriptor {
                                              float dropout, void* states,
                                              size_t state_size_in_bytes,
                                              uint64_t seed, bool initialized) {
-    // cudnnSetDropoutDescriptor needs expensive precomputation to initialize
-    // the random number generator states, so cache the states and use
-    // cudnnRestoreDropoutDescriptor to restore which is added in cuDNN v7
+// cudnnSetDropoutDescriptor needs expensive precomputation to initialize
+// the random number generator states, so cache the states and use
+// cudnnRestoreDropoutDescriptor to restore which is added in cuDNN v7
+#if CUDNN_VERSION >= 7001
     if (initialized) {
       PADDLE_ENFORCE(dynload::cudnnRestoreDropoutDescriptor(
           desc_, handle, dropout, states, state_size_in_bytes, seed));
@@ -400,6 +401,10 @@ class ScopedDropoutDescriptor {
       PADDLE_ENFORCE(dynload::cudnnSetDropoutDescriptor(
           desc_, handle, dropout, states, state_size_in_bytes, seed));
     }
+#else
+    PADDLE_ENFORCE(dynload::cudnnSetDropoutDescriptor(
+        desc_, handle, dropout, states, state_size_in_bytes, seed));
+#endif
     return desc_;
   }
 

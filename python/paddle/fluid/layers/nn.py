@@ -1080,7 +1080,8 @@ def dropout(x,
     mask = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
     if use_cudnn:
-        cache = helper.create_variable(persistable=True, stop_gradient=True)
+        cache = helper.create_variable(
+            persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed

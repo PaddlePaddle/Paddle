@@ -175,6 +175,14 @@ class ExecutionContext {
     return op_.Outputs(name).size();
   }
 
+  const std::string InputVarName(const std::string& name) const {
+    return op_.Input(name);
+  }
+
+  const std::string OutputVarName(const std::string& name) const {
+    return op_.Output(name);
+  }
+
   const Variable* InputVar(const std::string& name) const {
     auto ipt = op_.Input(name);
     return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
