@@ -141,7 +141,7 @@ class ParallelExecutor(object):
         startup = startup if startup else framework.default_startup_program()
         if scope == None:
             scope = executor.global_scope()
-        if self.is_startup_ran(scope, main):
+        if self._is_startup_ran(scope, main):
             # if startup is already ran by user, set parallel exe to run an
             # empty program, this is used for v1.x API compatibility, should
             # remove this when API is settled.
@@ -175,7 +175,7 @@ class ParallelExecutor(object):
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
-    def is_startup_ran(self, scope, main):
+    def _is_startup_ran(self, scope, main):
         for var in main.global_block().iter_parameters():
             if scope.find_var(var.name) is None:
                 return False
