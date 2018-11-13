@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#if CUDNN_VERSION >= 7001
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedCTCLossDescriptor = platform::ScopedCTCLossDescriptor;
 using DataLayout = platform::DataLayout;
@@ -178,6 +179,7 @@ class CudnnCTCGradKernel : public framework::OpKernel<T> {
   }
 };
 
+#endif
 }  // namespace operators
 }  // namespace paddle
 
