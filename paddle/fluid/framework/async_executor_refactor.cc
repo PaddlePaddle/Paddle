@@ -194,6 +194,13 @@ void AsyncExecutor::CreateThreads(const ExecutorThreadWorker* worker,
   worker->SetRootScope(root_scope);
 }
 
+shared_ptr<DataFeed> AsyncExecutor::CreateDataFeed(const char * feed_name) {
+  if (g_datafeed_map.count(string(feed_name)) < 1) {
+    return NULL;
+  }
+  return g_datafeed_map[feed_name]();
+}
+
 void AsyncExecutor::CheckFiles(
     const std::vector<std::string>& files) {
   // function for user to check file formats

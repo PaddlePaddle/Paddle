@@ -36,25 +36,35 @@ class ExecutorThreadWorker {
  public:
   ExecutorThreadWorker() {}
   ~ExecutorThreadWorker() {}
+  /**
+   * Create thread level scope which is a child of root scope
+   */
   void CreateThreadScope(const framework::ProgramDesc& program);
-  void SetDataFeed(const DataFeed& datafeed);
   void SetThreadId(int tid);
+  /**
+   * Create 
+   */
   void CreateThreadOperators(const framework::ProgramDesc& program);
+  /**
+   * Set current root scope
+   */
   void SetRootScope(Scope* g_scope);
   void SetDevice();
   void SetMainProgram(const ProgramDesc& main_program_desc);
   void SetPlace(const paddle::platform::Place& place);
+  /**
+   * current DataFeed is defined in class
+   **/
   void BindingDataFeedMemory();
-  void SetSparseCommData(const std::map<std::string, int>& param_names);
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
 
  protected:
   // thread index
   std::shared_ptr<DataFeed> thread_reader_;  // shared queue, thread buffer
   int thread_id_;
-  // op name
+  // operator name
   std::vector<std::string> op_names_;
-  // local ops for forward and backward
+  // thread level, local operators for forward and backward
   std::vector<OperatorBase *> ops_;
   // main program for training
   std::unique_ptr<framework::ProgramDesc> main_program_;
@@ -72,7 +82,8 @@ class AsyncExecutor {
   virtual ~AsyncExecutor() {}
   void SetRootScope(const Scope* root_scope);
   Scope* GetRootScope() { return root_scope_; }
-  void CheckFiles(const std::vector<std::string>& files);
+  void CheckFiles(
+      const std::vector<std::string>& files);
   void RunFromFiles(
       const ProgramDesc& main_program,
       const std::vector<std::string>& files,
