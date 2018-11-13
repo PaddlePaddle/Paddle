@@ -157,8 +157,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       dev_ctx.SetBlob(key_pool_dst_mem_p, dst_memory);
 
       if (is_test) {
-        pool_p = std::make_shared<pooling_forward>(
-            *pool_pd, *(src_memory.get()), *(dst_memory.get()));
+        pool_p = std::make_shared<pooling_forward>(*pool_pd, *src_memory,
+                                                   *dst_memory);
       } else {
         std::shared_ptr<mkldnn::memory> workspace_memory =
             CreateWorkspaceMemory(pool_pd, pooling_type, mkldnn_engine);
@@ -167,8 +167,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dev_ctx.SetBlob(key_pool_workspace_memory, workspace_memory);
 
         pool_p = std::make_shared<pooling_forward>(
-            *pool_pd, *(src_memory.get()), *(dst_memory.get()),
-            *workspace_memory);
+            *pool_pd, *src_memory, *dst_memory, *workspace_memory);
       }
 
       dev_ctx.SetBlob(key_pool_p, pool_p);
