@@ -70,7 +70,7 @@ int GetCUDADriverVersion(int id) {
 bool TensorCoreAvailable() {
 #if CUDA_VERSION >= 9000
   int device = GetCurrentDeviceId();
-  int driver_version = GetCUDADriverVersion(device);
+  int driver_version = GetCUDAComputeCapability(device);
   return driver_version >= 70;
 #else
   return false;
