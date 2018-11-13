@@ -71,13 +71,13 @@ void check(const float* x, const float* y, float* z, int w) {
 static mkldnn::memory::format StringToMKLDNNFormat(std::string& format) {
   std::transform(format.begin(), format.end(), format.begin(), ::tolower);
 
-  if(!format.compare("nchw")) {
+  if (!format.compare("nchw")) {
     return memory::format::nchw;
-  } else if(!format.compare("nchw16c")) {
+  } else if (!format.compare("nchw16c")) {
     return memory::format::nChw16c;
-  } else if(!format.compare("nchw8c")) {
+  } else if (!format.compare("nchw8c")) {
     return memory::format::nChw8c;
-  } else if(!format.compare("nhwc")) {
+  } else if (!format.compare("nhwc")) {
     return memory::format::nhwc;
   } else {
     return memory::format::any;
@@ -85,8 +85,8 @@ static mkldnn::memory::format StringToMKLDNNFormat(std::string& format) {
 }
 
 static void UpdateDataFormat(const framework::ExecutionContext& ctx,
-  framework::Tensor* tensor, const char* attribute) {
-  if(ctx.op().HasAttr(attribute)) {
+                             framework::Tensor* tensor, const char* attribute) {
+  if (ctx.op().HasAttr(attribute)) {
     auto format_as_string = ctx.Attr<std::string>(attribute);
     auto format = StringToMKLDNNFormat(format_as_string);
     if (format != memory::format::any) {
@@ -98,19 +98,19 @@ static void UpdateDataFormat(const framework::ExecutionContext& ctx,
 template <typename T>
 static void ReorderInput(framework::Tensor* tensor,
                          const platform::Place& place,
-                         const mkldnn::engine& engine,
-                         bool isFourDim) {
+                         const mkldnn::engine& engine, bool isFourDim) {
   using platform::to_void_cast;
   auto dims = paddle::framework::vectorize2int(tensor->dims());
   framework::Tensor out_tensor;
   out_tensor.Resize(tensor->dims());
   out_tensor.set_format(isFourDim ? memory::format::nchw : memory::format::nc);
   out_tensor.set_layout(tensor->layout());
-  mkldnn::memory input_memory = {{{dims, platform::MKLDNNGetDataType<T>(),
-           tensor->format()}, engine}, to_void_cast<T>(tensor->data<T>())};
-  mkldnn::memory output_memory = {{{dims, platform::MKLDNNGetDataType<T>(),
-           out_tensor.format()}, engine},
-           to_void_cast<T>(out_tensor.mutable_data<T>(place))};
+  mkldnn::memory input_memory = {
+      {{dims, platform::MKLDNNGetDataType<T>(), tensor->format()}, engine},
+      to_void_cast<T>(tensor->data<T>())};
+  mkldnn::memory output_memory = {
+      {{dims, platform::MKLDNNGetDataType<T>(), out_tensor.format()}, engine},
+      to_void_cast<T>(out_tensor.mutable_data<T>(place))};
   platform::Reorder(input_memory, output_memory);
   tensor->ShareDataWith(out_tensor);
 }
@@ -163,21 +163,19 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         vector_mul mul;
 
         using mul_func_t =
-        void (*)(const float *, const float *, float *, int, int);
+            void (*)(const float*, const float*, float*, int, int);
 
-        mul_func_t mul_func = (mul_func_t) mul.getCode();
+        mul_func_t mul_func = (mul_func_t)mul.getCode();
 
-        #pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
         for (int ni = 0; ni < n; ni++) {
           for (int ci = 0; ci < C; ci++) {
             auto ptr_x =
-                    x_data + ni * C * h * w * simd_width +
-                    ci * h * w * simd_width;
+                x_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
 
             auto ptr_y = y_data + ni * C * simd_width + ci * simd_width;
             auto ptr_z =
-                    z_data + ni * C * h * w * simd_width +
-                    ci * h * w * simd_width;
+                z_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
 
             mul_func(ptr_x, ptr_y, ptr_z, h, w);
           }
@@ -189,18 +187,20 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     } else {
       // Fallback to naive version:
       const bool are_inputs_in_same_format = x->format() == y->format();
-      const bool is_x_nchw= x->format() == memory::format::nchw;
+      const bool is_x_nchw = x->format() == memory::format::nchw;
       const bool is_x_nc = x->format() == memory::format::nc;
-      const bool is_y_nchw= y->format() == memory::format::nchw;
+      const bool is_y_nchw = y->format() == memory::format::nchw;
       const bool is_y_nc = y->format() == memory::format::nc;
-      if(!are_inputs_in_same_format) {
+      if (!are_inputs_in_same_format) {
         using platform::MKLDNNDeviceContext;
         auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
         const auto& mkldnn_engine = dev_ctx.GetEngine();
-        if(!(is_x_nchw || is_x_nc))
-          ReorderInput<T>((Tensor*)x, ctx.GetPlace(), mkldnn_engine, x->dims().size() == 4);
-        if(!(is_y_nchw || is_y_nc))
-          ReorderInput<T>((Tensor*)y, ctx.GetPlace(), mkldnn_engine, y->dims().size() == 4);
+        if (!(is_x_nchw || is_x_nc))
+          ReorderInput<T>((Tensor*)x, ctx.GetPlace(), mkldnn_engine,
+                          x->dims().size() == 4);
+        if (!(is_y_nchw || is_y_nc))
+          ReorderInput<T>((Tensor*)y, ctx.GetPlace(), mkldnn_engine,
+                          y->dims().size() == 4);
       }
 
       auto mul_func = [](T a, T b) -> T { return a * b; };
