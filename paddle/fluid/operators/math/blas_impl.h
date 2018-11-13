@@ -304,9 +304,9 @@ void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
                                             int N, int K, T alpha, const T *A,
                                             int lda, const T *B, int ldb,
                                             T beta, T *C, int ldc) const {
-  CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-                 transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-                 lda, B, ldb, beta, C, ldc);
+  CBlas<T>::GEMM(CblasRowMajor, transA ? CblasTrans : CblasNoTrans,
+                 transB ? CblasTrans : CblasNoTrans, M, N, K, alpha, A, lda, B,
+                 ldb, beta, C, ldc);
 }
 
 template <>

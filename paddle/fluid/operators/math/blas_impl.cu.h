@@ -90,6 +90,8 @@ struct CUBlas<platform::float16> {
                    const float16 *alpha, const float16 *A, int lda,
                    const float16 *B, int ldb, const float16 *beta, float16 *C,
                    int ldc) {
+    PADDLE_ENFORCE_GE(context_.GetComputeCapability(), 53,
+                      "cublas fp16 gemm requires GPU compute capability >= 53");
     PADDLE_ENFORCE(
         platform::dynload::cublasHgemm(handle, transa, transb, m, n, k,
                                        reinterpret_cast<const __half *>(alpha),
@@ -163,6 +165,18 @@ void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
+#if CUDA_VERSION >= 9000
+  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+  std::lock_guard<std::mutex> lock(cuda_ctx.cublas_mtx_);
+  ScopedCublasMathMode cubase_mathmode(cuda_ctx.cublas_handle());
+  bool use_tensor_op_math =
+      FLAGS_enable_cublas_tensor_op_math && platform::TensorCoreAvailable();
+  if (use_tensor_op_math) {
+    cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
+  }
+  VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
+#endif  // CUDA_VERSION >= 9000
+
   CUBlas<T>::GEMM(context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha,
                   B, ldb, A, lda, &beta, C, N);
 }
@@ -187,30 +201,35 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   PADDLE_ENFORCE_GE(context_.GetComputeCapability(), 53,
                     "cublas fp16 gemm requires GPU compute capability >= 53");
 
-#if CUDA_VERSION >= 8000
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
 
-  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+#if CUDA_VERSION >= 8000
+  {
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
-  if (context_.GetComputeCapability() >= 70) {
-    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(
-        context_.cublas_handle(), CUBLAS_TENSOR_OP_MATH));
-    algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-  } else {
-    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(
-        context_.cublas_handle(), CUBLAS_DEFAULT_MATH));
-  }
+    auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+    std::lock_guard<std::mutex> lock(cuda_ctx.cublas_mtx_);
+    ScopedCublasMathMode cubase_mathmode(cuda_ctx.cublas_handle());
+    bool use_tensor_op_math =
+        FLAGS_enable_cublas_tensor_op_math && platform::TensorCoreAvailable();
+    if (use_tensor_op_math) {
+      cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
 #endif  // CUDA_VERSION >= 9000
 
-  // cublasHgemm does true FP16 computation which is slow for non-Volta
-  // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
-  // input/output in fp16, computation in fp32, which can also be accelerated
-  // using tensor cores in volta GPUs.
-  PADDLE_ENFORCE(platform::dynload::cublasGemmEx(
-      context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, B,
-      CUDA_R_16F, ldb, A, CUDA_R_16F, lda, &h_beta, C, CUDA_R_16F, N,
-      CUDA_R_32F, algo));
+    // cublasHgemm does true FP16 computation which is slow for non-Volta
+    // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
+    // input/output in fp16, computation in fp32, which can also be accelerated
+    // using tensor cores in volta GPUs.
+    PADDLE_ENFORCE(platform::dynload::cublasGemmEx(
+        context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, B,
+        CUDA_R_16F, ldb, A, CUDA_R_16F, lda, &h_beta, C, CUDA_R_16F, N,
+        CUDA_R_32F, algo));
+  }
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
   CUBlas<platform::float16>::GEMM(context_.cublas_handle(), cuTransB, cuTransA,
@@ -230,22 +249,8 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
   cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-
-#if CUDA_VERSION >= 9000
-  std::lock_guard<std::mutex> lock(cuda_ctx.cublas_mtx_);
-  ScopedCublasMathMode cubase_mathmode(cuda_ctx.cublas_handle());
-  bool use_tensor_op_math = FLAGS_enable_cublas_tensor_op_math &&
-                            platform::TensorCoreAvailable() &&
-                            std::is_same<T, platform::float16>::value;
-  if (use_tensor_op_math) {
-    cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
-  }
-//  VLOG(5) << "use_tensor_op_math: " << use_tensor_op_math ? "True" : "False";
-#endif
-
-  CUBlas<T>::GEMM(context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha,
-                  B, ldb, A, lda, &beta, C, ldc);
+  Blas<T>::GEMM(context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha,
+                B, ldb, A, lda, &beta, C, ldc);
 }
 
 template <>
