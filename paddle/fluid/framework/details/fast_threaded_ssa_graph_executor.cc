@@ -29,8 +29,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       places_(places),
       graph_(std::move(graph)),
-      pool_(strategy.num_threads_ +
-            1),  // add one more thread for generate op_deps
+      pool_(strategy.num_threads_),
+      prepare_pool_(1),  // add one more thread for generate op_deps
       fetch_ctxs_(places) {
   auto &ops = graph_->Get<details::GraphOps>("ops");
 
@@ -155,9 +155,8 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
   });
 }
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
-  atomic_op_deps_ = pool_.enqueue([&] {
-    std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps =
-        new std::unordered_map<OpHandleBase *, std::atomic<int>>;
+  atomic_op_deps_ = prepare_pool_.enqueue([&] {
+    auto *op_deps = new std::unordered_map<OpHandleBase *, std::atomic<int>>;
     for (auto &pair : op_deps_) {
       (*op_deps)[pair.first] = pair.second;
     }
