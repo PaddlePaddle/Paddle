@@ -48,6 +48,21 @@ struct Instance {
 };
 
 class DataFeed {
+  DataFeed() {}
+  virtual ~DataFeed() {}
+};
+
+class BlockingQueueDataFeed : DataFeed {
+  BlockingQueueDataFeed() {}
+  virtual ~BlockingQueueDataFeed() {}
+};
+
+class ThreadedDataFeed : DataFeed {
+  ThreadedDataFeed() {}
+  virtual ~ThreadedDataFeed() {}
+};
+
+class DataFeed {
  public:
   DataFeed() {}
   virtual ~DataFeed() {}

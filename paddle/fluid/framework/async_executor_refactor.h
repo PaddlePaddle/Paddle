@@ -30,62 +30,17 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-void CreateTensor(Variable* var, proto::VarType::Type var_type);
-
-class ExecutorThreadWorker {
- public:
-  ExecutorThreadWorker() {}
-  ~ExecutorThreadWorker() {}
-  /**
-   * Create thread level scope which is a child of root scope
-   */
-  void CreateThreadScope(const framework::ProgramDesc& program);
-  void SetThreadId(int tid);
-  /**
-   * Create 
-   */
-  void CreateThreadOperators(const framework::ProgramDesc& program);
-  /**
-   * Set current root scope
-   */
-  void SetRootScope(Scope* g_scope);
-  void SetDevice();
-  void SetMainProgram(const ProgramDesc& main_program_desc);
-  void SetPlace(const paddle::platform::Place& place);
-  /**
-   * current DataFeed is defined in class
-   **/
-  void BindingDataFeedMemory();
-  void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
-
- protected:
-  // thread index
-  std::shared_ptr<DataFeed> thread_reader_;  // shared queue, thread buffer
-  int thread_id_;
-  // operator name
-  std::vector<std::string> op_names_;
-  // thread level, local operators for forward and backward
-  std::vector<OperatorBase *> ops_;
-  // main program for training
-  std::unique_ptr<framework::ProgramDesc> main_program_;
-  // execution place
-  platform::Place place_;
-  // root scope for model parameters
-  Scope* root_scope_;
-  // a thread scope, father scope is global score which is shared
-  Scope* thread_scope_;
-};
 
 class AsyncExecutor {
  public:
   explicit AsyncExecutor(const platform::Place& place);
   virtual ~AsyncExecutor() {}
   void SetRootScope(const Scope* root_scope);
-  Scope* GetRootScope() { return root_scope_; }
   void CheckFiles(
       const std::vector<std::string>& files);
   void RunFromFiles(
       const ProgramDesc& main_program,
+      const DataFeedDesc& data_feed_desc,
       const std::vector<std::string>& files,
       const int thread_num);
 
