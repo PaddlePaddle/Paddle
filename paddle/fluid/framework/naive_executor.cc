@@ -37,7 +37,7 @@ static void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -71,7 +71,7 @@ void NaiveExecutor::Prepare(Scope *parent_scope,
 
 void NaiveExecutor::Run() {
   for (auto &op : ops_) {
-    VLOG(4) << "run " << op->Type();
+    VLOG(40) << "run " << op->Type();
     op->Run(*scope_, place_);
   }
 }
@@ -95,21 +95,21 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
       if (var->Persistable()) {
         auto *ptr = const_cast<Scope *>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " global, which pointer is " << ptr;
       } else {  // Create temporary variables in local scope.
         auto *ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto &var : global_block.AllVars()) {
       auto *ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
+               << ptr;
     }
   }
 }
@@ -144,23 +144,6 @@ void NaiveExecutor::CleanFeedFetchOps() {
     }
   }
   ops_.swap(ops);
-}
-
-void NaiveExecutor::EnableMKLDNN(const ProgramDesc &program) {
-#ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
-  for (size_t block_id = 0; block_id < program.Size(); ++block_id) {
-    auto *block = const_cast<ProgramDesc &>(program).MutableBlock(block_id);
-    for (auto *op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
-        op->SetAttr("use_mkldnn", true);
-      }
-    }
-  }
-#else
-  LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
-#endif
 }
 
 }  // namespace framework

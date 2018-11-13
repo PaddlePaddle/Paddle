@@ -80,8 +80,7 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of softmax, "
              "whose last dimension is the input_feature_dimensions.");
-    AddOutput("Out", "The normalized values with the same shape as X.")
-        .Reuse("X");
+    AddOutput("Out", "The normalized values with the same shape as X.");
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
@@ -122,6 +121,14 @@ For each row $i$ and each column $j$ in the matrix, we have:
     $$Out[i, j] = \frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}$$
 
 )DOC");
+  }
+};
+
+class SoftmaxOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -197,7 +204,7 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
-                  ops::SoftmaxOpGradMaker);
+                  ops::SoftmaxOpInferVarType, ops::SoftmaxOpGradMaker);
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,

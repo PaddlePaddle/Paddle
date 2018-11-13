@@ -38,12 +38,13 @@ typedef void (*DestroyCallback)(void*);
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
-                           const std::string& out_varname = std::string());
+                           const std::string& out_varname = std::string(),
+                           const int trainer_id = 0);
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable** var);
+                               framework::Variable** var, int* trainer_id);
 
 }  // namespace distributed
 }  // namespace operators

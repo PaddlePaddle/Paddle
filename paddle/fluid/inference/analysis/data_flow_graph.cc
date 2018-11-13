@@ -112,8 +112,8 @@ void DataFlowGraph::Build(const framework::proto::ProgramDesc &prog) {
           out_alias->SetPbMsg(out->pb_msg());
           var2id[out_alias->name()] =
               out_alias->id();  // update variable's alias Node
-          LOG(INFO) << "loop found in graph, create SSA alias node ["
-                    << out_alias->repr() << "] for [" << out->repr() << "]";
+          VLOG(40) << "loop found in graph, create SSA alias node ["
+                   << out_alias->repr() << "] for [" << out->repr() << "]";
           out = out_alias;
         }
         out->inlinks.push_back(o);
@@ -132,7 +132,7 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
     Node *x{nullptr};
     if (ir_node->IsOp()) {
       PADDLE_ENFORCE(ir_node->Op());
-      VLOG(4) << "get op " << ir_node << " " << ir_node->Name();
+      VLOG(40) << "get op " << ir_node << " " << ir_node->Name();
       x = nodes.Create(Node::Type::kFunction);
       x->attr("ir_node").Pointer() = ir_node;
       PADDLE_ENFORCE(ir_node->Op()->Proto());
@@ -141,7 +141,7 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
     } else if (ir_node->IsVar()) {
       // Not create a Node for IR ControlDepVar, considering Inference currently
       // just used in single thread scenerio.
-      VLOG(4) << "get var " << ir_node->Name();
+      VLOG(40) << "get var " << ir_node->Name();
       x = nodes.Create(Node::Type::kValue);
       x->attr("ir_node").Pointer() = ir_node;
       x->SetName(ir_node->Name());
@@ -151,9 +151,9 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
     }
     ir_node_map.emplace(ir_node, x);
   }
-  VLOG(4) << "finish creating Nodes";
+  VLOG(40) << "finish creating Nodes";
 
-  VLOG(4) << "to create edge";
+  VLOG(40) << "to create edge";
   // Create links
   for (auto *ir_node : graph.Nodes()) {
     auto it = ir_node_map.find(ir_node);
@@ -175,7 +175,7 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
                  "Can't deduce any inputs from the graph, Is the graph empty?");
 
   ir_graph = &graph;
-  VLOG(3) << "finished build from IR";
+  VLOG(30) << "finished build from IR";
 }
 
 void DataFlowGraph::Clean() {

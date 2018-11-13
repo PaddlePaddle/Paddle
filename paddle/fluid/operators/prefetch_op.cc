@@ -42,17 +42,18 @@ class PrefetchOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(place);
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+            Attr<int>("trainer_id"));
 
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
-                << outs[i] << " back";
+        VLOG(30) << "sending " << ins[i] << " to " << epmap[i] << " to get "
+                 << outs[i] << " back";
         rets.push_back(rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope,
                                                     ins[i], outs[i]));
       } else {
-        VLOG(3) << "don't send no-initialied variable: " << ins[i];
+        VLOG(30) << "don't send no-initialied variable: " << ins[i];
       }
     }
     for (size_t i = 0; i < rets.size(); i++) {
@@ -69,6 +70,7 @@ class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) result "
               "to be fetched from parameter server")
         .AsDuplicable();
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"

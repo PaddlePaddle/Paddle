@@ -128,6 +128,24 @@ class TestPriorBox(unittest.TestCase):
         assert box.shape[3] == 4
 
 
+class TestDensityPriorBox(unittest.TestCase):
+    def test_density_prior_box(self):
+        data_shape = [3, 224, 224]
+        images = fluid.layers.data(
+            name='pixel', shape=data_shape, dtype='float32')
+        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+        box, var = layers.density_prior_box(
+            input=conv1,
+            image=images,
+            densities=[3, 4],
+            fixed_sizes=[50., 60.],
+            fixed_ratios=[1.0],
+            clip=True)
+        assert len(box.shape) == 4
+        assert box.shape == var.shape
+        assert box.shape[3] == 4
+
+
 class TestAnchorGenerator(unittest.TestCase):
     def test_anchor_generator(self):
         data_shape = [3, 224, 224]
@@ -301,7 +319,7 @@ class TestRpnTargetAssign(unittest.TestCase):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
+            pred_scores, pred_loc, tgt_lbl, tgt_bbox, bbox_inside_weight = layers.rpn_target_assign(
                 bbox_pred=bbox_pred,
                 cls_logits=cls_logits,
                 anchor_box=anchor_box,
@@ -313,15 +331,18 @@ class TestRpnTargetAssign(unittest.TestCase):
                 rpn_straddle_thresh=0.0,
                 rpn_fg_fraction=0.5,
                 rpn_positive_overlap=0.7,
-                rpn_negative_overlap=0.3)
+                rpn_negative_overlap=0.3,
+                use_random=False)
 
             self.assertIsNotNone(pred_scores)
             self.assertIsNotNone(pred_loc)
             self.assertIsNotNone(tgt_lbl)
             self.assertIsNotNone(tgt_bbox)
+            self.assertIsNotNone(bbox_inside_weight)
             assert pred_scores.shape[1] == 1
             assert pred_loc.shape[1] == 4
             assert pred_loc.shape[1] == tgt_bbox.shape[1]
+            print(str(program))
 
 
 class TestGenerateProposals(unittest.TestCase):

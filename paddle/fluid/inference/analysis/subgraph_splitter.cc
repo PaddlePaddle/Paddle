@@ -232,7 +232,7 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
     BriefNode *brief_node = itr.second;
 
     if (!brief_node->node->attr(kMarkerAttrName).Bool()) {
-      VLOG(4) << brief_node->node->id() << " node not a trt candicate.";
+      VLOG(40) << brief_node->node->id() << " node not a trt candicate.";
       continue;
     }
 
