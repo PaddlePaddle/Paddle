@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/plugin_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -41,8 +40,7 @@ size_t PluginTensorRT::getBaseSerializationSize() {
 
 bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,
                                     nvinfer1::PluginFormat format) const {
-  return ((type == nvinfer1::DataType::kFLOAT ||
-           type == nvinfer1::DataType::kHALF) &&
+  return ((type == nvinfer1::DataType::kFLOAT) &&
           (format == nvinfer1::PluginFormat::kNCHW));
 }
 
