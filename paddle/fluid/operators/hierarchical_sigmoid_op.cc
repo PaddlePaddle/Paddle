@@ -115,7 +115,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
               "[batch_size, code_length], where code_length represents the "
               "maximum path length from root to leaf nodes.")
         .AsIntermediate();
-    AddAttr<AttrType>("num_classes", "(int, required), The number of classes")
+    AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
