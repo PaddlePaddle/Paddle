@@ -112,8 +112,8 @@ void DataFlowGraph::Build(const framework::proto::ProgramDesc &prog) {
           out_alias->SetPbMsg(out->pb_msg());
           var2id[out_alias->name()] =
               out_alias->id();  // update variable's alias Node
-          LOG(INFO) << "loop found in graph, create SSA alias node ["
-                    << out_alias->repr() << "] for [" << out->repr() << "]";
+          VLOG(40) << "loop found in graph, create SSA alias node ["
+                   << out_alias->repr() << "] for [" << out->repr() << "]";
           out = out_alias;
         }
         out->inlinks.push_back(o);
