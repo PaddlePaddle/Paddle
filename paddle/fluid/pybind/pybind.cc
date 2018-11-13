@@ -45,6 +45,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
@@ -99,6 +100,11 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
+  layer.def(py::init<>())
+      .def("forward", &imperative::Layer::Forward)
+      .def("backward", &imperative::Layer::Backward);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
