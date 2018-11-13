@@ -4,7 +4,8 @@ endif()
 
 set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
 set(paddle_known_gpu_archs7 "30 35 50 52")
-set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
+#set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
+set(paddle_known_gpu_archs8 "30")
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)

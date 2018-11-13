@@ -40,10 +40,9 @@ using contrib::AnalysisConfig;
  */
 void Main(bool use_gpu) {
   std::unique_ptr<PaddlePredictor> predictor, analysis_predictor;
-  AnalysisConfig config;
+  AnalysisConfig config(use_gpu);
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
-  config.use_gpu = use_gpu;
   config.device = 0;
   if (FLAGS_use_gpu) {
     config.fraction_of_gpu_memory = 0.1;  // set by yourself
@@ -51,7 +50,7 @@ void Main(bool use_gpu) {
 
   VLOG(30) << "init predictor";
   predictor = CreatePaddlePredictor<NativeConfig>(config);
-  analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  analysis_predictor = CreatePaddlePredictor(config);
 
   VLOG(30) << "begin to process data";
   // Just a single batch of data.

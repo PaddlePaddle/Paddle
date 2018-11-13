@@ -109,28 +109,6 @@ class Node {
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
-  template <typename AttrType>
-  AttrType& Get(const std::string& attr_name) const {
-    PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
-                   attr_name);
-    return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
-  }
-
-  template <typename AttrType>
-  void Set(const std::string& attr_name, AttrType* attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
-                   attr_name);
-    attrs_[attr_name] = attr;
-    attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
-      delete attr;
-    };
-  }
-
-  bool Has(const std::string& attr_name) const {
-    return attrs_.find(attr_name) != attrs_.end();
-  }
-
  protected:
   const std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
@@ -142,38 +120,26 @@ class Node {
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
 
-  std::map<std::string, boost::any> attrs_;
-  std::map<std::string, std::function<void(void)>> attr_dels_;
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                                  Node::Type type);
 
   explicit Node(const std::string& name, Type type)
-      : name_(name),
-        var_desc_(nullptr),
-        op_desc_(nullptr),
-        type_(type),
-        id_(count_++) {}
+      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
-        type_(Type::kVariable),
-        id_(count_++) {}
+        type_(Type::kVariable) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
-        type_(Type::kOperation),
-        id_(count_++) {}
+        type_(Type::kOperation) {}
 
   Node() = delete;
-
-  static int count_;
-  // Please don't use this API or make this public.
-  static void ResetId() { count_ = 0; }
 
   boost::any wrapper_;
   std::function<void(void)> wrapper_deleter_;

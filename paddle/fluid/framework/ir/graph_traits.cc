@@ -85,11 +85,6 @@ NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
   while (!to_visit.empty()) {
     std::vector<Node *> queue(to_visit.begin(), to_visit.end());
     for (auto *p : queue) {
-      if (p->Has(kNodeDeleted) && p->Get<bool>(kNodeDeleted)) {
-        visited.insert(p);
-        to_visit.erase(p);
-        continue;
-      }
       inlink_visited.clear();
 
       std::copy_if(p->inputs.begin(), p->inputs.end(),

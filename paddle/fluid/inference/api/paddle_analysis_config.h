@@ -20,6 +20,7 @@
 
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
+#include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 
 namespace paddle {
@@ -49,7 +50,7 @@ struct AnalysisConfig : public NativeConfig {
   // NOTE this is just for internal development, please not use it.
   // NOT stable yet.
   bool _use_mkldnn{false};
-  void EnableTensorRtEngine(int workspace_size = 1 << 30,
+  void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1);
 
   friend class ::paddle::AnalysisPredictor;

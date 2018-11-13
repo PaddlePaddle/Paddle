@@ -17,7 +17,6 @@ limitations under the License. */
 #include <utility>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
@@ -26,15 +25,6 @@ namespace analysis {
 using framework::ir::kNodeDeleted;
 
 using framework::ir::Node;
-
-template <typename T>
-void EagerSetNodeAttr(Node *node, const std::string &key, const T &val) {
-  if (node->Has(key)) {
-    node->Get<T>(key) = val;
-  } else {
-    node->Set(key, new T{val});
-  }
-}
 
 std::pair<std::vector<Node *>, std::vector<Node *>>
 ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
@@ -70,7 +60,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
 // Filter the Intermediate results of the subgraph node.
 void FilterRedundantOutputOfSubGraph(Graph *graph) {
   std::vector<Node *> op_nodes;
-  for (auto &node : framework::ir::GraphTraits::TS(*graph)) {
+  for (auto &node : TopologicalSort(*graph)) {
     if (node.IsVar() || Agent(&node).deleted()) {
       continue;
     }
@@ -90,7 +80,7 @@ void FilterRedundantOutputOfSubGraph(Graph *graph) {
       if (follow_up_input_names.count(out->Name())) {
         filtered_subgraph_outlinks.push_back(out);
       } else {
-        EagerSetNodeAttr(out, kNodeDeleted, true);
+        Agent(out).set_deleted(true);
       }
     }
     // The filtered_subgraph_outlinks may be empty.
@@ -135,8 +125,8 @@ using node_map_t = std::unordered_map<int, Node *>;
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
   int tmp = id;
   do {
-    tmp = node_map.at(tmp)->Get<int32_t>(kUnionFindParent);
-  } while (node_map.at(tmp)->Get<int32_t>(kUnionFindParent) != tmp);
+    tmp = Agent(node_map.at(tmp)).union_find_parent();
+  } while (Agent(node_map.at(tmp)).union_find_parent() != tmp);
   return tmp;
 }
 // Make this two node share the same ancestor.
@@ -144,9 +134,9 @@ int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
 void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
-  node_map.at(b_ancestor)->Get<int32_t>(kUnionFindParent) = a_ancestor;
-  node_map.at(a)->Get<int32_t>(kUnionFindParent) = a_ancestor;
-  node_map.at(b)->Get<int32_t>(kUnionFindParent) = a_ancestor;
+  Agent(node_map.at(b_ancestor)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);
 }
 
 // This is a simple representation of a graph.
@@ -293,7 +283,7 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
   node_map_t node_map;  // id to ptr
   for (auto *n : marked_nodes) {
     // n's parent == n.id means it is the ancestor
-    EagerSetNodeAttr(n, kUnionFindParent, n->id());
+    Agent(n).set_union_find_parent(n->id());
     node_map[n->id()] = n;
   }
 
@@ -378,8 +368,7 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
   std::unordered_map<int /*ancestor*/, std::vector<Node *>> clusters;
   for (auto *n : marked_nodes) {
     if (n->IsOp()) {
-      clusters[UnionFindGetAncestor(node_map,
-                                    n->Get<int32_t>(kUnionFindParent))]
+      clusters[UnionFindGetAncestor(node_map, Agent(n).union_find_parent())]
           .push_back(n);
     }
   }
@@ -411,10 +400,21 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
   outputs->assign(valid_output.begin(), valid_output.end());
 }
 
+void DetachDeletedNodes(framework::ir::Graph *graph) {
+  std::unordered_set<const Node *> nodes;
+  for (auto *node : graph->Nodes()) {
+    if (Agent(node).deleted()) {
+      node->inputs.clear();
+      node->outputs.clear();
+    }
+  }
+}
+
 void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= min_subgraph_size_) continue;
+    LOG(INFO) << "detect a subgraph size " << subgraph.size();
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
@@ -454,7 +454,83 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
       inlink_or_outlink_cleaner(o->inputs);
     }
   }
-  // FilterRedundantOutputOfSubGraph(graph_);
+  // DetachDeletedNodes(graph_);
+  FilterRedundantOutputOfSubGraph(graph_);
+}
+
+inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
+  return node.inputs.size() == n;
+}
+
+NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
+  PADDLE_ENFORCE(!source.empty(),
+                 "Start points of topological sorting should not be empty!");
+  // CHECK all the inputs' in-degree is 0
+  for (auto *node : source) {
+    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
+  }
+
+  std::unordered_set<Node *> visited;
+  std::unordered_set<Node *> to_visit{source.begin(), source.end()};
+
+  std::vector<Node *> inlink_visited;
+  while (!to_visit.empty()) {
+    std::vector<Node *> queue(to_visit.begin(), to_visit.end());
+    for (auto *p : queue) {
+      if (Agent(p).deleted()) {
+        visited.insert(p);
+        to_visit.erase(p);
+      }
+
+      inlink_visited.clear();
+
+      std::copy_if(p->inputs.begin(), p->inputs.end(),
+                   std::back_inserter(inlink_visited),
+                   [&](Node *x) -> bool { return visited.count(x) != 0; });
+
+      if (inlink_visited.size() == p->inputs.size()) {
+        sorted_.push_back(p);
+        for (auto *_ : p->outputs) {
+          if (!visited.count(_)) {
+            to_visit.insert(_);
+          }
+        }
+
+        to_visit.erase(p);
+        visited.insert(p);
+      }
+    }
+  }
+}
+
+NodesTSIterator::NodesTSIterator(const NodesTSIterator &other)
+    : sorted_(other.sorted_), cursor_(other.cursor_) {}
+
+Node &NodesTSIterator::operator*() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return *sorted_[cursor_];
+}
+
+NodesTSIterator &NodesTSIterator::operator++() {
+  if (++cursor_ >= sorted_.size()) {
+    sorted_.clear();
+    cursor_ = 0;
+  }
+  return *this;
+}
+NodesTSIterator &NodesTSIterator::operator=(const NodesTSIterator &other) {
+  cursor_ = other.cursor_;
+  sorted_ = other.sorted_;
+  return *this;
+}
+
+bool NodesTSIterator::operator==(const NodesTSIterator &other) {
+  return sorted_ == other.sorted_ && cursor_ == other.cursor_;
+}
+
+Node *NodesTSIterator::operator->() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return sorted_[cursor_];
 }
 
 }  // namespace analysis

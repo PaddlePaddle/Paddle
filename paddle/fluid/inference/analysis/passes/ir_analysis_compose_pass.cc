@@ -39,8 +39,6 @@ std::string IrAnalysisComposePass::repr() const {
 }
 
 void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
-  LOG(INFO) << "use tensorrt " << argument->use_tensorrt();
-  LOG(INFO) << "use gpu " << argument->use_gpu();
   if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
     LOG(INFO) << "Initing TensorRT pass";
     argument->SetTensorRtNodeTeller([](const framework::ir::Node *node) {

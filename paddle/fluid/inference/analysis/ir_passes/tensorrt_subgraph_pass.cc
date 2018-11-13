@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -35,51 +36,16 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   auto teller =
       Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
 
-  LOG(INFO) << "origin graph size " << graph->Nodes().size();
-  for (auto *node : graph->Nodes()) {
-    if (Agent(node).deleted()) {
-    }
-  }
   SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
   fuser();
 
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && Agent(node).subgraph()) {
-      LOG(INFO) << "get one subgraph node " << node;
+    if (node->IsOp() && !Agent(node).subgraph()->empty()) {
       CreateTensorRTOp(node, graph.get());
 
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
-      // remove intermediate output from TensorRT op's output
-      /*
-      std::unordered_set<std::string> valid_outputs;
-      nodes2remove.clear();
-      std::unordered_set<std::string> outputs;
-      for (auto &item : node->Op()->Output("Ys")) {
-        outputs.insert(item);
-      }
-
-      for (auto it = graph->Nodes().begin(); it != graph->Nodes().end(); it++) {
-        if (outputs.count((*it)->Name())) {
-          // Get an intermediate output.
-          if (!(*it)->outputs.empty()) {
-            LOG(INFO) << "valid output " << (*it)->Name();
-            valid_outputs.insert((*it)->Name());
-          } else {
-            nodes2remove.insert(*it);
-          }
-        }
-      }
-      //DEBUG
-      valid_outputs.clear();
-      valid_outputs.insert("fc_0.tmp_2");
-
-      node->Op()->SetOutput(
-          "Ys",
-          std::vector<std::string>(valid_outputs.begin(), valid_outputs.end()));
-      framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
-       */
     }
   }
 
@@ -111,8 +77,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     *op->Proto() = *node->Op()->Proto();
   }
 
-  LOG(INFO) << "all ops " << block_desc.OpSize();
-
   // collect inputs
   std::unordered_set<std::string> input_names;
   std::unordered_set<std::string> input_names_with_id;
@@ -130,7 +94,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
   }
 
-  LOG(INFO) << "get outputs " << output_names.size();
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   op_desc->SetType("tensorrt_engine");
@@ -204,6 +167,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
       }
     }
   }
+
   // When tensorrt engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
   // to Tensor.

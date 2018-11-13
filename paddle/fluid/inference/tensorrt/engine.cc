@@ -61,7 +61,7 @@ TensorRTEngine::~TensorRTEngine() {
 }
 
 void TensorRTEngine::FreezeNetwork() {
-  LOG(INFO) << "TRT to freeze network";
+  VLOG(3) << "TRT to freeze network";
   freshDeviceId();
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
@@ -99,7 +99,6 @@ void TensorRTEngine::FreezeNetwork() {
     PADDLE_ENFORCE_LE(buf.max_size, 1 << 30);  // 10G
     buf.device = DeviceType::GPU;
   }
-  LOG(INFO) << "TRT freezed";
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
