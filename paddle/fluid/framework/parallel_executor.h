@@ -75,7 +75,18 @@ class ParallelExecutor {
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
+  void RuntimePassRunOnce(const std::vector<std::string> &fetch_tensors,
+                          const std::string &fetched_var_name);
+
   std::unique_ptr<ParallelExecutorPrivate> member_;
+  // memory optimize will skip the fetched tensor.
+  std::unordered_set<std::string> fetch_vars;
+
+  std::once_flag runtime_pass_run_once_flag_;
+
+  const ExecutionStrategy exec_strategy_;
+
+  const BuildStrategy build_strategy_;
 
 #ifdef PADDLE_WITH_CUDA
   // ref_cnts_ is only initialized when ParallelExecutor constructs, and then

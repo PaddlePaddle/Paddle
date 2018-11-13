@@ -34,9 +34,14 @@ class MemoryReusePass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
-  void UpdateGraphFromReuseMap(const size_t& idx,
-                               const std::vector<ir::Node*>& graph_ops,
-                               ReusedNodePairMap* reused_node_map) const;
+  // void UpdateGraphAndScope(std::unordered_set<ir::Node*> *ir_nodes,
+  //                          GraphOps* graph_ops,
+  //                          GraphVars* graph_vars;
+  //                              ReusedNodePairMap* reused_node_map) const;
+  // replace reused pair in program and IR.
+  void UpdateGraphAndDesc(ir::Node* op, const std::unordered_set<ir::Node*> *ir_nodes, ReusedNodePairMap* reused_node_map) const;
+  // replace reused var_handle and op_handle
+  void UpdateOpHandleAndScope(details::OpHandleBase* op, GraphOps* ops, GraphVars* vars, ReusedNodePairMap* reused_node_map) const;
 };
 
 }  // namespace details

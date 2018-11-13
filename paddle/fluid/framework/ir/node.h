@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+#include <functional>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
@@ -101,9 +102,10 @@ class Node {
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 
-struct NodeCompare {
-  bool operator()(Node* lhs, Node* rhs) const { return lhs.id() < rhs.id(); }
+struct NodeComparator {
+  bool operator()(Node* lhs, Node* rhs) const { return lhs->id() < rhs->id(); }
 };
+
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);

@@ -37,9 +37,9 @@ class AnalysisVarPass : public ir::Pass {
   bool NodeMatch(ir::Node* var, ir::Node** cache, int* idx) const;
   // scan subblock and collect the variables.
   std::unordered_set<ir::Node*> GetSubBlockOutputVars(
-      const std::set<ir::Node*>&) const;
+                                                      const std::unordered_set<ir::Node*>&) const;
   // Reuse Node Pool
-  mutable details::UnlivedNodePool pool;
+  mutable details::OrderedReusedNodePairPool pool;
 };
 
 }  // namespace details

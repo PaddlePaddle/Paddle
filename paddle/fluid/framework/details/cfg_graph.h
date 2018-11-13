@@ -22,39 +22,14 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <list>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/details/memory_reuse_types.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
-constexpr char kGlobalUnlivedNodePool[] = "global_unused_node_pool";
-constexpr char kGlobalReusedNodePairMap[] = "global_reused_nodepair_map";
-constexpr char kGraphReusedOps[] = "graph_ops_";
-
-// cache node sorted in bytesize.
-struct NodeComparator {
-  bool operator()(ir::Node* lhs, ir::Node* rhs) const {
-    auto get_node_size = [&](ir::Node* n) {
-      auto* desc = n->Var();
-      auto shape = desc->GetShape();
-      size_t type_size =
-          framework::SizeOfType(framework::ToTypeIndex(desc->GetDataType()));
-      return type_size *
-             std::abs(std::accumulate(shape.begin(), shape.end(), 1));
-    };
-    return get_node_size(lhs) < get_node_size(rhs);
-  }
-};
-
-using UnlivedNodePool = std::map<ir::Node*, /*var node*/
-                                 ir::Node* /*the last op which use var node*/,
-                                 NodeComparator>;  // order matters
-using ReusedNodePairMap =
-    std::unordered_map<ir::Node* /*op*/,
-                       std::pair<ir::Node* /*var*/, ir::Node* /*reused var*/>>;
-using GraphReusedOps = std::vector<ir::Node*>;
 
 class ControlFlowGraph {
  public:

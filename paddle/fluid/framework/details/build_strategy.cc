@@ -116,8 +116,12 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   }
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
-  details::ReusedNodePairMap reuse_map;
-  details::GraphReusedOps graph_ops;
+  // these will transfer ownership to graph. not release by hand.
+  UnlivedNodePool *g_pool = new details::UnlivedNodePool;
+  ReusedNodePairMap* reuse_map = new details::ReusedNodePairMap;
+  GraphOpsReused* reuse_ops = new GraphOpsReused;
+  GraphEarlyDeleteOpsDeps early_delete_ops_deps = new GraphEarlyDeleteOpsDeps;
+
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
       pass->Erase("places");
@@ -141,14 +145,17 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "analysis_var_pass") {
-      UnlivedNodePool *g_pool = new details::UnlivedNodePool;
-      pass->SetNotOwned(details::kGlobalUnlivedNodePool, g_pool);
-      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
-      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
-      graph->Set(details::kGlobalUnlivedNodePool, g_pool);  // take ownership
+      pass->SetNotOwned(details::kUnlivedNodePool, g_pool);
+      pass->SetNotOwned(details::kReusedNodePairMap, reuse_map);
+      pass->SetNotOwned(details::kGraphOpsReused, reuse_ops);
+      pass->SetNotOwned(details::kGraphEarlyDeleteOpsDeps, early_delete_ops_deps);
+      graph->Set(details::kUnlivedNodePool, g_pool);  // take ownership
+      graph->Set(details::kReusedNodePairMap, reuse_map);  // take ownership
+      graph->Set(details::kGraphOpsReused, reuse_ops);  // take ownership
+      graph->Set(details::kGraphEarlyDeleteOpsDeps, early_delete_ops_deps);  // take ownership
     } else if (pass->Type() == "memory_reuse_pass") {
-      pass->SetNotOwned(details::kGlobalReusedNodePairMap, &reuse_map);
-      pass->SetNotOwned(details::kGraphReusedOps, &graph_ops);
+      pass->SetNotOwned(details::kReusedNodePairMap, reuse_map);
+      pass->SetNotOwned(details::kGraphOpsReused, reuse_ops);
     }
     graph = pass->Apply(std::move(graph));
   }

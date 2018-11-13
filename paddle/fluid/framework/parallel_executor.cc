@@ -154,6 +154,25 @@ ParallelExecutor::ParallelExecutor(
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
+  exec_strategy_ = exec_strategy;
+  build_strategy_ = build_strategy;
+  graph_.reset(std::move(graph));
+}
+
+void ParallelExecutor::RuntimePassRunOnce(const std::vector<std::string> &fetch_tensors,
+                                          const std::string &fetched_var_name) {
+  // Step 2.5 Apply memory optimize reuse pass. skip the fetched vars.
+  for(auto& var : fetch_tensors) {
+    fetch_tensors.insert(var);
+  }
+  fetch_tensors.insert(fetched_var_name);
+  auto& graph = std::move(graph_);
+  if (build_strategy_.memory_optimize_) {
+    reuse_pass = ir::PassRegistry::Instance().Get("memory_reuse_pass");
+    reuse_pass->SetNotOwned(details::kFetchedVars, &fetch_tensors);
+    graph->SetNotOwned(details::kFetchedVars, &fetch_tensors);
+    graph = reuse_pass->Apply(std::move(graph));
+  }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
@@ -256,9 +275,12 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
+
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+  // assume fetch vars not change between training batches.
+  std::call_once(runtime_pass_run_once_flag_, this->RuntimePassRunOnce);
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {
     ResetReferenceCount();
@@ -331,6 +353,7 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
+USE_PASS(memory_reuse_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 USE_PASS(memory_early_delete_pass);

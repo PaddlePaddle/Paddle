@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/analysis_var_pass.h"
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <atomic>
 #include <sstream>
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/details/analysis_var_pass.h"
 
 DEFINE_bool(enable_subgraph_optimize, false,
             "SubGraph also reuse global graph variables, it will reduce the "
@@ -38,15 +40,39 @@ template <typename Container>
 std::string PrintIt(const AnalysisVarPass* pass, const Container& cons) {
   std::stringstream ss;
   for (auto& item : cons) {
-    ss << pass->DebugString(item.second) << " ";
+    // ss << pass->DebugString(item.first) << " ";
+    ss << pass->DebugString(item.first) << " ";
   }
   ss << std::endl;
   return ss.str();
 }
 
+int VarInBytes(ir::Node* var) {
+  auto* desc = var->Var();
+  auto shape = desc->GetShape();
+  size_t type_size =
+    framework::SizeOfType(framework::ToTypeIndex(desc->GetDataType()));
+  int size = 1;
+  for(auto& s: shape) { size *= s; }
+  return type_size * std::abs(size);
+}
+
+// const UnlivedNodePool::iterator FindPosition(const UnlivedNodePool& pool, ir::Node* node) {
+//   auto it = pool.begin(), pos = pool.begin();
+//   while(it != pool.end()) {
+//     auto* var = it->first;
+//     if (VarInBytes(var) < VarInBytes(node)) {
+//       pos++;
+//     }
+//     it++;
+//   }
+//   return pos;
+// }
+
 const std::string AnalysisVarPass::DebugString(ir::Node* var) const {
   std::stringstream ss;
   ss << var->Name();
+  // ss << ":" << DataTypeToString(var->Var()->GetDataType());
   ss << "[";
   try {
     auto shape = var->Var()->GetShape();
@@ -72,7 +98,9 @@ bool AnalysisVarPass::NodeMatch(ir::Node* var, ir::Node** cache,
     auto shape = desc->GetShape();
     size_t type_size =
         framework::SizeOfType(framework::ToTypeIndex(desc->GetDataType()));
-    return type_size * std::abs(std::accumulate(shape.begin(), shape.end(), 1));
+    int size = 1;
+    for(auto& s: shape) { size *= s; }
+    return type_size * std::abs(size);
   };
 
   auto compare_node_size = [&](ir::Node* lhs, ir::Node* rhs) {
@@ -98,8 +126,9 @@ bool AnalysisVarPass::NodeMatch(ir::Node* var, ir::Node** cache,
   return false;
 }
 
+
 std::unordered_set<ir::Node*> AnalysisVarPass::GetSubBlockOutputVars(
-    const std::set<ir::Node*>& nodes) const {
+                                                                     const std::unoredered_set<ir::Node*>& nodes) const {
   std::unordered_set<ir::Node*> vars;
   std::unordered_map<std::string, ir::Node*> var_to_node_map;
   ProgramDesc* program = nullptr;
@@ -126,13 +155,26 @@ std::unordered_set<ir::Node*> AnalysisVarPass::GetSubBlockOutputVars(
   return vars;
 }
 
+std::unique_ptr<ir::Graph> FillOpSignatureId(std::unique_ptr<ir::Graph> graph) {
+  // NOTE(): the Graph/Node may changed in different passes. e.g. Mutildevice pass
+  // will release origin IR nodes, merge batch pass will copy the OpDesc mutiple times.
+  // We need a mark to record the reused op, the early deleted op dependencies ops.
+  std::atomic<int> order_id(-1);
+  for (auto& n : graph->Nodes()) {
+    if (!n->IsOp()) continue;
+    auto* op_desc = n->Op();
+    op_desc->SetOrderId(order_id.fetch_add(1));
+  }
+}
+
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  auto& g_pool = Get<UnlivedNodePool>(kGlobalUnlivedNodePool);
-  auto& node_pair_map = Get<ReusedNodePairMap>(kGlobalReusedNodePairMap);
-  auto& graph_ops = Get<std::vector<ir::Node*>>(kGraphReusedOps);
+  auto& g_pool = Get<UnlivedNodePool>(kUnlivedNodePool);
+  auto& node_pair_map = Get<ReusedNodePairMap>(kReusedNodePairMap);
+  auto& graph_ops = Get<GraphOpsReused>(kGraphOpsReused);
+  auto& graph_early_delete_upstream_ops = Get<GraphEarlyDeleteOpsDeps>(kGraphEarlyDeleteOpsDeps);
   auto nodes = graph->Nodes();
-  auto subblock_output_vars = GetSubBlockOutputVars(nodes);
+  auto subblock_output_vars = etSubBlockOutputVars(nodes);
 
   auto op_has_subblock = [&](OpDesc* desc) {
     const AttributeMap& attrs = desc->GetAttrMap();
@@ -148,8 +190,7 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
         string::Sprintf("Expect node %s as Variable.", node->Name()));
     auto* desc = node->Var();
     proto::VarType::Type type = desc->GetType();
-    if (desc->Persistable() || (type != proto::VarType::LOD_TENSOR &&
-                                type != proto::VarType::SELECTED_ROWS) ||
+    if (desc->Persistable() || type != proto::VarType::LOD_TENSOR ||
         desc->GetShape().size() == 0) {
       return false;
     }
@@ -165,11 +206,17 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     return true;
   };
 
+  FillOpSignatureId(graph);
   ControlFlowGraph cfg(*graph.get());
   cfg.LiveVariableAnalysis();
-  for (auto& op : cfg.Ops()) {
-    // VLOG(3) << PrintIt(this, pool);
-    // VLOG(3) << op->Name();
+  for (size_t idx = 0; idx < cfg.Ops().size(); ++idx) {
+    auto& op = cfg.Ops()[idx];
+
+    VLOG(3) << PrintIt(this, pool);
+    VLOG(3) << op->Name();
+    // VLOG(3) << PrintIt(this, cfg.LiveIn(op));
+    // VLOG(3) << PrintIt(this, cfg.LiveOut(op));
+
     auto* op_desc = op->Op();
     if (op_has_subblock(op_desc)) {
       if (FLAGS_enable_subgraph_optimize) {
@@ -186,11 +233,11 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
                 ir::Node* cached_var = nullptr;
                 if (NodeMatch(var, &cached_var, &node_idx_in_pool)) {
                   VLOG(3) << string::Sprintf(
-                      "Hit Cache !!! cache pool index %d, var is %s, cached "
+                      "cache idx %d, pool size %d, var is %s, cached "
                       "var %s",
-                      node_idx_in_pool, DebugString(var),
+                      node_idx_in_pool, static_cast<int>(pool.size()), DebugString(var),
                       DebugString(cached_var));
-                  pool.erase(cached_var);
+                  // pool.erase(cached_var);
                   // subblock is not in IR graph. Modify the block_desc
                   // immediately
                   // to make the subblock variable reuse strategy take effect.
@@ -222,26 +269,45 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
         // &node_idx_in_pool);
         if (NodeMatch(var, &cached_var, &node_idx_in_pool)) {
           VLOG(3) << string::Sprintf(
-              "Hit Cache !!! cache pool index %d, var is %s, cached var %s",
-              node_idx_in_pool, DebugString(var), DebugString(cached_var));
+                                     "cache idx %d, pool size %d, var is %s, cached "
+                                     "var %s",
+                                     node_idx_in_pool, static_cast<int>(pool.size()), DebugString(var),
+                                     DebugString(cached_var));
           // VLOG(3) << "matched " << DebugString(var);
-          cfg.UpdateGraph(var, cached_var, node_idx_in_pool);
+          if (var->Name() == cached_var->Name()) {
+            PADDLE_THROW(string::Sprintf("Same var!!! %s", DebugString(var)));
+          }
           // VLOG(3) << "update graph";
-          pool.erase(cached_var);
-          node_pair_map[op] = std::make_pair(var, cached_var);
+          node_pair_map[op->Op()->GetOrderId()] = std::make_pair(var->Name(), cached_var->Name());
+          // VLOG(3) << "reused " << var->Name() << " cache " << cached_var->Name();
+          // pool.erase(cached_var);
+          pool.Erase(cached_var);
+          cfg.UpdateGraph(var, cached_var, idx);
         }
         // VLOG(3) << "match finish";
       }
     }
 
     for (auto var : cfg.LiveIn(op)) {
-      if (var_can_reused(var) && cfg.LiveOut(op).count(var) == 0 &&
-          pool.count(var) == 0) {
-        pool.insert(std::make_pair(var, op));
+      // VLOG(3) << " var " << var->Name() << " can be reuse" << var_can_reused(var) << " live out" << cfg.LiveOut(op).count(var) << " pool" << pool.count(var);
+      // if(pool.count(var)) {
+      //   VLOG(3) << "pool" << PrintIt(this, pool);
+      // }
+      if (var_can_reused(var) && cfg.LiveOut(op).count(var) == 0) {
+        VLOG(3) << "var " << var->Name() << "inserted";
+        VLOG(3) << PrintIt(this, pool);
+        // pool.insert(std::make_pair(var, op));
+        // pool.emplace_back(it, std::make_pair(var, op));
+        pool.Insert(var, op);
+        // std::sort(pool.begin(), pool.end(), VarInBytesComparator());
+        VLOG(3) << PrintIt(this, pool);
       }
     }
   }
-  g_pool.swap(pool);
+  // fill pool with op order_id and name.
+  for (auto& pair : pool) {
+    g_pool.push_back(std::make_pair(pair.first->Name(), pair.second->Op()->GetOrderId()));
+  }
   return graph;
 }
 
@@ -250,6 +316,7 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
 }  // namespace paddle
 
 REGISTER_PASS(analysis_var_pass, paddle::framework::details::AnalysisVarPass)
-    .RequirePassAttr(paddle::framework::details::kGlobalReusedNodePairMap)
-    .RequirePassAttr(paddle::framework::details::kGraphReusedOps)
-    .RequirePassAttr(paddle::framework::details::kGlobalUnlivedNodePool);
+    .RequirePassAttr(paddle::framework::details::kReusedNodePairMap)
+    .RequirePassAttr(paddle::framework::details::kGraphOpsReused)
+    .RequirePassAttr(paddle::framework::details::kUnlivedNodePool)
+.RequirePassAttr(paddle::framework::details::kGraphEarlyDeleteOpsDeps);

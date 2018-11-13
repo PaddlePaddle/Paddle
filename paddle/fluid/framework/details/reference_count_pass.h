@@ -25,7 +25,6 @@ namespace details {
 constexpr char kGlobalReferenceCount[] = "reference_count";
 constexpr char kCurReferenceCount[] = "current_reference_count";
 constexpr char kGarbageCollector[] = "garbage_collector";
-constexpr char kFetchedVars[] = "fetched_vars";
 
 class ReferenceCountPass : public ir::Pass {
  protected:
