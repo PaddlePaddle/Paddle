@@ -46,7 +46,7 @@ struct EmbeddingVSumFunctor {
 
     int64_t last_dim = output_t->dims()[1];
 
-    auto *input = in_t->data<T>();
+    auto *input = in_t->data<int64_t>();
     auto in_lod = in_t->lod()[0];
     PADDLE_ENFORCE_EQ(in_t->dims().size(), 2);
     int64_t seq_num = in_t->dims()[in_t->dims().size() - 1];
@@ -92,7 +92,9 @@ class FusedHashEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     }
 
     LoDTensor *output_t = context.Output<LoDTensor>("Out");
+
     // memset to .0
+    output_t->mutable_data<T>(context.GetPlace());
     math::SetConstant<platform::CPUDeviceContext, T> set_constant_functor;
     set_constant_functor(
         context.template device_context<platform::CPUDeviceContext>(), output_t,
@@ -149,7 +151,7 @@ class FusedHashEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       new_rows.reserve(ids_num);
       for (auto in_var : in_vars) {
         const LoDTensor &in_tensor = in_var->Get<LoDTensor>();
-        const T *input = in_tensor.data<T>();
+        const int64_t *input = in_tensor.data<int64_t>();
         int64_t seq_num = in_tensor.dims()[in_tensor.dims().size() - 1];
         for (int i = 0; i != lod.back(); ++i) {
           for (int ihash = 0; ihash != num_hash; ++ihash) {

@@ -143,8 +143,10 @@ class FusedHashEmbeddingSeqPoolOpGradDescMaker
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param, true));
+      if (input_param == "W") {
+        grad->SetOutput(framework::GradVarName(input_param),
+                        this->InputGrad(input_param, true));
+      }
     }
 
     for (auto& output_param : this->OutputNames()) {
