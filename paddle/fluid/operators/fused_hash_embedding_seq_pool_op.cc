@@ -24,8 +24,8 @@ class FusedHashEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
-        ctx->HasInput("X"),
-        "Input X of FusedHashEmbeddingSeqPoolOp should not be null.");
+        ctx->HasInputs("X"),
+        "Inputs(X) of FusedHashEmbeddingSeqPoolOp should not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("W"),
         "Input W of FusedHashEmbeddingSeqPoolOp should not be null.");
@@ -50,7 +50,7 @@ class FusedHashEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     // we only support sum now
     PADDLE_ENFORCE_EQ(combiner, "sum");
 
-    int num_hash = ctx->Attrs().Get<int>("num_hash");
+    int num_hash = ctx->Attrs().Get<int64_t>("num_hash");
     int64_t last_dim = table_dims[1] * num_hash;
 
     if (ctx->IsRuntime()) {
@@ -137,8 +137,25 @@ class FusedHashEmbeddingSeqPoolOpGradDescMaker
       true>::DefaultGradOpDescMaker;
 
  protected:
-  virtual std::string GradOpType() const {
-    return "fused_hash_embedding_seq_pool_grad";
+  virtual std::unique_ptr<framework::OpDesc> Apply() const {
+    auto* grad = new framework::OpDesc();
+    grad->SetType(this->GradOpType());
+
+    for (auto& input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param, true));
+    }
+
+    for (auto& output_param : this->OutputNames()) {
+      grad->SetInput(output_param, this->Output(output_param));
+      grad->SetInput(framework::GradVarName(output_param),
+                     this->OutputGrad(output_param));
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
