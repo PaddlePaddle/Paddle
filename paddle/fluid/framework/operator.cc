@@ -259,6 +259,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           if (row_size >= 0) {
             ss << "[row_size=" << row_size << "]";
           }
+          std::string dtype = GetDtype(*scope, output.second[i]);
+          ss << ":" << dtype;
           ss << "[" << GetDims(*scope, var_name, true) << "]";
           ss << "(" << GetLoD(*scope, var_name) << ")";
         }

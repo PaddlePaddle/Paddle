@@ -31,18 +31,17 @@ Steps to transpile pserver:
 """
 
 import math
-import sys
 import numpy as np
 import collections
-import six
 import logging
 
-from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
+from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework, unique_name
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, \
     Parameter, grad_var_name
 from .details import *
+from ..distribute_lookup_table import find_distributed_lookup_table
 from functools import reduce
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -292,7 +291,8 @@ class DistributeTranspiler(object):
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
-        self.has_distributed_lookup_table = self._has_distributed_lookup_table()
+        self.table_name = find_distributed_lookup_table(self.origin_program)
+        self.has_distributed_lookup_table = self.table_name != None
         self.param_name_to_grad_name = dict()
         self.grad_name_to_param_name = dict()
         for param_var, grad_var in self.params_grads:
@@ -966,28 +966,6 @@ to transpile() call.")
 
     # ====================== private transpiler functions =====================
 
-    def _has_distributed_lookup_table(self):
-        # process lookup_table_op
-        # 1. check all lookup_table_op is distributed
-        # 2. check all lookup_table_op share the same table.
-        distributed_lookup_table_ops = []
-        # support only one distributed_lookup_table now
-        self.table_name = None
-        for op in self.origin_program.global_block().ops:
-            if op.type == LOOKUP_TABLE_TYPE:
-                if op.attr('is_distributed') is True:
-                    if self.table_name is None:
-                        self.table_name = op.input("W")[0]
-                    if self.table_name != op.input("W")[0]:
-                        raise RuntimeError("all distributed lookup_table_ops"
-                                           " should have only one table")
-                    distributed_lookup_table_ops.append(op)
-                else:
-                    if self.table_name is not None:
-                        assert op.input("W")[0] != self.table_name
-
-        return len(distributed_lookup_table_ops) > 0
-
     def _update_dist_lookup_table_vars(self, param_list, grad_list,
                                        params_grads):
         # TODO(wuyi): put find a way to put dist lookup table stuff all together.
@@ -1341,7 +1319,6 @@ to transpile() call.")
         """
         create a new block to handle save checkpoint.
         """
-        import os
 
         pserver_program.global_block().create_var(
             name="kLookupTablePath",

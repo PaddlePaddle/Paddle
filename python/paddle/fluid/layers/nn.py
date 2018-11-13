@@ -160,10 +160,12 @@ __all__ = [
     'affine_grid',
     'sequence_reverse',
     'affine_channel',
+    'similarity_focus',
     'hash',
     'grid_sampler',
     'log_loss',
     'add_position_encoding',
+    'bilinear_tensor_product',
 ]
 
 
@@ -4065,8 +4067,8 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[7], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -4740,7 +4742,8 @@ def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
                                ignore_index=-100,
-                               numeric_stable_mode=False):
+                               numeric_stable_mode=False,
+                               return_softmax=False):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4804,9 +4807,15 @@ def softmax_with_cross_entropy(logits,
                                     the algorithm is always numerically stable. 
                                     Note that the speed may be slower when use 
                                     stable algorithm. Default: False
+        return_softmax (bool): A flag indicating whether to return the softmax 
+                               along with the cross entropy loss. Default: False
 
     Returns:
-        Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
+        Variable or Tuple of two Variables: Return the cross entropy loss if 
+                              `return_softmax` is False, otherwise the tuple 
+                              (loss, softmax), where the cross entropy loss is 
+                              a 2-D tensor with shape [N x 1], and softmax is a 
+                              2-D tensor with shape [N x K].
 
     Examples:
         .. code-block:: python
@@ -4831,6 +4840,10 @@ def softmax_with_cross_entropy(logits,
             'ignore_index': ignore_index,
             'numeric_stable_mode': numeric_stable_mode
         })
+
+    if return_softmax:
+        return loss, softmax
+
     return loss
 
 
@@ -7933,6 +7946,118 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
     return out
 
 
+def similarity_focus(input, axis, indexes, name=None):
+    """  
+    SimilarityFocus Operator
+
+    Generate a similarity focus mask with the same shape of input using the following method:
+    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
+       to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
+       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+       is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
+    2. For each index, find the largest numbers in the tensor T, so that the same 
+       row and same column has at most one number(what it means is that if the 
+       largest number has been found in the i-th row and the j-th column, then 
+       the numbers in the i-th row or j-th column will be skipped. And then the 
+       next largest number will be selected from the remaining numbers. Obviously 
+       there will be min(B, C) numbers), and mark the corresponding position of the 
+       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+       each index.
+    3. Broadcast the 3-D similarity focus mask to the same shape of input X.
+
+    Refer to `Similarity Focus Layer <http://www.aclweb.org/anthology/N16-1108>`_
+
+    .. code-block:: text
+
+        * Example :
+
+            Given a 4-D tensor x with the shape (BatchSize, C, A, B), where C is
+            the number of channels and the shape of feature map is (A, B):
+                x.shape = (2, 3, 2, 2)
+                x.data = [[[[0.8, 0.1],
+                            [0.4, 0.5]],
+
+                           [[0.9, 0.7],
+                            [0.9, 0.9]],
+
+                           [[0.8, 0.9],
+                            [0.1, 0.2]]],
+
+
+                          [[[0.2, 0.5],
+                            [0.3, 0.4]],
+
+                           [[0.9, 0.7],
+                            [0.8, 0.4]],
+
+                           [[0.0, 0.2],
+                            [0.4, 0.7]]]]
+
+            Given axis: 1 (the axis of the channel)
+            Given indexes: [0]
+
+            then we get a 4-D tensor out with the same shape of input x:
+                out.shape = (2, 3, 2, 2)
+                out.data = [[[[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]],
+
+                             [[1.0, 0.0],
+                              [0.0, 1.0]]],
+
+                            [[[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]],
+
+                             [[0.0, 1.0],
+                              [1.0, 0.0]]]]
+
+    Args:
+        input(Variable): The input tensor variable(default float). It should 
+            be a 4-D tensor with shape [BatchSize, A, B, C].
+        axis(int): Indicating the dimension to be selected. It can only be
+            1, 2 or 3.
+        indexes(list): Indicating the indexes of the selected dimension.
+
+    Returns:
+        Variable: A tensor variable with the same shape and same type 
+            as the input.
+        
+    Examples:
+        .. code-block:: python
+            data = fluid.layers.data(
+              name='data', shape=[2, 3, 2, 2], dtype='float32')
+            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[0])
+    """
+    helper = LayerHelper('similarity_focus', **locals())
+    # check attrs
+    if isinstance(axis, int) is False:
+        raise TypeError("axis must be int type.")
+    if isinstance(indexes, list) is False:
+        raise TypeError("indexes must be list type.")
+    if axis != 1 and axis != 2 and axis != 3:
+        raise ValueError("axis must be 1, 2 or 3.")
+    if len(indexes) == 0:
+        raise ValueError("indexes can not be empty.")
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+    helper.append_op(
+        type='similarity_focus',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={"axis": axis,
+               "indexes": indexes})
+    return out
+
+
 def hash(input, hash_size, num_hash=1, name=None):
     """
     Hash the input to an integer whose value is less than the given hash size.
@@ -8176,3 +8301,72 @@ def add_position_encoding(input, alpha, beta, name=None):
         attrs={"alpha": alpha,
                "beta": beta})
     return out
+
+
+def bilinear_tensor_product(x,
+                            y,
+                            size,
+                            act=None,
+                            name=None,
+                            param_attr=None,
+                            bias_attr=None):
+    """
+    **Add Bilinear Tensor Product Layer**
+
+    This layer performs bilinear tensor product on two inputs.
+    For example:
+
+    .. math::
+       out{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
+
+    In this formula:
+      - :math:`x`: the first input contains M elements, shape is [batch_size, M].
+      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
+      - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
+      - :math:`out{i}`: the i-th element of out, shape is [batch_size, size].
+      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
+
+    Args:
+        x (Variable): 2-D input tensor with shape [batch_size, M]
+        y (Variable): 2-D input tensor with shape [batch_size, N]
+        size (int): The dimension of this layer.
+        act (str, default None): Activation to be applied to the output of this layer.
+        name (str, default None): The name of this layer.
+        param_attr (ParamAttr, default None): The parameter attribute for the learnable w.
+            parameters/weights of this layer.
+        bias_attr (ParamAttr, default None): The parameter attribute for the bias
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
+
+    Returns:
+        Variable: A 2-D Tensor of shape [batch_size, size].
+
+    Examples:
+        .. code-block:: python
+
+          tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+    """
+    helper = LayerHelper('bilinear_tensor_product', **locals())
+    dtype = helper.input_dtype('x')
+
+    param_shape = [size, x.shape[1], y.shape[1]]
+
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    inputs = {"X": x, "Y": y, "Weight": w}
+    if helper.bias_attr:
+        bias_size = [1, size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs["Bias"] = bias
+    helper.append_op(
+        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out})
+
+    # add activation
+    return helper.append_activation(out)
