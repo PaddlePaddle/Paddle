@@ -35,7 +35,8 @@ class FusedHashEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     // check x dims
     auto x_dims = ctx->GetInputsDim("X");
     size_t win_count = x_dims.size();
-    PADDLE_ENFORCE_GE(N, 1, "Input tensors' count should be at least one");
+    PADDLE_ENFORCE_GE(win_count, 1,
+                      "Input tensors' count should be at least one");
     for (auto dim : x_dims) {
       PADDLE_ENFORCE_EQ(dim.size(), 2UL,
                         "The input of hash_op's dimensions must be 2");

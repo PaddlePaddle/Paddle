@@ -25,6 +25,7 @@ extern "C" {
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -41,15 +42,14 @@ struct EmbeddingVSumFunctor {
                   const LoDTensor *table_t, const LoDTensor *in_t,
                   LoDTensor *output_t) {
     auto *table = table_t->data<T>();
-    int64_t row_number = table_t->dims()[0];
     int64_t row_width = table_t->dims()[1];
 
     int64_t last_dim = output_t->dims()[1];
 
     auto *input = in_t->data<T>();
     auto in_lod = in_t->lod()[0];
-    PADDLE_ENFORCE_EQ(in_t->dims().size(), 2)
-    int64_t seq_num = in_t->dims()[in_dims.size() - 1];
+    PADDLE_ENFORCE_EQ(in_t->dims().size(), 2);
+    int64_t seq_num = in_t->dims()[in_t->dims().size() - 1];
 
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
@@ -76,9 +76,10 @@ class FusedHashEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         in_vars.size(), 1,
         "FusedHashEmbeddingSeqPoolOp Input(X) should be at least one");
-    for (in_var : in_vars) {
-      auto in_dims = in_var->dims();
-      auto in_lod = in_t->lod();
+    int64_t seq_length = in_vars[0]->Get<LoDTensor>().dims()[0];
+    for (auto *in_var : in_vars) {
+      auto in_dims = in_var->Get<LoDTensor>().dims();
+      auto in_lod = in_var->Get<LoDTensor>().lod();
       PADDLE_ENFORCE_EQ(
           static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
           "The actual input data's size mismatched with LoD information.");
@@ -92,16 +93,20 @@ class FusedHashEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
 
     LoDTensor *output_t = context.Output<LoDTensor>("Out");
     // memset to .0
-    SetConstant<platform::CPUDeviceContext, T>(output_t);
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant_functor;
+    set_constant_functor(
+        context.template device_context<platform::CPUDeviceContext>(), output_t,
+        .0);
 
     const LoDTensor *table_var = context.Input<LoDTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
 
     if (combiner_type == "sum") {
-      for (in_var : in_vars) {
+      for (auto *in_var : in_vars) {
         EmbeddingVSumFunctor<T> functor;
         functor(context, context.Attr<int64_t>("num_hash"),
-                context.Attr<int64_t>("mod_by"), table_var, in_var, output_t);
+                context.Attr<int64_t>("mod_by"), table_var,
+                &(in_var->Get<LoDTensor>()), output_t);
       }
     } else {
       PADDLE_THROW("The Combiner Type must be sum now.");
@@ -137,21 +142,24 @@ class FusedHashEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
-      auto lod = in_vars[0]->lod()[0];
+      auto lod = in_vars[0]->Get<LoDTensor>().lod()[0];
       int64_t ids_num = lod.back() * num_hash * in_vars.size();
 
-      framework::Vector<int64_t> *new_rows = d_table->mutable_rows();
-      new_rows->reserve(ids_num);
-      for (in_var : in_vars) {
-        int64_t seq_num = in_var->dims()[in_var->dims().size() - 1];
+      std::vector<int64_t> new_rows;
+      new_rows.reserve(ids_num);
+      for (auto in_var : in_vars) {
+        const LoDTensor &in_tensor = in_var->Get<LoDTensor>();
+        const T *input = in_tensor.data<T>();
+        int64_t seq_num = in_tensor.dims()[in_tensor.dims().size() - 1];
         for (int i = 0; i != lod.back(); ++i) {
           for (int ihash = 0; ihash != num_hash; ++ihash) {
-            new_rows->emplace_back(
+            new_rows.emplace_back(
                 XXH64(input + i * seq_num, sizeof(int) * seq_num, ihash) %
                 mod_by);
           }
         }
       }
+      d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
