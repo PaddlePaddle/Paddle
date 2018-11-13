@@ -56,16 +56,16 @@ class FusedOperator : public OperatorBase {
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
 
  private:
-  const ProgramDesc pdesc;
-  size_t block;
-  std::vector<std::shared_ptr<OperatorBase>> fused_ops;
-  std::unordered_map<std::string, ngraph::element::Type> var_type_map;
-  std::unordered_set<std::string> persistables;
-  std::unordered_set<std::string> fetches;
-  std::unordered_set<std::string> post_op_inputs;
-  bool is_complete = false;
+  const ProgramDesc pdesc_;
+  size_t block_;
+  std::vector<std::shared_ptr<OperatorBase>> fused_ops_;
+  std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
+  std::unordered_set<std::string> persistables_;
+  std::unordered_set<std::string> fetches_;
+  std::unordered_set<std::string> post_op_inputs_;
+  bool is_full_ = false;
 
-  void process();
+  void Process();
 };
 }  // namespace framework
 }  // namespace paddle
