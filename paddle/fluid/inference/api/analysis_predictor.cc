@@ -209,6 +209,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 void AnalysisPredictor::OptimizeInferenceProgram() {
   LOG(INFO) << "optimize begin";
   FLAGS_IA_enable_ir = config_.enable_ir_optim;
+  FLAGS_IA_enable_graphviz = config_.enable_graphviz;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "";  // Don't output the model.
   // Analyze inference_program

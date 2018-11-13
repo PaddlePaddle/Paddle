@@ -186,6 +186,9 @@ struct NativeConfig : public PaddlePredictor::Config {
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Change to a float in (0,1] if needed.
 
+  // Enable graphviz to generate .dot files with data flow graphs
+  bool enable_graphviz{true};
+
   // Specify the exact path of program and parameter files.
   std::string prog_file;
   std::string param_file;

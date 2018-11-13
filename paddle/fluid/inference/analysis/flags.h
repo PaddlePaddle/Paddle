@@ -20,3 +20,4 @@ DECLARE_bool(IA_enable_tensorrt_subgraph_engine);
 DECLARE_string(IA_graphviz_log_root);
 DECLARE_string(IA_output_storage_path);
 DECLARE_bool(IA_enable_ir);
+DECLARE_bool(IA_enable_graphviz);
