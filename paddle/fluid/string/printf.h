@@ -106,17 +106,18 @@ void Printf(const char* fmt, const Args&... args) {
 template <typename T>
 std::string HumanReadableSize(T size) {
   size_t i = 0;
-  T orig = size;
+  float64_t f_size = static_cast<float64_t>(size);
+  float64_t orig = f_size;
   const std::vector<std::string> units(
       {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"});
-  while (size > 1024) {
-    size /= 1024;
+  while (f_size > 1024) {
+    f_size /= 1024;
     i++;
   }
   if (i >= units.size()) {
-    return Sprintf("%dB", static_cast<size_t>(orig));
+    return Sprintf("%fB", orig);
   }
-  return Sprintf("%d.%d%s", i, size, units[i]);
+  return Sprintf("%f%s", f_size, units[i]);
 }
 
 }  // namespace string
