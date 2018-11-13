@@ -165,8 +165,6 @@ void TestMultiThreadPrediction(
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
-  // because AttentionLSTM's hard code nodeid will be damaged.
   predictors.emplace_back(CreateTestPredictor(config, use_analysis));
   for (int tid = 1; tid < num_threads; ++tid) {
     predictors.emplace_back(predictors.front()->Clone());
@@ -199,17 +197,6 @@ void TestMultiThreadPrediction(
   }
   for (int i = 0; i < num_threads; ++i) {
     threads[i].join();
-  }
-
-  if (FLAGS_test_all_data) {
-    LOG(INFO) << "threads average time: "
-              << static_cast<double>(total_time) /
-                     (num_threads * inputs.size() * batch_size * num_times);
-  } else {
-    LOG(INFO) << "threads average time: "
-              << static_cast<double>(total_time) /
-                     (num_threads * batch_size * num_times)
-              << " ms";
   }
 }
 

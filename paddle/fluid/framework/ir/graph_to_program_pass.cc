@@ -56,10 +56,6 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
     block->add_ops()->MergeFrom(*n->Op()->Proto());
   }
 
-  if (Has("program_proto")) {
-    Get<framework::proto::ProgramDesc>("program_proto") = *program_pb;
-  }
-
   program.CopyFrom(*program_pb);
   return graph;
 }

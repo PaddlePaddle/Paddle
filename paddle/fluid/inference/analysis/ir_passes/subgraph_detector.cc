@@ -22,7 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
-using framework::ir::kNodeDeleted;
 
 using framework::ir::Node;
 

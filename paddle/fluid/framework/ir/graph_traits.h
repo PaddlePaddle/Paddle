@@ -24,8 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-const char kNodeDeleted[] = "_node_deleted_";
-
 template <typename IteratorT>
 class iterator_range {
   IteratorT begin_, end_;

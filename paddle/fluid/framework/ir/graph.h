@@ -177,7 +177,7 @@ class Graph {
     return nullptr;
   }
 
-  const ProgramDesc &program() { return program_; }
+  const ProgramDesc &program() const { return program_; }
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
 

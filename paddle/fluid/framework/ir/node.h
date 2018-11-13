@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
@@ -23,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {

@@ -313,6 +313,3 @@ else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
 endif()
-if (WITH_TESTING)
-    add_definitions(-DPADDLE_WITH_TESTING)
-endif()
