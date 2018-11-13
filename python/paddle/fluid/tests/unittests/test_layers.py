@@ -185,8 +185,8 @@ class TestBook(unittest.TestCase):
                     input=x, label=y, num_classes=2))
         print(str(program))
 
+        # test hsigmod with custom tree structure
         program2 = Program()
-
         with program_guard(program2):
             x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
             y2 = layers.data(name='y2', shape=[4], dtype='int64')
