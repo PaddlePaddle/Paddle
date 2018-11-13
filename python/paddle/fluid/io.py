@@ -292,6 +292,19 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
+def _delete_initialize_op(var):
+    to_delete_op = []
+    block = default_startup_program().global_block()
+    for op in block.ops:
+        for o in op.output_arg_names:
+            if o == var.name:
+                to_delete_op.append(op)
+
+    for op in to_delete_op:
+        idx = list(block.ops).index(op)
+        block._remove_op(idx)
+
+
 def load_vars(executor,
               dirname,
               main_program=None,
@@ -394,6 +407,7 @@ def load_vars(executor,
                 # NOTE: also append load operators in startup program, so when
                 # ParallelExecutor runs startup program automatically, the loaded
                 # won't be overwritten by ramdom init op.
+                _delete_initialize_op(new_var)
                 default_startup_program().global_block().append_op(
                     type='load',
                     inputs={},
@@ -413,6 +427,8 @@ def load_vars(executor,
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
             # NOTE: same as above, also append to startup program
+            for var in load_var_list:
+                _delete_initialize_op(var)
             default_startup_program().global_block().append_op(
                 type='load_combine',
                 inputs={},
@@ -938,6 +954,8 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
                    'starts': [start],
                    'ends': [end]})
         # NOTE: also append in startup program
+        _delete_initialize_op(clone_orig_var)
+        _delete_initialize_op(clone_slice_var)
         default_startup_program().global_block().append_op(
             type='load',
             inputs={},
