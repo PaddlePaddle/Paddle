@@ -106,8 +106,8 @@ void Printf(const char* fmt, const Args&... args) {
 template <typename T>
 std::string HumanReadableSize(T size) {
   size_t i = 0;
-  float64_t f_size = static_cast<float64_t>(size);
-  float64_t orig = f_size;
+  double f_size = static_cast<double>(size);
+  double orig = f_size;
   const std::vector<std::string> units(
       {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"});
   while (f_size > 1024) {
