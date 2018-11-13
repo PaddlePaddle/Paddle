@@ -37,7 +37,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.EnableMKLDNN();
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
