@@ -80,13 +80,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 };
 
 std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
-    bool from_user) const {
-  if (finalized_by_user_) {
+    bool finalize_strategy) const {
+  if (is_finalized_) {
     return pass_builder_;
   }
   pass_builder_.reset(new ParallelExecutorPassBuilder(*this));
-  if (from_user) {
-    finalized_by_user_ = true;
+  if (finalize_strategy) {
+    is_finalized_ = true;
   }
   return pass_builder_;
 }
