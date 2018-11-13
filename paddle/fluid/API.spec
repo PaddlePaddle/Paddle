@@ -5,7 +5,6 @@ paddle.fluid.Program.current_block ArgSpec(args=['self'], varargs=None, keywords
 paddle.fluid.Program.global_block ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.list_vars ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.parse_from_string ArgSpec(args=['binary_str'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.Program.prune_read_op_and_convert_for_test ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.to_string ArgSpec(args=['self', 'throw_on_error', 'with_details'], varargs=None, keywords=None, defaults=(False,))
 paddle.fluid.default_startup_program ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.default_main_program ArgSpec(args=[], varargs=None, keywords=None, defaults=None)

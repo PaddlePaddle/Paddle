@@ -89,18 +89,15 @@ class TestPyReaderUsingDataLayerTrainAndTest(unittest.TestCase):
         image = fluid.layers.data(
             name='image', dtype='float32', shape=[-1] + self.image_shape)
         label = fluid.layers.data(name='label', dtype='int64', shape=[-1, 1])
+        loss, predict_label = simple_fc_net(image, label, self.image_shape,
+                                            self.class_num)
+        test_program = fluid.default_main_program().clone(for_test=True)
         train_reader = fluid.layers.create_py_reader_by_data(
             feed_list=[image, label],
             capacity=16,
-            use_double_buffer=self.use_double_buffer)
-        loss, predict_label = simple_fc_net(image, label, self.image_shape,
-                                            self.class_num)
-        test_program = fluid.default_main_program(
-        ).prune_read_op_and_convert_for_test()
-        for op in test_program.current_block().ops:
-            self.assertTrue(
-                op.type != 'create_double_buffer_reader' and op.type != 'read',
-                "Find read_op or double_buffer_op in cloned program")
+            use_double_buffer=self.use_double_buffer,
+            prepend=True)
+
         test_startup = fluid.Program()
         with fluid.program_guard(test_program, test_startup):
             test_reader = fluid.layers.create_py_reader_by_data(

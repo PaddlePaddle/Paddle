@@ -1601,26 +1601,6 @@ class Program(object):
     def _version(self):
         return self.desc._version()
 
-    def prune_read_op_and_convert_for_test(self):
-        """
-        Create a new, duplicated program for testing.
-        This method would first prune the :code:`read` op and the related
-        reader variables in the copied program, and then change the attribute
-        `is_test` in some ops (e.g.: dropout, batch_norm, etc.) be True. 
-
-        Args:
-            None
-
-        Returns:
-            Out(Program): A new, duplicated program after pruning 
-                          :code:`read` op and changing the attribute 
-                          :code:`is_test` to be True.
-        """
-        p = self._inference_optimize(prune_read_op=True)
-        p._copy_param_info_from(self)
-        p._copy_data_info_from(self)
-        return p
-
     def clone(self, for_test=False):
         """
         Create a new, duplicated program.
