@@ -14,14 +14,14 @@
 
 #pragma once
 
-#include <NvInfer.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include "NvInfer.h"
 
-#include "paddle/fluid/inference/tensorrt/plugin/serialize.hpp"
+#include "paddle/fluid/inference/tensorrt/plugin/serialize.h"
 
 namespace paddle {
 namespace inference {
@@ -53,8 +53,8 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
                            nvinfer1::DataType type,
                            nvinfer1::PluginFormat format,
                            int maxBatchSize) override;
-  virtual void serialize(void* buffer) override;
-  virtual size_t getSerializationSize() override;
+  virtual void serialize(void* buffer) = 0;
+  virtual size_t getSerializationSize() = 0;
 
  protected:
   void deserializeBase(void const*& serialData, size_t& serialLength);
