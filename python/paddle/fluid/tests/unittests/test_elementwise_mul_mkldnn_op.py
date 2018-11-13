@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from test_elementwise_mul_op import *
 
+
 class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
     def init_input_output(self):
         x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
@@ -49,7 +50,9 @@ class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
-@unittest.skip("Not implemented yet.") # TODO(mgallus): enable when implemented.
+
+@unittest.skip(
+    "Not implemented yet.")  # TODO(mgallus): enable when implemented.
 class TestElementwiseMulMKLDNNOp_BroadcastNCHW8c(ElementwiseMulOp):
     def init_input_output(self):
         x = np.random.rand(1, 8, 2, 2).astype(self.dtype)
@@ -79,6 +82,7 @@ class TestElementwiseMulMKLDNNOp_BroadcastNCHW8c(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
+
 class TestElementwiseMulMKLDNNOp_FallbackNCHW(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
@@ -100,6 +104,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNCHW(ElementwiseMulOp):
 
     def test_check_grad_ingore_y(self):
         pass
+
 
 class TestElementwiseMulMKLDNNOp_FallbackNCHW16C(ElementwiseMulOp):
     def init_input_output(self):
@@ -130,6 +135,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNCHW16C(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
+
 class TestElementwiseMulMKLDNNOp_FallbackNoReorders(ElementwiseMulOp):
     def init_input_output(self):
         x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
@@ -159,6 +165,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNoReorders(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
+
 class TestElementwiseMulMKLDNNOp_FallbackWithReorder1(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
@@ -186,6 +193,7 @@ class TestElementwiseMulMKLDNNOp_FallbackWithReorder1(ElementwiseMulOp):
 
     def test_check_grad_ingore_y(self):
         pass
+
 
 class TestElementwiseMulMKLDNNOp_FallbackWithReorder2(ElementwiseMulOp):
     def init_input_output(self):
@@ -215,6 +223,7 @@ class TestElementwiseMulMKLDNNOp_FallbackWithReorder2(ElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
+
 class TestElementwiseMulMKLDNNOp_FallbackNoReorders2(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.rand(1, 16).astype(self.dtype)
@@ -241,6 +250,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNoReorders2(ElementwiseMulOp):
 
     def test_check_grad_ingore_y(self):
         pass
+
 
 if __name__ == '__main__':
     unittest.main()
