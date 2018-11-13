@@ -185,6 +185,23 @@ class TestBook(unittest.TestCase):
                     input=x, label=y, num_classes=2))
         print(str(program))
 
+        program2 = Program()
+
+        with program_guard(program2):
+            x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
+            y2 = layers.data(name='y2', shape=[4], dtype='int64')
+            ptable = layers.data(name='ptable', shape=[4, 6], dtype='int64')
+            pcode = layers.data(name='pcode', shape=[4, 6], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x2,
+                    label=y2,
+                    non_leaf_num=6,
+                    ptable=ptable,
+                    pcode=pcode,
+                    is_costum=True))
+            print(str(program2))
+
     def test_sequence_expand(self):
         program = Program()
         with program_guard(program):
