@@ -34,6 +34,7 @@ class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_BroadcastNCHW16c, self).setUp()
         self.attrs["x_data_format"] = "nchw16c"
         self.attrs["y_data_format"] = "nc"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -66,6 +67,7 @@ class TestElementwiseMulMKLDNNOp_BroadcastNCHW8c(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_BroadcastNCHW8c, self).setUp()
         self.attrs["x_data_format"] = "nchw8c"
         self.attrs["y_data_format"] = "nc"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -119,6 +121,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNCHW16C(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_FallbackNCHW16C, self).setUp()
         self.attrs["x_data_format"] = "nchw16c"
         self.attrs["y_data_format"] = "nchw16c"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -149,6 +152,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNoReorders(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_FallbackNoReorders, self).setUp()
         self.attrs["x_data_format"] = "nchw16c"
         self.attrs["y_data_format"] = "nchw16c"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -178,6 +182,7 @@ class TestElementwiseMulMKLDNNOp_FallbackWithReorder1(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_FallbackWithReorder1, self).setUp()
         self.attrs["x_data_format"] = "nchw"
         self.attrs["y_data_format"] = "nchw16c"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -207,6 +212,7 @@ class TestElementwiseMulMKLDNNOp_FallbackWithReorder2(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_FallbackWithReorder2, self).setUp()
         self.attrs["x_data_format"] = "nchw16c"
         self.attrs["y_data_format"] = "nchw"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -235,6 +241,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNoReorders2(ElementwiseMulOp):
         super(TestElementwiseMulMKLDNNOp_FallbackNoReorders2, self).setUp()
         self.attrs["x_data_format"] = "nc"
         self.attrs["y_data_format"] = "nc"
+        self._cpu_only = True
 
     def init_kernel_type(self):
         self.use_mkldnn = True
