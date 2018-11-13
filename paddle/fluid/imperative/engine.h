@@ -14,23 +14,26 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
+#include <cstddef>
+#include <cstdint>
 
 namespace paddle {
 namespace imperative {
 
-class TensorFuture {
+struct Runnable {};
+
+class Engine {
  public:
+  virtual ~Engine() {}
+
+  virtual void Enqueue(Runnable* runnable) = 0;
+
+  virtual size_t Size() const = 0;
+
+  virtual void Sync() = 0;
 };
 
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual void Forward() { LOG(ERROR) << "forward at cpp."; }
-
-  virtual void Backward() { LOG(ERROR) << "backward at cpp."; }
-};
+Engine* GetEngine();
 
 }  // namespace imperative
 }  // namespace paddle

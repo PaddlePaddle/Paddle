@@ -105,6 +105,7 @@ PYBIND11_MODULE(core, m) {
   layer.def(py::init<>())
       .def("forward", &imperative::Layer::Forward)
       .def("backward", &imperative::Layer::Backward);
+  BindTracer(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(

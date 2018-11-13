@@ -12,25 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/imperative/engine.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include <mutex>  // NOLINT
+#include <vector>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace imperative {
 
-class TensorFuture {
+static std::once_flag init_engine;
+static Engine* engine;
+
+class DummyEngine : public Engine {
  public:
+  void Enqueue(Runnable* runnable) override {
+    queued_runnables_.push_back(runnable);
+  }
+
+  size_t Size() const override { return queued_runnables_.size(); }
+
+  void Sync() override {
+    for (Runnable* l : queued_runnables_) {
+      LOG(INFO) << "running " << reinterpret_cast<void*>(l);
+    }
+    queued_runnables_.clear();
+  }
+
+ private:
+  std::vector<Runnable*> queued_runnables_;
 };
 
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual void Forward() { LOG(ERROR) << "forward at cpp."; }
-
-  virtual void Backward() { LOG(ERROR) << "backward at cpp."; }
-};
+Engine* GetEngine() {
+  std::call_once(init_engine, []() { engine = new DummyEngine(); });
+  return engine;
+}
 
 }  // namespace imperative
 }  // namespace paddle

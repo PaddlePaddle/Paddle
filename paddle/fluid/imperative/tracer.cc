@@ -12,25 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/imperative/tracer.h"
 
 namespace paddle {
-namespace imperative {
-
-class TensorFuture {
- public:
-};
-
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual void Forward() { LOG(ERROR) << "forward at cpp."; }
-
-  virtual void Backward() { LOG(ERROR) << "backward at cpp."; }
-};
-
-}  // namespace imperative
+namespace imperative {}  // namespace imperative
 }  // namespace paddle

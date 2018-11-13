@@ -20,9 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-class PyLayer : public paddle::imperative::Layer {
+class PyLayer : public imperative::Layer {
  public:
-  using paddle::imperative::Layer::Layer;  // Inherit constructors
+  using imperative::Layer::Layer;  // Inherit constructors
 
   void Forward() override {
     PYBIND11_OVERLOAD(void, Layer, Forward, );  // NOLINT
@@ -32,6 +32,8 @@ class PyLayer : public paddle::imperative::Layer {
     PYBIND11_OVERLOAD(void, Layer, Backward, );  // NOLINT
   }
 };
+
+void BindTracer(pybind11::module *m);
 
 }  // namespace pybind
 }  // namespace paddle

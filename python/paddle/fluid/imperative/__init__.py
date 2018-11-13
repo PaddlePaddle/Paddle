@@ -14,8 +14,12 @@
 
 from __future__ import print_function
 
+from . import base
+from .base import *
+
 from . import layers
 from .layers import *
 
 __all__ = []
 __all__ += layers.__all__
+__all__ += base.__all__
