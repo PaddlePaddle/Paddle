@@ -148,11 +148,20 @@ def YoloV3Loss(x, gtbox, attrs):
     loss_class = bce(pred_cls * obj_mask_expand, tcls * obj_mask_expand,
                      obj_mask_expand)
 
-    return loss_x + loss_y + loss_w + loss_h + loss_conf_obj + loss_conf_noobj + loss_class
+    return attrs['lambda_xy'] * (loss_x + loss_y) \
+            + attrs['lambda_wh'] * (loss_w + loss_h) \
+            + attrs['lambda_conf_obj'] * loss_conf_obj \
+            + attrs['lambda_conf_noobj'] * loss_conf_noobj \
+            + attrs['lambda_class'] * loss_class
 
 
 class TestYolov3LossOp(OpTest):
     def setUp(self):
+        self.lambda_xy = 1.0
+        self.lambda_wh = 1.0
+        self.lambda_conf_obj = 1.0
+        self.lambda_conf_noobj = 1.0
+        self.lambda_class = 1.0
         self.initTestCase()
         self.op_type = 'yolov3_loss'
         x = np.random.random(size=self.x_shape).astype('float32')
@@ -164,6 +173,11 @@ class TestYolov3LossOp(OpTest):
             "anchors": self.anchors,
             "class_num": self.class_num,
             "ignore_thresh": self.ignore_thresh,
+            "lambda_xy": self.lambda_xy,
+            "lambda_wh": self.lambda_wh,
+            "lambda_conf_obj": self.lambda_conf_obj,
+            "lambda_conf_noobj": self.lambda_conf_noobj,
+            "lambda_class": self.lambda_class,
         }
 
         self.inputs = {'X': x, 'GTBox': gtbox}
@@ -182,7 +196,7 @@ class TestYolov3LossOp(OpTest):
             place, ['X'],
             'Loss',
             no_grad_set=set("GTBox"),
-            max_relative_error=0.1)
+            max_relative_error=0.06)
 
     def initTestCase(self):
         self.anchors = [10, 13, 12, 12]
@@ -190,6 +204,11 @@ class TestYolov3LossOp(OpTest):
         self.ignore_thresh = 0.5
         self.x_shape = (5, len(self.anchors) // 2 * (5 + self.class_num), 7, 7)
         self.gtbox_shape = (5, 5, 5)
+        self.lambda_xy = 2.5
+        self.lambda_wh = 0.8
+        self.lambda_conf_obj = 1.5
+        self.lambda_conf_noobj = 0.5
+        self.lambda_class = 1.2
 
 
 if __name__ == "__main__":
