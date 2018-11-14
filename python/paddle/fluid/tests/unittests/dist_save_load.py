@@ -26,6 +26,7 @@ from multiprocessing import Process
 from functools import reduce
 
 import numpy as np
+import pickle
 import unittest
 import six
 
@@ -166,7 +167,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                 io.save_persistables(startup_exe, model_dir, trainer_prog)
 
         var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor())
-        print(np.ravel(var).tolist())
+        print(pickle.dumps(np.ravel(var).tolist()))
 
 
 if __name__ == "__main__":

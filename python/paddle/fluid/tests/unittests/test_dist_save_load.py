@@ -65,9 +65,10 @@ class TestDistSaveLoadDense2x2(TestDistBase):
 
         shutil.rmtree(model_dir)
 
-        local_np = np.array(eval(local_var[0]))
-        train0_np = np.array(eval(tr0_var[0]))
-        train1_np = np.array(eval(tr1_var[0]))
+        local_np = np.array(local_var)
+        train0_np = np.array(tr0_var)
+        train1_np = np.array(tr1_var)
+
         self.assertAlmostEqual(local_np.all(), train0_np.all(), delta=delta)
         self.assertAlmostEqual(local_np.all(), train1_np.all(), delta=delta)
         self.assertAlmostEqual(train0_np.all(), train1_np.all(), delta=delta)
