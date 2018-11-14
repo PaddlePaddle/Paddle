@@ -1,0 +1,13 @@
+include(operators)
+register_operators()
+
+if(WITH_GPU)
+    foreach(CUDA_KERNEL_FILE ${PART_CUDA_KERNEL_FILES})
+        file(READ ${CUDA_KERNEL_FILE} TARGET_CONTENT)
+        string(REGEX MATCH "REGISTER_OP_CUDA_KERNEL\\(\\n?([^,]+),.*" MATCHED ${TARGET_CONTENT})
+        if (MATCHED)
+            string(STRIP ${CMAKE_MATCH_1} MATCHED)
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${MATCHED}, CUDA);\n")
+        endif()
+    endforeach()
+endif()
