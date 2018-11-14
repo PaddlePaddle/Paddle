@@ -167,7 +167,10 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                 io.save_persistables(startup_exe, model_dir, trainer_prog)
 
         var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor())
-        print(pickle.dumps(np.ravel(var).tolist()))
+        if six.PY2:
+            print(pickle.dumps(np.ravel(var).tolist()))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
 
 
 if __name__ == "__main__":
