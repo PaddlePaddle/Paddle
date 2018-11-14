@@ -357,6 +357,27 @@ $out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
   }
 };
 
+class SELUOpMaker : public framework::OpProtoAndCheckerMaker {
+  public:
+   void Make() override {
+     AddInput("X", "Input of SELU operator");
+     AddOutput("Out", "Output of SELU operator");
+     AddAttr<double>("alpha", "The alpha value of SELU").SetDefault(
+             1.6732632423543772848170429916717);
+     AddAttr<double>("scale", "The alpha value of SELU").SetDefault(
+             1.0507009873554804934193349852946);
+     AddComment(R"DOC(
+SELU Activation Operator.
+
+Applies the following element-wise computation on the input according to
+https://arxiv.org/abs/1706.02515
+
+$out = scale * ( \max(0, x) + \min(0, \alpha * (e^x - 1)))$
+
+)DOC");
+  }
+};
+
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -532,6 +553,7 @@ namespace ops = paddle::operators;
   __macro(LeakyRelu, leaky_relu);    \
   __macro(TanhShrink, tanh_shrink);  \
   __macro(ELU, elu);                 \
+  __macro(SELU, selu);                 \
   __macro(HardShrink, hard_shrink);  \
   __macro(Swish, swish);             \
   __macro(ThresholdedRelu, thresholded_relu);

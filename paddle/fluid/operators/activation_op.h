@@ -716,6 +716,49 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// selu(x) =
+//   lambda * x if x >=0
+//   lambda * alpha * (e^x - 1) if x <= 0
+// reference: https://arxiv.org/abs/1706.02515
+
+template <typename T>
+struct SELUFunctor : public BaseActivationFunctor<T> {
+  double alpha;
+  double scale;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}, {"scale", &scale}};
+  }
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto elu_out = x.cwiseMax(static_cast<T>(0)) +
+                   (static_cast<T>(alpha) * (x.exp() - static_cast<T>(1)))
+                       .cwiseMin(static_cast<T>(0));
+    out.device(d) = static_cast<T>(scale) * elu_out;
+  }
+};
+
+// dx = d(selu) *
+//   lambda if x >= 0
+//   selu(x) + lambda * alpha
+// reference: https://arxiv.org/abs/1706.02515
+
+template <typename T>
+struct SELUGradFunctor : public BaseActivationFunctor<T> {
+  double alpha;
+  double scale;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}, {"scale", &scale}};
+  }
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(scale) *
+                       (x > static_cast<T>(0)).template cast<T>() +
+                   dout * (out + static_cast<T>(alpha) * static_cast<T>(scale)) *
+                       (x < static_cast<T>(0)).template cast<T>();
+  }
+};
+
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
@@ -899,6 +942,7 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(leaky_relu, LeakyReluFunctor, LeakyReluGradFunctor);       \
   __macro(tanh_shrink, TanhShrinkFunctor, TanhShrinkGradFunctor);    \
   __macro(elu, ELUFunctor, ELUGradFunctor);                          \
+  __macro(selu, SELUFunctor, SELUGradFunctor);                       \
   __macro(hard_shrink, HardShrinkFunctor, HardShrinkGradFunctor);    \
   __macro(hard_sigmoid, HardSigmoidFunctor, HardSigmoidGradFunctor); \
   __macro(swish, SwishFunctor, SwishGradFunctor);                    \

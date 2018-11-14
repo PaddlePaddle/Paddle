@@ -112,6 +112,7 @@ __all__ = [
     'rank_loss',
     'margin_rank_loss',
     'elu',
+    'selu',
     'relu6',
     'pow',
     'stanh',
@@ -6520,6 +6521,31 @@ def elu(x, alpha=1.0, name=None):
         attrs={'alpha': alpha})
     return out
 
+@templatedoc()
+def selu(x,
+         alpha=1.6732632423543772848170429916717,
+         scale=1.0507009873554804934193349852946,
+         name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|1.6732632423543772848170429916717): ${alpha_comment}
+        scale(${scale_type}|1.0507009873554804934193349852946): ${scale_comment})
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('selu', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='selu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha, 'scale': scale})
+    return out
 
 @templatedoc()
 def relu6(x, threshold=6.0, name=None):
