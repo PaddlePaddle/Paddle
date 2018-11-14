@@ -196,15 +196,13 @@ TEST(Analyzer_dam, fuse_statis) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (FLAGS_use_analysis) {
-    int num_ops;
-    auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-    auto fuse_statis = GetFuseStatis(
-        static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
-    EXPECT_EQ(num_ops, 2020);
-  }
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
+  EXPECT_EQ(num_ops, 2020);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
@@ -215,9 +213,7 @@ TEST(Analyzer_dam, compare) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
-  if (FLAGS_use_analysis) {
-    CompareNativeAndAnalysis(cfg, input_slots_all);
-  }
+  CompareNativeAndAnalysis(cfg, input_slots_all);
 }
 
 }  // namespace inference

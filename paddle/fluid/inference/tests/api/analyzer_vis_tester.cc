@@ -59,9 +59,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->specify_input_name = true;
   // TODO(TJ): fix fusion gru
   cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
-#ifdef PADDLE_WITH_MKLDNN
-  cfg->EnableMKLDNN();
-#endif
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
