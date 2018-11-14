@@ -101,20 +101,20 @@ class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
     PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
-    dic_[name] = data_.size();
-    data_.emplace_back(std::unique_ptr<T>(x));
-    return data_.back().get();
+    dic_[name] = elements_.size();
+    elements_.emplace_back(std::unique_ptr<T>(x));
+    return elements_.back().get();
   }
 
   T *Lookup(const std::string &name) {
     auto it = dic_.find(name);
     if (it == dic_.end()) return nullptr;
-    return data_[it->second].get();
+    return elements_[it->second].get();
   }
 
  protected:
   std::unordered_map<std::string, int> dic_;
-  std::vector<std::unique_ptr<T>> data_;
+  std::vector<std::unique_ptr<T>> elements_;
 };
 
 template <typename T>
