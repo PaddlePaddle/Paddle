@@ -109,8 +109,6 @@ class SGDOpKernel : public framework::OpKernel<T> {
       const auto *grad_data = grad.value().data<T>();
       auto *out_data = param_out->mutable_value()->data<T>();
       for (size_t i = 0; i < grad.rows().size(); i++) {
-        PADDLE_ENFORCE(grad.rows()[i] < grad.height(),
-                       "Input rows index should less than height");
         int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");

@@ -4067,8 +4067,8 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[7], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -4742,7 +4742,8 @@ def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
                                ignore_index=-100,
-                               numeric_stable_mode=False):
+                               numeric_stable_mode=False,
+                               return_softmax=False):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4806,9 +4807,15 @@ def softmax_with_cross_entropy(logits,
                                     the algorithm is always numerically stable. 
                                     Note that the speed may be slower when use 
                                     stable algorithm. Default: False
+        return_softmax (bool): A flag indicating whether to return the softmax 
+                               along with the cross entropy loss. Default: False
 
     Returns:
-        Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
+        Variable or Tuple of two Variables: Return the cross entropy loss if 
+                              `return_softmax` is False, otherwise the tuple 
+                              (loss, softmax), where the cross entropy loss is 
+                              a 2-D tensor with shape [N x 1], and softmax is a 
+                              2-D tensor with shape [N x K].
 
     Examples:
         .. code-block:: python
@@ -4833,6 +4840,10 @@ def softmax_with_cross_entropy(logits,
             'ignore_index': ignore_index,
             'numeric_stable_mode': numeric_stable_mode
         })
+
+    if return_softmax:
+        return loss, softmax
+
     return loss
 
 

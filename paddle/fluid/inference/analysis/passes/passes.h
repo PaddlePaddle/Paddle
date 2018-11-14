@@ -12,22 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
- * This file implements analysizer -- an executation help to analyze and
- * optimize trained model.
- */
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#pragma once
 
-int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  using paddle::inference::analysis::Analyzer;
-  using paddle::inference::analysis::Argument;
+#include <string>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
-  Argument argument;
-  Analyzer analyzer;
-  analyzer.Run(&argument);
+namespace paddle {
+namespace inference {
+namespace analysis {
 
-  return 0;
-}
+struct PassRegistry {
+  PassRegistry();
+
+  AnalysisPass* Retreive(const std::string& pass_type) {
+    return passes_[pass_type].get();
+  }
+
+  static PassRegistry& Global() {
+    static auto* x = new PassRegistry;
+    return *x;
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<AnalysisPass>> passes_;
+};
+
+}  // namespace analysis
+}  // namespace inference
+}  // namespace paddle

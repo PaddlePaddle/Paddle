@@ -108,7 +108,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
    if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
    endif()
-   cc_test(test_trt_models SRCS trt_models_tester.cc  
-     ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models
-     DEPS paddle_inference_tensorrt_subgraph_engine SERIAL)
+
+   inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
+      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor
+        ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
 endif()

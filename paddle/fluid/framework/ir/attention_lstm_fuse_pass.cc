@@ -91,10 +91,10 @@ void FindWhileOp(Graph* graph) {
 #undef OP_SET_IN
 #undef OP_SET_OUT
 
-  auto* X = graph->RetriveNode(34);
-  auto* LSTMOUT = graph->RetriveNode(81);
-  auto* cell_init = graph->RetriveNode(6);
-  auto* hidden_init = graph->RetriveNode(8);
+  auto* X = graph->RetrieveNode(34);
+  auto* LSTMOUT = graph->RetrieveNode(81);
+  auto* cell_init = graph->RetrieveNode(6);
+  auto* hidden_init = graph->RetrieveNode(8);
 
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
