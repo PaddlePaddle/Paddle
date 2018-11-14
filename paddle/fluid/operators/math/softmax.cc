@@ -19,10 +19,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template class SoftmaxFunctor<platform::CPUDeviceContext, float, true>;
-template class SoftmaxFunctor<platform::CPUDeviceContext, float, false>;
-template class SoftmaxFunctor<platform::CPUDeviceContext, double, true>;
-template class SoftmaxFunctor<platform::CPUDeviceContext, double, false>;
+template class SoftmaxFunctor<platform::CPUDeviceContext, float>;
+template class SoftmaxFunctor<platform::CPUDeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, double>;
 
