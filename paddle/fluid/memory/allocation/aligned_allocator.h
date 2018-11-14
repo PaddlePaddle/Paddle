@@ -70,17 +70,15 @@ class AlignedAllocation : public Allocation {
 //
 // NOTE(yy): This could be an over design. If it harms readability of code, it
 // could be removed later.
-class ThinAlignedAllocator : public ManagedAllocator {
+class ThinAlignedAllocator : public Allocator {
  public:
   explicit ThinAlignedAllocator(
-      std::shared_ptr<ManagedAllocator> underlyning_allocator);
-
-  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
+      std::shared_ptr<Allocator> underlyning_allocator);
 
   bool IsAllocThreadSafe() const;
 
  protected:
-  std::shared_ptr<ManagedAllocator> underlying_allocator_;
+  std::shared_ptr<Allocator> underlying_allocator_;
 };
 
 // An aligned allocator will allocate `size+kAlignment` allocation and adjust

@@ -20,21 +20,27 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::unique_ptr<Allocation> CPUAllocator::Allocate(size_t size, Attr attr) {
-  void* ptr;
+CPUAllocation::CPUAllocation(
+    paddle::memory::allocation::CPUAllocator *allocator, void *ptr, size_t size)
+    : MannualFreeAllocation(allocator, ptr, size, platform::CPUPlace()) {}
+
+bool CPUAllocator::IsAllocThreadSafe() const { return true; }
+
+void CPUAllocator::Free(MannualFreeAllocation *allocation) {
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUAllocation *>(allocation));
+  free(allocation->ptr());
+}
+
+MannualFreeAllocation *CPUAllocator::AllocateImpl(size_t size,
+                                                  Allocator::Attr attr) {
+  void *ptr;
   auto status = posix_memalign(&ptr, kAlignment, size);
   if (UNLIKELY(status) != 0) {
     throw BadAlloc(string::Sprintf("Cannot allocate cpu memory %d. Errno is %d",
                                    size, status));
   }
-  return std::unique_ptr<Allocation>(new CPUAllocation(ptr, size));
+  return new CPUAllocation(this, ptr, size);
 }
-void CPUAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
-  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUAllocation*>(allocation.get()));
-  free(allocation->ptr());
-}
-
-bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

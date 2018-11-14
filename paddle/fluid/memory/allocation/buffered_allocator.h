@@ -29,16 +29,17 @@ namespace allocation {
 // memory allocation and reuse memory.
 // BufferedAllocator provides the same thread-safety level as
 // underlying_allocator_
-class BufferedAllocator : public UnmanagedAllocator {
+class BufferedAllocator : public MannualFreeAllocator {
  public:
-  explicit BufferedAllocator(std::unique_ptr<Allocator>&& allocator);
+  explicit BufferedAllocator(std::unique_ptr<Allocator> &&allocator);
 
   ~BufferedAllocator();
 
-  std::unique_ptr<Allocation> Allocate(
-      size_t size, Allocator::Attr attr = Allocator::Attr::kDefault) override;
-
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
+  //  std::unique_ptr<Allocation> Allocate(
+  //      size_t size, Allocator::Attr attr = Allocator::Attr::kDefault)
+  //      override;
+  //
+  //  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
 
   bool IsAllocThreadSafe() const override;
 
@@ -48,7 +49,13 @@ class BufferedAllocator : public UnmanagedAllocator {
  private:
   void FreeCache(size_t size);
 
-  std::unique_ptr<UnmanagedAllocator> underlying_allocator_;
+ protected:
+  void Free(MannualFreeAllocation *allocation) override;
+  MannualFreeAllocation *AllocateImpl(size_t size,
+                                      Allocator::Attr attr) override;
+
+ private:
+  std::unique_ptr<Allocator> underlying_allocator_;
   std::multimap<size_t, std::unique_ptr<Allocation>> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };

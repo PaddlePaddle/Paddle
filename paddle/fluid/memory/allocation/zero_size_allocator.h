@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <utility>
-
 #pragma once
-
+#include <utility>
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
@@ -31,18 +29,17 @@ class ZeroSizeAllocation : public Allocation {
       : Allocation(nullptr, 0, p) {}
 };
 
-class ZeroSizeAllocator : public ManagedAllocator {
+class ZeroSizeAllocator : public Allocator {
  public:
-  ZeroSizeAllocator(
-      const std::shared_ptr<ManagedAllocator>& underlying_allocator,
-      const platform::Place& p)
-      : underlying_allocator_(underlying_allocator), place_(p) {}
+  ZeroSizeAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                    const platform::Place& p)
+      : underlying_allocator_(std::move(underlying_allocator)), place_(p) {}
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
-  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
+
   bool IsAllocThreadSafe() const override;
 
  private:
-  std::shared_ptr<ManagedAllocator> underlying_allocator_;
+  std::shared_ptr<Allocator> underlying_allocator_;
   const platform::Place& place_;
 };
 

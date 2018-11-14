@@ -29,9 +29,6 @@ else()
                  cpu_allocator)
 endif()
 
-
-cc_library(naive_managed_allocator SRCS naive_managed_allocator.cc DEPS allocator)
-cc_test(naive_managed_allocator_test SRCS naive_managed_allocator_test.cc DEPS naive_managed_allocator)
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
 if (WITH_GPU)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard)
@@ -49,7 +46,6 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         cpu_allocator
         locked_allocator
         best_fit_allocator
-        naive_managed_allocator
         aligned_allocator
         auto_increment_allocator
         zero_size_allocator
@@ -61,6 +57,6 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
 
 nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
 
-cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator naive_managed_allocator best_fit_allocator locked_allocator cpu_allocator)
+cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator best_fit_allocator locked_allocator cpu_allocator)
 
 cc_test(allocator_facade_test SRCS allocator_facade_test.cc DEPS allocator_facade)

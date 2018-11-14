@@ -12,23 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/fluid/memory/allocation/allocator.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
-Allocation::~Allocation() {}
 
-Allocator::~Allocator() {}
+class UnderlyingManualAllocation : public MannualFreeAllocation {
+ public:
+  UnderlyingManualAllocation(MannualFreeAllocator* allocator,
+                             std::unique_ptr<Allocation> allocation)
+      : MannualFreeAllocation(allocator, allocation->ptr(), allocation->size(),
+                              allocation->place()),
+        allocation_(std::move(allocation)) {}
+  std::unique_ptr<Allocation> allocation_;
+};
 
-bool Allocator::IsAllocThreadSafe() const { return false; }
-
-const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
-
-MannualFreeAllocation::~MannualFreeAllocation() { allocator_->Free(this); }
-std::unique_ptr<Allocation> MannualFreeAllocator::Allocate(
-    size_t size, Allocator::Attr attr) {
-  return std::unique_ptr<Allocation>(AllocateImpl(size, attr));
-}
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

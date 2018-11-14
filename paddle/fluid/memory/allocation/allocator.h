@@ -121,19 +121,30 @@ class Allocator {
   virtual bool IsAllocThreadSafe() const;
 };
 
-// User need to invoke `Free` or `FreeUniquePtr` manually if allocated by
-// a manally managed allocator.
-class UnmanagedAllocator : public Allocator {
+class MannualFreeAllocator;
+class MannualFreeAllocation : public Allocation {
  public:
-  virtual void FreeUniquePtr(std::unique_ptr<Allocation> allocation) = 0;
+  MannualFreeAllocation(MannualFreeAllocator* allocator, void* ptr, size_t size,
+                        platform::Place place)
+      : Allocation(ptr, size, place), allocator_(allocator) {}
+
+  ~MannualFreeAllocation();
+
+ private:
+  MannualFreeAllocator* allocator_;
 };
 
-// The allocation will be managed by smart pointers. i.e., users do not need
-// to free allocation manually.
-class ManagedAllocator : public Allocator {
+// User need to invoke `Free` or `FreeUniquePtr` manually if allocated by
+// a manally managed allocator.
+class MannualFreeAllocator : public Allocator {
  public:
-  virtual std::shared_ptr<Allocation> AllocateShared(
-      size_t size, Allocator::Attr attr = kDefault) = 0;
+  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) final;
+
+ protected:
+  virtual void Free(MannualFreeAllocation* allocation) = 0;
+  virtual MannualFreeAllocation* AllocateImpl(size_t size,
+                                              Allocator::Attr attr) = 0;
+  friend class MannualFreeAllocation;
 };
 
 }  // namespace allocation

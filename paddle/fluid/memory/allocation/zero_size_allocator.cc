@@ -26,15 +26,10 @@ std::unique_ptr<Allocation> ZeroSizeAllocator::Allocate(size_t size,
     return underlying_allocator_->Allocate(size, attr);
   }
 }
-std::shared_ptr<Allocation> ZeroSizeAllocator::AllocateShared(
-    size_t size, Allocator::Attr attr) {
-  if (size == 0) {
-    return std::shared_ptr<Allocation>(new ZeroSizeAllocation(place_));
-  } else {
-    return underlying_allocator_->AllocateShared(size, attr);
-  }
+
+bool ZeroSizeAllocator::IsAllocThreadSafe() const {
+  return underlying_allocator_->IsAllocThreadSafe();
 }
-bool ZeroSizeAllocator::IsAllocThreadSafe() const { return true; }
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

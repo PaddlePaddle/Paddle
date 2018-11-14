@@ -25,19 +25,21 @@ namespace allocation {
 //
 // NOTE(yy): It is no need to use `BestFitAllocator` in CPU. We can import
 // an open-sourced allocator into Paddle.
-class CPUAllocation : public Allocation {
+class CPUAllocator;
+class CPUAllocation : public MannualFreeAllocation {
  public:
-  CPUAllocation(void* ptr, size_t size)
-      : Allocation(ptr, size, platform::CPUPlace()) {}
+  CPUAllocation(CPUAllocator* allocator, void* ptr, size_t size);
 };
 
-class CPUAllocator : public UnmanagedAllocator {
+class CPUAllocator : public MannualFreeAllocator {
  public:
   constexpr static size_t kAlignment = 64u;
-  std::unique_ptr<Allocation> Allocate(size_t size,
-                                       Attr attr = kDefault) override;
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
   bool IsAllocThreadSafe() const override;
+
+ protected:
+  void Free(MannualFreeAllocation* allocation) override;
+  MannualFreeAllocation* AllocateImpl(size_t size,
+                                      Allocator::Attr attr) override;
 };
 }  // namespace allocation
 }  // namespace memory

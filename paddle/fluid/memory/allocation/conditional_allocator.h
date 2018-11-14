@@ -38,32 +38,21 @@ namespace allocation {
 //   // else
 //   return true;
 // }, allocator_c);
-class ConditionalAllocator : public ManagedAllocator {
+class ConditionalAllocator : public Allocator {
  public:
   ConditionalAllocator() = default;
 
-  ConditionalAllocator& AddAllocator(
-      std::function<bool(size_t, Attr)> func,
-      std::shared_ptr<ManagedAllocator> allocator);
+  ConditionalAllocator& AddAllocator(std::function<bool(size_t, Attr)> func,
+                                     std::shared_ptr<Allocator> allocator);
+
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
-  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
+
   bool IsAllocThreadSafe() const override;
 
  private:
-  template <typename Callback>
-  inline typename std::result_of<Callback(ManagedAllocator&)>::type
-  SelectAndInvoke(size_t size, Attr attr, Callback callback) {
-    for (auto& pair : underlying_allocators_) {
-      if (pair.first(size, attr)) {
-        return callback(*pair.second);
-      }
-    }
-    PADDLE_THROW("No suitable allocator");
-  }
-
-  std::vector<std::pair<std::function<bool(size_t, Attr)>,
-                        std::shared_ptr<ManagedAllocator>>>
-      underlying_allocators_;
+  using AllocatorWithCond =
+      std::pair<std::function<bool(size_t, Attr)>, std::shared_ptr<Allocator>>;
+  std::vector<AllocatorWithCond> underlying_allocators_;
 };
 
 }  // namespace allocation

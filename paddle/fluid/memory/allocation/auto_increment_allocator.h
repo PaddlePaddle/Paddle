@@ -46,76 +46,20 @@ namespace allocation {
 // thread-safe std::vector with varying size is hard to implement.
 // Fortunately, we can get the total GPU memory and each chunk size.
 // Therefore, we can get the suitable capacity of AutoIncrementAllocator.
-class AutoIncrementAllocator : public ManagedAllocator {
+class AutoIncrementAllocator : public Allocator {
  public:
   // Creator is the method to create ManagedAllocator
-  using AllocatorCreator = std::function<std::shared_ptr<ManagedAllocator>()>;
+  using AllocatorCreator = std::function<std::shared_ptr<Allocator>()>;
 
   explicit AutoIncrementAllocator(AllocatorCreator&& creator, size_t capacity)
       : creator_(std::move(creator)), underlying_allocators_(capacity) {}
+
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
-  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
+
   bool IsAllocThreadSafe() const override;
 
  private:
-  // NOTE: here use template Callback, it can be inlined when -O3
-  template <typename Callback>
-  inline typename std::result_of<Callback(ManagedAllocator&)>::type
-  InvokeOrCreateUnderlyingAllocator(Callback callback) {
-    auto cur = prev_success_allocator_.load();
-    size_t retry_count = allocator_num_.load();
-    size_t allocator_num = retry_count;
-    while (retry_count-- > 0) {  // until there retry count is zero
-      try {
-        auto res = callback(*underlying_allocators_[cur]);
-        prev_success_allocator_ = cur;
-        return std::move(res);
-      } catch (BadAlloc&) {
-        if (++cur >= allocator_num) {
-          cur = 0;
-        }
-      } catch (...) {
-        // if there is another type of allocation, just rethrow it.
-        throw;
-      }
-    }
-
-    // This happens when the first allocator is exhausted and
-    // there are more than 1 allocation requests
-    // In this situation, the first allocation request would success
-    // and the second allocation request would fail if we do not use
-    // the newly created allocator by the first allocation request.
-    for (cur = allocator_num; cur < allocator_num_; ++cur) {
-      try {
-        auto ret = callback(*underlying_allocators_[cur]);
-        prev_success_allocator_ = cur;
-        return std::move(ret);
-      } catch (BadAlloc&) {
-      } catch (...) {
-        throw;
-      }
-    }
-    // No suitable allocator
-
-    ManagedAllocator* new_allocator;
-    {
-      std::lock_guard<std::mutex> guard(mtx_);
-      auto old_size = allocator_num_.load();
-      PADDLE_ENFORCE_LT(old_size, underlying_allocators_.size(),
-                        "Allocator number exceeds capacity %d",
-                        underlying_allocators_.size());
-      underlying_allocators_[old_size] = creator_();
-      new_allocator = underlying_allocators_[old_size].get();
-      prev_success_allocator_ = old_size;
-      ++allocator_num_;
-    }
-
-    PADDLE_ENFORCE(
-        new_allocator->IsAllocThreadSafe(),
-        "the underlying allocator must be thread safe. This is a program "
-        "bug.");
-    return callback(*new_allocator);
-  }
+  std::shared_ptr<Allocator> CreateNewAllocator();
 
   AllocatorCreator creator_;
 

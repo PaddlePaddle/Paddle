@@ -24,7 +24,6 @@
 #include "paddle/fluid/memory/allocation/conditional_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
-#include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -46,34 +45,28 @@ namespace memory {
 namespace allocation {
 
 // TODO(yy): Dirty code here. This class should be configurable in runtime.
-class CPUManagedAllocator : public ManagedAllocator {
+class CPUManagedAllocator : public Allocator {
  public:
-  CPUManagedAllocator()
-      : normal_allocator_(NaiveManagedAllocator::Create(
-            std::unique_ptr<Allocator>(new CPUAllocator()))) {}
+  CPUManagedAllocator() : normal_allocator_(new CPUAllocator()) {}
 
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
     return normal_allocator_->Allocate(size, attr);
   }
 
-  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override {
-    return normal_allocator_->AllocateShared(size, attr);
-  }
-
   bool IsAllocThreadSafe() const override { return true; }
 
  private:
-  std::shared_ptr<ManagedAllocator> normal_allocator_;
+  std::shared_ptr<Allocator> normal_allocator_;
 };
 
 // TODO(yy): Dirty code here. This class should be configurable in runtime.
-class ChunkedManagedAllocator : public ManagedAllocator {
+class ChunkedManagedAllocator : public Allocator {
  public:
   explicit ChunkedManagedAllocator(std::unique_ptr<Allocator> system_allocator,
                                    size_t max_chunk_size, size_t capacity = 1,
                                    int64_t retry_time = -1)
       : max_chunk_size_(max_chunk_size), retry_time_(retry_time) {
-    raw_allocator_ = NaiveManagedAllocator::Create(std::move(system_allocator));
+    raw_allocator_ = std::move(system_allocator);
 
     if (max_chunk_size_ == 0) {
       default_allocator_ = raw_allocator_;
@@ -114,11 +107,7 @@ class ChunkedManagedAllocator : public ManagedAllocator {
     return default_allocator_->Allocate(size, attr);
   }
 
-  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override {
-    return default_allocator_->AllocateShared(size, attr);
-  }
-
-  std::shared_ptr<ManagedAllocator> BestFitAllocatorCreator() {
+  std::shared_ptr<Allocator> BestFitAllocatorCreator() {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
     std::unique_ptr<Allocator> unmanaged_allocator(new LockedAllocator(
@@ -127,12 +116,13 @@ class ChunkedManagedAllocator : public ManagedAllocator {
     if (retry_time_ <= 0) {
       VLOG(10) << "Create NaiveManagedAllocator without retry";
       return std::make_shared<AlignedAllocator<64u>>(
-          NaiveManagedAllocator::Create(std::move(unmanaged_allocator)));
+          std::move(unmanaged_allocator));
     } else {
       VLOG(10) << "Create RetryAllocator with retry_time " << retry_time_
                << "ms";
-      return std::make_shared<AlignedAllocator<64u>>(RetryAllocator::Create(
-          std::move(unmanaged_allocator), static_cast<size_t>(retry_time_)));
+      auto tmp = std::make_shared<RetryAllocator>(
+          std::move(unmanaged_allocator), static_cast<size_t>(retry_time_));
+      return std::make_shared<AlignedAllocator<64u>>(tmp);
     }
   }
 
@@ -142,8 +132,8 @@ class ChunkedManagedAllocator : public ManagedAllocator {
   size_t max_chunk_size_;
   int64_t retry_time_;
   std::vector<std::unique_ptr<Allocation>> chunks_;
-  std::shared_ptr<ManagedAllocator> raw_allocator_;
-  std::shared_ptr<ManagedAllocator> default_allocator_;
+  std::shared_ptr<Allocator> raw_allocator_;
+  std::shared_ptr<Allocator> default_allocator_;
 };
 
 #ifdef PADDLE_WITH_CUDA
@@ -193,7 +183,7 @@ class CUDAPinnedManagedAllocator : public ChunkedManagedAllocator {
 
 class AllocatorFacadePrivate {
  public:
-  std::map<platform::Place, std::shared_ptr<ManagedAllocator>> allocators_;
+  std::map<platform::Place, std::shared_ptr<Allocator>> allocators_;
 
   ~AllocatorFacadePrivate() = default;
 
@@ -245,7 +235,8 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return m_->allocators_.at(place)->AllocateShared(size, attr);
+  return std::shared_ptr<Allocation>(
+      m_->allocators_.at(place)->Allocate(size, attr).release());
 }
 
 std::unique_ptr<Allocation> AllocatorFacade::Alloc(const platform::Place& place,

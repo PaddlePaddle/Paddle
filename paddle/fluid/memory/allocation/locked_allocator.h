@@ -22,17 +22,19 @@ namespace memory {
 namespace allocation {
 
 // A allocator to make underlying allocator thread safe.
-class LockedAllocator : public UnmanagedAllocator {
+class LockedAllocator : public MannualFreeAllocator {
  public:
-  explicit LockedAllocator(std::unique_ptr<Allocator>&& underlying_allocator);
-  std::unique_ptr<Allocation> Allocate(size_t size,
-                                       Attr attr = kDefault) override;
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
+  explicit LockedAllocator(std::unique_ptr<Allocator> &&underlying_allocator);
   bool IsAllocThreadSafe() const override;
 
+ protected:
+  void Free(MannualFreeAllocation *allocation) override;
+  MannualFreeAllocation *AllocateImpl(size_t size,
+                                      Allocator::Attr attr) override;
+
  private:
-  std::unique_ptr<UnmanagedAllocator> underlying_allocator_;
-  std::mutex mtx_;
+  std::unique_ptr<Allocator> underlying_allocator_;
+  std::unique_ptr<std::mutex> mtx_;
 };
 
 }  // namespace allocation
