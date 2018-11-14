@@ -23,7 +23,6 @@ namespace ir {
 #else
         const char Node::kControlDepVarName[] = "__control_var";
 #endif
-int Node::count_ = 0;
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type) {
