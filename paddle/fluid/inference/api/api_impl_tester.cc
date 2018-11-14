@@ -292,7 +292,14 @@ TEST(inference_api_native, image_classification_gpu) {
 // TEST(inference_api_native, image_classification_gpu_threads) {
 //   MainThreadsImageClassification(true /*use_gpu*/);
 // }
-
 #endif
+
+TEST(PassBuilder, Delete) {
+  contrib::AnalysisConfig config(false);
+  config.pass_builder()->DeletePass("attention_lstm_fuse_pass");
+  const auto& passes = config.pass_builder()->AllPasses();
+  auto it = std::find(passes.begin(), passes.end(), "attention_lstm_fuse_pass");
+  ASSERT_EQ(it, passes.end());
+}
 
 }  // namespace paddle

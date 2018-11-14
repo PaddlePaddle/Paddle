@@ -16,8 +16,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#define PADDLE_WITHOUT_ANALYSIS_TESTER
-#define PADDLE_WITH_TENSORRT_TESTER
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -28,45 +26,47 @@ DEFINE_string(prog_filename, "", "Name of model file.");
 DEFINE_string(param_filename, "", "Name of parameters file.");
 
 template <typename ConfigType>
-ConfigType GetConfig(std::string model_dir, bool use_gpu, int batch_size = -1) {
-  ConfigType config;
+void SetConfig(ConfigType* config, std::string model_dir, bool use_gpu,
+               bool use_tensorrt = false, int batch_size = -1) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
-    config.prog_file = model_dir + "/" + FLAGS_prog_filename;
-    config.param_file = model_dir + "/" + FLAGS_param_filename;
+    config->prog_file = model_dir + "/" + FLAGS_prog_filename;
+    config->param_file = model_dir + "/" + FLAGS_param_filename;
   } else {
-    config.model_dir = model_dir;
+    config->model_dir = model_dir;
   }
   if (use_gpu) {
-    config.use_gpu = true;
-    config.device = 0;
-    config.fraction_of_gpu_memory = 0.45;
+    config->use_gpu = true;
+    config->device = 0;
+    config->fraction_of_gpu_memory = 0.15;
   }
-  return config;
 }
 
 template <>
-contrib::MixedRTConfig GetConfig<contrib::MixedRTConfig>(std::string model_dir,
-                                                         bool use_gpu,
-                                                         int batch_size) {
-  contrib::MixedRTConfig config;
+void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
+                                        std::string model_dir, bool use_gpu,
+                                        bool use_tensorrt, int batch_size) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
-    config.prog_file = model_dir + "/" + FLAGS_prog_filename;
-    config.param_file = model_dir + "/" + FLAGS_param_filename;
+    config->prog_file = model_dir + "/" + FLAGS_prog_filename;
+    config->param_file = model_dir + "/" + FLAGS_param_filename;
   } else {
-    config.model_dir = model_dir;
+    config->model_dir = model_dir;
   }
-  config.use_gpu = true;
-  config.device = 0;
-  config.fraction_of_gpu_memory = 0.2;
-  if (batch_size > 0) {
-    config.max_batch_size = batch_size;
-  } else {
-    config.max_batch_size = 3;
+  if (use_gpu) {
+    config->use_gpu = true;
+    config->device = 0;
+    config->fraction_of_gpu_memory = 0.15;
+    if (use_tensorrt) {
+      config->EnableTensorRtEngine(1 << 10, batch_size);
+      config->pass_builder()->DeletePass("conv_bn_fuse_pass");
+      config->pass_builder()->DeletePass("fc_fuse_pass");
+      config->pass_builder()->TurnOnDebug();
+    } else {
+      config->enable_ir_optim = true;
+    }
   }
-  return config;
 }
 
-void profile(std::string model_dir, bool use_tensorrt) {
+void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
   std::vector<std::vector<PaddleTensor>> inputs_all;
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
     SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
@@ -76,21 +76,21 @@ void profile(std::string model_dir, bool use_tensorrt) {
   }
 
   std::vector<PaddleTensor> outputs;
-  if (use_tensorrt) {
-    contrib::MixedRTConfig config =
-        GetConfig<contrib::MixedRTConfig>(model_dir, true, FLAGS_batch_size);
+  if (use_analysis || use_tensorrt) {
+    contrib::AnalysisConfig config(true);
+    SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
+                                       FLAGS_batch_size);
     TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
-                   inputs_all, &outputs, FLAGS_num_threads, false,
-                   use_tensorrt);
+                   inputs_all, &outputs, FLAGS_num_threads, true);
   } else {
-    NativeConfig config = GetConfig<NativeConfig>(model_dir, true);
+    NativeConfig config;
+    SetConfig<NativeConfig>(&config, model_dir, true, false);
     TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
-                   inputs_all, &outputs, FLAGS_num_threads, false,
-                   use_tensorrt);
+                   inputs_all, &outputs, FLAGS_num_threads, false);
   }
 }
 
-void compare(std::string model_dir) {
+void compare(std::string model_dir, bool use_tensorrt) {
   std::vector<std::vector<PaddleTensor>> inputs_all;
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
     SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
@@ -100,40 +100,50 @@ void compare(std::string model_dir) {
   }
 
   std::vector<PaddleTensor> native_outputs;
-  NativeConfig native_config = GetConfig<NativeConfig>(model_dir, true);
+  NativeConfig native_config;
+  SetConfig<NativeConfig>(&native_config, model_dir, true, false,
+                          FLAGS_batch_size);
   TestOneThreadPrediction(
       reinterpret_cast<PaddlePredictor::Config*>(&native_config), inputs_all,
-      &native_outputs, false, false);
+      &native_outputs, false);
 
-  std::vector<PaddleTensor> mixedrt_outputs;
-  contrib::MixedRTConfig mixedrt_config =
-      GetConfig<contrib::MixedRTConfig>(model_dir, true, FLAGS_batch_size);
+  std::vector<PaddleTensor> analysis_outputs;
+  contrib::AnalysisConfig analysis_config(true);
+  SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
+                                     use_tensorrt, FLAGS_batch_size);
   TestOneThreadPrediction(
-      reinterpret_cast<PaddlePredictor::Config*>(&mixedrt_config), inputs_all,
-      &mixedrt_outputs, false, true);
+      reinterpret_cast<PaddlePredictor::Config*>(&analysis_config), inputs_all,
+      &analysis_outputs, true);
 
-  CompareResult(native_outputs, mixedrt_outputs);
+  CompareResult(native_outputs, analysis_outputs);
 }
 
 TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  compare(model_dir);
+  compare(model_dir, /* use_tensorrt */ true);
 }
 
 TEST(TensorRT_resnet50, compare) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare(model_dir);
+  compare(model_dir, /* use_tensorrt */ true);
 }
 
 TEST(TensorRT_resnext50, compare) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
-  compare(model_dir);
+  compare(model_dir, /* use_tensorrt */ true);
 }
 
 TEST(TensorRT_resnext50, profile) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
-  profile(model_dir, FLAGS_use_tensorrt);
+  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
+}
+
+TEST(TensorRT_mobilenet, analysis) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  compare(model_dir, /* use_tensorrt */ false);
 }
 
 }  // namespace inference
 }  // namespace paddle
+
+USE_PASS(tensorrt_subgraph_pass);

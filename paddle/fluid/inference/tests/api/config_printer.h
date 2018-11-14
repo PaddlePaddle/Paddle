@@ -59,43 +59,17 @@ std::ostream &operator<<(std::ostream &os, const NativeConfig &config) {
 }
 
 std::ostream &operator<<(std::ostream &os,
-                         const contrib::MixedRTConfig &config) {
-  os << GenSpaces(num_spaces) << "contrib::MixedRTConfig {\n";
-  num_spaces++;
-  os << *reinterpret_cast<const NativeConfig *>(&config);
-  os << GenSpaces(num_spaces)
-     << "min_subgraph_size: " << config.min_subgraph_size << "\n";
-  os << GenSpaces(num_spaces) << "max_batch_size: " << config.max_batch_size
-     << "\n";
-  os << GenSpaces(num_spaces) << "workspace_size: " << config.workspace_size
-     << "\n";
-  os << GenSpaces(num_spaces)
-     << "minimum_subgraph_size: " << config.minimum_subgraph_size << "\n";
-  os << GenSpaces(num_spaces) << "precision_mode: " << config.precision_mode
-     << "\n";
-  num_spaces--;
-  os << GenSpaces(num_spaces) << "}\n";
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os,
                          const contrib::AnalysisConfig &config) {
   os << GenSpaces(num_spaces) << "contrib::AnalysisConfig {\n";
   num_spaces++;
   os << *reinterpret_cast<const NativeConfig *>(&config);
   os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.enable_ir_optim
      << "\n";
-  os << GenSpaces(num_spaces) << "ir_passes: ";
-  if (config.ir_passes.size() > 0) {
-    os << config.ir_passes[0];
-  }
-  for (size_t i = 1; i < config.ir_passes.size(); ++i) {
-    os << ", " << config.ir_passes[i];
-  }
-  os << "\n";
   os << GenSpaces(num_spaces)
      << "use_feed_fetch_ops: " << config.use_feed_fetch_ops << "\n";
-  os << GenSpaces(num_spaces) << "_use_mkldnn: " << config._use_mkldnn << "\n";
+  os << GenSpaces(num_spaces) << "use_tensorrt: " << config.use_tensorrt()
+     << "\n";
+  os << GenSpaces(num_spaces) << "use_mkldnn: " << config.use_mkldnn() << "\n";
   num_spaces--;
   os << GenSpaces(num_spaces) << "}\n";
   return os;

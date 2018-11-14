@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
- * This file contains all the flags that declared in Node::Attr.
- *
- * The Node::Attr is designed to share information between different passes, one
- * can get other's attributes in a Node by the flags in this file.
- */
-#pragma once
+#include "paddle/fluid/inference/analysis/passes/passes.h"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
+#include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+
 namespace paddle {
 namespace inference {
 namespace analysis {
-
-#define DECLARE_NODE_ATTR(flag__) const char ATTR_##flag__[] = #flag__;
-
-DECLARE_NODE_ATTR(supported_by_tensorrt)  // bool
+PassRegistry::PassRegistry() {
+  passes_.emplace("ir_analysis_pass",
+                  std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
+  passes_.emplace("ir_graph_build_pass",
+                  std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
+  passes_.emplace("ir_analysis_compose_pass",
+                  std::unique_ptr<AnalysisPass>(new IrAnalysisComposePass));
+}
 
 }  // namespace analysis
 }  // namespace inference
