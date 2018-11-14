@@ -93,6 +93,7 @@ class Pass {
  protected:
   virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
+    return graph;
   }
 
  private:

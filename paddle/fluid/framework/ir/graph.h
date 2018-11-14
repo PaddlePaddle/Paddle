@@ -116,13 +116,17 @@ class Graph {
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     PADDLE_ENFORCE(var_desc);
-    return AddNode(new ir::Node(var_desc));
+    auto *x = AddNode(new ir::Node(var_desc));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     PADDLE_ENFORCE(op_desc);
-    return AddNode(new ir::Node(op_desc));
+    auto *x = AddNode(new ir::Node(op_desc));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // Create a control dependency var that connects 2 operations. The
@@ -132,13 +136,17 @@ class Graph {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
-    return AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // A more free style way of creating a graph node. Mostly use for test
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
-    return AddNode(new ir::Node(name, type));
+    auto *x = AddNode(new ir::Node(name, type));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // Clear all node information of the graph and return the ownership of the
@@ -160,7 +168,7 @@ class Graph {
   }
 
   // NOTE low performance, but simple and secure.
-  Node *RetriveNode(int id) {
+  Node *RetrieveNode(int id) {
     for (auto &node : nodes_) {
       if (node.second->id() == id) {
         return node.second.get();
@@ -169,6 +177,7 @@ class Graph {
     return nullptr;
   }
 
+  const ProgramDesc &program() const { return program_; }
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
 
@@ -190,6 +199,7 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
+  size_t num_node_created_{0};  // help to generate a unique node id.
 };
 
 bool IsControlDepVar(const ir::Node &var);

@@ -12,31 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/model_store_pass.h"
+#pragma once
 
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/analyzer.h"
+#include <string>
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-DEFINE_string(inference_model_dir, "", "Model path");
+/*
+ * Load program and parameter to memory from the disk.
+ */
+class IrGraphBuildPass : public AnalysisPass {
+ public:
+  void RunImpl(Argument *argument) override;
 
-TEST(DFG_StorePass, test) {
-  Analyzer analyzer;
-  Argument argument(FLAGS_inference_model_dir);
-  argument.model_output_store_path.reset(
-      new std::string("./_dfg_store_pass_tmp"));
-  // disable storage in alalyzer
-  FLAGS_IA_output_storage_path = "";
-  analyzer.Run(&argument);
+  std::string repr() const override;
 
-  ModelStorePass pass;
-  pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
-}
+ private:
+  std::unique_ptr<framework::ProgramDesc> LoadModel(const std::string &path,
+                                                    framework::Scope *scope);
+  std::unique_ptr<framework::ProgramDesc> LoadModel(
+      const std::string &program_path, const std::string &params_path,
+      framework::Scope *scope);
+
+  std::string model_binary_str_;
+};
 
 }  // namespace analysis
 }  // namespace inference

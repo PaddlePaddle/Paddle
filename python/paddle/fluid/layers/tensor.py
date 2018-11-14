@@ -235,11 +235,11 @@ def tensor_array_to_tensor(input, axis=1, name=None):
 
            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """
-    helper = LayerHelper('tensor_array_concat', **locals())
+    helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     out_index = helper.create_variable_for_type_inference(dtype="int32")
     helper.append_op(
-        type='tensor_array_concat',
+        type='tensor_array_to_tensor',
         inputs={'X': input},
         outputs={'Out': [out],
                  'OutIndex': [out_index]},

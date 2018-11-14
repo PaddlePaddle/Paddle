@@ -36,14 +36,13 @@ namespace demo {
  */
 void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
-  paddle::contrib::MixedRTConfig config;
+  paddle::contrib::AnalysisConfig config(true);
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
-  config.use_gpu = true;
   config.device = 0;
-  config.max_batch_size = 1;
+  config.EnableTensorRtEngine();
   config.fraction_of_gpu_memory = 0.1;  // set by yourself
-  predictor = CreatePaddlePredictor<paddle::contrib::MixedRTConfig>(config);
+  predictor = CreatePaddlePredictor(config);
 
   VLOG(30) << "begin to process data";
   // Just a single batch of data.
