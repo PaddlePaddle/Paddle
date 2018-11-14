@@ -293,102 +293,6 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
       conv_bwd_data_pd_;
 };
 
-  struct key_desc{
-      struct Hash{
-          std::size_t operator()(const key_desc &key) const{
-              int input_dim = 0;
-              int weights_dim = 0;
-              int stride_value = 0;
-              int padding_value = 0;
-              int dilation_value = 0;
-              for(size_t i=0; i<key.input_tz.size(); i++){
-                 input_dim += key.input_tz[i];
-              }
-              for(size_t i=0; i<key.weights_tz.size(); i++){
-                  weights_dim += key.weights_tz[i];
-              }
-              for(size_t i=0; i<key.strides.size(); i++){
-                  stride_value += key.strides[i];
-              }
-              for(size_t i=0; i<key.paddings.size(); i++){
-                  padding_value += key.paddings[i];
-              }
-              for(size_t i=0; i<key.dilations.size(); i++){
-                  dilation_value += key.dilations[i];
-              }
-              std::hash<int> hasher;
-              return hasher( (input_dim << 8) +
-                       (weights_dim << 8 * 2) +
-                       (stride_value << 8 * 3) +
-                       (padding_value << 8) +
-                       (dilation_value << 8 * 2) +
-                       (key.groups << 8 * 3));
-          }
-      };
-
-      std::vector<int> input_tz;
-      std::vector<int> weights_tz;
-      std::vector<int> strides;
-      std::vector<int> paddings;
-      std::vector<int> dilations;
-      int groups;
-      const std::string suffix;
-      key_desc(std::vector<int> input_tz, std::vector<int> weights_tz, std::vector<int> strides, std::vector<int> paddings, std::vector<int> dilations,int groups,const std::string suffix): input_tz(input_tz), weights_tz(weights_tz), strides(strides), paddings(paddings), dilations(dilations), groups(groups), suffix(suffix) {}
-
-      bool operator==(const key_desc o) const{
-          for(size_t i=0; i<input_tz.size(); i++){
-              if(input_tz[i] != o.input_tz[i])
-                  return false;
-          }
-
-          for(size_t i=0; i<weights_tz.size(); i++){
-              if(weights_tz[i] != o.weights_tz[i])
-                  return false;
-          }
-
-          for(size_t i=0; i<strides.size(); i++){
-              if(strides[i] != o.strides[i])
-                  return false;
-          }
-
-          for(size_t i=0; i<paddings.size(); i++){
-              if(paddings[i] != o.paddings[i])
-                  return false;
-          }
-
-          for(size_t i=0; i<dilations.size(); i++){
-              if(dilations[i] != o.dilations[i])
-                  return false;
-          }
-          if(groups != o.groups) return false;
-          if(suffix != o.suffix) return false;
-
-          return true;
-      }
-      bool operator!=(const key_desc& o) const { return !(*this == o); }
-  };
-
-class handle_key{
-  public:
-    void SetKeyMap(std::unordered_map<key_desc, std::string, key_desc::Hash> &key_map, key_desc key_dsr, std::string key){
-      auto it = key_map.find(key_dsr);
-      if (it == key_map.end()) {
-        key_map[key_dsr] = key;  // create new blob
-      } else {
-        (*it).second = key;  // set data to existing blob
-      }
-      return;
-    }
-
-    std::string GetKeyMap(std::unordered_map<key_desc, std::string, key_desc::Hash> &key_map, key_desc key_dsr){
-      auto it = key_map.find(key_dsr);
-      if (it != key_map.end()) {
-        return (*it).second;
-      }
-      return "";
-    }
-};
-
 template <typename T>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
@@ -449,7 +353,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float* filter_data = filter->data<float>();
 
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz = 
+    std::vector<int> weights_tz =
         paddle::framework::vectorize2int(filter->dims());
     int g = std::max(groups, 1);
     if (g > 1) {
@@ -467,28 +371,20 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-    handle_key keyhandler;
-    key_desc key_dsr = {src_tz, weights_tz, strides, paddings, dilations, groups, ctx.op().Output("Output")};
-    
-    static std::unordered_map<key_desc, std::string, key_desc::Hash> key_map;
-    static std::shared_ptr<std::unordered_map<ConvMKLDNNHandler::key_suffix_desc, std::string, ConvMKLDNNHandler::key_suffix_desc::Hash>> key_suffix_map(new std::unordered_map<ConvMKLDNNHandler::key_suffix_desc, std::string, ConvMKLDNNHandler::key_suffix_desc::Hash>({}));
-    bool key_reuse = true;
-    std::string none_key = "";
-    if(keyhandler.GetKeyMap(key_map, key_dsr) == none_key){
-        key_reuse = false;
-    }
-    std::string key; 
-    if(!key_reuse){
-        key = ConvMKLDNNHandler::GetHash(
-                src_tz, weights_tz, strides, paddings, dilations, groups,
-                ctx.op().Output("Output"));
-        keyhandler.SetKeyMap(key_map, key_dsr, key);
-    } else{
-        key = keyhandler.GetKeyMap(key_map, key_dsr);
-    }
+    const std::string key = ConvMKLDNNHandler::GetHash(
+        src_tz, weights_tz, strides, paddings, dilations, groups,
+        ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
     static std::unordered_map<std::string, std::vector<std::vector<float>>> scale_map;
+    //scale_map.insert({key_conv_pd,{1.0f}});
+    //scale_map[key_conv_pd]={0.1f};
     bool scale_reuse = true;
+    //auto scale_in_key = key + "@scale_in";
+    //auto scale_weights_key = key + "@scale_weights";
+    //auto scale_out_key = key + "@scale_out";
+    //auto output_shift_scale_key = key + "@output_shift_scale";
+    //auto sum_scale_key = key + "@sum_scale";
+    //auto scale_in_eltwise_key = key + "@scale_in_eltwise";
     std::vector<float> scale_in_data;
     std::vector<float> scale_out_data;
     std::vector<float> scale_weights_data;
@@ -630,7 +526,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
     ConvMKLDNNHandler handler(conv_pd, dev_ctx, mkldnn_engine, key);
-    handler.key_suffix_map_ = key_suffix_map;
 
     auto user_src_memory_p =
         handler.AcquireSrcMemory(*user_src_md, to_void_cast<T>(input_data));

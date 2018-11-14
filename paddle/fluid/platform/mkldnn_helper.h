@@ -115,28 +115,6 @@ class MKLDNNHandler {
         key_(base_key),
         is_reusing_(false) {}
 
-    struct key_suffix_desc{
-        struct Hash{
-            std::size_t operator()(const key_suffix_desc &dsr) const{
-                int a = std::atoi(dsr.key.c_str()); 
-                int b = std::atoi(dsr.suffix.c_str());
-                std::hash<int> hasher;
-                return hasher( (a << 8) +
-                         (b << 8 * 2)); 
-            }
-        };
-
-        std::string key;
-        std::string suffix;
-
-        key_suffix_desc(std::string key, std::string suffix): key(key), suffix(suffix) {}
-
-        bool operator==(const key_suffix_desc o) const{
-            return(key == o.key && suffix == o.suffix); 
-        }
-        bool operator!=(const key_suffix_desc& o) const { return !(*this == o); }
-  };
-
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_src_mem_p");
@@ -170,20 +148,7 @@ class MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::primitive_desc mdp, void* ptr,
       const std::string& suffix) {
-    std::string local_key;
-    if(key_suffix_map_) {
-        key_suffix_desc dsr = {key_ , suffix};
-        if(GetKeySuffixMap(key_suffix_map_, dsr) == ""){
-//std::cout<<"create key!!!!!!!"<<std::endl;
-            local_key = key_ + suffix;
-            SetKeySuffixMap(key_suffix_map_, dsr, local_key);
-        } else{
-            local_key = GetKeySuffixMap(key_suffix_map_, dsr);
-        }
-    } else{
-        local_key = key_ + suffix;
-    }
-
+    auto local_key = key_ + suffix;
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
@@ -205,20 +170,7 @@ class MKLDNNHandler {
                                                 void* ptr,
                                                 const std::string& suffix) {
     /*Generate key*/
-    std::string local_key;
-    if(key_suffix_map_){
-        key_suffix_desc dsr = {key_ , suffix};
-        if(GetKeySuffixMap(key_suffix_map_, dsr) == ""){
-//std::cout<<"create key!!!!!!!"<<std::endl;
-            local_key = key_ + suffix;
-            SetKeySuffixMap(key_suffix_map_, dsr, local_key);
-        } else{
-            local_key = GetKeySuffixMap(key_suffix_map_, dsr);
-        }
-    } else{
-        local_key = key_ + suffix;
-    }
-
+    auto local_key = key_ + suffix;
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
@@ -241,21 +193,7 @@ class MKLDNNHandler {
       const std::shared_ptr<mkldnn::memory>& target_memory_p,
       const std::string& suffix,
       std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-
-    std::string local_key;
-    if(key_suffix_map_){
-        key_suffix_desc dsr = {key_ , suffix};
-        if(GetKeySuffixMap(key_suffix_map_, dsr) == ""){
-//std::cout<<"create key!!!!!!!"<<std::endl;
-            local_key = key_ + suffix;
-            SetKeySuffixMap(key_suffix_map_, dsr, local_key);
-        } else{
-            local_key = GetKeySuffixMap(key_suffix_map_, dsr);
-        }
-    } else{
-        local_key = key_ + suffix;
-    }
-
+    auto local_key = key_ + suffix;
     auto key_reorder_p = key_ + suffix + "reorder_p";
 
     auto stored_reorder_p = std::static_pointer_cast<mkldnn::reorder>(
@@ -284,20 +222,7 @@ class MKLDNNHandler {
       std::vector<float> scale_data = {1.0f},
       int mask = 0) {
     // create reorder primitive if the input format is not the preferred one
-    std::string local_key;
-    if(key_suffix_map_){
-        key_suffix_desc dsr = {key_ , suffix};
-        if(GetKeySuffixMap(key_suffix_map_, dsr) == ""){
-//std::cout<<"create key!!!!!!!"<<std::endl;
-            local_key = key_ + suffix;
-            SetKeySuffixMap(key_suffix_map_, dsr, local_key);
-        } else{
-            local_key = GetKeySuffixMap(key_suffix_map_, dsr);
-        }
-    } else{
-        local_key = key_ + suffix;
-    }
-
+    auto local_key = key_ + suffix;
     auto key_reorder_p = key_ + suffix + "reorder_p";
 
     auto target_memory_p =
@@ -342,26 +267,6 @@ class MKLDNNHandler {
                              const std::string& suffix) {
     return dims2str(operand_dims) + suffix;
   }
-
-    void SetKeySuffixMap(std::shared_ptr<std::unordered_map<key_suffix_desc, std::string, key_suffix_desc::Hash>> key_suffix_map, key_suffix_desc key_suffix_dsr, std::string key){
-      auto it = (*key_suffix_map).find(key_suffix_dsr);
-      if (it == (*key_suffix_map).end()) {
-        (*key_suffix_map)[key_suffix_dsr] = key;  // create new blob
-      } else {
-        (*it).second = key;  // set data to existing blob
-      }
-      return;
-    }
-
-    std::string GetKeySuffixMap(std::shared_ptr<std::unordered_map<key_suffix_desc, std::string, key_suffix_desc::Hash>> key_suffix_map, key_suffix_desc key_suffix_dsr){
-      auto it = (*key_suffix_map).find(key_suffix_dsr);
-      if (it != (*key_suffix_map).end()) {
-        return (*it).second;
-      }
-      return "";
-    }
-
- std::shared_ptr<std::unordered_map<key_suffix_desc, std::string, key_suffix_desc::Hash>> key_suffix_map_;
 
  protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
