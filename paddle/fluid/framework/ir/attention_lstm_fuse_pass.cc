@@ -213,10 +213,10 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
   std::array<const float*, 4> tensors{
       W_forget_w0.data<float>(), W_input_w0.data<float>(),
-        W_output_w0.data<float>(), W_cell_w0.data<float>()};
+      W_output_w0.data<float>(), W_cell_w0.data<float>()};
   std::array<const float*, 4> tensors1{
       W_forget_w1.data<float>(), W_input_w1.data<float>(),
-        W_output_w1.data<float>(), W_cell_w1.data<float>()};
+      W_output_w1.data<float>(), W_cell_w1.data<float>()};
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -240,7 +240,7 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      LoDTensor* out) {
   std::array<const float*, 4> tensors{
       B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-        B_cell.data<float>()};
+      B_cell.data<float>()};
 
   PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
   int D = B_forget.dims()[0];

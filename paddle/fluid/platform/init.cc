@@ -115,9 +115,9 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 
 // windows has no support for openblas multi-thread
 #ifdef _WIN32
-    if (FLAGS_paddle_num_threads > 1) {
-        FLAGS_paddle_num_threads = 1;
-    }
+  if (FLAGS_paddle_num_threads > 1) {
+    FLAGS_paddle_num_threads = 1;
+  }
 #endif
 
 #ifndef PADDLE_WITH_MKLDNN

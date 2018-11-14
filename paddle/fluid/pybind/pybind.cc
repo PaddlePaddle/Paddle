@@ -352,7 +352,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
 #if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
-	  .def("get_communicator",
+      .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
            },
@@ -364,7 +364,7 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
 #endif
-;
+      ;
 
 #if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
