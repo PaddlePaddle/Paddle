@@ -121,7 +121,7 @@ void FCOpMaker::Make() {
   AddInput("W", "(Tensor), The weight fc op with shape (I, O).");
   AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x O")
       .AsDispensable();
-  AddAttr<int>("x_num_col_dims",
+  AddAttr<int>("in_num_col_dims",
                "(int, default 1), The fc op can take tensors with more than "
                "two dimensions as its inputs.")
       .SetDefault(1)
