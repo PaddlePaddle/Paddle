@@ -125,6 +125,51 @@ static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
   return size;
 }
 
+static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
+  if (a.dtype != b.dtype) {
+    LOG(ERROR) << "dtype not match";
+    return false;
+  }
+
+  if (a.lod.size() != b.lod.size()) {
+    LOG(ERROR) << "lod not match";
+    return false;
+  }
+  for (size_t i = 0; i < a.lod.size(); i++) {
+    if (a.lod[i].size() != b.lod[i].size()) {
+      LOG(ERROR) << "lod not match";
+      return false;
+    }
+    for (size_t j = 0; j < a.lod[i].size(); j++) {
+      if (a.lod[i][j] != b.lod[i][j]) {
+        LOG(ERROR) << "lod not match";
+        return false;
+      }
+    }
+  }
+
+  if (a.shape.size() != b.shape.size()) {
+    LOG(INFO) << "shape not match";
+    return false;
+  }
+  for (size_t i = 0; i < a.shape.size(); i++) {
+    if (a.shape[i] != b.shape[i]) {
+      LOG(ERROR) << "shape not match";
+      return false;
+    }
+  }
+
+  auto *adata = static_cast<float *>(a.data.data());
+  auto *bdata = static_cast<float *>(b.data.data());
+  for (int i = 0; i < VecReduceToInt(a.shape); i++) {
+    if (adata[i] != bdata[i]) {
+      LOG(ERROR) << "data not match";
+      return false;
+    }
+  }
+  return true;
+}
+
 static std::string DescribeTensor(const PaddleTensor &tensor) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
@@ -154,6 +199,26 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
   os << '\n';
+  return os.str();
+}
+
+static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name() << "]\n";
+
+  os << " - shape: " << to_string(tensor.shape()) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod()) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+  PaddlePlace place;
+  int size;
+  const auto *data = tensor.data<float>(&place, &size);
+  for (int i = 0; i < size; i++) {
+    os << data[i] << " ";
+  }
   return os.str();
 }
 

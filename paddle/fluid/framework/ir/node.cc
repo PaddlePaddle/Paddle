@@ -18,7 +18,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 constexpr char Node::kControlDepVarName[];
-int Node::count_ = 0;
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type) {

@@ -61,6 +61,7 @@ TensorRTEngine::~TensorRTEngine() {
 }
 
 void TensorRTEngine::FreezeNetwork() {
+  VLOG(3) << "TRT to freeze network";
   freshDeviceId();
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
