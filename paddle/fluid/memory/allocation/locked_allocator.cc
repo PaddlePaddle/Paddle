@@ -30,16 +30,18 @@ LockedAllocator::LockedAllocator(
     mtx_.reset(new std::mutex());
   }
 }
-void LockedAllocator::Free(MannualFreeAllocation *allocation) {
-  platform::LockGuardPtr<std::mutex> guard(mtx_);
-  reinterpret_cast<UnderlyingManualAllocation *>(allocation)
-      ->allocation_.reset();
+void LockedAllocator::Free(Allocation *allocation) {
+  {
+    platform::LockGuardPtr<std::mutex> guard(mtx_);
+    reinterpret_cast<UnderlyingManualAllocation *>(allocation)
+        ->allocation_.reset();  // Destroy inner allocation
+  }
+  delete allocation;
 }
-MannualFreeAllocation *LockedAllocator::AllocateImpl(size_t size,
-                                                     Allocator::Attr attr) {
+Allocation *LockedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   return new UnderlyingManualAllocation(
-      this, underlying_allocator_->Allocate(size, attr));
+      underlying_allocator_->Allocate(size, attr));
 }
 }  // namespace allocation
 }  // namespace memory

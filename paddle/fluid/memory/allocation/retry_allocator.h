@@ -26,17 +26,6 @@ namespace allocation {
 
 class RetryAllocator;
 
-class RetryAllocation : public MannualFreeAllocation {
- public:
-  RetryAllocation(std::unique_ptr<Allocation>&& underlying_allocation,
-                  MannualFreeAllocator* allocator)
-      : MannualFreeAllocation(allocator, underlying_allocation->ptr(),
-                              underlying_allocation->size(),
-                              underlying_allocation->place()),
-        underlying_allocation_(std::move(underlying_allocation)) {}
-  std::unique_ptr<Allocation> underlying_allocation_;
-};
-
 class RetryAllocator : public MannualFreeAllocator {
  public:
   RetryAllocator(std::unique_ptr<Allocator>&& allocator, size_t retry_ms)
@@ -56,9 +45,8 @@ class RetryAllocator : public MannualFreeAllocator {
   }
 
  protected:
-  void Free(MannualFreeAllocation* allocation) override;
-  MannualFreeAllocation* AllocateImpl(size_t size,
-                                      Allocator::Attr attr) override;
+  void Free(Allocation* allocation) override;
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   std::unique_ptr<Allocator> underlying_allocator_;

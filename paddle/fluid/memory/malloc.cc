@@ -294,13 +294,12 @@ std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
   }
 }
 
-std::unique_ptr<Allocation> Alloc(const platform::Place& place, size_t size,
-                                  Allocator::Attr attr) {
+AllocationPtr Alloc(const platform::Place& place, size_t size,
+                    Allocator::Attr attr) {
   if (allocation::GetAllocatorStrategy() ==
       allocation::AllocatorStrategy::kLegacy) {
     void* p = boost::apply_visitor(legacy::AllocVisitor(size), place);
-    return std::unique_ptr<Allocation>(
-        new legacy::LegacyAllocation(p, size, place));
+    return AllocationPtr(new legacy::LegacyAllocation(p, size, place));
   } else {
     return allocation::AllocatorFacade::Instance().Alloc(place, size, attr);
   }

@@ -49,7 +49,7 @@ class CPUManagedAllocator : public Allocator {
  public:
   CPUManagedAllocator() : normal_allocator_(new CPUAllocator()) {}
 
-  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
+  AllocationPtr Allocate(size_t size, Attr attr) override {
     return normal_allocator_->Allocate(size, attr);
   }
 
@@ -103,7 +103,7 @@ class ChunkedManagedAllocator : public Allocator {
     raw_allocator_.reset();
   }
 
-  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
+  AllocationPtr Allocate(size_t size, Attr attr) override {
     return default_allocator_->Allocate(size, attr);
   }
 
@@ -131,7 +131,7 @@ class ChunkedManagedAllocator : public Allocator {
  protected:
   size_t max_chunk_size_;
   int64_t retry_time_;
-  std::vector<std::unique_ptr<Allocation>> chunks_;
+  std::vector<AllocationPtr> chunks_;
   std::shared_ptr<Allocator> raw_allocator_;
   std::shared_ptr<Allocator> default_allocator_;
 };
@@ -236,12 +236,12 @@ AllocatorFacade& AllocatorFacade::Instance() {
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, Allocator::Attr attr) {
   return std::shared_ptr<Allocation>(
-      m_->allocators_.at(place)->Allocate(size, attr).release());
+      m_->allocators_.at(place)->Allocate(size, attr).release(),
+      AllocationDeleter());
 }
 
-std::unique_ptr<Allocation> AllocatorFacade::Alloc(const platform::Place& place,
-                                                   size_t size,
-                                                   Allocator::Attr attr) {
+AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
+                                     Allocator::Attr attr) {
   return m_->allocators_.at(place)->Allocate(size, attr);
 }
 

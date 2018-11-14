@@ -50,13 +50,12 @@ class BufferedAllocator : public MannualFreeAllocator {
   void FreeCache(size_t size);
 
  protected:
-  void Free(MannualFreeAllocation *allocation) override;
-  MannualFreeAllocation *AllocateImpl(size_t size,
-                                      Allocator::Attr attr) override;
+  void Free(Allocation *allocation) override;
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   std::unique_ptr<Allocator> underlying_allocator_;
-  std::multimap<size_t, std::unique_ptr<Allocation>> allocations_;
+  std::multimap<size_t, AllocationPtr> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };
 

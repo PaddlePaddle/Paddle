@@ -155,8 +155,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
-  mutable std::unordered_map<void*, std::unique_ptr<memory::Allocation>>
-      allocations_;
+  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
 CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)

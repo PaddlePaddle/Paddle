@@ -27,15 +27,16 @@ class CUDAAllocation : public Allocation {
   using Allocation::Allocation;
 };
 
-class CUDAAllocator : public UnmanagedAllocator {
+class CUDAAllocator : public MannualFreeAllocator {
  public:
   explicit CUDAAllocator(const platform::CUDAPlace& place) : place_(place) {}
   explicit CUDAAllocator(const platform::Place& place)
       : place_(boost::get<platform::CUDAPlace>(place)) {}
-  std::unique_ptr<Allocation> Allocate(size_t size,
-                                       Attr attr = kDefault) override;
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
   bool IsAllocThreadSafe() const override;
+
+ protected:
+  void Free(Allocation* allocation) override;
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   platform::CUDAPlace place_;
