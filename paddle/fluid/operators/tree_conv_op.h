@@ -16,12 +16,13 @@
 
 #include <iostream>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/tree2col.h"
 
 namespace paddle {
+namespace operators {
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-namespace operators {
 template <typename DeviceContext, typename T>
 class TreeConvKernel : public framework::OpKernel<T> {
  public:
@@ -46,9 +47,8 @@ class TreeConvKernel : public framework::OpKernel<T> {
     int n = static_cast<int>(Embeddings->dims()[1]);
     int out_size = static_cast<int>(Filter->dims()[2]);
     int num_filters = static_cast<int>(Filter->dims()[3]);
-    output_emb->mutable_data<T>(
-        framework::make_ddim({batch_size, n, out_size, num_filters}),
-        ctx.GetPlace());
+    output_emb->mutable_data<T>({batch_size, n, out_size, num_filters},
+                                ctx.GetPlace());
 
     auto edge_set_slicedim = framework::slice_ddim(
         Edges->dims(), 1, static_cast<int>(Edges->dims().size()));

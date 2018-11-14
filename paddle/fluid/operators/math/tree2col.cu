@@ -17,10 +17,10 @@
 #include "paddle/fluid/operators/math/tree2col.h"
 
 namespace paddle {
-using Tensor = framework::Tensor;
-using Node = paddle::operators::math::TreeNode;
 namespace operators {
 namespace math {
+using Tensor = framework::Tensor;
+using Node = paddle::operators::math::TreeNode;
 template <typename T>
 __global__ void tree2col(Node *patchs, int *indexes, const T *vectors,
                          T *result, int max_depth, int feature_size, int n) {
@@ -111,8 +111,7 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(block_x, block_y);
 
     patch->mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(max_size),
-                              static_cast<int64_t>(patch_elem_size)}),
+        {static_cast<int64_t>(max_size), static_cast<int64_t>(patch_elem_size)},
         gpu_place);
     constant(context, patch, 0);
     tree2col<T><<<grid, threads, 0, stream>>>(
@@ -193,8 +192,7 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(block_x, block_y);
 
     embedding_grad->mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(max_size),
-                              static_cast<int64_t>(patch_elem_size)}),
+        {static_cast<int64_t>(max_size), static_cast<int64_t>(patch_elem_size)},
         gpu_place);
 
     constant(context, embedding_grad, 0);

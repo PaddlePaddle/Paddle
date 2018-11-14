@@ -17,9 +17,9 @@
 #include <stack>
 
 namespace paddle {
-using Tensor = framework::Tensor;
 namespace operators {
 namespace math {
+using Tensor = framework::Tensor;
 std::vector<TreeNode> Tree2ColUtil::construct_patch(
     size_t root, int max_depth, const std::vector<std::vector<int>> &tr) {
   std::stack<TreeNode, std::deque<TreeNode>> stack;
@@ -103,10 +103,10 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
     }
     patch_size = processing_list.size();
 
-    T *patch_data = patch->mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(patch_size),
-                              static_cast<int64_t>(patch_elem_size)}),
-        cpu_place);
+    T *patch_data =
+        patch->mutable_data<T>({static_cast<int64_t>(patch_size),
+                                static_cast<int64_t>(patch_elem_size)},
+                               cpu_place);
     constant(context, patch, 0);
     const T *features = node_features.data<T>();
 
@@ -127,9 +127,8 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
       }
       patch_count++;
     }
-    patch->Resize(
-        framework::make_ddim({static_cast<int64_t>(patch_count),
-                              static_cast<int64_t>(patch_elem_size)}));
+    patch->Resize({static_cast<int64_t>(patch_count),
+                   static_cast<int64_t>(patch_elem_size)});
   }
 };
 template <typename T>
@@ -162,10 +161,10 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
         grad_list[v.get_node() - 1].push_back(v.change_node(patch_id + 1));
       }
     }
-    T *grad_data = in_grad->mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(node_count),
-                              static_cast<int64_t>(grad_elem_size)}),
-        cpu_place);
+    T *grad_data =
+        in_grad->mutable_data<T>({static_cast<int64_t>(node_count),
+                                  static_cast<int64_t>(grad_elem_size)},
+                                 cpu_place);
 
     constant(context, in_grad, 0);
     const T *out_g = out_grad.data<T>();
