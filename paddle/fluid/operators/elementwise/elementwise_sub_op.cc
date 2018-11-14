@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise_sub_op.h"
-#include "paddle/fluid/operators/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 namespace ops = paddle::operators;
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
 REGISTER_ELEMWISE_EXPLICIT_OP(elementwise_sub, "Sub", "Out = X - Y", "Out",

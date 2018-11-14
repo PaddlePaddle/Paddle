@@ -13,7 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/operators/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
 namespace operators {

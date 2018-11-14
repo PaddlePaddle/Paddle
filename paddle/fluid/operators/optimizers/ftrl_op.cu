@@ -12,7 +12,7 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/fluid/operators/ftrl_op.h"
+#include "paddle/fluid/operators/optimizers/ftrl_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(

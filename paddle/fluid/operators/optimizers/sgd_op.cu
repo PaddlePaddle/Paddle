@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include "paddle/fluid/operators/sgd_op.h"
+#include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {

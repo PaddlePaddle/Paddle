@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#include "paddle/fluid/operators/listen_and_serv_op.h"
+#include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 
 DEFINE_int32(rpc_send_thread_num, 5, "number of threads for rpc send");
 DEFINE_int32(rpc_get_thread_num, 5, "number of threads for rpc get");

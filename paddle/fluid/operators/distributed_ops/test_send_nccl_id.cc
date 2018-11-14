@@ -22,14 +22,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#include "paddle/fluid/operators/listen_and_serv_op.h"
+#include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/string/printf.h"
 
 #ifdef PADDLE_WITH_GRPC
-#include "paddle/fluid/operators/send_recv_util.h"
+#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #endif
 
 USE_NO_KERNEL_OP(listen_and_serv);

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include "paddle/fluid/operators/sequence_expand_op.h"
+#include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // .part used to speed up nvcc compile
-#include "paddle/fluid/operators/reduce_mean_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
     reduce_mean_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,

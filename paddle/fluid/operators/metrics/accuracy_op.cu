@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <thrust/execution_policy.h>
 #include <thrust/reduce.h>
-#include "paddle/fluid/operators/accuracy_op.h"
+#include "paddle/fluid/operators/metrics/accuracy_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
 

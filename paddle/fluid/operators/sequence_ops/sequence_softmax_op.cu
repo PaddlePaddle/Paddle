@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <cub/cub.cuh>  // NOLINT
-#include "paddle/fluid/operators/sequence_softmax_op.h"
+#include "paddle/fluid/operators/sequence_ops/sequence_softmax_op.h"
 
 namespace paddle {
 namespace operators {

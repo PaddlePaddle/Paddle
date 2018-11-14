@@ -193,13 +193,13 @@ function(op_library TARGET)
 endfunction()
 
 
-function(register_operators TARGET)
-    file(OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
+function(register_operators)
+    file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
     string(REPLACE "_mkldnn" "" OPS "${OPS}")
     string(REPLACE ".cc" "" OPS "${OPS}")
     list(REMOVE_DUPLICATES OPS)
 
-    foreach(src ${GENERAL_OPS})
+    foreach(src ${OPS})
         op_library(${src})
     endforeach()
 endfunction()

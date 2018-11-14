@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_prod_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
     reduce_prod_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,

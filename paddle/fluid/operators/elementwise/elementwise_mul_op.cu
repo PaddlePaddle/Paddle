@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/fluid/operators/elementwise_mul_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 
 namespace ops = paddle::operators;
 

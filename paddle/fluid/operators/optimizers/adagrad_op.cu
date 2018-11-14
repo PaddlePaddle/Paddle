@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/fluid/operators/adagrad_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/operators/optimizers/adagrad_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {

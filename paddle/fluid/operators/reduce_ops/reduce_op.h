@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/reduce_op_function.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 
 namespace paddle {
 namespace operators {

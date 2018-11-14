@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sequence_reverse_op.h"
+#include "paddle/fluid/operators/sequence_ops/sequence_reverse_op.h"
 
 namespace ops = paddle::operators;
 

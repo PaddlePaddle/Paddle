@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sequence_mask_op.h"
+#include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
 
 REGISTER_OPERATOR(sequence_mask, paddle::operators::SequenceMaskOp,
                   paddle::operators::SequenceMaskOpMaker,

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <vector>
-#include "paddle/fluid/operators/cub_reduce.h"
-#include "paddle/fluid/operators/reduce_mean_op.h"
+#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 
 namespace paddle {
 namespace operators {
