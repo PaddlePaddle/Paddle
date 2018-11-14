@@ -73,7 +73,6 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         self.assertAlmostEqual(local_np.all(), train1_np.all(), delta=delta)
         self.assertAlmostEqual(train0_np.all(), train1_np.all(), delta=delta)
 
-    @unittest.skip(reason="CI fail")
     def test_dist(self):
         need_envs = {
             "IS_DISTRIBUTED": '0',
