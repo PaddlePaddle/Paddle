@@ -20,9 +20,9 @@
 #else
 #endif
 
-#include <iterator>
 #include <algorithm>
 #include <chrono>  // NOLINT
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>

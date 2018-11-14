@@ -112,7 +112,7 @@ class RowwiseTransformIterator<T, platform::CPUDeviceContext>
   }
 
   RowwiseTransformIterator<T, platform::CPUDeviceContext> &operator+(int n) {
-    while(n-- > 0) {
+    while (n-- > 0) {
       ++i_;
       if (UNLIKELY(i_ == n_)) {
         i_ = 0;
@@ -161,7 +161,7 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext>
   }
 
   MidWiseTransformIterator<T, platform::CPUDeviceContext> &operator+(int n) {
-    while(n-- > 0) {
+    while (n-- > 0) {
       ++j_;
       if (UNLIKELY(j_ == post_)) {
         ++i_;

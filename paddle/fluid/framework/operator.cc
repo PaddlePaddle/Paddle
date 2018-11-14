@@ -150,9 +150,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
   }
 
-  // The profile has a process-wide mutex, results in serious performance issue
-  // in concurrency scenerio. Here use an `if` to fix this issue.
-  // Please not remove the `if`, ask @Superjomn if there are any concern.
+// The profile has a process-wide mutex, results in serious performance issue
+// in concurrency scenerio. Here use an `if` to fix this issue.
+// Please not remove the `if`, ask @Superjomn if there are any concern.
 #ifndef _WIN32
   if (platform::IsProfileEnabled()) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
