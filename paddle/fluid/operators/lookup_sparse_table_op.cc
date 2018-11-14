@@ -66,6 +66,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
                       framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
     w_t->Get(ids_t, out_t, true);
+    out_t->set_lod(ids_t.lod());
   }
 };
 
