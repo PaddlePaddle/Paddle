@@ -35,7 +35,7 @@ class SeluTest(OpTest):
 
         # Since zero point in selu is not differentiable, avoid randomize
         # zero.
-        # x[np.abs(x) < 0.005] = 0.02
+        x[np.abs(x) < 0.005] = 0.02
 
         x_flat = x.flatten()
 

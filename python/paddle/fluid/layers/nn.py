@@ -6157,6 +6157,46 @@ def relu(x, name=None):
     return out
 
 
+def selu(x, scale=1.0507, alpha=1.6732, name=None):
+    """
+    Selu takes one input data (Tensor) and produces one output data (Tensor)
+    where the rectified linear function, y = max(0, x), is applied to
+    the tensor elementwise.
+
+    .. math::
+
+         out = scale*(alpha * e^x - alpha if x < 0 else x),
+
+    Args:
+        x (Variable): The input tensor.
+        scale(float, 1.0507): For more information about this value,
+            please refer to: https://arxiv.org/abs/1706.02515.
+        alpha(float, 1.6732): For more information about this value,
+            please refer to: https://arxiv.org/abs/1706.02515.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.selu(x)
+    """
+    helper = LayerHelper('selu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="selu",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={'scale': scale,
+               'alpha': alpha})
+    return out
+
+
 def mean_iou(input, label, num_classes):
     """
     Mean Intersection-Over-Union is a common evaluation metric for

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,10 +23,10 @@ class SeluOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of SeluOp should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of SeluOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SeluOp should not be null");
+                   "Output(Out) of SeluOp should not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -36,7 +36,15 @@ class SeluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("X")), platform::CPUPlace());
+        framework::GetDataTypeOfVar(ctx.InputVar("X")), ctx.GetPlace());
+  }
+};
+
+class SeluOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -45,26 +53,31 @@ class SeluOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input tensor of selu operator.");
     AddOutput("Out", "The output tensor of selu operator.");
-    AddAttr<float>(
-        "alpha",
-        "(float) default to 1.6732~; affects the activation function itself. "
-        "This should go with the weight initialization in the paper. "
-        " See https://arxiv.org/abs/1706.02515 ")
+    AddAttr<float>("alpha",
+                   "(float) the default value is 1.6732~. For more "
+                   "information about this value, please refer to:"
+                   "https://arxiv.org/abs/1706.02515.")
         .SetDefault(1.6732632423543772848170429916717);
-    AddAttr<float>(
-        "scale",
-        "(float) default to 1.0507~; affects the activation function itself.")
+    AddAttr<float>("scale",
+                   "(float) the default value is 1.0507~. For more "
+                   "information about this value, please refer to:"
+                   "https://arxiv.org/abs/1706.02515.")
         .SetDefault(1.0507009873554804934193349852946);
     AddComment(R"DOC(
 Selu Operator.
 
-Selu takes one input data (Tensor<T>) and produces one output data
-(Tensor<T>) where the function, y = scale*(alpha_*e^x-alpha_ if x < 0 else x),
-is applied to the tensor elementwise.
+The equation is:
+$$
+f(x) =\lambda*
+\begin{cases}
+ \quad \quad   x,  \quad \quad \quad \text{if} \ x > 0 \\
+ \alpha * e^x - \alpha,  \qquad  \text{if} \ x >= 0
+\end{cases}
+$$
 
+The input `X` can carry the LoD (Level of Details) information,
+or not. And the output shares the LoD information with input `X`.
 )DOC");
-    AddAttr<std::string>("mode", "The mode for inputs to share weights.")
-        .SetDefault("all");
   }
 };
 
@@ -82,7 +95,7 @@ class SeluGradMaker : public framework::SingleGradOpDescMaker {
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
-// The operator to calculate gradients of a selu operator.
+
 class SeluGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -90,15 +103,16 @@ class SeluGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should not be null");
     auto x_grad_name = framework::GradVarName("X");
-    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("Out")), platform::CPUPlace());
+        framework::GetDataTypeOfVar(ctx.InputVar("Out")), ctx.GetPlace());
   }
 };
 
@@ -107,10 +121,12 @@ class SeluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
+                  ops::SeluGradMaker);
 REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
 REGISTER_OP_CPU_KERNEL(
-    selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>);
+    selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SeluKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    selu_grad, ops::SeluGradKernel<paddle::platform::CPUDeviceContext, float>);
+    selu_grad, ops::SeluGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SeluGradKernel<paddle::platform::CPUDeviceContext, double>);
