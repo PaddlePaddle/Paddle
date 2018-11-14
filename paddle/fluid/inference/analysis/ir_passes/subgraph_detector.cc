@@ -12,45 +12,109 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/analysis/subgraph_splitter.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
+#include <string>
+#include <utility>
+#include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-const char *SubGraphSplitter::kMarkerAttrName =
-    "_sub_graph_splitter_inside_sub_graph";
+using framework::ir::Node;
 
-std::vector<std::vector<Node *>> SubGraphSplitter::operator()() {
+std::pair<std::vector<Node *>, std::vector<Node *>>
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
+  std::unordered_set<Node *> nodes(graph.begin(), graph.end());
+  std::unordered_set<Node *> inputs;
+  std::unordered_set<Node *> outputs;
+  // Input a Value, check whether its inlink is in the subgraph.
+  auto inlink_in_subgraph = [&](Node *n) {
+    for (auto *in : n->inputs) {
+      if (nodes.count(in)) return true;
+    }
+    return false;
+  };
+
+  for (auto &node : graph) {
+    for (auto *in : node->inputs) {
+      // The Value that is written by nodes inside a sub-graph shouldn't be the
+      // input of the sub-graph.
+      if (!nodes.count(in) && in->IsVar() && !inlink_in_subgraph(in)) {
+        inputs.insert(in);
+      }
+    }
+    for (auto *out : node->outputs) {
+      if (!nodes.count(out) && out->IsVar()) {
+        outputs.insert(out);
+      }
+    }
+  }
+  return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
+                        std::vector<Node *>(outputs.begin(), outputs.end()));
+}
+
+// Filter the Intermediate results of the subgraph node.
+void FilterRedundantOutputOfSubGraph(Graph *graph) {
+  std::vector<Node *> op_nodes;
+  for (auto &node : TopologicalSort(*graph)) {
+    if (node.IsVar() || Agent(&node).deleted()) {
+      continue;
+    }
+    op_nodes.push_back(&node);
+  }
+  size_t op_num = op_nodes.size();
+  for (size_t i = 0; i < op_num; i++) {
+    if (op_nodes[i]->IsOp()) continue;
+    std::unordered_set<std::string> follow_up_input_names;
+    for (size_t j = i + 1; j < op_num; j++) {
+      for (auto *in : op_nodes[j]->inputs) {
+        follow_up_input_names.insert(in->Name());
+      }
+    }
+    std::vector<Node *> filtered_subgraph_outlinks;
+    for (auto *out : op_nodes[i]->outputs) {
+      if (follow_up_input_names.count(out->Name())) {
+        filtered_subgraph_outlinks.push_back(out);
+      } else {
+        Agent(out).set_deleted(true);
+      }
+    }
+    // The filtered_subgraph_outlinks may be empty.
+    op_nodes[i]->outputs = filtered_subgraph_outlinks;
+  }
+}
+
+std::vector<std::vector<Node *>> SubgraphDetector::operator()() {
   MarkNodesInsideSubGraph();
   return ExtractSubGraphs();
 }
 
 // Mark the output variables inside a subgraph with the func.
-inline void MarkOutLinksInSubGraph(const Function *func) {
-  for (auto *var : func->outlinks) {
-    var->attr(SubGraphSplitter::kMarkerAttrName).Bool() = true;
+inline void MarkOutLinksInSubGraph(const Node *func) {
+  for (auto *var : func->outputs) {
+    Agent(var).set_marked(true);
   }
 }
 
-void SubGraphSplitter::MarkNodesInsideSubGraph() {
-  for (auto &node : GraphTraits<DataFlowGraph>(*graph_).nodes()) {
+void SubgraphDetector::MarkNodesInsideSubGraph() {
+  for (auto &node : framework::ir::GraphTraits::DFS(*graph_)) {
     if (node_inside_subgraph_teller_(&node)) {
-      node.attr(kMarkerAttrName).Bool() = true;
-      if (node.type() == Node::Type::kFunction) {
+      Agent(&node).set_marked(true);
+      if (node.IsOp()) {
         // If a function is inside the sub-graph, mark all the output variables
         // to be inside too, so that two marked functions will be inside a same
         // sub-graph, lets take a example:  A_function->var->B_function, if
         // A_function is marked, var should also be marked, so that B_function
         // will be in the same sub-graph with A_function if B_function is
         // marked.
-        MarkOutLinksInSubGraph(static_cast<const Function *>(&node));
+        MarkOutLinksInSubGraph(&node);
       }
     }
   }
 }
-
-const char *kUnionFindParent = "_sub_graph_splitter_union_find_parent_";
 
 // Use the Union Find(UF) algorithm to find fully connected sub-graphs, if node
 // a's output is node b, that is a and b is in the same sub-graph. The UF
@@ -60,8 +124,8 @@ using node_map_t = std::unordered_map<int, Node *>;
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
   int tmp = id;
   do {
-    tmp = node_map.at(tmp)->attr(kUnionFindParent).Int32();
-  } while (node_map.at(tmp)->attr(kUnionFindParent).Int32() != tmp);
+    tmp = Agent(node_map.at(tmp)).union_find_parent();
+  } while (Agent(node_map.at(tmp)).union_find_parent() != tmp);
   return tmp;
 }
 // Make this two node share the same ancestor.
@@ -69,9 +133,9 @@ int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
 void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
-  node_map.at(b_ancestor)->attr(kUnionFindParent).Int32() = a_ancestor;
-  node_map.at(a)->attr(kUnionFindParent).Int32() = a_ancestor;
-  node_map.at(b)->attr(kUnionFindParent).Int32() = a_ancestor;
+  Agent(node_map.at(b_ancestor)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);
 }
 
 // This is a simple representation of a graph.
@@ -195,16 +259,21 @@ void FlexibleDFS(const std::vector<BriefNode *> &source, bool reverse,
   }
 }
 
-std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
+std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
   // Run the Extract algorithm to find all subgraphs.
   std::vector<Node *> marked_nodes;
   //  We use brief_node_map to represent the original graph in order to avoid
   //  changing the original graph.
   std::unordered_map<int, BriefNode *> brief_node_map;
 
-  for (auto &node : GraphTraits<DataFlowGraph>(*graph_).nodes_in_TS()) {
+  std::unordered_set<int32_t> valid_node_ids;
+  for (auto *node : graph_->Nodes()) {
+    valid_node_ids.insert(node->id());
+  }
+
+  for (auto &node : framework::ir::GraphTraits::TS(*graph_)) {
     brief_node_map[node.id()] = new BriefNode(&node);
-    if (node.attr(kMarkerAttrName).Bool()) {
+    if (Agent(&node).marked()) {
       marked_nodes.push_back(&node);
     }
   }
@@ -213,26 +282,34 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   node_map_t node_map;  // id to ptr
   for (auto *n : marked_nodes) {
     // n's parent == n.id means it is the ancestor
-    n->attr(kUnionFindParent).Int32() = n->id();
+    Agent(n).set_union_find_parent(n->id());
     node_map[n->id()] = n;
   }
 
   // create breif node map
   for (auto &itr : brief_node_map) {
-    for (Node *node : itr.second->node->inlinks) {
-      itr.second->inlinks.push_back(brief_node_map[node->id()]);
+    for (Node *node : itr.second->node->inputs) {
+      if (!valid_node_ids.count(node->id())) {
+        LOG(INFO) << "invalid node id " << node->id();
+        continue;
+      }
+      itr.second->inlinks.push_back(brief_node_map.at(node->id()));
     }
 
-    for (Node *node : itr.second->node->outlinks) {
-      itr.second->outlinks.push_back(brief_node_map[node->id()]);
+    for (Node *node : itr.second->node->outputs) {
+      if (!valid_node_ids.count(node->id())) {
+        LOG(INFO) << "invalid node id " << node->id();
+        continue;
+      }
+      itr.second->outlinks.push_back(brief_node_map.at(node->id()));
     }
   }
 
   for (auto &itr : brief_node_map) {
     BriefNode *brief_node = itr.second;
 
-    if (!brief_node->node->attr(kMarkerAttrName).Bool()) {
-      VLOG(40) << brief_node->node->id() << " node not a trt candicate.";
+    if (!Agent(brief_node->node).marked()) {
+      VLOG(4) << brief_node->node->id() << " node not a trt candidate.";
       continue;
     }
 
@@ -254,7 +331,7 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
       std::unordered_set<BriefNode *> contract_nodes;
       for (auto *out : brief_node->outlinks) {
         // must be an trt candidate
-        if (!out->node->attr(kMarkerAttrName).Bool()) continue;
+        if (!Agent(out->node).marked()) continue;
         // get all dst input nodes except src.
         std::vector<BriefNode *> source_nodes;
         for (auto *n : out->inlinks) {
@@ -289,9 +366,8 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
 
   std::unordered_map<int /*ancestor*/, std::vector<Node *>> clusters;
   for (auto *n : marked_nodes) {
-    if (n->type() == Node::Type::kFunction) {
-      clusters[UnionFindGetAncestor(node_map,
-                                    n->attr(kUnionFindParent).Int32())]
+    if (n->IsOp()) {
+      clusters[UnionFindGetAncestor(node_map, Agent(n).union_find_parent())]
           .push_back(n);
     }
   }
@@ -304,28 +380,59 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   return result;
 }
 
-void SubGraphFuse::operator()() { ReplaceNodesWithSubGraphs(); }
+void SubGraphFuser::operator()() { ReplaceNodesWithSubGraphs(); }
 
-void SubGraphFuse::ReplaceNodesWithSubGraphs() {
-  auto subgraphs = SubGraphSplitter(graph_, node_inside_subgraph_teller_)();
+void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
+                                        Graph *graph,
+                                        std::vector<Node *> *outputs) {
+  std::unordered_set<Node *> subgraph_set(subgraph.begin(), subgraph.end());
+  std::unordered_set<Node *> valid_output;
+
+  for (auto *output : *outputs) {
+    int num_used = 0;
+    for (auto *node : output->outputs) {
+      if (!subgraph_set.count(node)) ++num_used;
+      if (num_used > 0) valid_output.insert(output);
+    }
+  }
+
+  outputs->assign(valid_output.begin(), valid_output.end());
+}
+
+void DetachDeletedNodes(framework::ir::Graph *graph) {
+  std::unordered_set<const Node *> nodes;
+  for (auto *node : graph->Nodes()) {
+    if (Agent(node).deleted()) {
+      node->inputs.clear();
+      node->outputs.clear();
+    }
+  }
+}
+
+void SubGraphFuser::ReplaceNodesWithSubGraphs() {
+  auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
-    if (subgraph.size() <= argument_->Get<int>("minimum_subgraph_size"))
-      continue;
+    if (subgraph.size() <= min_subgraph_size_) continue;
+    LOG(INFO) << "detect a subgraph size " << subgraph.size();
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
-    auto *block_node = static_cast<FunctionBlock *>(
-        graph_->nodes.Create(Node::Type::kFunctionBlock));
+    framework::OpDesc empty_desc;
+    empty_desc.SetType("tensorrt_engine");
+    auto *block_node = graph_->CreateOpNode(&empty_desc);
+    Agent(block_node).set_subgraph({});
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
-    block_node->inlinks = std::move(io.first);
-    block_node->outlinks = std::move(io.second);
+    block_node->inputs = std::move(io.first);
+    block_node->outputs = std::move(io.second);
+
+    RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
 
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
       // pass.
-      node->SetDeleted();
-      block_node->subgraph.push_back(node);
+      Agent(node).set_deleted(true);
+      Agent(block_node).subgraph()->push_back(node);
     }
 
     // Change all the sub-graph's inputs and outputs corresponding inlink and
@@ -339,14 +446,90 @@ void SubGraphFuse::ReplaceNodesWithSubGraphs() {
       std::unordered_set<Node *> uniq(nodes.begin(), nodes.end());
       nodes.assign(uniq.begin(), uniq.end());
     };
-    for (auto *i : block_node->inlinks) {
-      inlink_or_outlink_cleaner(i->outlinks);
+    for (auto *i : block_node->inputs) {
+      inlink_or_outlink_cleaner(i->outputs);
     }
-    for (auto *&o : block_node->outlinks) {
-      inlink_or_outlink_cleaner(o->inlinks);
+    for (auto *&o : block_node->outputs) {
+      inlink_or_outlink_cleaner(o->inputs);
     }
   }
+  // DetachDeletedNodes(graph_);
   FilterRedundantOutputOfSubGraph(graph_);
+}
+
+inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
+  return node.inputs.size() == n;
+}
+
+NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
+  PADDLE_ENFORCE(!source.empty(),
+                 "Start points of topological sorting should not be empty!");
+  // CHECK all the inputs' in-degree is 0
+  for (auto *node : source) {
+    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
+  }
+
+  std::unordered_set<Node *> visited;
+  std::unordered_set<Node *> to_visit{source.begin(), source.end()};
+
+  std::vector<Node *> inlink_visited;
+  while (!to_visit.empty()) {
+    std::vector<Node *> queue(to_visit.begin(), to_visit.end());
+    for (auto *p : queue) {
+      if (Agent(p).deleted()) {
+        visited.insert(p);
+        to_visit.erase(p);
+      }
+
+      inlink_visited.clear();
+
+      std::copy_if(p->inputs.begin(), p->inputs.end(),
+                   std::back_inserter(inlink_visited),
+                   [&](Node *x) -> bool { return visited.count(x) != 0; });
+
+      if (inlink_visited.size() == p->inputs.size()) {
+        sorted_.push_back(p);
+        for (auto *_ : p->outputs) {
+          if (!visited.count(_)) {
+            to_visit.insert(_);
+          }
+        }
+
+        to_visit.erase(p);
+        visited.insert(p);
+      }
+    }
+  }
+}
+
+NodesTSIterator::NodesTSIterator(const NodesTSIterator &other)
+    : sorted_(other.sorted_), cursor_(other.cursor_) {}
+
+Node &NodesTSIterator::operator*() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return *sorted_[cursor_];
+}
+
+NodesTSIterator &NodesTSIterator::operator++() {
+  if (++cursor_ >= sorted_.size()) {
+    sorted_.clear();
+    cursor_ = 0;
+  }
+  return *this;
+}
+NodesTSIterator &NodesTSIterator::operator=(const NodesTSIterator &other) {
+  cursor_ = other.cursor_;
+  sorted_ = other.sorted_;
+  return *this;
+}
+
+bool NodesTSIterator::operator==(const NodesTSIterator &other) {
+  return sorted_ == other.sorted_ && cursor_ == other.cursor_;
+}
+
+Node *NodesTSIterator::operator->() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return sorted_[cursor_];
 }
 
 }  // namespace analysis

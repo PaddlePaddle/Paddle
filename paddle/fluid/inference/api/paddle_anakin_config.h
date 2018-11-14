@@ -11,26 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
+#include <cassert>
+#include <memory>
+#include <string>
+#include <vector>
 
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle_api.h"  // NOLINT
 
 namespace paddle {
-namespace inference {
-namespace analysis {
+namespace contrib {
+// Configurations for Anakin engine.
+struct AnakinConfig : public PaddlePredictor::Config {
+  enum TargetType { NVGPU = 0, X86 };
+  int device;
+  std::string model_file;
+  int max_batch_size{-1};
+  TargetType target_type;
+};
 
-TEST(FluidToIrPass, Test) {
-  FluidToIrPass pass;
-  Argument argument(FLAGS_inference_model_dir);
-  argument.Set(kFluidToIrPassesAttr,
-               new std::vector<std::string>({"infer_clean_graph_pass"}));
-  pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
-}
-
-}  // namespace analysis
-}  // namespace inference
+}  // namespace contrib
 }  // namespace paddle
