@@ -21,8 +21,8 @@ import six
 class TestBase(unittest.TestCase):
     def main(self,
              network_func,
-             iter=100,
-             iter_per_pe=100,
+             iter=10,
+             iter_per_pe=10,
              use_gpu=True,
              use_experimental_executor=False):
         if use_gpu and not fluid.core.is_compiled_with_cuda():
@@ -45,7 +45,7 @@ class TestBase(unittest.TestCase):
             exe_strategy._dry_run = True
             exe_strategy.use_experimental_executor = use_experimental_executor
             pe = fluid.ParallelExecutor(
-                use_cuda=True,
+                use_cuda=use_gpu,
                 loss_name=loss.name,
                 main_program=main_prog,
                 exec_strategy=exe_strategy)
