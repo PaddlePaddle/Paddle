@@ -40,13 +40,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-std::mutex ExecutorThreadWorker::s_locker_for_pick_file_;
-unsigned int ExecutorThreadWorker::s_current_file_idx_ = 0;
-size_t ExecutorThreadWorker::s_current_finished_file_cnt_ = 0;
-unsigned int ExecutorThreadWorker::s_current_epoch_ = 0;
-int ExecutorThreadWorker::s_current_save_epoch_ = 0;
-bool ExecutorThreadWorker::s_is_first_worker_ = false;
-std::vector<std::string> ExecutorThreadWorker::s_thread_filelist_;
+
+bool AsyncExecutor::workers_initialized_ = false;
 
 void CreateTensor(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -124,7 +119,6 @@ static void SaveModel(
                                                       {{"X", {var->Name()}}},
                                                       {},
                                                       attrs);
-
       save_op->Run(*scope, place);
     } else {
       paralist.push_back(var->Name());
@@ -140,15 +134,14 @@ static void SaveModel(
                                                       {{"X", paralist}},
                                                       {},
                                                       attrs);
+
     save_op->Run(*scope, place);
   }
 }   // end SaveModel
 
-
-void ExecutorThreadWorker::AddTrainFile(const std::string& file) {
-  s_thread_filelist_.push_back(file);
+void ExecutorThreadWorker::Reset() {
+  inspect_values_.clear();
 }
-
 void ExecutorThreadWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
   op_names_.clear();
@@ -175,8 +168,12 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   }
 }
 
-void ExecutorThreadWorker::SetDataFeed(const std::shared_ptr<DataFeed>& datafeed) {
-  local_reader_ = datafeed;
+void ExecutorThreadWorker::SetDataFeed(DataFeed& datafeed) {
+  if (typeid(datafeed) == typeid(TextClassDataFeed)) {
+    local_reader_.reset(
+        new TextClassDataFeed(dynamic_cast<TextClassDataFeed &>(datafeed)));
+    local_reader_->SetThreadId(thread_id_);
+  }
 }
 
 void ExecutorThreadWorker::BindingDataFeedMemory() {
@@ -186,19 +183,16 @@ void ExecutorThreadWorker::BindingDataFeedMemory() {
   }
 }
 
-void ExecutorThreadWorker::SetInspectVarName(
-    const std::string& inspect_var_name) {
-  inspect_var_name_ = inspect_var_name;
+void ExecutorThreadWorker::SetInspectVarNames(
+    const std::vector<std::string>& inspect_var_names) {
+  inspect_var_names_.clear();
+  inspect_var_names_.insert(inspect_var_names_.end(),
+                            inspect_var_names.begin(), inspect_var_names.end());
 }
 
 void ExecutorThreadWorker::SetModelParamNames(
     const std::vector<std::string>& param_names) {
   model_param_names_ = param_names;
-}
-
-void ExecutorThreadWorker::SetSparseCommData(
-    const std::map<std::string, int>& param_names) {
-  sparse_comm_data_ = param_names;
 }
 
 void ExecutorThreadWorker::SetDevice() {
@@ -228,150 +222,90 @@ void ExecutorThreadWorker::SetDevice() {
       CPU_ZERO(&mask);
       if ((0 == sched_getaffinity(0, sizeof(mask), &mask))
           && CPU_ISSET(proc, &mask)) {
-        LOG(ERROR) << "TRACE: Thread " << i << " is running on processor " << proc << "...";
+        LOG(ERROR) << "TRACE: Thread " << i
+                   << " is running on processor " << proc
+                   << "...";
       }
     }
   }
 }
 
-void ExecutorThreadWorker::UpdateEpochNum() {
-  s_current_finished_file_cnt_++;
-
-  if (s_current_finished_file_cnt_ >= s_thread_filelist_.size()) {
-    s_current_finished_file_cnt_ = 0;
-    s_current_epoch_++;
-  }
-}
-
-const char* ExecutorThreadWorker::PickOneFile() {
-  std::string file_to_be_preocessed;
-  std::lock_guard<std::mutex> lock(s_locker_for_pick_file_);
-
-  if (s_current_file_idx_ >= s_thread_filelist_.size()) {
-    std::random_shuffle(s_thread_filelist_.begin(),
-    s_thread_filelist_.end());
-    s_current_file_idx_ = 0;
-    // s_current_epoch_++; //example: when one file, one thread, it's bug
-    LOG(ERROR) << "thread " << thread_id_
-               << ": finish traing for epoch " << s_current_epoch_ + 1;
-  }
-  file_to_be_preocessed = s_thread_filelist_[s_current_file_idx_];
-
-  s_current_file_idx_++;
-  return file_to_be_preocessed.c_str();
-}
 
 void ExecutorThreadWorker::Train() {
   LOG(ERROR) << "begin to train";
   SetDevice();
-#ifdef LOCAL_PROF
-  std::vector<double> op_total_time;
-  std::vector<std::string> op_name;
-  // int total_batch = 0;
-  for (auto& op : ops_) {
-    op_name.push_back(op->Type());
-  }
-  op_total_time.resize(ops_.size());
-  for (int i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
-  }
-#endif
-  std::string inspect_key = "inspect";
-  if (!inspect_var_name_.empty()) {
-    inspect_key = inspect_var_name_.substr(0,
-                                          inspect_var_name_.find_first_of('_'));
-  }
 
-  for (unsigned i = 0; i < max_epoch_; ++i) {
-    LOG(ERROR) << "epoch: " << i;
-#ifdef LOCAL_PROF
-    Timer timeline;
-    double total_time = 0.0;
-    double read_time = 0.0;
-#endif
-    float total_inspect = 0;
-    int batch_num = 1;
-    while (i == s_current_epoch_) {
-      const char* filename = PickOneFile();
-      local_reader_->SetFile(filename);
-      while (true) {
-#ifdef LOCAL_PROF
-        timeline.start();
-#endif
-        bool flag = local_reader_->ReadBatch();
-        if (!flag) {
-          break;
-        }
-#ifdef LOCAL_PROF
-        timeline.pause();
-        read_time += timeline.elapsed_sec();
-        total_time += timeline.elapsed_sec();
-#endif
-        if (!flag) {
-          break;
-        }
+  int inspect_var_num = inspect_var_names_.size();
+  inspect_values_.clear();
+  inspect_values_.resize(inspect_var_num, 0);
 
-        for (unsigned int i = 0; i < ops_.size(); ++i) {
-#ifdef LOCAL_PROF
-          timeline.start();
-#endif
-          ops_[i]->Run(*thread_scope_, place_);
-#ifdef LOCAL_PROF
-          timeline.pause();
-          op_total_time[i] += timeline.elapsed_sec();
-          total_time += timeline.elapsed_sec();
-#endif
-        }
-        batch_num++;
-        float avg_inspect = 0.0;
-        if (!inspect_var_name_.empty()) {
-          avg_inspect = thread_scope_->FindVar(inspect_var_name_)
-                                     ->GetMutable<LoDTensor>()
-                                     ->data<float>()[0];
-        }
-        total_inspect += avg_inspect;
-        thread_scope_->DropKids();
-      }
-      UpdateEpochNum();
-      LOG(ERROR) << "memory used after epoch " << i + 1
-                 << " called: " << memory::memory_usage(place_);
+  local_reader_->WaitNextEpoch();
+  int epoch = local_reader_->GetCurrentEpoch();
 
-#ifdef LOCAL_PROF
-      for (int i = 0; i < op_total_time.size(); ++i) {
-        std::cerr << "op_name:[" << i << "][" << op_name[i] << "]"
-                  << " op_mean_time:[" << op_total_time[i] << "s]"
-                  << std::endl;
-      }
-      std::cerr << "read time: " << read_time << "s" << std::endl;
-#endif
+  LOG(ERROR) << "epoch: " << epoch;
+
+  int batch_num = 1;
+
+  while (true) {
+    const char *file = local_reader_->PickOneFile();
+    if (file == NULL) {
+      break;
     }
-#ifdef LOCAL_PROF
-    LOG(ERROR) << "mean " << inspect_key.c_str()
-               << " of epoch " << i + 1 << ": " << total_inspect / batch_num
-               << ", total_time: " << total_time;
-#else
-    LOG(ERROR) << "mean " << inspect_key.c_str()
-               << " of epoch " << i + 1 << ": " << total_inspect / batch_num;
-#endif
-    if (thread_id_ == 0) {
-      char modelfile[1024];
-      snprintf(&modelfile[0],
-              sizeof(modelfile),
-              "%s_epoch%d.model",
-              model_prefix_.c_str(),
-              i);
-      std::string model_filename = std::string(modelfile);
-      // this save_inference_model can only save imdbtask, should make this
-      // general
-      //
-      // currently comment it
-      LOG(ERROR) << "Going to save model " << modelfile;
-      SaveModel(main_program_,
-                thread_scope_,
-                model_param_names_,
-                model_filename,
-                true);
+
+    if (!local_reader_->SetFile(file)) {
+      break;
     }
+
+    while (true) {
+      bool flag = local_reader_->ReadBatch();
+      if (!flag) {
+        break;
+      }
+
+      for (unsigned int i = 0; i < ops_.size(); ++i) {
+        ops_[i]->Run(*thread_scope_, place_);
+      }
+      batch_num++;
+
+      float avg_inspect = 0.0;
+      for (int i = 0; i < inspect_var_num; ++i) {
+        avg_inspect = thread_scope_->FindVar(inspect_var_names_[i])
+                                   ->GetMutable<LoDTensor>()
+                                   ->data<float>()[0];
+        inspect_values_[i] += avg_inspect;
+      }
+      thread_scope_->DropKids();
+    }
+
+    local_reader_->UpdateEpochNum();
+    LOG(ERROR) << "memory used after epoch " << epoch + 1
+               << " called: " << memory::memory_usage(place_);
+  }
+
+  for (int i = 0; i < inspect_var_num; ++i) {
+    inspect_values_[i] /= batch_num;
+    std::string var = inspect_var_names_[i].substr(
+                          0,
+                          inspect_var_names_[i].find_first_of("_"));
+    LOG(ERROR) << "mean " << var.c_str()
+               << " of epoch " << i + 1 << ": " << inspect_values_[i];
+  }
+
+  if (thread_id_ == 0) {
+    char modelfile[1024];
+    snprintf(&modelfile[0], sizeof(modelfile), "%s_epoch%d.model",
+             model_prefix_.c_str(), epoch);
+    std::string model_filename = std::string(modelfile);
+    // this save_inference_model can only save imdbtask, should make this
+    // general
+    //
+    // currently comment it
+    LOG(ERROR) << "Going to save model " << modelfile;
+    SaveModel(main_program_,
+              thread_scope_,
+              model_param_names_,
+              model_filename,
+              true);
   }
 }
 
@@ -396,7 +330,20 @@ void ExecutorThreadWorker::SetMaxTrainingEpoch(int max_epoch) {
   max_epoch_ = max_epoch;
 }
 
-AsyncExecutor::AsyncExecutor(const platform::Place& place) : place_(place) {}
+AsyncExecutor::AsyncExecutor(ProgramDesc& main_program,
+                       const std::vector<std::string>& param_names,
+                       TextClassDataFeed& data_feed,
+                       unsigned int thread_num,
+                       const platform::Place& place)
+    : thread_num_(thread_num),
+      place_(place),
+      main_program_(main_program),
+      data_feed_(data_feed) {
+  model_param_names_.clear();
+  model_param_names_.insert(model_param_names_.end(),
+                            param_names.begin(),
+                            param_names.end());
+}
 
 void AsyncExecutor::InitRootScope(Scope* scope) {
   root_scope_ = scope;
@@ -404,10 +351,6 @@ void AsyncExecutor::InitRootScope(Scope* scope) {
 
 void AsyncExecutor::SetMaxTrainingEpoch(int max_epoch) {
   max_epoch_ = max_epoch;
-}
-
-void AsyncExecutor::SetDataFeedName(const char* feedname) {
-  feed_name_ = std::string(feedname);
 }
 
 void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
@@ -463,60 +406,16 @@ std::unique_ptr<ProgramDesc> AsyncExecutor::LoadDescFromFile(
   return program;
 }
 
-void AsyncExecutor::SetDenseCommTensor(
-    const std::vector<std::string>& dense_comm_tensor) {
-  dense_comm_tensor_.resize(dense_comm_tensor.size());
-  for (unsigned int i = 0; i < dense_comm_tensor.size(); ++i) {
-    dense_comm_tensor_[i] = dense_comm_tensor[i];
-  }
-}
-
-void AsyncExecutor::SetSparseCommTensor(
-    const std::vector<std::string>& sparse_comm_tensor) {
-  sparse_comm_tensor_.resize(sparse_comm_tensor.size());
-  for (unsigned int i = 0; i < sparse_comm_tensor.size(); ++i) {
-    sparse_comm_tensor_[i] = sparse_comm_tensor[i];
-  }
-}
-
-void AsyncExecutor::SetSparseCommData(
-    const std::map<std::string, int>& sparse_comm_data) {
-  sparse_comm_data_ = sparse_comm_data;
-  LOG(INFO) << "Sparse comm data: " << sparse_comm_data_.size();
-}
-
-void AsyncExecutor::SetFileList(const char* filelist) {
-  filelist_.clear();
-  std::ifstream fin(filelist);
-  std::string filename;
-  while (fin >> filename) {
-    LOG(ERROR) << "add " << filename.c_str() << " to filelist";
-    filelist_.push_back(filename);
-  }
-  fin.close();
-}
-
-void AsyncExecutor::SetFileList(std::vector<std::string> tfiles) {
-  filelist_.clear();
-  filelist_.insert(filelist_.end(), tfiles.begin(), tfiles.end());
-  return;
-}
-
-void AsyncExecutor::SetInspectVarName(const std::string& inspect_var_name) {
-  inspect_var_name_ = inspect_var_name;
-}
-
-void AsyncExecutor::SetParamNames(const std::vector<std::string>& param_names) {
-  model_param_names_ = param_names;
-}
-
-void AsyncExecutor::SetThreadNum(const int thread_num) {
-  thread_num_ = thread_num;
+void AsyncExecutor::SetInspectVarNames(
+    const std::vector<std::string>& inspect_var_names) {
+  inspect_var_names_.clear();
+  inspect_var_names_.insert(inspect_var_names_.end(),
+                            inspect_var_names.begin(), inspect_var_names.end());
 }
 
 void AsyncExecutor::PrepareThreads(const ProgramDesc& host_program) {
   workers_.resize(thread_num_);
-  for (unsigned i = 0; i < thread_num_; ++i) {
+  for (int i = 0; i < thread_num_; ++i) {
     workers_[i].reset(new ExecutorThreadWorker);
     workers_[i]->SetThreadId(i);
     workers_[i]->CreateThreadOperators(host_program);
@@ -524,34 +423,31 @@ void AsyncExecutor::PrepareThreads(const ProgramDesc& host_program) {
     workers_[i]->SetPlace(place_);
     workers_[i]->SetMaxTrainingEpoch(max_epoch_);
     workers_[i]->CreateThreadScope(host_program);
-    workers_[i]->SetInspectVarName(inspect_var_name_);
+    workers_[i]->SetInspectVarNames(inspect_var_names_);
     workers_[i]->SetModelParamNames(model_param_names_);
-    workers_[i]->SetSparseCommData(sparse_comm_data_); 
     workers_[i]->SetMainProgram(host_program);
     workers_[i]->SetModelPrefix(model_prefix_);
-  }
-
-  for (unsigned i = 0; i < filelist_.size(); ++i) {
-    // suppose at least one trainer thread here, and
-    // filelist is static so that we only add filelist once
-    workers_[0]->AddTrainFile(filelist_[i]);
-  }
-  
-  for (unsigned i = 0; i < thread_num_; ++i) {
+    //
     // new a datafeed here
-    std::shared_ptr<DataFeed> local_feed = CreateDataFeed(feed_name_.c_str());
-    local_feed->Init();
-    local_feed->SetBatchSize(batch_size_);
-    workers_[i]->SetDataFeed(local_feed);
+    workers_[i]->SetDataFeed(data_feed_);
     workers_[i]->BindingDataFeedMemory();
-    workers_[i]->SetThreadId(i);
   }
 }
 
-void AsyncExecutor::RunAsyncExecutor(const ProgramDesc& host_program) {
+std::vector<float>& AsyncExecutor::Run(
+    const std::vector<std::string>& inspect_var_names) {
+  SetInspectVarNames(inspect_var_names);
+  threads_.clear();
+
   // thread binding here?
-  PrepareThreads(host_program);
-  for (unsigned i = 0; i < thread_num_; ++i) {
+  if (workers_initialized_ == false) {
+    PrepareThreads(main_program_);
+    workers_initialized_ = true;
+  }
+
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->Reset();
+    workers_[i]->SetInspectVarNames(inspect_var_names);
     threads_.push_back(std::thread(&ExecutorThreadWorker::Train,
                       workers_[i].get()));
   }
@@ -559,6 +455,27 @@ void AsyncExecutor::RunAsyncExecutor(const ProgramDesc& host_program) {
   for (auto& th : threads_) {
     th.join();
   }
+
+  inspect_values_.clear();
+  inspect_values_.resize(inspect_var_names_.size(), 0);
+
+
+  std::vector<std::vector<float>*> inspect_value_vectors;
+  inspect_value_vectors.resize(thread_num_);
+  for (int i = 0; i < thread_num_; ++i) {
+    inspect_value_vectors[i] = &workers_[i]->GetInspectValues();
+  }
+
+  for (unsigned int i = 0; i < inspect_var_names_.size(); ++i) {
+    float value = 0.0;
+    for (int j = 0; j < thread_num_; ++j) {
+      value += inspect_value_vectors[j]->at(i);
+    }
+    value /= thread_num_;
+    inspect_values_[i] = value;
+  }
+
+  return inspect_values_;
 }
 
 void AsyncExecutor::LoadInitModel() {

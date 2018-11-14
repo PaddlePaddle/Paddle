@@ -21,7 +21,10 @@ limitations under the License. */
 #ifdef _XOPEN_SOURCE
 #undef _XOPEN_SOURCE
 #endif
+#include <vector>
+#include <string>
 
+#include "paddle/fluid/pybind/async_executor_py.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "paddle/fluid/inference/io.h"
@@ -29,58 +32,36 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/framework/async_executor_param.pb.h"
 #include "paddle/fluid/framework/async_executor.h"
-#include "paddle/fluid/pybind/async_executor_py.h"
+#include "paddle/fluid/framework/data_feed.h"
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
 void BindAsyncExecutor(py::module* m) {
-  py::class_<paddle::AsyncExecutorParameter>(*m, "AsyncExecutorParameter")
-    .def(py::init<>())
-    .def("parse",
-      [](paddle::AsyncExecutorParameter &self, const std::string &conf_file) {
-        int file_descriptor = open(conf_file.c_str(), O_RDONLY);
-        google::protobuf::io::FileInputStream file_input(file_descriptor);
-        google::protobuf::TextFormat::Parse(&file_input, &self);
-        close(file_descriptor);
-      }
-    );
-  py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
-    .def(py::init<const platform::Place&>())
-    .def("init",
-      [](framework::AsyncExecutor &self,
-          paddle::AsyncExecutorParameter &parameter,
-          framework::Scope *scope) {
-        paddle::BaseParameter base_param = parameter.base_param();
+  py::class_<framework::DataFeed>(*m, "DataFeed");
+  py::class_<framework::TextClassDataFeed,
+             framework::DataFeed>(*m, "TextDataFeed")
+    .def(py::init())
+    .def("set_filelist",
+      [] (framework::TextClassDataFeed &self, const char *data_list_file) {
+        self.SetFileList(data_list_file);
+      })
+    .def("set_batch_size", &framework::TextClassDataFeed::SetBatchSize)
+    .def("set_field_names", &framework::TextClassDataFeed::SetFieldNames)
+    .def("start_one_epoch", &framework::TextClassDataFeed::StartOneEpoch);
 
-        // TODO Extract parameter list from python side, instead of
-        // providing them in confgurations manually
-        std::vector<std::string> param_names;
-        for (int i = 0; i < base_param.model_param_names_size(); ++i) {
-          param_names.push_back(base_param.model_param_names(i));
-        }
-        paddle::framework::InitDevices(false);
-        self.InitRootScope(scope);
-        self.SetThreadNum(base_param.thread_num());
-        self.SetMaxTrainingEpoch(base_param.max_epoch());
-        self.SetFileList(base_param.filelist().c_str());
-        self.SetBatchSize(base_param.batch_size());
-        self.SetDataFeedName(base_param.datafeed_class().c_str());
-        self.SetInspectVarName(base_param.inspect_var_name());
-        self.SetParamNames(param_names);
-        self.SetModelPath(base_param.model_path());
-        self.SetModelPrefix(base_param.model_prefix());
-        self.SetInitProgFile(base_param.init_prog_file());
-        self.SetInitModelFile(base_param.init_model_file());
-        return;
-      }
-    )
+  py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
+    .def(py::init<framework::ProgramDesc&,
+                  std::vector<std::string>&,
+                  framework::TextClassDataFeed&,
+                  unsigned int,
+                  const platform::Place&>())
+    .def("init_root_scope", &framework::AsyncExecutor::InitRootScope)
     .def("run_startup_program", &framework::AsyncExecutor::RunStartupProgram)
-    .def("load_init_model", &framework::AsyncExecutor::LoadInitModel)
-    .def("run", &framework::AsyncExecutor::RunAsyncExecutor);
+    .def("run", &framework::AsyncExecutor::Run);
 }   // end BindAsyncExecutor
-}   // end namespace framework
+}   // end namespace pybind
 }   // end namespace paddle
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=80: */

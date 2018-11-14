@@ -21,22 +21,28 @@ from .framework import Program, default_main_program, Variable
 from . import core
 from . import Executor
 
-__all__ = ['AsyncExecutorParameter', 'AsyncExecutor']
+__all__ = ['TextDataFeed', 'AsyncExecutor']
 
 g_scope = core.Scope()
 
-class AsyncExecutorParameter(object):
-    """
-    AsyncExecutor configure parameter
-
-    Args:
-        None    	
-    """
+class TextDataFeed():
     def __init__(self):
-        self.parameter = core.AsyncExecutorParameter()
+        self.feed = core.TextDataFeed()
 
-    def parse(self, conf_file):
-        self.parameter.parse(conf_file)
+    def set_filelist(self, filelist):
+        self.feed.set_filelist(filelist)
+
+    def set_batch_size(self, batch_size):
+        self.feed.set_batch_size(batch_size)
+
+    def set_field_names(self, field_names):
+        if isinstance(field_names, Variable):
+            field_names = [field_names]
+
+        self.feed.set_field_names(field_names)
+
+    def start_an_epoch(self):
+        self.feed.start_one_epoch()
 
 class AsyncExecutor(object):
     """
@@ -50,39 +56,31 @@ class AsyncExecutor(object):
     """
 
     def __init__(self,
-                 async_executor_parameter,
-                 place,
-                 scope):
-        if not isinstance(async_executor_parameter, AsyncExecutorParameter):
-            raise TypeError(
-                "AsyncExecutor requires AsyncExecutorParameter as its parameter. "
-                "But you passed in %s" %s (type(async_executor_parameter))
-            )
+                 program,
+                 param_names,
+                 data_feed,
+                 thread_num,
+                 place=None,
+                 scope=None):
+        if program is None:
+            program = default_main_program()
+        program_desc = program.desc
 
-        self.place = place
+        if not isinstance(data_feed, TextDataFeed):
+            raise ValueError("data_feed for AsyncExecutor.run() type error")
+
+        if place is None:
+            place = core.CPUPlace()
+        if not isinstance(place, core.CPUPlace):
+            raise ValueError("AsyncExecutor only supports CPU device")
+
+        if isinstance(param_names, Variable):
+            param_names = [param_names]
+
         p = core.Place()
         p.set_place(place)
-        self.executor = core.AsyncExecutor(p)
-        self.executor.init(async_executor_parameter.parameter, scope)
-        self._closed = False
-        self.parameter = async_executor_parameter.parameter
+        self.executor = core.AsyncExecutor(program_desc, param_names, data_feed.feed, thread_num, p)
 
-    def close(self):
-        """
-        Close this executor.
-
-        You can no long use this executor after calling this method.
-        For the distributed training, this method would free the resource on PServers related to
-        the current Trainer.
-
-        Example:
-            >>> cpu = core.CPUPlace()
-            >>> exe = Executor(cpu)
-            >>> ...
-            >>> exe.close()
-        """
-        if not self._closed:
-            self._closed = True
     def run_startup_program(self,
                             program=None,
                             scope=None):
@@ -94,8 +92,8 @@ class AsyncExecutor(object):
             scope = g_scope
 
         self.executor.run_startup_program(program_desc, scope)
-        
-    def run(self, program=None, scope=None):
+
+    def run(self, inspect_vars, scope=None):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -138,23 +136,16 @@ class AsyncExecutor(object):
             >>>     feed={'X': x},
             >>>     fetch_list=[loss.name])
         """
-
-        if self._closed:
-            raise RuntimeError("Attempted to use a closed Executor")
-
-        if program is None:
-            program = default_main_program()
-        program_desc = program.desc
-
-        if not isinstance(program, Program):
-            raise TypeError(
-                "Executor requires Program as its Parameter. But you passed in %s"
-                % (type(program)))
+        if inspect_vars is not None:
+            if isinstance(inspect_vars, Variable):
+                inspect_vars = [inspect_vars]
+            inspect_var_names = [var.name for var in inspect_vars]
 
         if scope is None:
             scope = g_scope
- 
-        self.executor.run(program.desc)
 
-    def load_init_model(self):
-        return self.executor.load_init_model()
+        self.executor.init_root_scope(scope)
+
+        evaluation = self.executor.run(inspect_var_names)
+        return evaluation
+

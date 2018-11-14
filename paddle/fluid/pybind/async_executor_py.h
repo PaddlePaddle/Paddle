@@ -15,6 +15,7 @@
 #ifndef PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
 #define PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
 #include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
 namespace py = pybind11;
 
