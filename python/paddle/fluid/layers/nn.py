@@ -6835,7 +6835,7 @@ def prelu(x, mode, param_attr=None, name=None):
         alpha_shape = x.shape
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
-        attr=param_attr,
+        attr=helper.param_attr,
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
