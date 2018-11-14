@@ -184,11 +184,10 @@ endif ()
 
 set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
-        SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-        ${src_dir}/${module}/api/paddle_inference_api.h
-        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
-        )
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+       ${src_dir}/${module}/api/paddle_*.h
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto
@@ -223,12 +222,12 @@ copy(third_party DEPS fluid_lib_dist
         DSTS ${FLUID_INFERENCE_INSTALL_DIR} ${FLUID_INFERENCE_INSTALL_DIR}
         )
 
-# only need libpaddle_fluid.so/a and paddle_inference_api.h for inference-only library
+# only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
 copy(inference_api_lib DEPS fluid_lib_dist
-        SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_inference_api.h
-        DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
-        )
+  SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+       ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
+  DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
+)
 
 add_custom_target(inference_lib_dist DEPENDS third_party inference_api_lib)
 

@@ -39,19 +39,16 @@ set(SHARED_INFERENCE_SRCS
     io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
-if (WITH_GPU AND TENSORRT_FOUND)
-  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS} paddle_inference_tensorrt_subgraph_engine)
-  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/api/api_tensorrt_subgraph_engine.cc)
-endif()
 
-# Create static library
 if(WIN32)
-  sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+  sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
+    analysis_config paddle_pass_builder)
   if(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_fluid ${cuda_modules})
   endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
-  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
+    analysis_config paddle_pass_builder)
 endif(WIN32)
 
 if(NOT APPLE)
@@ -63,14 +60,14 @@ endif()
 # Create shared library
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
   target_link_libraries(paddle_fluid_shared shlwapi)
   if(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_fluid_origin ${cuda_modules})
   endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+      DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
 endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)

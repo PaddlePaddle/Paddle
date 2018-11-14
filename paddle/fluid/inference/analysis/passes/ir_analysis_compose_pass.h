@@ -12,42 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
- * This file defines ModelStorePass, which store the runtime DFG to a Paddle
- * model in the disk, and that model can be reloaded for prediction.
- */
-
 #pragma once
+
 #include <string>
+#include <vector>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/inference/analysis/passes/passes.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class ModelStorePass : public DataFlowGraphPass {
+/*
+ * The analysis pass to run a list of IR passes (like a function call).
+ * Currently, it should be the first pass of analysis phase.
+ */
+class IrAnalysisComposePass : public AnalysisPass {
  public:
-  bool Initialize(Argument* argument) override {
-    if (!argument) {
-      LOG(ERROR) << "invalid argument";
-      return false;
-    }
-    argument_ = argument;
-    return true;
-  }
-
-  void Run(DataFlowGraph* x) override;
-
-  std::string repr() const override { return "DFG-store-pass"; }
-  std::string description() const override {
-    return R"DD(This file defines ModelStorePass, which store the runtime DFG to a Paddle
-    model in the disk, and that model can be reloaded for prediction again.)DD";
-  }
-
-  bool Finalize() override;
+  void RunImpl(Argument* argument) override;
+  std::string repr() const override;
 
  private:
-  Argument* argument_{nullptr};
+  void InitTensorRTAttrs(Argument* argument);
+
+  void ApplyIrPasses(Argument* argument);
+
+  void CollectFusionStatis(Argument* argument);
+
+  // Assign a Scope for IR passes to modify the weights.
+  void AssignScopeToModify(Argument* argument);
 };
 
 }  // namespace analysis

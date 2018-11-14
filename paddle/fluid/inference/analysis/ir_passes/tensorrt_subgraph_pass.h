@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
-
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
+#pragma once
+#include <paddle/fluid/framework/ir/fuse_pass_base.h>
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST(FluidToDataFlowGraphPass, Test) {
-  FluidToDataFlowGraphPass pass;
-  Argument argument(FLAGS_inference_model_dir);
-  pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
-  // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(argument.main_dfg->nodes.size(), 38UL);
-  pass.Finalize();
-  ASSERT_FALSE(argument.main_dfg->DotString().empty());
-  EXPECT_FALSE(argument.main_dfg->inputs().empty());
-}
+class TensorRtSubgraphPass : public framework::ir::FusePassBase {
+ public:
+  std::unique_ptr<framework::ir::Graph> ApplyImpl(
+      std::unique_ptr<framework::ir::Graph> graph) const override;
+
+ private:
+  void CreateTensorRTOp(framework::ir::Node *x,
+                        framework::ir::Graph *graph) const;
+  void CleanIntermediateOutputs(framework::ir::Node *node);
+};
 
 }  // namespace analysis
 }  // namespace inference
