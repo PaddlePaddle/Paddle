@@ -159,7 +159,7 @@ class CustomCode : public Code {
 
     for (int i = 0; i < static_cast<int>(ptable_->dims()[1]); i++) {
       if (ptable_->data<R>()[index_ * static_cast<int>(ptable_->dims()[1]) +
-                             i] != -1) {
+                             i] >= 0) {
         length++;
       } else {
         return length;
