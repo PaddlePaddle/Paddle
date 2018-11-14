@@ -14,36 +14,32 @@
 
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include <mutex>  // NOLINT
-
+#include "paddle/fluid/memory/allocation/underlying_manual_allocation.h"
+#include "paddle/fluid/platform/lock_guard_ptr.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::unique_ptr<Allocation> LockedAllocator::Allocate(size_t size, Attr attr) {
-  if (underlying_allocator_->IsAllocThreadSafe()) {
-    return underlying_allocator_->Allocate(size, attr);
-  } else {
-    std::lock_guard<std::mutex> guard(mtx_);
-    return underlying_allocator_->Allocate(size, attr);
-  }
-}
-void LockedAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
-  if (underlying_allocator_->IsAllocThreadSafe()) {
-    return underlying_allocator_->FreeUniquePtr(std::move(allocation));
-  } else {
-    std::lock_guard<std::mutex> guard(mtx_);
-    return underlying_allocator_->FreeUniquePtr(std::move(allocation));
-  }
-}
 bool LockedAllocator::IsAllocThreadSafe() const { return true; }
 
 LockedAllocator::LockedAllocator(
-    std::unique_ptr<Allocator> &&underlying_allocator) {
-  auto *allocator =
-      dynamic_cast<UnmanagedAllocator *>(underlying_allocator.get());
-  PADDLE_ENFORCE_NOT_NULL(allocator);
-  underlying_allocator.release();
-  underlying_allocator_.reset(allocator);
+    std::unique_ptr<Allocator> &&underlying_allocator)
+    : underlying_allocator_(std::move(underlying_allocator)) {
+  PADDLE_ENFORCE_NOT_NULL(underlying_allocator_);
+  if (!underlying_allocator_->IsAllocThreadSafe()) {
+    mtx_.reset(new std::mutex());
+  }
+}
+void LockedAllocator::Free(MannualFreeAllocation *allocation) {
+  platform::LockGuardPtr<std::mutex> guard(mtx_);
+  reinterpret_cast<UnderlyingManualAllocation *>(allocation)
+      ->allocation_.reset();
+}
+MannualFreeAllocation *LockedAllocator::AllocateImpl(size_t size,
+                                                     Allocator::Attr attr) {
+  platform::LockGuardPtr<std::mutex> guard(mtx_);
+  return new UnderlyingManualAllocation(
+      this, underlying_allocator_->Allocate(size, attr));
 }
 }  // namespace allocation
 }  // namespace memory

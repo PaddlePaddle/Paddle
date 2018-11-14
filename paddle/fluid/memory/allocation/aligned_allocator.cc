@@ -19,13 +19,8 @@ namespace memory {
 namespace allocation {
 
 ThinAlignedAllocator::ThinAlignedAllocator(
-    std::shared_ptr<ManagedAllocator> underlyning_allocator)
+    std::shared_ptr<Allocator> underlyning_allocator)
     : underlying_allocator_(std::move(underlyning_allocator)) {}
-
-std::shared_ptr<Allocation> ThinAlignedAllocator::AllocateShared(
-    size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(Allocate(size, attr).release());
-}
 
 bool ThinAlignedAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();

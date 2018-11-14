@@ -26,52 +26,27 @@ namespace allocation {
 
 class RetryAllocator;
 
-class RetryAllocation : public Allocation {
+class RetryAllocation : public MannualFreeAllocation {
  public:
   RetryAllocation(std::unique_ptr<Allocation>&& underlying_allocation,
-                  const std::shared_ptr<RetryAllocator>& retry_allocator)
-      : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
-                   underlying_allocation->place()),
-        underlying_allocation_(std::move(underlying_allocation)),
-        retry_allocator_(retry_allocator) {}
-
-  ~RetryAllocation() final;
-
- private:
+                  MannualFreeAllocator* allocator)
+      : MannualFreeAllocation(allocator, underlying_allocation->ptr(),
+                              underlying_allocation->size(),
+                              underlying_allocation->place()),
+        underlying_allocation_(std::move(underlying_allocation)) {}
   std::unique_ptr<Allocation> underlying_allocation_;
-  std::weak_ptr<RetryAllocator> retry_allocator_;
 };
 
-class RetryAllocator : public ManagedAllocator,
-                       public std::enable_shared_from_this<RetryAllocator> {
- private:
-  RetryAllocator(std::unique_ptr<Allocator>&& allocator, size_t retry_ms)
-      : underlying_allocator_(
-            dynamic_cast<UnmanagedAllocator*>(allocator.release())),
-        retry_time_(retry_ms) {
-    EnforceCheck();
-  }
-
+class RetryAllocator : public MannualFreeAllocator {
  public:
-  template <typename... Args>
-  static std::shared_ptr<ManagedAllocator> Create(Args... args) {
-    return std::shared_ptr<ManagedAllocator>(
-        new RetryAllocator(std::forward<Args>(args)...));
+  RetryAllocator(std::unique_ptr<Allocator>&& allocator, size_t retry_ms)
+      : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {
+    EnforceCheck();
   }
 
   bool IsAllocThreadSafe() const override;
 
-  std::unique_ptr<Allocation> Allocate(size_t size,
-                                       Allocator::Attr attr) override;
-
-  std::shared_ptr<Allocation> AllocateShared(size_t size,
-                                             Allocator::Attr attr) override;
-
-  void FreeUnderlyingAllocation(std::unique_ptr<Allocation>&& allocation);
-
  private:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr);
-
   void EnforceCheck() {
     PADDLE_ENFORCE_NOT_NULL(
         underlying_allocator_.get(),
@@ -80,7 +55,13 @@ class RetryAllocator : public ManagedAllocator,
                    "UnderlyingAllocator of RetryAllocator must be thread-safe");
   }
 
-  std::unique_ptr<UnmanagedAllocator> underlying_allocator_;
+ protected:
+  void Free(MannualFreeAllocation* allocation) override;
+  MannualFreeAllocation* AllocateImpl(size_t size,
+                                      Allocator::Attr attr) override;
+
+ private:
+  std::unique_ptr<Allocator> underlying_allocator_;
   std::chrono::milliseconds retry_time_;
   std::mutex mutex_;
   std::condition_variable cv_;

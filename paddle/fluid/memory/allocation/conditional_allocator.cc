@@ -20,23 +20,27 @@ namespace allocation {
 
 ConditionalAllocator& ConditionalAllocator::AddAllocator(
     std::function<bool(size_t, Allocator::Attr)> func,
-    std::shared_ptr<ManagedAllocator> allocator) {
+    std::shared_ptr<Allocator> allocator) {
   underlying_allocators_.emplace_back(std::move(func), std::move(allocator));
   return *this;
 }
 std::unique_ptr<Allocation> ConditionalAllocator::Allocate(
     size_t size, Allocator::Attr attr) {
-  return SelectAndInvoke(size, attr, [&](ManagedAllocator& allocator) {
-    return allocator.Allocate(size, attr);
-  });
+  for (auto& pair : underlying_allocators_) {
+    if (pair.first(size, attr)) {
+      return pair.second->Allocate(size, attr);
+    }
+  }
+  throw BadAlloc("No suitable allocator");
 }
-std::shared_ptr<Allocation> ConditionalAllocator::AllocateShared(
-    size_t size, Allocator::Attr attr) {
-  return SelectAndInvoke(size, attr, [&](ManagedAllocator& allocator) {
-    return allocator.AllocateShared(size, attr);
-  });
+
+bool ConditionalAllocator::IsAllocThreadSafe() const {
+  return std::all_of(underlying_allocators_.begin(),
+                     underlying_allocators_.end(),
+                     [](const AllocatorWithCond& allocatorWithCond) {
+                       return allocatorWithCond.second->IsAllocThreadSafe();
+                     });
 }
-bool ConditionalAllocator::IsAllocThreadSafe() const { return true; }
 
 }  // namespace allocation
 }  // namespace memory

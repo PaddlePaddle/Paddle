@@ -20,19 +20,60 @@ namespace allocation {
 
 std::unique_ptr<Allocation> AutoIncrementAllocator::Allocate(
     size_t size, Allocator::Attr attr) {
-  return InvokeOrCreateUnderlyingAllocator([&](ManagedAllocator& allocator) {
-    return allocator.Allocate(size, attr);
-  });
-}
+  auto cur = prev_success_allocator_.load();
+  size_t retry_count = allocator_num_.load();
+  size_t allocator_num = retry_count;
+  while (retry_count-- > 0) {  // until there retry count is zero
+    try {
+      auto res = underlying_allocators_[cur]->Allocate(size, attr);
+      prev_success_allocator_ = cur;
+      return res;
+    } catch (BadAlloc&) {
+      if (++cur >= allocator_num) {
+        cur = 0;
+      }
+    } catch (...) {
+      // if there is another type of allocation, just rethrow it.
+      throw;
+    }
+  }
 
-std::shared_ptr<Allocation> AutoIncrementAllocator::AllocateShared(
-    size_t size, Allocator::Attr attr) {
-  return InvokeOrCreateUnderlyingAllocator([&](ManagedAllocator& allocator) {
-    return allocator.AllocateShared(size, attr);
-  });
+  // This happens when the first allocator is exhausted and
+  // there are more than 1 allocation requests
+  // In this situation, the first allocation request would success
+  // and the second allocation request would fail if we do not use
+  // the newly created allocator by the first allocation request.
+  for (cur = allocator_num; cur < allocator_num_; ++cur) {
+    try {
+      auto ret = underlying_allocators_[cur]->Allocate(size, attr);
+      prev_success_allocator_ = cur;
+      return ret;
+    } catch (BadAlloc&) {
+    } catch (...) {
+      throw;
+    }
+  }
+  // No suitable allocator
+  return CreateNewAllocator()->Allocate(size, attr);
 }
 
 bool AutoIncrementAllocator::IsAllocThreadSafe() const { return true; }
+
+std::shared_ptr<Allocator> AutoIncrementAllocator::CreateNewAllocator() {
+  std::lock_guard<std::mutex> guard(mtx_);
+  auto old_size = allocator_num_.load();
+  PADDLE_ENFORCE_LT(old_size, underlying_allocators_.size(),
+                    "Allocator number exceeds capacity %d",
+                    underlying_allocators_.size());
+  underlying_allocators_[old_size] = creator_();
+  prev_success_allocator_ = old_size;
+  ++allocator_num_;
+  PADDLE_ENFORCE(
+      underlying_allocators_[old_size]->IsAllocThreadSafe(),
+      "the underlying allocator must be thread safe. This is a program "
+      "bug.");
+  return underlying_allocators_[old_size];
+}
 
 }  // namespace allocation
 }  // namespace memory

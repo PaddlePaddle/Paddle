@@ -71,7 +71,7 @@ using FreeChunkBin =
 class BestFitAllocator;
 
 // The BestFitAllocation maintain the List Node iterator.
-class BestFitAllocation : public Allocation {
+class BestFitAllocation : public MannualFreeAllocation {
  private:
   using ListIt = typename details::ChunkList::iterator;
 
@@ -81,7 +81,6 @@ class BestFitAllocation : public Allocation {
   const ListIt& ChunkIterator() const { return chunk_it_; }
 
  private:
-  BestFitAllocator* allocator_;
   typename details::ChunkList::iterator chunk_it_;
 };
 
@@ -99,7 +98,7 @@ class BestFitAllocation : public Allocation {
 //
 // To free an allocation, it will set the chunk of allocation to free and merge
 // the prev-chunk and the next-chunk when possible.
-class BestFitAllocator : public UnmanagedAllocator {
+class BestFitAllocator : public MannualFreeAllocator {
  public:
   explicit BestFitAllocator(Allocation* allocation);
 
@@ -107,9 +106,9 @@ class BestFitAllocator : public UnmanagedAllocator {
 
   const platform::Place& Place() const { return allocation_->place(); }
 
-  std::unique_ptr<Allocation> Allocate(size_t size,
-                                       Attr attr = kDefault) override;
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
+  //  std::unique_ptr<Allocation> Allocate(size_t size,
+  //                                       Attr attr = kDefault) override;
+  //  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
 
   size_t NumFreeChunks() const;
 
@@ -123,6 +122,12 @@ class BestFitAllocator : public UnmanagedAllocator {
   void EraseFreeNode(const ListIt& it);
   void InsertFreeNode(const ListIt& it);
 
+ protected:
+  void Free(MannualFreeAllocation* allocation) override;
+  MannualFreeAllocation* AllocateImpl(size_t size,
+                                      Allocator::Attr attr) override;
+
+ private:
   Allocation* allocation_;  // not owned
   details::ChunkList chunks_;
   details::FreeChunkBin free_chunks_;

@@ -45,23 +45,6 @@ BestFitAllocator::BestFitAllocator(Allocation* allocation)
       {chunk.size_, chunks_.begin()});
 }
 
-std::unique_ptr<Allocation> BestFitAllocator::Allocate(size_t size, Attr attr) {
-  auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
-  MapIt map_it;
-  for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {
-    map_it = free_chunks_[highest_set_bit].lower_bound(size);
-    if (map_it != free_chunks_[highest_set_bit].end()) {
-      break;
-    }
-  }
-  if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
-    throw BadAlloc(string::Sprintf(
-        "Cannot allocate %d, All fragments size is %d", size, FreeSize()));
-  }
-  auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
-  return std::unique_ptr<Allocation>(new BestFitAllocation(this, chunk_it));
-}
-
 size_t BestFitAllocator::FreeSize() const {
   size_t acc = 0;
   for (auto& array_item : free_chunks_) {
@@ -104,8 +87,30 @@ BestFitAllocator::ListIt BestFitAllocator::SplitChunk(size_t request_size,
   return to_use_it;
 }
 
-void BestFitAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
-  auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation.get());
+void BestFitAllocator::InsertFreeNode(const ListIt& it) {
+  auto pos = static_cast<size_t>(HighestBitPos(it->size_));
+  auto& free_map = free_chunks_[pos];
+  free_map.insert({it->size_, it});
+}
+void BestFitAllocator::EraseFreeNode(const ListIt& it) {
+  size_t pos = static_cast<size_t>(HighestBitPos(it->size_));
+  auto& free_map = free_chunks_[pos];
+  auto map_it = free_map.find(it->size_);
+  while (map_it->second != it && map_it != free_map.end()) {
+    ++map_it;
+  }
+  PADDLE_ENFORCE(map_it != free_map.end());
+  free_map.erase(map_it);
+}
+size_t BestFitAllocator::NumFreeChunks() const {
+  size_t num = 0;
+  for (auto& array_item : free_chunks_) {
+    num += array_item.size();
+  }
+  return num;
+}
+void BestFitAllocator::Free(MannualFreeAllocation* allocation) {
+  auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   auto chunk_it = bf_allocation->ChunkIterator();
   PADDLE_ENFORCE(!chunk_it->is_free);
   chunk_it->is_free = true;
@@ -132,38 +137,32 @@ void BestFitAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
 
   InsertFreeNode(chunk_it);
 }
-
-void BestFitAllocator::InsertFreeNode(const ListIt& it) {
-  auto pos = static_cast<size_t>(HighestBitPos(it->size_));
-  auto& free_map = free_chunks_[pos];
-  free_map.insert({it->size_, it});
-}
-void BestFitAllocator::EraseFreeNode(const ListIt& it) {
-  size_t pos = static_cast<size_t>(HighestBitPos(it->size_));
-  auto& free_map = free_chunks_[pos];
-  auto map_it = free_map.find(it->size_);
-  while (map_it->second != it && map_it != free_map.end()) {
-    ++map_it;
+MannualFreeAllocation* BestFitAllocator::AllocateImpl(size_t size,
+                                                      Allocator::Attr attr) {
+  auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
+  MapIt map_it;
+  for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {
+    map_it = free_chunks_[highest_set_bit].lower_bound(size);
+    if (map_it != free_chunks_[highest_set_bit].end()) {
+      break;
+    }
   }
-  PADDLE_ENFORCE(map_it != free_map.end());
-  free_map.erase(map_it);
-}
-size_t BestFitAllocator::NumFreeChunks() const {
-  size_t num = 0;
-  for (auto& array_item : free_chunks_) {
-    num += array_item.size();
+  if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
+    throw BadAlloc(string::Sprintf(
+        "Cannot allocate %d, All fragments size is %d", size, FreeSize()));
   }
-  return num;
+  auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
+  return new BestFitAllocation(this, chunk_it);
 }
 
 BestFitAllocation::BestFitAllocation(
     paddle::memory::allocation::BestFitAllocator* allocator,
     typename details::ChunkList::iterator chunk_it)
-    : Allocation(reinterpret_cast<void*>(
-                     reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
-                     chunk_it->offset_),
-                 chunk_it->size_, allocator->Place()),
-      allocator_(allocator),
+    : MannualFreeAllocation(
+          allocator, reinterpret_cast<void*>(
+                         reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
+                         chunk_it->offset_),
+          chunk_it->size_, allocator->Place()),
       chunk_it_(chunk_it) {}
 }  // namespace allocation
 }  // namespace memory

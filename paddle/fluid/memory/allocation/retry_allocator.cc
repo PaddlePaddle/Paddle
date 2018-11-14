@@ -18,29 +18,25 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-RetryAllocation::~RetryAllocation() {
-  auto allocator = retry_allocator_.lock();
-  // Allocator is destroyed before allocation. Should not happened usually.
-  if (UNLIKELY(allocator == nullptr)) return;
-  allocator->FreeUnderlyingAllocation(std::move(underlying_allocation_));
+bool RetryAllocator::IsAllocThreadSafe() const {
+  return underlying_allocator_->IsAllocThreadSafe();
 }
 
-bool RetryAllocator::IsAllocThreadSafe() const { return true; }
-
-std::shared_ptr<Allocation> RetryAllocator::AllocateShared(
-    size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(AllocateImpl(size, attr));
+void RetryAllocator::Free(MannualFreeAllocation* allocation) {
+  reinterpret_cast<RetryAllocation*>(allocation)
+      ->underlying_allocation_.reset();
+  {
+    // notify all waited allocators, they can try to allocate memory after free.
+    std::lock_guard<std::mutex> lock(mutex_);
+    cv_.notify_all();
+  }
 }
 
-std::unique_ptr<Allocation> RetryAllocator::Allocate(size_t size,
-                                                     Allocator::Attr attr) {
-  return std::unique_ptr<Allocation>(AllocateImpl(size, attr));
-}
-
-Allocation* RetryAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+MannualFreeAllocation* RetryAllocator::AllocateImpl(size_t size,
+                                                    Allocator::Attr attr) {
   auto alloc_func = [&, this]() {
     return new RetryAllocation(underlying_allocator_->Allocate(size, attr),
-                               this->shared_from_this());
+                               this);
   };
   // In fact, we can unify the code of allocation success and failure
   // But it would add lock even when allocation success at the first time
@@ -71,15 +67,6 @@ Allocation* RetryAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
     }
   } catch (...) {
     throw;
-  }
-}
-void RetryAllocator::FreeUnderlyingAllocation(
-    std::unique_ptr<Allocation>&& allocation) {
-  underlying_allocator_->FreeUniquePtr(std::move(allocation));
-  {
-    // notify all waited allocators, they can try to allocate memory after free.
-    std::lock_guard<std::mutex> lock(mutex_);
-    cv_.notify_all();
   }
 }
 
