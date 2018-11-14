@@ -62,6 +62,7 @@ if (NOT WIN32)
 endif (NOT WIN32)
 math_library(unpooling)
 math_library(vol2col)
+math_library(tree2col DEPS math_function)
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)
 cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)
