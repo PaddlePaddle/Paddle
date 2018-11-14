@@ -4412,7 +4412,7 @@ def hsigmoid(input,
     out = helper.create_variable_for_type_inference(dtype)
     pre_out = helper.create_variable_for_type_inference(dtype)
     dim = input.shape[1]
-    if ((num_classes < 2) or (num_classes is None)) and (not is_costum):
+    if ((num_classes is None) or (num_classes < 2)) and (not is_costum):
         raise ValueError(
             "num_classes must not be less than 2 with default tree")
 
