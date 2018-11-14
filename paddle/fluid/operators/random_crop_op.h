@@ -155,8 +155,8 @@ class RandomCropKernel : public framework::OpKernel<T> {
         seed = *cpu_seed.data<int64_t>();
       }
     } else {
-      VLOG(5) << "WARNING: The input 'Seed' is not initialized, use attribute "
-                 "'startup_seed' instead.";
+      VLOG(50) << "WARNING: The input 'Seed' is not initialized, use attribute "
+                  "'startup_seed' instead.";
       seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");

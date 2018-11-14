@@ -26,7 +26,7 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
       if (var->Type() == typeid(framework::LoDTensorArray)) {
-        VLOG(4) << "collect " << var_name;
+        VLOG(40) << "collect " << var_name;
         arrays_.push_back(var->GetMutable<framework::LoDTensorArray>());
       }
     }
@@ -34,7 +34,7 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       CollectTensorArrays(kid);
     }
 
-    VLOG(3) << "Collect " << arrays_.size() << " arrays";
+    VLOG(30) << "Collect " << arrays_.size() << " arrays";
     flag_ = false;
   }
 }

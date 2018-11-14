@@ -34,6 +34,7 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
@@ -111,10 +112,10 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
-        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        'dist_threadpool_size', 'cpu_deterministic', 'eager_delete_tensor_gb',
-        'reader_queue_speed_test_mode'
+        'eager_delete_scope', 'use_mkldnn', 'use_ngraph',
+        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
+        'paddle_num_threads', 'dist_threadpool_size', 'cpu_deterministic',
+        'eager_delete_tensor_gb', 'reader_queue_speed_test_mode'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
@@ -126,7 +127,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'conv_workspace_size_limit', 'cudnn_exhaustive_search'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

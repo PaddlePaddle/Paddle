@@ -16,10 +16,13 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/analysis/analyzer.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
-using paddle::contrib::MixedRTConfig;
+using paddle::contrib::AnalysisConfig;
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -27,33 +30,24 @@ NativeConfig GetConfigNative() {
   NativeConfig config;
   config.model_dir = FLAGS_dirname;
   // LOG(INFO) << "dirname  " << config.model_dir;
-  config.fraction_of_gpu_memory = 0.45;
+  config.fraction_of_gpu_memory = 0.15;
   config.use_gpu = true;
   config.device = 0;
   return config;
 }
 
-MixedRTConfig GetConfigTRT() {
-  MixedRTConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_gpu = true;
-  config.fraction_of_gpu_memory = 0.2;
-  config.device = 0;
-  config.max_batch_size = 3;
-  return config;
+void PrepareTRTConfig(AnalysisConfig *config) {
+  config->model_dir = FLAGS_dirname + "/" + "mobilenet";
+  config->fraction_of_gpu_memory = 0.15;
+  config->EnableTensorRtEngine(1 << 10, 5);
+  config->pass_builder()->DeletePass("conv_bn_fuse_pass");
+  config->pass_builder()->DeletePass("fc_fuse_pass");
+  config->pass_builder()->TurnOnDebug();
 }
 
-void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
-  NativeConfig config0 = GetConfigNative();
-  config0.model_dir = model_dirname;
-
-  MixedRTConfig config1 = GetConfigTRT();
-  config1.model_dir = model_dirname;
-  config1.max_batch_size = batch_size;
-
-  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
-  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
-  // Prepare inputs
+void PrepareInputs(std::vector<PaddleTensor> *tensors, int batch_size) {
+  PADDLE_ENFORCE_EQ(tensors->size(), 1UL);
+  auto &tensor = tensors->front();
   int height = 224;
   int width = 224;
   float *data = new float[batch_size * 3 * height * width];
@@ -61,24 +55,33 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   data[0] = 1.0f;
 
   // Prepare inputs
-  PaddleTensor tensor;
   tensor.name = "input_0";
   tensor.shape = std::vector<int>({batch_size, 3, height, width});
   tensor.data = PaddleBuf(static_cast<void *>(data),
                           sizeof(float) * (batch_size * 3 * height * width));
   tensor.dtype = PaddleDType::FLOAT32;
-  std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
+}
+
+void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
+  auto config0 = GetConfigNative();
+  config0.model_dir = model_dirname;
+
+  AnalysisConfig config1(true);
+  PrepareTRTConfig(&config1);
+  config1.model_dir = model_dirname;
+
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor(config1);
+
+  // Prepare inputs
+  std::vector<PaddleTensor> paddle_tensor_feeds(1);
+  PrepareInputs(&paddle_tensor_feeds, batch_size);
 
   // Prepare outputs
   std::vector<PaddleTensor> outputs0;
   std::vector<PaddleTensor> outputs1;
   CHECK(predictor0->Run(paddle_tensor_feeds, &outputs0));
-
   CHECK(predictor1->Run(paddle_tensor_feeds, &outputs1, batch_size));
-
-  // Get output.
-  ASSERT_EQ(outputs0.size(), 1UL);
-  ASSERT_EQ(outputs1.size(), 1UL);
 
   const size_t num_elements = outputs0.front().data.length() / sizeof(float);
   const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
@@ -94,15 +97,52 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
 }
 
 TEST(trt_models_test, mobilenet) {
-  CompareTensorRTWithFluid(1, FLAGS_dirname + "/mobilenet");
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "mobilenet");
 }
-
 TEST(trt_models_test, resnet50) {
-  CompareTensorRTWithFluid(1, FLAGS_dirname + "/resnet50");
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "resnet50");
+}
+TEST(trt_models_test, resnext50) {
+  CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + "resnext50");
 }
 
-TEST(trt_models_test, resnext50) {
-  CompareTensorRTWithFluid(1, FLAGS_dirname + "/resnext50");
+TEST(trt_models_test, raw_gpu) {
+  std::string model_dir = FLAGS_dirname + "/" + "mobilenet";
+  auto config0 = GetConfigNative();
+  config0.model_dir = model_dir;
+  int batch_size = 2;
+
+  AnalysisConfig config1(true);
+  config1.fraction_of_gpu_memory = 0.1;
+  config1.enable_ir_optim = true;
+  config1.model_dir = model_dir;
+
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor(config1);
+
+  // Prepare inputs
+  std::vector<PaddleTensor> paddle_tensor_feeds(1);
+  PrepareInputs(&paddle_tensor_feeds, batch_size);
+
+  // Prepare outputs
+  std::vector<PaddleTensor> outputs0;
+  std::vector<PaddleTensor> outputs1;
+  CHECK(predictor0->Run(paddle_tensor_feeds, &outputs0));
+  CHECK(predictor1->Run(paddle_tensor_feeds, &outputs1, batch_size));
+
+  const size_t num_elements = outputs0.front().data.length() / sizeof(float);
+  const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
+  EXPECT_EQ(num_elements, num_elements1);
+
+  auto *data0 = static_cast<float *>(outputs0.front().data.data());
+  auto *data1 = static_cast<float *>(outputs1.front().data.data());
+
+  ASSERT_GT(num_elements, 0UL);
+  for (size_t i = 0; i < std::min(num_elements, num_elements1); i++) {
+    EXPECT_NEAR(data0[i], data1[i], 1e-3);
+  }
 }
 
 }  // namespace paddle
+
+USE_PASS(tensorrt_subgraph_pass);

@@ -54,6 +54,9 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
+/// Variables with this suffix are the new Gradient.
+constexpr char kNewGradSuffix[] = "@NEWGRAD@";
+
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
@@ -63,7 +66,8 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
-const Tensor* GetTensorFromVar(const Variable& var);
+const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
+Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class OperatorBase;
 class ExecutionContext;
@@ -224,7 +228,7 @@ class ExecutionContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> const T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
@@ -237,7 +241,7 @@ class ExecutionContext {
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
