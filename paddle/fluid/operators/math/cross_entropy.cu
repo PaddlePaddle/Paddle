@@ -28,7 +28,7 @@ __device__ __forceinline__ double real_log(double x) { return log(x); }
 
 __device__ __forceinline__ platform::float16 real_log(
     const platform::float16& val) {
-  return static_cast<platform::float16>(hlog(static_cast<half>(val)));
+  return static_cast<platform::float16>(logf(static_cast<float>(val)));
 }
 
 template <typename T>

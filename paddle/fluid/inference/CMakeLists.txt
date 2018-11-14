@@ -1,5 +1,5 @@
 if(WITH_TESTING)
-  include(test.cmake) # some generic cmake funtion for inference
+  include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.
@@ -27,13 +27,9 @@ set(SHARED_INFERENCE_SRCS
     io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
-if (WITH_GPU AND TENSORRT_FOUND)
-  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS} paddle_inference_tensorrt_subgraph_engine)
-  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/api/api_tensorrt_subgraph_engine.cc)
-endif()
 
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array)
+cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
@@ -43,7 +39,7 @@ endif()
 
 # Create shared library
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-    DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array)
+    DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE)

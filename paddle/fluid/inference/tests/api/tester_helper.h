@@ -20,11 +20,13 @@
 #include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_model, "", "model path");
@@ -87,22 +89,53 @@ size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
 
 std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
                                                    int *num_ops) {
+  std::unordered_map<std::string, int> res;
   auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
-  auto &fuse_statis = analysis_predictor->analysis_argument()
-                          .Get<std::unordered_map<std::string, int>>(
-                              framework::ir::kFuseStatisAttr);
-  for (auto &item : fuse_statis) {
+  auto *fusion_status =
+      analysis_predictor->analysis_argument().fusion_statis_ptr();
+  if (!fusion_status) {
+    return res;
+  }
+  for (auto &item : *fusion_status) {
     LOG(INFO) << "fused " << item.first << " " << item.second;
   }
   int num = 0;
   for (auto &node :
-       analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
-    if (node->IsFunction()) {
+       analysis_predictor->analysis_argument().main_graph().Nodes()) {
+    if (node->IsOp()) {
       ++num;
     }
   }
   *num_ops = num;
-  return fuse_statis;
+  return *fusion_status;
+}
+
+void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
+                       const std::string &dirname) {
+  // Set fake_image_data
+  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
+  std::vector<std::vector<int64_t>> feed_target_shapes =
+      GetFeedTargetShapes(dirname, true, "model", "params");
+  int dim1 = feed_target_shapes[0][1];
+  int dim2 = feed_target_shapes[0][2];
+  int dim3 = feed_target_shapes[0][3];
+
+  PaddleTensor input;
+  std::vector<int> shape({FLAGS_batch_size, dim1, dim2, dim3});
+  input.shape = shape;
+  input.dtype = PaddleDType::FLOAT32;
+
+  // fill input data, for profile easily, do not use random data here.
+  size_t size = FLAGS_batch_size * dim1 * dim2 * dim3;
+  input.data.Resize(size * sizeof(float));
+  float *input_data = static_cast<float *>(input.data.data());
+  for (size_t i = 0; i < size; i++) {
+    *(input_data + i) = static_cast<float>(i) / size;
+  }
+
+  std::vector<PaddleTensor> input_slots;
+  input_slots.assign({input});
+  (*inputs).emplace_back(input_slots);
 }
 
 void TestOneThreadPrediction(
@@ -132,11 +165,12 @@ void TestMultiThreadPrediction(
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
-  // because AttentionLSTM's hard code nodeid will be damanged.
-  for (int tid = 0; tid < num_threads; ++tid) {
-    predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  for (int tid = 1; tid < num_threads; ++tid) {
+    predictors.emplace_back(predictors.front()->Clone());
   }
+
+  size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
 #ifdef PADDLE_WITH_MKLDNN
@@ -144,17 +178,21 @@ void TestMultiThreadPrediction(
 #endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
-      std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;
       std::vector<PaddleTensor> outputs_tid;
+      auto &predictor = predictors[tid];
+      LOG(INFO) << "running thread " << tid;
       Timer timer;
       timer.tic();
       for (int i = 0; i < num_times; i++) {
-        for (size_t j = 0; j < inputs_tid.size(); j++) {
-          predictors[tid]->Run(inputs_tid[j], &outputs_tid);
+        for (const auto &input : inputs) {
+          ASSERT_TRUE(predictor->Run(input, &outputs_tid));
         }
       }
-      PrintTime(batch_size, num_times, num_threads, tid,
-                timer.toc() / num_times, inputs_tid.size());
+
+      auto time = timer.toc();
+      total_time += time;
+      PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
+                inputs.size());
     });
   }
   for (int i = 0; i < num_threads; ++i) {
@@ -167,7 +205,7 @@ void TestPrediction(const AnalysisConfig &config,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
   LOG(INFO) << "use_analysis: " << use_analysis
-            << ", use_mkldnn: " << config._use_mkldnn;
+            << ", use_mkldnn: " << config.use_mkldnn();
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -179,7 +217,7 @@ void TestPrediction(const AnalysisConfig &config,
 void CompareNativeAndAnalysis(
     const AnalysisConfig &config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
-  LOG(INFO) << "use_mkldnn: " << config._use_mkldnn;
+  LOG(INFO) << "use_mkldnn: " << config.use_mkldnn();
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);

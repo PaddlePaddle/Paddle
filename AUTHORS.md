@@ -43,6 +43,7 @@
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
 | Superjom | Chun-Wei Yan |
+| tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
 | tpatejko | Tomasz Patejko |
 | typhoonzero | Yi Wu |
