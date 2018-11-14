@@ -650,9 +650,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](ir::Pass &self, const std::string &name, const std::string &attr) {
             self.Set<std::string>(name, new std::string(attr));
           })
-      .def("set_int", [](ir::Pass &self, const std::string &name, int val) {
-        self.Set<const int>(name, new int(val));
-      });
+      .def("set_int", [](ir::Pass &self, const std::string &name,
+                         int val) { self.Set<const int>(name, new int(val)); })
+      .def("type", &ir::Pass::Type);
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
       m, "PassBuilder");
