@@ -157,7 +157,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+  VLOG(30) << "predict cost: " << timer.toc() << "ms";
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());

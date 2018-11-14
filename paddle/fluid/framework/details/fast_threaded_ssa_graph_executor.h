@@ -46,6 +46,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<OpHandleBase *> bootstrap_ops_;
 
   ::ThreadPool pool_;
+  ::ThreadPool prepare_pool_;
   platform::DeviceContextPool fetch_ctxs_;
   std::atomic<int> remaining_;
 

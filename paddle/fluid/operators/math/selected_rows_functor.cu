@@ -314,7 +314,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output) {
     if (inputs.size() == 0) {
-      VLOG(3) << "no input! return";
+      VLOG(30) << "no input! return";
       return;
     }
     const framework::SelectedRows* has_value_input = nullptr;
@@ -325,7 +325,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       }
     }
     if (has_value_input == nullptr) {
-      VLOG(3) << "no input has value! just return" << std::endl;
+      VLOG(30) << "no input has value! just return" << std::endl;
       return;
     }
     auto input_width = has_value_input->value().dims()[1];

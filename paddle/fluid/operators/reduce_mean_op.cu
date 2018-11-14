@@ -69,13 +69,3 @@ REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<float>,
                         ops::ReduceMeanKernel<double>,
                         ops::ReduceMeanKernel<int>,
                         ops::ReduceMeanKernel<int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    reduce_mean_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                            float, ops::MeanGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::MeanGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
-                          ops::MeanGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
-                          ops::MeanGradFunctor>);
