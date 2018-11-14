@@ -25,10 +25,10 @@ def masks_to_boxes(masks):
     for i in range(len(masks)):
         mask = masks[i]
         mask_loc = np.where(mask > 0)
-        xmin = np.min(mask_loc[0])
-        xmax = np.max(mask_loc[0])
-        ymin = np.min(mask_loc[1])
-        ymax = np.max(mask_loc[1])
+        xmin = np.min(mask_loc[1])
+        xmax = np.max(mask_loc[1])
+        ymin = np.min(mask_loc[0])
+        ymax = np.max(mask_loc[0])
         boxes_from_masks[i, :] = np.array([xmin, ymax, xmin, ymax],\
                                                       dtype=np.float32)
     return boxes_from_masks
@@ -57,8 +57,6 @@ def bbox_overlaps(boxes, query_boxes):
 
 
 def crop_and_resize(mask_gt, roi, resolution):
-    print(roi)
-    print(mask_gt)
     result = np.zeros((resolution, resolution))
     w = roi[2] - roi[0]
     h = roi[3] - roi[1]
@@ -68,7 +66,7 @@ def crop_and_resize(mask_gt, roi, resolution):
         for j in range(resolution):
             x = int(i / float(resolution) * w + roi[0])
             y = int(j / float(resolution) * h + roi[1])
-            result[i, j] = mask_gt[x, y] > 0
+            result[j, i] = mask_gt[y, x] > 0
     return result
 
 
@@ -133,7 +131,6 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
         rois_fg = sample_boxes[fg_inds]
         overlaps_bbfg_bbmasks = bbox_overlaps(
             rois_fg.astype(np.float32), boxes_from_masks.astype(np.float32))
-        print(overlaps_bbfg_bbmasks)
         fg_masks_inds = np.argmax(overlaps_bbfg_bbmasks, axis=1)
         for i in range(rois_fg.shape[0]):
             fg_masks_ind = fg_masks_inds[i]
@@ -141,7 +138,6 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
             roi_fg = rois_fg[i]
             mask = crop_and_resize(mask_gt, roi_fg, resolution)
             mask = np.array(mask > 0, dtype=np.int32)
-            print(mask)
             masks[i, :] = np.reshape(mask, resolution**2)
     else:
         bg_inds = np.where(label_int32 == 0)[0]
