@@ -94,8 +94,8 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
     op_node_list[i - 1]->outputs.push_back(dep_var);
     dep_var->outputs.push_back(op_node_list[i]);
     dep_var->inputs.push_back(op_node_list[i - 1]);
-    VLOG(10) << "Add dependencies between " << op_node_list[i - 1]->Name()
-             << " and " << op_node_list[i]->Name();
+    VLOG(100) << "Add dependencies between " << op_node_list[i - 1]->Name()
+              << " and " << op_node_list[i]->Name();
   }
   return graph;
 }

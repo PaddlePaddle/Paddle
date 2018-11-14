@@ -24,10 +24,10 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
-    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
-    'argmin', 'argmax', 'argsort', 'ones', 'zeros', 'reverse', 'has_inf',
-    'has_nan', 'isfinite'
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
+    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
+    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
+    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite'
 ]
 
 
@@ -191,6 +191,60 @@ def concat(input, axis=0, name=None):
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out
+
+
+def tensor_array_to_tensor(input, axis=1, name=None):
+    """
+    This function concatenates the input LodTensorArray along the axis mentioned
+    and returns that as the output.
+
+    A simple example as below:
+    
+    .. code-block:: text
+    
+        Given:
+
+        input.data = {[[0.6, 0.1, 0.3],
+                       [0.5, 0.3, 0.2]],
+                      [[1.3],
+                       [1.8]],
+                      [[2.3, 2.1],
+                       [2.5, 2.4]]}
+        
+        axis = 1
+    
+        Then:
+
+        output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                       [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+        output_index.data = [3, 1, 2]
+
+    Args:
+        input(list): Input LodTensorArray
+        axis(int): Integer axis along which the tensors will be concatenated
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the concatenation
+        Variable: The input LodTensorArray items' dims along the axis
+
+    Examples:
+        .. code-block:: python
+
+           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+    """
+    helper = LayerHelper('tensor_array_to_tensor', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    out_index = helper.create_variable_for_type_inference(dtype="int32")
+    helper.append_op(
+        type='tensor_array_to_tensor',
+        inputs={'X': input},
+        outputs={'Out': [out],
+                 'OutIndex': [out_index]},
+        attrs={'axis': axis})
+    return out, out_index
 
 
 def sums(input, out=None):

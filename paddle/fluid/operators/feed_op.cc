@@ -47,8 +47,8 @@ class FeedOp : public framework::OperatorBase {
 
     auto col = Attr<int>("col");
 
-    VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var "
-            << out_name;
+    VLOG(30) << "Feed Var " << feed_var_name << "'s " << col
+             << " column to var " << out_name;
 
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
     auto &feed_item = feed_list.at(static_cast<size_t>(col));

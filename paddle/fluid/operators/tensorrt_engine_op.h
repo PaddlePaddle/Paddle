@@ -34,7 +34,7 @@ namespace operators {
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
 
-namespace {
+namespace {  // NOLINT
 
 TRT_DT FluidDataType2TRT(FluidDT type) {
   switch (type) {
@@ -60,7 +60,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
   return nvinfer1::DimsCHW(shape[1], 1, 1);
 }
 
-}  // namespace
+}  // namespace // NOLINT
 
 using inference::Singleton;
 using inference::tensorrt::TRT_EngineManager;
@@ -127,9 +127,9 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
     // Convert output tensor from engine to fluid
     int output_index = 0;
-    VLOG(4) << "TensorRT Engine Op Outputs:";
+    VLOG(40) << "TensorRT Engine Op Outputs:";
     for (const auto& y : context.Outputs("Ys")) {
-      VLOG(4) << y;
+      VLOG(40) << y;
       // convert output and copy to fluid.
       nvinfer1::ITensor* trt_t = engine->GetITensor(output_maps[output_index]);
       auto dims = trt_t->getDimensions();
@@ -167,7 +167,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
  protected:
   void Prepare(const framework::ExecutionContext& context) const {
-    VLOG(4) << "Prepare engine";
+    VLOG(40) << "Prepare engine";
     // Get the ProgramDesc and pass to convert.
     framework::proto::BlockDesc block_desc;
     block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
@@ -192,12 +192,12 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     engine->InitNetwork();
 
     framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
-    VLOG(4) << "parsed var size " << block.AllVars().size();
+    VLOG(40) << "parsed var size " << block.AllVars().size();
     // Add inputs
-    VLOG(4) << "declare inputs";
+    VLOG(40) << "declare inputs";
     for (auto& input : context.Inputs("Xs")) {
       if (parameters.count(input)) continue;
-      VLOG(4) << "declare input " << input;
+      VLOG(40) << "declare input " << input;
       auto* var = block.FindVar(input);
       // TensorRT engine need to create parameters. The parameter's description
       // should be set in

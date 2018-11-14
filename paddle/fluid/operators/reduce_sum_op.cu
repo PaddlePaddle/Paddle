@@ -64,13 +64,3 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<float>,
                         ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
                         ops::ReduceSumKernel<int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    reduce_sum_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                           float, ops::SumGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::SumGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
-                          ops::SumGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
-                          ops::SumGradFunctor>);

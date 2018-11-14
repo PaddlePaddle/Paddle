@@ -45,7 +45,7 @@ class SumOp : public framework::OperatorWithKernel {
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
     if (N == 1) {
-      VLOG(3) << "Warning: sum have only one input, may waste memory";
+      VLOG(30) << "Warning: sum have only one input, may waste memory";
     }
 
     framework::DDim in_dim({0});
@@ -85,8 +85,8 @@ class SumOp : public framework::OperatorWithKernel {
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE(x_vars[idx] != nullptr,
                        "Input var[%s] should not be nullptr", x_vars_name[idx]);
-        // FIXME(zcd): The input x_var may be SelectedRows or LoDTensor.
-        auto tensor = framework::GetTensorFromVar(*x_vars[idx]);
+        auto tensor =
+            framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
         if (tensor->numel() == 0) {
           continue;
         }
@@ -157,8 +157,8 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     auto& inputs = op_desc.Input("X");
     auto var_type = framework::proto::VarType::SELECTED_ROWS;
     for (auto& name : op_desc.Input("X")) {
-      VLOG(10) << name << " "
-               << block->FindRecursiveOrCreateVar(name).GetType();
+      VLOG(100) << name << " "
+                << block->FindRecursiveOrCreateVar(name).GetType();
     }
 
     bool any_input_is_lod_tensor = std::any_of(

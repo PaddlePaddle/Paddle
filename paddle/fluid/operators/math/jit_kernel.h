@@ -71,26 +71,27 @@ class VMulKernel : public Kernel {
 template <typename T>
 class VAddKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
-};
-
-template <typename T>
-class VScalKernel : public Kernel {
- public:
-  virtual void Compute(const T a, const T *x, T *y) const = 0;
-  virtual void Compute(const T a, T *x) const = 0;
-};
-
-template <typename T>
-class VAddBiasKernel : public Kernel {
- public:
-  virtual void Compute(const T a, const T *x, T *y) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
 class VAddReluKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
+};
+
+template <typename T>
+class VScalKernel : public Kernel {
+ public:
+  // y = a.*x
+  void (*Compute)(const T *, const T *, T *, int);
+};
+
+template <typename T>
+class VAddBiasKernel : public Kernel {
+ public:
+  // y = a.+x
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
