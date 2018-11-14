@@ -188,6 +188,7 @@ copy(inference_lib DEPS ${inference_deps}
        ${src_dir}/${module}/api/paddle_*.h
        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+        )
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto

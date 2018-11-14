@@ -21,10 +21,6 @@ cc_library(analysis SRCS
 
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 
-if(WIN32)
-    target_link_libraries(inference_analyzer shlwapi)
-endif(WIN32)
-
 function (inference_analysis_test TARGET)
     if(WITH_TESTING)
         set(options "")
