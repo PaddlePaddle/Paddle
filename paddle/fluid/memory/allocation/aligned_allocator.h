@@ -33,8 +33,7 @@ class AlignedAllocation : public Allocation {
                 "kAlignment must be 2^N");
 
  public:
-  AlignedAllocation(std::unique_ptr<Allocation>&& underlying_allocation,
-                    size_t size)
+  AlignedAllocation(AllocationPtr&& underlying_allocation, size_t size)
       : Allocation(AlignedPtr(underlying_allocation->ptr()),
                    size + kAlignment - Offset(underlying_allocation->ptr()),
                    underlying_allocation->place()),
@@ -59,7 +58,7 @@ class AlignedAllocation : public Allocation {
     }
   }
 
-  std::unique_ptr<Allocation> underlying_allocation_;
+  AllocationPtr underlying_allocation_;
 };
 
 // Thin aligned allocator is trivial and used to generate a small size binary.
@@ -87,10 +86,10 @@ template <size_t kAlignment>
 class AlignedAllocator : public ThinAlignedAllocator {
  public:
   using ThinAlignedAllocator::ThinAlignedAllocator;
-  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
+  AllocationPtr Allocate(size_t size, Attr attr) override {
     auto raw_allocation =
         underlying_allocator_->Allocate(size + kAlignment, attr);
-    return std::unique_ptr<Allocation>(
+    return AllocationPtr(
         new AlignedAllocation<kAlignment>(std::move(raw_allocation), size));
   }
 };

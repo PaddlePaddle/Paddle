@@ -18,8 +18,8 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::unique_ptr<Allocation> AutoIncrementAllocator::Allocate(
-    size_t size, Allocator::Attr attr) {
+AllocationPtr AutoIncrementAllocator::Allocate(size_t size,
+                                               Allocator::Attr attr) {
   auto cur = prev_success_allocator_.load();
   size_t retry_count = allocator_num_.load();
   size_t allocator_num = retry_count;

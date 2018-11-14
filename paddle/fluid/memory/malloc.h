@@ -21,14 +21,14 @@ namespace paddle {
 namespace memory {
 using allocation::Allocation;
 using allocation::Allocator;
+using allocation::AllocationPtr;
 
 extern std::shared_ptr<Allocation> AllocShared(
     const platform::Place& place, size_t size,
     Allocator::Attr attr = Allocator::kDefault);
 
-extern std::unique_ptr<Allocation> Alloc(
-    const platform::Place& place, size_t size,
-    Allocator::Attr attr = Allocator::kDefault);
+extern AllocationPtr Alloc(const platform::Place& place, size_t size,
+                           Allocator::Attr attr = Allocator::kDefault);
 
 namespace legacy {
 

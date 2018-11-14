@@ -18,10 +18,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::unique_ptr<Allocation> ZeroSizeAllocator::Allocate(size_t size,
-                                                        Allocator::Attr attr) {
+AllocationPtr ZeroSizeAllocator::Allocate(size_t size, Allocator::Attr attr) {
   if (size == 0) {
-    return std::unique_ptr<Allocation>(new ZeroSizeAllocation(place_));
+    return AllocationPtr(new ZeroSizeAllocation(place_));
   } else {
     return underlying_allocator_->Allocate(size, attr);
   }

@@ -109,7 +109,7 @@ size_t BestFitAllocator::NumFreeChunks() const {
   }
   return num;
 }
-void BestFitAllocator::Free(MannualFreeAllocation* allocation) {
+void BestFitAllocator::Free(Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   auto chunk_it = bf_allocation->ChunkIterator();
   PADDLE_ENFORCE(!chunk_it->is_free);
@@ -136,9 +136,9 @@ void BestFitAllocator::Free(MannualFreeAllocation* allocation) {
   }
 
   InsertFreeNode(chunk_it);
+  delete allocation;
 }
-MannualFreeAllocation* BestFitAllocator::AllocateImpl(size_t size,
-                                                      Allocator::Attr attr) {
+Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
   MapIt map_it;
   for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {
@@ -158,11 +158,10 @@ MannualFreeAllocation* BestFitAllocator::AllocateImpl(size_t size,
 BestFitAllocation::BestFitAllocation(
     paddle::memory::allocation::BestFitAllocator* allocator,
     typename details::ChunkList::iterator chunk_it)
-    : MannualFreeAllocation(
-          allocator, reinterpret_cast<void*>(
-                         reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
-                         chunk_it->offset_),
-          chunk_it->size_, allocator->Place()),
+    : Allocation(reinterpret_cast<void*>(
+                     reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
+                     chunk_it->offset_),
+                 chunk_it->size_, allocator->Place()),
       chunk_it_(chunk_it) {}
 }  // namespace allocation
 }  // namespace memory

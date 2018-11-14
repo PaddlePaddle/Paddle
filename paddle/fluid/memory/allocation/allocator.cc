@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include <functional>
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -24,10 +26,20 @@ bool Allocator::IsAllocThreadSafe() const { return false; }
 
 const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
 
-MannualFreeAllocation::~MannualFreeAllocation() { allocator_->Free(this); }
-std::unique_ptr<Allocation> MannualFreeAllocator::Allocate(
-    size_t size, Allocator::Attr attr) {
-  return std::unique_ptr<Allocation>(AllocateImpl(size, attr));
+AllocationPtr MannualFreeAllocator::Allocate(size_t size,
+                                             Allocator::Attr attr) {
+  auto allocation = AllocateImpl(size, attr);
+  allocation->Deleter =
+      std::bind1st(std::mem_fn(&MannualFreeAllocator::Free), this);
+  return AllocationPtr(allocation);
+}
+void AllocationDeleter::operator()(Allocation* allocation) const {
+  if (allocation->Deleter) {
+    auto deleter = std::move(allocation->Deleter);
+    deleter(allocation);
+  } else {
+    delete allocation;
+  }
 }
 }  // namespace allocation
 }  // namespace memory

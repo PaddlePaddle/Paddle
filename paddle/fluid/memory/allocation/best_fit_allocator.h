@@ -71,7 +71,7 @@ using FreeChunkBin =
 class BestFitAllocator;
 
 // The BestFitAllocation maintain the List Node iterator.
-class BestFitAllocation : public MannualFreeAllocation {
+class BestFitAllocation : public Allocation {
  private:
   using ListIt = typename details::ChunkList::iterator;
 
@@ -123,9 +123,8 @@ class BestFitAllocator : public MannualFreeAllocator {
   void InsertFreeNode(const ListIt& it);
 
  protected:
-  void Free(MannualFreeAllocation* allocation) override;
-  MannualFreeAllocation* AllocateImpl(size_t size,
-                                      Allocator::Attr attr) override;
+  void Free(Allocation* allocation) override;
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   Allocation* allocation_;  // not owned

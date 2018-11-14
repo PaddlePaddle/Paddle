@@ -28,9 +28,8 @@ class LockedAllocator : public MannualFreeAllocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void Free(MannualFreeAllocation *allocation) override;
-  MannualFreeAllocation *AllocateImpl(size_t size,
-                                      Allocator::Attr attr) override;
+  void Free(Allocation *allocation) override;
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   std::unique_ptr<Allocator> underlying_allocator_;

@@ -43,8 +43,8 @@ class AllocatorFacade {
       Allocator::Attr attr = Allocator::kDefault);
 
   // Allocate a unique allocation.
-  std::unique_ptr<Allocation> Alloc(const platform::Place& place, size_t size,
-                                    Allocator::Attr attr = Allocator::kDefault);
+  AllocationPtr Alloc(const platform::Place& place, size_t size,
+                      Allocator::Attr attr = Allocator::kDefault);
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

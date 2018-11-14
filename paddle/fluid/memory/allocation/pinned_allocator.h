@@ -22,15 +22,17 @@ namespace allocation {
 // Allocator uses `cudaMallocHost`
 class CPUPinnedAllocation : public Allocation {
  public:
-  CPUPinnedAllocation(void* ptr, size_t size)
+  CPUPinnedAllocation(void *ptr, size_t size)
       : Allocation(ptr, size, platform::CUDAPinnedPlace()) {}
 };
 
-class CPUPinnedAllocator : public UnmanagedAllocator {
+class CPUPinnedAllocator : public MannualFreeAllocator {
  public:
-  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
   bool IsAllocThreadSafe() const override;
+
+ protected:
+  void Free(Allocation *allocation) override;
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 };
 
 }  // namespace allocation

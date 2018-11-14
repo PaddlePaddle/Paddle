@@ -31,6 +31,11 @@ class BadAlloc : public std::exception {
   std::string msg_;
 };
 
+class Allocation;
+struct AllocationDeleter {
+  void operator()(Allocation* allocation) const;
+};
+
 // Allocation is the object holding the actually pointer. Use
 // `Allocation::ptr()` will returns the pointer that allocated.
 //
@@ -67,11 +72,15 @@ class Allocation {
 
   virtual ~Allocation();
 
+  std::function<void(Allocation*)> Deleter;
+
  private:
   void* ptr_;
   size_t size_;
   platform::Place place_;
 };
+
+using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
 
 // Base interface class of memory Allocator.
 // To allocate a memory, allocator needs two parameters:
@@ -114,36 +123,22 @@ class Allocator {
 
   // Allocate an allocation. Note the return allocation might need to be freed
   // manually if the Allocator is an `UnmanagedAllocator`.
-  virtual std::unique_ptr<Allocation> Allocate(
-      size_t size, Allocator::Attr attr = kDefault) = 0;
+  virtual AllocationPtr Allocate(size_t size,
+                                 Allocator::Attr attr = kDefault) = 0;
 
   // True if the `Allocate` is thread safe.
   virtual bool IsAllocThreadSafe() const;
-};
-
-class MannualFreeAllocator;
-class MannualFreeAllocation : public Allocation {
- public:
-  MannualFreeAllocation(MannualFreeAllocator* allocator, void* ptr, size_t size,
-                        platform::Place place)
-      : Allocation(ptr, size, place), allocator_(allocator) {}
-
-  ~MannualFreeAllocation();
-
- private:
-  MannualFreeAllocator* allocator_;
 };
 
 // User need to invoke `Free` or `FreeUniquePtr` manually if allocated by
 // a manally managed allocator.
 class MannualFreeAllocator : public Allocator {
  public:
-  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) final;
+  AllocationPtr Allocate(size_t size, Attr attr) final;
 
  protected:
-  virtual void Free(MannualFreeAllocation* allocation) = 0;
-  virtual MannualFreeAllocation* AllocateImpl(size_t size,
-                                              Allocator::Attr attr) = 0;
+  virtual void Free(Allocation* allocation) = 0;
+  virtual Allocation* AllocateImpl(size_t size, Allocator::Attr attr) = 0;
   friend class MannualFreeAllocation;
 };
 

@@ -20,14 +20,12 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class UnderlyingManualAllocation : public MannualFreeAllocation {
+class UnderlyingManualAllocation : public Allocation {
  public:
-  UnderlyingManualAllocation(MannualFreeAllocator* allocator,
-                             std::unique_ptr<Allocation> allocation)
-      : MannualFreeAllocation(allocator, allocation->ptr(), allocation->size(),
-                              allocation->place()),
+  explicit UnderlyingManualAllocation(AllocationPtr allocation)
+      : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
         allocation_(std::move(allocation)) {}
-  std::unique_ptr<Allocation> allocation_;
+  AllocationPtr allocation_;
 };
 
 }  // namespace allocation

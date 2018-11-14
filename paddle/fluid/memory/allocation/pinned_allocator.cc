@@ -19,25 +19,22 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-std::unique_ptr<Allocation> CPUPinnedAllocator::Allocate(size_t size,
-                                                         Allocator::Attr attr) {
+bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
+void CPUPinnedAllocator::Free(Allocation *allocation) {
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUPinnedAllocation *>(allocation));
+  PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
+  delete allocation;
+}
+Allocation *CPUPinnedAllocator::AllocateImpl(size_t size,
+                                             Allocator::Attr attr) {
   // PADDLE_ENFORCE_EQ(
   //    attr, kCrossDevice,
   //    "CPUPinnedAllocator should be used for Cross-Device Communication");
 
-  void* ptr;
+  void *ptr;
   PADDLE_ENFORCE(cudaMallocHost(&ptr, size));
-  return std::unique_ptr<CPUPinnedAllocation>(
-      new CPUPinnedAllocation(ptr, size));
+  return new CPUPinnedAllocation(ptr, size);
 }
-
-void CPUPinnedAllocator::FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
-  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUPinnedAllocation*>(allocation.get()));
-  PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
-}
-
-bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

@@ -49,33 +49,28 @@ void BufferedAllocator::FreeCache(size_t size) {
 bool BufferedAllocator::IsAllocThreadSafe() const {
   return this->underlying_allocator_->IsAllocThreadSafe();
 }
-void BufferedAllocator::Free(MannualFreeAllocation *allocation) {
+void BufferedAllocator::Free(Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-
-  std::unique_ptr<Allocation> new_allocation(new UnderlyingManualAllocation(
-      this, std::move(reinterpret_cast<UnderlyingManualAllocation *>(allocation)
-                          ->allocation_)));
-  allocations_.emplace(allocation->size(), std::move(new_allocation));
+  allocations_.emplace(allocation->size(), AllocationPtr(allocation));
 }
-MannualFreeAllocation *BufferedAllocator::AllocateImpl(size_t size,
-                                                       Allocator::Attr attr) {
+Allocation *BufferedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
     if (it != allocations_.end() && it->first < size * 2) {
-      std::unique_ptr<Allocation> result(std::move(it->second));
+      AllocationPtr result(std::move(it->second));
       allocations_.erase(it);
-      return new UnderlyingManualAllocation(this, std::move(result));
+      return new UnderlyingManualAllocation(std::move(result));
     }
   }
 
   try {
     return new UnderlyingManualAllocation(
-        this, underlying_allocator_->Allocate(size, attr));
+        underlying_allocator_->Allocate(size, attr));
   } catch (BadAlloc &) {
     FreeCache(size);
     return new UnderlyingManualAllocation(
-        this, underlying_allocator_->Allocate(size, attr));
+        underlying_allocator_->Allocate(size, attr));
   }
 }
 

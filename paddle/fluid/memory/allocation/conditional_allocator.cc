@@ -24,8 +24,8 @@ ConditionalAllocator& ConditionalAllocator::AddAllocator(
   underlying_allocators_.emplace_back(std::move(func), std::move(allocator));
   return *this;
 }
-std::unique_ptr<Allocation> ConditionalAllocator::Allocate(
-    size_t size, Allocator::Attr attr) {
+AllocationPtr ConditionalAllocator::Allocate(size_t size,
+                                             Allocator::Attr attr) {
   for (auto& pair : underlying_allocators_) {
     if (pair.first(size, attr)) {
       return pair.second->Allocate(size, attr);
