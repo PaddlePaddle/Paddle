@@ -144,5 +144,3 @@ TEST(trt_models_test, raw_gpu) {
 }
 
 }  // namespace paddle
-
-USE_PASS(tensorrt_subgraph_pass);
