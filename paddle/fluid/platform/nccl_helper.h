@@ -112,7 +112,7 @@ struct NCCLContextMap {
         NCCLGroupGuard gurad;
         for (auto &gpu_id : order_) {
           int rank = trainer_id * order_.size() + gpu_id;
-          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks;
+          VLOG(30) << "init nccl rank: " << rank << " nranks: " << nranks;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
               comms.get() + gpu_id, nranks, *nccl_id, rank));

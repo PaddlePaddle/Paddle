@@ -26,7 +26,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO) << "convert a fluid elementwise op to tensorrt IScaleLayer";
+    VLOG(3) << "convert a fluid elementwise op to tensorrt IScaleLayer";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
@@ -108,7 +108,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO) << "convert a fluid elementwise op to tensorrt IScaleLayer";
+    VLOG(3) << "convert a fluid elementwise op to tensorrt IScaleLayer";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight

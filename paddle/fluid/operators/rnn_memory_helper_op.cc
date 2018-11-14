@@ -93,7 +93,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
                    in_grad_var_name);
 
     if (out_grad_var == nullptr) {
-      VLOG(5) << "Using fill constant 0 as starting gradient";
+      VLOG(50) << "Using fill constant 0 as starting gradient";
       auto in_var_name = Input("X");
       auto *in_var = scope.FindVar(in_var_name);
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();

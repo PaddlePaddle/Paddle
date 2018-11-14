@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -29,13 +31,25 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   using Tensor = framework::Tensor;
-  void InferShape(framework::InferShapeContext* ctx) const override {
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of elementwise op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of elementwise op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of elementwise op should not be null.");
+
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("X").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front());
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Y").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Y").front(), ctx->GetInputsVarType("Y").front());
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
@@ -47,9 +61,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -62,16 +75,12 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 };
 
-class ElementwiseOpInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto x_name = op_desc.Input("X")[0];
-    auto out_name = op_desc.Output("Out")[0];
-    auto& x = block->FindRecursiveOrCreateVar(x_name);
-    auto& out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(x.GetType());
-    out.SetDataType(x.GetDataType());
+class ElementwiseOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -131,6 +140,7 @@ But the output only shares the LoD information with the input $X$.
 
  protected:
   virtual std::string GetName() const = 0;
+
   virtual std::string GetEquation() const = 0;
 };
 
@@ -139,7 +149,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   using Tensor = framework::Tensor;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
@@ -165,7 +175,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::ToDataType(
         ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
 
@@ -187,7 +197,7 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
   using operators::ElementwiseOpGrad::GetExpectedKernelType;
   using Tensor = framework::Tensor;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
 
@@ -209,11 +219,11 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
 template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* dx =
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *dx =
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
     if (dx != nullptr) {
-      auto& dout =
+      auto &dout =
           *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
       dx->set_lod(dout.lod());
     }
@@ -234,7 +244,7 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
                                                                              \
    protected:                                                                \
     std::unique_ptr<paddle::framework::OpDesc> Apply() const override {      \
-      auto* op = new paddle::framework::OpDesc();                            \
+      auto *op = new paddle::framework::OpDesc();                            \
       op->SetType(#kernel_type "_grad");                                     \
       op->SetInput("Y", Input("Y"));                                         \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \

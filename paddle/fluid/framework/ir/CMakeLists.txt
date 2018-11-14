@@ -5,6 +5,7 @@ file(APPEND ${pass_file} "\#include \"paddle/fluid/framework/ir/pass.h\"\n")
 
 
 # Usage: pass_library(target inference) will append to paddle_inference_pass.h
+unset(INFER_IR_PASSES CACHE) # clear the global variable
 function(pass_library TARGET DEST)
     set(options "")
     set(oneValueArgs "")
@@ -15,9 +16,10 @@ function(pass_library TARGET DEST)
     if (${DEST} STREQUAL "base" OR ${DEST} STREQUAL "inference")
         message(STATUS "add pass ${TARGET} ${DEST}")
         file(APPEND ${pass_file} "USE_PASS(${TARGET});\n")
-        set(PASS_LIBRARY ${TARGET} ${PASS_LIBRARY} PARENT_SCOPE)
+        set(INFER_IR_PASSES ${INFER_IR_PASSES} ${TARGET} CACHE INTERNAL "")
     endif()
 endfunction()
+
 
 cc_library(node SRCS node.cc DEPS proto_desc)
 cc_library(graph SRCS graph.cc DEPS node pretty_log)
@@ -54,6 +56,7 @@ set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
 
+cc_test(node_test SRCS node_test.cc DEPS node)
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)
 cc_test(graph_helper_test SRCS graph_helper_test.cc DEPS graph graph_helper op_registry)

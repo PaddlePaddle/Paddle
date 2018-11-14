@@ -120,7 +120,7 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   f::Scope scope;
   p::CPUPlace place;
-  VLOG(4) << "before init tensor";
+  VLOG(40) << "before init tensor";
   if (is_sparse) {
     InitSelectedRowsInScope(place, &scope);
   } else {
@@ -146,7 +146,7 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   attrs.insert({"PrefetchBlock", prefetch_block});
   attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
   attrs.insert({"sync_mode", true});
-  VLOG(4) << "before init op";
+  VLOG(40) << "before init op";
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
   *initialized = true;

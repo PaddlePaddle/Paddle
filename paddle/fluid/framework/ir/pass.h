@@ -76,7 +76,7 @@ class Pass {
                    attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
+      VLOG(30) << "deleting " << attr_name;
       delete attr;
     };
   }
@@ -93,6 +93,7 @@ class Pass {
  protected:
   virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
+    return graph;
   }
 
  private:

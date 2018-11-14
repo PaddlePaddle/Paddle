@@ -192,6 +192,11 @@ void Conv2DOpMaker::Make() {
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
       .SetDefault(4096);
+  AddAttr<bool>("exhaustive_search",
+                "(bool, default false) cuDNN has many algorithm to calculation "
+                "convolution, whether enable exhaustive search ",
+                "for cuDNN convolution or not, defalut is False.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -221,6 +226,15 @@ $$
 $$
 )DOC");
 }
+
+class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{
+        {"Input", /*->*/ "Output"}};
+  }
+};
 
 void Conv3DOpMaker::Make() {
   AddInput(
@@ -286,7 +300,11 @@ void Conv3DOpMaker::Make() {
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
       .SetDefault(4096);
-
+  AddAttr<bool>("exhaustive_search",
+                "(bool, default false) cuDNN has many algorithm to calculation "
+                "convolution, whether enable exhaustive search ",
+                "for cuDNN convolution or not, defalut is False.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Convolution3D Operator.
 
@@ -359,6 +377,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
+                  ops::ConvOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
@@ -366,7 +385,9 @@ REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
+                  ops::ConvOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 
