@@ -25,10 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -128,18 +124,11 @@ void VScalMKL<double>(const double* a, const double* x, double* y, int n) {
 
 #endif
 
-#define DECLARE_STATIC_FUNC                                 \
-  static inline std::string name(int d) {                   \
-    PADDLE_THROW("DType should be either float or double"); \
-  }                                                         \
-  static inline bool useJIT(int d) { return false; }        \
-  static inline bool useMKL(int d) { return false; }
-
 /* VMUL JitKernel */
 template <typename T>
 class VMulKernelImpl : public VMulKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VMulKernelImpl(int d) : VMulKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
@@ -191,7 +180,7 @@ bool VMulKernelImpl<double>::useMKL(int d) {
 template <typename T>
 class VAddKernelImpl : public VAddKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VAddKernelImpl(int d) : VAddKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
@@ -241,7 +230,7 @@ bool VAddKernelImpl<double>::useMKL(int d) {
 template <typename T>
 class VAddReluKernelImpl : public VAddReluKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VAddReluKernelImpl(int d) : VAddReluKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
@@ -273,7 +262,7 @@ bool VAddReluKernelImpl<float>::useJIT(int d) {
 template <typename T>
 class VScalKernelImpl : public VScalKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VScalKernelImpl(int d) : VScalKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
@@ -322,7 +311,7 @@ bool VScalKernelImpl<double>::useMKL(int d) {
 template <typename T>
 class VAddBiasKernelImpl : public VAddBiasKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VAddBiasKernelImpl(int d) : VAddBiasKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
@@ -355,14 +344,14 @@ bool VAddBiasKernelImpl<float>::useJIT(int d) {
 template <typename T>
 class VReluKernelImpl : public VReluKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VReluKernelImpl(int d) : VReluKernel<T>() {
     this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 /*init*/ +
-                  d / AVX_FLOAT_BLOCK * 4 /* instructions*/ *
-                      8 /*everage byte for each instruction*/;
+      size_t sz = 96 /* init size */ +
+                  d / AVX_FLOAT_BLOCK * 4 /* instructions */ *
+                      8 /* average bytes for each instruction */;
       jitcode_.reset(new gen::ReluJitCode(d, sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
       return;
@@ -387,8 +376,6 @@ bool VReluKernelImpl<float>::useJIT(int d) {
   return gen::ReluJitCode::init(d);
 }
 #endif
-
-#undef DECLARE_STATIC_FUNC
 
 REGISTER_JITKERNEL(vmul, VMulKernel);
 REGISTER_JITKERNEL(vadd, VAddKernel);
