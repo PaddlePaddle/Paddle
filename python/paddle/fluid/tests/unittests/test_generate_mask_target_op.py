@@ -17,6 +17,9 @@ from __future__ import print_function
 import numpy as np
 import math
 import sys
+import math
+import paddle.fluid as fluid
+from op_test import OpTest
 
 
 def masks_to_boxes(masks):
@@ -82,7 +85,7 @@ def expand_mask_targets(masks, mask_class_labels, resolution, num_classes):
         (masks.shape[0], num_classes * resolution**2), dtype=np.int32)
     for i in range(masks.shape[0]):
         cls = int(mask_class_labels[i])
-        start = resolution**2 * (cls - 1)
+        start = resolution**2 * cls
         end = start + resolution**2
         # Ignore background instance
         # (only happens when there is no fg samples in an image)
@@ -164,7 +167,7 @@ def trans_lod(lod):
 class TestGenerateMaskTarget(OpTest):
     def set_data(self):
         self.init_test_case()
-        self.make_rois()
+        self.make_generate_proposal_labels_out()
         self.generate_gt_segms()
         self.generate_groundtruth()
         self.init_test_output()
@@ -174,7 +177,7 @@ class TestGenerateMaskTarget(OpTest):
             'IsCrowd': (self.is_crowd, self.masks_lod),
             'LabelsInt32': (self.label_int32, self.rois_lod),
             'GtSegms': (self.gt_segms, self.masks_lod),
-            'Rois': (self.rois[:, 1:5], self.rois_lod)
+            'Rois': (self.rois, self.rois_lod)
         }
         self.attrs = {
             'num_classes': self.num_classes,
@@ -193,31 +196,39 @@ class TestGenerateMaskTarget(OpTest):
         self.images_shape = [16, 16]
         np.random.seed(0)
 
-    def make_rois(self):
+    def make_generate_proposal_labels_out(self):
         rois = []
         self.rois_lod = [[]]
+        self.label_int32 = []
         for bno in range(self.batch_size):
-            self.rois_lod[0].append(bno + 1)
-            for i in range(bno + 1):
-                xywh = np.random.rand(4)
-                xy1 = xywh[0:2] * 2
-                wh = xywh[2:4] * (16 - xy1)
-                xy2 = xy1 + wh
-                roi = [bno, xy1[0], xy1[1], xy2[0], xy2[1]]
-                rois.append(roi)
-        self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("float32")
-
-    def generate_gt_segms(self):
-        self.gt_segms = np.zeros((20, 16, 16), dtype=np.int8)
-        self.masks_lod = [[]]
-        mask_id = 0
-        for bno in range(self.batch_size):
-            self.masks_lod[0].append(2 * (bno + 1))
+            self.rois_lod[0].append(2 * (bno + 1))
             for i in range(2 * (bno + 1)):
                 xywh = np.random.rand(4)
                 xy1 = xywh[0:2] * 2
-                wh = xywh[2:4] * (16 - xy1)
+                wh = xywh[2:4] * (self.images_shape[0] - xy1)
+                xy2 = xy1 + wh
+                roi = [xy1[0], xy1[1], xy2[0], xy2[1]]
+                rois.append(roi)
+        self.rois_num = len(rois)
+        self.rois = np.array(rois).astype("float32")
+        for roi_num in self.rois_lod[0]:
+            for roi_id in range(roi_num):
+                class_id = np.random.random_integers(self.num_classes - 1)
+                self.label_int32.append(class_id)
+        label_np = np.array(self.label_int32)
+        self.label_int32 = label_np[:, np.newaxis]
+
+    def generate_gt_segms(self):
+        self.gt_segms = np.zeros((10, self.images_shape[0], \
+                                  self.images_shape[1]), dtype=np.int8)
+        self.masks_lod = [[]]
+        mask_id = 0
+        for bno in range(self.batch_size):
+            self.masks_lod[0].append(bno + 1)
+            for i in range(bno + 1):
+                xywh = np.random.rand(4)
+                xy1 = xywh[0:2] * 2
+                wh = xywh[2:4] * (self.images_shape[0] - xy1)
                 xy2 = xy1 + wh
                 self.gt_segms[mask_id, int(xy1[0]):int(math.ceil(xy2[0])),\
                               int(xy1[1]):int(math.ceil(xy2[1]))] = 1
@@ -227,24 +238,17 @@ class TestGenerateMaskTarget(OpTest):
         self.im_info = []
         self.gt_classes = []
         self.is_crowd = []
-        self.label_int32 = []
         for roi_num in self.masks_lod[0]:
-            for roi_id in range(roi_num):
-                class_id = np.random.random_integers(self.num_classes)
-                self.gt_classes.append(class_id)
-                self.is_crowd.append(0)
-        for roi_num in self.rois_lod[0]:
             self.im_info.append(self.images_shape + [1.0])
             for roi_id in range(roi_num):
-                class_id = np.random.random_integers(self.num_classes)
-                self.label_int32.append(class_id)
+                class_id = np.random.random_integers(self.num_classes - 1)
+                self.gt_classes.append(class_id)
+                self.is_crowd.append(0)
         self.im_info = np.array(self.im_info)
         gt_classes_np = np.array(self.gt_classes)
         self.gt_classes = gt_classes_np[:, np.newaxis]
         is_crowd_np = np.array(self.is_crowd)
         self.is_crowd = is_crowd_np[:, np.newaxis]
-        label_np = np.array(self.label_int32)
-        self.label_int32 = label_np[:, np.newaxis]
 
     def init_test_output(self):
         roi_lod = trans_lod(self.rois_lod[0])
@@ -253,7 +257,7 @@ class TestGenerateMaskTarget(OpTest):
         self.new_lod = generate_mask_target(self.num_classes, self.im_info,
                    self.gt_classes, self.is_crowd,
                    self.label_int32, self.gt_segms,
-                   self.resolution, self.rois[:,1:5],
+                   self.resolution, self.rois,
                    roi_lod, mask_lod)
         self.mask_rois = np.vstack(self.mask_rois)
         self.roi_has_mask_int32 = np.hstack(self.roi_has_mask_int32)
