@@ -69,7 +69,7 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ',', &data);
-      CHECK_EQ(data.size(), 2 * MAX_TURN_NUM + 3);
+      CHECK_EQ(data.size(), (size_t)(2 * MAX_TURN_NUM + 3));
       // load turn data
       std::vector<int64_t> turns_tmp[MAX_TURN_NUM];
       for (int i = 0; i < MAX_TURN_NUM; ++i) {
