@@ -15,11 +15,19 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
+
+#define JITKERNEL_DECLARE_STATIC_FUNC                       \
+  static inline std::string name(int d) {                   \
+    PADDLE_THROW("DType should be either float or double"); \
+  }                                                         \
+  static inline bool useJIT(int d) { return false; }        \
+  static inline bool useMKL(int d) { return false; }
 
 #define JITKERNEL_DEFINE_NAME(ker_key, ker_class)    \
   template <>                                        \

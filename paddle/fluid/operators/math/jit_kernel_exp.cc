@@ -16,6 +16,11 @@ limitations under the License. */
 #include <cmath>  // for exp
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
+
+#ifdef PADDLE_WITH_XBYAK
+#include "paddle/fluid/operators/math/jit_code.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
@@ -30,41 +35,84 @@ namespace math {
 namespace jitkernel {
 namespace jit = platform::jit;
 
-/* VExp JitKernel */
-template <typename T, jit::cpu_isa_t isa, jit_block>
-class VExpKernelImpl : public VExpKernel<T> {
- public:
-  explicit VExpKernelImpl(int d) : VExpKernel<T>() { this->num_ = d; }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    for (int i = 0; i < this->num_; ++i) {
-      y[i] = std::exp(x[i]);
-    }
+// TODO(TJ): move refer codes to one file
+template <typename T>
+void VExpRefer(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
   }
-};
+}
 
 #ifdef PADDLE_WITH_MKLML
-#define MKL_FLOAT(isa, block)                                                 \
-  template <>                                                                 \
-  void VExpKernelImpl<float, isa, block>::ComputeDeprecated(const float* x,   \
-                                                            float* y) const { \
-    platform::dynload::vsExp(this->num_, x, y);                               \
-  }
+template <typename T>
+void VExpMKL(const T* x, T* y, int n);
 
-#define MKL_DOUBLE(isa, block)                                \
-  template <>                                                 \
-  void VExpKernelImpl<double, isa, block>::ComputeDeprecated( \
-      const double* x, double* y) const {                     \
-    platform::dynload::vdExp(this->num_, x, y);               \
-  }
-FOR_EACH_ISA(MKL_FLOAT, kLT8);
-FOR_EACH_ISA(MKL_FLOAT, kGT8LT16);
-FOR_EACH_ISA(MKL_FLOAT, kGT16);
-FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
+template <>
+void VExpMKL<float>(const float* x, float* y, int n) {
+  platform::dynload::vsExp(n, x, y);
+}
+
+template <>
+void VExpMKL<double>(const double* x, double* y, int n) {
+  platform::dynload::vdExp(n, x, y);
+}
 #endif
 
-namespace detail {
+/* VExp JitKernel */
+template <typename T>
+class VExpKernelImpl : public VExpKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit VExpKernelImpl(int d) : VExpKernel<T>() {
+    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
+      jitcode_.reset(new gen::VExpJitCode(d, sz > 4096 ? sz : 4096));
+      this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_MKLML
+    if (useMKL(d)) {
+      this->Compute = VExpMKL<T>;
+      return;
+    }
+#endif
+    this->Compute = VExpRefer<T>;
+  }
+  void ComputeDeprecated(const T* x, T* y) const override {
+    VExpRefer(x, y, this->num_);
+  }
+#ifdef PADDLE_WITH_XBYAK
 
-#ifdef __AVX__
+ private:
+  std::unique_ptr<gen::VExpJitCode> jitcode_{nullptr};
+#endif
+};
+
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool VExpKernelImpl<float>::useJIT(int d) {
+  return gen::VExpJitCode::init(d);
+}
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+bool VExpKernelImpl<float>::useMKL(int d) {
+  return d > 512;
+}
+
+template <>
+bool VExpKernelImpl<double>::useMKL(int d) {
+  return true;
+}
+#endif
+
+REGISTER_JITKERNEL(vexp, VExpKernel);
+
+namespace detail {
 
 #define ALIGN32 __attribute__((aligned(32)))
 
@@ -195,7 +243,6 @@ __m256 ExpAVX(__m256 x) {
   y = _mm256_mul_ps(y, pow2n);
   return y;
 }
-#endif
 
 #ifdef __AVX2__
 __m256 ExpAVX2(__m256 x) {
@@ -210,47 +257,6 @@ __m256 ExpAVX2(__m256 x) {
 #endif
 
 }  // namespace detail
-
-#define INTRI8_FLOAT(isa, expisa)                                            \
-  template <>                                                                \
-  void VExpKernelImpl<float, isa, kEQ8>::ComputeDeprecated(const float* x,   \
-                                                           float* y) const { \
-    __m256 tmp = _mm256_loadu_ps(x);                                         \
-    _mm256_storeu_ps(y, expisa(tmp));                                        \
-  }
-
-#define INTRI16_FLOAT(isa, expisa)                                            \
-  template <>                                                                 \
-  void VExpKernelImpl<float, isa, kEQ16>::ComputeDeprecated(const float* x,   \
-                                                            float* y) const { \
-    __m256 tmp0 = _mm256_loadu_ps(x);                                         \
-    __m256 tmp1 = _mm256_loadu_ps(x + 8);                                     \
-    tmp0 = expisa(tmp0);                                                      \
-    tmp1 = expisa(tmp1);                                                      \
-    _mm256_storeu_ps(y, tmp0);                                                \
-    _mm256_storeu_ps(y + 8, tmp1);                                            \
-  }
-
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx, detail::ExpAVX);
-INTRI16_FLOAT(jit::avx, detail::ExpAVX);
-#endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2, detail::ExpAVX2);
-INTRI16_FLOAT(jit::avx2, detail::ExpAVX2);
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f, detail::ExpAVX2);
-INTRI16_FLOAT(jit::avx512f, detail::ExpAVX2);
-#endif
-// TODO(TJ): eq16 test and complete avx512
-
-#undef INTRI8_FLOAT
-#undef INTRI16_FLOAT
-#undef MKL_FLOAT
-#undef MKL_DOUBLE
-
-REGISTER_JITKERNEL_DEPRECATED(vexp, VExpKernel);
 
 /* VSigmoid JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
