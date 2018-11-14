@@ -127,7 +127,8 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
     masks_gt = [gt_segms[i] for i in mask_gt_inds]
     boxes_from_masks = masks_to_boxes(masks_gt)
     fg_inds = np.where(label_int32 > 0)[0]
-    roi_has_mask = fg_inds
+    roi_has_mask = label_int32.copy()
+    roi_has_mask[roi_has_mask > 0] = 1
     if fg_inds.shape[0] > 0:
         mask_class_labels = label_int32[fg_inds]
         masks = np.zeros((fg_inds.shape[0], resolution**2), dtype=np.int32)
