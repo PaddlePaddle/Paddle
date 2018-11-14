@@ -22,7 +22,6 @@ if(NOT WITH_FLUID_ONLY)
     endif()
   endif()
 endif()
-
 add_subdirectory(testing)
 set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests CACHE INTERNAL "python tests directory")
 if(NOT MOBILE_INFERENCE AND NOT RPI AND NOT WITH_C_API)
