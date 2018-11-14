@@ -24,11 +24,18 @@ namespace paddle {
 namespace inference {
 
 DEFINE_bool(use_tensorrt, true, "Test the performance of TensorRT engine.");
+DEFINE_string(prog_filename, "", "Name of model file.");
+DEFINE_string(param_filename, "", "Name of parameters file.");
 
 template <typename ConfigType>
 ConfigType GetConfig(std::string model_dir, bool use_gpu, int batch_size = -1) {
   ConfigType config;
-  config.model_dir = model_dir;
+  if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
+    config.prog_file = model_dir + "/" + FLAGS_prog_filename;
+    config.param_file = model_dir + "/" + FLAGS_param_filename;
+  } else {
+    config.model_dir = model_dir;
+  }
   if (use_gpu) {
     config.use_gpu = true;
     config.device = 0;
@@ -42,7 +49,12 @@ contrib::MixedRTConfig GetConfig<contrib::MixedRTConfig>(std::string model_dir,
                                                          bool use_gpu,
                                                          int batch_size) {
   contrib::MixedRTConfig config;
-  config.model_dir = model_dir;
+  if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
+    config.prog_file = model_dir + "/" + FLAGS_prog_filename;
+    config.param_file = model_dir + "/" + FLAGS_param_filename;
+  } else {
+    config.model_dir = model_dir;
+  }
   config.use_gpu = true;
   config.device = 0;
   config.fraction_of_gpu_memory = 0.2;
@@ -56,7 +68,12 @@ contrib::MixedRTConfig GetConfig<contrib::MixedRTConfig>(std::string model_dir,
 
 void profile(std::string model_dir, bool use_tensorrt) {
   std::vector<std::vector<PaddleTensor>> inputs_all;
-  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+  if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
+    SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
+                      FLAGS_param_filename);
+  } else {
+    SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+  }
 
   std::vector<PaddleTensor> outputs;
   if (use_tensorrt) {
@@ -75,7 +92,12 @@ void profile(std::string model_dir, bool use_tensorrt) {
 
 void compare(std::string model_dir) {
   std::vector<std::vector<PaddleTensor>> inputs_all;
-  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+  if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
+    SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
+                      FLAGS_param_filename);
+  } else {
+    SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+  }
 
   std::vector<PaddleTensor> native_outputs;
   NativeConfig native_config = GetConfig<NativeConfig>(model_dir, true);

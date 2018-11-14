@@ -150,6 +150,15 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
       dirname, is_combined, model_filename, params_filename);
+  std::ostringstream os;
+  for (size_t i = 0; i < feed_target_shapes.size(); ++i) {
+    os << "feed target " << i << ": {" << feed_target_shapes[i][0];
+    for (size_t j = 1; j < feed_target_shapes[i].size(); ++j) {
+      os << ", " << feed_target_shapes[i][j];
+    }
+    os << "}\n";
+  }
+  LOG(INFO) << os.str();
 
   int dim1 = feed_target_shapes[0][1];
   int dim2 = feed_target_shapes[0][2];
