@@ -50,7 +50,7 @@ class SplitOpConverter : public OpConverter {
     PADDLE_ENFORCE(output_lengths.size() == output_num);
 
     //
-    SplitPlugin* plugin = new SplitPlugin(axis, output_lengths);
+    plugin::SplitPlugin* plugin = new plugin::SplitPlugin(axis, output_lengths);
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);
 

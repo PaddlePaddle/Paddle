@@ -118,30 +118,30 @@ void compare(std::string model_dir, bool use_tensorrt) {
   CompareResult(native_outputs, analysis_outputs);
 }
 
-TEST(TensorRT_mobilenet, compare) {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  compare(model_dir, /* use_tensorrt */ true);
-}
-
-TEST(TensorRT_resnet50, compare) {
-  std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare(model_dir, /* use_tensorrt */ true);
-}
-
-TEST(TensorRT_resnext50, compare) {
-  std::string model_dir = FLAGS_infer_model + "/resnext50";
-  compare(model_dir, /* use_tensorrt */ true);
-}
+// TEST(TensorRT_mobilenet, compare) {
+//   std::string model_dir = FLAGS_infer_model + "/mobilenet";
+//   compare(model_dir, /* use_tensorrt */ true);
+// }
+//
+// TEST(TensorRT_resnet50, compare) {
+//   std::string model_dir = FLAGS_infer_model + "/resnet50";
+//   compare(model_dir, /* use_tensorrt */ true);
+// }
+//
+// TEST(TensorRT_resnext50, compare) {
+//   std::string model_dir = FLAGS_infer_model + "/resnext50";
+//   compare(model_dir, /* use_tensorrt */ true);
+// }
 
 TEST(TensorRT_resnext50, profile) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
   profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
 }
 
-TEST(TensorRT_mobilenet, analysis) {
-  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  compare(model_dir, /* use_tensorrt */ false);
-}
+// TEST(TensorRT_mobilenet, analysis) {
+//   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+//   compare(model_dir, /* use_tensorrt */ false);
+// }
 
 }  // namespace inference
 }  // namespace paddle

@@ -20,7 +20,7 @@ nv_test(test_trt_conv_op SRCS test_conv2d_op.cc conv2d_op.cc
 nv_test(test_trt_pool2d_op SRCS test_pool2d_op.cc pool2d_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine pool_op SERIAL)
 nv_test(test_trt_elementwise_op SRCS test_elementwise_op.cc elementwise_op.cc
-        DEPS ${FLUID_CORE_MODULES} tensorrt_engine elementwise_add_op SERIAL)
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin elementwise_add_op SERIAL)
 nv_test(test_trt_softmax_op SRCS test_softmax_op.cc softmax_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine softmax_op SERIAL)
 nv_test(test_trt_batch_norm_op SRCS test_batch_norm_op.cc batch_norm_op.cc
@@ -32,5 +32,4 @@ nv_test(test_trt_dropout_op SRCS test_dropout_op.cc dropout_op.cc
 nv_test(test_trt_pad_op SRCS test_pad_op.cc pad_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine pad_op SERIAL)
 nv_test(test_trt_split_op SRCS test_split_op.cc split_op.cc
-        DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin
-split_op concat_op SERIAL)
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin split_op concat_op SERIAL)

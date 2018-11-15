@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(elementwise_op, add_weight_test) {
+TEST(elementwise_op, add_weight) {
   std::unordered_set<std::string> parameters({"elementwise_add-Y"});
   framework::Scope scope;
   TRTConvertValidation validator(10, parameters, scope, 1 << 15);
@@ -44,7 +44,7 @@ TEST(elementwise_op, add_weight_test) {
   validator.Execute(8);
 }
 
-TEST(elementwise_op, add_tensor_test) {
+TEST(elementwise_op, add_tensor) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   TRTConvertValidation validator(8, parameters, scope, 1 << 15);
@@ -66,6 +66,8 @@ TEST(elementwise_op, add_tensor_test) {
 
   validator.Execute(8);
 }
+
+TEST(elementwise_op, mul_tensor) {}
 
 }  // namespace tensorrt
 }  // namespace inference
