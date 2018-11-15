@@ -48,20 +48,21 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
                    "Input(GtBoxes) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("Rois"),
-                   "Output(Rois) of RpnTargetAssignOp should not be null");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Rois"),
+        "Output(Rois) of GenerateProposalLabelsOp should not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("LabelsInt32"),
-        "Output(LabelsInt32) of RpnTargetAssignOp should not be null");
+        "Output(LabelsInt32) of GenerateProposalLabelsOp should not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("BboxTargets"),
-        "Output(BboxTargets) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("BboxInsideWeights"),
-        "Output(BboxInsideWeights) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("BboxOutsideWeights"),
-        "Output(BboxOutsideWeights) of RpnTargetAssignOp should not be null");
+        "Output(BboxTargets) of GenerateProposalLabelsOp should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("BboxInsideWeights"),
+                   "Output(BboxInsideWeights) of GenerateProposalLabelsOp "
+                   "should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("BboxOutsideWeights"),
+                   "Output(BboxOutsideWeights) of GenerateProposalLabelsOp "
+                   "should not be null");
 
     auto rpn_rois_dims = ctx->GetInputDim("RpnRois");
     auto gt_classes_dims = ctx->GetInputDim("GtClasses");
@@ -469,7 +470,7 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "P usuall equal to  batch_size_per_im * batch_size, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("LabelsInt32",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P], "
+              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
               "each element repersents a class label of a roi");
     AddOutput("BboxTargets",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
