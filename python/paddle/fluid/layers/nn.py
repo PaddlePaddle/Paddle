@@ -109,6 +109,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'selu',
     'log',
     'crop',
     'rank_loss',
@@ -6165,7 +6166,7 @@ def selu(x, scale=1.0507, alpha=1.6732, name=None):
 
     .. math::
 
-         out = scale*(alpha * e^x - alpha if x < 0 else x),
+         out = scale*(alpha * e^x - alpha if x <= 0 else x),
 
     Args:
         x (Variable): The input tensor.
