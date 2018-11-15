@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/memory/malloc.h"
@@ -21,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -71,18 +73,18 @@ struct NaiveAllocator {
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(100) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
-  VLOG(10) << "  pointer=" << p;
+  VLOG(100) << "  pointer=" << p;
   return p;
 }
 
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(100) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
@@ -110,12 +112,12 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
           std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
           platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
-      VLOG(10) << "\n\nNOTE: each GPU device use "
-               << FLAGS_fraction_of_gpu_memory_to_use * 100
-               << "% of GPU memory.\n"
-               << "You can set GFlags environment variable '"
-               << "FLAGS_fraction_of_gpu_memory_to_use"
-               << "' to change the fraction of GPU usage.\n\n";
+      VLOG(100) << "\n\nNOTE: each GPU device use "
+                << FLAGS_fraction_of_gpu_memory_to_use * 100
+                << "% of GPU memory.\n"
+                << "You can set GFlags environment variable '"
+                << "FLAGS_fraction_of_gpu_memory_to_use"
+                << "' to change the fraction of GPU usage.\n\n";
     }
   });
 
@@ -137,12 +139,18 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     platform::SetDeviceId(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
-    LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
-                 << place.device << ", available " << avail << " bytes";
+    LOG(WARNING) << "Cannot allocate " << string::HumanReadableSize(size)
+                 << " in GPU " << place.device << ", available "
+                 << string::HumanReadableSize(avail);
     LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize " << buddy_allocator->GetMinChunkSize();
-    LOG(WARNING) << "GpuMaxChunkSize " << buddy_allocator->GetMaxChunkSize();
-    LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
+    LOG(WARNING) << "GpuMinChunkSize "
+                 << string::HumanReadableSize(
+                        buddy_allocator->GetMinChunkSize());
+    LOG(WARNING) << "GpuMaxChunkSize "
+                 << string::HumanReadableSize(
+                        buddy_allocator->GetMaxChunkSize());
+    LOG(WARNING) << "GPU memory used: "
+                 << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   }
   if (FLAGS_init_allocated_mem) {

@@ -86,9 +86,9 @@ class NCCLTester : public ::testing::Test {
     (*p_scopes).resize(gpu_list_.size());
 
     auto op = f::OpRegistry::CreateOp(*op1);
-    VLOG(1) << "invoke NCCLInitOp.";
+    VLOG(10) << "invoke NCCLInitOp.";
     op->Run(g_scope_, cpu_place);
-    VLOG(1) << "NCCLInitOp finished.";
+    VLOG(10) << "NCCLInitOp finished.";
   }
 
   int GetGPUData(int gpu_id) { return gpu_id + 42; }
@@ -109,7 +109,7 @@ class NCCLTester : public ::testing::Test {
 
       std::vector<T> send_vector(f::product(kDims), GetGPUData(gpu_id));
       paddle::framework::TensorFromVector<T>(send_vector, *ctx, send_tensor);
-      VLOG(1) << "Send Tensor filled with elements " << send_tensor->numel();
+      VLOG(10) << "Send Tensor filled with elements " << send_tensor->numel();
     }
 
     lk.unlock();
@@ -119,11 +119,11 @@ class NCCLTester : public ::testing::Test {
 
     auto op = f::OpRegistry::CreateOp(*op1);
 
-    VLOG(1) << "Device : " << gpu_id << " invoke " << op_desc.Type();
-    VLOG(1) << " send_tensor : " << send_tensor->numel()
-            << " recv_tensor : " << recv_tensor->numel();
+    VLOG(10) << "Device : " << gpu_id << " invoke " << op_desc.Type();
+    VLOG(10) << " send_tensor : " << send_tensor->numel()
+             << " recv_tensor : " << recv_tensor->numel();
     op->Run(*scope, place);
-    VLOG(1) << "Device : " << gpu_id << " finished " << op_desc.Type();
+    VLOG(10) << "Device : " << gpu_id << " finished " << op_desc.Type();
   }
 
  public:

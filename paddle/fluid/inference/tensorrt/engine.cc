@@ -61,6 +61,7 @@ TensorRTEngine::~TensorRTEngine() {
 }
 
 void TensorRTEngine::FreezeNetwork() {
+  VLOG(3) << "TRT to freeze network";
   freshDeviceId();
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
@@ -131,6 +132,10 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
   buffer_sizes_[name] = 0;
+}
+
+bool TensorRTEngine::HasDeclared(const std::string &name) {
+  return buffer_sizes_.count(name) > 0;
 }
 
 void TensorRTEngine::DeclareOutput(const std::string &name) {
@@ -248,6 +253,12 @@ void TensorRTEngine::freshDeviceId() {
   cudaGetDeviceCount(&count);
   PADDLE_ENFORCE_LT(device_, count);
   cudaSetDevice(device_);
+}
+
+nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
+    nvinfer1::ITensor *const *inputs, int nbInputs, PluginTensorRT *plugin) {
+  owned_plugin_.emplace_back(plugin);
+  return infer_network_.get()->addPluginExt(inputs, nbInputs, *plugin);
 }
 
 }  // namespace tensorrt

@@ -27,7 +27,7 @@ struct Record {
 };
 
 Record ProcessALine(const std::string &line) {
-  VLOG(3) << "process a line";
+  VLOG(30) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
   CHECK_EQ(columns.size(), 2UL)
@@ -45,8 +45,8 @@ Record ProcessALine(const std::string &line) {
   for (auto &s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
-  VLOG(3) << "data size " << record.data.size();
-  VLOG(3) << "data shape size " << record.shape.size();
+  VLOG(30) << "data size " << record.data.size();
+  VLOG(30) << "data shape size " << record.shape.size();
   return record;
 }
 
@@ -58,7 +58,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
   // TODO(TJ): fix fusion gru
-  cfg->ir_passes.push_back("fc_gru_fuse_pass");
+  cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -84,12 +84,15 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg._use_mkldnn = use_mkldnn;
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     const float ocr_result_data[] = {
@@ -125,11 +128,14 @@ TEST(Analyzer_vis, fuse_statis) {
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg._use_mkldnn = use_mkldnn;
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 TEST(Analyzer_vis, compare) { compare(); }

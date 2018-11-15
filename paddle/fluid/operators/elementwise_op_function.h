@@ -111,6 +111,17 @@ class RowwiseTransformIterator<T, platform::CPUDeviceContext>
     return *this;
   }
 
+  RowwiseTransformIterator<T, platform::CPUDeviceContext> &operator+(int n) {
+    while (n-- > 0) {
+      ++i_;
+      if (UNLIKELY(i_ == n_)) {
+        i_ = 0;
+      }
+    }
+
+    return *this;
+  }
+
   bool operator==(const RowwiseTransformIterator<T, platform::CPUDeviceContext>
                       &rhs) const {
     return (ptr_ + i_) == &(*rhs);
@@ -146,6 +157,21 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext>
         i_ = 0;
       }
     }
+    return *this;
+  }
+
+  MidWiseTransformIterator<T, platform::CPUDeviceContext> &operator+(int n) {
+    while (n-- > 0) {
+      ++j_;
+      if (UNLIKELY(j_ == post_)) {
+        ++i_;
+        j_ = 0;
+        if (UNLIKELY(i_ == n_)) {
+          i_ = 0;
+        }
+      }
+    }
+
     return *this;
   }
 
@@ -365,7 +391,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   int j = blockIdx.x;
   int i = threadIdx.x;
   int tid = threadIdx.x;
-  T val = 0;
+  T val(0);
 
   do {
     int x_offset = i * w + j;
@@ -433,7 +459,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
   int tid = threadIdx.x;
   int j = blockIdx.x;
 
-  T val = 0;
+  T val(0);
   int ttid = tid;
 
   while (true) {
