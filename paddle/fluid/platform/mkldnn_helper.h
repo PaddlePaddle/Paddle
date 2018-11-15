@@ -153,7 +153,6 @@ class MKLDNNHandler {
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
                    "Fail to find mem primitive in device context");
-    //mem_p = nullptr;
     if (mem_p == nullptr) {
       mem_p = std::make_shared<mkldnn::memory>(mdp, ptr);
       dev_ctx_.SetBlob(local_key, mem_p);
@@ -234,10 +233,9 @@ class MKLDNNHandler {
       std::shared_ptr<mkldnn::primitive> reorder_p;
       if (mpd != user_mpd) {
         target_memory_p = std::make_shared<mkldnn::memory>(mpd);
-        std::shared_ptr<mkldnn::reorder> reorder_p;// =
-            //std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+        std::shared_ptr<mkldnn::reorder> reorder_p;
         if(is_INT8){
-            mkldnn::primitive_attr attri;
+            mkldnn::primitive_attr attri; //attribute for int8 weights and bias data reorder.
             attri.set_output_scales(mask, scale_data);
 
             auto reorder_pd = std::shared_ptr<mkldnn::reorder::primitive_desc>(

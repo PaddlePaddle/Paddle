@@ -95,18 +95,17 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(const framework::Executio
 
 
 void QuantOpMaker::Make() {
-  AddInput("Input","input");
-  AddInput("Scale","scale...");
-  AddOutput("Output","output");
-  AddComment(R"DOC(
-This op will quantize data from FP32 to INT8
-)DOC");
+  AddInput("Input","input data");
+  AddInput("Scale","scale data");
+  AddOutput("Output","output data");
+  AddComment(R"DOC(This op will quantize data from FP32 to INT8)DOC");
 }
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
+//TODO Support FP32->S8 quantization.
 
 REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 

@@ -54,7 +54,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
     mkldnn::memory::data_type src_dt = paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::format src_fmt = memory::format::nhwc;//input->format();    
+    mkldnn::memory::format src_fmt = input->format();    
 
     mkldnn::primitive_attr attri;
     int mask = 0;
@@ -101,12 +101,10 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(const framework::Execut
 }
 
 void DeQuantOpMaker::Make() {
-  AddInput("Input","input");
-  AddInput("Scale","scale...");
-  AddOutput("Output","output");
-AddComment(R"DOC(
-This op will quantize data from INT8 to FP32
-)DOC");
+  AddInput("Input","input data");
+  AddInput("Scale","scale data");
+  AddOutput("Output","output data");
+  AddComment(R"DOC(This op will quantize data from INT8 to FP32)DOC");
 }
 
 }  // namespace operators
