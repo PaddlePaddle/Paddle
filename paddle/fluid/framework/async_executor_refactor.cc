@@ -101,13 +101,13 @@ void AsyncExecutor::RunFromFiles(
     2) each reader has a Next() iterface, that can fetch an instance
     from the input queue
    */
-  // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed> > readers;
   readers.resize(thread_num);
   for (int i = 0; i < readers.size(); ++i) {
     readers[i] = DataFeedFactory::CreateDataFeed(data_feed_desc.name());
   }
 
+  // todo(dongdaxiang): add the following code for worker generalization
   /*
   std::vector<std::shared_ptr<ExecutorStrategy> > workers;
   workers.resize(thread_num);
@@ -129,7 +129,6 @@ void AsyncExecutor::RunFromFiles(
     CreateThreads(workers[thidx].get(), main_program,
                   readers[thidx].get(), root_scope_, thidx);
   }
-  
   // start executing ops in multiple threads
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     threads.push_back(std::thread(&ExecutorThreadWorker::TrainFiles,
