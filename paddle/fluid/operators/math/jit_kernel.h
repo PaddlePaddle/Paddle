@@ -132,6 +132,7 @@ template <typename T>
 class VTanhKernel : public VActKernel<T> {
  public:
   virtual void ComputeDeprecated(const T *x, T *y) const = 0;
+  void (*Compute)(const T *, T *, int);
 };
 
 template <typename T>
