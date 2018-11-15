@@ -112,6 +112,14 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
+
+// windows has no support for openblas multi-thread
+#ifdef _WIN32
+  if (FLAGS_paddle_num_threads > 1) {
+    FLAGS_paddle_num_threads = 1;
+  }
+#endif
+
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
@@ -167,7 +175,9 @@ void InitGLOG(const std::string &prog_name) {
   // glog will not hold the ARGV[0] inside.
   // Use strdup to alloc a new string.
   google::InitGoogleLogging(strdup(prog_name.c_str()));
+#ifndef _WIN32
   google::InstallFailureSignalHandler();
+#endif
 }
 
 }  // namespace framework
