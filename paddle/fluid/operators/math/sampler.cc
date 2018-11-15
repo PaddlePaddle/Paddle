@@ -85,7 +85,7 @@ CustomSampler::CustomSampler(int64_t range, const float* probabilities,
     }
   }
 
-  while (!littles.empty()) {
+  while ((!littles.empty()) && (!bigs.empty())) {
     auto big = bigs.front();
     auto little = littles.front();
     bigs.pop();
@@ -101,6 +101,18 @@ CustomSampler::CustomSampler(int64_t range, const float* probabilities,
       (*alias_probs_)[big.first] = big_left;
       (*alias_)[big.first] = -1;
     }
+  }
+
+  if (!littles.empty()) {  // littles.second is close to 1.0
+    auto little = littles.front();
+    (*alias_probs_)[little.first] = 1.0;
+    (*alias_)[little.first] = -1;
+  }
+
+  if (!bigs.empty()) {  // bigs.second is close to 1.0
+    auto big = bigs.front();
+    (*alias_probs_)[big.first] = 1.0;
+    (*alias_)[big.first] = -1;
   }
 }
 
