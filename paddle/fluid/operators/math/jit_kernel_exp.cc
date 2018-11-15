@@ -20,6 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -62,18 +66,14 @@ namespace detail {
 
 #ifdef __AVX__
 
-#if defined(_WIN32)
-#define ALIGN32 __declspec(align(32))
-#else
 #define ALIGN32 __attribute__((aligned(32)))
-#endif  // _WIN32
 
 #define _PS256_CONST(Name, Val)                                      \
-  static const float ALIGN32 _ps256_##Name[8] = {Val, Val, Val, Val, \
+  static const float _ps256_##Name[8] ALIGN32 = {Val, Val, Val, Val, \
                                                  Val, Val, Val, Val}
 
 #define _PI256_CONST(Name, Val)                                    \
-  static const int ALIGN32 _pi256_##Name[8] = {Val, Val, Val, Val, \
+  static const int _pi256_##Name[8] ALIGN32 = {Val, Val, Val, Val, \
                                                Val, Val, Val, Val}
 
 _PI256_CONST(0x7f, 0x7f);
@@ -98,7 +98,7 @@ typedef union imm_xmm_union {
 
 #define COPY_IMM_TO_XMM(imm_, xmm0_, xmm1_) \
   {                                         \
-    imm_xmm_union ALIGN32 u;                \
+    imm_xmm_union u ALIGN32;                \
     u.imm = imm_;                           \
     xmm0_ = u.xmm[0];                       \
     xmm1_ = u.xmm[1];                       \
@@ -106,7 +106,7 @@ typedef union imm_xmm_union {
 
 #define COPY_XMM_TO_IMM(xmm0_, xmm1_, imm_) \
   {                                         \
-    imm_xmm_union ALIGN32 u;                \
+    imm_xmm_union u ALIGN32;                \
     u.xmm[0] = xmm0_;                       \
     u.xmm[1] = xmm1_;                       \
     imm_ = u.imm;                           \
@@ -409,10 +409,11 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     vaddbias_ = KernelPool::Instance().template Get<VAddBiasKernel<T>>(d);
   }
   void Compute(const T* x, T* y) const override {
-    vscal_->Compute(static_cast<T>(2), x, y);
+    const T a = static_cast<T>(2), b = static_cast<T>(-1);
+    vscal_->Compute(&a, x, y, this->num_);
     vsigmoid_->Compute(y, y);
-    vscal_->Compute(static_cast<T>(2), y);
-    vaddbias_->Compute(static_cast<T>(-1), y, y);
+    vscal_->Compute(&a, y, y, this->num_);
+    vaddbias_->Compute(&b, y, y, this->num_);
   }
 
  private:
@@ -472,10 +473,11 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     _mm256_storeu_ps(y, tmp);                                                 \
     x += AVX_FLOAT_BLOCK;                                                     \
     y += AVX_FLOAT_BLOCK;                                                     \
-    vscal_->Compute(2.f, x, y);                                               \
+    const float a = 2.f, b = -1.f;                                            \
+    vscal_->Compute(&a, x, y, this->num_);                                    \
     vsigmoid_->Compute(y, y);                                                 \
-    vscal_->Compute(2.f, y);                                                  \
-    vaddbias_->Compute(-1.f, y, y);                                           \
+    vscal_->Compute(&a, y, y, this->num_);                                    \
+    vaddbias_->Compute(&b, y, y, this->num_);                                 \
   }
 
 #define INTRI_GT16_FLOAT(isa, expisa)                                         \
@@ -502,20 +504,19 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     }                                                                         \
     x += this->end_;                                                          \
     y += this->end_;                                                          \
-    vscal_->Compute(2.f, x, y);                                               \
+    const float a = 2.f, b = -1.f;                                            \
+    vscal_->Compute(&a, x, y, this->num_);                                    \
     vsigmoid_->Compute(y, y);                                                 \
-    vscal_->Compute(2.f, y);                                                  \
-    vaddbias_->Compute(-1.f, y, y);                                           \
+    vscal_->Compute(&a, y, y, this->num_);                                    \
+    vaddbias_->Compute(&b, y, y, this->num_);                                 \
   }
 
-#ifndef __WIN32
 #ifdef __AVX__
 INTRI8_FLOAT(jit::avx, detail::ExpAVX);
 INTRI16_FLOAT(jit::avx, detail::ExpAVX);
 INTRI_GT8LT16_FLOAT(jit::avx, detail::ExpAVX);
 INTRI_GT16_FLOAT(jit::avx, detail::ExpAVX);
-#endif  // AVX
-#endif  // WIN32
+#endif
 #ifdef __AVX2__
 INTRI8_FLOAT(jit::avx2, detail::ExpAVX2);
 INTRI16_FLOAT(jit::avx2, detail::ExpAVX2);

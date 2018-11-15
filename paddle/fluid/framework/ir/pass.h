@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -77,7 +76,7 @@ class Pass {
                    attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
+      VLOG(30) << "deleting " << attr_name;
       delete attr;
     };
   }
@@ -94,6 +93,7 @@ class Pass {
  protected:
   virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
+    return graph;
   }
 
  private:
@@ -196,7 +196,6 @@ struct PassRegistrar : public Registrar {
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
-#if !defined(_WIN32)
 // Register a new pass that can be applied on the IR.
 #define REGISTER_PASS(pass_type, pass_class)                          \
   STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
@@ -219,32 +218,7 @@ struct PassRegistrar : public Registrar {
   extern int TouchPassRegistrar_##pass_type();                        \
   static int use_pass_itself_##pass_type##_ __attribute__((unused)) = \
       TouchPassRegistrar_##pass_type()
-#else
-// windows version of __attribute__((unused))
-#define UNUSED(x) __pragma(warning(suppress : 4100)) x
-#define REGISTER_PASS(pass_type, pass_class)                        \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                              \
-      __reg_pass__##pass_type,                                      \
-      "REGISTER_PASS must be called in global namespace");          \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>         \
-      __pass_registrar_##pass_type##__(#pass_type);                 \
-  int TouchPassRegistrar_##pass_type() {                            \
-    __pass_registrar_##pass_type##__.Touch();                       \
-    return 0;                                                       \
-  }                                                                 \
-  static ::paddle::framework::ir::PassRegistrar<pass_class> UNUSED( \
-      &__pass_tmp_registrar_##pass_type##__) =                      \
-      __pass_registrar_##pass_type##__
 
-#define USE_PASS(pass_type)                           \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \
-      __use_pass_itself_##pass_type,                  \
-      "USE_PASS must be called in global namespace"); \
-  extern int TouchPassRegistrar_##pass_type();        \
-  static int UNUSED(use_pass_itself_##pass_type##_) = \
-      TouchPassRegistrar_##pass_type()
-
-#endif  // !_WIN32
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

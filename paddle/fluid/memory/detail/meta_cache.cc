@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/platform/assert.h"
@@ -31,7 +29,7 @@ MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
     return existing_desc->second;
   } else {
     auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
-    VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
+    VLOG(100) << "Load MemoryBlock::Desc type=" << desc->type;
     PADDLE_ASSERT(desc->check_guards());
     return *reinterpret_cast<const MemoryBlock::Desc*>(block);
   }

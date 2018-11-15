@@ -48,12 +48,12 @@ class PrefetchOp : public framework::OperatorBase {
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
-                << outs[i] << " back";
+        VLOG(30) << "sending " << ins[i] << " to " << epmap[i] << " to get "
+                 << outs[i] << " back";
         rets.push_back(rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope,
                                                     ins[i], outs[i]));
       } else {
-        VLOG(3) << "don't send no-initialied variable: " << ins[i];
+        VLOG(30) << "don't send no-initialied variable: " << ins[i];
       }
     }
     for (size_t i = 0; i < rets.size(); i++) {

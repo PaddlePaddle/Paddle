@@ -31,31 +31,10 @@ function(copy TARGET)
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
-        if (WIN32) 
-        # windows cmd shell will not expand wildcard automatically.
-        # below expand the files,libs and copy them by rules.
-        file(GLOB header_files ${src} "*.h")
-        file(GLOB static_lib_files ${src} "*.lib")
-        file(GLOB dll_lib_files ${src} "*.dll")
-        set(src_files ${header_files} ${static_lib_files} ${dll_lib_files})
-
-        if (NOT "${src_files}" STREQUAL "")
-        list(REMOVE_DUPLICATES src_files)
-        endif()
-        add_custom_command(TARGET ${TARGET} PRE_BUILD 
-          COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
-          )
-        foreach(src_file ${src_files}) 
-          add_custom_command(TARGET ${TARGET} PRE_BUILD 
-          COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
-          COMMENT "copying ${src_file} -> ${dst}")
-        endforeach()
-        else(WIN32) # not windows
-          add_custom_command(TARGET ${TARGET} PRE_BUILD 
+        add_custom_command(TARGET ${TARGET} PRE_BUILD
           COMMAND mkdir -p "${dst}"
           COMMAND cp -r "${src}" "${dst}"
           COMMENT "copying ${src} -> ${dst}")
-        endif(WIN32)
     endforeach()
 endfunction()
 
@@ -87,14 +66,13 @@ copy(boost_lib
   DSTS ${dst_dir}
   DEPS boost
 )
-if(NOT WIN32)
+
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/xxhash")
 copy(xxhash_lib
   SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
   DSTS ${dst_dir} ${dst_dir}/lib
   DEPS xxhash
 )
-endif(NOT WIN32)
 
 if(NOT PROTOBUF_FOUND)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/protobuf")
@@ -186,7 +164,7 @@ endif()
 set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-       ${src_dir}/${module}/api/paddle_inference_api.h
+       ${src_dir}/${module}/api/paddle_*.h
        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
 )
@@ -224,10 +202,10 @@ copy(third_party DEPS fluid_lib_dist
   DSTS ${FLUID_INFERENCE_INSTALL_DIR} ${FLUID_INFERENCE_INSTALL_DIR}
 )
 
-# only need libpaddle_fluid.so/a and paddle_inference_api.h for inference-only library
+# only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
 copy(inference_api_lib DEPS fluid_lib_dist
   SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-       ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_inference_api.h
+       ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
 

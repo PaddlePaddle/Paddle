@@ -16,7 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
@@ -315,7 +314,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output) {
     if (inputs.size() == 0) {
-      VLOG(3) << "no input! return";
+      VLOG(30) << "no input! return";
       return;
     }
     const framework::SelectedRows* has_value_input = nullptr;
@@ -326,7 +325,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       }
     }
     if (has_value_input == nullptr) {
-      VLOG(3) << "no input has value! just return" << std::endl;
+      VLOG(30) << "no input has value! just return" << std::endl;
       return;
     }
     auto input_width = has_value_input->value().dims()[1];

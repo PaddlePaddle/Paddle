@@ -13,7 +13,6 @@
    limitations under the License. */
 
 #include <algorithm>
-#include <iostream>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 
