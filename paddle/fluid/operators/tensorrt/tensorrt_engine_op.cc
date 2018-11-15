@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/tensorrt_engine_op.h"
+#include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 
 namespace paddle {
 
