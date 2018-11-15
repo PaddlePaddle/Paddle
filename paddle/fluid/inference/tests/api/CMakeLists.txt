@@ -45,11 +45,7 @@ inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2
 # DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-inference_analysis_test(test_analyzer_dam SRCS analyzer_dam_tester.cc
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS
-        --infer_model=${DAM_INSTALL_DIR}/model
-        --infer_data=${DAM_INSTALL_DIR}/data.txt
-        --use_analysis=0)
+inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc)
 
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
