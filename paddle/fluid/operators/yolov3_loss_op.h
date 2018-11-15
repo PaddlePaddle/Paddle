@@ -29,7 +29,7 @@ using Array5 = Eigen::DSizes<int64_t, 5>;
 
 template <typename T>
 static inline bool isZero(T x) {
-  return abs(x) < 1e-6;
+  return fabs(x) < 1e-6;
 }
 
 template <typename T>
@@ -186,7 +186,7 @@ static T CalcBoxIoU(std::vector<T> box1, std::vector<T> box2) {
 }
 
 template <typename T>
-static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
+static void PreProcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
                             std::vector<int> anchors, const int grid_size,
                             Tensor* obj_mask, Tensor* noobj_mask, Tensor* tx,
                             Tensor* ty, Tensor* tw, Tensor* th, Tensor* tconf,
@@ -206,8 +206,9 @@ static void PrePorcessGTBox(const Tensor& gt_boxes, const float ignore_thresh,
 
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < b; j++) {
-      if (isZero(gt_boxes_t(i, j, 0)) && isZero(gt_boxes_t(i, j, 1)) &&
-          isZero(gt_boxes_t(i, j, 2)) && isZero(gt_boxes_t(i, j, 3))) {
+      if (isZero<T>(gt_boxes_t(i, j, 0)) && isZero<T>(gt_boxes_t(i, j, 1)) &&
+          isZero<T>(gt_boxes_t(i, j, 2)) && isZero<T>(gt_boxes_t(i, j, 3)) &&
+          isZero<T>(gt_boxes_t(i, j, 4))) {
         continue;
       }
 
@@ -362,7 +363,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     th.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    PrePorcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, h, &obj_mask,
+    PreProcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, h, &obj_mask,
                        &noobj_mask, &tx, &ty, &tw, &th, &tconf, &tclass);
 
     Tensor obj_mask_expand;
@@ -431,7 +432,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     th.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    PrePorcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, h, &obj_mask,
+    PreProcessGTBox<T>(*gt_boxes, ignore_thresh, anchors, h, &obj_mask,
                        &noobj_mask, &tx, &ty, &tw, &th, &tconf, &tclass);
 
     Tensor obj_mask_expand;
