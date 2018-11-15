@@ -430,7 +430,7 @@ void Blas<platform::CPUDeviceContext>::VSQUARE(int n, const T *x, T *y) const {
   CBlas<T>::VSQUARE(n, x, y);
 #else
   for (int i = 0; i < n; ++i) {
-    y[i] = std::pow(x[i], static_cast<T>(2));
+    y[i] = x[i] * x[i];
   }
 #endif
 }
