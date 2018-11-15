@@ -149,6 +149,26 @@ class VSigmoidJitCode : public VExpJitCode {
   ymm_t ymm_dst = ymm_t(1);
 };
 
+class VTanhJitCode : public VExpJitCode {
+ public:
+  DECLARE_JIT_CODE(VTanhJitCode);
+  explicit VTanhJitCode(int d, size_t code_size = 256 * 1024,
+                        void* code_ptr = nullptr)
+      : VExpJitCode(d, code_size, code_ptr), num_(d) {}
+  static bool init(int d);
+  void generate() override;
+
+  // compute sigmoid with ymm
+  void vtanh_ymm(const Xbyak::Ymm& src, const Xbyak::Ymm& dst);
+
+ private:
+  int num_;
+  reg64_t param1{abi_param1};
+  reg64_t param2{abi_param2};
+  ymm_t ymm_src = ymm_t(0);
+  ymm_t ymm_dst = ymm_t(1);
+};
+
 }  // namespace gen
 }  // namespace jitkernel
 }  // namespace math

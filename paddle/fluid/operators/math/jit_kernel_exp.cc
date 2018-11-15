@@ -45,11 +45,24 @@ void VExpRefer(const T* x, T* y, int n) {
 
 template <typename T>
 void VSigmoidRefer(const T* x, T* y, int n) {
+  // y = 1 / (1 + e^-x)
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
   for (int i = 0; i < n; ++i) {
     T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
     y[i] = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-tmp));
+  }
+}
+
+template <typename T>
+void VTanhRefer(const T* x, T* y, int n) {
+  // y = 2 * sigmoid(2x) - 1
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * x[i];
+  }
+  VSigmoidRefer(y, y, n);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
   }
 }
 
@@ -78,6 +91,17 @@ void VSigmoidMKL(const T* x, T* y, int n) {
   VExpMKL(y, y, n);
   for (int i = 0; i < n; ++i) {
     y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
+  }
+}
+
+template <typename T>
+void VTanhMKL(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * x[i];
+  }
+  VSigmoidMKL(y, y, n);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
   }
 }
 #endif
@@ -189,8 +213,63 @@ bool VSigmoidKernelImpl<double>::useMKL(int d) {
 }
 #endif
 
+/* VTanh JitKernel */
+template <typename T>
+class VTanhKernelImpl : public VTanhKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit VTanhKernelImpl(int d) : VTanhKernel<T>() {
+    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
+      jitcode_.reset(new gen::VTanhJitCode(d, sz > 4096 ? sz : 4096));
+      this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
+      return;
+    }
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+    // strictly it's a better impl with MKL, then is refer
+    if (useMKL(d)) {
+      this->Compute = VTanhMKL<T>;
+      return;
+    }
+#endif
+    this->Compute = VTanhRefer<T>;
+  }
+  void ComputeDeprecated(const T* x, T* y) const override {
+    VTanhRefer(x, y, this->num_);
+  }
+#ifdef PADDLE_WITH_XBYAK
+
+ private:
+  std::unique_ptr<gen::VTanhJitCode> jitcode_{nullptr};
+#endif
+};
+
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool VTanhKernelImpl<float>::useJIT(int d) {
+  return gen::VTanhJitCode::init(d);
+}
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+bool VTanhKernelImpl<float>::useMKL(int d) {
+  return d > 512;
+}
+
+template <>
+bool VTanhKernelImpl<double>::useMKL(int d) {
+  return true;
+}
+#endif
+
 REGISTER_JITKERNEL(vexp, VExpKernel);
 REGISTER_JITKERNEL(vsigmoid, VSigmoidKernel);
+REGISTER_JITKERNEL(vtanh, VTanhKernel);
 
 namespace detail {
 
@@ -337,156 +416,6 @@ __m256 ExpAVX2(__m256 x) {
 #endif
 
 }  // namespace detail
-
-#define INTRI_SIGMOID(tmp, min, max, expisa)      \
-  tmp = _mm256_max_ps(tmp, min);                  \
-  tmp = _mm256_min_ps(tmp, max);                  \
-  tmp = _mm256_sub_ps(_mm256_set1_ps(0.0f), tmp); \
-  tmp = expisa(tmp);                              \
-  tmp = _mm256_add_ps(_mm256_set1_ps(1.0f), tmp); \
-  tmp = _mm256_div_ps(_mm256_set1_ps(1.0f), tmp)
-#undef INTRI_VSIGMOID
-
-/* VTanh JitKernel */
-template <typename T, jit::cpu_isa_t isa, jit_block>
-class VTanhKernelImpl : public VTanhKernel<T> {
- public:
-  explicit VTanhKernelImpl(int d) : VTanhKernel<T>() {
-    this->num_ = d;
-    vscal_ = KernelPool::Instance().template Get<VScalKernel<T>>(d);
-    vsigmoid_ = KernelPool::Instance().template Get<VSigmoidKernel<T>>(d);
-    vaddbias_ = KernelPool::Instance().template Get<VAddBiasKernel<T>>(d);
-  }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    const T a = static_cast<T>(2), b = static_cast<T>(-1);
-    vscal_->Compute(&a, x, y, this->num_);
-    vsigmoid_->ComputeDeprecated(y, y);
-    vscal_->Compute(&a, y, y, this->num_);
-    vaddbias_->Compute(&b, y, y, this->num_);
-  }
-
- private:
-  std::shared_ptr<const VScalKernel<T>> vscal_;
-  std::shared_ptr<const VSigmoidKernel<T>> vsigmoid_;
-  std::shared_ptr<const VAddBiasKernel<T>> vaddbias_;
-};
-
-#define INTRI_VTANH(tmp, expisa)                           \
-  tmp = _mm256_mul_ps(_mm256_set1_ps(-2.0f), tmp);         \
-  tmp = _mm256_min_ps(tmp, _mm256_set1_ps(EXP_MAX_INPUT)); \
-  tmp = expisa(tmp);                                       \
-  tmp = _mm256_add_ps(_mm256_set1_ps(1.0f), tmp);          \
-  tmp = _mm256_div_ps(_mm256_set1_ps(2.0f), tmp);          \
-  tmp = _mm256_sub_ps(tmp, _mm256_set1_ps(1.0f))
-
-#define INTRI8_FLOAT(isa, expisa)                                             \
-  template <>                                                                 \
-  void VTanhKernelImpl<float, isa, kEQ8>::ComputeDeprecated(const float* x,   \
-                                                            float* y) const { \
-    __m256 tmp = _mm256_loadu_ps(x);                                          \
-    INTRI_VTANH(tmp, expisa);                                                 \
-    _mm256_storeu_ps(y, tmp);                                                 \
-  }
-
-#define INTRI16_FLOAT(isa, expisa)                                             \
-  template <>                                                                  \
-  void VTanhKernelImpl<float, isa, kEQ16>::ComputeDeprecated(const float* x,   \
-                                                             float* y) const { \
-    __m256 tmp0 = _mm256_loadu_ps(x);                                          \
-    __m256 tmp1 = _mm256_loadu_ps(x + 8);                                      \
-    INTRI_VTANH(tmp0, expisa);                                                 \
-    INTRI_VTANH(tmp1, expisa);                                                 \
-    _mm256_storeu_ps(y, tmp0);                                                 \
-    _mm256_storeu_ps(y + 8, tmp1);                                             \
-  }
-
-#define INTRI_GT8LT16_FLOAT(isa, expisa)                                      \
-  template <>                                                                 \
-  VTanhKernelImpl<float, isa, kGT8LT16>::VTanhKernelImpl(int d)               \
-      : VTanhKernel<float>() {                                                \
-    this->num_ = d;                                                           \
-    this->end_ = AVX_FLOAT_BLOCK;                                             \
-    this->rest_ = d - this->end_;                                             \
-    vscal_ =                                                                  \
-        KernelPool::Instance().template Get<VScalKernel<float>>(this->rest_); \
-    vsigmoid_ = KernelPool::Instance().template Get<VSigmoidKernel<float>>(   \
-        this->rest_);                                                         \
-    vaddbias_ = KernelPool::Instance().template Get<VAddBiasKernel<float>>(   \
-        this->rest_);                                                         \
-  }                                                                           \
-  template <>                                                                 \
-  void VTanhKernelImpl<float, isa, kGT8LT16>::ComputeDeprecated(              \
-      const float* x, float* y) const {                                       \
-    __m256 tmp = _mm256_loadu_ps(x);                                          \
-    INTRI_VTANH(tmp, expisa);                                                 \
-    _mm256_storeu_ps(y, tmp);                                                 \
-    x += AVX_FLOAT_BLOCK;                                                     \
-    y += AVX_FLOAT_BLOCK;                                                     \
-    const float a = 2.f, b = -1.f;                                            \
-    vscal_->Compute(&a, x, y, this->num_);                                    \
-    vsigmoid_->ComputeDeprecated(y, y);                                       \
-    vscal_->Compute(&a, y, y, this->num_);                                    \
-    vaddbias_->Compute(&b, y, y, this->num_);                                 \
-  }
-
-#define INTRI_GT16_FLOAT(isa, expisa)                                          \
-  template <>                                                                  \
-  VTanhKernelImpl<float, isa, kGT16>::VTanhKernelImpl(int d)                   \
-      : VTanhKernel<float>() {                                                 \
-    this->num_ = d;                                                            \
-    this->rest_ = d % AVX_FLOAT_BLOCK;                                         \
-    this->end_ = d - this->rest_;                                              \
-    vscal_ =                                                                   \
-        KernelPool::Instance().template Get<VScalKernel<float>>(this->rest_);  \
-    vsigmoid_ = KernelPool::Instance().template Get<VSigmoidKernel<float>>(    \
-        this->rest_);                                                          \
-    vaddbias_ = KernelPool::Instance().template Get<VAddBiasKernel<float>>(    \
-        this->rest_);                                                          \
-  }                                                                            \
-  template <>                                                                  \
-  void VTanhKernelImpl<float, isa, kGT16>::ComputeDeprecated(const float* x,   \
-                                                             float* y) const { \
-    for (int i = 0; i < this->end_; i += AVX_FLOAT_BLOCK) {                    \
-      __m256 tmp = _mm256_loadu_ps(x + i);                                     \
-      INTRI_VTANH(tmp, expisa);                                                \
-      _mm256_storeu_ps(y + i, tmp);                                            \
-    }                                                                          \
-    x += this->end_;                                                           \
-    y += this->end_;                                                           \
-    const float a = 2.f, b = -1.f;                                             \
-    vscal_->Compute(&a, x, y, this->num_);                                     \
-    vsigmoid_->ComputeDeprecated(y, y);                                        \
-    vscal_->Compute(&a, y, y, this->num_);                                     \
-    vaddbias_->Compute(&b, y, y, this->num_);                                  \
-  }
-
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx, detail::ExpAVX);
-INTRI16_FLOAT(jit::avx, detail::ExpAVX);
-INTRI_GT8LT16_FLOAT(jit::avx, detail::ExpAVX);
-INTRI_GT16_FLOAT(jit::avx, detail::ExpAVX);
-#endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2, detail::ExpAVX2);
-INTRI16_FLOAT(jit::avx2, detail::ExpAVX2);
-// maybe use avx at gt8lt16 and gt16
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f, detail::ExpAVX2);
-INTRI16_FLOAT(jit::avx512f, detail::ExpAVX2);
-// maybe use avx at gt8lt16 and gt16
-#endif
-
-#undef INTRI8_FLOAT
-#undef INTRI16_FLOAT
-#undef INTRI_GT8LT16_FLOAT
-#undef INTRI_GT16_FLOAT
-#undef INTRI_VTANH
-
-REGISTER_JITKERNEL_DEPRECATED(vtanh, VTanhKernel);
-
-#undef JITKERNEL_NEW_ACT_IMPL
-
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators

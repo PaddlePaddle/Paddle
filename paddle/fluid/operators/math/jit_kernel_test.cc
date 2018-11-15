@@ -322,7 +322,7 @@ TEST(JitKernel, vtanh) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->ComputeDeprecated(x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
