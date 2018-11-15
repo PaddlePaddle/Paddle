@@ -178,7 +178,8 @@ TEST(Analyzer_dam, profile) {
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(), 0);
@@ -213,7 +214,8 @@ TEST(Analyzer_dam, compare) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 }  // namespace inference

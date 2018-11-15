@@ -15,6 +15,10 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::float16;
 
 namespace paddle {
 namespace operators {

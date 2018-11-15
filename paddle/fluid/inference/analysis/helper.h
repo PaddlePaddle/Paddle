@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace inference {
@@ -122,20 +123,6 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
   PADDLE_ENFORCE(var != nullptr);
   return *var->GetMutable<T>();
-}
-
-static void ExecShellCommand(const std::string &cmd, std::string *message) {
-  char buffer[128];
-  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-  if (!pipe) {
-    LOG(ERROR) << "error running command: " << cmd;
-    return;
-  }
-  while (!feof(pipe.get())) {
-    if (fgets(buffer, 128, pipe.get()) != nullptr) {
-      *message += buffer;
-    }
-  }
 }
 
 static framework::proto::ProgramDesc LoadProgramDesc(
