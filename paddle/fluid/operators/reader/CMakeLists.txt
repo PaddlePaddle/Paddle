@@ -32,8 +32,8 @@ cc_test(reader_blocking_queue_test SRCS reader_blocking_queue_test.cc)
 # Export local libraries to parent
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)
 
-op_library(read)
+op_library(read_op)
 
 foreach(src ${LOCAL_READER_LIBS})
-    set(OP_LIBRARY ${src} ${OP_LIBRARY} PARENT_SCOPE)
+    set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")
 endforeach()

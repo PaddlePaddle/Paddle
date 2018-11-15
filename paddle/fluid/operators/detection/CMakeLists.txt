@@ -43,5 +43,5 @@ detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op
 # set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
 
 foreach(src ${LOCAL_DETECTION_LIBS})
-    set(OP_LIBRARY ${src} ${OP_LIBRARY} PARENT_SCOPE)
+    set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")
 endforeach()

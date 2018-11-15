@@ -11,9 +11,11 @@ endif()
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
+message("GLOB_OPERATOR_DEPS: ${GLOB_OPERATOR_DEPS}")
+message("GLOB_OP_LIB: ${GLOB_OP_LIB}")
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB}) 
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 

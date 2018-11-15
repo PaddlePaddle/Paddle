@@ -21,15 +21,14 @@ endif()
 
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 
-function(register_operators)
-    file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
-    list(REMOVE_DUPLICATES OPS)
 
-    foreach(src ${OPS})
-        set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    endforeach()
-    
-endfunction()
+file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
+list(REMOVE_DUPLICATES OPS)
+
+foreach(src ${OPS})
+    set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+endforeach()
+
 
 # foreach(dist_op "prefetch_op" "checkpoint_notify_op" "listen_and_serv_op" "send_op" "recv_op" "send_barrier_op" "fetch_barrier_op")
 #     op_library(${dist_op} DEPS ${DISTRIBUTE_DEPS})
