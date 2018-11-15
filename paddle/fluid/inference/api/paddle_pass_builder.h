@@ -91,7 +91,7 @@ class CpuPassStrategy : public PassStrategy {
 
   virtual ~CpuPassStrategy() = default;
 
-  virtual void EnableMKLDNN() override {
+  void EnableMKLDNN() override {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
@@ -123,7 +123,7 @@ class GpuPassStrategy : public PassStrategy {
   GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {}
 
-  virtual void EnableMKLDNN() override;
+  void EnableMKLDNN() override;
 
   virtual ~GpuPassStrategy() = default;
 };

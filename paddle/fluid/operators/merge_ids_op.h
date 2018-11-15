@@ -43,11 +43,11 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(ids.size(), outs.size(),
                       "the number of Ids and Out should be the same");
 
-    int row_ids_size = 0;
+    size_t row_ids_size = 0;
     int row_size = 0;
     int embedding_size = 0;
 
-    for (int i = 0; i < x_tensors.size(); ++i) {
+    for (size_t i = 0; i < x_tensors.size(); ++i) {
       const auto *x_tensor = x_tensors[i];
       const auto *row_id = row_ids[i];
 
@@ -66,7 +66,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
 
     std::unordered_map<int64_t, std::tuple<int64_t, int64_t>>
         selected_rows_idx_map;
-    for (int i = 0; i < x_tensors.size(); ++i) {
+    for (size_t i = 0; i < x_tensors.size(); ++i) {
       const auto *row_id = row_ids[i];
 
       for (int j = 0; j < row_id->numel(); ++j) {
@@ -78,7 +78,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(row_ids_size, selected_rows_idx_map.size(),
                       "the rows and tensor map size should be the same");
 
-    for (int i = 0; i < outs.size(); ++i) {
+    for (size_t i = 0; i < outs.size(); ++i) {
       auto *out_ids = ids[i];
       auto *out = outs[i];
 
