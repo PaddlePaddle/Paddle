@@ -49,6 +49,8 @@ struct AnalysisConfig : public NativeConfig {
 
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1);
+  bool use_tensorrt() const { return use_tensorrt_; }
+
   // NOTE this is just for internal development, please not use it.
   // NOT stable yet.
   void EnableMKLDNN();
