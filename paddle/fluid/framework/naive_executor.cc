@@ -73,7 +73,7 @@ void NaiveExecutor::Run() {
 #ifndef PADDLE_ON_INFERENCE
   LOG_FIRST_N(WARNING, 15) << "The NaiveExecutor can not work properly if the "
                               "cmake flag ON_INFER is not set.";
-  LOG_FIRST_N(WARNING, 15) << "Unlike the traning phase, all the scopes and "
+  LOG_FIRST_N(WARNING, 15) << "Unlike the training phase, all the scopes and "
                               "variables will be reused to save the allocation "
                               "overhead.";
   LOG_FIRST_N(WARNING, 15) << "Please re-compile the inference library by "
