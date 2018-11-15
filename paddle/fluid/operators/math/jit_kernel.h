@@ -159,6 +159,14 @@ class CRFDecodeKernel : public Kernel {
                        int *track) const = 0;
 };
 
+template <typename T>
+class LayerNormKernel : public Kernel {
+ public:
+  virtual void Compute(T *x, T *out, T *mean, T *var, const T *scale,
+                       const T *bias, int height,
+                       const float epsilon) const = 0;
+};
+
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators

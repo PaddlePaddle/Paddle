@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/jit_kernel.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -191,192 +192,17 @@ class LayerNormKernel : public framework::OpKernel<T> {
     out.ShareDataWith(*y);
     out.Resize(matrix_shape);
 
-#ifdef __AVX__
-#ifndef AVX_FLOAT_BLOCK
-#define AVX_FLOAT_BLOCK 8
-#endif
-    if (std::is_same<T, float>::value && (right >= AVX_FLOAT_BLOCK)) {
-      T* in_buf;
-      T* out_buf;
-      const T* in_buf_scale = scale->data<T>();
-      const T* in_buf_bias = bias->data<T>();
-      int height = left;
-      int size = right;
-      __m256 size_vec = _mm256_set1_ps(size);
-      __m256 epsilon_vec = _mm256_set1_ps(epsilon);
-      const int block = AVX_FLOAT_BLOCK;
-      const int rest = size % block;
-      const int rest_mask =
-          ((-1) & (~((~0U) >> (sizeof(int) * 8 - (block - rest))))) & 0x0ff;
-      __m256i mask_vec = _mm256_set_epi32(
-          rest_mask & 0x80 ? 0xffffffff : 0, rest_mask & 0x40 ? 0xffffffff : 0,
-          rest_mask & 0x20 ? 0xffffffff : 0, rest_mask & 0x10 ? 0xffffffff : 0,
-          rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
-          rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
-      int end = size - rest;
+    PADDLE_ENFORCE_EQ(mean->numel(), left);
+    PADDLE_ENFORCE_EQ(var->numel(), left);
+    PADDLE_ENFORCE_EQ(scale->numel(), right);
+    PADDLE_ENFORCE_EQ(bias->numel(), right);
 
-      PADDLE_ENFORCE_EQ(mean->numel(), left);
-      PADDLE_ENFORCE_EQ(var->numel(), left);
-      PADDLE_ENFORCE_EQ(scale->numel(), right);
-      PADDLE_ENFORCE_EQ(bias->numel(), right);
-
-      __m256 sum;
-      __m256 mean_vec, var_vec;
-      __m128 hi, lo;
-      __m256 last_vec;
-      __m256 tmp;
-      size_t offset;
-      size_t j;
-
-      for (int i = 0; i < height; ++i) {
-        in_buf = x.data<T>();
-        out_buf = mean->data<T>();
-        offset = i * size;
-
-        // get mean
-        sum = _mm256_setzero_ps();
-        for (j = offset; j < end + offset; j += block) {
-          sum = _mm256_add_ps(sum, _mm256_loadu_ps((const float*)in_buf + j));
-        }
-        if (rest != 0) {
-          j = offset + size - block;
-          tmp = _mm256_loadu_ps((const float*)in_buf + j);
-          tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp, (__m256)mask_vec);
-          sum = _mm256_add_ps(sum, tmp);
-        }
-        hi = _mm256_extractf128_ps(sum, 1);
-        lo = _mm256_extractf128_ps(sum, 0);
-        sum = _mm256_add_ps(
-            sum, _mm256_insertf128_ps(
-                     _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
-        sum = _mm256_hadd_ps(sum, sum);
-        sum = _mm256_hadd_ps(sum, sum);
-        mean_vec = _mm256_div_ps(sum, size_vec);
-        out_buf[i] = *reinterpret_cast<float*>(&mean_vec);
-
-        // get variance
-        out_buf = var->data<T>();
-        sum = _mm256_setzero_ps();
-        for (j = offset; j < end + offset; j += block) {
-          tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)in_buf + j),
-                              mean_vec);
-          tmp = _mm256_mul_ps(tmp, tmp);
-          sum = _mm256_add_ps(sum, tmp);
-        }
-        if (rest != 0) {
-          j = offset + size - block;
-          tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)in_buf + j),
-                              mean_vec);
-          tmp = _mm256_mul_ps(tmp, tmp);
-          tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp, (__m256)mask_vec);
-          sum = _mm256_add_ps(sum, tmp);
-        }
-        hi = _mm256_extractf128_ps(sum, 1);
-        lo = _mm256_extractf128_ps(sum, 0);
-        sum = _mm256_add_ps(
-            sum, _mm256_insertf128_ps(
-                     _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
-        sum = _mm256_hadd_ps(sum, sum);
-        sum = _mm256_hadd_ps(sum, sum);
-        var_vec = _mm256_div_ps(sum, size_vec);
-        out_buf[i] = *reinterpret_cast<float*>(&var_vec);
-
-        // get x_norm
-        out_buf = out.data<T>();
-        for (j = offset; j < end + offset; j += block) {
-          tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)in_buf + j),
-                              mean_vec);
-          tmp = _mm256_div_ps(
-              tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
-          _mm256_storeu_ps(reinterpret_cast<float*>(out_buf) + j, tmp);
-        }
-        if (rest != 0) {
-          j = offset + size - block;
-          tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)in_buf + j),
-                              mean_vec);
-          tmp = _mm256_div_ps(
-              tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
-          _mm256_storeu_ps(reinterpret_cast<float*>(out_buf) + j, tmp);
-        }
-
-        in_buf = out.data<T>();
-        if (scale) {
-          if (rest != 0) {
-            j = offset + size - block;
-            last_vec = _mm256_loadu_ps((const float*)in_buf + j);
-          }
-          for (j = offset; j < end + offset; j += block) {
-            _mm256_storeu_ps(
-                reinterpret_cast<float*>(out_buf) + j,
-                _mm256_mul_ps(
-                    _mm256_loadu_ps((const float*)in_buf + j),
-                    _mm256_loadu_ps((const float*)in_buf_scale + j - offset)));
-          }
-          if (rest != 0) {
-            j = offset + size - block;
-            _mm256_storeu_ps(
-                reinterpret_cast<float*>(out_buf) + j,
-                _mm256_mul_ps(
-                    last_vec,
-                    _mm256_loadu_ps((const float*)in_buf_scale + j - offset)));
-          }
-        }
-
-        if (bias) {
-          if (rest != 0) {
-            j = offset + size - block;
-            last_vec = _mm256_loadu_ps((const float*)in_buf + j);
-          }
-          for (j = offset; j < end + offset; j += block) {
-            _mm256_storeu_ps(
-                reinterpret_cast<float*>(out_buf) + j,
-                _mm256_add_ps(
-                    _mm256_loadu_ps((const float*)in_buf + j),
-                    _mm256_loadu_ps((const float*)in_buf_bias + j - offset)));
-          }
-          if (rest != 0) {
-            j = offset + size - block;
-            _mm256_storeu_ps(
-                reinterpret_cast<float*>(out_buf) + j,
-                _mm256_add_ps(
-                    last_vec,
-                    _mm256_loadu_ps((const float*)in_buf_bias + j - offset)));
-          }
-        }
-      }
-
-    } else {
-#endif
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      RowwiseMean2D<DeviceContext, T> row_mean(left, right,
-                                               ctx.device_context());
-
-      // get mean
-      row_mean(dev_ctx, x, mean);
-
-      // get variance
-      ElementwiseComputeEx<SubAndSquareFunctor<T>, DeviceContext, T>(
-          ctx, &x, mean, /*axis*/ 0, SubAndSquareFunctor<T>(), &out);
-      row_mean(dev_ctx, out, var);
-
-      // get x_norm
-      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &out);
-      ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
-          ctx, &out, var, /*axis*/ 0,
-          DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &out);
-
-      if (scale) {
-        ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
-            ctx, &out, scale, /*axis*/ 1, MulFunctor<T>(), &out);
-      }
-      if (bias) {
-        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-            ctx, &out, bias, /*axis*/ 1, AddFunctor<T>(), &out);
-      }
-#ifdef __AVX__
-    }
-#endif
+    const auto& ker = math::jitkernel::KernelPool::Instance()
+                          .template Get<math::jitkernel::LayerNormKernel<T>>(
+                              static_cast<int>(right));
+    ker->Compute(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
+                 scale->data<T>(), bias->data<T>(), static_cast<int>(left),
+                 static_cast<const float>(epsilon));
   }
 };
 
