@@ -26,7 +26,7 @@ class CPUPinnedAllocation : public Allocation {
       : Allocation(ptr, size, platform::CUDAPinnedPlace()) {}
 };
 
-class CPUPinnedAllocator : public MannualFreeAllocator {
+class CPUPinnedAllocator : public Allocator {
  public:
   bool IsAllocThreadSafe() const override;
 

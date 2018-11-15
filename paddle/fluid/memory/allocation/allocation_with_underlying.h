@@ -20,9 +20,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class UnderlyingManualAllocation : public Allocation {
+class AllocationWithUnderlying : public Allocation {
  public:
-  explicit UnderlyingManualAllocation(AllocationPtr allocation)
+  explicit AllocationWithUnderlying(AllocationPtr allocation)
       : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
         allocation_(std::move(allocation)) {}
   AllocationPtr allocation_;

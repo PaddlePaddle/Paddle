@@ -52,7 +52,7 @@ class StubAllocation : public Allocation {
   using Allocation::Allocation;
 };
 
-class StubAllocator : public MannualFreeAllocator {
+class StubAllocator : public Allocator {
  public:
   void ResetCounter() {
     construct_count_ = 0;

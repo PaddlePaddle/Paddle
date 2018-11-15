@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
-#include "paddle/fluid/memory/allocation/underlying_manual_allocation.h"
+#include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -24,8 +24,7 @@ bool RetryAllocator::IsAllocThreadSafe() const {
 
 void RetryAllocator::Free(Allocation* allocation) {
   // Delete underlying allocation first.
-  reinterpret_cast<UnderlyingManualAllocation*>(allocation)
-      ->allocation_.reset();
+  reinterpret_cast<AllocationWithUnderlying*>(allocation)->allocation_.reset();
   {
     // notify all waited allocators, they can try to allocate memory after free.
     std::lock_guard<std::mutex> lock(mutex_);
@@ -36,7 +35,7 @@ void RetryAllocator::Free(Allocation* allocation) {
 
 Allocation* RetryAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   auto alloc_func = [&, this]() {
-    return new UnderlyingManualAllocation(
+    return new AllocationWithUnderlying(
         underlying_allocator_->Allocate(size, attr));
   };
   // In fact, we can unify the code of allocation success and failure

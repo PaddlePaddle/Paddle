@@ -26,7 +26,7 @@ namespace allocation {
 
 class RetryAllocator;
 
-class RetryAllocator : public MannualFreeAllocator {
+class RetryAllocator : public Allocator {
  public:
   RetryAllocator(std::unique_ptr<Allocator>&& allocator, size_t retry_ms)
       : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {

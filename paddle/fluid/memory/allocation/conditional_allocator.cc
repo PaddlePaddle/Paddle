@@ -24,15 +24,6 @@ ConditionalAllocator& ConditionalAllocator::AddAllocator(
   underlying_allocators_.emplace_back(std::move(func), std::move(allocator));
   return *this;
 }
-AllocationPtr ConditionalAllocator::Allocate(size_t size,
-                                             Allocator::Attr attr) {
-  for (auto& pair : underlying_allocators_) {
-    if (pair.first(size, attr)) {
-      return pair.second->Allocate(size, attr);
-    }
-  }
-  throw BadAlloc("No suitable allocator");
-}
 
 bool ConditionalAllocator::IsAllocThreadSafe() const {
   return std::all_of(underlying_allocators_.begin(),
@@ -40,6 +31,16 @@ bool ConditionalAllocator::IsAllocThreadSafe() const {
                      [](const AllocatorWithCond& allocatorWithCond) {
                        return allocatorWithCond.second->IsAllocThreadSafe();
                      });
+}
+
+Allocation* ConditionalAllocator::AllocateImpl(size_t size,
+                                               Allocator::Attr attr) {
+  for (auto& pair : underlying_allocators_) {
+    if (pair.first(size, attr)) {
+      return pair.second->Allocate(size, attr).release();
+    }
+  }
+  throw BadAlloc("No suitable allocator");
 }
 
 }  // namespace allocation

@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <limits>
 #include <utility>
-#include "paddle/fluid/memory/allocation/underlying_manual_allocation.h"
+#include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 
 namespace paddle {
 namespace memory {
@@ -60,16 +60,16 @@ Allocation *BufferedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
     if (it != allocations_.end() && it->first < size * 2) {
       AllocationPtr result(std::move(it->second));
       allocations_.erase(it);
-      return new UnderlyingManualAllocation(std::move(result));
+      return new AllocationWithUnderlying(std::move(result));
     }
   }
 
   try {
-    return new UnderlyingManualAllocation(
+    return new AllocationWithUnderlying(
         underlying_allocator_->Allocate(size, attr));
   } catch (BadAlloc &) {
     FreeCache(size);
-    return new UnderlyingManualAllocation(
+    return new AllocationWithUnderlying(
         underlying_allocator_->Allocate(size, attr));
   }
 }

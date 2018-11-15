@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include <mutex>  // NOLINT
-#include "paddle/fluid/memory/allocation/underlying_manual_allocation.h"
+#include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 namespace paddle {
 namespace memory {
@@ -33,14 +33,14 @@ LockedAllocator::LockedAllocator(
 void LockedAllocator::Free(Allocation *allocation) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
-    reinterpret_cast<UnderlyingManualAllocation *>(allocation)
+    reinterpret_cast<AllocationWithUnderlying *>(allocation)
         ->allocation_.reset();  // Destroy inner allocation
   }
   delete allocation;
 }
 Allocation *LockedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-  return new UnderlyingManualAllocation(
+  return new AllocationWithUnderlying(
       underlying_allocator_->Allocate(size, attr));
 }
 }  // namespace allocation

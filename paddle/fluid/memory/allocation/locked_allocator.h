@@ -22,7 +22,7 @@ namespace memory {
 namespace allocation {
 
 // A allocator to make underlying allocator thread safe.
-class LockedAllocator : public MannualFreeAllocator {
+class LockedAllocator : public Allocator {
  public:
   explicit LockedAllocator(std::unique_ptr<Allocator> &&underlying_allocator);
   bool IsAllocThreadSafe() const override;

@@ -32,10 +32,12 @@ class BadAlloc : public std::exception {
 };
 
 class Allocation;
-struct AllocationDeleter {
+class AllocationDeleter {
+ public:
   void operator()(Allocation* allocation) const;
 };
 
+class Allocator;
 // Allocation is the object holding the actually pointer. Use
 // `Allocation::ptr()` will returns the pointer that allocated.
 //
@@ -45,7 +47,7 @@ struct AllocationDeleter {
 class Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), size_(size), place_(place) {}
+      : allocator_(nullptr), ptr_(ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -70,11 +72,14 @@ class Allocation {
 
   const platform::Place& place() const { return place_; }
 
+  Allocator* allocator() { return allocator_; }
+
+  void set_allocator(Allocator* allocator) { allocator_ = allocator; }
+
   virtual ~Allocation();
 
-  std::function<void(Allocation*)> Deleter;
-
  private:
+  Allocator* allocator_;
   void* ptr_;
   size_t size_;
   platform::Place place_;
@@ -121,25 +126,18 @@ class Allocator {
 
   virtual ~Allocator();
 
-  // Allocate an allocation. Note the return allocation might need to be freed
-  // manually if the Allocator is an `UnmanagedAllocator`.
-  virtual AllocationPtr Allocate(size_t size,
-                                 Allocator::Attr attr = kDefault) = 0;
+  // Allocate an allocation.
+  AllocationPtr Allocate(size_t size, Allocator::Attr attr = kDefault);
 
   // True if the `Allocate` is thread safe.
   virtual bool IsAllocThreadSafe() const;
-};
-
-// User need to invoke `Free` or `FreeUniquePtr` manually if allocated by
-// a manally managed allocator.
-class MannualFreeAllocator : public Allocator {
- public:
-  AllocationPtr Allocate(size_t size, Attr attr) final;
 
  protected:
-  virtual void Free(Allocation* allocation) = 0;
+  virtual void Free(Allocation* allocation);
   virtual Allocation* AllocateImpl(size_t size, Allocator::Attr attr) = 0;
-  friend class MannualFreeAllocation;
+
+ private:
+  friend class AllocationDeleter;
 };
 
 }  // namespace allocation
