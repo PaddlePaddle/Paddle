@@ -723,8 +723,8 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SELUFunctor : public BaseActivationFunctor<T> {
-  double alpha;
-  double scale;
+  float alpha;
+  float scale;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}, {"scale", &scale}};
   }
@@ -744,8 +744,8 @@ struct SELUFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SELUGradFunctor : public BaseActivationFunctor<T> {
-  double alpha;
-  double scale;
+  float alpha;
+  float scale;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}, {"scale", &scale}};
   }
