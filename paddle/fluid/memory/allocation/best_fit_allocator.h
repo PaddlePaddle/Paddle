@@ -98,7 +98,7 @@ class BestFitAllocation : public Allocation {
 //
 // To free an allocation, it will set the chunk of allocation to free and merge
 // the prev-chunk and the next-chunk when possible.
-class BestFitAllocator : public MannualFreeAllocator {
+class BestFitAllocator : public Allocator {
  public:
   explicit BestFitAllocator(Allocation* allocation);
 

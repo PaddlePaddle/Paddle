@@ -34,9 +34,11 @@ class ZeroSizeAllocator : public Allocator {
   ZeroSizeAllocator(std::shared_ptr<Allocator> underlying_allocator,
                     const platform::Place& p)
       : underlying_allocator_(std::move(underlying_allocator)), place_(p) {}
-  AllocationPtr Allocate(size_t size, Attr attr) override;
 
   bool IsAllocThreadSafe() const override;
+
+ protected:
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

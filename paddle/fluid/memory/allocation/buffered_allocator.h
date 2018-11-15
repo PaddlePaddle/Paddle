@@ -29,7 +29,7 @@ namespace allocation {
 // memory allocation and reuse memory.
 // BufferedAllocator provides the same thread-safety level as
 // underlying_allocator_
-class BufferedAllocator : public MannualFreeAllocator {
+class BufferedAllocator : public Allocator {
  public:
   explicit BufferedAllocator(std::unique_ptr<Allocator> &&allocator);
 

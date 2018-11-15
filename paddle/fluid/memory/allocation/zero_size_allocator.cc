@@ -18,16 +18,16 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-AllocationPtr ZeroSizeAllocator::Allocate(size_t size, Allocator::Attr attr) {
-  if (size == 0) {
-    return AllocationPtr(new ZeroSizeAllocation(place_));
-  } else {
-    return underlying_allocator_->Allocate(size, attr);
-  }
-}
-
 bool ZeroSizeAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();
+}
+
+Allocation *ZeroSizeAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+  if (size == 0) {
+    return new ZeroSizeAllocation(place_);
+  } else {
+    return underlying_allocator_->Allocate(size, attr).release();
+  }
 }
 }  // namespace allocation
 }  // namespace memory

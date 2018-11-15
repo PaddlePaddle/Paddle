@@ -49,11 +49,12 @@ class CPUManagedAllocator : public Allocator {
  public:
   CPUManagedAllocator() : normal_allocator_(new CPUAllocator()) {}
 
-  AllocationPtr Allocate(size_t size, Attr attr) override {
-    return normal_allocator_->Allocate(size, attr);
-  }
-
   bool IsAllocThreadSafe() const override { return true; }
+
+ protected:
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
+    return normal_allocator_->Allocate(size, attr).release();
+  }
 
  private:
   std::shared_ptr<Allocator> normal_allocator_;
@@ -103,10 +104,6 @@ class ChunkedManagedAllocator : public Allocator {
     raw_allocator_.reset();
   }
 
-  AllocationPtr Allocate(size_t size, Attr attr) override {
-    return default_allocator_->Allocate(size, attr);
-  }
-
   std::shared_ptr<Allocator> BestFitAllocatorCreator() {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
@@ -127,6 +124,11 @@ class ChunkedManagedAllocator : public Allocator {
   }
 
   bool IsAllocThreadSafe() const override { return true; }
+
+ protected:
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
+    return default_allocator_->Allocate(size, attr).release();
+  }
 
  protected:
   size_t max_chunk_size_;

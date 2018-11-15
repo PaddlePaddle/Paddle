@@ -27,7 +27,7 @@ class CUDAAllocation : public Allocation {
   using Allocation::Allocation;
 };
 
-class CUDAAllocator : public MannualFreeAllocator {
+class CUDAAllocator : public Allocator {
  public:
   explicit CUDAAllocator(const platform::CUDAPlace& place) : place_(place) {}
   explicit CUDAAllocator(const platform::Place& place)

@@ -54,13 +54,15 @@ class AutoIncrementAllocator : public Allocator {
   explicit AutoIncrementAllocator(AllocatorCreator&& creator, size_t capacity)
       : creator_(std::move(creator)), underlying_allocators_(capacity) {}
 
-  AllocationPtr Allocate(size_t size, Attr attr) override;
-
   bool IsAllocThreadSafe() const override;
 
  private:
   std::shared_ptr<Allocator> CreateNewAllocator();
 
+ protected:
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+
+ private:
   AllocatorCreator creator_;
 
   std::vector<AllocatorCreator::result_type> underlying_allocators_;

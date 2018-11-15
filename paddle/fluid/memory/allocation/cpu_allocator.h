@@ -31,7 +31,7 @@ class CPUAllocation : public Allocation {
   CPUAllocation(void* ptr, size_t size);
 };
 
-class CPUAllocator : public MannualFreeAllocator {
+class CPUAllocator : public Allocator {
  public:
   constexpr static size_t kAlignment = 64u;
   bool IsAllocThreadSafe() const override;

@@ -86,11 +86,12 @@ template <size_t kAlignment>
 class AlignedAllocator : public ThinAlignedAllocator {
  public:
   using ThinAlignedAllocator::ThinAlignedAllocator;
-  AllocationPtr Allocate(size_t size, Attr attr) override {
+
+ protected:
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
     auto raw_allocation =
         underlying_allocator_->Allocate(size + kAlignment, attr);
-    return AllocationPtr(
-        new AlignedAllocation<kAlignment>(std::move(raw_allocation), size));
+    return new AlignedAllocation<kAlignment>(std::move(raw_allocation), size);
   }
 };
 
