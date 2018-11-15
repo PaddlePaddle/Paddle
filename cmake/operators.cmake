@@ -194,12 +194,21 @@ endfunction()
 
 
 function(register_operators)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs EXCLUDES)
+    cmake_parse_arguments(register_operators "${options}" "${oneValueArgs}"
+            "${multiValueArgs}" ${ARGN})
+
     file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
     string(REPLACE "_mkldnn" "" OPS "${OPS}")
     string(REPLACE ".cc" "" OPS "${OPS}")
     list(REMOVE_DUPLICATES OPS)
 
     foreach(src ${OPS})
-        op_library(${src})
+        list(FIND register_operators_EXCLUDES ${src} _index)
+        if (${_index} EQUAL -1)
+            op_library(${src})
+        endif()
     endforeach()
 endfunction()
