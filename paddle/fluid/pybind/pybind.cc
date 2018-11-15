@@ -357,19 +357,16 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<platform::Communicator>();
            },
            py::return_value_policy::reference)
+#endif
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference)
-#endif
-      ;
+           py::return_value_policy::reference);
 
-#if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ResetAll);
-#endif
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
@@ -914,9 +911,9 @@ All parameter, weight, gradient are variables in Paddle.
         pybind11::gil_scoped_release release;
         self.Run(fetch_tensors, fetched_var_name);
       });
+#endif
 
   BindRecordIOWriter(&m);
-#endif
   return m.ptr();
 }
 }  // namespace pybind

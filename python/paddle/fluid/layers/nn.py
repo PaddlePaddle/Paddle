@@ -169,6 +169,12 @@ __all__ = [
     'bilinear_tensor_product',
 ]
 
+# To avoid the api checker complains
+if os.name == 'nt':
+    __all__.remove('dynamic_lstm')
+    __all__.remove('crf_decoding')
+    __all__.remove('roi_pool')
+
 
 def fc(input,
        size,

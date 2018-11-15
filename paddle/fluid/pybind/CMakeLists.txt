@@ -1,9 +1,8 @@
 
-set(PYBIND_DEPS pybind python proto_desc memory executor prune  feed_fetch_method pass_builder)
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc)
+set(PYBIND_DEPS pybind python proto_desc memory executor prune feed_fetch_method pass_builder)
+set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc)
 if(NOT WIN32)
   list(APPEND PYBIND_DEPS parallel_executor profiler)
-  list(APPEND PYBIND_SRCS recordio.cc)
 endif(NOT WIN32)
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
