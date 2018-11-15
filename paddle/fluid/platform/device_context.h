@@ -110,7 +110,7 @@ class CudnnHolder {
   std::mutex& Mutex() { return mtx_; }
 
   cudnnHandle_t cudnn_handle_;
-  std::unique_ptr<memory::Allocation> workspace_;
+  memory::AllocationPtr workspace_;
 
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;

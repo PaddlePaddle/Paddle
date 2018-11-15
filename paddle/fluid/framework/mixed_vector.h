@@ -284,7 +284,7 @@ class Vector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     mutable std::vector<T> cpu_;
-    mutable std::unique_ptr<memory::Allocation> gpu_;
+    mutable memory::AllocationPtr gpu_;
     mutable int flag_;
 
     mutable std::mutex mtx_;
