@@ -152,10 +152,6 @@ void ReluJitCode::generate() {
   ret();
 }
 
-bool VExpJitCode::init(int d) {
-  return MayIUse(avx) && d == 8;  // only 8 yet
-}
-
 #define ALIGN32 __attribute__((aligned(32)))
 #define EXP_HIG 88.3762626647949f
 #define EXP_LOW -88.3762626647949f
@@ -171,6 +167,7 @@ bool VExpJitCode::init(int d) {
 
 #define REPEAT_8TIMES(val) val, val, val, val, val, val, val, val
 
+#define OFFSET_EXP_ONE 0 * AVX_FLOAT_BLOCK * sizeof(float)
 #define OFFSET_EXP_0P5 1 * AVX_FLOAT_BLOCK * sizeof(float)
 #define OFFSET_EXP_HIG 2 * AVX_FLOAT_BLOCK * sizeof(float)
 #define OFFSET_EXP_LOW 3 * AVX_FLOAT_BLOCK * sizeof(float)
@@ -183,24 +180,43 @@ bool VExpJitCode::init(int d) {
 #define OFFSET_EXP_P3 10 * AVX_FLOAT_BLOCK * sizeof(float)
 #define OFFSET_EXP_P4 11 * AVX_FLOAT_BLOCK * sizeof(float)
 #define OFFSET_EXP_P5 12 * AVX_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_MAX_INPUT 13 * AVX_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_SIGMOID_MAX 14 * AVX_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_SIGMOID_MIN 15 * AVX_FLOAT_BLOCK * sizeof(float)
 
 static const float exp_float_consts[] ALIGN32 = {
-    REPEAT_8TIMES(1.f),           REPEAT_8TIMES(0.5f),
-    REPEAT_8TIMES(EXP_HIG),       REPEAT_8TIMES(EXP_LOW),
-    REPEAT_8TIMES(CEPHES_LOG2EF), REPEAT_8TIMES(CEPHES_EXP_C1),
-    REPEAT_8TIMES(CEPHES_EXP_C2), REPEAT_8TIMES(CEPHES_EXP_P0),
-    REPEAT_8TIMES(CEPHES_EXP_P1), REPEAT_8TIMES(CEPHES_EXP_P2),
-    REPEAT_8TIMES(CEPHES_EXP_P3), REPEAT_8TIMES(CEPHES_EXP_P4),
-    REPEAT_8TIMES(CEPHES_EXP_P5)};
+    REPEAT_8TIMES(1.f),
+    REPEAT_8TIMES(0.5f),
+    REPEAT_8TIMES(EXP_HIG),
+    REPEAT_8TIMES(EXP_LOW),
+    REPEAT_8TIMES(CEPHES_LOG2EF),
+    REPEAT_8TIMES(CEPHES_EXP_C1),
+    REPEAT_8TIMES(CEPHES_EXP_C2),
+    REPEAT_8TIMES(CEPHES_EXP_P0),
+    REPEAT_8TIMES(CEPHES_EXP_P1),
+    REPEAT_8TIMES(CEPHES_EXP_P2),
+    REPEAT_8TIMES(CEPHES_EXP_P3),
+    REPEAT_8TIMES(CEPHES_EXP_P4),
+    REPEAT_8TIMES(CEPHES_EXP_P5),
+    REPEAT_8TIMES(EXP_MAX_INPUT),
+    REPEAT_8TIMES(SIGMOID_THRESHOLD_MAX),
+    REPEAT_8TIMES(SIGMOID_THRESHOLD_MIN)};
 
 static const int exp_int_0x7f[] ALIGN32 = {REPEAT_8TIMES(0x7f)};
 static int g_tmp_mem[16] ALIGN32 = {0};
 
-void VExpJitCode::generate() {
-  // in: ymm0, out: ymm1
-  // use ymm 0~5, rax
-  int offset = 0;
-  vmovups(ymm_src, ptr[param1 + offset]);
+bool VExpJitCode::init(int d) {
+  return MayIUse(avx) && d == 8;  // only 8 yet
+}
+
+void VExpJitCode::exp_ymm(ymm_t& ymm_src, ymm_t& ymm_dst) {
+  // use reg rax and ymm 2~5
+  reg64_t reg_ptr_global = rax;
+  ymm_t ymm_fx = ymm_t(2);
+  ymm_t ymm_fy = ymm_t(3);
+  ymm_t ymm_mask = ymm_t(4);
+  ymm_t ymm_tmp = ymm_t(5);
+  push(reg_ptr_global);
   mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
   vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_HIG]);
   vminps(ymm_src, ymm_src, ymm_tmp);
@@ -269,8 +285,45 @@ void VExpJitCode::generate() {
     vmovdqa(ymm_int, ptr[reg_ptr_tmp]);
   }
   vmulps(ymm_dst, ymm_dst, ymm_int);
-  vmovups(ptr[param2 + offset], ymm_dst);
+  pop(reg_ptr_global);
+}
 
+void VExpJitCode::generate() {
+  int offset = 0;
+  vmovups(ymm_src, ptr[param1 + offset]);
+  exp_ymm(ymm_src, ymm_dst);
+  vmovups(ptr[param2 + offset], ymm_dst);
+  ret();
+}
+
+bool VSigmoidJitCode::init(int d) {
+  return MayIUse(avx) && d == 8;  // only 8 yet
+}
+
+void VSigmoidJitCode::sigmoid_ymm(ymm_t& ymm_src, ymm_t& ymm_dst) {
+  // use ymm2
+  reg64_t reg_ptr_global = rax;
+  ymm_t ymm_tmp = ymm_t(2);
+  push(reg_ptr_global);
+  mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
+  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MAX]);
+  vminps(ymm_src, ymm_src, ymm_tmp);
+  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MIN]);
+  vmaxps(ymm_src, ymm_src, ymm_tmp);
+  vxorps(ymm_tmp, ymm_tmp, ymm_tmp);
+  vsubps(ymm_src, ymm_tmp, ymm_src);
+  exp_ymm(ymm_src, ymm_dst);
+  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
+  vaddps(ymm_dst, ymm_dst, ymm_tmp);
+  vdivps(ymm_dst, ymm_tmp, ymm_dst);
+  pop(reg_ptr_global);
+}
+
+void VSigmoidJitCode::generate() {
+  int offset = 0;
+  vmovups(ymm_src, ptr[param1 + offset]);
+  sigmoid_ymm(ymm_src, ymm_dst);
+  vmovups(ptr[param2 + offset], ymm_dst);
   ret();
 }
 
