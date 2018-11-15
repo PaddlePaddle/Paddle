@@ -366,5 +366,18 @@ class TestGenerateProposals(unittest.TestCase):
         print(rpn_rois.shape)
 
 
+class TestYoloDetection(unittest.TestCase):
+    def test_yolov3_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
+            gtbox = layers.data(name='gtbox', shape=[10, 4], dtype='float32')
+            gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
+            loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13], 10,
+                                      0.5)
+
+            self.assertIsNotNone(loss)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -66,7 +66,7 @@ def box_iou(box1, box2):
     return inter_area / (b1_area + b2_area + inter_area)
 
 
-def build_target(gtboxs, attrs, grid_size):
+def build_target(gtboxs, gtlabel, attrs, grid_size):
     n, b, _ = gtboxs.shape
     ignore_thresh = attrs["ignore_thresh"]
     anchors = attrs["anchors"]
@@ -87,11 +87,11 @@ def build_target(gtboxs, attrs, grid_size):
             if gtboxs[i, j, :].sum() == 0:
                 continue
 
-            gt_label = int(gtboxs[i, j, 0])
-            gx = gtboxs[i, j, 1] * grid_size
-            gy = gtboxs[i, j, 2] * grid_size
-            gw = gtboxs[i, j, 3] * grid_size
-            gh = gtboxs[i, j, 4] * grid_size
+            gt_label = gtlabel[i, j]
+            gx = gtboxs[i, j, 0] * grid_size
+            gy = gtboxs[i, j, 1] * grid_size
+            gw = gtboxs[i, j, 2] * grid_size
+            gh = gtboxs[i, j, 3] * grid_size
 
             gi = int(gx)
             gj = int(gy)
@@ -121,7 +121,7 @@ def build_target(gtboxs, attrs, grid_size):
     return (tx, ty, tw, th, tconf, tcls, obj_mask, noobj_mask)
 
 
-def YoloV3Loss(x, gtbox, attrs):
+def YoloV3Loss(x, gtbox, gtlabel, attrs):
     n, c, h, w = x.shape
     an_num = len(attrs['anchors']) // 2
     class_num = attrs["class_num"]
@@ -134,7 +134,7 @@ def YoloV3Loss(x, gtbox, attrs):
     pred_cls = sigmoid(x[:, :, :, :, 5:])
 
     tx, ty, tw, th, tconf, tcls, obj_mask, noobj_mask = build_target(
-        gtbox, attrs, x.shape[2])
+        gtbox, gtlabel, attrs, x.shape[2])
 
     obj_mask_expand = np.tile(
         np.expand_dims(obj_mask, 4), (1, 1, 1, 1, int(attrs['class_num'])))
@@ -142,73 +142,73 @@ def YoloV3Loss(x, gtbox, attrs):
     loss_y = mse(pred_y * obj_mask, ty * obj_mask, obj_mask.sum())
     loss_w = mse(pred_w * obj_mask, tw * obj_mask, obj_mask.sum())
     loss_h = mse(pred_h * obj_mask, th * obj_mask, obj_mask.sum())
-    loss_conf_obj = bce(pred_conf * obj_mask, tconf * obj_mask, obj_mask)
-    loss_conf_noobj = bce(pred_conf * noobj_mask, tconf * noobj_mask,
-                          noobj_mask)
+    loss_conf_target = bce(pred_conf * obj_mask, tconf * obj_mask, obj_mask)
+    loss_conf_notarget = bce(pred_conf * noobj_mask, tconf * noobj_mask,
+                             noobj_mask)
     loss_class = bce(pred_cls * obj_mask_expand, tcls * obj_mask_expand,
                      obj_mask_expand)
 
-    return attrs['lambda_xy'] * (loss_x + loss_y) \
-            + attrs['lambda_wh'] * (loss_w + loss_h) \
-            + attrs['lambda_conf_obj'] * loss_conf_obj \
-            + attrs['lambda_conf_noobj'] * loss_conf_noobj \
-            + attrs['lambda_class'] * loss_class
+    return attrs['loss_weight_xy'] * (loss_x + loss_y) \
+            + attrs['loss_weight_wh'] * (loss_w + loss_h) \
+            + attrs['loss_weight_conf_target'] * loss_conf_target \
+            + attrs['loss_weight_conf_notarget'] * loss_conf_notarget \
+            + attrs['loss_weight_class'] * loss_class
 
 
 class TestYolov3LossOp(OpTest):
     def setUp(self):
-        self.lambda_xy = 1.0
-        self.lambda_wh = 1.0
-        self.lambda_conf_obj = 1.0
-        self.lambda_conf_noobj = 1.0
-        self.lambda_class = 1.0
+        self.loss_weight_xy = 1.0
+        self.loss_weight_wh = 1.0
+        self.loss_weight_conf_target = 1.0
+        self.loss_weight_conf_notarget = 1.0
+        self.loss_weight_class = 1.0
         self.initTestCase()
         self.op_type = 'yolov3_loss'
         x = np.random.random(size=self.x_shape).astype('float32')
         gtbox = np.random.random(size=self.gtbox_shape).astype('float32')
-        gtbox[:, :, 0] = np.random.randint(0, self.class_num,
-                                           self.gtbox_shape[:2])
+        gtlabel = np.random.randint(0, self.class_num,
+                                    self.gtbox_shape[:2]).astype('int32')
 
         self.attrs = {
             "anchors": self.anchors,
             "class_num": self.class_num,
             "ignore_thresh": self.ignore_thresh,
-            "lambda_xy": self.lambda_xy,
-            "lambda_wh": self.lambda_wh,
-            "lambda_conf_obj": self.lambda_conf_obj,
-            "lambda_conf_noobj": self.lambda_conf_noobj,
-            "lambda_class": self.lambda_class,
+            "loss_weight_xy": self.loss_weight_xy,
+            "loss_weight_wh": self.loss_weight_wh,
+            "loss_weight_conf_target": self.loss_weight_conf_target,
+            "loss_weight_conf_notarget": self.loss_weight_conf_notarget,
+            "loss_weight_class": self.loss_weight_class,
         }
 
-        self.inputs = {'X': x, 'GTBox': gtbox}
+        self.inputs = {'X': x, 'GTBox': gtbox, 'GTLabel': gtlabel}
         self.outputs = {
-            'Loss':
-            np.array([YoloV3Loss(x, gtbox, self.attrs)]).astype('float32')
+            'Loss': np.array(
+                [YoloV3Loss(x, gtbox, gtlabel, self.attrs)]).astype('float32')
         }
 
     def test_check_output(self):
         place = core.CPUPlace()
         self.check_output_with_place(place, atol=1e-3)
 
-    # def test_check_grad_ignore_gtbox(self):
-    #     place = core.CPUPlace()
-    #     self.check_grad_with_place(
-    #         place, ['X'],
-    #         'Loss',
-    #         no_grad_set=set("GTBox"),
-    #         max_relative_error=0.06)
+    def test_check_grad_ignore_gtbox(self):
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X'],
+            'Loss',
+            no_grad_set=set("GTBox"),
+            max_relative_error=0.06)
 
     def initTestCase(self):
         self.anchors = [10, 13, 12, 12]
         self.class_num = 10
         self.ignore_thresh = 0.5
         self.x_shape = (5, len(self.anchors) // 2 * (5 + self.class_num), 7, 7)
-        self.gtbox_shape = (5, 5, 5)
-        self.lambda_xy = 2.5
-        self.lambda_wh = 0.8
-        self.lambda_conf_obj = 1.5
-        self.lambda_conf_noobj = 0.5
-        self.lambda_class = 1.2
+        self.gtbox_shape = (5, 10, 4)
+        self.loss_weight_xy = 2.5
+        self.loss_weight_wh = 0.8
+        self.loss_weight_conf_target = 1.5
+        self.loss_weight_conf_notarget = 0.5
+        self.loss_weight_class = 1.2
 
 
 if __name__ == "__main__":

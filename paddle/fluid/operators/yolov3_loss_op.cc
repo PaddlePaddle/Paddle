@@ -25,11 +25,14 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                    "Input(X) of Yolov3LossOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("GTBox"),
                    "Input(GTBox) of Yolov3LossOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("GTLabel"),
+                   "Input(GTLabel) of Yolov3LossOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
                    "Output(Loss) of Yolov3LossOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
-    auto dim_gt = ctx->GetInputDim("GTBox");
+    auto dim_gtbox = ctx->GetInputDim("GTBox");
+    auto dim_gtlabel = ctx->GetInputDim("GTLabel");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
     auto class_num = ctx->Attrs().Get<int>("class_num");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
@@ -38,8 +41,15 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(dim_x[1], anchors.size() / 2 * (5 + class_num),
                       "Input(X) dim[1] should be equal to (anchor_number * (5 "
                       "+ class_num)).");
-    PADDLE_ENFORCE_EQ(dim_gt.size(), 3, "Input(GTBox) should be a 3-D tensor");
-    PADDLE_ENFORCE_EQ(dim_gt[2], 5, "Input(GTBox) dim[2] should be 5");
+    PADDLE_ENFORCE_EQ(dim_gtbox.size(), 3,
+                      "Input(GTBox) should be a 3-D tensor");
+    PADDLE_ENFORCE_EQ(dim_gtbox[2], 4, "Input(GTBox) dim[2] should be 5");
+    PADDLE_ENFORCE_EQ(dim_gtlabel.size(), 2,
+                      "Input(GTBox) should be a 2-D tensor");
+    PADDLE_ENFORCE_EQ(dim_gtlabel[0], dim_gtbox[0],
+                      "Input(GTBox) and Input(GTLabel) dim[0] should be same");
+    PADDLE_ENFORCE_EQ(dim_gtlabel[1], dim_gtbox[1],
+                      "Input(GTBox) and Input(GTLabel) dim[1] should be same");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
                       "Attr(anchors) length should be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
@@ -73,11 +83,15 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of ground truth boxes, "
              "This is a 3-D tensor with shape of [N, max_box_num, 5], "
              "max_box_num is the max number of boxes in each image, "
-             "In the third dimention, stores label, x, y, w, h, "
-             "label is an integer to specify box class, x, y is the "
-             "center cordinate of boxes and w, h is the width and height"
-             "and x, y, w, h should be divided by input image height to "
-             "scale to [0, 1].");
+             "In the third dimention, stores x, y, w, h coordinates, "
+             "x, y is the center cordinate of boxes and w, h is the "
+             "width and height and x, y, w, h should be divided by "
+             "input image height to scale to [0, 1].");
+    AddInput("GTLabel",
+             "The input tensor of ground truth label, "
+             "This is a 2-D tensor with shape of [N, max_box_num], "
+             "and each element shoudl be an integer to indicate the "
+             "box class id.");
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
               "This is a 1-D tensor with shape of [1]");
@@ -88,19 +102,19 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
                               "it will be parsed pair by pair.");
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.");
-    AddAttr<float>("lambda_xy", "The weight of x, y location loss.")
+    AddAttr<float>("loss_weight_xy", "The weight of x, y location loss.")
         .SetDefault(1.0);
-    AddAttr<float>("lambda_wh", "The weight of w, h location loss.")
+    AddAttr<float>("loss_weight_wh", "The weight of w, h location loss.")
         .SetDefault(1.0);
     AddAttr<float>(
-        "lambda_conf_obj",
+        "loss_weight_conf_target",
         "The weight of confidence score loss in locations with target object.")
         .SetDefault(1.0);
-    AddAttr<float>("lambda_conf_noobj",
+    AddAttr<float>("loss_weight_conf_notarget",
                    "The weight of confidence score loss in locations without "
                    "target object.")
         .SetDefault(1.0);
-    AddAttr<float>("lambda_class", "The weight of classification loss.")
+    AddAttr<float>("loss_weight_class", "The weight of classification loss.")
         .SetDefault(1.0);
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
@@ -141,10 +155,10 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          Final loss will be represented as follow.
 
          $$
-         loss = \lambda_{xy} * loss_{xy} + \lambda_{wh} * loss_{wh}
-              + \lambda_{conf_obj} * loss_{conf_obj}
-              + \lambda_{conf_noobj} * loss_{conf_noobj}
-              + \lambda_{class} * loss_{class}
+         loss = \loss_weight_{xy} * loss_{xy} + \loss_weight_{wh} * loss_{wh}
+              + \loss_weight_{conf_target} * loss_{conf_target}
+              + \loss_weight_{conf_notarget} * loss_{conf_notarget}
+              + \loss_weight_{class} * loss_{class}
          $$
          )DOC");
   }
@@ -182,12 +196,14 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetType("yolov3_loss_grad");
     op->SetInput("X", Input("X"));
     op->SetInput("GTBox", Input("GTBox"));
+    op->SetInput("GTLabel", Input("GTLabel"));
     op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
 
     op->SetAttrMap(Attrs());
 
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetOutput(framework::GradVarName("GTBox"), {});
+    op->SetOutput(framework::GradVarName("GTLabel"), {});
     return std::unique_ptr<framework::OpDesc>(op);
   }
 };
