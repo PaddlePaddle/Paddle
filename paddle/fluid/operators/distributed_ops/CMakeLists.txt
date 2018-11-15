@@ -29,30 +29,11 @@ foreach(src ${OPS})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 endforeach()
 
-
-# foreach(dist_op "prefetch_op" "checkpoint_notify_op" "listen_and_serv_op" "send_op" "recv_op" "send_barrier_op" "fetch_barrier_op")
-#     op_library(${dist_op} DEPS ${DISTRIBUTE_DEPS})
-#     set_source_files_properties(${dist_op}.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-# endforeach()
-
 register_operators()
 
 if(WITH_GPU AND NOT WIN32)
     set(DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} nccl_common)
-    #set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    #cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op
-    #        listen_and_serv_op sum_op executor SERIAL)
-    # set_source_files_properties(test_send_nccl_id.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    # cc_test(test_send_nccl_id SRCS test_send_nccl_id.cc DEPS listen_and_serv_op ${DISTRIBUTE_DEPS} executor SERIAL)
-    # if(WITH_GRPC)
-    #     op_library(gen_nccl_id_op DEPS nccl_common sendrecvop_grpc)
-    # else()
-    #     op_library(gen_nccl_id_op DEPS nccl_common sendrecvop_brpc)
-    # endif()
-    # set_source_files_properties(gen_nccl_id_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 endif()
-#     set(DEPS_OPS ${DEPS_OPS} gen_nccl_id_op)
-# endif() # WITH_GPU AND NOT WIN32
 
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${DISTRIBUTE_DEPS} PARENT_SCOPE)
 set(GLOB_DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} CACHE INTERNAL "distributed dependency")
