@@ -82,9 +82,9 @@ inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_te
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50 
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
-# mobilenet
+# mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet 
-  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
 
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
