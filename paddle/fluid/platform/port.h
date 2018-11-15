@@ -132,10 +132,12 @@ static void MkDir(const char *path) {
     }
   }
 #else
-  CreateDirectory(path, NULL);
-  auto errorno = GetLastError();
-  if (errorno != ERROR_ALREADY_EXISTS) {
-    throw std::runtime_error(path_error);
+  BOOL return_value = CreateDirectory(path, NULL);
+  if (!return_value) {
+    auto errorno = GetLastError();
+    if (errorno != ERROR_ALREADY_EXISTS) {
+      throw std::runtime_error(path_error);
+    }
   }
 #endif  // !_WIN32
 }

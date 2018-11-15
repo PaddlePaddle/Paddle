@@ -95,7 +95,8 @@ function(op_library TARGET)
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
      "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "fusion_gru_op" "lstm_op" "fusion_lstm_op" "cumsum_op"
       "fusion_seqconv_eltadd_relu_op" "channel_send_op" "channel_create_op" "channel_close_op" "channel_recv_op"
-            "fusion_seqexpand_concat_fc_op" "attention_lstm_op" "fused_embedding_fc_lstm_op" "fc_op")
+            "fusion_seqexpand_concat_fc_op" "attention_lstm_op" "fused_embedding_fc_lstm_op" "fc_op"
+            )
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -225,7 +226,6 @@ if(WITH_DISTRIBUTE)
             ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
             SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${IBVERBS_LIBRARY})
 
-
             find_library(RDMACM_LIBRARY NAMES rdmacm)
             ADD_LIBRARY(rdmacm SHARED IMPORTED GLOBAL)
             SET_PROPERTY(TARGET rdmacm PROPERTY IMPORTED_LOCATION ${RDMACM_LIBRARY})
@@ -338,11 +338,7 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 
 file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
-
-
-if (NOT WIN32)
 add_subdirectory(reader)
-endif(NOT WIN32)
 foreach(src ${READER_LIBRARY})
     set(OP_LIBRARY ${src} ${OP_LIBRARY})
 endforeach()

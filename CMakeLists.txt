@@ -190,11 +190,11 @@ include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
 include(external/xxhash)    # download xxhash
-
-if (NOT WIN32)
-# there is no official support of snappystream, warpctc, nccl, cupti in windows
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+
+if (NOT WIN32)
+# there is no official support of warpctc, nccl, cupti in windows
 include(external/warpctc)   # download, build, install warpctc
 include(cupti)
 endif (NOT WIN32)
