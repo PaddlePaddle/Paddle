@@ -85,6 +85,29 @@ class VXXJitCode : public JitCode {
   ymm_t ymm_zero = ymm_t(3);
 };
 
+class ReluJitCode : public JitCode {
+ public:
+  DECLARE_JIT_CODE(ReluJitCode);
+  explicit ReluJitCode(int d, size_t code_size = 256 * 1024,
+                       void* code_ptr = nullptr)
+      : JitCode(code_size, code_ptr), num_(d) {}
+  static bool init(int d);
+  void generate() override;
+
+ private:
+  int num_;
+  reg64_t param1{abi_param1};
+  reg64_t param2{abi_param2};
+
+  xmm_t xmm_zero = xmm_t(0);
+  xmm_t xmm_src = xmm_t(1);
+  xmm_t xmm_dst = xmm_t(1);
+
+  ymm_t ymm_zero = ymm_t(0);
+  ymm_t ymm_src = ymm_t(1);
+  ymm_t ymm_dst = ymm_t(1);
+};
+
 }  // namespace gen
 }  // namespace jitkernel
 }  // namespace math
