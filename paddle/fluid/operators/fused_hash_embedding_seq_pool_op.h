@@ -58,7 +58,7 @@ struct EmbeddingVSumFunctor {
       for (int64_t r = in_lod[i]; r < in_lod[i + 1]; ++r) {
         for (int ihash = 0; ihash != num_hash; ++ihash) {
           int64_t id =
-              XXH64(input + r * seq_num, sizeof(int) * seq_num, ihash) % mod_by;
+              XXH32(input + r * seq_num, sizeof(int) * seq_num, ihash) % mod_by;
           blas.AXPY(row_width, 1., table + id * row_width,
                     output + i * last_dim + ihash * row_width);
         }
