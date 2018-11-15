@@ -4305,14 +4305,14 @@ def sequence_reshape(input, new_dim):
 def nce(input,
         label,
         num_total_classes,
-        sampler="uniform",
-        custom_dist=None,
         sample_weight=None,
         param_attr=None,
         bias_attr=None,
         num_neg_samples=None,
-        seed=0,
-        name=None):
+        name=None,
+        sampler="uniform",
+        custom_dist=None,
+        seed=0):
     """
     ${comment}
 
@@ -4320,13 +4320,6 @@ def nce(input,
         input (Variable): input variable.
         label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
-        sampler (str): The sampler used to sample class from negtive classes.
-                       It can be 'uniform', 'log_uniform' or 'custom_dist'.
-                       default: 'uniform'.
-        custom_dist (Variable): A tensor with shape [num_total_classes]. 
-                       It is used when sampler is set to 'custom_dist'.
-                       custom_dist[i] is the probsbility of i-th class to be sampled.
-                       default: None.
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
@@ -4340,9 +4333,16 @@ def nce(input,
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
         num_neg_samples (int): ${num_neg_samples_comment}
-        seed (int): The seed used in sampler. default: 0.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        sampler (str): The sampler used to sample class from negtive classes.
+                       It can be 'uniform', 'log_uniform' or 'custom_dist'.
+                       default: 'uniform'.
+        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+                       It is used when sampler is set to 'custom_dist'.
+                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       default: None.
+        seed (int): The seed used in sampler. default: 0.
 
     Returns:
         Variable: The output nce loss.
