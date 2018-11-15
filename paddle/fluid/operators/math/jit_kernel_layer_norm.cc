@@ -13,6 +13,9 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
 
 namespace paddle {
 namespace operators {
