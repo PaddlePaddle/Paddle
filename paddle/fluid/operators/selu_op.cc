@@ -74,7 +74,7 @@ $$
 f(x) =\lambda*
 \begin{cases}
  \quad \quad   x,  \quad \quad \quad \text{if} \ x > 0 \\
- \alpha * e^x - \alpha,  \qquad  \text{if} \ x >= 0
+ \alpha * e^x - \alpha,  \qquad  \text{if} \ x <= 0
 \end{cases}
 $$
 
