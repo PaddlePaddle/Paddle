@@ -192,6 +192,34 @@ class LayerNormKernel : public framework::OpKernel<T> {
     out.ShareDataWith(*y);
     out.Resize(matrix_shape);
 
+#ifdef PADDLE_WITH_CUDA
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    RowwiseMean2D<DeviceContext, T> row_mean(left, right, ctx.device_context());
+
+    // get mean
+    row_mean(dev_ctx, x, mean);
+
+    // get variance
+    ElementwiseComputeEx<SubAndSquareFunctor<T>, DeviceContext, T>(
+        ctx, &x, mean, /*axis*/ 0, SubAndSquareFunctor<T>(), &out);
+    row_mean(dev_ctx, out, var);
+
+    // get x_norm
+    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+        ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &out);
+    ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
+        ctx, &out, var, /*axis*/ 0,
+        DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &out);
+
+    if (scale) {
+      ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
+          ctx, &out, scale, /*axis*/ 1, MulFunctor<T>(), &out);
+    }
+    if (bias) {
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+          ctx, &out, bias, /*axis*/ 1, AddFunctor<T>(), &out);
+    }
+#else
     PADDLE_ENFORCE_EQ(mean->numel(), left);
     PADDLE_ENFORCE_EQ(var->numel(), left);
     PADDLE_ENFORCE_EQ(scale->numel(), right);
@@ -203,6 +231,7 @@ class LayerNormKernel : public framework::OpKernel<T> {
     ker->Compute(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
                  scale->data<T>(), bias->data<T>(), static_cast<int>(left),
                  static_cast<const float>(epsilon));
+#endif
   }
 };
 
