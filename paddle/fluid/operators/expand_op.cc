@@ -116,6 +116,10 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 
     size_t start_pos = 0u;
     if (!ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[i], out_dims[i],
+          "The first dimension size of Input(Out@GRAD) should be "
+          "equal to the crroresponding dimension size of Input(X)");
       start_pos = 1u;
     }
 
