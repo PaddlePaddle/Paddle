@@ -128,7 +128,6 @@ class VExpJitCode : public JitCode {
   ymm_t ymm_fx = ymm_t(2);
   ymm_t ymm_fy = ymm_t(3);
   ymm_t ymm_mask = ymm_t(4);
-  ymm_t ymm_z = ymm_t(4);
   ymm_t ymm_tmp = ymm_t(5);
 };
 
