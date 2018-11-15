@@ -32,8 +32,8 @@ def masks_to_boxes(masks):
         xmax = np.max(mask_loc[1])
         ymin = np.min(mask_loc[0])
         ymax = np.max(mask_loc[0])
-        boxes_from_masks[i, :] = np.array([xmin, ymax, xmin, ymax],\
-                                                      dtype=np.float32)
+        boxes_from_masks[i, :] = np.array([xmin, ymin, xmax, ymax],\
+                                                      dtype=np.int32)
     return boxes_from_masks
 
 
@@ -127,7 +127,7 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
     masks_gt = [gt_segms[i] for i in mask_gt_inds]
     boxes_from_masks = masks_to_boxes(masks_gt)
     fg_inds = np.where(label_int32 > 0)[0]
-    roi_has_mask = fg_inds
+    roi_has_mask = fg_inds.copy()
     if fg_inds.shape[0] > 0:
         mask_class_labels = label_int32[fg_inds]
         masks = np.zeros((fg_inds.shape[0], resolution**2), dtype=np.int32)
@@ -147,7 +147,7 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
         rois_fg = sampled_boxes[bg_inds[0]].reshape((1, -1))
         masks = -np.ones((1, resolution**2), dtype=np.int32)
         mask_class_labels = np.zeros((1, ))
-        roi_has_mask[0] = 1
+        np.append(roi_has_mask, 0)
     masks = expand_mask_targets(masks, mask_class_labels, resolution,
                                 num_classes)
     rois_fg *= im_scale

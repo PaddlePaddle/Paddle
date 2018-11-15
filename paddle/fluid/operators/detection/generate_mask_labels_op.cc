@@ -90,7 +90,7 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
 template <typename T>
 static inline Tensor MasksToBoxes(const platform::CPUDeviceContext& context,
                                   const Tensor& masks) {
-  int8_t* masks_data = masks.data<int8_t>();
+  const int8_t* masks_data = masks.data<int8_t>();
   int64_t num_mask = masks.dims()[0];
   int64_t height = masks.dims()[1];
   int64_t width = masks.dims()[2];
@@ -154,9 +154,9 @@ static inline Tensor ExpandMaskTarget(const platform::CPUDeviceContext& context,
                                       const Tensor& mask_class_labels,
                                       const int resolution,
                                       const int num_classes) {
-  int8_t* masks_data = masks.data<int8_t>();
+  const int8_t* masks_data = masks.data<int8_t>();
   int64_t num_mask = masks.dims()[0];
-  int* mask_class_labels_data = mask_class_labels.data<int>();
+  const int* mask_class_labels_data = mask_class_labels.data<int>();
   const int M = resolution * resolution;
   const int kMaskDim = M * num_classes;
 
