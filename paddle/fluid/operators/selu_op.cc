@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,16 +56,16 @@ class SeluOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input tensor of selu operator.");
     AddOutput("Out", "The output tensor of selu operator.");
-    AddAttr<float>("alpha",
-                   "(float) the default value is 1.6732~. For more "
-                   "information about this value, please refer to:"
-                   "https://arxiv.org/abs/1706.02515.")
-        .SetDefault(1.6732632423543772848170429916717);
     AddAttr<float>("scale",
                    "(float) the default value is 1.0507~. For more "
                    "information about this value, please refer to:"
                    "https://arxiv.org/abs/1706.02515.")
         .SetDefault(1.0507009873554804934193349852946);
+    AddAttr<float>("alpha",
+                   "(float) the default value is 1.6732~. For more "
+                   "information about this value, please refer to:"
+                   "https://arxiv.org/abs/1706.02515.")
+        .SetDefault(1.6732632423543772848170429916717);
     AddComment(R"DOC(
 Selu Operator.
 

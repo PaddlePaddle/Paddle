@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 static HOSTDEVICE float real_exp(float x) { return expf(x); }
-static HOSTDEVICE double real_exp(double x) { return exp(x); }
+static HOSTDEVICE float real_exp(double x) { return exp(x); }
 
 template <typename T>
 struct SeluFunctor {
@@ -55,7 +58,7 @@ struct SeluGradFunctor {
     T y_ele = y_data_ptr_[idx];
     T dy_ele = dy_data_ptr_[idx];
 
-    T tmp = scale_;
+    float tmp = scale_;
     if (y_ele <= 0) {
       tmp = y_ele + la_;
     }
