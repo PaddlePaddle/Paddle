@@ -412,7 +412,7 @@ void DetachDeletedNodes(framework::ir::Graph *graph) {
 void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
-    if (subgraph.size() <= min_subgraph_size_) continue;
+    if (subgraph.size() <= (size_t)min_subgraph_size_) continue;
     LOG(INFO) << "detect a subgraph size " << subgraph.size();
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
