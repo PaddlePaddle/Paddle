@@ -29,6 +29,7 @@ namespace jitkernel {
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 #define EXP_MAX_INPUT 40.0
+// TODO(TJ): change AVX_FLOAT_BLOCK to YMM_FLOAT_BLOCK
 #define AVX_FLOAT_BLOCK 8
 #define AVX2_FLOAT_BLOCK 8
 #define AVX512_FLOAT_BLOCK 16
@@ -124,6 +125,7 @@ template <typename T>
 class VSigmoidKernel : public VActKernel<T> {
  public:
   virtual void ComputeDeprecated(const T *x, T *y) const = 0;
+  void (*Compute)(const T *, T *, int);
 };
 
 template <typename T>

@@ -117,18 +117,36 @@ class VExpJitCode : public JitCode {
   static bool init(int d);
   void generate() override;
 
+ protected:
+  // compute exp with ymm
+  void exp_ymm(const Xbyak::Ymm& src, const Xbyak::Ymm& dst);
+
  private:
   int num_;
   reg64_t param1{abi_param1};
   reg64_t param2{abi_param2};
-
-  reg64_t reg_ptr_global = rax;
   ymm_t ymm_src = ymm_t(0);
   ymm_t ymm_dst = ymm_t(1);
-  ymm_t ymm_fx = ymm_t(2);
-  ymm_t ymm_fy = ymm_t(3);
-  ymm_t ymm_mask = ymm_t(4);
-  ymm_t ymm_tmp = ymm_t(5);
+};
+
+class VSigmoidJitCode : public VExpJitCode {
+ public:
+  DECLARE_JIT_CODE(VSigmoidJitCode);
+  explicit VSigmoidJitCode(int d, size_t code_size = 256 * 1024,
+                           void* code_ptr = nullptr)
+      : VExpJitCode(d, code_size, code_ptr), num_(d) {}
+  static bool init(int d);
+  void generate() override;
+
+  // compute sigmoid with ymm
+  void sigmoid_ymm(const Xbyak::Ymm& src, const Xbyak::Ymm& dst);
+
+ private:
+  int num_;
+  reg64_t param1{abi_param1};
+  reg64_t param2{abi_param2};
+  ymm_t ymm_src = ymm_t(0);
+  ymm_t ymm_dst = ymm_t(1);
 };
 
 }  // namespace gen

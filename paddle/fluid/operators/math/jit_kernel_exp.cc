@@ -43,6 +43,16 @@ void VExpRefer(const T* x, T* y, int n) {
   }
 }
 
+template <typename T>
+void VSigmoidRefer(const T* x, T* y, int n) {
+  const T min = SIGMOID_THRESHOLD_MIN;
+  const T max = SIGMOID_THRESHOLD_MAX;
+  for (int i = 0; i < n; ++i) {
+    T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+    y[i] = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-tmp));
+  }
+}
+
 #ifdef PADDLE_WITH_MKLML
 template <typename T>
 void VExpMKL(const T* x, T* y, int n);
@@ -55,6 +65,20 @@ void VExpMKL<float>(const float* x, float* y, int n) {
 template <>
 void VExpMKL<double>(const double* x, double* y, int n) {
   platform::dynload::vdExp(n, x, y);
+}
+
+template <typename T>
+void VSigmoidMKL(const T* x, T* y, int n) {
+  const T min = SIGMOID_THRESHOLD_MIN;
+  const T max = SIGMOID_THRESHOLD_MAX;
+  for (int i = 0; i < n; ++i) {
+    y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+    y[i] = static_cast<T>(0) - y[i];
+  }
+  VExpMKL(y, y, n);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
+  }
 }
 #endif
 
@@ -108,9 +132,65 @@ template <>
 bool VExpKernelImpl<double>::useMKL(int d) {
   return true;
 }
+
+#endif
+
+/* VSigmoid JitKernel */
+template <typename T>
+class VSigmoidKernelImpl : public VSigmoidKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit VSigmoidKernelImpl(int d) : VSigmoidKernel<T>() {
+    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
+      jitcode_.reset(new gen::VSigmoidJitCode(d, sz > 4096 ? sz : 4096));
+      this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
+      return;
+    }
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+    // strictly it's a better impl with MKL, then is refer
+    if (useMKL(d)) {
+      this->Compute = VSigmoidMKL<T>;
+      return;
+    }
+#endif
+    this->Compute = VSigmoidRefer<T>;
+  }
+  void ComputeDeprecated(const T* x, T* y) const override {
+    VSigmoidRefer(x, y, this->num_);
+  }
+#ifdef PADDLE_WITH_XBYAK
+
+ private:
+  std::unique_ptr<gen::VSigmoidJitCode> jitcode_{nullptr};
+#endif
+};
+
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool VSigmoidKernelImpl<float>::useJIT(int d) {
+  return gen::VSigmoidJitCode::init(d);
+}
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+bool VSigmoidKernelImpl<float>::useMKL(int d) {
+  return d > 512;
+}
+
+template <>
+bool VSigmoidKernelImpl<double>::useMKL(int d) {
+  return true;
+}
 #endif
 
 REGISTER_JITKERNEL(vexp, VExpKernel);
+REGISTER_JITKERNEL(vsigmoid, VSigmoidKernel);
 
 namespace detail {
 
@@ -258,31 +338,6 @@ __m256 ExpAVX2(__m256 x) {
 
 }  // namespace detail
 
-/* VSigmoid JitKernel */
-template <typename T, jit::cpu_isa_t isa, jit_block>
-class VSigmoidKernelImpl : public VSigmoidKernel<T> {
- public:
-  explicit VSigmoidKernelImpl(int d) : VSigmoidKernel<T>() {
-    this->num_ = d;
-    vexp_ = KernelPool::Instance().template Get<VExpKernel<T>>(d);
-  }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    const T min = SIGMOID_THRESHOLD_MIN;
-    const T max = SIGMOID_THRESHOLD_MAX;
-    for (int i = 0; i < this->num_; ++i) {
-      y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
-      y[i] = static_cast<T>(0) - y[i];
-    }
-    vexp_->ComputeDeprecated(y, y);
-    for (int i = 0; i < this->num_; ++i) {
-      y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
-    }
-  }
-
- private:
-  std::shared_ptr<const VExpKernel<T>> vexp_;
-};
-
 #define INTRI_SIGMOID(tmp, min, max, expisa)      \
   tmp = _mm256_max_ps(tmp, min);                  \
   tmp = _mm256_min_ps(tmp, max);                  \
@@ -290,119 +345,7 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
   tmp = expisa(tmp);                              \
   tmp = _mm256_add_ps(_mm256_set1_ps(1.0f), tmp); \
   tmp = _mm256_div_ps(_mm256_set1_ps(1.0f), tmp)
-
-#define INTRI8_FLOAT(isa, expisa)                               \
-  template <>                                                   \
-  void VSigmoidKernelImpl<float, isa, kEQ8>::ComputeDeprecated( \
-      const float* x, float* y) const {                         \
-    /* TODO(TJ): try to use static const*/                      \
-    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);         \
-    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);         \
-    __m256 tmp = _mm256_loadu_ps(x);                            \
-    INTRI_SIGMOID(tmp, min, max, expisa);                       \
-    _mm256_storeu_ps(y, tmp);                                   \
-  }
-
-#define INTRI16_FLOAT(isa, expisa)                               \
-  template <>                                                    \
-  void VSigmoidKernelImpl<float, isa, kEQ16>::ComputeDeprecated( \
-      const float* x, float* y) const {                          \
-    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);          \
-    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);          \
-    __m256 tmp0 = _mm256_loadu_ps(x);                            \
-    __m256 tmp1 = _mm256_loadu_ps(x + 8);                        \
-    INTRI_SIGMOID(tmp0, min, max, expisa);                       \
-    INTRI_SIGMOID(tmp1, min, max, expisa);                       \
-    _mm256_storeu_ps(y, tmp0);                                   \
-    _mm256_storeu_ps(y + 8, tmp1);                               \
-  }
-
-#define INTRI_GT8LT16_FLOAT(isa, expisa)                                     \
-  template <>                                                                \
-  VSigmoidKernelImpl<float, isa, kGT8LT16>::VSigmoidKernelImpl(int d)        \
-      : VSigmoidKernel<float>() {                                            \
-    this->num_ = d;                                                          \
-    this->end_ = AVX_FLOAT_BLOCK;                                            \
-    this->rest_ = d - this->end_;                                            \
-    vexp_ =                                                                  \
-        KernelPool::Instance().template Get<VExpKernel<float>>(this->rest_); \
-  }                                                                          \
-  template <>                                                                \
-  void VSigmoidKernelImpl<float, isa, kGT8LT16>::ComputeDeprecated(          \
-      const float* x, float* y) const {                                      \
-    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                      \
-    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                      \
-    __m256 tmp = _mm256_loadu_ps(x);                                         \
-    INTRI_SIGMOID(tmp, min, max, expisa);                                    \
-    _mm256_storeu_ps(y, tmp);                                                \
-    const float min_ = SIGMOID_THRESHOLD_MIN;                                \
-    const float max_ = SIGMOID_THRESHOLD_MAX;                                \
-    for (int i = this->end_; i < this->num_; ++i) {                          \
-      y[i] = (x[i] < min_) ? min_ : ((x[i] > max_) ? max_ : x[i]);           \
-      y[i] = 0.f - y[i];                                                     \
-    }                                                                        \
-    vexp_->ComputeDeprecated(y + this->end_, y + this->end_);                \
-    for (int i = this->end_; i < this->num_; ++i) {                          \
-      y[i] = 1.f / (1.f + y[i]);                                             \
-    }                                                                        \
-  }
-
-#define INTRI_GT16_FLOAT(isa, expisa)                                        \
-  template <>                                                                \
-  VSigmoidKernelImpl<float, isa, kGT16>::VSigmoidKernelImpl(int d)           \
-      : VSigmoidKernel<float>() {                                            \
-    this->num_ = d;                                                          \
-    this->rest_ = d % AVX_FLOAT_BLOCK;                                       \
-    this->end_ = d - this->rest_;                                            \
-    vexp_ =                                                                  \
-        KernelPool::Instance().template Get<VExpKernel<float>>(this->rest_); \
-  }                                                                          \
-  template <>                                                                \
-  void VSigmoidKernelImpl<float, isa, kGT16>::ComputeDeprecated(             \
-      const float* x, float* y) const {                                      \
-    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                      \
-    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                      \
-    for (int i = 0; i < this->end_; i += AVX_FLOAT_BLOCK) {                  \
-      __m256 tmp = _mm256_loadu_ps(x + i);                                   \
-      INTRI_SIGMOID(tmp, min, max, expisa);                                  \
-      _mm256_storeu_ps(y + i, tmp);                                          \
-    }                                                                        \
-    const float min_ = SIGMOID_THRESHOLD_MIN;                                \
-    const float max_ = SIGMOID_THRESHOLD_MAX;                                \
-    for (int i = this->end_; i < this->num_; ++i) {                          \
-      y[i] = (x[i] < min_) ? min_ : ((x[i] > max_) ? max_ : x[i]);           \
-      y[i] = 0.f - y[i];                                                     \
-    }                                                                        \
-    vexp_->ComputeDeprecated(y + this->end_, y + this->end_);                \
-    for (int i = this->end_; i < this->num_; ++i) {                          \
-      y[i] = 1.f / (1.f + y[i]);                                             \
-    }                                                                        \
-  }
-
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx, detail::ExpAVX);
-INTRI16_FLOAT(jit::avx, detail::ExpAVX);
-INTRI_GT8LT16_FLOAT(jit::avx, detail::ExpAVX);
-INTRI_GT16_FLOAT(jit::avx, detail::ExpAVX);
-#endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2, detail::ExpAVX2);
-INTRI16_FLOAT(jit::avx2, detail::ExpAVX2);
-// maybe use avx at gt8lt16 and gt16
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f, detail::ExpAVX2);
-INTRI16_FLOAT(jit::avx512f, detail::ExpAVX2);
-// maybe use avx2 at gt8lt16 and gt16
-#endif
-
-#undef INTRI8_FLOAT
-#undef INTRI16_FLOAT
-#undef INTRI_GT8LT16_FLOAT
-#undef INTRI_GT16_FLOAT
 #undef INTRI_VSIGMOID
-
-REGISTER_JITKERNEL_DEPRECATED(vsigmoid, VSigmoidKernel);
 
 /* VTanh JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>

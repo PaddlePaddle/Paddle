@@ -223,7 +223,7 @@ void vsigmoid_better(
     y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
     y[i] = 0.f - y[i];
   }
-  vexp->ComputeDeprecated(y, y);
+  vexp->Compute(y, y, n);
   for (int i = 0; i < n; ++i) {
     y[i] = 1.f / (1.f + y[i]);
   }
@@ -254,7 +254,7 @@ TEST(JitKernel, vsigmoid) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->ComputeDeprecated(x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -288,7 +288,7 @@ void vtanh_better(
     const int n, const float* x, float* y) {
   const float a = 2.f, b = -1.f;
   vscal->Compute(&a, x, y, n);
-  vsigmoid->ComputeDeprecated(y, y);
+  vsigmoid->Compute(y, y, n);
   vscal->Compute(&a, y, y, n);
   vaddbias->Compute(&b, y, y, n);
 }
