@@ -86,6 +86,7 @@ class CpuPassStrategy : public PassStrategy {
         "fc_fuse_pass",                  //
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
+        "is_test_pass",                  //
     });
   }
 

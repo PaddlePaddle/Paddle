@@ -229,8 +229,8 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
     AddAttr<bool>("is_test",
-                  "Turns on memory optimization that optimizes away "
-                  "unnecessary memory allocations. Used by MKLDNN.")
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
 
     AddComment(R"DOC(
