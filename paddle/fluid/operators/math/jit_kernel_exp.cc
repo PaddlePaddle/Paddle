@@ -116,7 +116,8 @@ class VExpKernelImpl : public VExpKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
-      jitcode_.reset(new gen::VExpJitCode(d, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::exp,
+                                          sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
       return;
     }
@@ -135,14 +136,14 @@ class VExpKernelImpl : public VExpKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 
  private:
-  std::unique_ptr<gen::VExpJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VActJitCode> jitcode_{nullptr};
 #endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool VExpKernelImpl<float>::useJIT(int d) {
-  return gen::VExpJitCode::init(d);
+  return gen::VActJitCode::init(d, gen::operand_type::exp);
 }
 #endif
 
@@ -169,7 +170,8 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
-      jitcode_.reset(new gen::VSigmoidJitCode(d, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::sigmoid,
+                                          sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
       return;
     }
@@ -190,14 +192,14 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 
  private:
-  std::unique_ptr<gen::VSigmoidJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VActJitCode> jitcode_{nullptr};
 #endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool VSigmoidKernelImpl<float>::useJIT(int d) {
-  return gen::VSigmoidJitCode::init(d);
+  return gen::VActJitCode::init(d, gen::operand_type::sigmoid);
 }
 #endif
 
@@ -223,7 +225,8 @@ class VTanhKernelImpl : public VTanhKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
-      jitcode_.reset(new gen::VTanhJitCode(d, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::tanh,
+                                          sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
       return;
     }
@@ -244,14 +247,14 @@ class VTanhKernelImpl : public VTanhKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 
  private:
-  std::unique_ptr<gen::VTanhJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VActJitCode> jitcode_{nullptr};
 #endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool VTanhKernelImpl<float>::useJIT(int d) {
-  return gen::VTanhJitCode::init(d);
+  return gen::VActJitCode::init(d, gen::operand_type::tanh);
 }
 #endif
 
