@@ -40,27 +40,55 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
                              const GraphWithStats& graph_with_stats) const;
   GraphWithStats FuseConvAsY(const std::string& name_scope,
                              const GraphWithStats& graph_with_stats) const;
+  GraphWithStats FuseProjectionConv(
+      const std::string& name_scope,
+      const GraphWithStats& graph_with_stats) const;
 
   template <typename RetType>
   using GetNodeFunc =
       std::function<RetType(const GraphPatternDetector::subgraph_t& subgraph)>;
-  using ConvFunc = GetNodeFunc<std::tuple<Node*, Node*, Node*, Node*>>;
-  using ElementwiseAddFunc = GetNodeFunc<std::tuple<Node*, Node*, Node*>>;
+  using IdentityConvFunc = GetNodeFunc<std::tuple<Node*, Node*, Node*, Node*>>;
+  using IdentityElementwiseAddFunc =
+      GetNodeFunc<std::tuple<Node*, Node*, Node*>>;
+
+  using ProjectionConvFunc = IdentityConvFunc;
+  using ProjectionElementwiseAddFunc = GetNodeFunc<std::tuple<Node*, Node*>>;
+
   using CanFuseFunc = std::function<bool(Node*, Node*)>;
 
   std::tuple<Node*, Node*, Node*, Node*> GetNodesFromConv(
       const patterns::Conv& conv_pattern,
       const GraphPatternDetector::subgraph_t& subgraph) const;
 
-  GraphWithStats ExecuteHandlerOnGraph(
-      GraphPatternDetector* gpd, const GraphWithStats& graph_with_stats,
-      const ConvFunc& get_node_from_conv,
-      const ElementwiseAddFunc& get_node_from_elementwise_add) const;
+  std::tuple<Node*, Node*, Node*, Node*> GetNodesFromProjectionConv(
+      const patterns::Conv& conv_pattern,
+      const GraphPatternDetector::subgraph_t& subgraph) const;
 
-  struct FuseHandler {
-    FuseHandler(const ConvFunc& get_node_from_conv_op,
-                const ElementwiseAddFunc& get_node_from_elementwise_add_op,
-                const CanFuseFunc& can_fuse_func);
+  template <typename HandleType, typename... OpFuncs>
+  GraphWithStats ExecuteHandleOnGraph(GraphPatternDetector* gpd,
+                                      const GraphWithStats& graph_with_stats,
+                                      OpFuncs&&... op_funcs) const {
+    ir::Graph* graph;
+    int stats;
+
+    std::tie(graph, stats) = graph_with_stats;
+
+    auto can_fuse = [this](Node* op1, Node* op2) -> bool {
+      return this->FindFuseOption(*op1, *op2) == FUSE_MKLDNN;
+    };
+
+    auto fuse_handle = HandleType{can_fuse, std::forward<OpFuncs>(op_funcs)...};
+
+    (*gpd)(graph, fuse_handle);
+
+    return std::make_pair(graph, stats + fuse_handle.get_stats());
+  }
+
+  struct IdentityFuseHandle {
+    IdentityFuseHandle(
+        const CanFuseFunc& can_fuse_func,
+        const IdentityConvFunc& get_node_from_conv_op,
+        const IdentityElementwiseAddFunc& get_node_from_elementwise_add_op);
 
     void operator()(const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* graph);
@@ -68,9 +96,28 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
 
    private:
     std::shared_ptr<int> fusion_stats;
-    ConvFunc get_node_from_conv_op;
-    ElementwiseAddFunc get_node_from_elementwise_add_op;
     CanFuseFunc can_fuse_func;
+    IdentityConvFunc get_node_from_conv_op;
+    IdentityElementwiseAddFunc get_node_from_elementwise_add_op;
+  };
+
+  struct ProjectionFuseHandle {
+    ProjectionFuseHandle(
+        const CanFuseFunc& can_fuse_func,
+        const ProjectionConvFunc& get_node_from_conv_x_op,
+        const ProjectionConvFunc& get_node_from_conv_y_op,
+        const ProjectionElementwiseAddFunc& get_node_from_elementwise_add_op);
+
+    void operator()(const GraphPatternDetector::subgraph_t& subgraph,
+                    Graph* graph);
+    int get_stats() const { return *fusion_stats; }
+
+   private:
+    std::shared_ptr<int> fusion_stats;
+    CanFuseFunc can_fuse_func;
+    ProjectionConvFunc get_node_from_conv_x_op;
+    ProjectionConvFunc get_node_from_conv_y_op;
+    ProjectionElementwiseAddFunc get_node_from_elementwise_add_op;
   };
 
  public:
