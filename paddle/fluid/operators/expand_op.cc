@@ -47,6 +47,11 @@ class ExpandOp : public framework::OperatorWithKernel {
       out_shape[i] = x_dims[i] * expand_times[i];
     }
 
+    // set the first dim to -1 in compile time
+    if (!ctx->IsRuntime()) {
+      out_shape[0] = x_dims[0];
+    }
+
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
     if (out_shape[0] == x_dims[0]) {
       ctx->ShareLoD("X", "Out");
