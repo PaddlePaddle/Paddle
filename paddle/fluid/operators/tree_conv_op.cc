@@ -30,12 +30,12 @@ class TreeConvOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The feature detector"
              "The shape of the filter is "
              "[feature_size, 3, output_size, num_filters]");
-    AddOutput(
-        "Out",
-        "(Tensor) The feature vector of subtrees"
-        "The shape of the output tensor is [max_tree_node_size, output_size]"
-        "The output tensor could be a new feature "
-        "vector for next tree convolution layers");
+    AddOutput("Out",
+              "(Tensor) The feature vector of subtrees"
+              "The shape of the output tensor is [max_tree_node_size, "
+              "output_size, num_filters]"
+              "The output tensor could be a new feature "
+              "vector for next tree convolution layers");
     AddAttr<int>("max_depth", "(int, default: 2) The depth of feature detector")
         .SetDefault(2)
         .GreaterThan(1);
@@ -44,6 +44,8 @@ Tree-Based Convolution Operator.
 Tree-Based Convolution is a kind of convolution based on tree structure.
 Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
 which is used to classify tree structures, such as Abstract Syntax Tree.
+Tree-Based Convolution proposed a kind of data structure called continuous binary tree,
+which regard multiway tree as binary tree.
 The paper of Tree-Based Convolution Operator is here:
 https://arxiv.org/abs/1409.5718v1
 )DOC");
@@ -57,19 +59,17 @@ class TreeConvOp : public framework::OperatorWithKernel {
     auto edge_dims = ctx->GetInputDim("EdgeSet");
     auto vector_dims = ctx->GetInputDim("NodesVector");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(
-        edge_dims[2], 2,
-        "The shape of EdgeSet Tensor is [batch_size, max_tree_node_size, 2]");
+    PADDLE_ENFORCE_EQ(edge_dims[2], 2, "Input(EdgeSet) dim[2] should be 2");
     PADDLE_ENFORCE_EQ(edge_dims.size(), 3,
-                      "The dimension of EdgeSet Tensor is 3");
-    PADDLE_ENFORCE_EQ(vector_dims.size(), 3, "The dimension of Input Tensor");
+                      "The dimension of EdgeSet Tensor should be 3");
+    PADDLE_ENFORCE_EQ(vector_dims.size(), 3,
+                      "The dimension of NodesVector Tensor should be 3");
     PADDLE_ENFORCE_EQ(filter_dims.size(), 4,
-                      "The dimension of Filter Tensor is 4");
-    PADDLE_ENFORCE_EQ(filter_dims[1], 3,
-                      "The shape of Filter Tensor is "
-                      "[feature_size, 3, output_size, num_filters]");
-    PADDLE_ENFORCE_EQ(filter_dims[0], vector_dims[2],
-                      "filter_dims[0] must equal to vector_dims[2]");
+                      "The dimension of Filter Tensor should be 4");
+    PADDLE_ENFORCE_EQ(filter_dims[1], 3, "Input(Filter) dim[1] should be 3");
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0], vector_dims[2],
+        "Input(Filter) dim[0] must equal to Input(NodesVector) dim[2]");
     auto output_dims = framework::make_ddim(
         {vector_dims[0], vector_dims[1], filter_dims[2], filter_dims[3]});
     ctx->SetOutputDim("Out", output_dims);

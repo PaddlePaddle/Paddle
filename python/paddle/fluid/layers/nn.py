@@ -8429,7 +8429,7 @@ def bilinear_tensor_product(x,
 
 
 @templatedoc()
-def tree_conv(input,
+def tree_conv(nodes_vector,
               edge_set,
               output_size,
               name=None,
@@ -8442,20 +8442,42 @@ def tree_conv(input,
     ${comment}
 
     Args:
-        input(${input_type}): ${input_comment}
+        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
         output_size(int): output feature width
-        num_filters(int, default 1): number of filters
-        max_depth(int, default 2): max depth of filters
-        act(str, default tanh): activation function
-        param_attr(ParamAttr, default None): the parameter attribute for the filters
-        bias_attr(ParamAttr, default None): the parameter attribute for the bias of this layer
+        num_filters(int): number of filters, default 1
+        max_depth(int): max depth of filters, default 2
+        act(str): activation function, default tanh
+        param_attr(ParamAttr): the parameter attribute for the filters, default None
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, default None
+
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+          nodes_vector = layers.data(name='vectors', shape=[None, 10, 5], dtype='float32)
+          # nodes_vector tensor
+          # None for batch size, 10 for max_node_size of dataset, 5 for vector width
+          edge_set = layers.data(name='edge_set', shape=[None, 10, 2], dtype='float32')
+          # edge_set tensor
+          # None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
+          # edges must be directional
+          out_vector = layers.tree_conv(nodes_vector, edge_set, 6, 1, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # output tensor
+          # the shape of output will be [None, 10, 6, 1],
+          # None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
+          out_vector = layers.reshape(out_vector, shape=[None, 10, 6])
+          # After reshape, output tensor could be nodes_vector for next tree convolution
+          out_vector_2 = layers.tree_conv(out_vector, edge_set, 3, 4, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # also output tensor could be pooling(the pooling in paper called global pooling)
+          pooled = layers.reduce_max(out_vector, dims=2) # global pooling
     """
     helper = LayerHelper("tree_conv", **locals())
-    dtype = helper.input_dtype()
-    feature_size = input.shape[2]
+    dtype = helper.input_dtype('nodes_vector')
+    feature_size = nodes_vector.shape[2]
     W_shape = [feature_size, 3, output_size, num_filters]
     W = helper.create_parameter(
         attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
@@ -8465,7 +8487,7 @@ def tree_conv(input,
         out = helper.create_variable(name=name, dtype=dtype, persistable=False)
     helper.append_op(
         type='tree_conv',
-        inputs={'NodesVector': input,
+        inputs={'NodesVector': nodes_vector,
                 'EdgeSet': edge_set,
                 'Filter': W},
         outputs={'Out': out, },
