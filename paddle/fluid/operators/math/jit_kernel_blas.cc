@@ -352,7 +352,8 @@ class VReluKernelImpl : public VReluKernel<T> {
       size_t sz = 96 /* init size */ +
                   d / AVX_FLOAT_BLOCK * 4 /* instructions */ *
                       8 /* average bytes for each instruction */;
-      jitcode_.reset(new gen::ReluJitCode(d, sz > 4096 ? sz : 4096));
+      jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::relu,
+                                          sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
       return;
     }
@@ -366,14 +367,14 @@ class VReluKernelImpl : public VReluKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 
  private:
-  std::unique_ptr<gen::ReluJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VActJitCode> jitcode_{nullptr};
 #endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool VReluKernelImpl<float>::useJIT(int d) {
-  return gen::ReluJitCode::init(d);
+  return gen::VActJitCode::init(d, gen::operand_type::relu);
 }
 #endif
 
