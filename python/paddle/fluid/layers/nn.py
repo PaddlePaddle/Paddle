@@ -8390,22 +8390,24 @@ def bilinear_tensor_product(x,
 def tree_conv(input,
               edge_set,
               output_size,
+              name=None,
               num_filters=1,
               max_depth=2,
-              act,
-              param_attr,
-              bias_attr):
+              act='tanh',
+              param_attr=None,
+              bias_attr=None):
     """
     ${comment}
 
     Args:
-        input(${x_type}): ${x_comment}
-        edge_set(${label_type}): ${label_comment}
+        input(${input_type}): ${input_comment}
+        edge_set(${edge_set_type}): ${edge_set_comment}
+        output_size(int): output feature width
         num_filters(int, default 1): number of filters
         max_depth(int, default 2): max depth of filters
-        act(str): activation function
-        param_attr(ParamAttr): the parameter attribute for the filters
-        bias_attr(ParamAttr): the parameter attribute for the bias of this layer
+        act(str, default tanh): activation function
+        param_attr(ParamAttr, default None): the parameter attribute for the filters
+        bias_attr(ParamAttr, default None): the parameter attribute for the bias of this layer
     Returns:
         out(${out_type}): ${out_comment}
     """
@@ -8415,13 +8417,19 @@ def tree_conv(input,
     W_shape = [feature_size, 3, output_size, num_filters]
     W = helper.create_parameter(
         attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
-    Out = helper.create_tmp_variable(dtype=dtype)
+    if name == None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
     helper.append_op(
         type='tree_conv',
         inputs={'NodesVector': input,
                 'EdgeSet': edge_set,
                 'Filter': W},
-        outputs={'Out': Out, },
+        outputs={'Out': out, },
         attrs={'max_depth': max_depth})
-    pre_activition = helper.append_bias_op(Out)
-    return helper.append_activation(pre_activition)
+    if helper.bias_attr:
+        pre_activation = helper.append_bias_op(out)
+    else:
+        pre_activation = out
+    return helper.append_activation(pre_activation)

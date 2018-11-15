@@ -57,12 +57,19 @@ class TreeConvOp : public framework::OperatorWithKernel {
     auto edge_dims = ctx->GetInputDim("EdgeSet");
     auto vector_dims = ctx->GetInputDim("NodesVector");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(edge_dims[2], 2, "");
-    PADDLE_ENFORCE_EQ(edge_dims.size(), 3, "");
-    PADDLE_ENFORCE_EQ(vector_dims.size(), 3, "");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 4, "");
-    PADDLE_ENFORCE_EQ(filter_dims[1], 3, "");
-    PADDLE_ENFORCE_EQ(filter_dims[0], vector_dims[2], "");
+    PADDLE_ENFORCE_EQ(
+        edge_dims[2], 2,
+        "The shape of EdgeSet Tensor is [batch_size, max_tree_node_size, 2]");
+    PADDLE_ENFORCE_EQ(edge_dims.size(), 3,
+                      "The dimension of EdgeSet Tensor is 3");
+    PADDLE_ENFORCE_EQ(vector_dims.size(), 3, "The dimension of Input Tensor");
+    PADDLE_ENFORCE_EQ(filter_dims.size(), 4,
+                      "The dimension of Filter Tensor is 4");
+    PADDLE_ENFORCE_EQ(filter_dims[1], 3,
+                      "The shape of Filter Tensor is "
+                      "[feature_size, 3, output_size, num_filters]");
+    PADDLE_ENFORCE_EQ(filter_dims[0], vector_dims[2],
+                      "filter_dims[0] must equal to vector_dims[2]");
     auto output_dims = framework::make_ddim(
         {vector_dims[0], vector_dims[1], filter_dims[2], filter_dims[3]});
     ctx->SetOutputDim("Out", output_dims);
