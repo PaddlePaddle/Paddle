@@ -37,7 +37,7 @@ namespace framework {
 
 // Combine two hash values to a single hash.
 inline size_t CombineHash(size_t seed, size_t a) {
-  return seed ^ a + 0x9e3779b9 + seed << 6 + seed >> 2;
+  return (seed ^ a) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
@@ -842,7 +842,7 @@ Scope* OperatorWithKernel::TryTransferData(
           CombineHash(OpKernelType::Hash()(kernel_type_for_var),
                       OpKernelType::Hash()(expected_kernel_key));
       infer_cache_key =
-          CombineHash(infer_cache_key, std::hash<size_t>()(&scope));
+          CombineHash(infer_cache_key, std::hash<const Scope*>()(&scope));
 
       auto it = infer_transfer_scope_cache.find(infer_cache_key);
       if (it != infer_transfer_scope_cache.end()) {
@@ -858,6 +858,7 @@ Scope* OperatorWithKernel::TryTransferData(
       }
 
       auto* trans_var = new_scope->Var(var_name);
+
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
