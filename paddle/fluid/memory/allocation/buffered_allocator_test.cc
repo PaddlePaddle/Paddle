@@ -35,7 +35,7 @@ inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
 
 TEST(buffered_allocator, thread_safety) {
   std::unique_ptr<CPUAllocator> allocator(new CPUAllocator());
-  auto chunk = allocator->Allocate(1 << 20);
+  auto chunk = allocator->Allocate(1 << 20, allocator->kDefault);
   {
     auto buf_allocator = GetBufferedAllocator(chunk.get(), true);
     ASSERT_EQ(buf_allocator->IsAllocThreadSafe(), true);
@@ -45,8 +45,6 @@ TEST(buffered_allocator, thread_safety) {
     auto buf_allocator = GetBufferedAllocator(chunk.get(), false);
     ASSERT_EQ(buf_allocator->IsAllocThreadSafe(), false);
   }
-
-  allocator->FreeUniquePtr(std::move(chunk));
 }
 
 class StubAllocation : public Allocation {
@@ -54,27 +52,8 @@ class StubAllocation : public Allocation {
   using Allocation::Allocation;
 };
 
-class StubAllocator : public UnmanagedAllocator {
+class StubAllocator : public MannualFreeAllocator {
  public:
-  std::unique_ptr<Allocation> Allocate(size_t size,
-                                       Allocator::Attr attr) override {
-    ++construct_count_;
-    if (size == 0) {
-      return std::unique_ptr<Allocation>(
-          new StubAllocation(nullptr, 0, platform::CPUPlace()));
-    } else {
-      return std::unique_ptr<Allocation>(
-          new StubAllocation(new uint8_t[size], size, platform::CPUPlace()));
-    }
-  }
-
-  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) {
-    StubAllocation *alloc = dynamic_cast<StubAllocation *>(allocation.get());
-    PADDLE_ENFORCE_NOT_NULL(alloc);
-    if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
-    ++destruct_count_;
-  }
-
   void ResetCounter() {
     construct_count_ = 0;
     destruct_count_ = 0;
@@ -83,6 +62,23 @@ class StubAllocator : public UnmanagedAllocator {
   size_t GetAllocCount() const { return construct_count_; }
 
   size_t GetFreeCount() const { return destruct_count_; }
+
+ protected:
+  void Free(Allocation *allocation) override {
+    auto *alloc = dynamic_cast<StubAllocation *>(allocation);
+    PADDLE_ENFORCE_NOT_NULL(alloc);
+    if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
+    ++destruct_count_;
+    delete allocation;
+  }
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override {
+    ++construct_count_;
+    if (size == 0) {
+      return new StubAllocation(nullptr, 0, platform::CPUPlace());
+    } else {
+      return new StubAllocation(new uint8_t[size], size, platform::CPUPlace());
+    }
+  }
 
  private:
   size_t construct_count_ = 0;
@@ -101,24 +97,24 @@ TEST(buffered_allocator, lazy_free) {
 
   {
     underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(1025);
+    auto x = allocator->Allocate(1025, allocator->kDefault);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    allocator->FreeUniquePtr(std::move(x));
+    x = nullptr;
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
   }
 
   {
     underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(900);
+    auto x = allocator->Allocate(900, allocator->kDefault);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    auto y = allocator->Allocate(2048);
+    auto y = allocator->Allocate(2048, allocator->kDefault);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    allocator->FreeUniquePtr(std::move(x));
+    x = nullptr;
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    allocator->FreeUniquePtr(std::move(y));
+    y = nullptr;
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
   }
 
@@ -132,13 +128,13 @@ TEST(buffered_allocator, lazy_free) {
 
 TEST(buffered_allocator, garbage_collection) {
   std::unique_ptr<CPUAllocator> cpu_allocator(new CPUAllocator());
-  auto chunk = cpu_allocator->Allocate(2048);
+  auto chunk = cpu_allocator->Allocate(2048, cpu_allocator->kDefault);
   auto allocator = GetBufferedAllocator(chunk.get(), false);
-  auto x1 = allocator->Allocate(1600);
-  auto x2 = allocator->Allocate(400);
-  allocator->FreeUniquePtr(std::move(x1));
-  allocator->FreeUniquePtr(std::move(x2));
-  auto x3 = allocator->Allocate(1600);
+  auto x1 = allocator->Allocate(1600, allocator->kDefault);
+  auto x2 = allocator->Allocate(400, allocator->kDefault);
+  x1 = nullptr;
+  x2 = nullptr;
+  auto x3 = allocator->Allocate(1600, allocator->kDefault);
   ASSERT_NE(x3, nullptr);
   ASSERT_NE(x3->ptr(), nullptr);
 }

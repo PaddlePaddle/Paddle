@@ -32,7 +32,7 @@ TEST(RetryAllocator, RetryAllocator) {
   CPUAllocator cpu_allocator;
 
   size_t size = (1 << 20);
-  auto cpu_allocation = cpu_allocator.Allocate(size);
+  auto cpu_allocation = cpu_allocator.Allocate(size, cpu_allocator.kDefault);
 
   std::unique_ptr<BestFitAllocator> best_fit_allocator(
       new BestFitAllocator(cpu_allocation.get()));
@@ -44,15 +44,15 @@ TEST(RetryAllocator, RetryAllocator) {
   size_t extra_time = 2;
 
   // Reserve to perform more tests in the future
-  std::vector<std::shared_ptr<ManagedAllocator>> allocators;
+  std::vector<std::shared_ptr<Allocator>> allocators;
   {
     std::unique_ptr<BestFitAllocator> best_fit_allocator(
         new BestFitAllocator(cpu_allocation.get()));
     std::unique_ptr<LockedAllocator> locked_allocator(
         new LockedAllocator(std::move(best_fit_allocator)));
-    allocators.push_back(
-        RetryAllocator::Create(std::move(locked_allocator),
-                               (thread_num - 1) * (sleep_time + extra_time)));
+    allocators.push_back(std::make_shared<RetryAllocator>(
+        std::move(locked_allocator),
+        (thread_num - 1) * (sleep_time + extra_time)));
   }
 
   for (auto &allocator : allocators) {
@@ -91,8 +91,6 @@ TEST(RetryAllocator, RetryAllocator) {
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
   }
-
-  cpu_allocator.FreeUniquePtr(std::move(cpu_allocation));
 }
 
 }  // namespace allocation
