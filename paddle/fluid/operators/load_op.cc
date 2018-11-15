@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
-#include <memory>
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -35,26 +34,20 @@ class LoadOp : public framework::OperatorBase {
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
     auto filename = Attr<std::string>("file_path");
-    auto format = Attr<std::string>("format");
-    std::unique_ptr<std::ifstream> fin;
-    if (format == "windows") {
-      fin.reset(new std::ifstream(filename,
-                                  std::ios_base::in | std::ios_base::binary));
-    } else {
-      fin.reset(new std::ifstream(filename));
-    }
-    PADDLE_ENFORCE(static_cast<bool>(*fin), "Cannot open file %s for load op",
+    std::ifstream fin(filename);
+    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
                    filename);
 
     auto out_var_name = Output("Out");
     auto *out_var = scope.FindVar(out_var_name);
-    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                   out_var_name);
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Output variable %s cannot be found in scope %p",
+                   out_var_name, &scope);
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      LoadLodTensor(*fin, place, out_var);
+      LoadLodTensor(fin, place, out_var);
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      LoadSelectedRows(*fin, place, out_var);
+      LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_ENFORCE(
           false,
@@ -118,18 +111,6 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddAttr<std::string>("format",
-                         R"DOC((windows|linux)" "saved model file format
-                         windows and linux file newline symbol is
-different. windows(newline is \n\r) or linux(newline is \r)
-So if you set attribute format to windows, then we saved model file in binary.
-It can be used both linux and windows. If you set format to linux,
-it will save file in normal file, newline symbol is \r. Need to note
-that these two format is not inter-compatible.)DOC")
-        .SetDefault("linux")
-        .AddCustomChecker([](const std::string &s) {
-          return s == "windows" || s == "linux";
-        });
     AddComment(
         "Load operator will load a LoDTensor / SelectedRows variable from disk "
         "file.");

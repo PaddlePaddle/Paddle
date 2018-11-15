@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-
 #include "paddle/fluid/framework/executor.h"
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/detail/macros.h"
@@ -27,6 +26,7 @@ limitations under the License. */
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -45,10 +45,9 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 }
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
-  VLOG(5) << "destroy ExecutorPrepareContext";
+  VLOG(50) << "destroy ExecutorPrepareContext";
 }
 
-#ifndef _WIN32
 template <typename RefCntMap>
 static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
                                 GarbageCollector<Tensor>* gc,
@@ -63,7 +62,7 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
         if ((it->second)-- == 1) {
           auto* var = scope.FindVar(name);
           if (var != nullptr) {
-            VLOG(10) << "Erase tensor \'" << name << "\'";
+            VLOG(100) << "Erase tensor \'" << name << "\'";
             if (var->IsType<LoDTensor>()) {
               erase_tensors.insert(var->GetMutable<LoDTensor>());
             } else if (var->IsType<SelectedRows>()) {
@@ -83,7 +82,24 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
     gc->Add(erase_tensors);
   }
 }
+
+static void EnableFusedOp(ExecutorPrepareContext* ctx) {
+#ifdef PADDLE_WITH_NGRAPH
+  VLOG(3) << "use_ngraph=True";
+  auto intervals = FusedOperator::FusedOpIntervals(&ctx->ops_);
+  for (auto& interval : intervals) {
+    auto* fused_op = new FusedOperator(ctx->prog_, ctx->block_id_,
+                                       interval.at(0), interval.at(1));
+    *interval[0] = std::unique_ptr<OperatorBase>(fused_op);
+  }
+  for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
+    ctx->ops_.erase(it->at(0) + 1, it->at(1));
+  }
+#else
+  LOG(WARNING)
+      << "'NGRAPH' is not supported, Please re-compile with WITH_NGRAPH option";
 #endif
+}
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -145,21 +161,21 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " global, which pointer is " << ptr;
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
+               << ptr;
     }
   }
 }
@@ -290,7 +306,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& feed_target : (*feed_targets)) {
       std::string var_name = feed_target.first;
-      VLOG(3) << "feed target's name: " << var_name;
+      VLOG(30) << "feed target's name: " << var_name;
 
       // prepend feed op
       auto* op = global_block->PrependOp();
@@ -313,7 +329,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& fetch_target : (*fetch_targets)) {
       std::string var_name = fetch_target.first;
-      VLOG(3) << "fetch target's name: " << var_name;
+      VLOG(30) << "fetch target's name: " << var_name;
 
       // append fetch op
       auto* op = global_block->AppendOp();
@@ -342,6 +358,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
+  if (FLAGS_use_ngraph) EnableFusedOp(ctx.get());
   return ctx;
 }
 
@@ -363,6 +380,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -371,7 +389,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
-#ifndef _WIN32
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector<Tensor>> gc;
   // WhileOp would set keep_kids to false
@@ -403,8 +420,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
 
     if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
+      VLOG(20) << "Memory used after operator " + op->Type() + " running: "
+               << memory::memory_usage(place_);
     }
   }
 
@@ -413,16 +430,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   } else {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
-#else   // WIN32
-  for (auto& op : ctx->ops_) {
-    op->Run(*local_scope, place_);
-    if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
-    }
-  }
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
-#endif  // NOT WIN32
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);
@@ -439,10 +446,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
+    VLOG(20) << "-------------------------------------------------------";
+    VLOG(20) << "Memory used after deleting local scope: "
+             << memory::memory_usage(place_);
+    VLOG(20) << "-------------------------------------------------------";
   }
 }
 
@@ -486,7 +493,7 @@ void Executor::RunPreparedContext(
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
+  VLOG(30) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
@@ -500,6 +507,5 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
 #endif
 }
-
 }  // namespace framework
 }  // namespace paddle
