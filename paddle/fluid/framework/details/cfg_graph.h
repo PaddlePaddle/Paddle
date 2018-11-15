@@ -22,10 +22,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <list>
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/details/memory_reuse_types.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
@@ -33,6 +32,7 @@ namespace details {
 
 class ControlFlowGraph {
  public:
+  ControlFlowGraph() {}
   explicit ControlFlowGraph(const ir::Graph& graph);
 
   void LiveVariableAnalysis();
@@ -44,6 +44,7 @@ class ControlFlowGraph {
   const std::unordered_set<ir::Node*>& Def(ir::Node* op) const;
   const std::unordered_set<ir::Node*>& Use(ir::Node* op) const;
   const std::vector<ir::Node*>& Ops() const;
+  std::vector<ir::Node*>& Ops();
 
  private:
   void ConnectNodes();

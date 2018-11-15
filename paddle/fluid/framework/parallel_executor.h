@@ -88,6 +88,8 @@ class ParallelExecutor {
 
   const BuildStrategy build_strategy_;
 
+  std::unique_ptr<ir::Graph> graph_;
+
 #ifdef PADDLE_WITH_CUDA
   // ref_cnts_ is only initialized when ParallelExecutor constructs, and then
   // keeps unchanged

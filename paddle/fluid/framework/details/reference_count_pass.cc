@@ -29,7 +29,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   auto &ref_cnts = Get<DeviceReferenceCountMap>(kGlobalReferenceCount);
   auto &cur_ref_cnts = Get<AtomicDeviceReferenceCountMap>(kCurReferenceCount);
   auto &gcs = Get<DeviceGarbageCollectorMap>(kGarbageCollector);
-  auto &fetched_vars = Get<std::unordered_set<std::string>>(kFetchedVars);
+  // auto &fetched_vars = Get<std::unordered_set<std::string>>(kFetchedVars);
 
   // It is not easy to find the right reference counts of varaibles in graph
   // Step 1: Find all variables in computation ops
@@ -171,12 +171,12 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   }
 
   // erase fetched vars in reference map
-  for (auto &pair : ref_cnts) {
-    auto &name_map = *(pair.second);
-    for (auto &fetch_name : fetched_vars) {
-      name_map.erase(fetch_name);
-    }
-  }
+  // for (auto &pair : ref_cnts) {
+  //   auto &name_map = *(pair.second);
+  //   for (auto &fetch_name : fetched_vars) {
+  //     name_map.erase(fetch_name);
+  //   }
+  // }
 
   all_ops.swap(new_all_ops);
   return graph;
@@ -190,5 +190,5 @@ REGISTER_PASS(reference_count_pass,
               paddle::framework::details::ReferenceCountPass)
     .RequirePassAttr(paddle::framework::details::kGlobalReferenceCount)
     .RequirePassAttr(paddle::framework::details::kCurReferenceCount)
-    .RequirePassAttr(paddle::framework::details::kGarbageCollector)
-    .RequirePassAttr(paddle::framework::details::kFetchedVars);
+    .RequirePassAttr(paddle::framework::details::kGarbageCollector);
+// .RequirePassAttr(paddle::framework::details::kFetchedVars);

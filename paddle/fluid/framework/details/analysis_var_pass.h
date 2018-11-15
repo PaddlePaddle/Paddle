@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <set>
 #include <string>
 
@@ -33,13 +34,16 @@ class AnalysisVarPass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
+  void UpdateGraphAndDesc(size_t idx, ir::Node* var, ir::Node* cache_var) const;
   // search pool for a best fit Node.
   bool NodeMatch(ir::Node* var, ir::Node** cache, int* idx) const;
   // scan subblock and collect the variables.
   std::unordered_set<ir::Node*> GetSubBlockOutputVars(
-                                                      const std::unordered_set<ir::Node*>&) const;
-  // Reuse Node Pool
+      const std::unordered_set<ir::Node*>&) const;
+  // Reuse Node Pool, Owned.
   mutable details::OrderedReusedNodePairPool pool;
+  // controlflow Graph
+  mutable details::ControlFlowGraph cfg;
 };
 
 }  // namespace details

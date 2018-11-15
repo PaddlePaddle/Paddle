@@ -22,11 +22,9 @@ namespace framework {
 namespace details {
 
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
-  for (auto& op : graph.Nodes()) {
-    if (op->NodeType() != ir::Node::Type::kOperation) {
-      continue;
-    }
-    ops_.push_back(op);
+  ops_ = ir::SortOperationsInSequence(graph);
+  for (auto& op : ops_) {
+    PADDLE_ENFORCE(op->IsOp(), "expect operation in graph.");
     successors_[op] = std::list<ir::Node*>();
     predecessors_[op] = std::list<ir::Node*>();
     live_in_[op] = std::unordered_set<ir::Node*>();
@@ -38,6 +36,43 @@ ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
 }
 
 void ControlFlowGraph::ConnectNodes() {
+  // auto is_same_node = [](ir::Node* lhs, ir::Node* rhs) {
+  //   return lhs->Name() == rhs->Name();
+  // };
+  // for (ir::Node* op: ops_) {
+  //   for (auto& input_var : op->inputs) {
+  //     if (!input_var->inputs.empty()){
+  //       PADDLE_ENFORCE(input_var->inputs.size() == 1 &&
+  //       input_var->inputs[0]->IsOp(),
+  //                      "Preceding Op Node of Var Node must be unique");
+  //       if (input_var->inputs[0]->Op() != nullptr) {
+  //         predecessors_[op].push_back(input_var->inputs[0]);
+  //       }
+  //     }
+  //     if (input_var->IsVar() && !input_var->IsCtrlVar()) {
+  //       uses_[op].insert(input_var);
+  //     }
+  //   }
+  //   for (auto& output_var : op->outputs) {
+  //     if (!output_var->outputs.empty()) {
+  //       // output var may be used by many op
+  //       for (auto* op_use_output_var : output_var->outputs){
+  //         if (op_use_output_var->Op() != nullptr) {
+  //           successors_[op].push_back(op_use_output_var);
+  //         }
+  //       }
+  //     }
+  //     if (output_var->IsVar() && !output_var->IsCtrlVar()) {
+  //       defs_[op].insert(output_var);
+  //     }
+  //   }
+  //   // avoid the op use same op output
+  //   std::unique(predecessors_[op].begin(), predecessors_[op].end(),
+  //   is_same_node);
+  //   std::unique(successors_[op].begin(), successors_[op].end(),
+  //   is_same_node);
+  // }
+
   for (size_t i = 0; i < ops_.size(); ++i) {
     auto& op = ops_[i];
     if (i < ops_.size() - 1) {
@@ -46,11 +81,6 @@ void ControlFlowGraph::ConnectNodes() {
       predecessors_[next_op].push_back(op);
     }
     for (auto& input_var : op->inputs) {
-      // for (auto& generated_op : input_var->inputs) {
-      //   predecessors_[op].push_back(generated_op);
-      //   successors_[generated_op].push_back(op);
-      // }
-      // skip control var
       if (input_var->IsVar() && !input_var->IsCtrlVar()) {
         uses_[op].insert(input_var);
       }
@@ -167,6 +197,8 @@ const std::unordered_set<ir::Node*>& ControlFlowGraph::Use(ir::Node* op) const {
 }
 
 const std::vector<ir::Node*>& ControlFlowGraph::Ops() const { return ops_; }
+
+std::vector<ir::Node*>& ControlFlowGraph::Ops() { return ops_; }
 
 }  // namespace details
 }  // namespace framework

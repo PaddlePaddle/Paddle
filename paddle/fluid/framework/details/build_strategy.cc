@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 namespace paddle {
@@ -41,7 +42,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       auto analysis_var_pass = AppendPass("analysis_var_pass");
       // NOTE(dzh): reuse based unique name maybe deperated. So divide analysis
       // and reuse as two seperated passes.
-      auto memory_reuse_pass = AppendPass("memory_reuse_pass");
+      // auto memory_reuse_pass = AppendPass("memory_reuse_pass");
     }
 
     if (strategy_.enable_sequential_execution_) {
@@ -118,9 +119,18 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
   // these will transfer ownership to graph. not release by hand.
   UnlivedNodePool *g_pool = new details::UnlivedNodePool;
-  ReusedNodePairMap* reuse_map = new details::ReusedNodePairMap;
-  GraphOpsReused* reuse_ops = new GraphOpsReused;
-  GraphEarlyDeleteOpsDeps early_delete_ops_deps = new GraphEarlyDeleteOpsDeps;
+  ReusedNodePairMap *reuse_map = new details::ReusedNodePairMap;
+  GraphOpsReused *reuse_ops = new GraphOpsReused;
+  GraphEarlyDeleteOpsDeps *early_delete_ops_deps = new GraphEarlyDeleteOpsDeps;
+  std::vector<OpDesc *> *all_op_descs =
+      new std::vector<OpDesc *>(main_program.Block(0).AllOps());
+
+  graph->Set(ir::kAllOpDescs, all_op_descs);           // take ownership
+  graph->Set(details::kUnlivedNodePool, g_pool);       // take ownership
+  graph->Set(details::kReusedNodePairMap, reuse_map);  // take ownership
+  graph->Set(details::kGraphOpsReused, reuse_ops);     // take ownership
+  graph->Set(details::kGraphEarlyDeleteOpsDeps,
+             early_delete_ops_deps);  // take ownership
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
@@ -140,22 +150,23 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
     } else if (pass->Type() == "sequential_execution_pass") {
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+      // may conflict with merge_multi_batch_pass, because it change
+      // AllOps inside pass. No pass->Erase(kAllOpDescs) on purpose.
+      pass->SetNotOwned(ir::kAllOpDescs, all_op_descs);
     } else if (pass->Type() == "analysis_var_pass") {
+      pass->Erase(details::kUnlivedNodePool);
+      pass->Erase(details::kReusedNodePairMap);
+      pass->Erase(details::kGraphOpsReused);
+      pass->Erase(details::kGraphEarlyDeleteOpsDeps);
+      pass->SetNotOwned(ir::kAllOpDescs, all_op_descs);
       pass->SetNotOwned(details::kUnlivedNodePool, g_pool);
       pass->SetNotOwned(details::kReusedNodePairMap, reuse_map);
       pass->SetNotOwned(details::kGraphOpsReused, reuse_ops);
-      pass->SetNotOwned(details::kGraphEarlyDeleteOpsDeps, early_delete_ops_deps);
-      graph->Set(details::kUnlivedNodePool, g_pool);  // take ownership
-      graph->Set(details::kReusedNodePairMap, reuse_map);  // take ownership
-      graph->Set(details::kGraphOpsReused, reuse_ops);  // take ownership
-      graph->Set(details::kGraphEarlyDeleteOpsDeps, early_delete_ops_deps);  // take ownership
-    } else if (pass->Type() == "memory_reuse_pass") {
-      pass->SetNotOwned(details::kReusedNodePairMap, reuse_map);
-      pass->SetNotOwned(details::kGraphOpsReused, reuse_ops);
+      pass->SetNotOwned(details::kGraphEarlyDeleteOpsDeps,
+                        early_delete_ops_deps);
+      // } else if (pass->Type() == "memory_reuse_pass") {
+      //   pass->SetNotOwned(details::kReusedNodePairMap, reuse_map);
+      //   pass->SetNotOwned(details::kGraphOpsReused, reuse_ops);
     }
     graph = pass->Apply(std::move(graph));
   }
@@ -173,5 +184,5 @@ USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(analysis_var_pass);
-USE_PASS(memory_reuse_pass);
+// USE_PASS(memory_reuse_pass);
 USE_PASS(sequential_execution_pass);
