@@ -94,7 +94,8 @@ function(op_library TARGET)
     # remove windows unsupported op, because windows has no nccl, no warpctc such ops.
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
      "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "fusion_gru_op" "lstm_op" "fusion_lstm_op" "cumsum_op"
-      "fusion_seqconv_eltadd_relu_op" "channel_send_op" "channel_create_op" "channel_close_op" "channel_recv_op")
+      "fusion_seqconv_eltadd_relu_op" "channel_send_op" "channel_create_op" "channel_close_op" "channel_recv_op"
+            "fusion_seqexpand_concat_fc_op" "attention_lstm_op" "fused_embedding_fc_lstm_op" "fc_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -308,9 +309,11 @@ op_library(flatten_op DEPS reshape_op)
 op_library(sequence_pad_op DEPS sequence_padding)
 op_library(unstack_op DEPS stack_op)
 op_library(fake_quantize_op DEPS memory)
+if (NOT WIN32)
 op_library(crf_decoding_op DEPS jit_kernel)
 op_library(fusion_lstm_op DEPS jit_kernel)
 op_library(tree_conv_op DEPS tree2col)
+endif(NOT WIN32)
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
     op_library(layer_norm_op DEPS cub)
@@ -326,8 +329,8 @@ op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
-op_library(tensor_array_to_tensor_op DEPS concat_op)
 op_library(concat_op DEPS concat_and_split)
+op_library(tensor_array_to_tensor_op DEPS concat_op)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 
