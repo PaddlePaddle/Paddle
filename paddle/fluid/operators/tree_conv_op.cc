@@ -22,25 +22,29 @@ class TreeConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("NodesVector",
              "(Tensor) The feature vector of every node on the tree"
              "The shape of the feature vector must be "
-             "[tree_node_size, feature_size]");
+             "[max_tree_node_size, feature_size]");
     AddInput("EdgeSet",
              "(Tensor) The Edges of Tree. the edge must be directional"
-             "The shape of the edge set must be [tree_node_size, 2]");
+             "The shape of the edge set must be [max_tree_node_size, 2]");
     AddInput("Filter",
              "(Tensor) The feature detector"
              "The shape of the filter is "
              "[feature_size, 3, output_size, num_filters]");
-    AddOutput("Out",
-              "(Tensor) The feature vector of subtrees"
-              "The shape of the output tensor is [tree_node_size, output_size]"
-              "The output tensor could be a new feature "
-              "vector for next tree convolution layers");
+    AddOutput(
+        "Out",
+        "(Tensor) The feature vector of subtrees"
+        "The shape of the output tensor is [max_tree_node_size, output_size]"
+        "The output tensor could be a new feature "
+        "vector for next tree convolution layers");
     AddAttr<int>("max_depth", "(int, default: 2) The depth of feature detector")
         .SetDefault(2)
         .GreaterThan(1);
     AddComment(R"DOC(
-tree convolution operator.
-The paper of Tree Convolution Operator is here:
+Tree-Based Convolution Operator.
+Tree-Based Convolution is a kind of convolution based on tree structure.
+Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
+which is used to classify tree structures, such as Abstract Syntax Tree.
+The paper of Tree-Based Convolution Operator is here:
 https://arxiv.org/abs/1409.5718v1
 )DOC");
   }

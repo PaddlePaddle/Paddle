@@ -166,6 +166,7 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
+    'tree_conv',
 ]
 
 
@@ -8370,3 +8371,44 @@ def bilinear_tensor_product(x,
 
     # add activation
     return helper.append_activation(out)
+
+
+@templatedoc()
+def tree_conv(input,
+              edge_set,
+              output_size,
+              num_filters=1,
+              max_depth=2,
+              act,
+              param_attr,
+              bias_attr):
+    """
+    ${comment}
+
+    Args:
+        input(${x_type}): ${x_comment}
+        edge_set(${label_type}): ${label_comment}
+        num_filters(int, default 1): number of filters
+        max_depth(int, default 2): max depth of filters
+        act(str): activation function
+        param_attr(ParamAttr): the parameter attribute for the filters
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper("tree_conv", **locals())
+    dtype = helper.input_dtype()
+    feature_size = input.shape[2]
+    W_shape = [feature_size, 3, output_size, num_filters]
+    W = helper.create_parameter(
+        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
+    Out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='tree_conv',
+        inputs={'NodesVector': input,
+                'EdgeSet': edge_set,
+                'Filter': W},
+        outputs={'Out': Out, },
+        attrs={'max_depth': max_depth})
+    pre_activition = helper.append_bias_op(Out)
+    return helper.append_activation(pre_activition)

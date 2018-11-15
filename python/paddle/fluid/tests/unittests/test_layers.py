@@ -925,6 +925,17 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_tree_conv_layer(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='Vector', shape=[], dtype="float32")
+            edges = layers.data(name='Edges', shape=[], dtype="int64")
+            w_attr = ParamAttr(initializer=Constant(1.0))
+            bias_attr = ParamAttr(initializer=Constatn(1.0))
+            out = layers.tree_conv(data, edges, 1, 2, 'tanh', w_attr, bias_attr)
+
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
