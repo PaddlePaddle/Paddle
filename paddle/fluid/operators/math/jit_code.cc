@@ -118,6 +118,39 @@ void VXXJitCode::generate() {
   ret();
 }
 
+bool ReluJitCode::init(int d) { return MayIUse(avx); }
+
+void ReluJitCode::generate() {
+  int offset = 0;
+  vxorps(ymm_zero, ymm_zero, ymm_zero);
+  for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
+    vmovups(ymm_src, ptr[param1 + offset]);
+    vmaxps(ymm_dst, ymm_zero, ymm_src);
+    vmovups(ptr[param2 + offset], ymm_dst);
+    offset += sizeof(float) * AVX_FLOAT_BLOCK;
+  }
+  int rest = num_ % AVX_FLOAT_BLOCK;
+  if (rest >= 4) {
+    vmovups(xmm_src, ptr[param1 + offset]);
+    vmaxps(xmm_dst, xmm_zero, xmm_src);
+    vmovups(ptr[param2 + offset], xmm_dst);
+    offset += sizeof(float) * 4;
+    rest -= 4;
+  }
+  if (rest >= 2) {
+    vmovups(xmm_src, ptr[param1 + offset]);
+    vmaxps(xmm_dst, xmm_zero, xmm_src);
+    vmovq(ptr[param2 + offset], xmm_dst);
+    offset += sizeof(float) * 2;
+    rest -= 2;
+  }
+  if (rest > 0) {
+    vmovups(xmm_src, ptr[param1 + offset]);
+    vmaxps(xmm_dst, xmm_zero, xmm_src);
+    vmovss(ptr[param2 + offset], xmm_dst);
+  }
+  ret();
+}
 }  // namespace gen
 }  // namespace jitkernel
 }  // namespace math

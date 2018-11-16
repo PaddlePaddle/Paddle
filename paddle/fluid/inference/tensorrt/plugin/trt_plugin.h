@@ -49,7 +49,6 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   void AddInput(nvinfer1::ITensor* input) { inputs_.push_back(input); }
   std::vector<nvinfer1::ITensor*>& GetInputs() { return inputs_; }
 
-  // *NOTE* The following functions need to be overrided in the subclass.
   virtual nvinfer1::IPluginExt* clone() const = 0;
   virtual const char* getPluginType() const = 0;
 
@@ -65,7 +64,7 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
 
   // Initialize the layer for execution.
   // This is called when the engine is created.
-  virtual int initialize() = 0;
+  int initialize() override { return 0; }
   // Shutdown the layer. This is called when the engine is destroyed
   void terminate() override {}
   // Execute the layer

@@ -48,7 +48,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims dims_x = X->getDimensions();
-    PADDLE_ENFORCE(dims_x.nbDims >= 3);
+    PADDLE_ENFORCE(dims_x.nbDims >= 3, "x dims experts 3, but %d is given.",
+                   dims_x.nbDims);
 
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);

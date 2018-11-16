@@ -200,7 +200,8 @@ void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst,
 Buffer &TensorRTEngine::buffer(const std::string &name) {
   PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
   auto it = buffer_sizes_.find(name);
-  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  PADDLE_ENFORCE(it != buffer_sizes_.end(), "tried to access buffer named %s",
+                 name);
   auto slot_offset = infer_engine_->getBindingIndex(name.c_str());
   return buffers_[slot_offset];
 }

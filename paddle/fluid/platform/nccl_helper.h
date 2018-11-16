@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _WIN32
 #pragma once
 
 #include <stdio.h>
@@ -149,3 +150,4 @@ struct NCCLContextMap {
 
 }  // namespace platform
 }  // namespace paddle
+#endif
