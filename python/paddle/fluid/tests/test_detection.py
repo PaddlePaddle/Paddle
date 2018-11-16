@@ -222,6 +222,61 @@ class TestGenerateProposalLabels(unittest.TestCase):
             assert bbox_outside_weights.shape[1] == 4 * class_nums
 
 
+class TestGenerateMaskLabels(unittest.TestCase):
+    def test_generate_mask_labels(self):
+        program = Program()
+        with program_guard(program):
+            im_info = layers.data(
+                name='im_info',
+                shape=[1, 3],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            gt_classes = layers.data(
+                name='gt_classes',
+                shape=[2, 1],
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            is_crowd = layers.data(
+                name='is_crowd',
+                shape=[2, 1],
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            gt_segms = layers.data(
+                name='gt_segms',
+                shape=[2, 100, 200],
+                dtype='int8',
+                lod_level=1,
+                append_batch_size=False)
+            rois = layers.data(
+                name='rois',
+                shape=[4, 4],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            labels_int32 = layers.data(
+                name='labels_int32',
+                shape=[4, 1],
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            num_classes = 5
+            resolution = 14
+            mask_rois, roi_has_mask_int32, mask_int32 = fluid.layers.generate_mask_labels(
+                im_info=im_info,
+                gt_classes=gt_classes,
+                is_crowd=is_crowd,
+                gt_segms=gt_segms,
+                rois=rois,
+                labels_int32=labels_int32,
+                num_classes=num_classes,
+                resolution=resolution)
+            assert mask_rois.shape[1] == 4
+            assert mask_int32.shape[1] == num_classes * resolution * resolution
+
+
 class TestMultiBoxHead(unittest.TestCase):
     def test_multi_box_head(self):
         data_shape = [3, 224, 224]
@@ -347,41 +402,43 @@ class TestRpnTargetAssign(unittest.TestCase):
 
 class TestGenerateProposals(unittest.TestCase):
     def test_generate_proposals(self):
-        data_shape = [20, 64, 64]
-        images = fluid.layers.data(
-            name='images', shape=data_shape, dtype='float32')
-        im_info = fluid.layers.data(
-            name='im_info', shape=[1, 3], dtype='float32')
-        anchors, variances = fluid.layers.anchor_generator(
-            name='anchor_generator',
-            input=images,
-            anchor_sizes=[32, 64],
-            aspect_ratios=[1.0],
-            variance=[0.1, 0.1, 0.2, 0.2],
-            stride=[16.0, 16.0],
-            offset=0.5)
-        num_anchors = anchors.shape[2]
-        scores = fluid.layers.data(
-            name='scores', shape=[1, num_anchors, 8, 8], dtype='float32')
-        bbox_deltas = fluid.layers.data(
-            name='bbox_deltas',
-            shape=[1, num_anchors * 4, 8, 8],
-            dtype='float32')
-        rpn_rois, rpn_roi_probs = fluid.layers.generate_proposals(
-            name='generate_proposals',
-            scores=scores,
-            bbox_deltas=bbox_deltas,
-            im_info=im_info,
-            anchors=anchors,
-            variances=variances,
-            pre_nms_top_n=6000,
-            post_nms_top_n=1000,
-            nms_thresh=0.5,
-            min_size=0.1,
-            eta=1.0)
-        self.assertIsNotNone(rpn_rois)
-        self.assertIsNotNone(rpn_roi_probs)
-        print(rpn_rois.shape)
+        program = Program()
+        with program_guard(program):
+            data_shape = [20, 64, 64]
+            images = fluid.layers.data(
+                name='images', shape=data_shape, dtype='float32')
+            im_info = fluid.layers.data(
+                name='im_info', shape=[1, 3], dtype='float32')
+            anchors, variances = fluid.layers.anchor_generator(
+                name='anchor_generator',
+                input=images,
+                anchor_sizes=[32, 64],
+                aspect_ratios=[1.0],
+                variance=[0.1, 0.1, 0.2, 0.2],
+                stride=[16.0, 16.0],
+                offset=0.5)
+            num_anchors = anchors.shape[2]
+            scores = fluid.layers.data(
+                name='scores', shape=[1, num_anchors, 8, 8], dtype='float32')
+            bbox_deltas = fluid.layers.data(
+                name='bbox_deltas',
+                shape=[1, num_anchors * 4, 8, 8],
+                dtype='float32')
+            rpn_rois, rpn_roi_probs = fluid.layers.generate_proposals(
+                name='generate_proposals',
+                scores=scores,
+                bbox_deltas=bbox_deltas,
+                im_info=im_info,
+                anchors=anchors,
+                variances=variances,
+                pre_nms_top_n=6000,
+                post_nms_top_n=1000,
+                nms_thresh=0.5,
+                min_size=0.1,
+                eta=1.0)
+            self.assertIsNotNone(rpn_rois)
+            self.assertIsNotNone(rpn_roi_probs)
+            print(rpn_rois.shape)
 
 
 if __name__ == '__main__':

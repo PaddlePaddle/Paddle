@@ -43,6 +43,7 @@ __all__ = [
     'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
+    'generate_mask_labels',
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
@@ -1553,7 +1554,7 @@ def generate_proposal_labels(rpn_rois,
                              class_nums=None,
                              use_random=True):
     """
-    ** Generate proposal labels Faster-RCNN **
+    ** Generate Proposal Labels of Faster-RCNN **
     This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
     to sample foreground boxes and background boxes, and compute loss target.
 
@@ -1632,6 +1633,70 @@ def generate_proposal_labels(rpn_rois,
     bbox_outside_weights.stop_gradient = True
 
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
+
+
+def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
+                         labels_int32, num_classes, resolution):
+    """
+    ** Generate Mask Labels of Mask-RCNN **
+    TODO(buxingyuan): Add Doc
+    This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
+    to sample foreground boxes and background boxes, and compute loss target.
+
+    RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
+    were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
+    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
+    If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
+    then it was considered as a background sample.
+    After all foreground and background boxes are chosen (so called Rois),
+    then we apply random sampling to make sure
+    the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
+
+    For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
+    Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+
+    Args:
+        rpn_rois(Variable): A 2-D LoDTensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth.
+        is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd.
+        gt_boxes(Variable): A 2-D LoDTensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
+
+        num_classes(int): Batch size of rois per images.
+        resolution(int): Foreground fraction in total batch_size_per_im.
+    """
+
+    helper = LayerHelper('generate_mask_labels', **locals())
+
+    mask_rois = helper.create_variable_for_type_inference(dtype=rois.dtype)
+    roi_has_mask_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+    mask_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+
+    helper.append_op(
+        type="generate_mask_labels",
+        inputs={
+            'ImInfo': im_info,
+            'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
+            'GtSegms': gt_segms,
+            'Rois': rois,
+            'LabelsInt32': labels_int32
+        },
+        outputs={
+            'MaskRois': mask_rois,
+            'RoiHasMaskInt32': roi_has_mask_int32,
+            'MaskInt32': mask_int32
+        },
+        attrs={'num_classes': num_classes,
+               'resolution': resolution})
+
+    mask_rois.stop_gradient = True
+    roi_has_mask_int32.stop_gradient = True
+    mask_int32.stop_gradient = True
+
+    return mask_rois, roi_has_mask_int32, mask_int32
 
 
 def generate_proposals(scores,
