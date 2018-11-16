@@ -269,6 +269,8 @@ REGISTER_JITKERNEL(vtanh, VTanhKernel);
 
 namespace detail {
 
+#ifdef __AVX__
+
 #define ALIGN32 __attribute__((aligned(32)))
 
 #define _PS256_CONST(Name, Val)                                      \
@@ -398,6 +400,7 @@ __m256 ExpAVX(__m256 x) {
   y = _mm256_mul_ps(y, pow2n);
   return y;
 }
+#endif
 
 #ifdef __AVX2__
 __m256 ExpAVX2(__m256 x) {
