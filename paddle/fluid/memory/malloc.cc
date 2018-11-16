@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <string>
 #include <vector>
 
 #include "glog/logging.h"
@@ -21,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -145,12 +147,18 @@ void* Alloc<platform::CUDAPlace>(const platform::CUDAPlace& place,
     platform::SetDeviceId(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
-    LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
-                 << place.device << ", available " << avail << " bytes";
+    LOG(WARNING) << "Cannot allocate " << string::HumanReadableSize(size)
+                 << " in GPU " << place.device << ", available "
+                 << string::HumanReadableSize(avail);
     LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize " << buddy_allocator->GetMinChunkSize();
-    LOG(WARNING) << "GpuMaxChunkSize " << buddy_allocator->GetMaxChunkSize();
-    LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
+    LOG(WARNING) << "GpuMinChunkSize "
+                 << string::HumanReadableSize(
+                        buddy_allocator->GetMinChunkSize());
+    LOG(WARNING) << "GpuMaxChunkSize "
+                 << string::HumanReadableSize(
+                        buddy_allocator->GetMaxChunkSize());
+    LOG(WARNING) << "GPU memory used: "
+                 << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   }
   if (FLAGS_init_allocated_mem) {

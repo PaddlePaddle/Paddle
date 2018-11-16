@@ -15,6 +15,7 @@
 from __future__ import print_function
 import contextlib
 import multiprocessing
+import os
 import six
 import threading
 
@@ -346,70 +347,72 @@ def _copy_reader_create_op_(block, op):
     return new_op
 
 
-@templatedoc(op_type='create_recordio_file_reader')
-def open_recordio_file(filename,
-                       shapes,
-                       lod_levels,
-                       dtypes,
-                       pass_num=1,
-                       for_parallel=True):
-    """
-    ${comment}
+if os.name != 'nt':
 
-    Args:
-       filename(${filename_type}): ${filename_comment}.
-       shapes(list): List of tuples which declaring data shapes.
-       lod_levels(${lod_levels_type}): ${lod_levels_comment}.
-       dtypes(list): List of strs which declaring data type.
-       pass_num(int): Number of passes to run.
-       for_parallel(Bool): Set it as True if you are going to run
-            subsequent operators in parallel.
+    @templatedoc(op_type='create_recordio_file_reader')
+    def open_recordio_file(filename,
+                           shapes,
+                           lod_levels,
+                           dtypes,
+                           pass_num=1,
+                           for_parallel=True):
+        """
+        ${comment}
 
-    Returns:
-       ${out_comment}.
+        Args:
+           filename(${filename_type}): ${filename_comment}.
+           shapes(list): List of tuples which declaring data shapes.
+           lod_levels(${lod_levels_type}): ${lod_levels_comment}.
+           dtypes(list): List of strs which declaring data type.
+           pass_num(int): Number of passes to run.
+           for_parallel(Bool): Set it as True if you are going to run
+                subsequent operators in parallel.
 
-    Examples:
+        Returns:
+           ${out_comment}.
 
-        >>> import paddle.fluid as fluid
-        >>> reader = fluid.layers.io.open_recordio_file(
-        >>>                               filename='./data.recordio',
-        >>>                               shapes=[(3,224,224), (1)],
-        >>>                               lod_levels=[0, 0],
-        >>>                               dtypes=['float32', 'int64'])
-        >>> # Via the reader, we can use 'read_file' layer to get data:
-        >>> image, label = fluid.layers.io.read_file(reader)
-    """
-    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
-    shape_concat = []
-    ranks = []
+        Examples:
 
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
+            >>> import paddle.fluid as fluid
+            >>> reader = fluid.layers.io.open_recordio_file(
+            >>>                               filename='./data.recordio',
+            >>>                               shapes=[(3,224,224), (1)],
+            >>>                               lod_levels=[0, 0],
+            >>>                               dtypes=['float32', 'int64'])
+            >>> # Via the reader, we can use 'read_file' layer to get data:
+            >>> image, label = fluid.layers.io.read_file(reader)
+        """
+        dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+        shape_concat = []
+        ranks = []
 
-    var_name = unique_name('open_recordio_file')
+        for shape in shapes:
+            shape_concat.extend(shape)
+            ranks.append(len(shape))
 
-    startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
-        type='create_recordio_file_reader',
-        outputs={'Out': [startup_var]},
-        attrs={
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'filename': filename,
-            'ranks': ranks
-        })
+        var_name = unique_name('open_recordio_file')
 
-    startup_var.desc.set_dtypes(dtypes)
-    startup_var.persistable = True
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
+        startup_blk = default_startup_program().current_block()
+        startup_var = startup_blk.create_var(name=var_name)
+        startup_blk.append_op(
+            type='create_recordio_file_reader',
+            outputs={'Out': [startup_var]},
+            attrs={
+                'shape_concat': shape_concat,
+                'lod_levels': lod_levels,
+                'filename': filename,
+                'ranks': ranks
+            })
 
-    if pass_num > 1:
-        main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
+        startup_var.desc.set_dtypes(dtypes)
+        startup_var.persistable = True
+        main_prog_var = _copy_reader_var_(
+            default_main_program().current_block(), startup_var)
 
-    return monkey_patch_reader_methods(main_prog_var)
+        if pass_num > 1:
+            main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
+
+        return monkey_patch_reader_methods(main_prog_var)
 
 
 def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):

@@ -61,6 +61,7 @@ TensorRTEngine::~TensorRTEngine() {
 }
 
 void TensorRTEngine::FreezeNetwork() {
+  VLOG(3) << "TRT to freeze network";
   freshDeviceId();
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
@@ -252,6 +253,12 @@ void TensorRTEngine::freshDeviceId() {
   cudaGetDeviceCount(&count);
   PADDLE_ENFORCE_LT(device_, count);
   cudaSetDevice(device_);
+}
+
+nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
+    nvinfer1::ITensor *const *inputs, int nbInputs, PluginTensorRT *plugin) {
+  owned_plugin_.emplace_back(plugin);
+  return infer_network_.get()->addPluginExt(inputs, nbInputs, *plugin);
 }
 
 }  // namespace tensorrt
