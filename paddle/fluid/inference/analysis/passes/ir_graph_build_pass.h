@@ -32,11 +32,13 @@ class IrGraphBuildPass : public AnalysisPass {
   std::string repr() const override;
 
  private:
-  std::unique_ptr<framework::ProgramDesc> LoadModel(const std::string &path,
-                                                    framework::Scope *scope);
+  std::unique_ptr<framework::ProgramDesc> LoadModel(
+      const std::string &path, framework::Scope *scope,
+      const boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> &place);
   std::unique_ptr<framework::ProgramDesc> LoadModel(
       const std::string &program_path, const std::string &params_path,
-      framework::Scope *scope);
+      framework::Scope *scope,
+      const boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> &place);
 
   std::string model_binary_str_;
 };
