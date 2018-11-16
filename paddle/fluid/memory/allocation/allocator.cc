@@ -36,7 +36,12 @@ void Allocator::Free(Allocation* allocation) { delete allocation; }
 const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
 
 void AllocationDeleter::operator()(Allocation* allocation) const {
-  allocation->allocator()->Free(allocation);
+  auto* allocator = allocation->allocator();
+  if (allocator) {
+    allocator->Free(allocation);
+  } else {
+    delete allocation;  // Compatible for legacy allocation.
+  }
 }
 
 }  // namespace allocation
