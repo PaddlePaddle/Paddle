@@ -109,7 +109,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
-  AddAttr<bool>("is_test", "").SetDefault(false);
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "

@@ -84,8 +84,6 @@ void CheckProgram(const ProgramDesc &program) {
 
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   CheckProgram(program_);
-  // Make the nodes id start from 0.
-  Node::ResetId();
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
 }

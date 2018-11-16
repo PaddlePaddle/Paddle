@@ -18,6 +18,7 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import os
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
@@ -109,6 +110,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'selu',
     'log',
     'crop',
     'rank_loss',
@@ -341,126 +343,128 @@ def embedding(input,
     return tmp
 
 
-@templatedoc(op_type="lstm")
-def dynamic_lstm(input,
-                 size,
-                 h_0=None,
-                 c_0=None,
-                 param_attr=None,
-                 bias_attr=None,
-                 use_peepholes=True,
-                 is_reverse=False,
-                 gate_activation='sigmoid',
-                 cell_activation='tanh',
-                 candidate_activation='tanh',
-                 dtype='float32',
-                 name=None):
-    """
-    ${comment}
+if os.name != 'nt':
 
-    Args:
-        input (Variable): ${input_comment}
-        size (int): 4 * hidden size.
-        h_0(Variable): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size and D is the hidden size.
-        c_0(Variable): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-                               hidden-hidden weights.
+    @templatedoc(op_type="lstm")
+    def dynamic_lstm(input,
+                     size,
+                     h_0=None,
+                     c_0=None,
+                     param_attr=None,
+                     bias_attr=None,
+                     use_peepholes=True,
+                     is_reverse=False,
+                     gate_activation='sigmoid',
+                     cell_activation='tanh',
+                     candidate_activation='tanh',
+                     dtype='float32',
+                     name=None):
+        """
+        ${comment}
 
-                               - Weights = {:math:`W_{ch}, W_{ih}, \
-                                                W_{fh}, W_{oh}`}
-                               - The shape is (D x 4D), where D is the hidden
-                                 size.
+        Args:
+            input (Variable): ${input_comment}
+            size (int): 4 * hidden size.
+            h_0(Variable): The initial hidden state is an optional input, default is zero.
+                           This is a tensor with shape (N x D), where N is the
+                           batch size and D is the hidden size.
+            c_0(Variable): The initial cell state is an optional input, default is zero.
+                           This is a tensor with shape (N x D), where N is the
+                           batch size. `h_0` and `c_0` can be NULL but only at the same time.
+            param_attr(ParamAttr|None): The parameter attribute for the learnable
+                                   hidden-hidden weights.
 
-                               If it is set to None or one attribute of ParamAttr,
-                               dynamic_lstm will create ParamAttr as param_attr.
-                               If the Initializer of the param_attr is not set, the
-                               parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
-                              weights, which contains two parts, input-hidden
-                              bias weights and peephole connections weights if
-                              setting `use_peepholes` to `True`.
+                                   - Weights = {:math:`W_{ch}, W_{ih}, \
+                                                    W_{fh}, W_{oh}`}
+                                   - The shape is (D x 4D), where D is the hidden
+                                     size.
 
-                              1. `use_peepholes = False`
-                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                 - The shape is (1 x 4D).
-                              2. `use_peepholes = True`
-                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
-                                                 W_{fc}, W_{oc}`}.
-                                 - The shape is (1 x 7D).
+                                   If it is set to None or one attribute of ParamAttr,
+                                   dynamic_lstm will create ParamAttr as param_attr.
+                                   If the Initializer of the param_attr is not set, the
+                                   parameter is initialized with Xavier. Default: None.
+            bias_attr (ParamAttr|None): The bias attribute for the learnable bias
+                                  weights, which contains two parts, input-hidden
+                                  bias weights and peephole connections weights if
+                                  setting `use_peepholes` to `True`.
 
-                              If it is set to None or one attribute of ParamAttr,
-                              dynamic_lstm will create ParamAttr as bias_attr.
-                              If the Initializer of the bias_attr is not set,
-                              the bias is initialized zero. Default: None.
-        use_peepholes (bool): ${use_peepholes_comment}
-        is_reverse (bool): ${is_reverse_comment}
-        gate_activation (str): ${gate_activation_comment}
-        cell_activation (str): ${cell_activation_comment}
-        candidate_activation (str): ${candidate_activation_comment}
-        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+                                  1. `use_peepholes = False`
+                                     - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                     - The shape is (1 x 4D).
+                                  2. `use_peepholes = True`
+                                     - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                     W_{fc}, W_{oc}`}.
+                                     - The shape is (1 x 7D).
 
-    Returns:
-        tuple: The hidden state, and cell state of LSTM. The shape of both \
-        is (T x D), and lod is the same with the `input`.
+                                  If it is set to None or one attribute of ParamAttr,
+                                  dynamic_lstm will create ParamAttr as bias_attr.
+                                  If the Initializer of the bias_attr is not set,
+                                  the bias is initialized zero. Default: None.
+            use_peepholes (bool): ${use_peepholes_comment}
+            is_reverse (bool): ${is_reverse_comment}
+            gate_activation (str): ${gate_activation_comment}
+            cell_activation (str): ${cell_activation_comment}
+            candidate_activation (str): ${candidate_activation_comment}
+            dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
+            name (str|None): A name for this layer(optional). If set None, the layer
+                             will be named automatically.
 
-    Examples:
-        .. code-block:: python
+        Returns:
+            tuple: The hidden state, and cell state of LSTM. The shape of both \
+            is (T x D), and lod is the same with the `input`.
 
-            hidden_dim = 512
-            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
-                                           bias_attr=False)
-            forward, _ = fluid.layers.dynamic_lstm(
-                input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
-    """
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
-    helper = LayerHelper('lstm', **locals())
-    size = size // 4
-    weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
-    bias_size = [1, 7 * size]
-    if not use_peepholes:
-        bias_size[1] = 4 * size
-    bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        Examples:
+            .. code-block:: python
 
-    hidden = helper.create_variable_for_type_inference(dtype)
-    cell = helper.create_variable_for_type_inference(dtype)
-    batch_gate = helper.create_variable_for_type_inference(dtype)
-    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
-    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    batch_size = input.shape[0]
-    if h_0:
-        assert h_0.shape == (batch_size, size), \
-            'The shape of h0 should be (batch_size, %d)' % size
-        inputs['H0'] = h_0
-    if c_0:
-        assert c_0.shape == (batch_size, size), \
-            'The shape of c0 should be (batch_size, %d)' % size
-        inputs['C0'] = c_0
+                hidden_dim = 512
+                forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+                                               bias_attr=False)
+                forward, _ = fluid.layers.dynamic_lstm(
+                    input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+        """
+        assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+        helper = LayerHelper('lstm', **locals())
+        size = size // 4
+        weight = helper.create_parameter(
+            attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
+        bias_size = [1, 7 * size]
+        if not use_peepholes:
+            bias_size[1] = 4 * size
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
-    helper.append_op(
-        type='lstm',
-        inputs=inputs,
-        outputs={
-            'Hidden': hidden,
-            'Cell': cell,
-            'BatchGate': batch_gate,
-            'BatchCellPreAct': batch_cell_pre_act
-        },
-        attrs={
-            'use_peepholes': use_peepholes,
-            'is_reverse': is_reverse,
-            'gate_activation': gate_activation,
-            'cell_activation': cell_activation,
-            'candidate_activation': candidate_activation
-        })
-    return hidden, cell
+        hidden = helper.create_variable_for_type_inference(dtype)
+        cell = helper.create_variable_for_type_inference(dtype)
+        batch_gate = helper.create_variable_for_type_inference(dtype)
+        batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+        inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+        batch_size = input.shape[0]
+        if h_0:
+            assert h_0.shape == (batch_size, size), \
+                'The shape of h0 should be (batch_size, %d)' % size
+            inputs['H0'] = h_0
+        if c_0:
+            assert c_0.shape == (batch_size, size), \
+                'The shape of c0 should be (batch_size, %d)' % size
+            inputs['C0'] = c_0
+
+        helper.append_op(
+            type='lstm',
+            inputs=inputs,
+            outputs={
+                'Hidden': hidden,
+                'Cell': cell,
+                'BatchGate': batch_gate,
+                'BatchCellPreAct': batch_cell_pre_act
+            },
+            attrs={
+                'use_peepholes': use_peepholes,
+                'is_reverse': is_reverse,
+                'gate_activation': gate_activation,
+                'cell_activation': cell_activation,
+                'candidate_activation': candidate_activation
+            })
+        return hidden, cell
 
 
 def dynamic_lstmp(input,
@@ -959,39 +963,43 @@ def linear_chain_crf(input, label, param_attr=None):
     return log_likelihood
 
 
-@templatedoc()
-def crf_decoding(input, param_attr, label=None):
-    """
-    ${comment}
+if os.name != 'nt':
 
-    Args:
-        input(${emission_type}): ${emission_comment}
+    @templatedoc()
+    def crf_decoding(input, param_attr, label=None):
+        """
+        ${comment}
 
-        param_attr(ParamAttr): The parameter attribute for training.
+        Args:
+            input(${emission_type}): ${emission_comment}
 
-        label(${label_type}): ${label_comment}
+            param_attr(ParamAttr): The parameter attribute for training.
 
-    Returns:
-        Variable: ${viterbi_path_comment}
+            label(${label_type}): ${label_comment}
 
-    Examples:
-        .. code-block:: python
+        Returns:
+            Variable: ${viterbi_path_comment}
 
-           crf_decode = layers.crf_decoding(
-                input=hidden, param_attr=ParamAttr(name="crfw"))
-    """
-    helper = LayerHelper('crf_decoding', **locals())
-    transition = helper.get_parameter(param_attr.name)
-    viterbi_path = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
-    helper.append_op(
-        type='crf_decoding',
-        inputs={"Emission": [input],
+        Examples:
+            .. code-block:: python
+
+               crf_decode = layers.crf_decoding(
+                    input=hidden, param_attr=ParamAttr(name="crfw"))
+        """
+        helper = LayerHelper('crf_decoding', **locals())
+        transition = helper.get_parameter(param_attr.name)
+        viterbi_path = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+        helper.append_op(
+            type='crf_decoding',
+            inputs={
+                "Emission": [input],
                 "Transition": transition,
-                "Label": label},
-        outputs={"ViterbiPath": [viterbi_path]})
+                "Label": label
+            },
+            outputs={"ViterbiPath": [viterbi_path]})
 
-    return viterbi_path
+        return viterbi_path
 
 
 @templatedoc()
@@ -4067,8 +4075,8 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[7], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -4179,7 +4187,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False):
+def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -4204,6 +4212,7 @@ def warpctc(input, label, blank=0, norm_by_times=False):
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
+       use_cudnn (bool, default false): Whether to use cudnn.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -4227,8 +4236,11 @@ def warpctc(input, label, blank=0, norm_by_times=False):
                 'Label': [label]},
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
-        attrs={'blank': blank,
-               'norm_by_times': norm_by_times})
+        attrs={
+            'blank': blank,
+            'norm_by_times': norm_by_times,
+            'use_cudnn': use_cudnn
+        })
     return loss_out
 
 
@@ -4742,7 +4754,8 @@ def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
                                ignore_index=-100,
-                               numeric_stable_mode=False):
+                               numeric_stable_mode=False,
+                               return_softmax=False):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4806,9 +4819,15 @@ def softmax_with_cross_entropy(logits,
                                     the algorithm is always numerically stable. 
                                     Note that the speed may be slower when use 
                                     stable algorithm. Default: False
+        return_softmax (bool): A flag indicating whether to return the softmax 
+                               along with the cross entropy loss. Default: False
 
     Returns:
-        Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
+        Variable or Tuple of two Variables: Return the cross entropy loss if 
+                              `return_softmax` is False, otherwise the tuple 
+                              (loss, softmax), where the cross entropy loss is 
+                              a 2-D tensor with shape [N x 1], and softmax is a 
+                              2-D tensor with shape [N x K].
 
     Examples:
         .. code-block:: python
@@ -4833,6 +4852,10 @@ def softmax_with_cross_entropy(logits,
             'ignore_index': ignore_index,
             'numeric_stable_mode': numeric_stable_mode
         })
+
+    if return_softmax:
+        return loss, softmax
+
     return loss
 
 
@@ -5527,42 +5550,48 @@ def label_smooth(label,
     return smooth_label
 
 
-@templatedoc()
-def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
-    """
-    ${comment}
+if os.name != 'nt':
 
-    Args:
-        input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
-        pooled_height (integer): ${pooled_height_comment} Default: 1
-        pooled_width (integer): ${pooled_width_comment} Default: 1
-        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+    @templatedoc()
+    def roi_pool(input,
+                 rois,
+                 pooled_height=1,
+                 pooled_width=1,
+                 spatial_scale=1.0):
+        """
+        ${comment}
 
-    Returns:
-        Variable: ${out_comment}.
+        Args:
+            input (Variable): ${x_comment}
+            rois (Variable): ROIs (Regions of Interest) to pool over.
+            pooled_height (integer): ${pooled_height_comment} Default: 1
+            pooled_width (integer): ${pooled_width_comment} Default: 1
+            spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
-    Examples:
-        .. code-block:: python
+        Returns:
+            Variable: ${out_comment}.
 
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
-    """
-    helper = LayerHelper('roi_pool', **locals())
-    dtype = helper.input_dtype()
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    argmaxes = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type="roi_pool",
-        inputs={"X": input,
-                "ROIs": rois},
-        outputs={"Out": pool_out,
-                 "Argmax": argmaxes},
-        attrs={
-            "pooled_height": pooled_height,
-            "pooled_width": pooled_width,
-            "spatial_scale": spatial_scale
-        })
-    return pool_out
+        Examples:
+            .. code-block:: python
+
+                pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
+        """
+        helper = LayerHelper('roi_pool', **locals())
+        dtype = helper.input_dtype()
+        pool_out = helper.create_variable_for_type_inference(dtype)
+        argmaxes = helper.create_variable_for_type_inference(dtype='int32')
+        helper.append_op(
+            type="roi_pool",
+            inputs={"X": input,
+                    "ROIs": rois},
+            outputs={"Out": pool_out,
+                     "Argmax": argmaxes},
+            attrs={
+                "pooled_height": pooled_height,
+                "pooled_width": pooled_width,
+                "spatial_scale": spatial_scale
+            })
+        return pool_out
 
 
 @templatedoc()
@@ -6155,6 +6184,47 @@ def relu(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def selu(x, scale=None, alpha=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): The input tensor.
+        scale(float, None): If the scale is not set,
+            the default value is 1.0507009873554804934193349852946.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        alpha(float, None): If the alpha is not set,
+            the default value is 1.6732632423543772848170429916717.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.selu(x)
+    """
+    helper = LayerHelper('selu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    attrs = {}
+    if scale is not None:
+        attrs["scale"] = scale
+    if alpha is not None:
+        attrs["alpha"] = alpha
+
+    helper.append_op(
+        type="selu", inputs={"X": x}, outputs={"Out": out}, attrs=attrs)
     return out
 
 
@@ -6811,7 +6881,7 @@ def prelu(x, mode, param_attr=None, name=None):
         alpha_shape = x.shape
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
-        attr=param_attr,
+        attr=helper.param_attr,
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,

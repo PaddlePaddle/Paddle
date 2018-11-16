@@ -463,5 +463,28 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   return use_cudnn;
 }
 
+#if CUDNN_VERSION >= 7001
+class ScopedCTCLossDescriptor {
+ public:
+  ScopedCTCLossDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnCreateCTCLossDescriptor(&desc_));
+  }
+  ~ScopedCTCLossDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnDestroyCTCLossDescriptor(desc_));
+  }
+
+  template <typename T>
+  inline cudnnCTCLossDescriptor_t descriptor() {
+    PADDLE_ENFORCE(
+        dynload::cudnnSetCTCLossDescriptor(desc_, CudnnDataType<T>::type));
+    return desc_;
+  }
+
+ private:
+  cudnnCTCLossDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
+};
+#endif
+
 }  // namespace platform
 }  // namespace paddle
