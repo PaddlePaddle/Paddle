@@ -94,17 +94,17 @@ namespace jitkernel {
 
 namespace jit = platform::jit;
 // TODO(TJ): below defines are deprecated, would be remove recently
-#define SEARCH_BLOCK(macro_, ker, dtype, isa)                 \
-  if (d < AVX_FLOAT_BLOCK) {                                  \
-    macro_(ker, dtype, isa, kLT8);                            \
-  } else if (d == AVX_FLOAT_BLOCK) {                          \
-    macro_(ker, dtype, isa, kEQ8);                            \
-  } else if (d > AVX_FLOAT_BLOCK && d < AVX512_FLOAT_BLOCK) { \
-    macro_(ker, dtype, isa, kGT8LT16);                        \
-  } else if (d == AVX512_FLOAT_BLOCK) {                       \
-    macro_(ker, dtype, isa, kEQ16);                           \
-  } else {                                                    \
-    macro_(ker, dtype, isa, kGT16);                           \
+#define SEARCH_BLOCK(macro_, ker, dtype, isa)              \
+  if (d < YMM_FLOAT_BLOCK) {                               \
+    macro_(ker, dtype, isa, kLT8);                         \
+  } else if (d == YMM_FLOAT_BLOCK) {                       \
+    macro_(ker, dtype, isa, kEQ8);                         \
+  } else if (d > YMM_FLOAT_BLOCK && d < ZMM_FLOAT_BLOCK) { \
+    macro_(ker, dtype, isa, kGT8LT16);                     \
+  } else if (d == ZMM_FLOAT_BLOCK) {                       \
+    macro_(ker, dtype, isa, kEQ16);                        \
+  } else {                                                 \
+    macro_(ker, dtype, isa, kGT16);                        \
   }
 
 #define SEARCH_ISA_BLOCK(macro_, ker, dtype)        \

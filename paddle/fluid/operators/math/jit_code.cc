@@ -41,7 +41,7 @@ void VXXJitCode::generate() {
   } else if (scalar_index_ == 2) {
     vbroadcastss(ymm_src2, ptr[param2]);
   }
-  for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
+  for (int i = 0; i < num_ / YMM_FLOAT_BLOCK; ++i) {
     if (scalar_index_ != 1) {
       vmovups(ymm_src1, ptr[param1 + offset]);
     }
@@ -57,9 +57,9 @@ void VXXJitCode::generate() {
       vmaxps(ymm_dst, ymm_zero, ymm_dst);
     }
     vmovups(ptr[param3 + offset], ymm_dst);
-    offset += sizeof(float) * AVX_FLOAT_BLOCK;
+    offset += sizeof(float) * YMM_FLOAT_BLOCK;
   }
-  int rest = num_ % AVX_FLOAT_BLOCK;
+  int rest = num_ % YMM_FLOAT_BLOCK;
   if (rest >= 4) {
     if (scalar_index_ != 1) {
       vmovups(xmm_src1, ptr[param1 + offset]);
@@ -133,23 +133,23 @@ void VXXJitCode::generate() {
 
 #define REPEAT_8TIMES(val) val, val, val, val, val, val, val, val
 
-#define OFFSET_EXP_ONE 0 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_TWO 1 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_0P5 2 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_HIG 3 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_LOW 4 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_LOG2EF 5 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_C1 6 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_C2 7 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_P0 8 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_P1 9 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_P2 10 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_P3 11 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_P4 12 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_P5 13 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_EXP_MAX_INPUT 14 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_SIGMOID_MAX 15 * AVX_FLOAT_BLOCK * sizeof(float)
-#define OFFSET_SIGMOID_MIN 16 * AVX_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_ONE 0 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_TWO 1 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_0P5 2 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_HIG 3 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_LOW 4 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_LOG2EF 5 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_C1 6 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_C2 7 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_P0 8 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_P1 9 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_P2 10 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_P3 11 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_P4 12 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_P5 13 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_EXP_MAX_INPUT 14 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_SIGMOID_MAX 15 * YMM_FLOAT_BLOCK * sizeof(float)
+#define OFFSET_SIGMOID_MIN 16 * YMM_FLOAT_BLOCK * sizeof(float)
 
 static const float exp_float_consts[] ALIGN32 = {
     REPEAT_8TIMES(1.f),
@@ -177,9 +177,12 @@ bool VActJitCode::init(int d, operand_type type) {
   bool ok = MayIUse(avx);
   if (type == operand_type::relu) {
     return ok;
+  } else if (type == operand_type::exp) {
+    // exp is slower than mkl when d >= 256
+    return ok && d % 8 == 0 && d < 256;
   } else {
     // TODO(TJ): support more
-    return ok && d == 8;  // only 8 yet
+    return ok && d % 8 == 0;
   }
 }
 
@@ -224,7 +227,7 @@ void VActJitCode::exp_ymm(ymm_t& ymm_dst, ymm_t& ymm_src, int fx_idx,
   vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_P0]);
   vmulps(ymm_dst, ymm_src, ymm_tmp);
   for (size_t i = OFFSET_EXP_P1; i < OFFSET_EXP_P5;
-       i += (AVX_FLOAT_BLOCK * sizeof(float))) {
+       i += (YMM_FLOAT_BLOCK * sizeof(float))) {
     vmovaps(ymm_tmp, ptr[reg_ptr_global + i]);  // P1~P4
     vaddps(ymm_dst, ymm_dst, ymm_tmp);
     vmulps(ymm_dst, ymm_dst, ymm_src);
@@ -249,7 +252,7 @@ void VActJitCode::exp_ymm(ymm_t& ymm_dst, ymm_t& ymm_src, int fx_idx,
     reg64_t reg_ptr_tmp = reg_ptr_global;
     mov(reg_ptr_tmp, reinterpret_cast<size_t>(g_tmp_mem));
     vmovdqa(ptr[reg_ptr_tmp], ymm_int);
-    vmovdqa(ptr[reg_ptr_tmp + AVX_FLOAT_BLOCK * sizeof(float)], ymm_tmp);
+    vmovdqa(ptr[reg_ptr_tmp + YMM_FLOAT_BLOCK * sizeof(float)], ymm_tmp);
     vpaddd(xtmp1, xtmp1, xtmp2);
     vpslld(xtmp1, xtmp1, 23);
     vmovdqa(ptr[reg_ptr_tmp], xtmp1);
@@ -257,7 +260,7 @@ void VActJitCode::exp_ymm(ymm_t& ymm_dst, ymm_t& ymm_src, int fx_idx,
     vmovdqa(xtmp1, ptr[reg_ptr_tmp + 4 /*xmm float block*/ * sizeof(float)]);
     vmovdqa(xtmp2,
             ptr[reg_ptr_tmp +
-                (AVX_FLOAT_BLOCK + 4 /*xmm float block*/) * sizeof(float)]);
+                (YMM_FLOAT_BLOCK + 4 /*xmm float block*/) * sizeof(float)]);
     vpaddd(xtmp1, xtmp1, xtmp2);
     vpslld(xtmp1, xtmp1, 23);
     vmovdqa(ptr[reg_ptr_tmp + 4 /*xmm float block*/ * sizeof(float)], xtmp1);
@@ -317,7 +320,7 @@ void VActJitCode::generate() {
     vxorps(ymm_zero, ymm_zero, ymm_zero);
   }
   int offset = 0;
-  for (int i = 0; i < num_ / AVX_FLOAT_BLOCK; ++i) {
+  for (int i = 0; i < num_ / YMM_FLOAT_BLOCK; ++i) {
     vmovups(ymm_src, ptr[param1 + offset]);
     switch (type_) {
       case operand_type::relu:
@@ -338,14 +341,14 @@ void VActJitCode::generate() {
         break;
     }
     vmovups(ptr[param2 + offset], ymm_dst);
-    offset += sizeof(float) * AVX_FLOAT_BLOCK;
+    offset += sizeof(float) * YMM_FLOAT_BLOCK;
   }
   if (type_ != operand_type::relu) {
     // TODO(TJ): remove me
     ret();
     return;
   }
-  int rest = num_ % AVX_FLOAT_BLOCK;
+  int rest = num_ % YMM_FLOAT_BLOCK;
   if (rest >= 4) {
     vmovups(xmm_src, ptr[param1 + offset]);
     vmaxps(xmm_dst, xmm_zero, xmm_src);
