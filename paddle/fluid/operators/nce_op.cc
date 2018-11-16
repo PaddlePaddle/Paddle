@@ -140,6 +140,9 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                  "the sampler will generate a seed randomly.")
         .SetDefault(0);
 
+    AddAttr<bool>("is_sparse", "(boolean, default false) Sparse update.")
+        .SetDefault(false);
+
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "

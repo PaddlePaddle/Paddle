@@ -19,17 +19,20 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using SelectedRows = framework::SelectedRows;
 using Sampler = math::Sampler;
+using DDim = framework::DDim
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+    template <typename T, int MajorType = Eigen::RowMajor,
+              typename IndexType = Eigen::DenseIndex>
+    using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext& context,
@@ -239,18 +242,52 @@ class NCEGradKernel : public framework::OpKernel<T> {
             sample_grad_data[i];
       }
     }
-    // get d_x
-    auto d_x = context.Output<Tensor>(framework::GradVarName("Input"));
-    if (d_x != nullptr) {
-      auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
-      std::fill(d_x_data, d_x_data + d_x->numel(), 0.0);
-      auto d_x_matrix = EigenMatrix<T>::From(*d_x);
-      auto w_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-        d_x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) +=
-            w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
+
+    bool is_sparse = context.Attr<bool>("is_sparse");
+    if (is_sparse) {
+      // get d_x
+      auto d_x = context.Output<Tensor>(framework::GradVarName("Input"));
+      if (d_x != nullptr) {
+        auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
+        std::fill(d_x_data, d_x_data + d_x->numel(), 0.0);
+        auto d_x_matrix = EigenMatrix<T>::From(*d_x);
+        auto w_matrix =
+            EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
+        for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+          d_x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) +=
+              w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
+        }
+      }
+    } else {
+      // get d_x
+      auto d_x = context.Output<SelectedRows>(framework::GradVarName("Input"));
+      if (d_x != nullptr) {
+        DDim table_dim = d_x->value().dims();
+        // build selectedRows rows
+        std::vector<int64_t> new_rows;
+        new_rows.resize(sample_labels->dims()[0]);
+        int label_width = sample_labels->dims()[1];
+        for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+          new_rows.push_back(i * label_width);
+        }
+        d_x->set_rows(new_rows);
+
+        // build selectedRows tensor
+        d_x->set_height(sample_labels->dims()[0]);
+        auto* d_table_value = d_x->mutable_value();
+        d_table_value->Resize({sample_labels->dims()[0], table_dim[1]});
+        auto* d_x_data = d_table_value->mutable_data<T>(context.GetPlace());
+        std::fill(d_x_data, d_x_data + d_table_value->numel(), 0.0);
+        auto d_x_matrix = EigenMatrix<T>::From(*d_table_value);
+        auto w_matrix =
+            EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
+        for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+          d_x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) +=
+              w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
+        }
       }
     }
+
     delete sampler;
   }
 };

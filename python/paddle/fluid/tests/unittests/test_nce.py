@@ -59,7 +59,7 @@ def nce(input, weight, bias, sample_weight, labels, num_classes,
 
 class TestNCE(OpTest):
     def generate_data(self, dim, batch_size, num_classes, num_true_class,
-                      num_neg_samples):
+                      num_neg_samples, is_sparse):
         input = np.random.randn(batch_size, dim).astype(np.float32)
         weight = np.random.randn(num_classes, dim).astype(np.float32)
         bias = np.random.randn(num_classes).astype(np.float32)
@@ -70,7 +70,8 @@ class TestNCE(OpTest):
             'num_neg_samples': num_neg_samples,
             'custom_neg_classes': list(range(num_neg_samples)),
             'seed': 0,
-            'sampler': 0
+            'sampler': 0,
+            'is_sparse': is_sparse
         }
         self.inputs = {
             'Input': input,
@@ -81,7 +82,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 5, 4, 1, 2)
+        self.generate_data(5, 5, 4, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
@@ -107,9 +108,14 @@ class TestNCE(OpTest):
             ["Input", "Weight", "Bias"], "Cost", max_relative_error=0.02)
 
 
-class TestNCECase1(TestNCE):
+class TestNCECase1Tensor(TestNCE):
     def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5)
+        self.generate_data(10, 20, 10, 2, 5, False)
+
+
+class TestNCECase1SelectedRows(TestNCE):
+    def set_data(self):
+        self.generate_data(10, 20, 10, 2, 5, True)
 
 
 if __name__ == '__main__':
