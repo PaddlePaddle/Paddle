@@ -68,4 +68,3 @@ class PReluPlugin : public PluginTensorRT {
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-

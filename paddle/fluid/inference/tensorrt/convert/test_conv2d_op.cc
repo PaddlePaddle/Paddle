@@ -88,4 +88,3 @@ TEST(conv2d_transpose_op, test) {
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
