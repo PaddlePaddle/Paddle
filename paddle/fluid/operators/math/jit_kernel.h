@@ -26,6 +26,7 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
+// TODO(TJ): move these to some proper place
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 #define EXP_MAX_INPUT 40.0
