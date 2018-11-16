@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -27,7 +27,7 @@ class SplitPlugin : public PluginTensorRT {
   std::vector<int> segment_offsets_;
 
  protected:
-  virtual size_t getSerializationSize() override {
+  size_t getSerializationSize() override {
     return SerializedSize(axis_) + SerializedSize(output_length_) +
            getBaseSerializationSize();
   }
@@ -35,7 +35,7 @@ class SplitPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  virtual void serialize(void *buffer) override {
+  void serialize(void *buffer) override {
     serializeBase(buffer);
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, output_length_);
@@ -59,16 +59,15 @@ class SplitPlugin : public PluginTensorRT {
     return new SplitPlugin(axis_, output_length_);
   }
 
-  virtual const char *getPluginType() const override { return "split"; }
-  virtual int getNbOutputs() const override { return output_length_.size(); }
-  virtual nvinfer1::Dims getOutputDimensions(int index,
-                                             const nvinfer1::Dims *inputs,
-                                             int nbInputDims) override;
-  virtual int initialize() override;
-  virtual int enqueue(int batchSize, const void *const *inputs, void **outputs,
-                      void *workspace, cudaStream_t stream) override;
+  const char *getPluginType() const override { return "split"; }
+  int getNbOutputs() const override { return output_length_.size(); }
+  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+                                     int nbInputDims) override;
+  int initialize() override;
+  int enqueue(int batchSize, const void *const *inputs, void **outputs,
+              void *workspace, cudaStream_t stream) override;
 };
 
-}  // tensorrt
-}  // inference
-}  // paddle
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle

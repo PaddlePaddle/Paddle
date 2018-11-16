@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdio.h>
 #include <cassert>
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
 
@@ -76,6 +75,6 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
-}  // tensorrt
-}  // inference
-}  // paddle
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle
