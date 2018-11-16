@@ -19,10 +19,12 @@
 #include <vector>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_increment_allocator.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/conditional_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
@@ -190,13 +192,29 @@ class AllocatorFacadePrivate {
   ~AllocatorFacadePrivate() = default;
 
   AllocatorFacadePrivate() {
-    InitCPUAllocator();
-    InitCUDAAllocator();
-    InitCUDAPinnedAllocator();
-    WrapZeroSizeAllocator();
+    if (GetAllocatorStrategy() == AllocatorStrategy::kLegacy) {
+      InitLegacyAllocator();
+    } else {
+      InitCPUAllocator();
+      InitCUDAAllocator();
+      InitCUDAPinnedAllocator();
+      WrapZeroSizeAllocator();
+    }
   }
 
  private:
+  void InitLegacyAllocator() {
+    std::vector<platform::Place> places{platform::CPUPlace()};
+#ifdef PADDLE_WITH_CUDA
+    for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+      places.emplace_back(platform::CUDAPlace(dev_id));
+    }
+#endif
+    for (auto& p : places) {
+      allocators_[p] = std::make_shared<LegacyAllocator>(p);
+    }
+  }
+
   void InitCPUAllocator() {
     allocators_[platform::CPUPlace()] = std::make_shared<CPUManagedAllocator>();
   }

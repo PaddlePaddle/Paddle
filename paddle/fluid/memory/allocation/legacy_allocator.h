@@ -12,33 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include "paddle/fluid/memory/allocation/allocator.h"
-
-#include <functional>
-
+#include "paddle/fluid/platform/place.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
-Allocation::~Allocation() {}
 
-Allocator::~Allocator() {}
+class LegacyAllocatorPrivate;
+class LegacyAllocator : public Allocator {
+ public:
+  explicit LegacyAllocator(const platform::Place &p) : place_(p) {}
 
-bool Allocator::IsAllocThreadSafe() const { return false; }
+ protected:
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
+  void Free(Allocation *allocation) override;
 
-AllocationPtr Allocator::Allocate(size_t size, Allocator::Attr attr) {
-  auto ptr = AllocateImpl(size, attr);
-  ptr->set_allocator(this);
-  return AllocationPtr(ptr);
-}
-
-void Allocator::Free(Allocation* allocation) { delete allocation; }
-
-const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
-
-void AllocationDeleter::operator()(Allocation* allocation) const {
-  auto* allocator = allocation->allocator();
-  allocator->Free(allocation);
-}
+ private:
+  platform::Place place_;
+};
 
 }  // namespace allocation
 }  // namespace memory

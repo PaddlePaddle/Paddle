@@ -35,12 +35,6 @@ class BufferedAllocator : public Allocator {
 
   ~BufferedAllocator();
 
-  //  std::unique_ptr<Allocation> Allocate(
-  //      size_t size, Allocator::Attr attr = Allocator::Attr::kDefault)
-  //      override;
-  //
-  //  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
-
   bool IsAllocThreadSafe() const override;
 
   // only used in unittest

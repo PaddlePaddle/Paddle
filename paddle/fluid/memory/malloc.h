@@ -30,26 +30,5 @@ extern std::shared_ptr<Allocation> AllocShared(
 extern AllocationPtr Alloc(const platform::Place& place, size_t size,
                            Allocator::Attr attr = Allocator::kDefault);
 
-namespace legacy {
-
-template <typename Place>
-void* Alloc(const Place& place, size_t size);
-
-template <typename Place>
-void Free(const Place& place, void* p);
-
-template <typename Place>
-size_t Used(const Place& place);
-
-struct Usage : public boost::static_visitor<size_t> {
-  size_t operator()(const platform::CPUPlace& cpu) const;
-  size_t operator()(const platform::CUDAPlace& gpu) const;
-  size_t operator()(const platform::CUDAPinnedPlace& cuda_pinned) const;
-};
-
-size_t memory_usage(const platform::Place& p);
-
-}  // namespace legacy
-
 }  // namespace memory
 }  // namespace paddle
