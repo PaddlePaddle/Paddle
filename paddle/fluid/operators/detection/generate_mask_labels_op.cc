@@ -35,36 +35,6 @@ void AppendMask(LoDTensor* out, int64_t offset, Tensor* to_add) {
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
-template <typename T>
-void PrintTensor(Tensor t) {
-  auto* t_data = t.data<T>();
-  int r = t.dims()[0];
-  int c = t.dims()[1];
-  std::cout << r << ' ' << c << std::endl;
-  for (int i = 0; i < r; ++i) {
-    for (int j = 0; j < c; ++j) {
-      std::cout << static_cast<float>(t_data[i * c + j]) << " ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-void PrintVector(Tensor v) {
-  auto et = framework::EigenTensor<int, 1>::From(v);
-  int r = v.dims()[0];
-  for (int i = 0; i < r; ++i) {
-    std::cout << et(i) << ", ";
-  }
-  std::cout << std::endl;
-  std::cout << std::endl;
-}
-
-template <typename T>
-void PrintTemplate(T c) {
-  std::cout << c << std::endl;
-}
-
 class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -291,12 +261,10 @@ std::vector<Tensor> SampleMaskForOneImage(
         }
       }
     }
-    PrintTemplate<char>('A');
 
     // add fg targets
     for (int64_t i = 0; i < fg_num; ++i) {
       int fg_masks_ind = fg_masks_inds[i];
-      PrintTemplate<int>(fg_masks_ind);
       int mask_idx = fg_masks_ind * gt_segms->dims()[1] * gt_segms->dims()[2];
       int roi_idx = i * kBoxDim;
       Tensor mask = CropAndResize<T>(context, masks_gt, mask_idx, rois_fg,
@@ -400,8 +368,6 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     auto label_int32_lod = label_int32->lod().back();
 
     for (int i = 0; i < n; ++i) {
-      std::cout << "lod: " << gt_classes_lod[i] << " " << gt_classes_lod[i + 1]
-                << std::endl;
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       Tensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
