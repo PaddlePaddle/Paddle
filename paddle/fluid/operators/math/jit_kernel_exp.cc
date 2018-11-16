@@ -36,6 +36,7 @@ namespace jitkernel {
 namespace jit = platform::jit;
 
 // TODO(TJ): move refer codes to one file
+// Refer code only focus on correctness
 template <typename T>
 void VExpRefer(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
@@ -67,6 +68,7 @@ void VTanhRefer(const T* x, T* y, int n) {
 }
 
 #ifdef PADDLE_WITH_MKLML
+// try to use MKL to speedup
 template <typename T>
 void VExpMKL(const T* x, T* y, int n);
 
@@ -112,7 +114,6 @@ class VExpKernelImpl : public VExpKernel<T> {
  public:
   JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VExpKernelImpl(int d) : VExpKernel<T>() {
-    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
@@ -130,9 +131,7 @@ class VExpKernelImpl : public VExpKernel<T> {
 #endif
     this->Compute = VExpRefer<T>;
   }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    VExpRefer(x, y, this->num_);
-  }
+
 #ifdef PADDLE_WITH_XBYAK
 
  private:
@@ -166,7 +165,6 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
  public:
   JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VSigmoidKernelImpl(int d) : VSigmoidKernel<T>() {
-    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
@@ -186,9 +184,7 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
 #endif
     this->Compute = VSigmoidRefer<T>;
   }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    VSigmoidRefer(x, y, this->num_);
-  }
+
 #ifdef PADDLE_WITH_XBYAK
 
  private:
@@ -221,7 +217,6 @@ class VTanhKernelImpl : public VTanhKernel<T> {
  public:
   JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VTanhKernelImpl(int d) : VTanhKernel<T>() {
-    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
@@ -241,9 +236,7 @@ class VTanhKernelImpl : public VTanhKernel<T> {
 #endif
     this->Compute = VTanhRefer<T>;
   }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    VTanhRefer(x, y, this->num_);
-  }
+
 #ifdef PADDLE_WITH_XBYAK
 
  private:

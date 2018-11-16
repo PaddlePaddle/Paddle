@@ -178,6 +178,7 @@ bool VActJitCode::init(int d, operand_type type) {
   if (type == operand_type::relu) {
     return ok;
   } else {
+    // TODO(TJ): support more
     return ok && d == 8;  // only 8 yet
   }
 }
