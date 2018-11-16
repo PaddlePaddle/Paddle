@@ -14,12 +14,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/reduce_sum_op.h"
 
 namespace paddle {
 namespace operators {
