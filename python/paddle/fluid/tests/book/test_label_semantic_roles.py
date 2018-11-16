@@ -208,6 +208,10 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
                 batch_id = batch_id + 1
 
+        raise RuntimeError(
+            "This model should save_inference_model and return, but not reach here, please check!"
+        )
+
     if is_local:
         train_loop(fluid.default_main_program())
     else:
