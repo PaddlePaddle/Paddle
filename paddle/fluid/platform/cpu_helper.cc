@@ -29,7 +29,7 @@ namespace platform {
 
 void SetNumThreads(int num_threads) {
 #ifdef PADDLE_USE_OPENBLAS
-  // windows has no support for openblas multi-thread
+// windows has no support for openblas multi-thread
 #ifdef _WIN32
   if (num_threads > 1) {
     num_threads = 1;
