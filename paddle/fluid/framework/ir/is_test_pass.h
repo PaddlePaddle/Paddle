@@ -12,22 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/node.h"
+#pragma once
+
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-// msvc15 don't support constexpr in correct way.
-#if !defined(_WIN32)
-constexpr char Node::kControlDepVarName[];
-#else
-const char Node::kControlDepVarName[] = "__control_var";
-#endif
 
-std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
-                                        Node::Type type) {
-  return std::unique_ptr<Node>(new Node(name, type));
-}
+class IsTestPass : public Pass {
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
@@ -116,12 +117,16 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'use_mkldnn', 'use_ngraph',
-        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
-        'paddle_num_threads', 'dist_threadpool_size', 'cpu_deterministic',
-        'eager_delete_tensor_gb', 'reader_queue_speed_test_mode'
+        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'eager_delete_scope',
+        'use_mkldnn', 'use_ngraph', 'initial_cpu_memory_in_mb',
+        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
+        'dist_threadpool_size', 'eager_delete_tensor_gb',
+        'reader_queue_speed_test_mode'
     ]
+    if os.name != 'nt':
+        read_env_flags.append('warpctc_dir')
+        read_env_flags.append('cpu_deterministic')
+
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
         read_env_flags.append('rpc_server_profile_path')

@@ -218,3 +218,7 @@ endif(WITH_GRPC)
 if(WITH_BRPC_RDMA)
     add_definitions(-DPADDLE_WITH_BRPC_RDMA)
 endif(WITH_BRPC_RDMA)
+
+if(ON_INFER)
+    add_definitions(-DPADDLE_ON_INFERENCE)
+endif(ON_INFER)
