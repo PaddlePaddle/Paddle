@@ -762,7 +762,7 @@ TEST(JitKernel, vaddrelu) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vadd_ref(d, x_data, y_data, zref_data);
+      vaddrelu_ref(d, x_data, y_data, zref_data);
     }
     auto trefe = GetCurrentUS();
     auto tmkls = GetCurrentUS();
