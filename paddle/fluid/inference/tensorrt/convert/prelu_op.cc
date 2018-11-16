@@ -26,7 +26,7 @@ class PReluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(40) << "convert fluid prelu op to tensorrt prelu layer";
+    VLOG(4) << "convert fluid prelu op to tensorrt prelu layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -43,33 +43,31 @@ class PReluOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(alpha_var);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
-    platform::CPUPlace place;
-    std::unique_ptr<framework::LoDTensor> alpha_tensor_host(
+    platform::CUDAPlace place;
+    std::unique_ptr<framework::LoDTensor> alpha_tensor_device(
         new framework::LoDTensor());
-    alpha_tensor_host->Resize(alpha_tensor->dims());
-    TensorCopySync(*alpha_tensor, place, alpha_tensor_host.get());
-    float* alpha_data = alpha_tensor_host->mutable_data<float>(place);
+    alpha_tensor_device->Resize(alpha_tensor->dims());
+    TensorCopySync(*alpha_tensor, place, alpha_tensor_device.get());
+    float* alpha_data = alpha_tensor_device->mutable_data<float>(place);
 
     // Transform alpha to TensorRTEngine::Weight
     TensorRTEngine::Weight alpha_rt(nvinfer1::DataType::kFLOAT,
                                     static_cast<void*>(alpha_data),
-                                    alpha_tensor_host->numel());
-    engine_->weight_map[op_desc.Input("Alpha")[0]] =
-        std::move(alpha_tensor_host);
-    //
+                                    alpha_tensor_device->numel());
     PReluPlugin* plugin = new PReluPlugin(alpha_rt, mode);
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);
+    // keep alpha tensor to avoid release it's memory
+    engine_->weight_map[op_desc.Input("Alpha")[0]] =
+        std::move(alpha_tensor_device);
 
     std::string layer_name = "prelu (Output: ";
-    for (size_t i = 0; i < output_num; i++) {
-      auto output_name = op_desc.Output("Out")[i];
-      layer->getOutput(i)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(i));
-      layer_name += output_name;
-      if (test_mode) {
-        engine_->DeclareOutput(output_name);
-      }
+    auto output_name = op_desc.Output("Out")[0];
+    layer->getOutput(0)->setName(output_name.c_str());
+    engine_->SetITensor(output_name, layer->getOutput(0));
+    layer_name += output_name;
+    if (test_mode) {
+      engine_->DeclareOutput(output_name);
     }
     layer->setName((layer_name + ")").c_str());
   }
