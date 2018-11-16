@@ -32,7 +32,7 @@ namespace details {
 
 static constexpr char kAllOpDescs[] = "all_op_descs";
 
-VarHandle* GetValidInput(const AllReduceOpHandle* a) {
+VarHandle* GetValidInput(const OpHandleBase* a) {
   for (auto p : a->Inputs()) {
     VarHandle* b = dynamic_cast<VarHandle*>(p);
     if (b) {
@@ -61,42 +61,39 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     level++;
   }
 
-  std::vector<AllReduceOpHandle*> allreduce_ops;
+  std::vector<OpHandleBase*> dist_ops;
   // get allreduce ops.
   for (auto& op : graph_ops) {
-    auto* allreduce_op = dynamic_cast<AllReduceOpHandle*>(op);
-    if (allreduce_op == nullptr) {
-      continue;
+    if (op->Name() == "all_reduce" || op->Name() == "reduce") {
+      // op->Name() == "broadcast"){
+      dist_ops.push_back(op);
     }
-
-    allreduce_ops.push_back(allreduce_op);
   }
 
-  VLOG(10) << "allreduce_ops size:" << allreduce_ops.size() << std::endl;
+  VLOG(10) << "dist_ops size:" << dist_ops.size() << std::endl;
 
-  std::sort(allreduce_ops.begin(), allreduce_ops.end(),
-            [&](AllReduceOpHandle* op1, AllReduceOpHandle* op2) {
-              VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op1));
-              VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(op2));
+  std::sort(dist_ops.begin(), dist_ops.end(), [&](OpHandleBase* op1,
+                                                  OpHandleBase* op2) {
+    VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op1));
+    VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(op2));
 
-              PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr,
-                             "%s convert to %s error", op1->DebugString(),
-                             op2->DebugString());
+    PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
+                   op1->DebugString(), op2->DebugString());
 
-              auto l_it = vars.find(i0->name_);
-              auto r_it = vars.find(i1->name_);
+    auto l_it = vars.find(i0->name_);
+    auto r_it = vars.find(i1->name_);
 
-              if (l_it->second < r_it->second) return true;
+    if (l_it->second < r_it->second) return true;
 
-              if (l_it->second == r_it->second) {
-                return i0->name_ < i1->name_;
-              }
+    if (l_it->second == r_it->second) {
+      return i0->name_ < i1->name_;
+    }
 
-              return false;
-            });
+    return false;
+  });
 
   // add dependency.
-  auto& sorted_ops = allreduce_ops;
+  auto& sorted_ops = dist_ops;
   for (size_t i = 1; i < sorted_ops.size(); ++i) {
     auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
 
