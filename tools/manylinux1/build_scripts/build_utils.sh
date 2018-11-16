@@ -53,8 +53,12 @@ function do_cpython_build {
     # NOTE --enable-shared for generating libpython shared library needed for
     # linking of some of the nupic.core test executables.
     CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
-    make -j2 > /dev/null
-    make install > /dev/null
+    make -j8 > /dev/null
+    if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.7) ]; then
+        make altinstall > /dev/null
+    else
+        make install > /dev/null
+    fi
     popd
     echo "ZZZ looking for libpython"
     find / -name 'libpython*.so*'
@@ -63,6 +67,12 @@ function do_cpython_build {
     # bin/python.
     if [ -e ${prefix}/bin/python3 ]; then
         ln -s python3 ${prefix}/bin/python
+    fi
+    if [ -e ${prefix}/bin/python3.6 ]; then
+        ln -s python3.6 ${prefix}/bin/python
+    fi
+    if [ -e ${prefix}/bin/python3.7 ]; then
+        ln -s python3.7 ${prefix}/bin/python
     fi
     # NOTE Make libpython shared library visible to python calls below
     LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python get-pip.py
