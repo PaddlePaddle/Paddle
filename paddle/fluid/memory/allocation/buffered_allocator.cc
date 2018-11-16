@@ -41,6 +41,7 @@ void BufferedAllocator::FreeCache(size_t size) {
   while (!allocations_.empty()) {  // free the largest
     auto it = --allocations_.end();
     cur += it->second->size();
+    delete it->second.release();
     allocations_.erase(it);
     if (cur >= size) return;
   }
