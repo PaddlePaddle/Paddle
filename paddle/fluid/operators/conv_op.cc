@@ -129,7 +129,8 @@ void Conv2DOpMaker::Make() {
            "to the number of output channels. Only used with MKL-DNN.")
       .AsDispensable();
   AddInput("Scale_in",
-           "(Tensor) Scale_in to be used for int8 input data. Only used with INT8.")
+           "(Tensor) Scale_in to be used for int8 input data."
+           "Only used with INT8.")
       .AsDispensable();
   AddInput("Scale_in_eltwise",
            "(Tensor) Scale_in_eltwise to be used for int8 eltwise input data."

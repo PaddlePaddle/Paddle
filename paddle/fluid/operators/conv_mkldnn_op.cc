@@ -768,7 +768,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // the scale parameter. It is assumed that when fuse_residual_conn is true, the
       // Output tensor contains the data coming from residual connection. The
       // result of this post_op is: Output = scale * Output + Conv_Out.
-      conv_attr.set_output_scales(0, {1.0f});
       if (fuse_residual_conn) {
         post_operations.append_sum(1.0f);
       }
