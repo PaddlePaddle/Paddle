@@ -126,8 +126,9 @@ cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
-cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto)
+
 if(NOT WIN32)
+cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
 cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
   shape_inference data_transform lod_tensor profiler)
 endif(NOT WIN32)
