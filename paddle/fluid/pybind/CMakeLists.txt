@@ -10,12 +10,12 @@ if(WITH_PYTHON)
     hip_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
       DEPS ${PYBIND_DEPS}
-      ${GLOB_OP_LIB} ${OPERATOR_DEPS})
+      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
   else()
     cc_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
       DEPS ${PYBIND_DEPS}
-      ${GLOB_OP_LIB} ${OPERATOR_DEPS})
+      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
     if(NOT APPLE AND NOT ANDROID AND NOT WIN32)
       target_link_libraries(paddle_pybind rt)
     endif(NOT APPLE AND NOT ANDROID AND NOT WIN32)

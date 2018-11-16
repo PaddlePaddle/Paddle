@@ -34,7 +34,14 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-register_operators()
+register_operators(EXCLUDES warpctc_op)
+
+# warpctc_cudnn need cudnn 7 above
+if (WITH_GPU AND ${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+    op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
+else()
+    op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
+endif()
 
 set(COMMON_OP_DEPS "")
 
