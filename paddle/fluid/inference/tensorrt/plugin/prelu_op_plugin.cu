@@ -142,4 +142,3 @@ int PReluPlugin::enqueue(int batchSize, const void *const *inputs,
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
