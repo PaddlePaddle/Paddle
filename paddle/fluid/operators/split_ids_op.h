@@ -64,7 +64,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       out_ids.resize(outs.size());
 
       // split id by their shard_num.
-      for (int i = 0; i < all_ids.size(); ++i) {
+      for (size_t i = 0; i < all_ids.size(); ++i) {
         T id = all_ids[i];
         size_t shard_id = static_cast<size_t>(id) % shard_num;
         out_ids[shard_id].push_back(id);

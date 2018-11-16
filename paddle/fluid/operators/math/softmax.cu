@@ -98,9 +98,14 @@ template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<double>;
 template class SoftmaxGradCUDNNFunctor<platform::float16>;
 
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
+                              false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
+                              true>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, float, false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, double, false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, float, true>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, double, true>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
