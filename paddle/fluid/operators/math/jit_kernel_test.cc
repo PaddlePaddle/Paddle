@@ -33,6 +33,9 @@ limitations under the License. */
 
 constexpr int repeat = 20000;
 
+// TODO(TJ): benchmark and test should be seperated,
+// benchmark should verify more sizes
+
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
@@ -156,7 +159,7 @@ void vexp_mkl(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vexp) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 128, 256}) {
+  for (int d : {7, 8, 12, 15, 16, 20, 30, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
