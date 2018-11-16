@@ -28,7 +28,8 @@ from .. import framework
 from .. import io
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 from .. import optimizer as opt_module
-from .. import parallel_executor
+if os.name != 'nt':
+    from .. import parallel_executor
 from ..transpiler import distribute_transpiler
 
 __all__ = [

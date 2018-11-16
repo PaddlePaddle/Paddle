@@ -17,12 +17,8 @@ IF(USE_EIGEN_FOR_BLAS)
 ENDIF(USE_EIGEN_FOR_BLAS)
 
 INCLUDE(cblas)
-# IF(WIN32 AND NOT ${CBLAS_FOUND})
-
-
 
 IF(NOT ${CBLAS_FOUND})
-
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
@@ -34,6 +30,7 @@ IF(NOT ${CBLAS_FOUND})
         CACHE FILEPATH "openblas library." FORCE)
 
     ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
+
     IF (WIN32)
         SET(CBLAS_FOUND true)
         MESSAGE(WARNING, "In windows, openblas only support msvc build, please build it manually and put it at " ${CBLAS_INSTALL_DIR})

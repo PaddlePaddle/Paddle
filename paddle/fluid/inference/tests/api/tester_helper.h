@@ -19,13 +19,16 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+
+#include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -38,10 +41,18 @@ DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
 
+DECLARE_bool(profile);
+
 namespace paddle {
 namespace inference {
 
-using contrib::AnalysisConfig;
+void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
+  if (use_analysis) {
+    LOG(INFO) << *reinterpret_cast<const contrib::AnalysisConfig *>(config);
+    return;
+  }
+  LOG(INFO) << *config;
+}
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,
                    const std::vector<PaddleTensor> &ref_outputs) {
@@ -77,12 +88,13 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 }
 
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
-    const AnalysisConfig &config, bool use_analysis = true) {
+    const PaddlePredictor::Config *config, bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig>(config);
-  } else {
-    return CreatePaddlePredictor<NativeConfig>(config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(
+        *(reinterpret_cast<const contrib::AnalysisConfig *>(config)));
   }
+  return CreatePaddlePredictor<NativeConfig>(
+      *(reinterpret_cast<const NativeConfig *>(config)));
 }
 
 size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
@@ -111,11 +123,23 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
 }
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
-                       const std::string &dirname) {
+                       const std::string &dirname, bool is_combined = true,
+                       std::string model_filename = "model",
+                       std::string params_filename = "params") {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
-  std::vector<std::vector<int64_t>> feed_target_shapes =
-      GetFeedTargetShapes(dirname, true, "model", "params");
+  std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
+      dirname, is_combined, model_filename, params_filename);
+  std::ostringstream os;
+  for (size_t i = 0; i < feed_target_shapes.size(); ++i) {
+    os << "feed target " << i << ": {" << feed_target_shapes[i][0];
+    for (size_t j = 1; j < feed_target_shapes[i].size(); ++j) {
+      os << ", " << feed_target_shapes[i][j];
+    }
+    os << "}\n";
+  }
+  LOG(INFO) << os.str();
+
   int dim1 = feed_target_shapes[0][1];
   int dim2 = feed_target_shapes[0][2];
   int dim3 = feed_target_shapes[0][3];
@@ -139,25 +163,43 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
 }
 
 void TestOneThreadPrediction(
-    const AnalysisConfig &config,
+    const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, use_analysis);
-  Timer timer;
-  timer.tic();
-  for (int i = 0; i < num_times; i++) {
-    for (size_t j = 0; j < inputs.size(); j++) {
-      predictor->Run(inputs[j], outputs);
+
+  // warmup run
+  LOG(INFO) << "Warm up run...";
+  {
+    Timer warmup_timer;
+    warmup_timer.tic();
+    predictor->Run(inputs[0], outputs, batch_size);
+    PrintTime(batch_size, 1, 1, 0, warmup_timer.toc(), 1);
+#if !defined(_WIN32)
+    if (FLAGS_profile) {
+      paddle::platform::ResetProfiler();
     }
+#endif
   }
-  PrintTime(batch_size, num_times, 1, 0, timer.toc() / num_times,
-            inputs.size());
+
+  LOG(INFO) << "Run " << num_times << " times...";
+  {
+    Timer run_timer;
+    run_timer.tic();
+    for (int i = 0; i < num_times; i++) {
+      for (size_t j = 0; j < inputs.size(); j++) {
+        predictor->Run(inputs[j], outputs, batch_size);
+      }
+    }
+    PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
+              inputs.size());
+  }
 }
 
 void TestMultiThreadPrediction(
-    const AnalysisConfig &config,
+    const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, int num_threads,
     bool use_analysis = true) {
@@ -200,12 +242,11 @@ void TestMultiThreadPrediction(
   }
 }
 
-void TestPrediction(const AnalysisConfig &config,
+void TestPrediction(const PaddlePredictor::Config *config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
-  LOG(INFO) << "use_analysis: " << use_analysis
-            << ", use_mkldnn: " << config.use_mkldnn();
+  PrintConfig(config, use_analysis);
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
@@ -215,9 +256,9 @@ void TestPrediction(const AnalysisConfig &config,
 }
 
 void CompareNativeAndAnalysis(
-    const AnalysisConfig &config,
+    const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
-  LOG(INFO) << "use_mkldnn: " << config.use_mkldnn();
+  PrintConfig(config, true);
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
