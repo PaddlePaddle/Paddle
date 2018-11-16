@@ -38,7 +38,7 @@ class RefByTrainerIdKernel : public framework::OpKernel<T> {
     } else {
       trainer_id = *trainer_id_data;
     }
-    PADDLE_ENFORCE_LT(trainer_id, in_list.size());
+    PADDLE_ENFORCE_LT((size_t)trainer_id, in_list.size());
     out->mutable_data<T>(context.GetPlace());
     out->ShareDataWith(*(in_list[trainer_id]));
   }

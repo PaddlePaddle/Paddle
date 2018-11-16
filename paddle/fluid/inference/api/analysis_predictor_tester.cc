@@ -15,7 +15,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <thread>
+#include <thread>  // NOLINT
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
