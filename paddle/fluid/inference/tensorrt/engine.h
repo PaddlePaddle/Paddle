@@ -46,7 +46,7 @@ class TensorRTEngine : public EngineBase {
       w_.values = value;
       w_.count = num_elem;
     }
-    nvinfer1::Weights& get() { return w_; }
+    const nvinfer1::Weights& get() { return w_; }
 
     std::vector<int64_t> dims;
 

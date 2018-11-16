@@ -109,25 +109,12 @@ nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
   return output_dims;
 }
 
-int PReluPlugin::initialize() {
-  nvinfer1::Weights &alpha = cuda_alpha_.get();
-  alpha.type = alpha_.get().type;
-  alpha.count = alpha_.get().count;
-
-  CHECK_EQ(cudaMalloc(&alpha.values, alpha.count * sizeof(float)), cudaSuccess);
-  CHECK_EQ(cudaMemcpy(const_cast<void *>(alpha.values), alpha_.get().values,
-                      alpha.count * sizeof(float), cudaMemcpyHostToDevice),
-           cudaSuccess);
-  return 0;
-}
-
 int PReluPlugin::enqueue(int batchSize, const void *const *inputs,
                          void **outputs, void *workspace, cudaStream_t stream) {
   // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
-  const float *alpha =
-      reinterpret_cast<const float *>(cuda_alpha_.get().values);
+  const float *alpha = reinterpret_cast<const float *>(alpha_.get().values);
   float *output = reinterpret_cast<float **>(outputs)[0];
   if (mode_ == "channel") {
     PReluChannelWise(stream, input, alpha, output, batchSize, input_dims);

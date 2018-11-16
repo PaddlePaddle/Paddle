@@ -24,7 +24,6 @@ namespace tensorrt {
 
 class PReluPlugin : public PluginTensorRT {
   TensorRTEngine::Weight alpha_;
-  TensorRTEngine::Weight cuda_alpha_;
   std::string mode_;
 
  protected:
@@ -60,7 +59,6 @@ class PReluPlugin : public PluginTensorRT {
   int getNbOutputs() const override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
-  int initialize() override;
   int enqueue(int batchSize, const void *const *inputs, void **outputs,
               void *workspace, cudaStream_t stream) override;
 };
