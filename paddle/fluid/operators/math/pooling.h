@@ -82,7 +82,7 @@ class AvgPoolGrad {
  * This is different from average pooling. So we rewrite the max_pool_grad:
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
  */
-
+#ifdef PADDLE_WITH_CUDA
 template <typename PoolProcess, typename T>
 class Pool2dDirectCUDAFunctor {
  public:
@@ -93,6 +93,7 @@ class Pool2dDirectCUDAFunctor {
                   const std::vector<int>& paddings, PoolProcess pool_compute,
                   bool exclusive, T* output, cudaStream_t stream);
 };
+#endif
 
 template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool2dFunctor {
