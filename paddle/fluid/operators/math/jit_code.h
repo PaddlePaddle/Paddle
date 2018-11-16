@@ -127,12 +127,16 @@ class VActJitCode : public JitCode {
   void generate() override;
 
  protected:
-  // compute relu with ymm
+  // compute relu with ymm, xmm
   void relu_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src,
                 const Xbyak::Ymm& zero);
+  void relu_xmm(const Xbyak::Xmm& dst, const Xbyak::Xmm& src,
+                const Xbyak::Xmm& zero);
 
-  // compute exp with ymm
+  // compute exp with ymm, xmm
   void exp_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
+               int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
+  void exp_xmm(const Xbyak::Xmm& dst, const Xbyak::Xmm& src, int fx_idx = 2,
                int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
 
   // compute sigmoid with ymm
