@@ -110,6 +110,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'selu',
     'log',
     'crop',
     'rank_loss',
@@ -6179,6 +6180,47 @@ def relu(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def selu(x, scale=None, alpha=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): The input tensor.
+        scale(float, None): If the scale is not set,
+            the default value is 1.0507009873554804934193349852946.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        alpha(float, None): If the alpha is not set,
+            the default value is 1.6732632423543772848170429916717.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.selu(x)
+    """
+    helper = LayerHelper('selu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    attrs = {}
+    if scale is not None:
+        attrs["scale"] = scale
+    if alpha is not None:
+        attrs["alpha"] = alpha
+
+    helper.append_op(
+        type="selu", inputs={"X": x}, outputs={"Out": out}, attrs=attrs)
     return out
 
 
