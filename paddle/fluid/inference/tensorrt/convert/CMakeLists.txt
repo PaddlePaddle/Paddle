@@ -2,7 +2,7 @@
 nv_library(tensorrt_converter
   SRCS mul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc elementwise_op.cc
 batch_norm_op.cc activation_op.cc softmax_op.cc concat_op.cc dropout_op.cc
-pad_op.cc split_op.cc
+pad_op.cc split_op.cc prelu_op.cc
   DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS
@@ -16,7 +16,7 @@ nv_test(test_trt_fc_op SRCS test_fc_op.cc fc_op.cc
 nv_test(test_trt_activation_op SRCS test_activation_op.cc activation_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine activation_op SERIAL)
 nv_test(test_trt_conv_op SRCS test_conv2d_op.cc conv2d_op.cc
-        DEPS ${FLUID_CORE_MODULES} tensorrt_engine conv_op SERIAL)
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine conv_op conv_transpose_op SERIAL)
 nv_test(test_trt_pool2d_op SRCS test_pool2d_op.cc pool2d_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine pool_op SERIAL)
 nv_test(test_trt_elementwise_op SRCS test_elementwise_op.cc elementwise_op.cc
@@ -33,4 +33,7 @@ nv_test(test_trt_pad_op SRCS test_pad_op.cc pad_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine pad_op SERIAL)
 nv_test(test_trt_split_op SRCS test_split_op.cc split_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin
-split_op concat_op SERIAL)
+        split_op concat_op SERIAL)
+nv_test(test_trt_prelu_op SRCS test_prelu_op.cc prelu_op.cc
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin
+        prelu_op SERIAL)
