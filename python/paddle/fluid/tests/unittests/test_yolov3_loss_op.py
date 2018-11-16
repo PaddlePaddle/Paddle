@@ -195,7 +195,7 @@ class TestYolov3LossOp(OpTest):
         self.check_grad_with_place(
             place, ['X'],
             'Loss',
-            no_grad_set=set("GTBox"),
+            no_grad_set=set(["GTBox", "GTLabel"]),
             max_relative_error=0.06)
 
     def initTestCase(self):
