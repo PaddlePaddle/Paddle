@@ -119,7 +119,7 @@ function(op_library TARGET)
 
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
-"tensor_array_read_write_op" "tensorrt_engine_op")
+"tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -262,8 +262,12 @@ op_library(cross_entropy_op DEPS cross_entropy)
 if(WITH_GPU)
   op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax cub)
   op_library(sequence_softmax_op DEPS cub)
+  op_library(conv_fusion_op)
+  set(DEPS_OPS ${DEPS_OPS} conv_fusion_op)
+  file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
 else()
   op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+  set(DEPS_OPS ${DEPS_OPS} conv_fusion_op)
 endif()
 
 op_library(softmax_op DEPS softmax)
