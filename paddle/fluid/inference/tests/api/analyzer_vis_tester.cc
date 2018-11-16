@@ -59,9 +59,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->specify_input_name = true;
   // TODO(TJ): fix fusion gru
   cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
-#ifdef PADDLE_WITH_MKLDNN
-  cfg->EnableMKLDNN();
-#endif
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -94,7 +91,8 @@ void profile(bool use_mkldnn = false) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     const float ocr_result_data[] = {
@@ -136,7 +134,8 @@ void compare(bool use_mkldnn = false) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 TEST(Analyzer_vis, compare) { compare(); }
