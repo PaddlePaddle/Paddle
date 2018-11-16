@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
+import unittest
 import numpy as np
-import math
 import sys
 import math
 import paddle.fluid as fluid
@@ -59,16 +59,16 @@ def bbox_overlaps(boxes, query_boxes):
     return overlaps
 
 
-def crop_and_resize(mask_gt, roi, resolution):
+def crop_and_resize(mask_gt, roi_fg, resolution):
     result = np.zeros((resolution, resolution))
-    w = roi[2] - roi[0]
-    h = roi[3] - roi[1]
+    w = roi_fg[2] - roi_fg[0]
+    h = roi_fg[3] - roi_fg[1]
     w = np.maximum(w, 1)
     h = np.maximum(h, 1)
     for i in range(resolution):
         for j in range(resolution):
-            x = int(i / float(resolution) * w + roi[0])
-            y = int(j / float(resolution) * h + roi[1])
+            x = int(i / float(resolution) * w + roi_fg[0])
+            y = int(j / float(resolution) * h + roi_fg[1])
             result[j, i] = mask_gt[y, x] > 0
     return result
 
@@ -94,7 +94,7 @@ def expand_mask_targets(masks, mask_class_labels, resolution, num_classes):
     return mask_targets
 
 
-def generate_mask_target(num_classes, im_info, gt_classes, is_crowd,
+def generate_mask_labels(num_classes, im_info, gt_classes, is_crowd,
                          label_int32, gt_segms, resolution, rois, roi_lod,
                          mask_lod):
     mask_rois = []
@@ -126,6 +126,7 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
     masks_gt = []
     masks_gt = [gt_segms[i] for i in mask_gt_inds]
     boxes_from_masks = masks_to_boxes(masks_gt)
+
     fg_inds = np.where(label_int32 > 0)[0]
     roi_has_mask = fg_inds.copy()
     if fg_inds.shape[0] > 0:
@@ -164,7 +165,7 @@ def trans_lod(lod):
     return new_lod
 
 
-class TestGenerateMaskTarget(OpTest):
+class TestGenerateMaskLabels(OpTest):
     def set_data(self):
         self.init_test_case()
         self.make_generate_proposal_labels_out()
@@ -173,27 +174,27 @@ class TestGenerateMaskTarget(OpTest):
         self.init_test_output()
         self.inputs = {
             'ImInfo': self.im_info,
-            'GtClasses': (self.gt_classes, self.masks_lod),
-            'IsCrowd': (self.is_crowd, self.masks_lod),
-            'LabelsInt32': (self.label_int32, self.rois_lod),
-            'GtSegms': (self.gt_segms, self.masks_lod),
-            'Rois': (self.rois, self.rois_lod)
+            'GtClasses': (self.gt_classes.astype(np.int32), self.masks_lod),
+            'IsCrowd': (self.is_crowd.astype(np.int32), self.masks_lod),
+            'LabelsInt32': (self.label_int32.astype(np.int32), self.rois_lod),
+            'GtSegms': (self.gt_segms.astype(np.int8), self.masks_lod),
+            'Rois': (self.rois.astype(np.float32), self.rois_lod)
         }
         self.attrs = {
             'num_classes': self.num_classes,
             'resolution': self.resolution
         }
         self.outputs = {
-            'MaskRois': (self.mask_rois, self.new_lod),
-            'RoiHasMaskInt32': (self.roi_has_mask_int32, self.new_lod),
-            'MaskInt32': (self.mask_int32, self.new_lod)
+            'MaskRois': (self.mask_rois, [self.new_lod]),
+            'RoiHasMaskInt32': (self.roi_has_mask_int32, [self.new_lod]),
+            'MaskInt32': (self.mask_int32, [self.new_lod])
         }
 
     def init_test_case(self):
-        self.num_classes = 5
+        self.num_classes = 81
         self.resolution = 14
         self.batch_size = 4
-        self.images_shape = [16, 16]
+        self.images_shape = [100, 200]
         np.random.seed(0)
 
     def make_generate_proposal_labels_out(self):
@@ -219,7 +220,7 @@ class TestGenerateMaskTarget(OpTest):
         self.label_int32 = label_np[:, np.newaxis]
 
     def generate_gt_segms(self):
-        self.gt_segms = np.zeros((10, self.images_shape[0], \
+        self.gt_segms = np.zeros(((self.batch_size * (self.batch_size + 1) / 2), self.images_shape[0], \
                                   self.images_shape[1]), dtype=np.int8)
         self.masks_lod = [[]]
         mask_id = 0
@@ -244,7 +245,7 @@ class TestGenerateMaskTarget(OpTest):
                 class_id = np.random.random_integers(self.num_classes - 1)
                 self.gt_classes.append(class_id)
                 self.is_crowd.append(0)
-        self.im_info = np.array(self.im_info)
+        self.im_info = np.array(self.im_info).astype(np.float32)
         gt_classes_np = np.array(self.gt_classes)
         self.gt_classes = gt_classes_np[:, np.newaxis]
         is_crowd_np = np.array(self.is_crowd)
@@ -254,18 +255,23 @@ class TestGenerateMaskTarget(OpTest):
         roi_lod = trans_lod(self.rois_lod[0])
         mask_lod = trans_lod(self.masks_lod[0])
         self.mask_rois, self.roi_has_mask_int32, self.mask_int32, \
-        self.new_lod = generate_mask_target(self.num_classes, self.im_info,
+        self.new_lod = generate_mask_labels(self.num_classes, self.im_info,
                    self.gt_classes, self.is_crowd,
                    self.label_int32, self.gt_segms,
                    self.resolution, self.rois,
                    roi_lod, mask_lod)
         self.mask_rois = np.vstack(self.mask_rois)
-        self.roi_has_mask_int32 = np.hstack(self.roi_has_mask_int32)
+        self.roi_has_mask_int32 = np.hstack(self.roi_has_mask_int32)[:,
+                                                                     np.newaxis]
         self.mask_int32 = np.vstack(self.mask_int32)
 
     def setUp(self):
-        self.op_type = "generate_mask_target"
+        self.op_type = "generate_mask_labels"
         self.set_data()
 
     def test_check_output(self):
         self.check_output()
+
+
+if __name__ == '__main__':
+    unittest.main()

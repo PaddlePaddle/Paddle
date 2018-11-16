@@ -35,6 +35,36 @@ void AppendMask(LoDTensor* out, int64_t offset, Tensor* to_add) {
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
+template <typename T>
+void PrintTensor(Tensor t) {
+  auto* t_data = t.data<T>();
+  int r = t.dims()[0];
+  int c = t.dims()[1];
+  std::cout << r << ' ' << c << std::endl;
+  for (int i = 0; i < r; ++i) {
+    for (int j = 0; j < c; ++j) {
+      std::cout << static_cast<float>(t_data[i * c + j]) << " ";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+}
+
+void PrintVector(Tensor v) {
+  auto et = framework::EigenTensor<int, 1>::From(v);
+  int r = v.dims()[0];
+  for (int i = 0; i < r; ++i) {
+    std::cout << et(i) << ", ";
+  }
+  std::cout << std::endl;
+  std::cout << std::endl;
+}
+
+template <typename T>
+void PrintTemplate(T c) {
+  std::cout << c << std::endl;
+}
+
 class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -97,8 +127,8 @@ static inline Tensor MasksToBoxes(const platform::CPUDeviceContext& context,
   int64_t num_pixel = width * height;
 
   Tensor boxes_from_masks;
-  int* boxes_from_masks_data =
-      boxes_from_masks.mutable_data<int>({num_mask, 4}, context.GetPlace());
+  T* boxes_from_masks_data =
+      boxes_from_masks.mutable_data<T>({num_mask, 4}, context.GetPlace());
   math::set_constant(context, &boxes_from_masks, 0);
 
   for (int64_t mask_id = 0; mask_id < num_mask; ++mask_id) {
@@ -116,19 +146,25 @@ static inline Tensor MasksToBoxes(const platform::CPUDeviceContext& context,
         ymax = y > ymax ? y : ymax;
       }
     }
-    boxes_from_masks_data[mask_id * kBoxDim] = xmin;
-    boxes_from_masks_data[mask_id * kBoxDim + 1] = ymin;
-    boxes_from_masks_data[mask_id * kBoxDim + 2] = xmax;
-    boxes_from_masks_data[mask_id * kBoxDim + 3] = ymax;
+    boxes_from_masks_data[mask_id * kBoxDim] = static_cast<T>(xmin);
+    boxes_from_masks_data[mask_id * kBoxDim + 1] = static_cast<T>(ymin);
+    boxes_from_masks_data[mask_id * kBoxDim + 2] = static_cast<T>(xmax);
+    boxes_from_masks_data[mask_id * kBoxDim + 3] = static_cast<T>(ymax);
   }
+
   return boxes_from_masks;
 }
 
 template <typename T>
 static inline Tensor CropAndResize(const platform::CPUDeviceContext& context,
-                                   int8_t* masks_gt_data, const int mask_idx,
-                                   T* rois_fg_data, const int roi_idx,
+                                   const Tensor& masks_gt, const int mask_idx,
+                                   const Tensor& rois_fg, const int roi_idx,
                                    const int M) {
+  const int8_t* masks_gt_data = masks_gt.data<int8_t>();
+  // int height = masks_gt.dims()[1];
+  int width = masks_gt.dims()[2];
+  const T* rois_fg_data = rois_fg.data<T>();
+
   Tensor result;
   int8_t* result_data = result.mutable_data<int8_t>({M, M}, context.GetPlace());
 
@@ -142,7 +178,7 @@ static inline Tensor CropAndResize(const platform::CPUDeviceContext& context,
                                rois_fg_data[roi_idx + 0]);
       int y = static_cast<int>(j / static_cast<T>(M) * h +
                                rois_fg_data[roi_idx + 1]);
-      result_data[j * M + i] = masks_gt_data[mask_idx + y * M + x] > 0;
+      result_data[j * M + i] = masks_gt_data[mask_idx + y * width + x] > 0;
     }
   }
   return result;
@@ -194,7 +230,7 @@ std::vector<Tensor> SampleMaskForOneImage(
   const int* is_crowd_data = is_crowd->data<int>();
   const int* label_int32_data = label_int32->data<int>();
   for (int64_t i = 0; i < gt_size; ++i) {
-    if ((gt_classes_data[i] > 0) && (is_crowd_data == 0)) {
+    if ((gt_classes_data[i] > 0) && (is_crowd_data[i] == 0)) {
       mask_gt_inds.emplace_back(i);
     }
   }
@@ -203,7 +239,6 @@ std::vector<Tensor> SampleMaskForOneImage(
       fg_inds.emplace_back(i);
     }
   }
-
   Tensor mask_gt_inds_t, fg_inds_t;
   int gt_num = mask_gt_inds.size();
   int fg_num = fg_inds.size();
@@ -215,7 +250,7 @@ std::vector<Tensor> SampleMaskForOneImage(
   Tensor masks_gt;
   masks_gt.mutable_data<int8_t>(
       {gt_num, gt_segms->dims()[1], gt_segms->dims()[2]}, context.GetPlace());
-  CPUGather<T>(context, *gt_segms, mask_gt_inds_t, &masks_gt);
+  CPUGather<int8_t>(context, *gt_segms, mask_gt_inds_t, &masks_gt);
 
   Tensor boxes_from_masks = MasksToBoxes<T>(context, masks_gt);
   std::vector<int> roi_has_mask =
@@ -256,17 +291,16 @@ std::vector<Tensor> SampleMaskForOneImage(
         }
       }
     }
+    PrintTemplate<char>('A');
 
     // add fg targets
-    int8_t* masks_gt_data = masks_gt.data<int8_t>();
-    T* rois_fg_data = rois_fg.data<T>();
-
     for (int64_t i = 0; i < fg_num; ++i) {
       int fg_masks_ind = fg_masks_inds[i];
+      PrintTemplate<int>(fg_masks_ind);
       int mask_idx = fg_masks_ind * gt_segms->dims()[1] * gt_segms->dims()[2];
       int roi_idx = i * kBoxDim;
-      Tensor mask = CropAndResize<T>(context, masks_gt_data, mask_idx,
-                                     rois_fg_data, roi_idx, resolution);
+      Tensor mask = CropAndResize<T>(context, masks_gt, mask_idx, rois_fg,
+                                     roi_idx, resolution);
       int8_t* mask_data = mask.data<int8_t>();
       int offset = i * resolution * resolution;
       memcpy(masks_data + offset, mask_data, mask.numel() * sizeof(int8_t));
@@ -333,8 +367,6 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     int num_classes = context.Attr<int>("num_classes");
     int resolution = context.Attr<int>("resolution");
 
-    PADDLE_ENFORCE_EQ(im_info->lod().size(), 1UL,
-                      "GenerateMaskLabelsOp im_info needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(gt_classes->lod().size(), 1UL,
                       "GenerateMaskLabelsOp gt_classes needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
@@ -368,6 +400,8 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     auto label_int32_lod = label_int32->lod().back();
 
     for (int i = 0; i < n; ++i) {
+      std::cout << "lod: " << gt_classes_lod[i] << " " << gt_classes_lod[i + 1]
+                << std::endl;
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       Tensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
