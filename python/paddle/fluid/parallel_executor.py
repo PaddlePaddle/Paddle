@@ -29,7 +29,6 @@ if os.name != 'nt':
     ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
     BuildStrategy = core.ParallelExecutor.BuildStrategy
 
-
     class ParallelExecutor(object):
         """
         ParallelExecutor is designed for data parallelism, which focuses on distributing
@@ -161,7 +160,8 @@ if os.name != 'nt':
                     for p in main.global_block().iter_parameters()
                     if not p.stop_gradient
                 ]),
-                set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
+                set(cpt.to_text(var)
+                    for var in self.persistable_vars), main.desc,
                 cpt.to_text(loss_name)
                 if loss_name else six.u(''), scope, local_scopes, exec_strategy,
                 build_strategy, num_trainers, trainer_id)
