@@ -132,56 +132,8 @@ const int exp_int_0x7f[] ALIGN32 = {REPEAT_8TIMES(0x7f)};
 int g_tmp_mem[16] ALIGN32 = {0};
 
 bool VActJitCode::init(int d, operand_type type) {
-  bool ok = MayIUse(avx);
-  if (type == operand_type::relu || type == operand_type::exp) {
-    // TODO(TJ): implement avx512, avx_exp is slower than mkl when d >= 256
-    return ok;
-  } else {
-    // TODO(TJ): support more
-    return ok && d % 8 == 0;
-  }
-}
-
-void VActJitCode::sigmoid_ymm(ymm_t& ymm_dst, ymm_t& ymm_src, int fx_idx,
-                              int fy_idx, int mask_idx, int tmp_idx) {
-  // y = 1 / (1 + e^-x)
-  ymm_t ymm_tmp = ymm_t(tmp_idx);
-  reg64_t reg_ptr_global = rax;
-  push(reg_ptr_global);
-  mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MAX]);
-  vminps(ymm_src, ymm_src, ymm_tmp);
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MIN]);
-  vmaxps(ymm_src, ymm_src, ymm_tmp);
-  vxorps(ymm_tmp, ymm_tmp, ymm_tmp);
-  vsubps(ymm_src, ymm_tmp, ymm_src);
-  exp_jmm<ymm_t>(ymm_dst, ymm_src, fx_idx, fy_idx, mask_idx, tmp_idx);
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
-  vaddps(ymm_dst, ymm_dst, ymm_tmp);
-  vdivps(ymm_dst, ymm_tmp, ymm_dst);
-  pop(reg_ptr_global);
-}
-
-void VActJitCode::tanh_ymm(ymm_t& ymm_dst, ymm_t& ymm_src, int fx_idx,
-                           int fy_idx, int mask_idx, int tmp_idx) {
-  // y = 2 / (1 + e^(-2x)) - 1
-  ymm_t ymm_tmp = ymm_t(tmp_idx);
-  ymm_t ymm_zero = ymm_t(mask_idx);
-  reg64_t reg_ptr_global = rax;
-  push(reg_ptr_global);
-  mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
-  vxorps(ymm_zero, ymm_zero, ymm_zero);
-  vsubps(ymm_tmp, ymm_zero, ymm_tmp);
-  vmulps(ymm_src, ymm_src, ymm_tmp);
-  exp_jmm<ymm_t>(ymm_dst, ymm_src, fx_idx, fy_idx, mask_idx, tmp_idx);
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
-  vaddps(ymm_dst, ymm_dst, ymm_tmp);
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
-  vdivps(ymm_dst, ymm_tmp, ymm_dst);
-  vmovaps(ymm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
-  vsubps(ymm_dst, ymm_dst, ymm_tmp);
-  pop(reg_ptr_global);
+  // TODO(TJ): implement avx512, avx_exp is slower than mkl when d >= 256
+  return MayIUse(avx);
 }
 
 void VActJitCode::generate() {
@@ -201,10 +153,10 @@ void VActJitCode::generate() {
         exp_jmm<ymm_t>(ymm_dst, ymm_src, 2, 3, 4, 5);
         break;
       case operand_type::sigmoid:
-        sigmoid_ymm(ymm_dst, ymm_src, 2, 3, 4, 5);
+        sigmoid_jmm<ymm_t>(ymm_dst, ymm_src, 2, 3, 4, 5);
         break;
       case operand_type::tanh:
-        tanh_ymm(ymm_dst, ymm_src, 2, 3, 4, 5);
+        tanh_jmm<ymm_t>(ymm_dst, ymm_src, 2, 3, 4, 5);
         break;
       case operand_type::identity:
         break;
@@ -213,11 +165,6 @@ void VActJitCode::generate() {
     }
     vmovups(ptr[param2 + offset], ymm_dst);
     offset += sizeof(float) * YMM_FLOAT_BLOCK;
-  }
-  if (type_ != operand_type::relu && type_ != operand_type::exp) {
-    // TODO(TJ): remove me
-    ret();
-    return;
   }
   int rest = num_ % YMM_FLOAT_BLOCK;
   int block = XMM_FLOAT_BLOCK;
@@ -235,6 +182,12 @@ void VActJitCode::generate() {
         break;
       case operand_type::exp:
         exp_jmm<xmm_t>(xmm_dst, xmm_src, 2, 3, 4, 5);
+        break;
+      case operand_type::sigmoid:
+        sigmoid_jmm<xmm_t>(xmm_dst, xmm_src, 2, 3, 4, 5);
+        break;
+      case operand_type::tanh:
+        tanh_jmm<xmm_t>(xmm_dst, xmm_src, 2, 3, 4, 5);
         break;
       default:
         break;

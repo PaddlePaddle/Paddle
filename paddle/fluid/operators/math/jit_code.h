@@ -263,13 +263,51 @@ class VActJitCode : public JitCode {
     pop(reg_ptr_global);
   }
 
-  // compute sigmoid with ymm
-  void sigmoid_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
-                   int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
+  // compute sigmoid with ymm, xmm
+  template <typename JMM>
+  void sigmoid_jmm(JMM& dst, JMM& src, int fx_idx = 2,  // NOLINT
+                   int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5) {
+    // y = 1 / (1 + e^-x)
+    JMM jmm_tmp = JMM(tmp_idx);
+    reg64_t reg_ptr_global = rax;
+    push(reg_ptr_global);
+    mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MAX]);
+    vminps(src, src, jmm_tmp);
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MIN]);
+    vmaxps(src, src, jmm_tmp);
+    vxorps(jmm_tmp, jmm_tmp, jmm_tmp);
+    vsubps(src, jmm_tmp, src);
+    exp_jmm<JMM>(dst, src, fx_idx, fy_idx, mask_idx, tmp_idx);
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
+    vaddps(dst, dst, jmm_tmp);
+    vdivps(dst, jmm_tmp, dst);
+    pop(reg_ptr_global);
+  }
 
-  // compute tanh with ymm
-  void tanh_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
-                int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
+  // compute tanh with ymm, xmm
+  template <typename JMM>
+  void tanh_jmm(JMM& dst, JMM& src, int fx_idx = 2, int fy_idx = 3,  // NOLINT
+                int mask_idx = 4, int tmp_idx = 5) {
+    // y = 2 / (1 + e^(-2x)) - 1
+    JMM jmm_tmp = JMM(tmp_idx);
+    JMM jmm_zero = JMM(mask_idx);
+    reg64_t reg_ptr_global = rax;
+    push(reg_ptr_global);
+    mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
+    vxorps(jmm_zero, jmm_zero, jmm_zero);
+    vsubps(jmm_tmp, jmm_zero, jmm_tmp);
+    vmulps(src, src, jmm_tmp);
+    exp_jmm<JMM>(dst, src, fx_idx, fy_idx, mask_idx, tmp_idx);
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
+    vaddps(dst, dst, jmm_tmp);
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
+    vdivps(dst, jmm_tmp, dst);
+    vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
+    vsubps(dst, dst, jmm_tmp);
+    pop(reg_ptr_global);
+  }
 
  protected:
   int num_;
