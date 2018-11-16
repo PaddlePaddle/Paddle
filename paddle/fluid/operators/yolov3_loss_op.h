@@ -323,7 +323,7 @@ static void AddAllGradToInputGrad(
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class Yolov3LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -392,7 +392,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class Yolov3LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
