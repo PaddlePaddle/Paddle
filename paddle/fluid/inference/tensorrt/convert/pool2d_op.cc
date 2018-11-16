@@ -102,8 +102,7 @@ class Pool2dOpConverter : public OpConverter {
       layer->setName(("pool2d (Output: " + output_name + ")").c_str());
       layer->getOutput(0)->setName(output_name.c_str());
       engine_->SetITensor(output_name, layer->getOutput(0));
-      if (test_mode ||
-          output_name == "patch_6_pool1.avg_pool.output.1.tmp_0702") {
+      if (test_mode) {
         engine_->DeclareOutput(output_name);
       }
       return;
@@ -148,8 +147,7 @@ class Pool2dOpConverter : public OpConverter {
     layer->setName(("pool2d (Output: " + output_name + ")").c_str());
     layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode ||
-        output_name == "patch_6_pool1.avg_pool.output.1.tmp_0702") {
+    if (test_mode) {
       engine_->DeclareOutput(output_name);
     }
   }
