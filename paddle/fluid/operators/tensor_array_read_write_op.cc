@@ -34,8 +34,8 @@ class WriteToArrayOp : public ArrayOp {
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
-      VLOG(10) << "Resize " << Output("Out") << " from " << out->size()
-               << " to " << offset + 1;
+      VLOG(100) << "Resize " << Output("Out") << " from " << out->size()
+                << " to " << offset + 1;
       out->resize(offset + 1);
     }
     auto *out_tensor = &out->at(offset);
@@ -47,9 +47,9 @@ class WriteToArrayOp : public ArrayOp {
 
       TensorCopy(x_tensor, place, dev_ctx, out_tensor);
     } else {
-      VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
-                  "nothing has been written to output array["
-               << offset << "].";
+      VLOG(100) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
+                   "nothing has been written to output array["
+                << offset << "].";
     }
   }
 };
@@ -104,7 +104,7 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
                   framework::BlockDesc *block) const override {
     auto x_name = op_desc.Input("X")[0];
     auto out_name = op_desc.Output("Out")[0];
-    VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
+    VLOG(100) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
     auto &out = block->FindRecursiveOrCreateVar(out_name);
     out.SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
     auto *x = block->FindVarRecursive(x_name);
@@ -139,7 +139,7 @@ class ReadFromArrayOp : public ArrayOp {
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {
-      VLOG(10) << "offset " << offset << " >= " << x_array.size();
+      VLOG(100) << "offset " << offset << " >= " << x_array.size();
     }
   }
 };

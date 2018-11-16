@@ -82,7 +82,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
-      VLOG(3) << "input " << in << " is not LodTensor";
+      VLOG(30) << "input " << in << " is not LodTensor";
       return;
     }
     out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -241,32 +241,32 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
     const proto::OpProto::Attr &attr = GetProtoAttr(name);
     switch (attr.type()) {
       case proto::AttrType::BOOLEANS: {
-        VLOG(11) << "SetAttr: " << Type() << ", " << name
-                 << " from INTS to BOOLEANS";
+        VLOG(110) << "SetAttr: " << Type() << ", " << name
+                  << " from INTS to BOOLEANS";
         this->attrs_[name] = std::vector<bool>();
         break;
       }
       case proto::AttrType::INTS: {
-        VLOG(11) << "SetAttr: " << Type() << ", " << name
-                 << " from INTS to INTS";
+        VLOG(110) << "SetAttr: " << Type() << ", " << name
+                  << " from INTS to INTS";
         this->attrs_[name] = std::vector<int>();
         break;
       }
       case proto::AttrType::FLOATS: {
-        VLOG(11) << "SetAttr: " << Type() << ", " << name
-                 << " from INTS to FLOATS";
+        VLOG(110) << "SetAttr: " << Type() << ", " << name
+                  << " from INTS to FLOATS";
         this->attrs_[name] = std::vector<float>();
         break;
       }
       case proto::AttrType::STRINGS: {
-        VLOG(11) << "SetAttr: " << Type() << ", " << name
-                 << " from INTS to STRINGS";
+        VLOG(110) << "SetAttr: " << Type() << ", " << name
+                  << " from INTS to STRINGS";
         this->attrs_[name] = std::vector<std::string>();
         break;
       }
       case proto::AttrType::BLOCKS: {
-        VLOG(11) << "SetAttr: " << Type() << ", " << name
-                 << " from INTS to BLOCKS";
+        VLOG(110) << "SetAttr: " << Type() << ", " << name
+                  << " from INTS to BLOCKS";
         this->SetBlocksAttr(name, std::vector<BlockDesc *>());
         return;
       }
@@ -499,13 +499,13 @@ void OpDesc::CheckAttrs() {
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {
-  VLOG(3) << "CompileTime infer shape on " << Type();
+  VLOG(30) << "CompileTime infer shape on " << Type();
   InitInferShapeFuncs();
   auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
   PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                  "%s's infer_shape has not been registered", this->Type());
   CompileTimeInferShapeContext ctx(*this, block);
-  if (VLOG_IS_ON(10)) {
+  if (VLOG_IS_ON(100)) {
     std::ostringstream sout;
     auto inames = this->InputArgumentNames();
     sout << " From [";
@@ -516,7 +516,7 @@ void OpDesc::InferShape(const BlockDesc &block) const {
     std::copy(onames.begin(), onames.end(),
               std::ostream_iterator<std::string>(sout, ", "));
     sout << "]";
-    VLOG(10) << sout.str();
+    VLOG(100) << sout.str();
   }
   infer_shape(&ctx);
 }
@@ -607,7 +607,7 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
     auto shape = var->GetShape();
     res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
   } catch (...) {
-    VLOG(5) << "GetDim of variable " << name << " error";
+    VLOG(50) << "GetDim of variable " << name << " error";
     std::rethrow_exception(std::current_exception());
   }
   return res;
@@ -624,7 +624,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
       res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
     }
   } catch (...) {
-    VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
+    VLOG(50) << "GetRepeatedDim of variable " << name << " error.";
     std::rethrow_exception(std::current_exception());
   }
   return res;

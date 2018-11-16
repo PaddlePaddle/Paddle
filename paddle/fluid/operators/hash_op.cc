@@ -38,7 +38,7 @@ class HashOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims;
     out_dims.reserve(dims.size() + 1);
     // copy all dims except the last one
-    for (size_t i = 0u; i != dims.size() - 1; ++i) {
+    for (int i = 0u; i != dims.size() - 1; ++i) {
       out_dims.emplace_back(dims[i]);
     }
     int num_hash = ctx->Attrs().Get<int>("num_hash");

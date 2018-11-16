@@ -39,7 +39,7 @@ void RPCServer::SavePort() const {
   port_file.open(file_path);
   port_file << selected_port_;
   port_file.close();
-  VLOG(4) << "selected port written to " << file_path;
+  VLOG(40) << "selected port written to " << file_path;
 }
 
 void RPCServer::WaitBarrier(const std::string& rpc_name) {
@@ -49,12 +49,12 @@ void RPCServer::WaitBarrier(const std::string& rpc_name) {
             exit_flag_.load());
   });
 
-  VLOG(3) << "batch_barrier_: " << rpc_name << " "
-          << barrier_counter_[rpc_name];
+  VLOG(30) << "batch_barrier_: " << rpc_name << " "
+           << barrier_counter_[rpc_name];
 }
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
-  VLOG(4) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
+  VLOG(40) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);
   b = ++barrier_counter_[rpc_name];
@@ -71,7 +71,7 @@ void RPCServer::Complete() {
     client_num_--;
     need_reset_all_vars_ = true;
 
-    VLOG(4) << "decrease client_num to: " << client_num_;
+    VLOG(40) << "decrease client_num to: " << client_num_;
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
       barrier_counter_[kRequestGet]--;
     }
@@ -90,7 +90,7 @@ int RPCServer::GetClientNum() {
 }
 
 void RPCServer::ResetBarrierCounter() {
-  VLOG(3) << "RPCServer ResetBarrierCounter ";
+  VLOG(30) << "RPCServer ResetBarrierCounter ";
   std::unique_lock<std::mutex> lock(mutex_);
   for (auto& t : barrier_counter_) {
     t.second = 0;
@@ -105,12 +105,12 @@ void RPCServer::RegisterRPC(const std::string& rpc_name,
 
   static int cond = -1;
   rpc_cond_map_[rpc_name] = ++cond;
-  VLOG(4) << "RegisterRPC rpc_name:" << rpc_name << ", handler:" << handler
-          << ", cond:" << rpc_cond_map_[rpc_name];
+  VLOG(40) << "RegisterRPC rpc_name:" << rpc_name << ", handler:" << handler
+           << ", cond:" << rpc_cond_map_[rpc_name];
 }
 
 void RPCServer::SetCond(const std::string& rpc_name) {
-  VLOG(3) << "RPCServer SetCond " << rpc_name;
+  VLOG(30) << "RPCServer SetCond " << rpc_name;
   {
     std::unique_lock<std::mutex> lock(mutex_);
     cur_cond_ = rpc_cond_map_[rpc_name];
@@ -120,7 +120,7 @@ void RPCServer::SetCond(const std::string& rpc_name) {
 }
 
 void RPCServer::WaitCond(const std::string& rpc_name) {
-  VLOG(4) << "RPCServer WaitCond " << rpc_name;
+  VLOG(40) << "RPCServer WaitCond " << rpc_name;
   int cond = 0;
   {
     std::unique_lock<std::mutex> lock(mutex_);

@@ -297,7 +297,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
       if (grad.rows().size() == 0) {
-        VLOG(3) << "grad row size is 0!!";
+        VLOG(30) << "grad row size is 0!!";
         return;
       }
 
