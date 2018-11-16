@@ -133,7 +133,7 @@ class VMulKernelImpl : public VMulKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       // roughly estimate the size of code
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::mul, 0, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -184,7 +184,7 @@ class VAddKernelImpl : public VAddKernel<T> {
   explicit VAddKernelImpl(int d) : VAddKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 0, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -234,7 +234,7 @@ class VAddReluKernelImpl : public VAddReluKernel<T> {
   explicit VAddReluKernelImpl(int d) : VAddReluKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 0, true,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -266,7 +266,7 @@ class VScalKernelImpl : public VScalKernel<T> {
   explicit VScalKernelImpl(int d) : VScalKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::mul, 1, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -315,7 +315,7 @@ class VAddBiasKernelImpl : public VAddBiasKernel<T> {
   explicit VAddBiasKernelImpl(int d) : VAddBiasKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 1, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -349,7 +349,7 @@ class VReluKernelImpl : public VReluKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 /* init size */ +
-                  d / AVX_FLOAT_BLOCK * 4 /* instructions */ *
+                  d / YMM_FLOAT_BLOCK * 4 /* instructions */ *
                       8 /* average bytes for each instruction */;
       jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::relu,
                                           sz > 4096 ? sz : 4096));

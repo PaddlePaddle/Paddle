@@ -116,7 +116,7 @@ class VExpKernelImpl : public VExpKernel<T> {
   explicit VExpKernelImpl(int d) : VExpKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 70 * 8;
       jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::exp,
                                           sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
@@ -167,7 +167,7 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
   explicit VSigmoidKernelImpl(int d) : VSigmoidKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 82 * 8;
       jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::sigmoid,
                                           sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
@@ -219,7 +219,7 @@ class VTanhKernelImpl : public VTanhKernel<T> {
   explicit VTanhKernelImpl(int d) : VTanhKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;  // should change
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 84 * 8;
       jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::tanh,
                                           sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
