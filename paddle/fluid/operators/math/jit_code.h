@@ -128,10 +128,10 @@ class VActJitCode : public JitCode {
 
  protected:
   // compute relu with ymm, xmm
-  void relu_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src,
-                const Xbyak::Ymm& zero);
-  void relu_xmm(const Xbyak::Xmm& dst, const Xbyak::Xmm& src,
-                const Xbyak::Xmm& zero);
+  template <typename JMM>
+  void relu_jmm(JMM& dst, JMM& src, JMM& zero) {  // NOLINT
+    vmaxps(dst, src, zero);
+  }
 
   // compute exp with ymm, xmm
   void exp_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
