@@ -346,7 +346,6 @@ class VReluKernelImpl : public VReluKernel<T> {
  public:
   JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VReluKernelImpl(int d) : VReluKernel<T>() {
-    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       size_t sz = 96 /* init size */ +
@@ -360,9 +359,6 @@ class VReluKernelImpl : public VReluKernel<T> {
 #endif
 
     this->Compute = VReluRefer<T>;
-  }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    VReluRefer(x, y, this->num_);
   }
 #ifdef PADDLE_WITH_XBYAK
 
@@ -378,22 +374,26 @@ bool VReluKernelImpl<float>::useJIT(int d) {
 }
 #endif
 
+template <typename T>
+inline void VIdentityRefer(const T* x, T* y, int n) {}
+
+/* An empty JitKernel */
+template <typename T>
+class VIdentityKernelImpl : public VIdentityKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit VIdentityKernelImpl(int d) : VIdentityKernel<T>() {
+    this->Compute = VIdentityRefer<T>;
+  }
+};
+
 REGISTER_JITKERNEL(vmul, VMulKernel);
 REGISTER_JITKERNEL(vadd, VAddKernel);
 REGISTER_JITKERNEL(vaddrelu, VAddReluKernel);
 REGISTER_JITKERNEL(vscal, VScalKernel);
 REGISTER_JITKERNEL(vaddbias, VAddBiasKernel);
 REGISTER_JITKERNEL(vrelu, VReluKernel);
-
-/* An empty JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
-class VIdentityKernelImpl : public VIdentityKernel<T> {
- public:
-  explicit VIdentityKernelImpl(int d) : VIdentityKernel<T>() { this->num_ = d; }
-  void ComputeDeprecated(const T* x, T* y) const override {}
-};
-
-REGISTER_JITKERNEL_DEPRECATED(videntity, VIdentityKernel);
+REGISTER_JITKERNEL(videntity, VIdentityKernel);
 
 }  // namespace jitkernel
 }  // namespace math

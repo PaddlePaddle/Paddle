@@ -181,7 +181,7 @@ TEST(JitKernel, vexp) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      // ker->ComputeDeprecated(x_data, ztgt_data);
+      // ker->Compute(x_data, ztgt_data);
       ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
@@ -345,8 +345,8 @@ void lstm_ctht_ref(
     const std::shared_ptr<
         const paddle::operators::math::jitkernel::VExpKernel<float>>& vexp_1,
     const int d, float* gates, const float* ct_1, float* ct, float* ht) {
-  vsigmoid_3d->ComputeDeprecated(gates + d, gates + d);
-  vtanh_d->ComputeDeprecated(gates, gates);
+  vsigmoid_3d->Compute(gates + d, gates + d, 3 * d);
+  vtanh_d->Compute(gates, gates, d);
   const float *i = gates + d, *f = gates + d * 2, *o = gates + d * 3;
   const float min = SIGMOID_THRESHOLD_MIN;
   const float max = SIGMOID_THRESHOLD_MAX;
@@ -356,7 +356,7 @@ void lstm_ctht_ref(
     // H_t = act_cell(C_t) * ogated
     float tmp = ct[k] * 2;
     tmp = 0.f - ((tmp < min) ? min : ((tmp > max) ? max : tmp));
-    vexp_1->ComputeDeprecated(&tmp, &tmp);
+    vexp_1->Compute(&tmp, &tmp, 1);
     tmp = 2.f / (1.f + tmp) - 1.f;
     ht[k] = tmp * o[k];
   }
@@ -374,13 +374,13 @@ void lstm_ctht_better(
         const paddle::operators::math::jitkernel::VAddKernel<float>>& vadd_d,
     const int d, float* gates, const float* ct_1, float* ct, float* ht) {
   int d2 = d * 2;
-  vsigmoid_3d->ComputeDeprecated(gates + d, gates + d);
-  vtanh_d->ComputeDeprecated(gates, gates);
+  vsigmoid_3d->Compute(gates + d, gates + d, 3 * d);
+  vtanh_d->Compute(gates, gates, d);
   vmul_d->Compute(gates, gates + d, gates + d, d);
   vmul_d->Compute(ct_1, gates + d2, gates + d2, d);
   vadd_d->Compute(gates + d, gates + d2, ct, d);
   /* H_t = act_cell(C_t) * ogated */
-  vtanh_d->ComputeDeprecated(ct, gates + d2);
+  vtanh_d->Compute(ct, gates + d2, d);
   vmul_d->Compute(gates + d2, gates + d * 3, ht, d);
 }
 
@@ -737,7 +737,7 @@ void vaddrelu_better(
         const paddle::operators::math::jitkernel::VReluKernel<float>>& vrelu,
     const float* x, const float* y, float* z, int d) {
   vadd->Compute(x, y, z, d);
-  vrelu->ComputeDeprecated(z, z);
+  vrelu->Compute(z, z, d);
 }
 
 TEST(JitKernel, vaddrelu) {

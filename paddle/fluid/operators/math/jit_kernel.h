@@ -98,42 +98,23 @@ class VAddBiasKernel : public Kernel {
 template <typename T>
 class VActKernel : public Kernel {
  public:
-  virtual void ComputeDeprecated(const T *x, T *y) const = 0;
-};
-
-template <typename T>
-class VReluKernel : public VActKernel<T> {
- public:
-  virtual void ComputeDeprecated(const T *x, T *y) const = 0;
   void (*Compute)(const T *, T *, int);
 };
 
 template <typename T>
-class VIdentityKernel : public VActKernel<T> {
- public:
-  virtual void ComputeDeprecated(const T *x, T *y) const = 0;
-};
+class VReluKernel : public VActKernel<T> {};
 
 template <typename T>
-class VExpKernel : public VActKernel<T> {
- public:
-  virtual void ComputeDeprecated(const T *x, T *y) const = 0;
-  void (*Compute)(const T *, T *, int);
-};
+class VIdentityKernel : public VActKernel<T> {};
 
 template <typename T>
-class VSigmoidKernel : public VActKernel<T> {
- public:
-  virtual void ComputeDeprecated(const T *x, T *y) const = 0;
-  void (*Compute)(const T *, T *, int);
-};
+class VExpKernel : public VActKernel<T> {};
 
 template <typename T>
-class VTanhKernel : public VActKernel<T> {
- public:
-  virtual void ComputeDeprecated(const T *x, T *y) const = 0;
-  void (*Compute)(const T *, T *, int);
-};
+class VSigmoidKernel : public VActKernel<T> {};
+
+template <typename T>
+class VTanhKernel : public VActKernel<T> {};
 
 template <typename T>
 class LSTMKernel : public Kernel {
