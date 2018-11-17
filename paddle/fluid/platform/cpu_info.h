@@ -14,6 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef _WIN32
+#undef __AVX__
+#undef __AVX2__
+#endif
+
 #include <stddef.h>
 
 namespace paddle {
