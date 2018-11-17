@@ -90,11 +90,19 @@ class NCEKernel : public framework::OpKernel<T> {
         break;
       }
       case 2: {
-        auto custom_dist = context.Input<Tensor>("CustomDistribution");
-        const float* custom_dist_data = custom_dist->data<float>();
-        PADDLE_ENFORCE_EQ(custom_dist->numel(), num_total_classes);
-        sampler = new math::CustomSampler(num_total_classes - 1,
-                                          custom_dist_data, seed);
+        auto dist_probs = context.Input<Tensor>("CustomDistProbs");
+        auto dist_alias = context.Input<Tensor>("CustomDistAlias");
+        auto dist_alias_probs = context.Input<Tensor>("CustomDistAliasProbs");
+
+        PADDLE_ENFORCE_EQ(dist_probs->numel(), num_total_classes);
+        PADDLE_ENFORCE_EQ(dist_alias->numel(), num_total_classes);
+        PADDLE_ENFORCE_EQ(dist_alias_probs->numel(), num_total_classes);
+
+        const float* probs_data = dist_probs->data<float>();
+        const int64_t* alias_data = dist_alias->data<int64_t>();
+        const float* alias_probs_data = dist_alias_probs->data<float>();
+        sampler = new math::CustomSampler(num_total_classes - 1, probs_data,
+                                          alias_data, alias_probs_data, seed);
         break;
       }
       default: { PADDLE_THROW("Unsupported SamplerType."); }
@@ -194,11 +202,19 @@ class NCEGradKernel : public framework::OpKernel<T> {
         break;
       }
       case 2: {
-        auto custom_dist = context.Input<Tensor>("CustomDistribution");
-        const float* custom_dist_data = custom_dist->data<float>();
-        PADDLE_ENFORCE_EQ(custom_dist->numel(), num_total_classes);
-        sampler = new math::CustomSampler(num_total_classes - 1,
-                                          custom_dist_data, seed);
+        auto dist_probs = context.Input<Tensor>("CustomDistProbs");
+        auto dist_alias = context.Input<Tensor>("CustomDistAlias");
+        auto dist_alias_probs = context.Input<Tensor>("CustomDistAliasProbs");
+
+        PADDLE_ENFORCE_EQ(dist_probs->numel(), num_total_classes);
+        PADDLE_ENFORCE_EQ(dist_alias->numel(), num_total_classes);
+        PADDLE_ENFORCE_EQ(dist_alias_probs->numel(), num_total_classes);
+
+        const float* probs_data = dist_probs->data<float>();
+        const int64_t* alias_data = dist_alias->data<int64_t>();
+        const float* alias_probs_data = dist_alias_probs->data<float>();
+        sampler = new math::CustomSampler(num_total_classes - 1, probs_data,
+                                          alias_data, alias_probs_data, seed);
         break;
       }
       default: { PADDLE_THROW("Unsupported SamplerType."); }

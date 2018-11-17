@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <cstdint>
 #include <memory>
 #include <random>
@@ -38,9 +39,12 @@ class Sampler {
       seed_ = seed;
     }
   }
+
   virtual ~Sampler();
+
   // Sample a single value
   virtual int64_t Sample() const = 0;
+
   // The probability that a single call to Sample() returns the given value.
   virtual float Probability(int64_t value) const = 0;
 
@@ -98,7 +102,8 @@ class LogUniformSampler : public Sampler {
  */
 class CustomSampler : public Sampler {
  public:
-  explicit CustomSampler(int64_t range, const float* probabilities,
+  explicit CustomSampler(int64_t range, const float *probabilities,
+                         const float *alias, const float *alias_probabilities,
                          unsigned int seed = 0UL);
 
   ~CustomSampler() override {}
@@ -108,9 +113,9 @@ class CustomSampler : public Sampler {
   float Probability(int64_t value) const override;
 
  private:
-  std::shared_ptr<std::vector<float>> alias_probs_;
-  std::shared_ptr<std::vector<int64_t>> alias_;
-  std::shared_ptr<std::vector<float>> probs_;
+  std::shared_ptr<float> alias_probs_;
+  std::shared_ptr<int64_t> alias_;
+  std::shared_ptr<float> probs_;
   std::shared_ptr<std::mt19937_64> random_engine_;
   std::shared_ptr<std::uniform_real_distribution<>> real_dist_;
   std::shared_ptr<std::uniform_int_distribution<>> int_dist_;
