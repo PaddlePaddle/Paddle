@@ -69,7 +69,7 @@ void vrelu_intri8(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vrelu) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 256, 512}) {
+  for (int d : {3, 7, 8, 15, 16, 30, 256, 512}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -10.f, 1.f);
@@ -159,7 +159,7 @@ void vexp_mkl(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vexp) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 12, 15, 16, 20, 30, 128, 256}) {
+  for (int d : {1, 3, 4, 6, 7, 8, 12, 15, 16, 20, 30, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -234,7 +234,7 @@ void vsigmoid_better(
 
 TEST(JitKernel, vsigmoid) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
+  for (int d : {1, 3, 4, 6, 7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -298,7 +298,7 @@ void vtanh_better(
 
 TEST(JitKernel, vtanh) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
+  for (int d : {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -389,7 +389,7 @@ void lstm_ctht_better(
 
 TEST(JitKernel, lstm) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 32, 64, 100}) {
+  for (int d : {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 30, 32, 64, 100}) {
     int d4 = d * 4;
     int d3 = d * 3;
     std::vector<float> x(d4), xref(d4);
