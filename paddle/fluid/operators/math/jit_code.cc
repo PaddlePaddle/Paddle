@@ -118,7 +118,12 @@ void VXXJitCode::generate() {
   ret();
 }
 
+#ifdef _WIN32
+#define ALIGN32
+#else
 #define ALIGN32 __attribute__((aligned(32)))
+#endif
+
 #define EXP_HIG 88.3762626647949f
 #define EXP_LOW -88.3762626647949f
 #define CEPHES_LOG2EF 1.44269504088896341
