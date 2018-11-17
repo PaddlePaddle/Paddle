@@ -16,12 +16,6 @@ limitations under the License. */
 #include <math.h>
 #include <string>
 
-#ifdef _WIN32
-#undef __AVX__
-#undef __AVX__2
-#endif
-
-
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
