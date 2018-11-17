@@ -59,9 +59,10 @@ void VXXJitCode::generate() {
     offset += sizeof(float) * YMM_FLOAT_BLOCK;
   }
   int rest = num_ % YMM_FLOAT_BLOCK;
-  int block = XMM_FLOAT_BLOCK;
   while (rest > 0) {
+    int block = XMM_FLOAT_BLOCK;
     if (rest >= 4) {
+      block = 4;
       if (scalar_index_ != 1) {
         vmovups(xmm_src1, ptr[param1 + offset]);
       }
@@ -69,6 +70,7 @@ void VXXJitCode::generate() {
         vmovups(xmm_src2, ptr[param2 + offset]);
       }
     } else if (rest >= 2) {
+      block = 2;
       if (scalar_index_ != 1) {
         vmovq(xmm_src1, ptr[param1 + offset]);
       }
@@ -76,6 +78,7 @@ void VXXJitCode::generate() {
         vmovq(xmm_src2, ptr[param2 + offset]);
       }
     } else {
+      block = 1;
       if (scalar_index_ != 1) {
         vmovss(xmm_src1, ptr[param1 + offset]);
       }
@@ -105,7 +108,6 @@ void VXXJitCode::generate() {
     }
     offset += sizeof(float) * block;
     rest -= block;
-    block /= 2;
   }
   ret();
 }
@@ -167,13 +169,16 @@ void VActJitCode::generate() {
     offset += sizeof(float) * YMM_FLOAT_BLOCK;
   }
   int rest = num_ % YMM_FLOAT_BLOCK;
-  int block = XMM_FLOAT_BLOCK;
   while (rest > 0) {
+    int block = XMM_FLOAT_BLOCK;
     if (rest >= 4) {
+      block = 4;
       vmovups(xmm_src, ptr[param1 + offset]);
     } else if (rest >= 2) {
+      block = 2;
       vmovq(xmm_src, ptr[param1 + offset]);
     } else {
+      block = 1;
       vmovss(xmm_src, ptr[param1 + offset]);
     }
     switch (type_) {
@@ -201,7 +206,6 @@ void VActJitCode::generate() {
     }
     offset += sizeof(float) * block;
     rest -= block;
-    block /= 2;
   }
   ret();
 }
