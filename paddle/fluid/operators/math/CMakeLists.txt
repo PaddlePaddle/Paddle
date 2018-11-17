@@ -41,6 +41,7 @@ math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
 math_library(im2col)
+math_library(sampler)
 
 if (NOT WIN32) # windows do not support avx functions yet.
     math_library(gru_compute DEPS activation_functions math_function)
