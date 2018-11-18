@@ -369,7 +369,7 @@ def multi_download(client,
     :param local_path: path on local
     :param trainer_id: current trainer id
     :param trainers: all trainers number
-    :param multi_processes: the download data process at the same time
+    :param multi_processes: the download data process at the same time, default=5
     :return: None
     """
 
