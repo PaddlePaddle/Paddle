@@ -24,35 +24,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-#if CUDA_VERSION >= 9000
-class ScopedCublasMathMode {
- public:
-  explicit ScopedCublasMathMode(cublasHandle_t handle) : handle_(handle) {}
-
-  void SetMathMode(cublasMath_t new_mode) {
-    PADDLE_ENFORCE(platform::dynload::cublasGetMathMode(handle_, &old_mode_),
-                   "Failed to get old cublas math mode");
-    if (old_mode_ != new_mode) {
-      PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(handle_, new_mode),
-                     "Failed to set old cublas math mode");
-      need_reset = true;
-    }
-  }
-
-  ~ScopedCublasMathMode() {
-    if (need_reset) {
-      PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(handle_, old_mode_),
-                     "Failed to set old cublas math mode");
-    }
-  }
-
- private:
-  cublasHandle_t handle_;
-  cublasMath_t old_mode_;
-  bool need_reset;
-};
-#endif
-
 template <typename T>
 struct CUBlas;
 
@@ -159,26 +130,27 @@ static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
   static_assert(std::is_same<T, float>::value ||
                     std::is_same<T, platform::float16>::value,
                 "The dtype should be float or float16.");
-#if CUDA_VERSION >= 8000
-  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-#if CUDA_VERSION >= 9000
   // NOTES: To use Tensor Core, we should change the cublas config,
-  // but the cublas may be hold by mult-thread.
-  std::lock_guard<std::mutex> lock(dev_ctx->cublas_mtx_);
-  ScopedCublasMathMode cubase_mathmode(dev_ctx->cublas_handle());
-  bool use_tensor_op_math = platform::TensorCoreAvailable();
-  if (use_tensor_op_math) {
-    cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
-    algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-  }
-  VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
+  // but the cublas may be hold by multi-thread.
+  auto cublas_call = [&]() {
+#if CUDA_VERSION >= 8000
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+#if CUDA_VERSION >= 9000
+    bool use_tensor_op_math = platform::TensorCoreAvailable();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
 #endif  // CUDA_VERSION >= 9000
-
-  PADDLE_ENFORCE(
-      platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(), args..., algo));
+    PADDLE_ENFORCE(platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(),
+                                                   args..., algo));
 #else
-  PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
 #endif
+  };
+
+  dev_ctx->CublasCall(cublas_call, CUBLAS_TENSOR_OP_MATH);
 }
 
 template <>
@@ -318,23 +290,22 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 
 #if CUDA_VERSION >= 9010
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
-    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-    auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-    std::lock_guard<std::mutex> lock(cuda_ctx.cublas_mtx_);
-    ScopedCublasMathMode cubase_mathmode(cuda_ctx.cublas_handle());
-    bool use_tensor_op_math = platform::TensorCoreAvailable();
-    if (use_tensor_op_math) {
-      cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
-      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-    }
-    VLOG(5) << "use_tensor_op_math: "
-            << (use_tensor_op_math ? "True" : "False");
+    auto cublas_call = [&]() {
+      cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+      bool use_tensor_op_math = platform::TensorCoreAvailable();
+      if (use_tensor_op_math) {
+        algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+      }
+      VLOG(5) << "use_tensor_op_math: "
+              << (use_tensor_op_math ? "True" : "False");
 
-    PADDLE_ENFORCE(platform::dynload::cublasGemmStridedBatchedEx(
-        context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B,
-        CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F, N, strideC,
-        batchCount, CUDA_R_32F, algo));
-
+      PADDLE_ENFORCE(platform::dynload::cublasGemmStridedBatchedEx(
+          context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B,
+          CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F, N, strideC,
+          batchCount, CUDA_R_32F, algo));
+    };
+    auto &dev_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+    dev_ctx.CublasCall(cublas_call, CUBLAS_TENSOR_OP_MATH);
   } else {
 #endif  // CUDA_VERSION >= 9010
 

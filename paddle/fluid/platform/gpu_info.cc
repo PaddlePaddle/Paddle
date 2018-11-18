@@ -26,8 +26,15 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
 
-DEFINE_bool(enable_cublas_tensor_op_math, false,
-            "enable_cublas_tensor_op_math.");
+DEFINE_bool(
+    enable_cublas_tensor_op_math, false,
+    "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
+    "but it may loss precision. Currently, There are two CUDA libraries that"
+    " use Tensor Cores, cuBLAS and cuDNN. cuBLAS uses Tensor Cores to speed up"
+    " GEMM computations(the matrices must be either half precision or single "
+    "precision); cuDNN uses Tensor Cores to speed up both convolutions(the "
+    "input and output must be half precision) and recurrent neural networks "
+    "(RNNs).");
 
 namespace paddle {
 namespace platform {
