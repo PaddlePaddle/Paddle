@@ -952,6 +952,7 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
                    'starts': [start],
                    'ends': [end]})
         need_delete_vars.append(clone_orig_var)
+
     load_block.append_op(
         type='delete_var',
         inputs={'X': need_delete_vars}, )
