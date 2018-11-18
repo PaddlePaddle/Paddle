@@ -163,7 +163,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::RecordEvent record_event(Type(), pool.Get(place));
     RunImpl(scope, place);
-  } else
+  } else  // NOLINT
 #endif
   {
     RunImpl(scope, place);
@@ -846,22 +846,23 @@ Scope* OperatorWithKernel::TryTransferData(
                       OpKernelType::Hash()(expected_kernel_key));
       infer_cache_key =
           CombineHash(infer_cache_key, std::hash<const Scope*>()(&scope));
-
       auto it = infer_transfer_scope_cache.find(infer_cache_key);
       if (it != infer_transfer_scope_cache.end()) {
-        new_scope = infer_transfer_scope_cache[infer_cache_key];
+        new_scope = it->second;
       } else {
         new_scope = &scope.NewScope();
         infer_transfer_scope_cache[infer_cache_key] = new_scope;
+        // keep cached scope in memory so that it can be reused, otherwise it
+        // might be unpredictable deleted at some where.
+        new_scope->Keep();
       }
-#endif
-
+#else
       if (new_scope == nullptr) {
         new_scope = &scope.NewScope();
       }
+#endif
 
       auto* trans_var = new_scope->Var(var_name);
-
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);

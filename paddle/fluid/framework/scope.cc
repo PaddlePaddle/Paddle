@@ -58,7 +58,13 @@ int64_t GetEagerDeletionThreshold() {
                                     (static_cast<int64_t>(1) << 30));
 }
 
-Scope::~Scope() { DropKids(); }
+Scope::~Scope() {
+  for (Scope* s : kids_) {
+    s->Unkeep();
+  }
+  DropKids();
+  vars_.clear();
+}
 
 Scope& Scope::NewScope() const {
   SCOPE_LOCK_GUARD
@@ -97,8 +103,16 @@ const Scope* Scope::FindScope(const Variable* var) const {
 
 void Scope::DropKids() {
   SCOPE_LOCK_GUARD
-  for (Scope* s : kids_) delete s;
-  kids_.clear();
+  std::list<Scope*> keeped_kids;
+  for (Scope* s : kids_) {
+    if (s->keep_) {
+      keeped_kids.push_back(s);
+    } else {
+      delete s;
+    }
+  }
+  kids_.swap(keeped_kids);
+  keeped_kids.clear();
 }
 
 bool Scope::HasKid(const Scope* scope) const {

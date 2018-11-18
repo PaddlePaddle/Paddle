@@ -81,6 +81,11 @@ class Scope {
   /// Find if a scope exists in the kid scopes
   bool HasKid(const Scope* scope) const;
 
+  /// keep itself to prevent from deletion
+  void Keep() const { keep_ = 1; }
+  /// unkeep itself to make it able to be deleted
+  void Unkeep() const { keep_ = 0; }
+
   const std::list<Scope*>& kids() const { return kids_; }
 
   // enumerate all the variables current contains.
@@ -124,6 +129,7 @@ class Scope {
 
  private:
   mutable std::mutex mutex_;
+  mutable int64_t keep_ = 0;
 };
 
 // Generate some debug string about the inherience structure of scope, quite
