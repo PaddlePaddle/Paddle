@@ -33,8 +33,8 @@ struct ValueClip {
   }
 };
 
-template <typename DeviceContext, typename T, bool is_test>
-void SoftmaxFunctor<DeviceContext, T, is_test>::operator()(
+template <typename DeviceContext, typename T, bool is_test, typename Enable>
+void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
     const DeviceContext& context, const framework::Tensor* X,
     framework::Tensor* Y) {
   auto logits = EigenMatrix<T>::From(*X);
@@ -66,8 +66,12 @@ void SoftmaxFunctor<DeviceContext, T, is_test>::operator()(
                                                  .broadcast(one_by_class));
 }
 
+template <class DeviceContext>
+using enable_if_CPU = typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type;
+
 template <typename DeviceContext>
-class SoftmaxFunctor<DeviceContext, float, true> {
+class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
   void operator()(const DeviceContext& context, const framework::Tensor* X,
                   framework::Tensor* Y) {
     auto in_dims = X->dims();
