@@ -922,6 +922,9 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
         slice_var = var_tuple[2]
         end = start + slice_var.shape[0]
 
+        orig_var_name = orig_var.name
+        orig_var.name = "{}.origin".format(orig_var_name)
+
         clone_orig_var = load_block.create_var(
             name=orig_var.name,
             type=orig_var.type,
@@ -940,7 +943,7 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
             type='load',
             inputs={},
             outputs={'Out': [clone_orig_var]},
-            attrs={'file_path': os.path.join(dirname, clone_orig_var.name)})
+            attrs={'file_path': os.path.join(dirname, orig_var_name)})
         load_block.append_op(
             type="slice",
             inputs={'Input': clone_orig_var},
