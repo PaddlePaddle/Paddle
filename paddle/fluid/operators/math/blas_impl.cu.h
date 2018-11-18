@@ -81,30 +81,6 @@ struct CUBlas<float> {
     PADDLE_THROW("SgemmStridedBatched is not supported on cuda <= 7.5");
 #endif
   }
-
-  template <typename... ARGS>
-  static void GEMME_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
-#if CUDA_VERSION >= 8000
-    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-#if CUDA_VERSION >= 9000
-    std::lock_guard<std::mutex> lock(dev_ctx->cublas_mtx_);
-
-    ScopedCublasMathMode cubase_mathmode(dev_ctx->cublas_handle());
-    bool use_tensor_op_math = platform::TensorCoreAvailable();
-    if (use_tensor_op_math) {
-      cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
-      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-    }
-    VLOG(5) << "use_tensor_op_math: "
-            << (use_tensor_op_math ? "True" : "False");
-#endif  // CUDA_VERSION >= 9000
-
-    PADDLE_ENFORCE(platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(),
-                                                   args..., algo));
-#else
-    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
-#endif
-  }
 };
 
 template <>
@@ -174,31 +150,36 @@ struct CUBlas<platform::float16> {
     PADDLE_THROW("HgemmStridedBatched is not supported on cuda <= 7.5");
 #endif
   }
+};
 
-  template <typename... ARGS>
-  static void GEMME_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
+// NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
+// https://docs.nvidia.com/cuda/cublas/index.html#cublassetmathmode
+template <typename T, typename... ARGS>
+static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
+  static_assert(std::is_same<T, float>::value ||
+                    std::is_same<T, platform::float16>::value,
+                "The dtype should be float or float16.");
 #if CUDA_VERSION >= 8000
-    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
-    std::lock_guard<std::mutex> lock(dev_ctx->cublas_mtx_);
-
-    ScopedCublasMathMode cubase_mathmode(dev_ctx->cublas_handle());
-    bool use_tensor_op_math = platform::TensorCoreAvailable();
-    if (use_tensor_op_math) {
-      cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
-      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-    }
-    VLOG(5) << "use_tensor_op_math: "
-            << (use_tensor_op_math ? "True" : "False");
+  // NOTES: To use Tensor Core, we should change the cublas config,
+  // but the cublas may be hold by mult-thread.
+  std::lock_guard<std::mutex> lock(dev_ctx->cublas_mtx_);
+  ScopedCublasMathMode cubase_mathmode(dev_ctx->cublas_handle());
+  bool use_tensor_op_math = platform::TensorCoreAvailable();
+  if (use_tensor_op_math) {
+    cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
+    algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+  }
+  VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
 #endif  // CUDA_VERSION >= 9000
 
-    PADDLE_ENFORCE(platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(),
-                                                   args..., algo));
+  PADDLE_ENFORCE(
+      platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(), args..., algo));
 #else
-    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+  PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
 #endif
-  }
-};
+}
 
 template <>
 template <typename T>
@@ -218,9 +199,9 @@ void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
 #if CUDA_VERSION >= 8000
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-    CUBlas<float>::GEMME_EX(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
-                            CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C,
-                            CUDA_R_32F, N, CUDA_R_32F);
+    GEMM_EX<float>(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
+                   CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F, N,
+                   CUDA_R_32F);
   } else {
 #endif  // CUDA_VERSION >= 8000
 
@@ -261,9 +242,9 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  CUBlas<platform::float16>::GEMME_EX(
-      &cuda_ctx, cuTransB, cuTransA, N, M, K, &h_alpha, B, CUDA_R_16F, ldb, A,
-      CUDA_R_16F, lda, &h_beta, C, CUDA_R_16F, N, CUDA_R_32F);
+  GEMM_EX<platform::float16>(&cuda_ctx, cuTransB, cuTransA, N, M, K, &h_alpha,
+                             B, CUDA_R_16F, ldb, A, CUDA_R_16F, lda, &h_beta, C,
+                             CUDA_R_16F, N, CUDA_R_32F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
   CUBlas<platform::float16>::GEMM(context_.cublas_handle(), cuTransB, cuTransA,
@@ -286,9 +267,9 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
 #if CUDA_VERSION >= 8000
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-    CUBlas<float>::GEMME_EX(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
-                            CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C,
-                            CUDA_R_32F, N, CUDA_R_32F);
+    GEMM_EX<float>(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
+                   CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F, N,
+                   CUDA_R_32F);
   } else {
 #endif  // CUDA_VERSION >= 8000
 
