@@ -70,17 +70,20 @@ int main()
     return 0;
 }" AVX_FOUND)
 
-# Check AVX 2
-set(CMAKE_REQUIRED_FLAGS ${AVX2_FLAG})
-set(AVX2_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
-CHECK_CXX_SOURCE_RUNS("
-#include <immintrin.h>
-int main()
-{
-    __m256i a = _mm256_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4);
-    __m256i result = _mm256_abs_epi32 (a);
-    return 0;
-}" AVX2_FOUND)
+# disable AVX2 by default on windows
+if(NOT WIN32)
+    # Check AVX 2
+    set(CMAKE_REQUIRED_FLAGS ${AVX2_FLAG})
+    set(AVX2_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
+    CHECK_CXX_SOURCE_RUNS("
+    #include <immintrin.h>
+    int main()
+    {
+        __m256i a = _mm256_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4);
+        __m256i result = _mm256_abs_epi32 (a);
+        return 0;
+    }" AVX2_FOUND)
+endif(NOT WIN32)
 
 # Check AVX512F
 set(CMAKE_REQUIRED_FLAGS ${AVX512F_FLAG})

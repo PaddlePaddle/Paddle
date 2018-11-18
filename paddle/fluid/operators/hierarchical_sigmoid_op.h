@@ -111,7 +111,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
     auto pre_out_grad_mat = EigenMatrix<T>::From(pre_out_grad);
     auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
-    Eigen::array<int, 2> bcast({{1, static_cast<int>(pre_out_grad.dims()[1])}});
+    Eigen::array<int, 2> bcast{1, static_cast<int>(pre_out_grad.dims()[1])};
 
     // softrelu derivative
     pre_out_grad_mat.device(place) =
