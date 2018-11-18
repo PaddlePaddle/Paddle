@@ -143,6 +143,7 @@ static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
 #endif  // CUDA_VERSION >= 9000
+
     PADDLE_ENFORCE(platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(),
                                                    args..., algo));
 #else
@@ -150,7 +151,11 @@ static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
 #endif
   };
 
+#if CUDA_VERSION > 9000
   dev_ctx->CublasCall(cublas_call, CUBLAS_TENSOR_OP_MATH);
+#else
+  dev_ctx->CublasCall(cublas_call);
+#endif
 }
 
 template <>
