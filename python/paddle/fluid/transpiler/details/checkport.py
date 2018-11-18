@@ -34,6 +34,7 @@ def wait_server_ready(endpoints):
     """
     while True:
         all_ok = True
+        not_ready_endpoints = []
         for ep in endpoints:
             ip_port = ep.split(":")
             with closing(socket.socket(socket.AF_INET,
@@ -42,8 +43,11 @@ def wait_server_ready(endpoints):
                 result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                 if result != 0:
                     all_ok = False
+                    not_ready_endpoints.append(ep)
         if not all_ok:
             sys.stderr.write("pserver not ready, wait 3 sec to retry...\n")
+            sys.stderr.write("not ready endpoints:" + str(not_ready_endpoints) +
+                             "\n")
             sys.stderr.flush()
             time.sleep(3)
         else:

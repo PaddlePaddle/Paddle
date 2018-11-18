@@ -81,4 +81,3 @@ if(WITH_XBYAK)
 endif()
 cc_library(jit_kernel SRCS ${JIT_KERNEL_SRCS} DEPS ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS jit_kernel_test.cc DEPS jit_kernel)
-
