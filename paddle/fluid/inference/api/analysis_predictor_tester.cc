@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
@@ -185,4 +186,28 @@ TEST(AnalysisPredictor, Clone) {
   }
 }
 
+TEST(AnalysisPredictor, memory_optim) {
+  AnalysisConfig config(true);
+  config.fraction_of_gpu_memory = 0.1;
+  config.pass_builder()->AppendPass("memory_optim_pass");
+  config.pass_builder()->TurnOnDebug();
+  config.model_dir = FLAGS_dirname;
+
+  auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
+
+  // 2. Dummy Input Data
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> outputs;
+  ASSERT_TRUE(predictor->Run(inputs, &outputs));
+}
+
 }  // namespace paddle
+
+USE_PASS(memory_optim_pass);

@@ -37,7 +37,7 @@ void SetConfig(ConfigType* config, std::string model_dir, bool use_gpu,
   if (use_gpu) {
     config->use_gpu = true;
     config->device = 0;
-    config->fraction_of_gpu_memory = 0.15;
+    config->fraction_of_gpu_memory = 0.5;
   }
 }
 
@@ -54,7 +54,7 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
   if (use_gpu) {
     config->use_gpu = true;
     config->device = 0;
-    config->fraction_of_gpu_memory = 0.15;
+    config->fraction_of_gpu_memory = 0.5;
     if (use_tensorrt) {
       config->EnableTensorRtEngine(1 << 10, batch_size);
       config->pass_builder()->DeletePass("conv_bn_fuse_pass");
@@ -135,6 +135,11 @@ TEST(TensorRT_resnext50, compare) {
 
 TEST(TensorRT_resnext50, profile) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
+  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
+}
+
+TEST(trt, profile) {
+  std::string model_dir = FLAGS_infer_model;
   profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
 }
 
