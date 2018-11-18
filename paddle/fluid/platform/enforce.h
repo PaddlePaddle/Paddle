@@ -14,11 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef _WIN32
-#undef __AVX__
-#undef __AVX2__
-#endif
-
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
