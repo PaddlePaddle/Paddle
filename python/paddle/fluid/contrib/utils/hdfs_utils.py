@@ -23,7 +23,7 @@ import errno
 
 import logging
 
-__all__ = ["HDFSClient", ""]
+__all__ = ["HDFSClient", "multi_download"]
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
 _logger = logging.getLogger("hdfs_utils")
