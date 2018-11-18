@@ -830,8 +830,8 @@ in a single call.")
             attrs=attrs)
 
         # add distributed attrs
-        pserver_program._slice_vars_and_attrs = self._slice_params_and_optimizes.values(
-        )
+        pserver_program._slice_vars_and_attrs = list(
+            self._slice_params_and_optimizes.values())
 
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
