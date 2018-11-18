@@ -28,15 +28,14 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using Sampler = math::Sampler;
-using DDim = framework::DDim
+using DDim = framework::DDim;
 
-    template <typename T, int MajorType = Eigen::RowMajor,
-              typename IndexType = Eigen::DenseIndex>
-    using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
-void PrepareSamples(const framework::ExecutionContext& context,
-                    Sampler* sampler) {
+void PrepareSamples(const framework::ExecutionContext& context) {
   auto label = context.Input<Tensor>("Label");
   const int64_t* label_data = label->data<int64_t>();
   auto label_dims = label->dims();

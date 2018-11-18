@@ -4187,7 +4187,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False):
+def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -4212,6 +4212,7 @@ def warpctc(input, label, blank=0, norm_by_times=False):
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
+       use_cudnn (bool, default false): Whether to use cudnn.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -4235,8 +4236,11 @@ def warpctc(input, label, blank=0, norm_by_times=False):
                 'Label': [label]},
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
-        attrs={'blank': blank,
-               'norm_by_times': norm_by_times})
+        attrs={
+            'blank': blank,
+            'norm_by_times': norm_by_times,
+            'use_cudnn': use_cudnn
+        })
     return loss_out
 
 
@@ -4489,6 +4493,26 @@ def nce(input,
         num_neg_samples = 10
     else:
         num_neg_samples = int(num_neg_samples)
+
+    inputs = {
+        'Input': input,
+        'Label': label,
+        'Weight': w,
+        'Bias': b,
+        'SampleWeight': sample_weight if sample_weight is not None else []
+    }
+
+    if sampler == "uniform":
+        sampler = 0
+    elif sampler == "log_uniform":
+        sampler = 1
+    elif sampler == "custom_dist":
+        assert custom_dist is not None
+        assert isinstance(custom_dist, Variable)
+        inputs['CustomDistribution'] = custom_dist
+        sampler = 2
+    else:
+        raise Exception("Unsupported sampler type.")
 
     attrs = {
         'num_total_classes': int(num_total_classes),
