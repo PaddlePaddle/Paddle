@@ -16,6 +16,8 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/operators/distributed/collective_server.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(
@@ -25,6 +27,71 @@ DEFINE_bool(
 namespace paddle {
 namespace framework {
 namespace details {
+
+void ReduceOpHandle::GatherRemoteSelectedRows(
+    platform::DeviceContext *dev_ctx, Scope *scope, const std::string &var_name,
+    std::vector<const SelectedRows *> *remote) {
+  std::vector<std::string> eps = collective_context_.end_points_;
+  eps.erase(collective_context_.begin() + collective_context_.rank_id_);
+
+  operators::distributed::CollectiveClient *client =
+      operators::distributed::CollectiveClient::GetInstance();
+  // retain the old order.
+  PADDLE_ENFORCE(client->Gather(eps, scope, var_name, dev_ctx, remote, true));
+}
+
+void ReduceOpHandle::WaitLocalSelectedRows(
+    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes) {
+  for (auto &dev_ctx : dev_ctxes) {
+    dev_ctx.second->Wait();
+  }
+}
+
+SelectedRows *MergeToOne(
+    const std::string &var_name,
+    const std::vector<const SelectedRows *> &src_selectd_rows) {
+  auto out_var_mid =
+      local_scopes_.at(out_var_handle->scope_idx_)->FindVar(var_name);
+  // TODO(gongwb): Do we need this check?
+  // PADDLE_ENFORCE_EQ(out_var_mid, nullptr);
+  auto local_select_rows = out_var_mid->GetMutable<framework::SelectedRows>();
+  // FIXME(gongwb): get tensor type:
+  operators::math::scatter::MergeAdd<platform::DeviceContext, float> merge_func;
+  merge_func(dev_ctxes.at(in_places[0]), src_selecte_rows, local_select_rows);
+  return local_select_rows;
+}
+
+void ReduceOpHandle::GatherSelectedRows(
+    const std::vector<const SelectedRows *> &src_selected_rows,
+    const std::vector<platform::Place> &in_places,
+    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+    VarHandle *out_var_handle, const platform::Place &out_place,
+    SelectedRows *dst_selecte_rows) {
+  if (collective_context_.end_points_.size() <= 1) {
+    GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
+                            dst_selecte_rows);
+    return;
+  }
+
+  // 1. merge local selected rows
+  auto src_merged =
+      MergeToOne(out_var_handle->name_ + "_gather_tmp", src_selected_rows);
+
+  // 2. start collective server if it doesn't exist
+  operators::distributed::CollectiveServer *server =
+      operators::distributed::ColletiveServer::GetInstance(
+          collective_context_[collective_context_.rank_id_],
+          collective_context_.end_points_.size());
+  GatherRemoteSelectedRows(out_var_handle->name_, dev_ctxes);
+  server->SetScope(local_scopes_.at(out_var_handle->scope_idx_));
+  server->Notify();
+
+  // 3. gather them from all nodes.
+  std::vector<const SelectedRows *> all;
+  GatherRemoteSelectedRows(out_var_handle->name_, &all);
+  all.insert(all.begin() + collective_context_.rank_id_, src_merged);
+  MergeToOne(out_var_handle->name_, all);
+}
 
 void ReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
@@ -90,7 +157,9 @@ void ReduceOpHandle::RunImpl() {
     this->RunAndRecordEvent([&] {
       std::vector<const SelectedRows *> in_selected_rows =
           GetInputValues<SelectedRows>(in_var_handles, var_scopes);
-      GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
+
+      GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_,
+                         out_var_handle, t_out_p,
                          out_var->GetMutable<framework::SelectedRows>());
     });
   } else {

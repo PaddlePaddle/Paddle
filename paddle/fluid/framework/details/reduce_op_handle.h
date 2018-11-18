@@ -30,10 +30,15 @@
 namespace paddle {
 namespace framework {
 namespace details {
+struct CollectiveContext {
+  std::vector<std::string> end_points_;
+  int rank_id_;
+};
 
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
+  CollectiveContext collective_context_;
 
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
@@ -63,6 +68,15 @@ struct ReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+  void GatherSelectedRows(
+      const std::vector<const SelectedRows *> &src_selecte_rows_,
+      const std::vector<platform::Place> &in_places,
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      VarHandle *out_var_handle, const platform::Place &out_place,
+      SelectedRows *dst_selecte_rows);
+
+  void GatherRemoteSelectedRows(const std::string &var_name,
+                                std::vector<SelectedRows *> *remote);
 
   template <typename T>
   std::vector<const T *> GetInputValues(
