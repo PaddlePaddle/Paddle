@@ -151,15 +151,14 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
               output_vec.reshape(Eigen::DSizes<int, 2>(batch_size, 1))
                   .broadcast(bcast_for_y)
                   .eval();
+          x_scale_mat.device(place) = output_vec_y * x_mat;
           if (d_y) {
-            x_scale_mat.device(place) = output_vec_y * x_mat;
             blas.GEMM(CblasNoTrans, CblasNoTrans, batch_size, y_dim, x_dim, 1,
                       x_scale.data<T>(), weight_i.data<T>(), 1, d_y->data<T>());
           }
           if (d_weight) {
             Tensor d_weight_i = d_weight->Slice(i, i + 1).Resize(
                 framework::make_ddim({x_dim, y_dim}));
-            x_scale_mat.device(place) = output_vec_y * x_mat;
             blas.GEMM(CblasTrans, CblasNoTrans, x_dim, y_dim, batch_size, 1,
                       x_scale.data<T>(), y->data<T>(), 0, d_weight_i.data<T>());
           }
