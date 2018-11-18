@@ -130,6 +130,11 @@ if (APPLE OR WIN32)
         "Disable MKL for building on mac and windows" FORCE)
 endif()
 
+if (WIN32)
+    set(WITH_AVX OFF CACHE STRING
+            "Disable AVX when compiling for Windows" FORCE)
+endif()
+
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
