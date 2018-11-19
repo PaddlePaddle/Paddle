@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -60,12 +61,27 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() override;
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
 };
 
 class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() override;
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
+};
+
+class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{
+        {"Input", /*->*/ "Output"}};
+  }
 };
 
 class ConvOp : public framework::OperatorWithKernel {

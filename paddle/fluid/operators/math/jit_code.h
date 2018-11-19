@@ -29,7 +29,16 @@ using ymm_t = const Xbyak::Ymm;
 using zmm_t = const Xbyak::Zmm;
 using Label = Xbyak::Label;
 
-typedef enum { mul = 0, add } operand_type;
+typedef enum {
+  mul = 0,
+  add,
+  sub,
+  relu,
+  exp,
+  sigmoid,
+  tanh,
+  identity
+} operand_type;
 
 // function: vec = Operand(vec(or scalar), vec(or scalar)) (maybe with relu)
 class VXXJitCode : public JitCode {
@@ -83,6 +92,68 @@ class VXXJitCode : public JitCode {
   ymm_t ymm_src2 = ymm_t(1);
   ymm_t ymm_dst = ymm_t(2);
   ymm_t ymm_zero = ymm_t(3);
+};
+
+class VActJitCode : public JitCode {
+ public:
+  const char* name() const override {
+    std::string base = "VActJitCode";
+    switch (type_) {
+      case operand_type::relu:
+        base += "_Relu";
+        break;
+      case operand_type::exp:
+        base += "_Exp";
+        break;
+      case operand_type::sigmoid:
+        base += "_Sigmoid";
+        break;
+      case operand_type::tanh:
+        base += "_Tanh";
+        break;
+      case operand_type::identity:
+        base += "_Identity";
+        break;
+      default:
+        break;
+    }
+    return base.c_str();
+  }
+
+  explicit VActJitCode(int d, operand_type type, size_t code_size = 256 * 1024,
+                       void* code_ptr = nullptr)
+      : JitCode(code_size, code_ptr), num_(d), type_(type) {}
+  static bool init(int d, operand_type type);
+  void generate() override;
+
+ protected:
+  // compute relu with ymm
+  void relu_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src,
+                const Xbyak::Ymm& zero);
+
+  // compute exp with ymm
+  void exp_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
+               int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
+
+  // compute sigmoid with ymm
+  void sigmoid_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
+                   int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
+
+  // compute tanh with ymm
+  void tanh_ymm(const Xbyak::Ymm& dst, const Xbyak::Ymm& src, int fx_idx = 2,
+                int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5);
+
+ protected:
+  int num_;
+  operand_type type_;
+  reg64_t param1{abi_param1};
+  reg64_t param2{abi_param2};
+
+  xmm_t xmm_src = xmm_t(0);
+  ymm_t ymm_src = ymm_t(0);
+
+  xmm_t xmm_dst = xmm_t(1);
+  ymm_t ymm_dst = ymm_t(1);
 };
 
 }  // namespace gen

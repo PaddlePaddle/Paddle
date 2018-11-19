@@ -114,7 +114,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // it is either an OP's input or an OP's output.
 
   auto &subgraph_nodes = *Agent(node).subgraph();
-  for (int index = 0; index < block_desc.OpSize(); index++) {
+  for (size_t index = 0; index < block_desc.OpSize(); index++) {
     framework::proto::OpDesc *op = block_desc.Op(index)->Proto();
     auto correspond_node = subgraph_nodes[index];
     PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
