@@ -71,46 +71,46 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3 install -U wheel && \
-    pip3 install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
-    easy_install -U pip && \
-    pip install -U pip setuptools wheel && \
-    pip install -U docopt PyYAML sphinx==1.5.6 && \
-    pip install sphinx-rtd-theme==0.1.9 recommonmark
+# RUN pip3 install -U wheel && \
+    # pip3 install -U docopt PyYAML sphinx==1.5.6 && \
+    # pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    # easy_install -U pip && \
+    # pip install -U pip setuptools wheel && \
+    # pip install -U docopt PyYAML sphinx==1.5.6 && \
+    # pip install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3 install opencv-python && \
-    pip install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip install opencv-python
+# RUN pip3 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    # pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    # pip3 install opencv-python && \
+    # pip install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    # pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    # pip install opencv-python
 
-#For docstring checker
-RUN pip3 install pylint pytest astroid isort
-RUN pip install pylint pytest astroid isort LinkChecker
+# #For docstring checker
+# RUN pip3 install pylint pytest astroid isort
+# RUN pip install pylint pytest astroid isort LinkChecker
 
-COPY ./python/requirements.txt /root/
-RUN pip3 install -r /root/requirements.txt
-RUN pip install -r /root/requirements.txt
+# COPY ./python/requirements.txt /root/
+# RUN pip3 install -r /root/requirements.txt
+# RUN pip install -r /root/requirements.txt
 
-# To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
-# the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
-RUN apt-get install -y libssl-dev libffi-dev
-RUN pip3 install certifi urllib3[secure]
-RUN pip install certifi urllib3[secure]
+# # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
+# # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
+# RUN apt-get install -y libssl-dev libffi-dev
+# RUN pip3 install certifi urllib3[secure]
+# RUN pip install certifi urllib3[secure]
 
 
-# Install woboq_codebrowser to /woboq
-RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
-    (cd /woboq \
-     cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
-           -DCMAKE_BUILD_TYPE=Release . \
-     make)
+# # Install woboq_codebrowser to /woboq
+# RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
+    # (cd /woboq \
+     # cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
+           # -DCMAKE_BUILD_TYPE=Release . \
+     # make)
 
-# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-RUN mkdir /var/run/sshd
-RUN echo 'root:root' | chpasswd
-RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-EXPOSE 22
+# # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+# RUN mkdir /var/run/sshd
+# RUN echo 'root:root' | chpasswd
+# RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+# RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+# EXPOSE 22
