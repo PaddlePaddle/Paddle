@@ -57,6 +57,8 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("int32_values", "store the int values")
         .SetDefault({});
+    AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
+        .SetDefault({});
     AddComment(R"DOC(
 AssignValue operator
 
@@ -73,4 +75,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(assign_value, ops::AssignValueOp, ops::AssignValueOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
-                       ops::AssignValueKernel<float>);
+                       ops::AssignValueKernel<float>,
+                       ops::AssignValueKernel<int64_t>);

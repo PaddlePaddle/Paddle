@@ -35,7 +35,8 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
-void PrepareSamples(const framework::ExecutionContext& context) {
+void PrepareSamples(const framework::ExecutionContext& context,
+                    Sampler* sampler) {
   auto label = context.Input<Tensor>("Label");
   const int64_t* label_data = label->data<int64_t>();
   auto label_dims = label->dims();
@@ -259,7 +260,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     }
 
     bool is_sparse = context.Attr<bool>("is_sparse");
-    if (is_sparse) {
+    if (!is_sparse) {
       // get d_x
       auto d_x = context.Output<Tensor>(framework::GradVarName("Input"));
       if (d_x != nullptr) {

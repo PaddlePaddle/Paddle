@@ -61,31 +61,30 @@ float LogUniformSampler::Probability(int64_t value) const {
 }
 
 CustomSampler::CustomSampler(int64_t range, const float *probabilities,
-                             const float *alias,
+                             const int64_t *alias,
                              const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
   random_engine_ = std::make_shared<std::mt19937_64>(seed_);
   real_dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
   int_dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
-  alias_probs_ = std::make_shared<float>(alias_probabilities);
-  alias_ = std::make_shared<int64_t>(alias);
-  probs_ = std::make_shared<float>(probabilities);
+
+  alias_probs_ = alias_probabilities;
+  probs_ = probabilities;
+  alias_ = alias;
 }
 
 int64_t CustomSampler::Sample() const {
   auto index = (*int_dist_)(*random_engine_);
   auto p = (*real_dist_)(*random_engine_);
-  if (p > (*alias_probs_)[index]) {
-    return (*alias_)[index];
+  if (p > alias_probs_[index]) {
+    return alias_[index];
   } else {
     return index;
   }
 }
 
-float CustomSampler::Probability(int64_t value) const {
-  return (*probs_)[value];
-}
+float CustomSampler::Probability(int64_t value) const { return probs_[value]; }
 
 }  // namespace math
 }  // namespace operators

@@ -4426,15 +4426,6 @@ def nce(input,
         alias_probs_ = []
         alias_ = []
 
-        # custom_alias = helper.create_global_variable(
-        #     persistable=True,
-        #     dtype='float32',
-        #     shape=[1, len(custom_dist)])
-        # custom_alias_probs = helper.create_global_variable(
-        #     persistable=True,
-        #     dtype='float32',
-        #     shape=[1, len(custom_dist)])
-
         custom_dist_len = len(custom_dist)
         bigs = []
         littles = []
@@ -4443,7 +4434,7 @@ def nce(input,
             if normal_prob - 1.0 > 1e-4:
                 bigs.append((i, normal_prob))
             elif 1.0 - normal_prob > 1e-4:
-                littles.append(i, normal_prob)
+                littles.append((i, normal_prob))
             else:
                 alias_probs_[i] = normal_prob
                 alias_[i] = -1
@@ -4459,9 +4450,9 @@ def nce(input,
             alias_[little[0]] = big_idx
             big_left = big[1] + little[1] - 1
             if big_left - 1.0 > 1e-4:
-                bigs.append(big_idx, big_left)
+                bigs.append((big_idx, big_left))
             elif 1.0 - big_left > 1e-4:
-                littles.append(big_idx, big_left)
+                littles.append((big_idx, big_left))
             else:
                 alias_probs_[big_idx] = big_left
                 alias_[big_idx] = -1
@@ -4501,18 +4492,6 @@ def nce(input,
         'Bias': b,
         'SampleWeight': sample_weight if sample_weight is not None else []
     }
-
-    if sampler == "uniform":
-        sampler = 0
-    elif sampler == "log_uniform":
-        sampler = 1
-    elif sampler == "custom_dist":
-        assert custom_dist is not None
-        assert isinstance(custom_dist, Variable)
-        inputs['CustomDistribution'] = custom_dist
-        sampler = 2
-    else:
-        raise Exception("Unsupported sampler type.")
 
     attrs = {
         'num_total_classes': int(num_total_classes),
