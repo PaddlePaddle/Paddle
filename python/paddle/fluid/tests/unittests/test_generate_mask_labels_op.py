@@ -220,7 +220,7 @@ class TestGenerateMaskLabels(OpTest):
         self.label_int32 = label_np[:, np.newaxis]
 
     def generate_gt_segms(self):
-        self.gt_segms = np.zeros(((self.batch_size * (self.batch_size + 1) / 2), self.images_shape[0], \
+        self.gt_segms = np.zeros(((self.batch_size * (self.batch_size + 1) // 2), self.images_shape[0], \
                                   self.images_shape[1]), dtype=np.int8)
         self.masks_lod = [[]]
         mask_id = 0
