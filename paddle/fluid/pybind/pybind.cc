@@ -357,6 +357,9 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<platform::Communicator>();
            },
            py::return_value_policy::reference)
+
+#endif
+#ifndef _WIN32
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
@@ -364,7 +367,7 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
 #endif
-      ;
+      ;  // NOLINT
 
 #if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
