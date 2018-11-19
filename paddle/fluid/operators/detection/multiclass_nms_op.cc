@@ -36,24 +36,26 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
 
-    PADDLE_ENFORCE_EQ(box_dims.size(), 3,
-                      "The rank of Input(BBoxes) must be 3.");
-    PADDLE_ENFORCE_EQ(score_dims.size(), 3,
-                      "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
-                       box_dims[2] == 24 || box_dims[2] == 32,
-                   "The 2nd dimension of Input(BBoxes) must be 4 or 8, "
-                   "represents the layout of coordinate "
-                   "[xmin, ymin, xmax, ymax] or "
-                   "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
-                   "8 points: [xi, yi] i= 1,2,...,8 or "
-                   "12 points: [xi, yi] i= 1,2,...,12 or "
-                   "16 points: [xi, yi] i= 1,2,...,16");
-    PADDLE_ENFORCE_EQ(box_dims[1], score_dims[2],
-                      "The 1st dimensiong of Input(BBoxes) must be equal to "
-                      "3rd dimension of Input(Scores), which represents the "
-                      "predicted bboxes.");
-
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(box_dims.size(), 3,
+                        "The rank of Input(BBoxes) must be 3.");
+      PADDLE_ENFORCE_EQ(score_dims.size(), 3,
+                        "The rank of Input(Scores) must be 3.");
+      PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 ||
+                         box_dims[2] == 16 || box_dims[2] == 24 ||
+                         box_dims[2] == 32,
+                     "The 2nd dimension of Input(BBoxes) must be 4 or 8, "
+                     "represents the layout of coordinate "
+                     "[xmin, ymin, xmax, ymax] or "
+                     "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                     "8 points: [xi, yi] i= 1,2,...,8 or "
+                     "12 points: [xi, yi] i= 1,2,...,12 or "
+                     "16 points: [xi, yi] i= 1,2,...,16");
+      PADDLE_ENFORCE_EQ(box_dims[1], score_dims[2],
+                        "The 1st dimensiong of Input(BBoxes) must be equal to "
+                        "3rd dimension of Input(Scores), which represents the "
+                        "predicted bboxes.");
+    }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
     ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
