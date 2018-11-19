@@ -137,23 +137,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
     nvinfer1::Dims dims_y = Y->getDimensions();
 
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
-    LOG(INFO) << "axis: " << axis;
-
-    // The two input tensor should have the same dims
-    PADDLE_ENFORCE(dims_x.nbDims >= 3);
-    std::cout << "dims_x: ";
-    for (int i = 0; i < dims_x.nbDims; ++i) {
-      std::cout << dims_x.d[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "dims_y: ";
-    for (int i = 0; i < dims_y.nbDims; ++i) {
-      std::cout << dims_y.d[i] << " ";
-    }
-    std::cout << std::endl;
-
     auto output_name = op_desc.Output("Out")[0];
     if (CheckDims(dims_x, dims_y)) {
+      // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
 
       nvinfer1::IElementWiseLayer* layer = TRT_ENGINE_ADD_LAYER(

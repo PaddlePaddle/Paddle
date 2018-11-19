@@ -20,8 +20,58 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+namespace details {
+
+template <typename T>
+struct Add {
+  __device__ T operator()(const T& a, const T& b) const { return a + b; }
+};
+
+template <typename T>
+struct Mul {
+  __device__ T operator()(const T& a, const T& b) const { return a * b; }
+};
+
+template <typename T, typename Operator>
+__global__ void ColumnWiseKernel(Operator op, const T* x, const T* y, T* out,
+                                 int batch_size, int num_rows, int num_cols) {
+  for (int batch_id = 0; batch_id < batch_size; ++batch_id) {
+    int row = blockIdx.x;
+    for (; row < num_rows; row += gridDim.x) {
+      T value_y = y[batch_id * num_rows + row];
+      int col = threadIdx.x;
+      int offset = (batch_id * num_rows + row) * num_cols;
+      for (; col < num_cols; col += blockDim.x) {
+        T value_x = x[offset + col];
+        out[offset + col] = op(value_x, value_y);
+      }
+    }
+  }
+}
+
+template <typename T, typename Operator>
+static void ElementWise(Operator op, const T* x, const T* y, T* out,
+                        int batch_size, int prev, int midd, int post,
+                        cudaStream_t stream) {
+  const int kThreadsPerBlock = 1024;
+  const int kMaximumBlocks = 65535;
+  if (prev == 1) {
+    int num_threads = (post > kThreadsPerBlock) ? kThreadsPerBlock
+                                                : (((post + 31) >> 5) << 5);
+    int num_blocks = (midd < kMaximumBlocks) ? midd : kMaximumBlocks;
+    ColumnWiseKernel<<<num_blocks, num_threads, 0, stream>>>(
+        op, x, y, out, batch_size, midd, post);
+  } else if (post == 1) {
+    PADDLE_THROW("Not implemented.");
+  } else {
+    PADDLE_THROW("Not implemented.");
+  }
+}
+
+}  // namespace details
+
 nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims *input_dims, int num_inputs) {
+    int index, const nvinfer1::Dims* input_dims, int num_inputs) {
   PADDLE_ENFORCE_EQ(index, 0);
   PADDLE_ENFORCE_EQ(num_inputs, 2);
   PADDLE_ENFORCE_NOT_NULL(input_dims);
@@ -59,15 +109,27 @@ int ElementWisePlugin::initialize() {
   for (int i = axis_ + dims_y_.nbDims; i < dims_x_.nbDims; ++i) {
     post_size_ *= dims_x_.d[i];
   }
-  LOG(INFO) << "prev_size_: " << prev_size_ << ", midd_size_: " << midd_size_
-            << ", post_size_: " << post_size_;
   return 0;
 }
 
-int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
-                               void **outputs, void *workspace,
+int ElementWisePlugin::enqueue(int batch_size, const void* const* inputs,
+                               void** outputs, void* workspace,
                                cudaStream_t stream) {
-  return 0;
+  const float* x = reinterpret_cast<const float*>(inputs[0]);
+  const float* y = reinterpret_cast<const float*>(inputs[1]);
+  float* out = reinterpret_cast<float*>(outputs[0]);
+
+  if (type_ == nvinfer1::ElementWiseOperation::kSUM) {
+    details::ElementWise(details::Add<float>(), x, y, out, batch_size,
+                         prev_size_, midd_size_, post_size_, stream);
+  } else if (type_ == nvinfer1::ElementWiseOperation::kPROD) {
+    details::ElementWise(details::Mul<float>(), x, y, out, batch_size,
+                         prev_size_, midd_size_, post_size_, stream);
+  } else {
+    PADDLE_THROW("Not implemented.");
+  }
+
+  return cudaGetLastError() != cudaSuccess;
 }
 
 }  // namespace plugin

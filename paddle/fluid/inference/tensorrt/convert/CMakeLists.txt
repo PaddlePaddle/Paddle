@@ -1,9 +1,9 @@
 # Add TRT tests
 nv_library(tensorrt_converter
-  SRCS mul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc elementwise_op.cc
-batch_norm_op.cc activation_op.cc softmax_op.cc concat_op.cc dropout_op.cc
-pad_op.cc split_op.cc prelu_op.cc
-  DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
+           SRCS mul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc elementwise_op.cc
+                batch_norm_op.cc activation_op.cc softmax_op.cc concat_op.cc dropout_op.cc
+                pad_op.cc split_op.cc prelu_op.cc
+           DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS
   ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_converter)
@@ -20,7 +20,7 @@ nv_test(test_trt_conv_op SRCS test_conv2d_op.cc conv2d_op.cc
 nv_test(test_trt_pool2d_op SRCS test_pool2d_op.cc pool2d_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine pool_op SERIAL)
 nv_test(test_trt_elementwise_op SRCS test_elementwise_op.cc elementwise_op.cc
-        DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin elementwise_add_op SERIAL)
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_plugin elementwise_add_op elementwise_mul_op SERIAL)
 nv_test(test_trt_softmax_op SRCS test_softmax_op.cc softmax_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine softmax_op SERIAL)
 nv_test(test_trt_batch_norm_op SRCS test_batch_norm_op.cc batch_norm_op.cc
