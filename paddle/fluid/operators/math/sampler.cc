@@ -64,7 +64,7 @@ CustomSampler::CustomSampler(int64_t range, const float *probabilities,
                              const int *alias, const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
-  random_engine_ = std::make_shared<std::mt19937_64>(seed_);
+  random_engine_ = std::make_shared<std::mt19937>(seed_);
   real_dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
   int_dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 

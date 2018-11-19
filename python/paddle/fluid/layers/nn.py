@@ -4467,7 +4467,7 @@ def nce(input,
             alias_[little[0]] = -1
 
         probs = assign(input=np.array(custom_dist).astype('float32'))
-        custom_alias = assign(input=np.array(alias_).astype('int64'))
+        custom_alias = assign(input=np.array(alias_).astype('int32'))
         custom_alias_probs = assign(
             input=np.array(alias_probs_).astype('float32'))
 

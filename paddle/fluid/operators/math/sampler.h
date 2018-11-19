@@ -116,7 +116,7 @@ class CustomSampler : public Sampler {
   const float* alias_probs_;
   const int* alias_;
   const float* probs_;
-  std::shared_ptr<std::mt19937_64> random_engine_;
+  std::shared_ptr<std::mt19937> random_engine_;
   std::shared_ptr<std::uniform_real_distribution<>> real_dist_;
   std::shared_ptr<std::uniform_int_distribution<>> int_dist_;
 };

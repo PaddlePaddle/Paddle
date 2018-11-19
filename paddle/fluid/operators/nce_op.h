@@ -211,7 +211,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(dist_alias_probs->numel(), num_total_classes);
 
         const float* probs_data = dist_probs->data<float>();
-        const int64_t* alias_data = dist_alias->data<int64_t>();
+        const int* alias_data = dist_alias->data<int>();
         const float* alias_probs_data = dist_alias_probs->data<float>();
         sampler = new math::CustomSampler(num_total_classes - 1, probs_data,
                                           alias_data, alias_probs_data, seed);
