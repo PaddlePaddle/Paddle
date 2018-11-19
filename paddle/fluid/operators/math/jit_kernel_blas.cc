@@ -25,10 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -128,23 +124,16 @@ void VScalMKL<double>(const double* a, const double* x, double* y, int n) {
 
 #endif
 
-#define DECLARE_STATIC_FUNC                                 \
-  static inline std::string name(int d) {                   \
-    PADDLE_THROW("DType should be either float or double"); \
-  }                                                         \
-  static inline bool useJIT(int d) { return false; }        \
-  static inline bool useMKL(int d) { return false; }
-
 /* VMUL JitKernel */
 template <typename T>
 class VMulKernelImpl : public VMulKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VMulKernelImpl(int d) : VMulKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
       // roughly estimate the size of code
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::mul, 0, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -191,11 +180,11 @@ bool VMulKernelImpl<double>::useMKL(int d) {
 template <typename T>
 class VAddKernelImpl : public VAddKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VAddKernelImpl(int d) : VAddKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 0, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -241,11 +230,11 @@ bool VAddKernelImpl<double>::useMKL(int d) {
 template <typename T>
 class VAddReluKernelImpl : public VAddReluKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VAddReluKernelImpl(int d) : VAddReluKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 0, true,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -273,11 +262,11 @@ bool VAddReluKernelImpl<float>::useJIT(int d) {
 template <typename T>
 class VScalKernelImpl : public VScalKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VScalKernelImpl(int d) : VScalKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::mul, 1, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -322,11 +311,11 @@ bool VScalKernelImpl<double>::useMKL(int d) {
 template <typename T>
 class VAddBiasKernelImpl : public VAddBiasKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VAddBiasKernelImpl(int d) : VAddBiasKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 + d / AVX_FLOAT_BLOCK * 4 * 8;
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
       jitcode_.reset(new gen::VXXJitCode(d, gen::operand_type::add, 1, false,
                                          sz > 4096 ? sz : 4096));
       this->Compute =
@@ -355,15 +344,15 @@ bool VAddBiasKernelImpl<float>::useJIT(int d) {
 template <typename T>
 class VReluKernelImpl : public VReluKernel<T> {
  public:
-  DECLARE_STATIC_FUNC;
+  JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VReluKernelImpl(int d) : VReluKernel<T>() {
-    this->num_ = d;  // TODO(TJ): remove me when ComputeDeprecated done
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(d)) {
-      size_t sz = 96 /*init*/ +
-                  d / AVX_FLOAT_BLOCK * 4 /* instructions*/ *
-                      8 /*everage byte for each instruction*/;
-      jitcode_.reset(new gen::ReluJitCode(d, sz > 4096 ? sz : 4096));
+      size_t sz = 96 /* init size */ +
+                  d / YMM_FLOAT_BLOCK * 4 /* instructions */ *
+                      8 /* average bytes for each instruction */;
+      jitcode_.reset(new gen::VActJitCode(d, gen::operand_type::relu,
+                                          sz > 4096 ? sz : 4096));
       this->Compute = jitcode_->getCode<void (*)(const T*, T*, int)>();
       return;
     }
@@ -371,24 +360,32 @@ class VReluKernelImpl : public VReluKernel<T> {
 
     this->Compute = VReluRefer<T>;
   }
-  void ComputeDeprecated(const T* x, T* y) const override {
-    VReluRefer(x, y, this->num_);
-  }
 #ifdef PADDLE_WITH_XBYAK
 
  private:
-  std::unique_ptr<gen::ReluJitCode> jitcode_{nullptr};
+  std::unique_ptr<gen::VActJitCode> jitcode_{nullptr};
 #endif
 };
 
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool VReluKernelImpl<float>::useJIT(int d) {
-  return gen::ReluJitCode::init(d);
+  return gen::VActJitCode::init(d, gen::operand_type::relu);
 }
 #endif
 
-#undef DECLARE_STATIC_FUNC
+template <typename T>
+inline void VIdentityRefer(const T* x, T* y, int n) {}
+
+/* An empty JitKernel */
+template <typename T>
+class VIdentityKernelImpl : public VIdentityKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit VIdentityKernelImpl(int d) : VIdentityKernel<T>() {
+    this->Compute = VIdentityRefer<T>;
+  }
+};
 
 REGISTER_JITKERNEL(vmul, VMulKernel);
 REGISTER_JITKERNEL(vadd, VAddKernel);
@@ -396,16 +393,7 @@ REGISTER_JITKERNEL(vaddrelu, VAddReluKernel);
 REGISTER_JITKERNEL(vscal, VScalKernel);
 REGISTER_JITKERNEL(vaddbias, VAddBiasKernel);
 REGISTER_JITKERNEL(vrelu, VReluKernel);
-
-/* An empty JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
-class VIdentityKernelImpl : public VIdentityKernel<T> {
- public:
-  explicit VIdentityKernelImpl(int d) : VIdentityKernel<T>() { this->num_ = d; }
-  void ComputeDeprecated(const T* x, T* y) const override {}
-};
-
-REGISTER_JITKERNEL_DEPRECATED(videntity, VIdentityKernel);
+REGISTER_JITKERNEL(videntity, VIdentityKernel);
 
 }  // namespace jitkernel
 }  // namespace math
