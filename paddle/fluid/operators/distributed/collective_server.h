@@ -21,6 +21,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "gflags/gflags.h"
+
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
@@ -29,10 +32,11 @@ namespace operators {
 namespace distributed {
 class GatherGetHandler final : public RequestHandler {
  public:
-  explicit RequestGetHandler() : RequestHandler(true) {}
-  virtual ~RequestGetHandler() {}
+  GatherGetHandler() : RequestHandler(true) {}
+  virtual ~GatherGetHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
               const std::string& out_var_name = "") override {
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(30) << "sync: recv fetch barrier message";
@@ -41,6 +45,8 @@ class GatherGetHandler final : public RequestHandler {
       rpc_server_->WaitCond(kRequestGet);
       *outvar = scope_->FindVar(varname);
     }
+
+    return true;
   }
 
  private:
@@ -53,11 +59,10 @@ class CollectiveSever final {
   virtual ~CollectiveSever() {}
 
   void StartServer();
-  // 1. SetNotReady
-  // 2. ResetContext
-  void ResetContext(framework::Scope* scope,
-                    framework::DeviceContext* dev_ctx) {
-    // std::unique_lock<std::mutex> lock(mutex_ready_);
+
+  void ResetContext(framework::Scope* scope, platform::DeviceContext* dev_ctx) {
+    std::unique_lock<std::mutex> lock(mutex_ready_);
+    condition_ready_.wait(lock, [=] { return !ready_; });
     get_handler_->SetScope(scope);
     get_handler_->SetDevCtx(dev_ctx);
   }
@@ -73,23 +78,23 @@ class CollectiveSever final {
 
     return collective_server_.get();
   }
-  void SetReady() { SetStatus(true); }
+  void SetInService() { SetSeriviceStatus(true); }
 
-  void WaitReady() {
-    VLOG(40) << "CollectiveServer WaitReady ";
+  void WaitInService() {
+    VLOG(40) << "CollectiveServer WaitInService ";
     std::unique_lock<std::mutex> lock(mutex_ready_);
-    rpc_cond_.wait(lock, [=] { return ready_; });
+    condition_ready_.wait(lock, [=] { return ready_; });
   }
 
-  void WaitNotReady() {
-    VLOG(40) << "CollectiveServer WaitReady ";
+  void WaitNotInService() {
+    VLOG(40) << "CollectiveServer WaitNotInService ";
     std::unique_lock<std::mutex> lock(mutex_ready_);
-    rpc_cond_.wait(lock, [=] { return !ready_; });
+    condition_ready_.wait(lock, [=] { return !ready_; });
   }
 
  private:
-  void SetStatus(bool ready) {
-    VLOG(30) << "CollectiveServer SetReady ";
+  void SetSeriviceStatus(bool ready) {
+    VLOG(40) << "CollectiveServer SetReady ";
     {
       std::unique_lock<std::mutex> lock(mutex_ready_);
       ready_ = ready;
@@ -102,17 +107,16 @@ class CollectiveSever final {
   std::shared_ptr<GatherGetHandler> get_handler_;
   std::shared_ptr<distributed::RPCServer> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
-  // framework::Scope* scope_;
 
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;
   bool ready_{false};
 
   static std::once_flag init_flag_;
-  static std::unique_ptr<CollectiveSever> collective_server_;
+  static std::shared_ptr<CollectiveSever> collective_server_;
 
-  friend RunServer(std::shared_ptr<distributed::RPCServer> service,
-                   std::unique_ptr<CollectiveSever> server);
+  friend void RunServer(std::shared_ptr<distributed::RPCServer> service,
+                        std::shared_ptr<CollectiveSever> server);
 };
 
 };  // namespace distributed

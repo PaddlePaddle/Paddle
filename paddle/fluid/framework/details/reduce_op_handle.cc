@@ -36,8 +36,7 @@ void ReduceOpHandle::GatherRemoteSelectedRows(
 
   operators::distributed::CollectiveClient *client =
       operators::distributed::CollectiveClient::GetInstance();
-  // retain the rank order.
-  PADDLE_ENFORCE(client->Gather(eps, scope, var_name, dev_ctx, remote, true));
+  PADDLE_ENFORCE(client->Gather(eps, scope, var_name, dev_ctx, remote));
 }
 
 void ReduceOpHandle::WaitLocalSelectedRows(
@@ -87,9 +86,9 @@ void ReduceOpHandle::GatherSelectedRows(
           collective_context_[collective_context_.rank_id_],
           collective_context_.end_points_.size());
   WaitLocalSelectedRows(dev_ctxes);
-  server->WaitNotReady();
+  server->WaitNotInService();
   server->ResetContext(scope, merged_dev_ctx);
-  server->SetReady();
+  server->SetInService();
 
   // 3. gather them from all nodes.
   std::vector<const SelectedRows *> all;
@@ -97,7 +96,7 @@ void ReduceOpHandle::GatherSelectedRows(
   all.insert(all.begin() + collective_context_.rank_id_, merged_select_rows);
   merge_func(merged_dev_ctx, all, dst_selecte_rows);
 
-  server->WaitNotReady();
+  server->WaitNotInService();
 }
 
 void ReduceOpHandle::RunImpl() {

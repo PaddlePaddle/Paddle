@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include <stdio.h>  // for removing the port file
 #include <csignal>
 #include <cstdlib>
@@ -21,12 +19,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#include "gflags/gflags.h"
-
-#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
 
-DECLARE_int32(rpc_get_thread_num, 5, "number of threads for rpc get");
+DECLARE_int32(rpc_get_thread_num);
 
 namespace paddle {
 namespace operators {
@@ -36,8 +31,8 @@ CollectiveSever::CollectiveSever(const std::string& end_point, int fan_in) {
   rpc_service_.reset(new RPCSERVER_T(end_point, fan_in));
 }
 
-static void RunServer(std::shared_ptr<distributed::RPCServer> service,
-                      std::unique_ptr<CollectiveSever> server) {
+void RunServer(std::shared_ptr<distributed::RPCServer> service,
+               std::shared_ptr<CollectiveSever> server) {
   VLOG(1) << "Start colllective server";
   service->StartServer();
   service->WaitServerReady();
@@ -45,18 +40,16 @@ static void RunServer(std::shared_ptr<distributed::RPCServer> service,
   service->SetCond(distributed::kRequestGet);
 
   while (true) {
-    server->WaitReady();
+    server->WaitInService();
 
-    if (rpc_service_->IsExit()) {
+    if (server->rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
       break;
     }
 
-    // Get from multiple trainers, we don't care about the order in which
-    // the gradients arrives, just add suffix 0~n and merge the gradient.
     service->WaitBarrier(distributed::kRequestGet);
     service->ResetBarrierCounter();
-    server->SetStatus(false);
+    server->SetSeriviceStatus(false);
   }
 }
 
@@ -66,10 +59,9 @@ void CollectiveSever::StartServer() {
   rpc_service_->RegisterRPC(distributed::kRequestGet, get_handler_.get(),
                             FLAGS_rpc_get_thread_num);
 
-  // start the server listening after all member initialized.
   server_thread_.reset(
       new std::thread(RunServer, rpc_service_, collective_server_));
-  service->WaitServerReady();
+  rpc_service_->WaitServerReady();
 }
 
 };  // namespace distributed

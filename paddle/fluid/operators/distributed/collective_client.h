@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/details/macros.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
@@ -33,24 +33,23 @@ namespace distributed {
 
 class CollectiveClient {
  public:
-  CollectiveClient() { client_.reset(new RPCCLIENT_T()); }
+  CollectiveClient() { rpc_client_.reset(new RPCCLIENT_T()); }
   virtual ~CollectiveClient() {}
 
-  bool Gather(const std::string& eps, const platform::DeviceContext& ctx,
-              const framework::Scope& scope, const std::string& var_name,
+  // note this function will retain the rank order.
+  bool Gather(const std::vector<std::string>& eps,
+              const platform::DeviceContext& ctx, const framework::Scope& scope,
+              const std::string& var_name,
               std::vector<framework::SelectedRows*>* dst,
               int64_t time_out = FLAGS_rpc_deadline);
 
   static CollectiveClient* GetInstance() {
-    std::call_once(init_flag_, &CollectiveClient::Init());
+    std::call_once(init_flag_, [&]() {
+      if (client_.get() == nullptr) {
+        client_.reset(new CollectiveClient());
+      }
+    });
     return client_.get();
-  }
-
-  // Init is called by GetInstance.
-  static void Init() {
-    if (client_.get() == nullptr) {
-      client_.reset(new CollectiveClient());
-    }
   }
 
  private:
