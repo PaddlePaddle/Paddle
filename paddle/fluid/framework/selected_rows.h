@@ -129,7 +129,7 @@ class SelectedRows {
     return make_ddim(dims);
   }
 
-  std::string Info() {
+  std::string Info() const {
     std::stringstream ss;
     ss << "height:" << height_ << ", rows:[";
     for (unsigned int i = 0; i < rows_.size(); i++) {

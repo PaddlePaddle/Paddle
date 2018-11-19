@@ -25,30 +25,32 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace distributed = paddle::distributed;
+namespace distributed = paddle::operators::distributed;
 
-std::shared_ptr<CollectiveServer> StartServer(
+std::shared_ptr<distributed::CollectiveServer> StartServer(
     const std::string& ep, int fan_in, framework::Scope* scope,
     platform::DeviceContext* dev_ctx) {
-  CollectiveServer* server = new CollectiveServer(ep, fan_in);
+  distributed::CollectiveServer* server =
+      new distributed::CollectiveServer(ep, fan_in);
 
   server->WaitNotInService();
   server->ResetContext(scope, dev_ctx);
   server->SetInService();
 
-  return std::shared_ptr(server);
+  return std::shared_ptr<distributed::CollectiveServer>(server);
 }
 
-std::shared_ptr<Scope> GenerateVars(platform::Place place) {
+std::shared_ptr<framework::Scope> GenerateVars(platform::Place place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
 
   framework::Scope* scope = new framework::Scope();
   framework::Variable* var = scope->Var("var1");
-  auto* slr = var.GetMutable<framework::SelectedRows>();
+  auto* slr = var->GetMutable<framework::SelectedRows>();
   slr->set_height(1000);
 
   auto* tensor = slr->mutable_value();
@@ -57,13 +59,13 @@ std::shared_ptr<Scope> GenerateVars(platform::Place place) {
   tensor->Resize(framework::make_ddim({564, 128}));
   tensor->mutable_data<float>(place);
 
-  int tensor_numel = 564 * 128;
-  math::set_constant(ctx, tensor, 32.7);
+  // int tensor_numel = 564 * 128;
+  paddle::operators::math::set_constant(ctx, tensor, 32.7);
   for (int i = 0; i < 564; ++i) rows->push_back(i);
 
   std::cout << "src:" << slr->Info();
 
-  return std::shared_ptr<Scope>(scope);
+  return std::shared_ptr<framework::Scope>(scope);
 }
 
 TEST(PREFETCH, CPU) {
@@ -73,13 +75,19 @@ TEST(PREFETCH, CPU) {
 
   std::string ep = "127.0.0.1:7164";
   auto scope = GenerateVars(place);
-  auto server = StartServer(ep, 1, scope.get(), &ctx);
+  auto server = StartServer(ep, 2, scope.get(), &ctx);
 
   distributed::CollectiveClient* client =
       distributed::CollectiveClient::GetInstance();
 
-  std::vector<const framework::SelectedRows*> dst;
-  std::vector<std::string> vector{ep};
-  client->Gather(eps, ctx, *scope.get(), "var2", &dst);
-  std::cout << "dst:" << dst[0]->Info();
+  std::vector<std::string> eps{ep};
+  // gather 1
+  std::vector<const framework::SelectedRows*> dst1;
+  client->Gather(eps, ctx, *scope.get(), "var2", &dst1);
+  std::cout << "dst1:" << dst1[0]->Info();
+
+  // gather 2
+  std::vector<const framework::SelectedRows*> dst2;
+  client->Gather(eps, ctx, *scope.get(), "var3", &dst2);
+  std::cout << "dst2:" << dst2[0]->Info();
 }
