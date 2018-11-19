@@ -17,7 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__)
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #endif
 #include "paddle/fluid/operators/math/math_function.h"
@@ -194,7 +195,8 @@ class LayerNormKernel : public framework::OpKernel<T> {
     out.ShareDataWith(*y);
     out.Resize(matrix_shape);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(_WIN32) || defined(__APPLE__) || \
+    defined(__OSX__)
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     RowwiseMean2D<DeviceContext, T> row_mean(left, right, ctx.device_context());
 

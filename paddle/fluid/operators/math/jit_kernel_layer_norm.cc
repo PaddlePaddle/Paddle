@@ -86,7 +86,7 @@ class LayerNormKernelImpl : public LayerNormKernel<T> {
   LayerNormKernelImpl<float, isa, block>::LayerNormKernelImpl(int right)       \
       : LayerNormKernel<float>() {                                             \
     this->num_ = right;                                                        \
-    this->rest_ = this->num_ % AVX_FLOAT_BLOCK;                                \
+    this->rest_ = this->num_ % YMM_FLOAT_BLOCK;                                \
     this->end_ = this->num_ - this->rest_;                                     \
   }                                                                            \
   template <>                                                                  \
@@ -103,7 +103,7 @@ class LayerNormKernelImpl : public LayerNormKernel<T> {
         _mm256_div_ps(_mm256_set1_ps(1.0), _mm256_set1_ps(this->num_));        \
     __m256 epsilon_vec = _mm256_set1_ps(epsilon);                              \
     int rest_mask =                                                            \
-        ((-1) & (~((~0U) >> (sizeof(int) * 8 - (AVX_FLOAT_BLOCK - rest_))))) & \
+        ((-1) & (~((~0U) >> (sizeof(int) * 8 - (YMM_FLOAT_BLOCK - rest_))))) & \
         0x0ff;                                                                 \
     __m256i mask_vec = _mm256_set_epi32(                                       \
         rest_mask & 0x80 ? 0xffffffff : 0, rest_mask & 0x40 ? 0xffffffff : 0,  \
