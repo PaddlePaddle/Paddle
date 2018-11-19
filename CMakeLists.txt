@@ -133,6 +133,8 @@ endif()
 if (WIN32)
     set(WITH_AVX OFF CACHE STRING
             "Disable AVX when compiling for Windows" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+            "Disable DSO when compiling for Windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
