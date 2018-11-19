@@ -81,8 +81,8 @@ void NaiveExecutor::Run() {
                               "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
   for (auto &op : ops_) {
-    VLOG(3) << std::this_thread::get_id() << " run " << op->Type()
-            << " on scope " << scope_;
+    LOG(INFO) << std::this_thread::get_id() << " run "
+              << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->Run(*scope_, place_);
   }
 }

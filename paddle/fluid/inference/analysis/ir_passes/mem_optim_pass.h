@@ -40,7 +40,7 @@ class MemOptimPass : public framework::ir::Pass {
       std::unordered_map<std::string, std::string>* reuse_table) const;
 
   void PerformReusePlan(
-      std::unordered_map<std::string, std::string>& reuse_table) const;
+      const std::unordered_map<std::string, std::string>& reuse_table) const;
 
   mutable framework::ir::Graph* graph_{nullptr};
   mutable int max_lifecycle_{-1};

@@ -18,7 +18,9 @@
 #include <thread>  // NOLINT
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
@@ -193,8 +195,8 @@ TEST(AnalysisPredictor, memory_optim) {
   config.pass_builder()->TurnOnDebug();
   config.model_dir = FLAGS_dirname;
 
-  auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-  auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
@@ -204,8 +206,16 @@ TEST(AnalysisPredictor, memory_optim) {
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
-  std::vector<PaddleTensor> outputs;
-  ASSERT_TRUE(predictor->Run(inputs, &outputs));
+  std::vector<PaddleTensor> output, output1;
+  // Run several times to check the parameters are not reused by mistake.
+  for (int i = 0; i < 5; i++) {
+    ASSERT_TRUE(predictor->Run(inputs, &output));
+  }
+  ASSERT_TRUE(native_predictor->Run(inputs, &output1));
+  LOG(INFO) << "the output " << inference::DescribeTensor(output.front());
+  LOG(INFO) << "the native output "
+            << inference::DescribeTensor(output1.front());
+  inference::CompareResult(output, output1);
 }
 
 }  // namespace paddle

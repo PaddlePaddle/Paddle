@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/mem_optim_pass.h"
-#include "mem_optim_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
 namespace paddle {
@@ -43,6 +43,7 @@ void MemOptimPass::CollectLifeCycle(
     std::unordered_map<std::string, lifecycle_t>* lifecycles) const {
   max_lifecycle_ = 0;
   for (auto* op_node : framework::ir::TopologySortOperations(*graph_)) {
+    if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
 
@@ -50,6 +51,7 @@ void MemOptimPass::CollectLifeCycle(
     requires.insert(requires.end(), writes.begin(), writes.end());
 
     for (const Node* node : requires) {
+      if (node->Var()->Persistable()) continue;
       std::string var = node->Name();
       if (!lifecycles->count(var)) {
         (*lifecycles)[var] = std::make_pair(max_lifecycle_, max_lifecycle_);
@@ -59,6 +61,12 @@ void MemOptimPass::CollectLifeCycle(
     }
 
     ++max_lifecycle_;
+  }
+
+  LOG(INFO) << "var lifecyles";
+  for (auto& elem : *lifecycles) {
+    LOG(INFO) << elem.first << " " << elem.second.first << " "
+              << elem.second.second;
   }
 }
 
@@ -101,6 +109,8 @@ void MemOptimPass::CollectShapes(
     if (node->IsVar() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
+      // Parameters will not be reused.
+      if (node->Var()->Persistable()) continue;
       (*tensor_nodes)[node->Name()] = node;
       (*space_table)[node->Name()] =
           ShapeToSpace(node->Var()->GetShape(), node->Var()->GetDataType());
@@ -131,6 +141,7 @@ bool FindSutableTensorToReuse(
   best_fit.second = std::numeric_limits<int>::max();
 
   for (auto& tensor : *free_existing_tensors) {
+    if (!space_table.count(tensor)) continue;
     int space = space_table.at(tensor);
     int space_diff = space - space_required;
     if (space_diff >= 0 && space_diff < best_fit.second) {
@@ -169,7 +180,6 @@ void FreeATensor(const std::string& tensor,
                  std::unordered_set<std::string>* free_existing_tensors,
                  std::unordered_map<std::string, std::string>* reuse_table) {
   if (tensor == "feed" || tensor == "fetch") return;
-  PADDLE_ENFORCE(reuse_table->count(tensor));
   // the really allocated tensor.
   const auto& free_tensor = reuse_table->at(tensor);
 
@@ -243,8 +253,8 @@ void MemOptimPass::MakeReusePlan(
     // Reuse the dead tensors for born tensors
     for (const auto& tensor : born_tensors) {
       // Skip the feed and fetch tensor for that they share data with others.
-      if (tensor == "feed" || tensor == "fetch") continue;
       std::string tensor2reuse;
+      if (!space_table.count(tensor)) continue;
       int space_required = space_table.at(tensor);
       if (FindSutableTensorToReuse(space_required, tensor_nodes,
                                    &free_existing_tensors, space_table,
@@ -255,6 +265,7 @@ void MemOptimPass::MakeReusePlan(
         VLOG(4) << "allocate " << tensor;
         AllocateNewTensor(tensor, space_required, tensor_nodes,
                           &free_existing_tensors, &space_table, reuse_table);
+        ReuseATensor(tensor, tensor, &free_existing_tensors, reuse_table);
       }
     }
 
@@ -266,15 +277,59 @@ void MemOptimPass::MakeReusePlan(
 
   int allocated, saved_memory;
   MemoryStatis(*reuse_table, space_table, &allocated, &saved_memory);
-  LOG(INFO) << "Allocated " << allocated / 1024 << " MB";
+  LOG(INFO) << "Allocated " << allocated / 1024 << " MB for workspace";
   LOG(INFO) << "Saved " << saved_memory / 1024 << " MB";
   LOG(INFO) << "The saving ratio: "
             << static_cast<float>(saved_memory) / (saved_memory + allocated);
 }
 
-void MemOptimPass::PerformReusePlan(
-    std::unordered_map<std::string, std::string>& reuse_table) const {
-  for (auto* node : graph_->Nodes()) {
+void BuildVarNodeTable(Graph* graph,
+                       std::unordered_map<std::string, Node*>* var_node_table) {
+  for (auto* node : graph->Nodes()) {
+    if (node->IsVar()) {
+      (*var_node_table)[node->Name()] = node;
+    }
+  }
+}
+
+void UpdateIrGraphByReuse(
+    Graph* graph,
+    const std::unordered_map<std::string, std::string>& reuse_table,
+    const std::unordered_map<std::string, Node*>& var_node_table) {
+  // Unneeded nodes.
+  std::unordered_set<const Node*> nodes2rm;
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsOp()) {
+      continue;
+    }
+
+    for (auto*& x : node->inputs) {
+      PADDLE_ENFORCE(x->IsVar());
+      auto name = x->Var()->Name();
+      if (reuse_table.count(name) && reuse_table.at(name) != name) {
+        nodes2rm.insert(var_node_table.at(name));
+        auto* node = var_node_table.at(reuse_table.at(name));
+        x = node;
+      }
+    }
+
+    for (auto*& x : node->outputs) {
+      PADDLE_ENFORCE(x->IsVar());
+      auto name = x->Var()->Name();
+      if (reuse_table.count(name) && reuse_table.at(name) != name) {
+        nodes2rm.insert(var_node_table.at(name));
+        auto* node = var_node_table.at(reuse_table.at(name));
+        x = node;
+      }
+    }
+  }
+  framework::ir::GraphSafeRemoveNodes(graph, nodes2rm);
+}
+
+void UpdateOpDescsByReuse(
+    Graph* graph,
+    const std::unordered_map<std::string, std::string>& reuse_table) {
+  for (auto* node : framework::ir::TopologySortOperations(*graph)) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
       std::unordered_map<std::string, std::vector<std::string>> in_args,
@@ -282,20 +337,22 @@ void MemOptimPass::PerformReusePlan(
       for (auto argument : node->Op()->Inputs()) {
         for (auto x : argument.second) {
           auto name = x;
-          if (reuse_table.count(x) && reuse_table[x] != x) {
-            name = reuse_table[x];
+          if (reuse_table.count(x) && reuse_table.at(x) != x) {
+            name = reuse_table.at(x);
           }
-          in_args[argument.first].push_back(x);
+          in_args[argument.first].push_back(name);
+          VLOG(4) << node->Name() << " input " << x << " -> " << name;
         }
       }
 
       for (auto argument : node->Op()->Outputs()) {
         for (auto x : argument.second) {
           auto name = x;
-          if (reuse_table.count(x) && reuse_table[x] != x) {
-            name = reuse_table[x];
+          if (reuse_table.count(x) && reuse_table.at(x) != x) {
+            name = reuse_table.at(x);
           }
-          out_args[argument.first].push_back(x);
+          out_args[argument.first].push_back(name);
+          VLOG(4) << node->Name() << " output " << x << " -> " << name;
         }
       }
 
@@ -306,8 +363,17 @@ void MemOptimPass::PerformReusePlan(
       for (auto& arg : out_args) {
         node->Op()->SetOutput(arg.first, arg.second);
       }
+      node->Op()->Flush();
     }
   }
+}
+
+void MemOptimPass::PerformReusePlan(
+    const std::unordered_map<std::string, std::string>& reuse_table) const {
+  std::unordered_map<std::string, Node*> var_node_table;
+  BuildVarNodeTable(graph_, &var_node_table);
+  // UpdateIrGraphByReuse(graph_, reuse_table, var_node_table);
+  UpdateOpDescsByReuse(graph_, reuse_table);
 }
 
 }  // namespace analysis
