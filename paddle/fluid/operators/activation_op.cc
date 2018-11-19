@@ -362,10 +362,6 @@ class SELUOpMaker : public framework::OpProtoAndCheckerMaker {
    void Make() override {
      AddInput("X", "Input of SELU operator");
      AddOutput("Out", "Output of SELU operator");
-     AddAttr<float>("alpha", "The alpha value of SELU").SetDefault(
-             1.6732632423543772848170429916717f);
-     AddAttr<float>("scale", "The alpha value of SELU").SetDefault(
-             1.0507009873554804934193349852946f);
      AddComment(R"DOC(
 SELU Activation Operator.
 
