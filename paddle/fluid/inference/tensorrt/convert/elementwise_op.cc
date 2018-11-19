@@ -26,7 +26,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO) << "convert a fluid elementwise op to tensorrt IScaleLayer";
+    VLOG(3) << "convert a fluid elementwise op to tensorrt IScaleLayer";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
@@ -34,7 +34,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims dims_x = X->getDimensions();
-    PADDLE_ENFORCE(dims_x.nbDims >= 3);
+    PADDLE_ENFORCE(dims_x.nbDims >= 3, "x dims experts 3, but %d is given.",
+                   dims_x.nbDims);
 
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
@@ -108,7 +109,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    LOG(INFO) << "convert a fluid elementwise op to tensorrt IScaleLayer";
+    VLOG(3) << "convert a fluid elementwise op to tensorrt IScaleLayer";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
