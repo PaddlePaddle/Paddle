@@ -78,6 +78,13 @@ struct ReduceOpHandle : public OpHandleBase {
   void GatherRemoteSelectedRows(const std::string &var_name,
                                 std::vector<SelectedRows *> *remote);
 
+  void WaitLocalSelectedRows(
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
+
+  void GatherRemoteSelectedRows(platform::DeviceContext *dev_ctx, Scope *scope,
+                                const std::string &var_name,
+                                std::vector<const SelectedRows *> *remote);
+
   template <typename T>
   std::vector<const T *> GetInputValues(
       const std::vector<VarHandle *> &in_var_handles,

@@ -16,11 +16,13 @@
 
 #include <condition_variable>  // NOLINT
 #include <string>
+#include <vector>
 #include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/details/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
@@ -31,16 +33,31 @@ namespace distributed {
 
 class CollectiveClient {
  public:
-  CollectiveClient() {}
+  CollectiveClient() { client_.reset(new RPCCLIENT_T()); }
   virtual ~CollectiveClient() {}
 
-  bool Gather(const std::string& end_points, const platform::DeviceContext& ctx,
+  bool Gather(const std::string& eps, const platform::DeviceContext& ctx,
               const framework::Scope& scope, const std::string& var_name,
+              std::vector<framework::SelectedRows*>* dst,
               int64_t time_out = FLAGS_rpc_deadline);
 
+  static CollectiveClient* GetInstance() {
+    std::call_once(init_flag_, &CollectiveClient::Init());
+    return client_.get();
+  }
+
+  // Init is called by GetInstance.
+  static void Init() {
+    if (client_.get() == nullptr) {
+      client_.reset(new CollectiveClient());
+    }
+  }
+
  private:
+  std::unique_ptr<RPCClient> rpc_client_;
+
   static std::once_flag init_flag_;
-  static std::unique_ptr<RPCClient> rpc_client_;
+  static std::unique_ptr<CollectiveClient> client_;
 };
 }  // namespace distributed
 }  // namespace operators
