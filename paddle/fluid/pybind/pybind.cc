@@ -101,9 +101,23 @@ PYBIND11_MODULE(core, m) {
 
   BindException(&m);
 
+  py::class_<imperative::VariableBase>(m, "VariableBase",
+                                       R"DOC()DOC")
+      .def_property(
+          "desc",
+          [](const imperative::VariableBase &self) { return self.var_desc_; },
+          [](imperative::VariableBase &self, framework::VarDesc *var_desc) {
+            self.var_desc_ = var_desc;
+          },
+          py::return_value_policy::reference);
+
   py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
-      .def("forward", &imperative::Layer::Forward)
+      .def("forward",
+           [](imperative::Layer &self,
+              const std::vector<imperative::VariableBase> &inputs) {
+             return self.Forward(inputs);
+           })
       .def("backward", &imperative::Layer::Backward);
   BindTracer(&m);
 
@@ -608,6 +622,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+  m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
 

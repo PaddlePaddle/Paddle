@@ -6455,7 +6455,8 @@ def relu(x, name=None):
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    helper.append_op(
+        type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
     return out
 
 

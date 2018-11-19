@@ -14,20 +14,31 @@
 
 #pragma once
 
+#include <vector>
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace imperative {
 
-class TensorFuture {
+class VariableBase {
  public:
+  VariableBase() {}
+  virtual ~VariableBase() {}
+
+  framework::VarDesc* var_desc_;
 };
 
 class Layer {
  public:
   virtual ~Layer() {}
 
-  virtual void Forward() { LOG(ERROR) << "forward at cpp."; }
+  virtual std::vector<VariableBase> Forward(
+      const std::vector<VariableBase>& inputs) {
+    std::vector<VariableBase> vars;
+    return vars;
+  }
 
   virtual void Backward() { LOG(ERROR) << "backward at cpp."; }
 };
