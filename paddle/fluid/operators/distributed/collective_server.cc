@@ -26,13 +26,13 @@ DECLARE_int32(rpc_get_thread_num);
 namespace paddle {
 namespace operators {
 namespace distributed {
-CollectiveSever::CollectiveSever(const std::string& end_point, int fan_in) {
+CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
   VLOG(1) << "Create colllective server:" << end_point << ", fan_in:" << fan_in;
   rpc_service_.reset(new RPCSERVER_T(end_point, fan_in));
 }
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service,
-               std::shared_ptr<CollectiveSever> server) {
+               std::shared_ptr<CollectiveServer> server) {
   VLOG(1) << "Start colllective server";
   service->StartServer();
   service->WaitServerReady();
@@ -53,7 +53,7 @@ void RunServer(std::shared_ptr<distributed::RPCServer> service,
   }
 }
 
-void CollectiveSever::StartServer() {
+void CollectiveServer::StartServer() {
   get_handler_.reset(new distributed::GatherGetHandler());
 
   rpc_service_->RegisterRPC(distributed::kRequestGet, get_handler_.get(),

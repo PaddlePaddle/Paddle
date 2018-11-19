@@ -75,9 +75,6 @@ struct ReduceOpHandle : public OpHandleBase {
       VarHandle *out_var_handle, const platform::Place &out_place,
       SelectedRows *dst_selecte_rows);
 
-  void GatherRemoteSelectedRows(const std::string &var_name,
-                                std::vector<SelectedRows *> *remote);
-
   void WaitLocalSelectedRows(
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
 

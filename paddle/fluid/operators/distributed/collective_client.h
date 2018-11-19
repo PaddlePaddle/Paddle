@@ -40,7 +40,7 @@ class CollectiveClient {
   bool Gather(const std::vector<std::string>& eps,
               const platform::DeviceContext& ctx, const framework::Scope& scope,
               const std::string& var_name,
-              std::vector<framework::SelectedRows*>* dst,
+              std::vector<const framework::SelectedRows*>* dst,
               int64_t time_out = FLAGS_rpc_deadline);
 
   static CollectiveClient* GetInstance() {

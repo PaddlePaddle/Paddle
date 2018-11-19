@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -126,6 +127,21 @@ class SelectedRows {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
     return make_ddim(dims);
+  }
+
+  std::string Info() {
+    std::stringstream ss;
+    ss << "height:" << height_ << ", rows:[";
+    for (unsigned int i = 0; i < rows_.size(); i++) {
+      if (i != rows_.size() - 1) {
+        ss << rows_[i] << ",";
+      } else {
+        ss << rows_[i];
+      }
+    }
+    ss << "], dims:" << value_->dims();
+
+    return ss.str();
   }
 
  private:

@@ -30,9 +30,10 @@ bool CollectiveClient::Gather(const std::vector<std::string>& eps,
                               const platform::DeviceContext& ctx,
                               const framework::Scope& scope,
                               const std::string& var_name,
-                              std::vector<framework::SelectedRows*>* dst,
+                              std::vector<const framework::SelectedRows*>* dst,
                               int64_t time_out) {
   for (auto ep : eps) {
+    VLOG(50) << "begin gather from ep:" << ep;
     VarHandlePtr ptr = rpc_client_->AsyncGetVar(ep, ctx, scope, var_name);
     PADDLE_ENFORCE(ptr->Wait());
 
@@ -41,6 +42,8 @@ bool CollectiveClient::Gather(const std::vector<std::string>& eps,
     auto select_rows =
         scope.FindVar(var_name)->GetMutable<framework::SelectedRows>();
     dst->push_back(select_rows);
+    VLOG(40) << "gather from ep:" << ep
+             << ", select_rows:" << select_rows->Info();
   }
 
   return true;

@@ -52,11 +52,11 @@ class GatherGetHandler final : public RequestHandler {
  private:
 };
 
-class CollectiveSever final {
+class CollectiveServer final {
  public:
-  explicit CollectiveSever(const std::string& end_point, int fan_in);
+  explicit CollectiveServer(const std::string& end_point, int fan_in);
 
-  virtual ~CollectiveSever() {}
+  virtual ~CollectiveServer() {}
 
   void StartServer();
 
@@ -67,11 +67,11 @@ class CollectiveSever final {
     get_handler_->SetDevCtx(dev_ctx);
   }
 
-  static CollectiveSever* GetInstance(const std::string& end_point,
-                                      int fan_in) {
+  static CollectiveServer* GetInstance(const std::string& end_point,
+                                       int fan_in) {
     std::call_once(init_flag_, [&]() {
       if (collective_server_.get() == nullptr) {
-        collective_server_.reset(new CollectiveSever(end_point, fan_in));
+        collective_server_.reset(new CollectiveServer(end_point, fan_in));
         collective_server_->StartServer();
       }
     });
@@ -113,10 +113,10 @@ class CollectiveSever final {
   bool ready_{false};
 
   static std::once_flag init_flag_;
-  static std::shared_ptr<CollectiveSever> collective_server_;
+  static std::shared_ptr<CollectiveServer> collective_server_;
 
   friend void RunServer(std::shared_ptr<distributed::RPCServer> service,
-                        std::shared_ptr<CollectiveSever> server);
+                        std::shared_ptr<CollectiveServer> server);
 };
 
 };  // namespace distributed

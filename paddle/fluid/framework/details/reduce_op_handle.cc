@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -32,15 +33,22 @@ void ReduceOpHandle::GatherRemoteSelectedRows(
     platform::DeviceContext *dev_ctx, Scope *scope, const std::string &var_name,
     std::vector<const SelectedRows *> *remote) {
   std::vector<std::string> eps = collective_context_.end_points_;
-  eps.erase(collective_context_.begin() + collective_context_.rank_id_);
+  eps.erase(eps.begin() + collective_context_.rank_id_);
+
+  std::string ep_str;
+  for (auto ep : eps) {
+    ep_str += "," + ep;
+  }
+  VLOG(30) << "gather from eps:" << ep_str;
 
   operators::distributed::CollectiveClient *client =
       operators::distributed::CollectiveClient::GetInstance();
-  PADDLE_ENFORCE(client->Gather(eps, scope, var_name, dev_ctx, remote));
+  PADDLE_ENFORCE(client->Gather(eps, *dev_ctx, *scope, var_name, remote));
 }
 
 void ReduceOpHandle::WaitLocalSelectedRows(
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes) {
+  // TODO(gongwb): use event wait?
   for (auto &dev_ctx : dev_ctxes) {
     dev_ctx.second->Wait();
   }
@@ -67,8 +75,10 @@ void ReduceOpHandle::GatherSelectedRows(
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
 
+  VLOG(40) << "gathered_select_rows :" << gathered_select_rows->Info();
+
   // merge them
-  auto &merged_dev_ctx = dev_ctxes.at(out_place);
+  auto merged_dev_ctx = dev_ctxes.at(out_place);
   std::string merged_var_name = out_var_handle->name_ + "_merged_tmp";
   auto merged_var_mid =
       local_scopes_.at(out_var_handle->scope_idx_)->FindVar(merged_var_name);
@@ -77,26 +87,30 @@ void ReduceOpHandle::GatherSelectedRows(
   // FIXME(gongwb):get type?
   auto merged_select_rows = merged_var_mid->GetMutable<SelectedRows>();
   operators::math::scatter::MergeAdd<platform::DeviceContext, float> merge_func;
-  merge_func(merged_dev_ctx, gathered_select_rows, merged_select_rows);
+  merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
+  VLOG(40) << "merged_select_rows :" << merged_select_rows->Info();
 
   // 2. start collective server if it doesn't exist
   std::vector<const SelectedRows *> remote;
   operators::distributed::CollectiveServer *server =
-      operators::distributed::ColletiveServer::GetInstance(
-          collective_context_[collective_context_.rank_id_],
+      operators::distributed::CollectiveServer::GetInstance(
+          collective_context_.end_points_[collective_context_.rank_id_],
           collective_context_.end_points_.size());
-  WaitLocalSelectedRows(dev_ctxes);
   server->WaitNotInService();
   server->ResetContext(scope, merged_dev_ctx);
+  WaitLocalSelectedRows(dev_ctxes);
   server->SetInService();
 
   // 3. gather them from all nodes.
   std::vector<const SelectedRows *> all;
   GatherRemoteSelectedRows(merged_dev_ctx, scope, out_var_handle->name_, &all);
   all.insert(all.begin() + collective_context_.rank_id_, merged_select_rows);
-  merge_func(merged_dev_ctx, all, dst_selecte_rows);
+  merge_func(*merged_dev_ctx, all, dst_selecte_rows);
+  VLOG(40) << "all_select_rows :" << dst_selecte_rows->Info();
 
   server->WaitNotInService();
+  std::vector<std::string> vars{gathered_var_name, merged_var_name};
+  scope->EraseVars(vars);
 }
 
 void ReduceOpHandle::RunImpl() {
