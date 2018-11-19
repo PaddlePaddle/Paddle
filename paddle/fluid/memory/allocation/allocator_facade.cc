@@ -15,6 +15,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include <gflags/gflags.h>
 #include <map>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
@@ -209,6 +210,7 @@ class AllocatorFacadePrivate {
     for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
       places.emplace_back(platform::CUDAPlace(dev_id));
     }
+    places.emplace_back(platform::CUDAPinnedPlace());
 #endif
     for (auto& p : places) {
       allocators_[p] = std::make_shared<LegacyAllocator>(p);
@@ -255,13 +257,17 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(
-      m_->allocators_.at(place)->Allocate(size, attr).release(),
-      AllocationDeleter());
+  return std::shared_ptr<Allocation>(Alloc(place, size, attr).release(),
+                                     AllocationDeleter());
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      Allocator::Attr attr) {
+  auto it = m_->allocators_.find(place);
+  if (it == m_->allocators_.end()) {
+    throw BadAlloc(
+        string::Sprintf("No such allocator for the place, %s", place));
+  }
   return m_->allocators_.at(place)->Allocate(size, attr);
 }
 
