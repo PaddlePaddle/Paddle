@@ -34,221 +34,241 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/framework/data_feed.h"
 
-DEFINE_bool(is_text_feed, false, "is_text_feed");
 
 namespace paddle {
 namespace framework {
-std::vector<std::string> TextClassDataFeed::s_filelist_;
-std::mutex TextClassDataFeed::s_locker_for_pick_file_;
-unsigned int TextClassDataFeed::s_current_file_idx_ = 0;
-size_t TextClassDataFeed::s_current_finished_file_cnt_ = 0;
-unsigned int TextClassDataFeed::s_current_epoch_ = 0;
-int TextClassDataFeed::s_current_save_epoch_ = 0;
-std::mutex TextClassDataFeed::s_locker_epoch_start_;
-std::condition_variable TextClassDataFeed::s_condition_epoch_start_;
-bool TextClassDataFeed::s_epoch_start_flag_ = false;
 
-void TextClassDataFeed::Init() {
-  // hard coding for a specific datafeed
-  feed_vec_.resize(2);
-  // feed_vec_[0].reset(new LoDTensor);
-  // feed_vec_[1].reset(new LoDTensor);
-  all_slot_ids_ = {0, 1};
-  use_slot_ids_ = {0, 1};
-  use_slot_alias_ = {"words", "label"};
+std::vector<std::string> DataFeed::filelist_;
+size_t DataFeed::file_idx_;
+std::mutex DataFeed::mutex_for_pick_file_;
 
-  file_content_buffer_host_.reset(new char[200*1024*1024],
-                                  [](char *p) {delete[] p;});
-  file_content_buffer_ = file_content_buffer_host_.get();
-  file_content_buffer_ptr_ = file_content_buffer_;
-
-  batch_id_host_.reset(new int[10240*1024],
-                      [](int *p) {delete[] p;});  // max word num in a batch
-  batch_id_buffer_ = batch_id_host_.get();
-
-  label_host_.reset(new int[10240],
-                    [](int *p) {delete[] p;});    // max label in a batch
-  label_ptr_ = label_host_.get();
-
-  field_names_.clear();
+void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
+  if (CheckInit() == false) {return;}
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (name == use_slots_[i]) {
+      if (use_slots_is_dense_[i]) {
+        feed_vec_[i] = MixTensor(var->GetMutable<Tensor>());
+      } else {
+        feed_vec_[i] = MixTensor(var->GetMutable<LoDTensor>());
+      }
+    }
+  }
 }
 
-TextClassDataFeed::TextClassDataFeed() {
-  Init();
+bool DataFeed::SetFileList(const std::vector<std::string>& files) {
+  if (CheckInit() == false) {return false;}
+  if (files.size() == 0) {
+    LOG(ERROR) << "error: you have set an empty filelist";
+    return false;
+  }
+  filelist_.assign(files.begin(), files.end());
+  file_idx_ = 0;
+
+  finish_set_filelist_ = true;
+  return true;
 }
 
-  // todo: use elegant implemention for this function
-bool TextClassDataFeed::ReadBatch() {
-  paddle::framework::Vector<size_t> offset;
-  int tlen = 0;
-  int llen = 0;
-  int inst_idx = 0;
-  offset.resize(batch_size_ + 1);
-  offset[0] = 0;
+bool DataFeed::PickOneFile(std::string& filename) {
+  std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
+  if (file_idx_ == filelist_.size()) {
+    return false;
+  }
+  filename = filelist_[file_idx_++];
+  return true;
+}
 
-  while (inst_idx < batch_size_) {
-    int ptr_offset = 0;
-    if (file_content_buffer_ptr_ - file_content_buffer_ >= file_size_) {
+bool DataFeed::CheckInit() {
+  if (finish_init_) {return true;}
+  LOG(ERROR) << "error: initialization did not succeed";
+  return false;
+}
+
+bool DataFeed::CheckSetFileList() {
+  if (finish_set_filelist_) {return true;}
+  LOG(ERROR) << "error: set filelist did not succeed";
+  return false;
+}
+
+bool DataFeed::CheckStart() {
+  if (finish_start_) {return true;}
+  LOG(ERROR) << "error: Datafeed has not started running yet";
+  return false;
+}
+
+template<typename T>
+void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
+  if (!CheckInit()) {return;}
+  if (queue_size <= 0) {
+    LOG(ERROR) << "error: illegal queue size: " << queue_size;
+    return;
+  }
+  queue_size_ = queue_size;
+  queue_.ReCap(queue_size_);
+}
+
+template<typename T>
+bool PrivateQueueDataFeed<T>::Start() {
+  if (!(CheckSetFileList())) {return false;}
+  read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
+  read_thread_.detach();
+
+  finish_start_ = true;
+  return true;
+} 
+
+template<typename T>
+void PrivateQueueDataFeed<T>::ReadThread(){
+  std::string filename;
+  while (PickOneFile(filename)) {
+    file_.open(filename.c_str()); // is_text_feed
+    if (!file_.is_open()) {
+      LOG(ERROR) << "error: open file<" << filename << "> fail";
+    }
+    T instance;
+    while (ParseOneInstance(instance)) {
+      queue_.Send(instance);
+    }
+    file_.close();
+  }
+  queue_.Close();
+}
+
+template<typename T>
+bool PrivateQueueDataFeed<T>::Next(){
+  if (!CheckStart()) {return false;}
+  int index = 0;
+  T instance;
+  T ins_vec(use_slots_.size());
+  while (index < default_batch_size_) {
+    if (!queue_.Receive(&instance)) {
       break;
     }
-
-    memcpy(reinterpret_cast<char *>(&llen),
-          file_content_buffer_ptr_ + ptr_offset,
-          sizeof(int));
-    ptr_offset += sizeof(int);
-
-    memcpy(reinterpret_cast<char *>(batch_id_buffer_ + tlen),
-          file_content_buffer_ptr_ + ptr_offset,
-          llen * sizeof(int));
-    tlen += llen;
-
-    offset[inst_idx + 1] = offset[inst_idx] + llen;
-    ptr_offset += sizeof(int) * llen;
-
-    memcpy(reinterpret_cast<char *>(label_ptr_ + inst_idx),
-          file_content_buffer_ptr_ + ptr_offset,
-          sizeof(int));
-    ptr_offset += sizeof(int);
-
-    file_content_buffer_ptr_ += ptr_offset;
-    inst_idx++;
+    AddInstanceToInsVec(ins_vec, instance, index++);
   }
+  batch_size_ = index;
+  PutToFeedVec(ins_vec);
+  return batch_size_ != 0;
+}
 
-  if (inst_idx != batch_size_) {
+void MultiSlotDataFeed::Init(paddle::DataFeedDesc& data_feed_desc) {
+  finish_init_ = false;
+  finish_set_filelist_ = false;
+  finish_start_ = false;
+  if (!data_feed_desc.has_multi_slot_desc()){
+    LOG(ERROR) << "error: multi_slot_desc has not been set";
+    return ;
+  }
+  paddle::MultiSlotDesc multi_slot_desc = data_feed_desc.multi_slot_desc();
+  size_t all_slot_num = multi_slot_desc.slots_size();
+  all_slots_.resize(all_slot_num);
+  all_slots_type_.resize(all_slot_num);
+  use_slots_index_.resize(all_slot_num);
+  use_slots_.clear();
+  use_slots_is_dense_.clear();
+  for (size_t i = 0; i < all_slot_num; ++i) {
+    auto& slot = multi_slot_desc.slots(i);
+    all_slots_[i] = slot.name();
+    all_slots_type_[i] = slot.type();
+    use_slots_index_[i] = slot.use() ? use_slots_.size() : -1;
+    if (slot.use()) {
+      use_slots_.push_back(all_slots_[i]);
+      use_slots_is_dense_.push_back(slot.dense());
+    }
+  }
+  feed_vec_.resize(use_slots_.size());
+
+  finish_init_ = true;
+}
+
+bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
+  std::string line;
+  if (getline(file_, line)) {
+    int use_slots_num = use_slots_.size();
+    instance.resize(use_slots_num);
+    //parse line
+    const char* str = line.c_str();
+    char* endptr = (char*)str;
+    int pos = 0;
+    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
+      int idx = use_slots_index_[i];
+      int num = (int)strtol(&str[pos], &endptr, 10);
+      if (num == 0) {
+        LOG(ERROR) << "error: the number of ids can not be zero, you need padding it";
+        exit(-1);
+      }
+      if (idx != -1) {
+        instance[idx].SetType(all_slots_type_[i]);
+        if (instance[idx].GetType()[0] == 'f') { // float
+          for (int j = 0; j < num; ++j) {
+            float feasign = (float)strtof(endptr, &endptr);
+            instance[idx].AddValue(feasign);
+          }
+        } else if (instance[idx].GetType()[0] == 'u'){ // uint64
+          for (int j = 0; j < num; ++j) {
+            uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
+            instance[idx].AddValue(feasign);
+          }
+        }
+        pos = endptr - str;
+      } else {
+        for (int j = 0; j <= num; ++j) {
+          pos = line.find_first_of(' ', pos + 1);
+        }
+      }
+    }
+  } else {
     return false;
   }
-
-  LoD input_lod{offset};
-  paddle::framework::Vector<size_t> label_offset;
-  label_offset.resize(batch_size_ + 1);
-  for (int i = 0; i <= batch_size_; ++i) {
-    label_offset[i] = i;
-  }
-
-  LoD label_lod{label_offset};
-  int64_t* input_ptr = feed_vec_[0]->mutable_data<int64_t>(
-      {static_cast<int64_t>(offset.back()), 1},
-      platform::CPUPlace());
-  int64_t* label_ptr = feed_vec_[1]->mutable_data<int64_t>({batch_size_, 1},
-                                                          platform::CPUPlace());
-  for (unsigned int i = 0; i < offset.back(); ++i) {
-    input_ptr[i] = static_cast<int64_t>(batch_id_buffer_[i]);
-  }
-  for (int i = 0; i < batch_size_; ++i) {
-    label_ptr[i] = static_cast<int64_t>(label_ptr_[i]);
-  }
-  feed_vec_[0]->set_lod(input_lod);
-  feed_vec_[1]->set_lod(label_lod);
   return true;
 }
 
-TextClassDataFeed::TextClassDataFeed(const TextClassDataFeed& data_feed) {
-  Init();
-  SetBatchSize(data_feed.batch_size_);
-  SetFieldNames(data_feed.field_names_);
-}
-
-void TextClassDataFeed::AddFeedVar(Variable* feed, const std::string& name) {
-  for (unsigned int i = 0; i < use_slot_alias_.size(); ++i) {
-    if (name == use_slot_alias_[i]) {
-      feed_vec_[i] = feed->GetMutable<LoDTensor>();
+void MultiSlotDataFeed::AddInstanceToInsVec(std::vector<MultiSlotType>& ins_vec,
+   std::vector<MultiSlotType>& instance, int index) {
+  if (index == 0) {
+    for (size_t i = 0; i < instance.size(); ++i) {
+      ins_vec[i].SetType(instance[i].GetType());
     }
   }
-}
-
-void TextClassDataFeed::SetFileList(const char* filelist) {
-  s_filelist_.clear();
-  std::ifstream fin(filelist);
-  PADDLE_ENFORCE(fin.good(),
-                 "Opening file %s fail",
-                 filelist);
-  std::string filename;
-  while (fin >> filename) {
-    LOG(ERROR) << "add " << filename.c_str() << " to filelist";
-    s_filelist_.push_back(filename);
+  for (size_t i = 0; i < instance.size(); ++i){
+    ins_vec[i].AddIns(instance[i]);
   }
-  fin.close();
 }
-
-void TextClassDataFeed::SetFieldNames(
-    const std::vector<std::string>& field_names) {
-  field_names_.clear();
-  field_names_.insert(field_names_.end(), field_names.begin(),
-                      field_names.end());
-}
-
-bool TextClassDataFeed::SetFile(const char* filename) {
-  // termnum termid termid ... termid label
-  std::ifstream ifs(filename, std::ios::binary);
-  if (ifs.fail()) {
-    return false;
-  }
-
-  ifs.seekg(0, std::ios::end);
-  int filesize = ifs.tellg();
-  ifs.seekg(0, std::ios::beg);
-  ifs.read(file_content_buffer_, filesize);
-  if (filesize < 0 || filesize >= 1024 * 1024 * 1024) {
-    return false;
-  }
-  file_content_buffer_ptr_ = file_content_buffer_;
-  file_size_ = filesize;
-  // todo , remove magic number
-
-  return true;
-}
-
-void TextClassDataFeed::UpdateEpochNum() {
-  s_current_finished_file_cnt_++;
-
-  if (s_current_finished_file_cnt_ >= s_filelist_.size()) {
-    s_current_finished_file_cnt_ = 0;
-    s_current_epoch_++;
-#if 1
-    LOG(WARNING) << "UpdateEpochNum: epoch = " << s_current_epoch_;
-#endif
-    {
-      std::lock_guard<std::mutex> lock(s_locker_epoch_start_);
-      s_epoch_start_flag_ = false;
+void MultiSlotDataFeed::PutToFeedVec(std::vector<MultiSlotType>& ins_vec) {
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    auto& type = ins_vec[i].GetType();
+    auto& offset = ins_vec[i].GetOffset();
+    int total_instance = static_cast<int>(offset.back());
+    if (type[0] == 'f') { // float
+      auto& feasign = ins_vec[i].GetFloatData();
+      if (feed_vec_[i].IsDense()) {
+        int size_in_each_batch = total_instance / batch_size_;
+        float* tensor_ptr = feed_vec_[i].GetTensor()->
+          mutable_data<float>({batch_size_, size_in_each_batch}, platform::CPUPlace());
+        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+      } else {
+        float* tensor_ptr = feed_vec_[i].GetLoDTensor()->
+          mutable_data<float>({total_instance, 1}, platform::CPUPlace());
+        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+        LoD data_lod{offset};
+        feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
+      }
+    } else if (type[0] == 'u') { // uint64
+      // no uint64_t type
+      auto& feasign = ins_vec[i].GetUint64Data();
+      if (feed_vec_[i].IsDense()) {
+        int size_in_each_batch = total_instance / batch_size_;
+        int64_t* tensor_ptr = feed_vec_[i].GetTensor()->
+          mutable_data<int64_t>({batch_size_, size_in_each_batch}, platform::CPUPlace());
+        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+      } else {
+        int64_t* tensor_ptr = feed_vec_[i].GetLoDTensor()->
+          mutable_data<int64_t>({total_instance, 1}, platform::CPUPlace());
+        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(uint64_t));
+        LoD data_lod{offset};
+        feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
+      }
     }
   }
-}
-
-void TextClassDataFeed::StartOneEpoch() {
-  std::lock_guard<std::mutex> lock(s_locker_for_pick_file_);
-  std::random_shuffle(s_filelist_.begin(), s_filelist_.end());
-  s_current_file_idx_ = 0;
-  LOG(INFO) << "Beginning epoch " << s_current_epoch_;
-
-  {
-    std::lock_guard<std::mutex> lock(s_locker_epoch_start_);
-    s_epoch_start_flag_ = true;
-  }
-  s_condition_epoch_start_.notify_all();
-}
-
-void TextClassDataFeed::WaitNextEpoch() {
-  std::unique_lock<std::mutex> lock(s_locker_epoch_start_);
-  s_condition_epoch_start_.wait(lock, []{return s_epoch_start_flag_;});
-}
-
-const char* TextClassDataFeed::PickOneFile() {
-  std::string file_to_be_processed;
-  std::lock_guard<std::mutex> lock(s_locker_for_pick_file_);
-
-  // One epoch has run over
-  // Wait for next epoch
-  if (s_current_file_idx_ >= s_filelist_.size()) {
-    LOG(ERROR) << "thread " << thread_id_
-               << ": finish traing for epoch " << s_current_epoch_ + 1;
-
-    return NULL;
-  }
-
-  file_to_be_processed = s_filelist_[s_current_file_idx_];
-
-  s_current_file_idx_++;
-  return file_to_be_processed.c_str();
 }
 
 }   // namespace framework
