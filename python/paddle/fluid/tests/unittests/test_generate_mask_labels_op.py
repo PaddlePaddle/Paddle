@@ -177,7 +177,7 @@ class TestGenerateMaskLabels(OpTest):
             'GtClasses': (self.gt_classes.astype(np.int32), self.masks_lod),
             'IsCrowd': (self.is_crowd.astype(np.int32), self.masks_lod),
             'LabelsInt32': (self.label_int32.astype(np.int32), self.rois_lod),
-            'GtSegms': (self.gt_segms.astype(np.int8), self.masks_lod),
+            'GtSegms': (self.gt_segms.astype(np.uint8), self.masks_lod),
             'Rois': (self.rois.astype(np.float32), self.rois_lod)
         }
         self.attrs = {

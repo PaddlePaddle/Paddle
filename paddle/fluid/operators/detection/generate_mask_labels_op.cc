@@ -88,7 +88,7 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
 template <typename T>
 static inline Tensor MasksToBoxes(const platform::CPUDeviceContext& context,
                                   const Tensor& masks) {
-  const int8_t* masks_data = masks.data<int8_t>();
+  const uint8_t* masks_data = masks.data<uint8_t>();
   int64_t num_mask = masks.dims()[0];
   int64_t height = masks.dims()[1];
   int64_t width = masks.dims()[2];
@@ -128,13 +128,14 @@ static inline Tensor CropAndResize(const platform::CPUDeviceContext& context,
                                    const Tensor& masks_gt, const int mask_idx,
                                    const Tensor& rois_fg, const int roi_idx,
                                    const int M) {
-  const int8_t* masks_gt_data = masks_gt.data<int8_t>();
+  const uint8_t* masks_gt_data = masks_gt.data<uint8_t>();
   // int height = masks_gt.dims()[1];
   int width = masks_gt.dims()[2];
   const T* rois_fg_data = rois_fg.data<T>();
 
   Tensor result;
-  int8_t* result_data = result.mutable_data<int8_t>({M, M}, context.GetPlace());
+  uint8_t* result_data =
+      result.mutable_data<uint8_t>({M, M}, context.GetPlace());
 
   T w = rois_fg_data[roi_idx + 2] - rois_fg_data[roi_idx + 0];
   T h = rois_fg_data[roi_idx + 3] - rois_fg_data[roi_idx + 1];
@@ -158,7 +159,7 @@ static inline Tensor ExpandMaskTarget(const platform::CPUDeviceContext& context,
                                       const Tensor& mask_class_labels,
                                       const int resolution,
                                       const int num_classes) {
-  const int8_t* masks_data = masks.data<int8_t>();
+  const uint8_t* masks_data = masks.data<uint8_t>();
   int64_t num_mask = masks.dims()[0];
   const int* mask_class_labels_data = mask_class_labels.data<int>();
   const int M = resolution * resolution;
@@ -216,9 +217,9 @@ std::vector<Tensor> SampleMaskForOneImage(
   std::copy(mask_gt_inds.begin(), mask_gt_inds.end(), mask_gt_inds_data);
   std::copy(fg_inds.begin(), fg_inds.end(), fg_inds_data);
   Tensor masks_gt;
-  masks_gt.mutable_data<int8_t>(
+  masks_gt.mutable_data<uint8_t>(
       {gt_num, gt_segms->dims()[1], gt_segms->dims()[2]}, context.GetPlace());
-  CPUGather<int8_t>(context, *gt_segms, mask_gt_inds_t, &masks_gt);
+  CPUGather<uint8_t>(context, *gt_segms, mask_gt_inds_t, &masks_gt);
 
   Tensor boxes_from_masks = MasksToBoxes<T>(context, masks_gt);
   std::vector<int> roi_has_mask =
@@ -231,7 +232,7 @@ std::vector<Tensor> SampleMaskForOneImage(
     // Class labels for the foreground rois
     mask_class_labels.mutable_data<int>({fg_num, 1}, context.GetPlace());
     CPUGather<int>(context, *label_int32, fg_inds_t, &mask_class_labels);
-    int8_t* masks_data = masks.mutable_data<int8_t>(
+    uint8_t* masks_data = masks.mutable_data<uint8_t>(
         {fg_num, resolution * resolution}, context.GetPlace());
 
     // Find overlap between all foreground rois and the bounding boxes
@@ -267,9 +268,9 @@ std::vector<Tensor> SampleMaskForOneImage(
       int roi_idx = i * kBoxDim;
       Tensor mask = CropAndResize<T>(context, masks_gt, mask_idx, rois_fg,
                                      roi_idx, resolution);
-      int8_t* mask_data = mask.data<int8_t>();
+      uint8_t* mask_data = mask.data<uint8_t>();
       int offset = i * resolution * resolution;
-      memcpy(masks_data + offset, mask_data, mask.numel() * sizeof(int8_t));
+      memcpy(masks_data + offset, mask_data, mask.numel() * sizeof(uint8_t));
     }
   } else {
     // The network cannot handle empty blobs, so we must provide a mask

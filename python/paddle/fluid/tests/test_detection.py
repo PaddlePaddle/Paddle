@@ -247,7 +247,7 @@ class TestGenerateMaskLabels(unittest.TestCase):
             gt_segms = layers.data(
                 name='gt_segms',
                 shape=[2, 100, 200],
-                dtype='int8',
+                dtype='uint8',
                 lod_level=1,
                 append_batch_size=False)
             rois = layers.data(
