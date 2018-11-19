@@ -32,9 +32,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-if (NOT WIN32)
-    register_operators(EXCLUDES warpctc_op)
-endif()
+register_operators(EXCLUDES warpctc_op)
 
 # warpctc_cudnn need cudnn 7 above
 if (WITH_GPU AND NOT WIN32)
