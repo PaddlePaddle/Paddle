@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include <algorithm>
 #include <deque>
+#include <fstream>
+#include <iosfwd>
+#include <ostream>
 #include <unordered_set>
 
 DEFINE_string(print_sub_graph_dir, "",
@@ -188,7 +191,7 @@ size_t GraphNum(const Graph &graph) {
           }
           out << "]";
         }
-        out << "\n";
+        out << "\n\n\n";
       }
       std::unique_ptr<std::ostream> fout(
           new std::ofstream(FLAGS_print_sub_graph_dir));
