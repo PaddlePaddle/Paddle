@@ -15,7 +15,7 @@ cc_library(inference_io SRCS io.cc)
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB}) 
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
