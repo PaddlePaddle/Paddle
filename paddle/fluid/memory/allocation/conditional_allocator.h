@@ -45,8 +45,6 @@ class ConditionalAllocator : public Allocator {
   ConditionalAllocator& AddAllocator(std::function<bool(size_t, Attr)> func,
                                      std::shared_ptr<Allocator> allocator);
 
-  //  AllocationPtr Allocate(size_t size, Attr attr) override;
-
   bool IsAllocThreadSafe() const override;
 
  protected:

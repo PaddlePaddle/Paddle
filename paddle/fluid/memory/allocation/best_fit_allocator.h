@@ -106,10 +106,6 @@ class BestFitAllocator : public Allocator {
 
   const platform::Place& Place() const { return allocation_->place(); }
 
-  //  std::unique_ptr<Allocation> Allocate(size_t size,
-  //                                       Attr attr = kDefault) override;
-  //  void FreeUniquePtr(std::unique_ptr<Allocation> allocation) override;
-
   size_t NumFreeChunks() const;
 
  private:

@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
-#include "../memory/allocation/allocator.h"
 #include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {

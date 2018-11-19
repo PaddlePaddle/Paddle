@@ -80,7 +80,6 @@ TEST(BestFitAllocator, concurrent_cuda) {
       th.join();
     }
   }
-  //  allocator.FreeUniquePtr(std::move(cuda_allocation));
 }
 
 }  // namespace allocation
