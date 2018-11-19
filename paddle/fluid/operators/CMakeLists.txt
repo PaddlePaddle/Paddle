@@ -34,7 +34,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-register_operators(EXCLUDES warpctc_op)
+register_operators(EXCLUDES warpctc_op conv_fusion_op)
 
 # warpctc_cudnn need cudnn 7 above
 if (WITH_GPU)
@@ -43,6 +43,8 @@ if (WITH_GPU)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
+  op_library(conv_fusion_op)
+  file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
