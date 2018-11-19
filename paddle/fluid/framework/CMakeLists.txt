@@ -190,4 +190,6 @@ if (NOT WIN32)
 cc_test(rw_lock_test SRCS rw_lock_test.cc)
 endif (NOT WIN32)
 
-add_subdirectory(tvm)
+if (WITH_TVM)
+    add_subdirectory(tvm)
+endif()

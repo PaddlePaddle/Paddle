@@ -73,6 +73,7 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
+option(WITH_TVM         "Compile with TVM support"                      ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -222,7 +223,11 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
-include(external/tvm)
+if(WITH_TVM)
+    include(external/llvm)
+    include(external/tvm)
+    add_definitions(-DPADDLE_WITH_TVM) 
+endif()
 
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
