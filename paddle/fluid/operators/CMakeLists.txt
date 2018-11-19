@@ -32,7 +32,9 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-register_operators(EXCLUDES warpctc_op)
+if (NOT WIN32)
+    register_operators(EXCLUDES warpctc_op)
+endif()
 
 # warpctc_cudnn need cudnn 7 above
 if (WITH_GPU AND NOT WIN32)
@@ -47,10 +49,10 @@ endif()
 
 set(COMMON_OP_DEPS "")
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xxhash selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor sequence_padding sequence_scale cos_sim_functor memory concat_and_split cross_entropy softmax vol2col im2col sampler)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} lstm_compute matrix_bit_code sequence2batch gru_compute activation_functions jit_kernel)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xxhash selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor sequence_padding sequence_scale cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax vol2col im2col sampler)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions)
 if (NOT WIN32)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
+    set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 endif()
 if (WITH_GPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv cub)
