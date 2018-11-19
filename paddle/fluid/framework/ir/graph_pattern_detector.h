@@ -664,7 +664,7 @@ struct ElementwiseAdd : public PatternBase {
   ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise_add") {}
 
-  PDNode* operator()(PDNode* x_var);
+  PDNode* operator()(PDNode* x_var, PDNode* y_var);
 
   PATTERN_DECL_NODE(elementwise_add_op);
   PATTERN_DECL_NODE(elementwise_add_x);
