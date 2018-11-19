@@ -4316,7 +4316,8 @@ def nce(input,
         name=None,
         sampler="uniform",
         custom_dist=None,
-        seed=0):
+        seed=0,
+        is_sparse=False):
     """
     ${comment}
 
@@ -4342,11 +4343,12 @@ def nce(input,
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+        custom_dist (float[]): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
         seed (int): The seed used in sampler. default: 0.
+        is_sparse(bool): The flag indicating whether to use sparse update.
 
     Returns:
         Variable: The output nce loss.
