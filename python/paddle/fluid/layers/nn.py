@@ -110,6 +110,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'selu',
     'log',
     'crop',
     'rank_loss',
@@ -4186,7 +4187,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False):
+def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -4211,6 +4212,7 @@ def warpctc(input, label, blank=0, norm_by_times=False):
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
+       use_cudnn (bool, default false): Whether to use cudnn.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -4234,8 +4236,11 @@ def warpctc(input, label, blank=0, norm_by_times=False):
                 'Label': [label]},
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
-        attrs={'blank': blank,
-               'norm_by_times': norm_by_times})
+        attrs={
+            'blank': blank,
+            'norm_by_times': norm_by_times,
+            'use_cudnn': use_cudnn
+        })
     return loss_out
 
 
@@ -4308,7 +4313,10 @@ def nce(input,
         param_attr=None,
         bias_attr=None,
         num_neg_samples=None,
-        name=None):
+        name=None,
+        sampler="uniform",
+        custom_dist=None,
+        seed=0):
     """
     ${comment}
 
@@ -4331,6 +4339,14 @@ def nce(input,
         num_neg_samples (int): ${num_neg_samples_comment}
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        sampler (str): The sampler used to sample class from negtive classes.
+                       It can be 'uniform', 'log_uniform' or 'custom_dist'.
+                       default: 'uniform'.
+        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+                       It is used when sampler is set to 'custom_dist'.
+                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       default: None.
+        seed (int): The seed used in sampler. default: 0.
 
     Returns:
         Variable: The output nce loss.
@@ -4360,6 +4376,16 @@ def nce(input,
             loss = layers.nce(input=embs, label=words[label_word],
                           num_total_classes=dict_size, param_attr='nce.w',
                           bias_attr='nce.b')
+
+            #or use custom distribution
+            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=5, param_attr='nce.w',
+                          bias_attr='nce.b',
+                          num_neg_samples=3,
+                          sampler="custom_dist",
+                          custom_dist=dist)
+            
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -4394,9 +4420,31 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
+    inputs = {
+        'Input': input,
+        'Label': label,
+        'Weight': w,
+        'Bias': b,
+        'SampleWeight': sample_weight if sample_weight is not None else []
+    }
+
+    if sampler == "uniform":
+        sampler = 0
+    elif sampler == "log_uniform":
+        sampler = 1
+    elif sampler == "custom_dist":
+        assert custom_dist is not None
+        assert isinstance(custom_dist, Variable)
+        inputs['CustomDistribution'] = custom_dist
+        sampler = 2
+    else:
+        raise Exception("Unsupported sampler type.")
+
     attrs = {
         'num_total_classes': int(num_total_classes),
-        'num_neg_samples': num_neg_samples
+        'num_neg_samples': num_neg_samples,
+        'seed': seed,
+        'sampler': sampler
     }
 
     helper.append_op(
@@ -6179,6 +6227,47 @@ def relu(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def selu(x, scale=None, alpha=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): The input tensor.
+        scale(float, None): If the scale is not set,
+            the default value is 1.0507009873554804934193349852946.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        alpha(float, None): If the alpha is not set,
+            the default value is 1.6732632423543772848170429916717.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.selu(x)
+    """
+    helper = LayerHelper('selu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    attrs = {}
+    if scale is not None:
+        attrs["scale"] = scale
+    if alpha is not None:
+        attrs["alpha"] = alpha
+
+    helper.append_op(
+        type="selu", inputs={"X": x}, outputs={"Out": out}, attrs=attrs)
     return out
 
 
