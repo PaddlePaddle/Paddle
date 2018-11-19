@@ -21,6 +21,7 @@ if(WITH_GRPC)
   cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor  proto_desc lookup_sparse_table_op SERIAL)
   cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
+  cc_test(collective_server_test SRCS collective_server_test.cc DEPS sendrecvop_grpc)
   return()
 endif()
 
