@@ -5788,7 +5788,7 @@ def image_resize(input,
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.image_resize(input, out_shape=[12, 12])
+            out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
     """
     resample_methods = {
         'BILINEAR': 'bilinear',
@@ -5891,6 +5891,11 @@ def resize_bilinear(input,
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
@@ -5937,6 +5942,11 @@ def resize_nearest(input,
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
 
     return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape)
