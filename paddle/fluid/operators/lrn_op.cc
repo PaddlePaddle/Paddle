@@ -46,7 +46,7 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
     int pre_pad = (n - 1) / 2;
     // compute batches one by one
     for (int i = 0; i < N; ++i) {
-      blas.VSQR(fea_size, idata + i * fea_size, sdata + pre_pad * img_size);
+      blas.VSQUARE(fea_size, idata + i * fea_size, sdata + pre_pad * img_size);
       // init the first channel of mid
       for (int c = 0; c < n; ++c) {
         blas.AXPY(img_size, alpha, sdata + c * img_size, mdata + i * fea_size);
@@ -229,8 +229,8 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
     AddAttr<bool>("is_test",
-                  "Turns on memory optimization that optimizes away "
-                  "unnecessary memory allocations. Used by MKLDNN.")
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
 
     AddComment(R"DOC(

@@ -26,6 +26,11 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 if(WIN32)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+    add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
+    set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
+    set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
+    set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
 endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
@@ -310,7 +315,6 @@ endif()
 
 if (ON_INFER)
     message(STATUS "On inference mode, will take place some specific optimization.")
-    add_definitions(-DPADDLE_ON_INFERENCE)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")

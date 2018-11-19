@@ -153,7 +153,7 @@ class Blas {
   void VEXP(int n, const T* x, T* y) const;
 
   template <typename T>
-  void VSQR(int n, const T* x, T* y) const;
+  void VSQUARE(int n, const T* x, T* y) const;
 
   template <typename T>
   void VPOW(int n, const T* x, T alpha, T* y) const;
@@ -245,8 +245,8 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
-  void VSQR(ARGS... args) const {
-    Base()->template VSQR<T>(args...);
+  void VSQUARE(ARGS... args) const {
+    Base()->template VSQUARE<T>(args...);
   }
 
   template <typename... ARGS>
