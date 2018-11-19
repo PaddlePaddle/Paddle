@@ -49,15 +49,33 @@ def _create_tmp_variable_(cur_block, name, dtype, stop_gradient=False):
 
 
 @contextlib.contextmanager
-def switch_dtype_block(main_program, dtype=np.float16, enable_tensor_core=None):
+def switch_dtype_block(main_program, dtype="float16"):
+    """
+    Switch dtype block is used to change the dtype of input and output .
+
+    Args:
+        program(Program): The current main program.
+        dtype(basestring): The type of data: float32, float_16, int etc.
+
+    Examples:
+
+        >>> import paddle.fluid as fluid
+        >>> img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+        >>> label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        >>> with fluid.contrib.switch_dtype_block(fluid.default_main_program(), dtype="float16"):
+        >>>    prediction = fluid.layers.fc(input=img, size=200, act='tanh')
+        >>> prediction = fluid.layers.cast(prediction, np.float32)
+        >>> loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    """
+    dtype = np.dtype(dtype)
 
     pre_op_idx = len(main_program.current_block().ops)
     yield
     cur_op_idx = len(main_program.current_block().ops)
 
-    # By default, the type of the scale, bias, mean,
-    # and var tensors should both be float. (For float or float16 input tensor)
-    # or double (For double input tensor).
+    # when we are using fp16 mode to run Batch norm cudnn, the data
+    # type of input x and output y will be fp16, but the other input parameters
+    # including mean and variance will still be float32 or float64.
     not_cast_param_ops = ["batch_norm"]
 
     cur_block = main_program.current_block()
@@ -74,7 +92,7 @@ def switch_dtype_block(main_program, dtype=np.float16, enable_tensor_core=None):
                 if in_var_name not in inner_outputs:
                     inner_inputs.add(in_var_name)
                     if op.type in not_cast_param_ops and cur_block.var(
-                            in_var_name).persistable:
+                            in_var_name).persistable and dtype == np.float16:
                         avoid_convert_var.add(in_var_name)
         for oname in op.output_names:
             for out_var_name in op.output(oname):
@@ -82,22 +100,23 @@ def switch_dtype_block(main_program, dtype=np.float16, enable_tensor_core=None):
 
     # reset the argument of cur_block.ops and insert them to the current block
     next_op_idx = pre_op_idx
+    cast_to_dtype = framework.convert_np_dtype_to_dtype_(dtype)
+
     for in_var_name in inner_inputs:
         if in_var_name in avoid_convert_var:
             continue
         in_var = cur_block.var(in_var_name)
-        out_var_dtype = framework.convert_np_dtype_to_dtype_(dtype)
-        if in_var.dtype == out_var_dtype:
+        if in_var.dtype == cast_to_dtype:
             continue
         out_var = _create_tmp_variable_(cur_block, "casted_" + in_var.name,
-                                        out_var_dtype)
+                                        cast_to_dtype)
         cur_block._insert_op(
             next_op_idx,
             type="cast",
             inputs={'X': in_var},
             outputs={"Out": out_var},
             attrs={'in_dtype': in_var.dtype,
-                   'out_dtype': out_var_dtype})
+                   'out_dtype': cast_to_dtype})
         next_op_idx += 1
         _rename_arg_(cur_block, in_var.name, out_var.name, next_op_idx)
 
@@ -107,6 +126,5 @@ def switch_dtype_block(main_program, dtype=np.float16, enable_tensor_core=None):
     ]
 
     for op in ops:
-        # ReInfer the output var's type and dtype
+        # ReInfer the output var's dtype
         op.desc.infer_var_type(cur_block.desc)
-        # op.desc.infer_shape(cur_block.desc)

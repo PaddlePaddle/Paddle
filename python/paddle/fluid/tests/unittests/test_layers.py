@@ -369,6 +369,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[16], dtype='float32')
             y = layers.data(name='label', shape=[1], dtype='int64')
+            loss, softmax = layers.softmax_with_cross_entropy(
+                x, y, return_softmax=True)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
             loss = layers.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
         print(str(program))
@@ -909,6 +913,16 @@ class TestBook(unittest.TestCase):
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
+        print(str(program))
+
+    def test_bilinear_tensor_product_layer(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[4], dtype="float32")
+
+            theta = layers.data(name="theta", shape=[5], dtype="float32")
+            out = layers.bilinear_tensor_product(data, theta, 6)
+
         print(str(program))
 
 

@@ -138,7 +138,7 @@ class FakeQuantizeAbsMaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 FakeQuantize operator
 
-$$scale = max(abs(X))$$ 
+$$scale = max(abs(X))$$
 $$range = 2^{bit_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 
@@ -199,11 +199,14 @@ class FakeQuantizeRangeAbsMaxOpMaker
           PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
                          "'bit_length' should be between 1 and 16.");
         });
-    AddAttr<bool>("is_test", "").SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
 FakeQuantize operator is used in static quantization.
 
-$$scale = max(max(abs(x)), history_abs_max)$$ 
+$$scale = max(max(abs(x)), history_abs_max)$$
 $$range = 2^{bit_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 

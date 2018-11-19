@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -39,6 +40,7 @@ class TensorRTEngine : public EngineBase {
   // Weight is model parameter.
   class Weight {
    public:
+    Weight() = default;
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
@@ -125,6 +127,8 @@ class TensorRTEngine : public EngineBase {
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
   int GetDevice() { return device_; }
+  nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
+                                    int nbInputs, PluginTensorRT*);
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -164,8 +168,10 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
+
   // The specific GPU id that the TensorRTEngine bounded to.
   int device_;
+  std::vector<std::unique_ptr<PluginTensorRT>> owned_plugin_;
 
   // TensorRT related internal members
   template <typename T>
