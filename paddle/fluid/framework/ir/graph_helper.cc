@@ -170,30 +170,30 @@ size_t GraphNum(const Graph &graph) {
 
   if (FLAGS_print_sub_graph_dir.size()) {
     if (graph_nodes.size() > 1) {
-      std::stringstream strs;
+      std::stringstream out;
       for (auto &g_n : graph_nodes) {
-        strs << "graph_nodes: " << g_n.size() << "\n";
+        out << "graph_nodes: " << g_n.size() << "\n";
       }
-      strs << "\n\n";
+      out << "\n\n";
       for (auto &g_n : graph_nodes) {
-        strs << "graph_nodes: " << g_n.size();
+        out << "graph_nodes: " << g_n.size();
         for (auto &node : g_n) {
-          strs << "\nNode: " << node->Name() << " in [";
+          out << "\nNode: " << node->Name() << " in [";
           for (auto &n : node->inputs) {
-            strs << n->Name() << ", ";
+            out << n->Name() << ", ";
           }
-          strs << "], out[";
+          out << "], out[";
           for (auto &n : node->outputs) {
-            strs << n->Name() << ", ";
+            out << n->Name() << ", ";
           }
-          strs << "]";
+          out << "]";
         }
-        strs << "\n";
+        out << "\n";
       }
       std::unique_ptr<std::ostream> fout(
           new std::ofstream(FLAGS_print_sub_graph_dir));
       PADDLE_ENFORCE(fout->good());
-      *fout << strs.str();
+      *fout << out.str();
     }
   }
 
