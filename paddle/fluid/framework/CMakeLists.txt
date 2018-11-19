@@ -189,3 +189,5 @@ cc_test(tuple_test SRCS tuple_test.cc )
 if (NOT WIN32)
 cc_test(rw_lock_test SRCS rw_lock_test.cc)
 endif (NOT WIN32)
+
+add_subdirectory(tvm)

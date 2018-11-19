@@ -222,6 +222,8 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
+include(external/tvm)
+
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation

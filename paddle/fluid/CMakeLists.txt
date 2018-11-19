@@ -12,5 +12,6 @@ endif(NOT WIN32)
 if(WITH_INFERENCE)
   # NOTE: please add subdirectory inference at last.
   add_subdirectory(inference)
-  add_subdirectory(train)
 endif()
+
+add_subdirectory(train)
