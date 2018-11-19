@@ -18,7 +18,6 @@
 #include <thread>  // NOLINT
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -189,7 +188,7 @@ TEST(AnalysisPredictor, Clone) {
 }
 
 TEST(AnalysisPredictor, memory_optim) {
-  AnalysisConfig config(true);
+  AnalysisConfig config(false);
   config.fraction_of_gpu_memory = 0.1;
   config.pass_builder()->AppendPass("memory_optim_pass");
   config.pass_builder()->TurnOnDebug();
