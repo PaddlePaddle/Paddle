@@ -99,24 +99,28 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
     auto d_out_mat = EigenMatrix<T>::From(*d_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    // Create the intermediate variable to caculate the Output(Y@Grad).
+    // Create the intermediate variable to calculate the Output(Y@Grad).
     Tensor x_scale;
     x_scale.mutable_data<T>(framework::make_ddim({batch_size, x_dim}),
                             ctx.GetPlace());
     auto x_scale_mat = EigenMatrix<T>::From(x_scale);
 
-    // Create the intermediate variable to caculate the Output(X@Grad).
+    // Create the intermediate variable to calculate the Output(X@Grad).
     Tensor y_scale;
     y_scale.mutable_data<T>(framework::make_ddim({batch_size, y_dim}),
                             ctx.GetPlace());
     auto y_scale_mat = EigenMatrix<T>::From(y_scale);
 
+    math::SetConstant<DeviceContext, T> set_zero;
+
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_x, static_cast<T>(0));
     }
 
     if (d_y) {
       d_y->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_y, static_cast<T>(0));
     }
 
     if (d_weight) {
@@ -166,7 +170,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    // Caculate the gradient of Input(Bias).
+    // calculate the gradient of Input(Bias).
     if (d_bias) {
       d_bias->mutable_data<T>(ctx.GetPlace());
       auto d_bias_mat = framework::EigenVector<T>::Flatten(*d_bias);
