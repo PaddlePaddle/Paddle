@@ -31,6 +31,7 @@ else()
 endif()
 
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
+
 if (WITH_GPU)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard)
 else ()
@@ -42,7 +43,14 @@ cc_library(auto_increment_allocator SRCS auto_increment_allocator.cc DEPS alloca
 cc_library(zero_size_allocator SRCS zero_size_allocator.cc DEPS allocator)
 cc_library(conditional_allocator SRCS conditional_allocator.cc DEPS allocator)
 cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags)
-cc_library(allocator_facade SRCS allocator_facade.cc DEPS
+cc_library(allocator_factory SRCS allocator_factory.cc)
+cc_library(allocator_factory_registry SRCS allocator_factory_registry.cc
+        DEPS allocator_factory allocator_strategy)
+cc_library(legacy_allocator_factory SRCS legacy_allocator_factory.cc
+        DEPS allocator_factory allocator_strategy legacy_allocator allocator_factory_registry)
+
+cc_library(naive_best_fit_factory SRCS naive_best_fit_factory.cc
+        DEPS allocator_factory allocator_strategy allocator_factory_registry
         ${AllocatorFacadeDeps}
         cpu_allocator
         locked_allocator
@@ -53,9 +61,10 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         conditional_allocator
         retry_allocator
         buffered_allocator
-        allocator_strategy
-        legacy_allocator
-        )
+        allocator_strategy)
+
+cc_library(allocator_facade SRCS allocator_facade.cc DEPS
+         naive_best_fit_factory legacy_allocator_factory)
 
 nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
 

@@ -12,31 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "gflags/gflags.h"
-
-DEFINE_string(
-    allocator_strategy, "legacy",
-    "The allocation strategy. Legacy means the original allocator of Fluid."
-    "New means the experimental allocators of Fluid. in [legacy, "
-    "naive_best_fit]");
+#include "paddle/fluid/memory/allocation/allocator_factory.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-static AllocatorStrategy GetStrategyFromFlag() {
-  return FLAGS_allocator_strategy == "legacy"
-             ? AllocatorStrategy::kLegacy
-             : AllocatorStrategy::kNaiveBestFit;
-}
-
-AllocatorStrategy GetAllocatorStrategy() {
-  static AllocatorStrategy strategy = GetStrategyFromFlag();
-  return strategy;
-}
-
-void UseAllocatorStrategyGFlag() {}
+AllocatorFactory::~AllocatorFactory() {}
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

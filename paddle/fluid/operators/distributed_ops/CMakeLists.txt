@@ -7,7 +7,7 @@ else()
     set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib node)
     if(WITH_BRPC_RDMA)
         find_library(IBVERBS_LIBRARY NAMES ibverbs)
-        ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
+        ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL ../../memory/allocation/allocator_factory_registry.cc ../../memory/allocation/allocator_factory_registry.h ../../memory/allocation/naive_best_fit_factory.cc)
         SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${IBVERBS_LIBRARY})
 
 
