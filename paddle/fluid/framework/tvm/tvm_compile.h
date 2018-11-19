@@ -14,18 +14,21 @@
 
 #pragma once
 
-#include <tvm/build_module.h>
-#include <tvm/tvm.h>
-#include "paddle/fluid/framework/tvm/tvm_runtime.h"
+#include <tvm/build_module.h>                        // NOLINT
+#include <tvm/tvm.h>                                 // NOLINT
+#include "paddle/fluid/framework/tvm/tvm_runtime.h"  // NOLINT
 
 namespace paddle {
 namespace framework {
 namespace tvm {
-namespace compile {
 
+namespace halide {
 using namespace ::HalideIR;            // NOLINT
 using namespace ::HalideIR::Internal;  // NOLINT
-using namespace ::tvm;                 // NOLINT
+}
+
+namespace compile {
+using namespace ::tvm;  // NOLINT
 
 }  // namespace compile
 }  // namespace tvm
