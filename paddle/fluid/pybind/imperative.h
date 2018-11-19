@@ -14,8 +14,10 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include <vector>
 #include "paddle/fluid/imperative/layer.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
 namespace paddle {
 namespace pybind {
@@ -24,8 +26,10 @@ class PyLayer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
 
-  void Forward() override {
-    PYBIND11_OVERLOAD(void, Layer, Forward, );  // NOLINT
+  std::vector<imperative::VariableBase> Forward(
+      const std::vector<imperative::VariableBase>& inputs) override {
+    PYBIND11_OVERLOAD(std::vector<imperative::VariableBase>, Layer, Forward,
+                      inputs);  // NOLINT
   }
 
   void Backward() override {
@@ -33,7 +37,7 @@ class PyLayer : public imperative::Layer {
   }
 };
 
-void BindTracer(pybind11::module *m);
+void BindTracer(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

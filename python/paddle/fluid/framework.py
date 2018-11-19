@@ -18,6 +18,7 @@ import collections
 import contextlib
 import re
 import six
+import sys
 
 import numpy as np
 
@@ -211,7 +212,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-class Variable(object):
+class Variable(core.VariableBase):
     """
     In Fluid, every input and output of an operator is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -282,15 +283,20 @@ class Variable(object):
             name = unique_name.generate('_generated_var')
         is_new_var = False
         name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        desc = self.block.desc.find_var(cpt.to_bytes(name))
 
-        if self.desc is None:
+        if desc is None:
+            # sys.stderr.write('desc is None\n')
             self.desc = self.block.desc.var(cpt.to_bytes(name))
             is_new_var = True
+        else:
+            # sys.stderr.write('found var %s %s' % (name, self.desc))
+            self.desc = desc
 
         if is_new_var:
             self.desc.set_type(type)
         elif self.desc.type() != type:
+            # sys.stderr.write('%s vs %s\n' % (self.desc.type(), type))
             raise ValueError("Variable {0} has been created before. The "
                              "previous type is {1}; the new type is {2}. They"
                              " are not matched".format(self.name,
@@ -354,6 +360,10 @@ class Variable(object):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+
+    def numpy(self, scope):
+        tensor = core.get_variable_tensor(scope, self.desc.name())
+        return np.array(tensor)
 
     def __str__(self):
         return self.to_string(True)
