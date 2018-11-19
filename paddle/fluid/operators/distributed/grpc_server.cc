@@ -358,7 +358,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
 
   reqs[req_id] = b;
 
-  VLOG(40) << "Create RequestSend status:" << b->Status();
+  VLOG(40) << "TryToRegisterNewOne status:" << b->Status();
 }
 
 void AsyncGRPCServer::HandleRequest(

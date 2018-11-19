@@ -35,37 +35,30 @@ CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
   rpc_service_.reset(new RPCSERVER_T(end_point, fan_in));
 }
 
-void RunServer(std::shared_ptr<distributed::RPCServer> service,
-               std::shared_ptr<CollectiveServer> server) {
-  VLOG(1) << "Start colllective server";
-  service->StartServer();
-  service->WaitServerReady();
-
-  service->SetCond(distributed::kRequestGet);
-
-  while (true) {
-    server->WaitInService();
-
-    if (server->rpc_service_->IsExit()) {
-      LOG(WARNING) << "get exit!rpc_processor break!";
-      break;
-    }
-
-    service->WaitBarrier(distributed::kRequestGet);
-    service->ResetBarrierCounter();
-    server->SetSeriviceStatus(false);
-  }
-}
-
 void CollectiveServer::StartServer() {
   get_handler_.reset(new distributed::GatherGetHandler());
 
   rpc_service_->RegisterRPC(distributed::kRequestGet, get_handler_.get(),
                             FLAGS_collective_get_thread_num);
 
-  server_thread_.reset(
-      new std::thread(RunServer, rpc_service_, collective_server_));
+  server_thread_.reset(new std::thread([&]() { rpc_service_->StartServer(); }));
   rpc_service_->WaitServerReady();
+
+  loop_thread_.reset(new std::thread([&]() {
+    while (true) {
+      collective_server_->WaitInService();
+
+      if (rpc_service_->IsExit()) {
+        LOG(WARNING) << "get exit!rpc_processor break!";
+        break;
+      }
+
+      rpc_service_->SetCond(distributed::kRequestGet);
+      rpc_service_->WaitBarrier(distributed::kRequestGet);
+      rpc_service_->ResetBarrierCounter();
+      SetSeriviceStatus(false);
+    }
+  }));
 }
 
 };  // namespace distributed

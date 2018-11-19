@@ -35,12 +35,13 @@ std::shared_ptr<distributed::CollectiveServer> StartServer(
     const std::string& ep, int fan_in, framework::Scope* scope,
     platform::DeviceContext* dev_ctx) {
   distributed::CollectiveServer* server =
-      new distributed::CollectiveServer(ep, fan_in);
+      distributed::CollectiveServer::GetInstance(ep, fan_in);
 
   server->WaitNotInService();
   server->ResetContext(scope, dev_ctx);
   server->SetInService();
 
+  std::cout << "return" << std::endl;
   return std::shared_ptr<distributed::CollectiveServer>(server);
 }
 
@@ -91,6 +92,8 @@ TEST(PREFETCH, CPU) {
   auto server = StartServer(ep, 2, scope.get(), &ctx);
 
   std::vector<std::string> eps{ep};
+  // std::thread thread1(Gather, eps, &ctx);
+  // std::thread thread2(Gather, eps, &ctx);
   Gather(eps, &ctx);
   Gather(eps, &ctx);
 }

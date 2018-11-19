@@ -78,7 +78,10 @@ class CollectiveServer final {
 
     return collective_server_.get();
   }
-  void SetInService() { SetSeriviceStatus(true); }
+  void SetInService() {
+    SetSeriviceStatus(true);
+    std::cout << "ready_:" << ready_;
+  }
 
   void WaitInService() {
     VLOG(40) << "CollectiveServer WaitInService ";
@@ -107,6 +110,7 @@ class CollectiveServer final {
   std::shared_ptr<GatherGetHandler> get_handler_;
   std::shared_ptr<distributed::RPCServer> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
+  std::shared_ptr<std::thread> loop_thread_;
 
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;
@@ -114,9 +118,6 @@ class CollectiveServer final {
 
   static std::once_flag init_flag_;
   static std::shared_ptr<CollectiveServer> collective_server_;
-
-  friend void RunServer(std::shared_ptr<distributed::RPCServer> service,
-                        std::shared_ptr<CollectiveServer> server);
 };
 
 };  // namespace distributed
