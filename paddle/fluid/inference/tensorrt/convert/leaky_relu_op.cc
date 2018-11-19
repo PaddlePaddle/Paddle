@@ -72,7 +72,10 @@ class LeakyReluOpConverter : public OpConverter {
                              nvinfer1::ElementWiseOperation::kSUM);
     PADDLE_ENFORCE(nullptr != output_layer);
     // keep alpha tensor to avoid release it's memory
-    engine_->weight_map[op_desc.Input("alpha")[0]] = std::move(alpha_tensor);
+    std::string alpha_name = op_desc.Output("Out")[0] + "_alpha";
+    PADDLE_ENFORCE(engine_->weight_map.find(alpha_name) ==
+                   engine_->weight_map.end());
+    engine_->weight_map[alpha_name] = std::move(alpha_tensor);
 
     std::string layer_name = "leaky_relu (Output: ";
     auto output_name = op_desc.Output("Out")[0];
