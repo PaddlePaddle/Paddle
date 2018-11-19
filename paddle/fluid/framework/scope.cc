@@ -42,7 +42,7 @@ DEFINE_double(
 // a mean time, but a scope may be read by multiple threads concurrently, and
 // the mutex will cause serious performance issue.
 // So the mutex is disabled when `ON_INFER`.
-#ifdef ON_INFER
+#ifdef PADDLE_ON_INFERENCE
 #define SCOPE_LOCK_GUARD
 #else
 #define SCOPE_LOCK_GUARD std::lock_guard<std::mutex> lock(mutex_);

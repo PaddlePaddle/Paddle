@@ -69,7 +69,7 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ',', &data);
-      CHECK_EQ(data.size(), 2 * MAX_TURN_NUM + 3);
+      CHECK_EQ(data.size(), (size_t)(2 * MAX_TURN_NUM + 3));
       // load turn data
       std::vector<int64_t> turns_tmp[MAX_TURN_NUM];
       for (int i = 0; i < MAX_TURN_NUM; ++i) {
@@ -197,15 +197,13 @@ TEST(Analyzer_dam, fuse_statis) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (FLAGS_use_analysis) {
-    int num_ops;
-    auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-    auto fuse_statis = GetFuseStatis(
-        static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
-    EXPECT_EQ(num_ops, 2020);
-  }
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
+  EXPECT_EQ(num_ops, 2020);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
@@ -216,11 +214,8 @@ TEST(Analyzer_dam, compare) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
-  if (FLAGS_use_analysis) {
-    CompareNativeAndAnalysis(
-        reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-        input_slots_all);
-  }
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 }  // namespace inference
