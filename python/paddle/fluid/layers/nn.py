@@ -24,7 +24,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat
+from .tensor import concat, assign
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -4466,11 +4466,9 @@ def nce(input,
             alias_probs_[little[0]] = 1.0
             alias_[little[0]] = -1
 
-        probs = fluid.layers.assign(
-            input=np.array(custom_dist).astype('float32'))
-        custom_alias = fluid.layers.assign(
-            input=np.array(alias_).astype('int64'))
-        custom_alias_probs = fluid.layers.assign(
+        probs = assign(input=np.array(custom_dist).astype('float32'))
+        custom_alias = assign(input=np.array(alias_).astype('int64'))
+        custom_alias_probs = assign(
             input=np.array(alias_probs_).astype('float32'))
 
         inputs['CustomDistProbs'] = probs

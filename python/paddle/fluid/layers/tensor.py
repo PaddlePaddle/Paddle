@@ -319,12 +319,9 @@ def assign(input, output=None):
         elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
-        elif dtype == VarDesc.VarType.INT64:
-            value_name = "int64_values"
-            values = [long(v) for v in input.flat]
         else:
             raise ValueError("Unsupported dtype %s", input.dtype)
-        if input.size > 1024 * 1024 * 100:
+        if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
 

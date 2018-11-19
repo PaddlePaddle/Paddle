@@ -103,7 +103,7 @@ class LogUniformSampler : public Sampler {
 class CustomSampler : public Sampler {
  public:
   explicit CustomSampler(int64_t range, const float* probabilities,
-                         const int64_t* alias, const float* alias_probabilities,
+                         const int* alias, const float* alias_probabilities,
                          unsigned int seed = 0UL);
 
   ~CustomSampler() override {}
@@ -114,7 +114,7 @@ class CustomSampler : public Sampler {
 
  private:
   const float* alias_probs_;
-  const int64_t* alias_;
+  const int* alias_;
   const float* probs_;
   std::shared_ptr<std::mt19937_64> random_engine_;
   std::shared_ptr<std::uniform_real_distribution<>> real_dist_;

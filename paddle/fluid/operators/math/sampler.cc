@@ -61,8 +61,7 @@ float LogUniformSampler::Probability(int64_t value) const {
 }
 
 CustomSampler::CustomSampler(int64_t range, const float *probabilities,
-                             const int64_t *alias,
-                             const float *alias_probabilities,
+                             const int *alias, const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
   random_engine_ = std::make_shared<std::mt19937_64>(seed_);
