@@ -4410,10 +4410,9 @@ def nce(input,
     sample_logits = helper.create_variable_for_type_inference(dtype=input.dtype)
     sample_labels = helper.create_variable_for_type_inference(dtype=label.dtype)
 
-    inputs['Input'] = input,
-    inputs['Label'] = label,
-    inputs['Weight'] = w,
-    inputs['Bias'] = b,
+    inputs['Input'] = input
+    inputs['Label'] = label
+    inputs['Weight'] = w
     inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
 
     if sampler == "uniform":
@@ -4423,10 +4422,10 @@ def nce(input,
     elif sampler == "custom_dist":
         assert custom_dist is not None
         # assert isinstance(custom_dist, Variable)
-        alias_probs_ = []
-        alias_ = []
 
         custom_dist_len = len(custom_dist)
+        alias_probs_ = [0] * custom_dist_len
+        alias_ = [0] * custom_dist_len
         bigs = []
         littles = []
         for i in range(custom_dist_len):
@@ -4439,7 +4438,7 @@ def nce(input,
                 alias_probs_[i] = normal_prob
                 alias_[i] = -1
 
-        while not len(bigs) and not len(littles):
+        while len(bigs) and len(littles):
             big = bigs.pop(0)
             little = littles.pop(0)
 
@@ -4457,11 +4456,11 @@ def nce(input,
                 alias_probs_[big_idx] = big_left
                 alias_[big_idx] = -1
 
-        if not len(bigs):
+        if len(bigs):
             big = bigs.pop(0)
             alias_probs_[big[0]] = 1.0
             alias_[big[0]] = -1
-        if not len(littles):
+        if len(littles):
             little = littles.pop(0)
             alias_probs_[little[0]] = 1.0
             alias_[little[0]] = -1
@@ -4482,14 +4481,6 @@ def nce(input,
         num_neg_samples = 10
     else:
         num_neg_samples = int(num_neg_samples)
-
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'Bias': b,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
 
     attrs = {
         'num_total_classes': int(num_total_classes),
