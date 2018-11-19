@@ -184,8 +184,6 @@ class CUDADeviceContext : public DeviceContext {
     callback_manager_->Wait();
   }
 
-  mutable std::mutex cublas_mtx_;
-
  private:
   CUDAPlace place_;
 

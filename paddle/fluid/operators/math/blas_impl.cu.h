@@ -14,12 +14,8 @@
 
 #pragma once
 
-#include <glog/logging.h>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/gpu_info.h"
-
-DECLARE_bool(enable_cublas_tensor_op_math);
 
 namespace paddle {
 namespace operators {
@@ -122,33 +118,6 @@ struct CUBlas<platform::float16> {
   }
 };
 
-#if CUDA_VERSION >= 9000
-class ScopedCublasMathMode {
- public:
-  explicit ScopedCublasMathMode(cublasHandle_t handle) : handle_(handle) {}
-
-  void SetMathMode(cublasMath_t new_mode) {
-    PADDLE_ENFORCE(platform::dynload::cublasGetMathMode(handle_, &old_mode_),
-                   "Failed to get old cublas math mode");
-    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(handle_, new_mode),
-                   "Failed to set old cublas math mode");
-    need_reset = true;
-  }
-
-  ~ScopedCublasMathMode() {
-    if (need_reset) {
-      PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(handle_, old_mode_),
-                     "Failed to set old cublas math mode");
-    }
-  }
-
- private:
-  cublasHandle_t handle_;
-  cublasMath_t old_mode_;
-  bool need_reset;
-};
-#endif
-
 template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
@@ -157,7 +126,6 @@ void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                              const T *B, T beta, T *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   cublasOperation_t cuTransA =
@@ -192,15 +160,13 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
 #if CUDA_VERSION >= 8000
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
+
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
-  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  std::lock_guard<std::mutex> lock(cuda_ctx.cublas_mtx_);
-  ScopedCublasMathMode cubase_mathmode(cuda_ctx.cublas_handle());
   if (context_.GetComputeCapability() >= 70) {
-    cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
+    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(
+        context_.cublas_handle(), CUBLAS_TENSOR_OP_MATH));
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-    VLOG(5) << "use_tensor_op_math";
   } else {
     PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(
         context_.cublas_handle(), CUBLAS_DEFAULT_MATH));
@@ -233,19 +199,6 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
   // the cblas convention.
   cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
-
-#if CUDA_VERSION >= 9000
-  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  std::lock_guard<std::mutex> lock(cuda_ctx.cublas_mtx_);
-  ScopedCublasMathMode cubase_mathmode(cuda_ctx.cublas_handle());
-  bool use_tensor_op_math = FLAGS_enable_cublas_tensor_op_math &&
-                            platform::TensorCoreAvailable() &&
-                            std::is_same<T, platform::float16>::value;
-  if (use_tensor_op_math) {
-    cubase_mathmode.SetMathMode(CUBLAS_TENSOR_OP_MATH);
-  }
-  VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
-#endif
   CUBlas<T>::GEMM(context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha,
                   B, ldb, A, lda, &beta, C, ldc);
 }
@@ -284,6 +237,7 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
+
   CUBlas<T>::GEMM_BATCH(context_.cublas_handle(), cuTransB, cuTransA, N, M, K,
                         &alpha, B, ldb, strideB, A, lda, strideA, &beta, C, ldc,
                         strideC, batchCount);

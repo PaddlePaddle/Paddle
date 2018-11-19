@@ -26,9 +26,6 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
 
-DEFINE_bool(enable_cublas_tensor_op_math, false,
-            "enable_cublas_tensor_op_math.");
-
 namespace paddle {
 namespace platform {
 
@@ -65,16 +62,6 @@ int GetCUDADriverVersion(int id) {
                  "cudaDriverGetVersion failed in "
                  "paddle::platform::GetCUDADriverVersion");
   return driver_version;
-}
-
-bool TensorCoreAvailable() {
-#if CUDA_VERSION >= 9000
-  int device = GetCurrentDeviceId();
-  int driver_version = GetCUDADriverVersion(device);
-  return driver_version >= 70;
-#else
-  return false;
-#endif
 }
 
 int GetCUDAMultiProcessors(int id) {
