@@ -6522,16 +6522,11 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 @templatedoc()
-def selu(x,
-         alpha=1.6732632423543772848170429916717,
-         scale=1.0507009873554804934193349852946,
-         name=None):
+def selu(x, name=None):
     """
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|1.6732632423543772848170429916717): ${alpha_comment}
-        scale(${scale_type}|1.0507009873554804934193349852946): ${scale_comment})
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -6543,8 +6538,7 @@ def selu(x,
     helper.append_op(
         type='selu',
         inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha, 'scale': scale})
+        outputs={'Out': out})
     return out
 
 @templatedoc()

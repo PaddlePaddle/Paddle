@@ -723,11 +723,8 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SELUFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  float scale;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}, {"scale", &scale}};
-  }
+  double alpha = 1.6732632423543772848170429916717;
+  double scale = 1.0507009873554804934193349852946;
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     auto elu_out = x.cwiseMax(static_cast<T>(0)) +
@@ -744,11 +741,8 @@ struct SELUFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SELUGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  float scale;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}, {"scale", &scale}};
-  }
+  double alpha = 1.6732632423543772848170429916717;
+  double scale = 1.0507009873554804934193349852946;
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
