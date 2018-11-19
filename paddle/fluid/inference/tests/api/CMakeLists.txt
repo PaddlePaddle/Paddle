@@ -45,11 +45,7 @@ inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2
 # DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-inference_analysis_test(test_analyzer_dam SRCS analyzer_dam_tester.cc
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS
-        --infer_model=${DAM_INSTALL_DIR}/model
-        --infer_data=${DAM_INSTALL_DIR}/data.txt
-        --use_analysis=0)
+inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc)
 
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
@@ -82,6 +78,10 @@ inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_te
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50 
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
+# mobilenet with depthwise_conv op
+inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet 
+  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
+
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    # anakin rnn1
@@ -108,7 +108,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
    if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
    endif()
-   cc_test(test_trt_models SRCS trt_models_tester.cc  
-     ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models
-     DEPS paddle_inference_tensorrt_subgraph_engine SERIAL)
+   inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
+      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor
+        ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
 endif()

@@ -42,8 +42,8 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(dev_ctx, logits,
-                                                          softmax);
+    math::SoftmaxFunctor<platform::CPUDeviceContext, T, false>()(
+        dev_ctx, logits, softmax);
     math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
         dev_ctx, loss, softmax, labels, context.Attr<bool>("soft_label"),
         context.Attr<int>("ignore_index"));

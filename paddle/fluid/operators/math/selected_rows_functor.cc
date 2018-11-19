@@ -244,7 +244,7 @@ typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
                    size_t data_len, const T* in, T* out) {
-  for (int64_t i = 0; i < data_len; i++) {
+  for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
 }
