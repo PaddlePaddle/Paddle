@@ -211,13 +211,34 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class NCEOpGradVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto out_var_name = op_desc.Output(framework::GradVarName("Input")).front();
+    auto attr = op_desc.GetAttr("is_sparse");
+    bool is_sparse = boost::get<bool>(attr);
+    if (is_sparse) {
+      VLOG(30) << "nce_op_grad op " << framework::GradVarName("Input")
+               << " is set to SelectedRows";
+      block->Var(out_var_name)
+          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+    } else {
+      VLOG(30) << "nce_op_grad op " << framework::GradVarName("Input")
+               << " is set to LoDTensor";
+      block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
+    }
+    block->Var(out_var_name)->SetDataType(block->Var("Input")->GetDataType());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad);
+REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,
