@@ -151,10 +151,10 @@ static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
 #endif
   };
 
-#if CUDA_VERSION > 9000
+#if CUDA_VERSION >= 9000
   dev_ctx->CublasCall(cublas_call, CUBLAS_TENSOR_OP_MATH);
 #else
-  dev_ctx->CublasCall(cublas_call);
+  cublas_call();
 #endif
 }
 
@@ -245,13 +245,13 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
     GEMM_EX<float>(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
-                   CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F, N,
-                   CUDA_R_32F);
+                   CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F,
+                   ldc, CUDA_R_32F);
   } else {
 #endif  // CUDA_VERSION >= 8000
 
     CUBlas<T>::GEMM(context_.cublas_handle(), cuTransB, cuTransA, N, M, K,
-                    &alpha, B, ldb, A, lda, &beta, C, N);
+                    &alpha, B, ldb, A, lda, &beta, C, ldc);
 
 #if CUDA_VERSION >= 8000
   }
@@ -306,8 +306,8 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 
       PADDLE_ENFORCE(platform::dynload::cublasGemmStridedBatchedEx(
           context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B,
-          CUDA_R_32F, ldb, A, CUDA_R_32F, lda, &beta, C, CUDA_R_32F, N, strideC,
-          batchCount, CUDA_R_32F, algo));
+          CUDA_R_32F, ldb, strideB, A, CUDA_R_32F, lda, strideA, &beta, C,
+          CUDA_R_32F, ldc, strideC, batchCount, CUDA_R_32F, algo));
     };
     auto &dev_ctx = const_cast<platform::CUDADeviceContext &>(context_);
     dev_ctx.CublasCall(cublas_call, CUBLAS_TENSOR_OP_MATH);

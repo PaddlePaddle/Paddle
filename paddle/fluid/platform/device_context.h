@@ -217,19 +217,14 @@ class CUDADeviceContext : public DeviceContext {
     callback_manager_->Wait();
   }
 
-/*! \brief CublasCall may need to change cublas's config,
- *  but the cublas may be hold by multi-thread, so we should
- *  add lock here. */
 #if CUDA_VERSION >= 9000
+  /*! \brief CublasCall may need to change cublas's config,
+   *  but the cublas may be hold by multi-thread, so we should
+   *  add lock here. */
   template <typename Callback>
   void CublasCall(Callback callback, cublasMath_t new_math) {
     std::lock_guard<std::mutex> guard(cublas_mtx_);
     ScopedCublasMathMode scoped_cublas_math(cublas_handle_, new_math);
-    callback();
-  }
-#else
-  template <typename Callback>
-  void CublasCall(Callback callback) {
     callback();
   }
 #endif
