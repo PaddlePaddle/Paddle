@@ -16,13 +16,17 @@ if(WITH_GRPC)
       DEPS lod_tensor selected_rows memory)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+
   cc_test(grpc_serde_test SRCS grpc_serde_test.cc 
     DEPS grpc++_unsecure grpc_unsecure gpr cares zlib protobuf sendrecvop_grpc scope profiler math_function SERIAL)
+
   cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor  proto_desc lookup_sparse_table_op SERIAL)
+
   cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
-  cc_test(collective_server_test SRCS collective_server_test.cc DEPS sendrecvop_grpc scope
-      math_function   SERIAL)
+
+  cc_test(collective_server_test SRCS collective_server_test.cc 
+      DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor  scope math_function SERIAL)
   return()
 endif()
 

@@ -21,11 +21,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/collective_server.h"
 
-DECLARE_int32(rpc_get_thread_num);
+DEFINE_int32(collective_get_thread_num, 5, "number of threads for rpc get");
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+std::once_flag CollectiveServer::init_flag_;
+std::shared_ptr<CollectiveServer> CollectiveServer::collective_server_(nullptr);
+
 CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
   VLOG(1) << "Create colllective server:" << end_point << ", fan_in:" << fan_in;
   rpc_service_.reset(new RPCSERVER_T(end_point, fan_in));
@@ -57,7 +61,7 @@ void CollectiveServer::StartServer() {
   get_handler_.reset(new distributed::GatherGetHandler());
 
   rpc_service_->RegisterRPC(distributed::kRequestGet, get_handler_.get(),
-                            FLAGS_rpc_get_thread_num);
+                            FLAGS_collective_get_thread_num);
 
   server_thread_.reset(
       new std::thread(RunServer, rpc_service_, collective_server_));

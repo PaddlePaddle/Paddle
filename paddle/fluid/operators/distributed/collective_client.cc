@@ -23,8 +23,8 @@ DECLARE_int32(rpc_deadline);
 namespace paddle {
 namespace operators {
 namespace distributed {
-std::once_flag RPCClient::init_flag_;
-std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+std::once_flag CollectiveClient::init_flag_;
+std::unique_ptr<CollectiveClient> CollectiveClient::client_(nullptr);
 
 bool CollectiveClient::Gather(const std::vector<std::string>& eps,
                               const platform::DeviceContext& ctx,

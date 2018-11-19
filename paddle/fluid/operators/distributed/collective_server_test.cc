@@ -68,6 +68,19 @@ std::shared_ptr<framework::Scope> GenerateVars(platform::Place place) {
   return std::shared_ptr<framework::Scope>(scope);
 }
 
+void Gather(std::vector<std::string> eps, platform::DeviceContext* dev_ctx) {
+  distributed::CollectiveClient* client =
+      distributed::CollectiveClient::GetInstance();
+
+  framework::Scope* scope = new framework::Scope();
+  framework::Variable* var = scope->Var("var1");
+  var->GetMutable<framework::SelectedRows>();
+
+  std::vector<const framework::SelectedRows*> dst;
+  client->Gather(eps, *dev_ctx, *scope, "var1", &dst);
+  std::cout << "dst:" << dst[0]->Info();
+}
+
 TEST(PREFETCH, CPU) {
   platform::CPUPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -77,17 +90,7 @@ TEST(PREFETCH, CPU) {
   auto scope = GenerateVars(place);
   auto server = StartServer(ep, 2, scope.get(), &ctx);
 
-  distributed::CollectiveClient* client =
-      distributed::CollectiveClient::GetInstance();
-
   std::vector<std::string> eps{ep};
-  // gather 1
-  std::vector<const framework::SelectedRows*> dst1;
-  client->Gather(eps, ctx, *scope.get(), "var2", &dst1);
-  std::cout << "dst1:" << dst1[0]->Info();
-
-  // gather 2
-  std::vector<const framework::SelectedRows*> dst2;
-  client->Gather(eps, ctx, *scope.get(), "var3", &dst2);
-  std::cout << "dst2:" << dst2[0]->Info();
+  Gather(eps, &ctx);
+  Gather(eps, &ctx);
 }
