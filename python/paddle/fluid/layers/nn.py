@@ -6949,8 +6949,15 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         t_max(${t_max_type}|24.0): ${t_max_comment}
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-     Returns:
+    Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
     """
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6972,8 +6979,15 @@ def leaky_relu(x, alpha=0.02, name=None):
         alpha(${alpha_type}|0.02): ${alpha_comment}
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-     Returns:
+    Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        y = fluid.layers.leaky_relu(x, alpha=0.01)
     """
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6994,8 +7008,15 @@ def soft_relu(x, threshold=40.0, name=None):
         threshold(${threshold_type}|40.0): ${threshold_comment}
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-     Returns:
+    Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        y = fluid.layers.soft_relu(x, threshold=20.0)
     """
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
