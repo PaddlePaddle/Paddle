@@ -52,11 +52,13 @@ function do_cpython_build {
 
     # NOTE --enable-shared for generating libpython shared library needed for
     # linking of some of the nupic.core test executables.
-    CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
-    make -j8 > /dev/null
     if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.7) ]; then
+        CFLAGS="-Wformat" ./configure --prefix=${prefix} --with-openssl=/usr/local/ssl --enable-shared $unicode_flags > /dev/null
+        make -j8 > /dev/null
         make altinstall > /dev/null
     else
+        CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
+        make -j8 > /dev/null
         make install > /dev/null
     fi
     popd
@@ -67,9 +69,6 @@ function do_cpython_build {
     # bin/python.
     if [ -e ${prefix}/bin/python3 ]; then
         ln -s python3 ${prefix}/bin/python
-    fi
-    if [ -e ${prefix}/bin/python3.6 ]; then
-        ln -s python3.6 ${prefix}/bin/python
     fi
     if [ -e ${prefix}/bin/python3.7 ]; then
         ln -s python3.7 ${prefix}/bin/python
