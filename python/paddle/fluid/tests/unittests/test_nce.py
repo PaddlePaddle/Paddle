@@ -113,10 +113,10 @@ class TestNCECase1Tensor(TestNCE):
         self.generate_data(10, 20, 10, 2, 5, False)
 
 
-class TestNCECase1SelectedRows(TestNCE):
-    def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5, True)
-
+# class TestNCECase1SelectedRows(TestNCE):
+#     def set_data(self):
+#         self.generate_data(10, 20, 10, 2, 5, True)
+#
 
 if __name__ == '__main__':
     unittest.main()
