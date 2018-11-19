@@ -87,13 +87,16 @@ TEST(StridedMemcpy, GPUCrop) {
 
   platform::CUDADeviceContext ctx(gpu0);
 
-  int* gpu_src = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(src)));
+  auto src_allocation = memory::Alloc(gpu0, sizeof(src));
+
+  int* gpu_src = reinterpret_cast<int*>(src_allocation->ptr());
   memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
 
   framework::DDim src_stride({5, 1});
 
   int dst[4];
-  int* gpu_dst = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(dst)));
+  auto dst_allocation = memory::Alloc(gpu0, sizeof(dst));
+  int* gpu_dst = reinterpret_cast<int*>(dst_allocation->ptr());
 
   framework::DDim dst_dim({2, 2});
   framework::DDim dst_stride({2, 1});
@@ -108,9 +111,6 @@ TEST(StridedMemcpy, GPUCrop) {
   ASSERT_EQ(2, dst[1]);
   ASSERT_EQ(3, dst[2]);
   ASSERT_EQ(4, dst[3]);
-
-  memory::Free(gpu0, gpu_dst);
-  memory::Free(gpu0, gpu_src);
 }
 
 TEST(StridedMemcpy, GPUConcat) {
@@ -124,12 +124,13 @@ TEST(StridedMemcpy, GPUConcat) {
   platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
   platform::CUDADeviceContext ctx(gpu0);
-
-  int* gpu_src = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(src)));
+  auto gpu_src_allocation = memory::Alloc(gpu0, sizeof(src));
+  int* gpu_src = reinterpret_cast<int*>(gpu_src_allocation->ptr());
   memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
 
   int dst[8];
-  int* gpu_dst = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(dst)));
+  auto gpu_dst_allocation = memory::Alloc(gpu0, sizeof(dst));
+  int* gpu_dst = reinterpret_cast<int*>(gpu_dst_allocation->ptr());
 
   framework::DDim src_stride({2, 1});
   framework::DDim dst_dim({2, 2});
@@ -151,9 +152,6 @@ TEST(StridedMemcpy, GPUConcat) {
   for (size_t i = 0; i < sizeof(expect_dst) / sizeof(int); ++i) {
     ASSERT_EQ(expect_dst[i], dst[i]);
   }
-
-  memory::Free(gpu0, gpu_dst);
-  memory::Free(gpu0, gpu_src);
 }
 
 #endif

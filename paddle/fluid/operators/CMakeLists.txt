@@ -72,7 +72,7 @@ set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
+cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_search_op)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
