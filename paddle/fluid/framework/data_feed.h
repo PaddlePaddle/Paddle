@@ -81,8 +81,8 @@ class DataFeed {
   virtual unsigned int GetCurrentEpoch() = 0;
   virtual const char *PickOneFile() = 0;
   virtual void UpdateEpochNum() = 0;
-  virtual void StartOneEpoch() = 0;
-  virtual void WaitNextEpoch() = 0;
+  virtual void Start() = 0;
+  virtual int Next() = 0;
 
   std::vector<LoDTensor*>& GetFeedVec() {
     return feed_vec_;
@@ -106,13 +106,13 @@ class DataFeed {
   int thread_id_;
 };
 
-class TextClassDataFeed : public DataFeed {
+class MultiSlotDataFeed : public DataFeed {
  public:
-  TextClassDataFeed();
-  TextClassDataFeed(const TextClassDataFeed& data_feed);
+  MultiSlotDataFeed();
+  MultiSlotDataFeed(const MultiSlotDataFeed& data_feed);
 
  public:
-  virtual ~TextClassDataFeed() {}
+  virtual ~MultiSlotDataFeed() {}
   virtual void Init();
   virtual bool ReadBatch();
   virtual void AddFeedVar(Variable* feed, const std::string& name);
@@ -125,8 +125,8 @@ class TextClassDataFeed : public DataFeed {
   void SetBatchSize(int batch) {batch_size_ = batch;}
   unsigned int GetCurrentEpoch() {return s_current_epoch_;}
   void UpdateEpochNum();
-  void StartOneEpoch();
-  void WaitNextEpoch();
+  void Start();
+  int Next();
 
  public:
   void SetFieldNames(const std::vector<std::string>& field_names);

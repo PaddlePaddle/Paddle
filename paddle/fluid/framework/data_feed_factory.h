@@ -16,14 +16,15 @@ limitations under the License. */
 #define PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
 
 #include <string>
-#include "paddle/framework/data_feed.h"
+#include <memory>
+#include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
 namespace framework {
 class DataFeedFactory {
  public:
   static std::string DataFeedTypeList();
-  static shared_ptr<DataFeed> CreateDataFeed(const char* data_feed_class);
+  static std::shared_ptr<DataFeed> CreateDataFeed(std::string data_feed_class);
 };
 }  // namespace framework
 }  // namespace paddle

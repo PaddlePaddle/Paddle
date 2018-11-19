@@ -38,17 +38,17 @@ DEFINE_bool(is_text_feed, false, "is_text_feed");
 
 namespace paddle {
 namespace framework {
-std::vector<std::string> TextClassDataFeed::s_filelist_;
-std::mutex TextClassDataFeed::s_locker_for_pick_file_;
-unsigned int TextClassDataFeed::s_current_file_idx_ = 0;
-size_t TextClassDataFeed::s_current_finished_file_cnt_ = 0;
-unsigned int TextClassDataFeed::s_current_epoch_ = 0;
-int TextClassDataFeed::s_current_save_epoch_ = 0;
-std::mutex TextClassDataFeed::s_locker_epoch_start_;
-std::condition_variable TextClassDataFeed::s_condition_epoch_start_;
-bool TextClassDataFeed::s_epoch_start_flag_ = false;
+std::vector<std::string> MultiSlotDataFeed::s_filelist_;
+std::mutex MultiSlotDataFeed::s_locker_for_pick_file_;
+unsigned int MultiSlotDataFeed::s_current_file_idx_ = 0;
+size_t MultiSlotDataFeed::s_current_finished_file_cnt_ = 0;
+unsigned int MultiSlotDataFeed::s_current_epoch_ = 0;
+int MultiSlotDataFeed::s_current_save_epoch_ = 0;
+std::mutex MultiSlotDataFeed::s_locker_epoch_start_;
+std::condition_variable MultiSlotDataFeed::s_condition_epoch_start_;
+bool MultiSlotDataFeed::s_epoch_start_flag_ = false;
 
-void TextClassDataFeed::Init() {
+void MultiSlotDataFeed::Init() {
   // hard coding for a specific datafeed
   feed_vec_.resize(2);
   // feed_vec_[0].reset(new LoDTensor);
@@ -73,12 +73,12 @@ void TextClassDataFeed::Init() {
   field_names_.clear();
 }
 
-TextClassDataFeed::TextClassDataFeed() {
+MultiSlotDataFeed::MultiSlotDataFeed() {
   Init();
 }
 
   // todo: use elegant implemention for this function
-bool TextClassDataFeed::ReadBatch() {
+bool MultiSlotDataFeed::ReadBatch() {
   paddle::framework::Vector<size_t> offset;
   int tlen = 0;
   int llen = 0;
@@ -142,13 +142,13 @@ bool TextClassDataFeed::ReadBatch() {
   return true;
 }
 
-TextClassDataFeed::TextClassDataFeed(const TextClassDataFeed& data_feed) {
+MultiSlotDataFeed::MultiSlotDataFeed(const MultiSlotDataFeed& data_feed) {
   Init();
   SetBatchSize(data_feed.batch_size_);
   SetFieldNames(data_feed.field_names_);
 }
 
-void TextClassDataFeed::AddFeedVar(Variable* feed, const std::string& name) {
+void MultiSlotDataFeed::AddFeedVar(Variable* feed, const std::string& name) {
   for (unsigned int i = 0; i < use_slot_alias_.size(); ++i) {
     if (name == use_slot_alias_[i]) {
       feed_vec_[i] = feed->GetMutable<LoDTensor>();
@@ -156,7 +156,7 @@ void TextClassDataFeed::AddFeedVar(Variable* feed, const std::string& name) {
   }
 }
 
-void TextClassDataFeed::SetFileList(const char* filelist) {
+void MultiSlotDataFeed::SetFileList(const char* filelist) {
   s_filelist_.clear();
   std::ifstream fin(filelist);
   PADDLE_ENFORCE(fin.good(),
@@ -170,14 +170,14 @@ void TextClassDataFeed::SetFileList(const char* filelist) {
   fin.close();
 }
 
-void TextClassDataFeed::SetFieldNames(
+void MultiSlotDataFeed::SetFieldNames(
     const std::vector<std::string>& field_names) {
   field_names_.clear();
   field_names_.insert(field_names_.end(), field_names.begin(),
                       field_names.end());
 }
 
-bool TextClassDataFeed::SetFile(const char* filename) {
+bool MultiSlotDataFeed::SetFile(const char* filename) {
   // termnum termid termid ... termid label
   std::ifstream ifs(filename, std::ios::binary);
   if (ifs.fail()) {
@@ -198,7 +198,7 @@ bool TextClassDataFeed::SetFile(const char* filename) {
   return true;
 }
 
-void TextClassDataFeed::UpdateEpochNum() {
+void MultiSlotDataFeed::UpdateEpochNum() {
   s_current_finished_file_cnt_++;
 
   if (s_current_finished_file_cnt_ >= s_filelist_.size()) {
@@ -214,25 +214,14 @@ void TextClassDataFeed::UpdateEpochNum() {
   }
 }
 
-void TextClassDataFeed::StartOneEpoch() {
-  std::lock_guard<std::mutex> lock(s_locker_for_pick_file_);
-  std::random_shuffle(s_filelist_.begin(), s_filelist_.end());
-  s_current_file_idx_ = 0;
-  LOG(INFO) << "Beginning epoch " << s_current_epoch_;
-
-  {
-    std::lock_guard<std::mutex> lock(s_locker_epoch_start_);
-    s_epoch_start_flag_ = true;
-  }
-  s_condition_epoch_start_.notify_all();
+void MultiSlotDataFeed::Start() {
 }
 
-void TextClassDataFeed::WaitNextEpoch() {
-  std::unique_lock<std::mutex> lock(s_locker_epoch_start_);
-  s_condition_epoch_start_.wait(lock, []{return s_epoch_start_flag_;});
+int MultiSlotDataFeed::Next() {
+  return 0;
 }
 
-const char* TextClassDataFeed::PickOneFile() {
+const char* MultiSlotDataFeed::PickOneFile() {
   std::string file_to_be_processed;
   std::lock_guard<std::mutex> lock(s_locker_for_pick_file_);
 

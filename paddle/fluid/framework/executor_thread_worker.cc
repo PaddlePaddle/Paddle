@@ -93,6 +93,11 @@ void ExecutorThreadWorker::CreateThreadResource(
 
 void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   auto& block = program.Block(0);
+
+  PADDLE_ENFORCE_NOT_NULL(
+      root_scope_,
+      "root_scope should be set before creating thread scope");
+
   thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
@@ -107,15 +112,22 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
 
 void ExecutorThreadWorker::SetDataFeed(
     const std::shared_ptr<DataFeed>& datafeed) {
-  local_reader_ = datafeed;
+  thread_reader_ = datafeed;
 }
 
 void ExecutorThreadWorker::BindingDataFeedMemory() {
   const std::vector<std::string>& input_feed =
       thread_reader_->GetUseSlotAlias();
   for (auto name : input_feed) {
-    local_reader_->AddFeedVar(thread_scope_->Var(name), name);
+    thread_reader_->AddFeedVar(thread_scope_->Var(name), name);
   }
+}
+
+void ExecutorThreadWorker::SetFetchVarNames(
+    const std::vector<std::string>& fetch_var_names) {
+  fetch_var_names_.clear();
+  fetch_var_names_.insert(fetch_var_names_.end(),
+                          fetch_var_names.begin(), fetch_var_names.end());
 }
 
 void ExecutorThreadWorker::SetDevice() {
@@ -156,12 +168,28 @@ void ExecutorThreadWorker::SetDevice() {
 void ExecutorThreadWorker::TrainFiles() {
   // todo: configurable
   SetDevice();
+
+  int fetch_var_num = fetch_var_names_.size();
+  fetch_values_.clear();
+  fetch_values_.resize(fetch_var_num, 0);
+
   thread_reader_->Start();
-  while (int cur_batch = thread_reader_->Next()) {
+
+  int cur_batch;
+  while ((cur_batch = thread_reader_->Next()) > 0) {
     // executor run here
     for (auto& op : ops_) {
       op->Run(*thread_scope_, place_);
     }
+
+    float avg_inspect = 0.0;
+    for (int i = 0; i < fetch_var_num; ++i) {
+      avg_inspect = thread_scope_->FindVar(fetch_var_names_[i])
+                                 ->GetMutable<LoDTensor>()
+                                 ->data<float>()[0];
+      fetch_values_[i] += avg_inspect;
+    }
+
     thread_scope_->DropKids();
   }
 }

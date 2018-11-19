@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 syntax = "proto2";
-package paddle;
+package paddle.framework;
 
 message DataFeedDesc {
   optional string name = 1;
   optional int32 batch = 2 [default = 32];
+  repeated string field_names = 3;
 }
 
