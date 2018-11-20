@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 syntax = "proto2";
-package paddle;
+package paddle.framework;
 
 message DataFeedDesc {
   optional string name = 1;
@@ -28,5 +28,5 @@ message Slot {
   required string name = 1;
   required string type = 2;
   optional bool dense = 3 [default = false];
-  optional bool use = 4 [default = true];
+  optional bool use = 4 [default = false];
 }

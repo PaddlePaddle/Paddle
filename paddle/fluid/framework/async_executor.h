@@ -23,7 +23,8 @@ limitations under the License. */
 #include <thread>   // NOLINT
 #include <vector>
 #include <typeinfo>
-#include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/executor_thread_worker.h"
 #include "paddle/fluid/framework/datafeed_creator.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -31,93 +32,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-void CreateTensor(Variable* var, proto::VarType::Type var_type);
-
-class ExecutorThreadWorker {
- public:
-  ExecutorThreadWorker() {}
-  ~ExecutorThreadWorker() {}
-  void CreateThreadScope(const ProgramDesc& program);
-  void SetThreadId(int tid);
-  void CreateThreadOperators(const ProgramDesc& program);
-  void SetRootScope(Scope* g_scope);
-  void SetDevice();
-  void AddFidSet();
-  void SetCommBatch(int comm_batch) { comm_batch_ = comm_batch; }
-  void AddTrainFile(const std::string& filename);
-  void SetMainProgram(const ProgramDesc& main_program_desc);
-  void SetPlace(const paddle::platform::Place& place);
-  void SetMaxTrainingEpoch(const int max_epoch);
-  void BindingDataFeedMemory();
-
-  void SetModelPrefix(const std::string& prefix) { model_prefix_ = prefix; }
-
-  void SetInspectVarNames(const std::vector<std::string>& inspect_var_names);
-  void SetModelParamNames(const std::vector<std::string>& param_names);
-  void SetDataFeed(DataFeed& datafeed); // NOLINT
-  void Train();
-  const char* PickOneFile();
-  void UpdateEpochNum();
-  void Reset();
-
-  void Initialize() {}
-  std::vector<float>& GetInspectValues() {return inspect_values_;}
-
- protected:
-  // thread index
-  int thread_id_;
-
-  // max epoch for each thread
-  unsigned int max_epoch_;
-
-  // instances learned currently
-  int comm_batch_;
-  std::string model_prefix_;
-  std::vector<std::string> op_names_;
-
-  // local ops for forward and backward
-  std::vector<OperatorBase *> ops_;
-
-  // main program for training
-  std::unique_ptr<ProgramDesc> main_program_;
-
-  // binary data reader
-  std::unique_ptr<DataFeed> local_reader_;
-
-  std::vector<std::string> inspect_var_names_;
-  std::vector<std::string> model_param_names_;
-
-  // execution place
-  platform::Place place_;
-
-  // root scope for model parameters
-  Scope* root_scope_;
-
-  // a thread scope, father scope is global score which is shared
-  Scope* thread_scope_;
-
- private:
-  std::vector<float> inspect_values_;
-};
-
 class AsyncExecutor {
  public:
-  explicit AsyncExecutor(ProgramDesc& main_program,     // NOLINT
-                         const std::vector<std::string>& param_names,
-                         TextClassDataFeed& data_feed,  // NOLINT
-                         unsigned int thread_num,
-                         const platform::Place& place);
+  explicit AsyncExecutor(Scope& scope, const platform::Place& place);   // NOLINT
   virtual ~AsyncExecutor() {}
   static std::unique_ptr<ProgramDesc> LoadDescFromFile(
                                           const std::string& filename);
-  void InitRootScope(Scope* scope);
-  void SetMaxTrainingEpoch(const int max_epoch);
-  Scope* GetRootScope() { return root_scope_; }
-  void SetBatchSize(const int batch_size) { batch_size_ = batch_size; }
-
-  void SetCommBatch(int comm_batch) {
-    comm_batch_ = comm_batch;
-  }
+  Scope* GetRootScope() { return &root_scope_; }
 
   void SetModelPath(const std::string& model_path) {
     model_path_ = model_path;
@@ -132,38 +53,32 @@ class AsyncExecutor {
   }
 
   void SetModelPrefix(const std::string& model_prefix);
-  virtual void PrepareThreads(const ProgramDesc& host_program);
   void RunStartupProgram(const ProgramDesc& program, Scope* scope);
-  std::vector<float>& Run(const std::vector<std::string>& inspect_var_names);
+  std::vector<float> RunFromFile(const ProgramDesc& main_program,
+                                  const DataFeedDesc& data_feed_desc,
+                                  const std::vector<std::string>& filelist,
+                                  const int thread_num,
+                                  const std::vector<std::string>& fetch_names);
 
+  void CheckFiles(const std::vector<std::string>& files);
   void LoadInitModel();
 
  private:
-  void SetInspectVarNames(const std::vector<std::string>& inspect_var_names);
+  void CreateThreads(ExecutorThreadWorker* worker,
+                     const ProgramDesc& main_program,
+                     const std::shared_ptr<DataFeed>& reader,
+                     const std::vector<std::string>& fetch_var_names,
+                     Scope& root_scope,   // NOLINT
+                     const int thread_index);
+
 
  public:
-  int thread_num_;
-  int max_epoch_;
-  int batch_size_;
-  int comm_batch_;
-  std::vector<std::shared_ptr<ExecutorThreadWorker> > workers_;
-  std::vector<std::thread> threads_;
-  std::vector<std::string> inspect_var_names_;
-  std::vector<std::string> model_param_names_;
   std::string model_prefix_;
   std::string model_path_;
   std::string init_prog_file_;
   std::string init_model_file_;
-  Scope* root_scope_;
+  Scope& root_scope_;
   platform::Place place_;
-
- private:
-  ProgramDesc& main_program_;
-  TextClassDataFeed& data_feed_;
-  std::vector<float> inspect_values_;
-
- private:
-  static bool workers_initialized_;
 };
 
 }  // namespace framework

@@ -19,30 +19,26 @@ import contextlib
 import six
 from .framework import Program, default_main_program, Variable
 from . import core
-from . import Executor
+from .executor import global_scope
 
-__all__ = ['TextDataFeed', 'AsyncExecutor']
+__all__ = ['MultiSlotDataFeed', 'AsyncExecutor']
 
 g_scope = core.Scope()
 
-class TextDataFeed():
+class DataFeedDesc(object):
     def __init__(self):
-        self.feed = core.TextDataFeed()
-
-    def set_filelist(self, filelist):
-        self.feed.set_filelist(filelist)
-
+        self.desc = core.DataFeedDesc()
     def set_batch_size(self, batch_size):
-        self.feed.set_batch_size(batch_size)
-
-    def set_field_names(self, field_names):
-        if isinstance(field_names, Variable):
+        self.desc.set_batch(batch_size)
+    def set_field_name(self, field_names):
+        if isinstance(field_names, str):
             field_names = [field_names]
+        self.desc.set_field_names(field_names)
 
-        self.feed.set_field_names(field_names)
-
-    def start_an_epoch(self):
-        self.feed.start_one_epoch()
+class MultiSlotDataFeed(DataFeedDesc):
+    def __init__(self):
+        super(MultiSlotDataFeed, self).__init__()
+        self.desc.set_name("MultiSlotDataFeed")
 
 class AsyncExecutor(object):
     """
@@ -55,45 +51,19 @@ class AsyncExecutor(object):
     They has the exactly same arguments, and expected the same results.
     """
 
-    def __init__(self,
-                 program,
-                 param_names,
-                 data_feed,
-                 thread_num,
-                 place=None,
-                 scope=None):
-        if program is None:
-            program = default_main_program()
-        program_desc = program.desc
-
-        if not isinstance(data_feed, TextDataFeed):
-            raise ValueError("data_feed for AsyncExecutor.run() type error")
-
+    def __init__(self, place=None):
         if place is None:
             place = core.CPUPlace()
         if not isinstance(place, core.CPUPlace):
             raise ValueError("AsyncExecutor only supports CPU device")
 
-        if isinstance(param_names, Variable):
-            param_names = [param_names]
-
         p = core.Place()
         p.set_place(place)
-        self.executor = core.AsyncExecutor(program_desc, param_names, data_feed.feed, thread_num, p)
 
-    def run_startup_program(self,
-                            program=None,
-                            scope=None):
-        if program is None:
-            program = default_startup_program()
-        program_desc = program._get_desc()
+        scope = global_scope()
+        self.executor = core.AsyncExecutor(scope, p)
 
-        if scope is None:
-            scope = g_scope
-
-        self.executor.run_startup_program(program_desc, scope)
-
-    def run(self, inspect_vars, scope=None):
+    def run(self, program, data_feed, filelist, thread_num, fetch):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -136,16 +106,27 @@ class AsyncExecutor(object):
             >>>     feed={'X': x},
             >>>     fetch_list=[loss.name])
         """
-        if inspect_vars is not None:
-            if isinstance(inspect_vars, Variable):
-                inspect_vars = [inspect_vars]
-            inspect_var_names = [var.name for var in inspect_vars]
+        if program is None:
+            program = default_main_program()
+        program_desc = program.desc
 
-        if scope is None:
-            scope = g_scope
+        if data_feed is None:
+            raise ValueError('ValueError: data_feed should be provided')
 
-        self.executor.init_root_scope(scope)
+        if filelist is None:
+            raise ValueError('ValueError: filelist should be provided')
 
-        evaluation = self.executor.run(inspect_var_names)
+        if isinstance(filelist, str):
+            filelist = [filelist]
+
+        if not isinstance(thread_num, int):
+            raise TypeError('TypeError: thread_num should be a positive number')
+
+        if fetch is not None:
+            if isinstance(fetch, Variable):
+                fetch = [fetch]
+            fetch_var_names = [var.name for var in fetch]
+
+        evaluation = self.executor.run_from_files(program_desc, data_feed.desc, filelist, thread_num, fetch_var_names)
         return evaluation
 

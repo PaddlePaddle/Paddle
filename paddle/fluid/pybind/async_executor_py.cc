@@ -30,36 +30,32 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/framework/async_executor_param.pb.h"
+#include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace py = pybind11;
+namespace pd = paddle::framework;
 
 namespace paddle {
 namespace pybind {
+using set_name_func = void (pd::DataFeedDesc::*)(const std::string&);
 void BindAsyncExecutor(py::module* m) {
-  py::class_<framework::DataFeed>(*m, "DataFeed");
-  py::class_<framework::TextClassDataFeed,
-             framework::DataFeed>(*m, "TextDataFeed")
-    .def(py::init())
-    .def("set_filelist",
-      [] (framework::TextClassDataFeed &self, const char *data_list_file) {
-        self.SetFileList(data_list_file);
-      })
-    .def("set_batch_size", &framework::TextClassDataFeed::SetBatchSize)
-    .def("set_field_names", &framework::TextClassDataFeed::SetFieldNames)
-    .def("start_one_epoch", &framework::TextClassDataFeed::StartOneEpoch);
+  py::class_<pd::DataFeedDesc>(*m, "DataFeedDesc")
+    .def(pybind11::init<>())
+    .def("set_name", (set_name_func)&pd::DataFeedDesc::set_name)
+    .def("set_batch", &pd::DataFeedDesc::set_batch)
+    .def("set_field_names",
+        [] (pd::DataFeedDesc& self, const std::vector<std::string> &fields) {
+          for (auto field : fields) {
+            self.add_field_names(field);
+          }
+        });
 
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
-    .def(py::init<framework::ProgramDesc&,
-                  std::vector<std::string>&,
-                  framework::TextClassDataFeed&,
-                  unsigned int,
-                  const platform::Place&>())
-    .def("init_root_scope", &framework::AsyncExecutor::InitRootScope)
-    .def("run_startup_program", &framework::AsyncExecutor::RunStartupProgram)
-    .def("run", &framework::AsyncExecutor::Run);
+    .def(py::init<pd::Scope&, const platform::Place&>())
+    .def("run_from_files", &framework::AsyncExecutor::RunFromFile)
+    .def("check_file", &framework::AsyncExecutor::CheckFiles);
 }   // end BindAsyncExecutor
 }   // end namespace pybind
 }   // end namespace paddle

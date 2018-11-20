@@ -53,14 +53,14 @@ class MixTensor {
   LoDTensor* GetLoDTensor(){
     if (is_dense_) {
       LOG(ERROR) << "error: let a dense var return a LoDTensor ptr";
-      return NULL;
+      exit(-1);
     }
     return lodtensor_;
   }
   Tensor* GetTensor(){
     if (!is_dense_) {
       LOG(ERROR) << "error: let a sparse var return a Tensor ptr";
-      return NULL;
+      exit(-1);
     }
     return tensor_;
   }
@@ -155,7 +155,7 @@ class DataFeed {
  public:
   DataFeed() {}
   virtual ~DataFeed() {}
-  virtual void Init(paddle::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   // for some datafeeds may not be able to implement this interface
   virtual bool CheckFile(const char* filename) {
     LOG(ERROR) << "error: The function CheckFile is not implemented";
@@ -169,10 +169,12 @@ class DataFeed {
   // for subclass with queue
   virtual void SetQueueSize(int queue_size) {
     LOG(ERROR) << "error: The function SetQueueSize is not implemented";
+    exit(-1);
   }
   // for subclass with buffer
   virtual void SetBufferSize(int buffer_size) {
     LOG(ERROR) << "error: The function SetBufferSize is not implemented";
+    exit(-1);
   }
   virtual const std::vector<std::string>& GetAllSlots() {return all_slots_;}
   virtual const std::vector<std::string>& GetUseSlots() {return use_slots_;}
@@ -181,9 +183,9 @@ class DataFeed {
  protected:
   // Check if it is executed in this order:
   //   Init -> SetFileList/BindingMemory -> Start -> Next
-  virtual bool CheckInit();
-  virtual bool CheckSetFileList();
-  virtual bool CheckStart();
+  virtual void CheckInit();
+  virtual void CheckSetFileList();
+  virtual void CheckStart();
   virtual bool PickOneFile(std::string& filename);
   
   static std::vector<std::string> filelist_;
@@ -213,7 +215,7 @@ class PrivateQueueDataFeed : public DataFeed {
  public:
   PrivateQueueDataFeed() {}
   virtual ~PrivateQueueDataFeed() {}
-  virtual void Init(paddle::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual bool Next(); // no buffer
   virtual void SetQueueSize(int queue_size);
@@ -247,28 +249,28 @@ class MultiSlotType {
   }
   ~MultiSlotType() {}
   void SetType(std::string& type) {
-    if (!CheckType(type)) {return;}
+    CheckType(type);
     type_ = type;
   }
   std::vector<size_t>& GetOffset() {
     return offset_;
   }
   void AddValue(float v) {
-    if (!CheckFloat()) {return;}
+    CheckFloat();
     float_feasign_.push_back(v);
   }
   void AddValue(uint64_t v) {
-    if (!CheckUint64()) {return;}
+    CheckUint64();
     uint64_feasign_.push_back(v);
   }
   void AddIns(MultiSlotType& ins) {
     if (ins.GetType()[0] == 'f') { //float
-      if (!CheckFloat()) {return;}
+      CheckFloat();
       auto& vec = ins.GetFloatData();
       offset_.push_back(offset_.back() + vec.size());
       float_feasign_.insert(float_feasign_.end(), vec.begin(), vec.end());
     } else if (ins.GetType()[0] == 'u') { //uint64
-      if (!CheckUint64()) {return;}
+      CheckUint64();
       auto& vec = ins.GetUint64Data();
       offset_.push_back(offset_.back() + vec.size());
       uint64_feasign_.insert(uint64_feasign_.end(), vec.begin(), vec.end());
@@ -284,27 +286,24 @@ class MultiSlotType {
     return type_;
   }
  private:
-  bool CheckType(std::string& type) {
+  void CheckType(std::string& type) {
     if (type != "uint64" && type != "float") {
       // check in here
       LOG(ERROR) << "error: here is no this type";
-      return false;
+      exit(-1);
     }
-    return true;
   }
-  bool CheckFloat() {
+  void CheckFloat() {
     if (type_[0] != 'f') { //float
       LOG(ERROR) << "error: add " << type_ << " value to float slot";
-      return false;
+      exit(-1);
     }
-    return true;
   }
-  bool CheckUint64() {
+  void CheckUint64() {
     if (type_[0] != 'u') { //uint64
       LOG(ERROR) << "error: add " << type_ << " value to uint64 slot";
-      return false;
+      exit(-1);
     }
-    return true;
   }
   std::vector<float> float_feasign_;
   std::vector<uint64_t> uint64_feasign_;
@@ -316,46 +315,13 @@ class MultiSlotDataFeed : public PrivateQueueDataFeed<std::vector<MultiSlotType>
  public:
   MultiSlotDataFeed() {}
   virtual ~MultiSlotDataFeed() {}
-  virtual void Init(paddle::DataFeedDesc& data_feed_desc);
-  //TODO: virtual bool CheckFile();
+  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual bool CheckFile(const char* filename);
  protected:
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>& vec_ins, 
       std::vector<MultiSlotType>& instance, int index);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>& instance);
   virtual void PutToFeedVec(std::vector<MultiSlotType>& ins_vec);
-};
-
-
-//TODO: to be deleted
-class TextClassDataFeed : public DataFeed {
- public:
-  virtual ~TextClassDataFeed() {}
-  virtual void Init(paddle::DataFeedDesc& data_feed_desc) {}
-  virtual bool Start() {return false;}; //TODO
-  virtual bool Next() {return false;}; //TODO
-  virtual bool ReadBatch() {return false;}
-  virtual void AddFeedVar(Variable* feed, const std::string& name) {}
-  virtual void BindScope(Scope* scope) {}
-  virtual bool SetFile(const char* filename) {return false;}
-
-  virtual bool CheckFile(const char* filename) {
-    // TODO(xxx)
-    return false;
-  }
-
-  void SetBatchSize(int batch) {batch_size_ = batch;}
-
- private:
-  int ReadWholeFile(const std::string& filename, char* buffer) {return -1;}
-  char* file_content_buffer_;
-  char* file_content_buffer_ptr_;
-  int* batch_id_buffer_;
-  int* label_ptr_;
-  int file_size_;
-  std::vector<std::string> names_;
-  std::shared_ptr<char> file_content_buffer_host_;
-  std::shared_ptr<int> batch_id_host_;
-  std::shared_ptr<int> label_host_;
 };
 
 }   // namespace framework

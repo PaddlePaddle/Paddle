@@ -43,7 +43,7 @@ size_t DataFeed::file_idx_;
 std::mutex DataFeed::mutex_for_pick_file_;
 
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
-  if (CheckInit() == false) {return;}
+  CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (name == use_slots_[i]) {
       if (use_slots_is_dense_[i]) {
@@ -56,7 +56,7 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
 }
 
 bool DataFeed::SetFileList(const std::vector<std::string>& files) {
-  if (CheckInit() == false) {return false;}
+  CheckInit();
   if (files.size() == 0) {
     LOG(ERROR) << "error: you have set an empty filelist";
     return false;
@@ -77,27 +77,27 @@ bool DataFeed::PickOneFile(std::string& filename) {
   return true;
 }
 
-bool DataFeed::CheckInit() {
-  if (finish_init_) {return true;}
+void DataFeed::CheckInit() {
+  if (finish_init_) {return;}
   LOG(ERROR) << "error: initialization did not succeed";
-  return false;
+  exit(-1);
 }
 
-bool DataFeed::CheckSetFileList() {
-  if (finish_set_filelist_) {return true;}
+void DataFeed::CheckSetFileList() {
+  if (finish_set_filelist_) {return;}
   LOG(ERROR) << "error: set filelist did not succeed";
-  return false;
+  exit(-1);
 }
 
-bool DataFeed::CheckStart() {
-  if (finish_start_) {return true;}
+void DataFeed::CheckStart() {
+  if (finish_start_) {return;}
   LOG(ERROR) << "error: Datafeed has not started running yet";
-  return false;
+  exit(-1);
 }
 
 template<typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
-  if (!CheckInit()) {return;}
+  CheckInit();
   if (queue_size <= 0) {
     LOG(ERROR) << "error: illegal queue size: " << queue_size;
     return;
@@ -108,7 +108,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 
 template<typename T>
 bool PrivateQueueDataFeed<T>::Start() {
-  if (!(CheckSetFileList())) {return false;}
+  CheckSetFileList();
   read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
   read_thread_.detach();
 
@@ -121,8 +121,9 @@ void PrivateQueueDataFeed<T>::ReadThread(){
   std::string filename;
   while (PickOneFile(filename)) {
     file_.open(filename.c_str()); // is_text_feed
-    if (!file_.is_open()) {
+    if (!file_.good()) {
       LOG(ERROR) << "error: open file<" << filename << "> fail";
+      continue;
     }
     T instance;
     while (ParseOneInstance(instance)) {
@@ -135,7 +136,7 @@ void PrivateQueueDataFeed<T>::ReadThread(){
 
 template<typename T>
 bool PrivateQueueDataFeed<T>::Next(){
-  if (!CheckStart()) {return false;}
+  CheckStart();
   int index = 0;
   T instance;
   T ins_vec(use_slots_.size());
@@ -150,15 +151,16 @@ bool PrivateQueueDataFeed<T>::Next(){
   return batch_size_ != 0;
 }
 
-void MultiSlotDataFeed::Init(paddle::DataFeedDesc& data_feed_desc) {
+void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
   finish_set_filelist_ = false;
   finish_start_ = false;
+  /*
   if (!data_feed_desc.has_multi_slot_desc()){
     LOG(ERROR) << "error: multi_slot_desc has not been set";
-    return ;
+    exit(-1);
   }
-  paddle::MultiSlotDesc multi_slot_desc = data_feed_desc.multi_slot_desc();
+  paddle::framework::MultiSlotDesc multi_slot_desc = data_feed_desc.multi_slot_desc();
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
@@ -176,8 +178,14 @@ void MultiSlotDataFeed::Init(paddle::DataFeedDesc& data_feed_desc) {
     }
   }
   feed_vec_.resize(use_slots_.size());
-
+  */
   finish_init_ = true;
+}
+
+bool MultiSlotDataFeed::CheckFile(const char* filename) {
+  // check with protobuf ?
+  std::cerr << "Check error" << std::endl;
+  return false;
 }
 
 bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
@@ -233,6 +241,7 @@ void MultiSlotDataFeed::AddInstanceToInsVec(std::vector<MultiSlotType>& ins_vec,
     ins_vec[i].AddIns(instance[i]);
   }
 }
+
 void MultiSlotDataFeed::PutToFeedVec(std::vector<MultiSlotType>& ins_vec) {
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     auto& type = ins_vec[i].GetType();
@@ -253,7 +262,7 @@ void MultiSlotDataFeed::PutToFeedVec(std::vector<MultiSlotType>& ins_vec) {
         feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
       }
     } else if (type[0] == 'u') { // uint64
-      // no uint64_t type
+      // no uint64_t type in paddle
       auto& feasign = ins_vec[i].GetUint64Data();
       if (feed_vec_[i].IsDense()) {
         int size_in_each_batch = total_instance / batch_size_;
@@ -263,7 +272,7 @@ void MultiSlotDataFeed::PutToFeedVec(std::vector<MultiSlotType>& ins_vec) {
       } else {
         int64_t* tensor_ptr = feed_vec_[i].GetLoDTensor()->
           mutable_data<int64_t>({total_instance, 1}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(uint64_t));
+        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
         LoD data_lod{offset};
         feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
       }

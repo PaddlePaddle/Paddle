@@ -43,6 +43,9 @@ class ExecutorThreadWorker {
   void SetDevice();
   void BindingDataFeedMemory();
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
+  void TrainFiles();
+  void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
+  std::vector<float>& GetFetchValues() {return fetch_values_;}
 
  private:
   void CreateThreadScope(const framework::ProgramDesc& program);
@@ -66,9 +69,13 @@ class ExecutorThreadWorker {
   Scope* root_scope_;
   // a thread scope, father scope is global score which is shared
   Scope* thread_scope_;
+
+ private:
+  std::vector<std::string> fetch_var_names_;
+  std::vector<float> fetch_values_;
 };
 
 }  // namespace framework
 }  // namespace paddle
-#endif  // PADDLE_FLUID_FRAMEWORK_ASYNC_EXECUTOR_H_
+#endif  // PADDLE_FLUID_FRAMEWORK_EXECUTOR_THREAD_WORKER_H_
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
