@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>  // for shared_ptr
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/operators/math/jit_kernel_impl.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -26,14 +27,7 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-// TODO(TJ): move these to some proper place
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-#define XMM_FLOAT_BLOCK 4
-#define YMM_FLOAT_BLOCK 8
-#define ZMM_FLOAT_BLOCK 16
-
+// TODO(TJ): remove me
 typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
 class Kernel {
@@ -124,10 +118,13 @@ class LSTMKernel : public Kernel {
                            const T *wp_data = nullptr,
                            T *checked = nullptr) const = 0;
 
-  // compute c1 and h1 without c0 or h0
   virtual void ComputeC1H1(T *gates, T *ct, T *ht,
                            /* below only used in peephole*/
                            const T *wp_data = nullptr) const = 0;
+
+  //  void (*ComputeCtHt)(lstm_t *);
+  // // compute c1 and h1 without c0 or h0
+  //  void (*ComputeC1H1)(lstm_t *);
 };
 
 template <typename T>
