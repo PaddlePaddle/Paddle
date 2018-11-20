@@ -31,14 +31,14 @@ function(inference_analysis_api_test_with_fake_data target install_dir filename 
 endfunction()
 
 # RNN1
-if(NOT APPLE)
+if(NOT APPLE AND WITH_MKLML)
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
     download_model_and_data(${RNN1_INSTALL_DIR} "rnn1%2Fmodel.tar.gz" "rnn1%2Fdata.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR} analyzer_rnn1_tester.cc)
 else()
-    # TODO: fix this test on MACOS, the reason is that
-    # fusion_seqexpand_concat_fc_op is not supported on MACOS
-    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_analyzer_rnn1")
+    # TODO: fix this test on MACOS and OPENBLAS, the reason is that
+    # fusion_seqexpand_concat_fc_op is not supported on MACOS and OPENBLAS
+    message(WARNING "These tests has been disabled in OSX or WITH_MKL=OFF before being fixed: \n test_analyzer_rnn1")
 endif()
 
 # RNN2
