@@ -17,6 +17,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
 void PluginTensorRT::serializeBase(void*& buffer) {
   SerializeValue(&buffer, input_dims_);
@@ -25,12 +26,12 @@ void PluginTensorRT::serializeBase(void*& buffer) {
   SerializeValue(&buffer, data_format_);
 }
 
-void PluginTensorRT::deserializeBase(void const*& serialData,
-                                     size_t& serialLength) {
-  DeserializeValue(&serialData, &serialLength, &input_dims_);
-  DeserializeValue(&serialData, &serialLength, &max_batch_size_);
-  DeserializeValue(&serialData, &serialLength, &data_type_);
-  DeserializeValue(&serialData, &serialLength, &data_format_);
+void PluginTensorRT::deserializeBase(void const*& serial_data,
+                                     size_t& serial_length) {
+  DeserializeValue(&serial_data, &serial_length, &input_dims_);
+  DeserializeValue(&serial_data, &serial_length, &max_batch_size_);
+  DeserializeValue(&serial_data, &serial_length, &data_type_);
+  DeserializeValue(&serial_data, &serial_length, &data_format_);
 }
 
 size_t PluginTensorRT::getBaseSerializationSize() {
@@ -44,18 +45,17 @@ bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,
           (format == nvinfer1::PluginFormat::kNCHW));
 }
 
-void PluginTensorRT::configureWithFormat(const nvinfer1::Dims* inputDims,
-                                         int nbInputs,
-                                         const nvinfer1::Dims* outputDims,
-                                         int nbOutputs, nvinfer1::DataType type,
-                                         nvinfer1::PluginFormat format,
-                                         int maxBatchSize) {
+void PluginTensorRT::configureWithFormat(
+    const nvinfer1::Dims* input_dims, int num_inputs,
+    const nvinfer1::Dims* output_dims, int num_outputs, nvinfer1::DataType type,
+    nvinfer1::PluginFormat format, int max_batch_size) {
   data_type_ = type;
   data_format_ = format;
-  input_dims_.assign(inputDims, inputDims + nbInputs);
-  max_batch_size_ = maxBatchSize;
+  input_dims_.assign(input_dims, input_dims + num_inputs);
+  max_batch_size_ = max_batch_size;
 }
 
+}  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
