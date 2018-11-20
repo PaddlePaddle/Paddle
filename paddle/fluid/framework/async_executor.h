@@ -55,7 +55,7 @@ class AsyncExecutor {
   void SetModelPrefix(const std::string& model_prefix);
   void RunStartupProgram(const ProgramDesc& program, Scope* scope);
   std::vector<float> RunFromFile(const ProgramDesc& main_program,
-                                  const DataFeedDesc& data_feed_desc,
+                                  const std::string& data_feed_desc_str,
                                   const std::vector<std::string>& filelist,
                                   const int thread_num,
                                   const std::vector<std::string>& fetch_names);

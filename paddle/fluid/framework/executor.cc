@@ -418,11 +418,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
                           &(ctx->cur_ref_cnts_));
     }
-
-    if (FLAGS_benchmark) {
-      VLOG(20) << "Memory used after operator " + op->Type() + " running: "
-               << memory::memory_usage(place_);
-    }
   }
 
   if (gc != nullptr) {
@@ -443,13 +438,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
     }
-  }
-
-  if (FLAGS_benchmark) {
-    VLOG(20) << "-------------------------------------------------------";
-    VLOG(20) << "Memory used after deleting local scope: "
-             << memory::memory_usage(place_);
-    VLOG(20) << "-------------------------------------------------------";
   }
 }
 

@@ -21,6 +21,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
 class PReluPlugin : public PluginTensorRT {
   TensorRTEngine::Weight alpha_;
@@ -63,6 +64,7 @@ class PReluPlugin : public PluginTensorRT {
               void *workspace, cudaStream_t stream) override;
 };
 
+}  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
