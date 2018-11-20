@@ -65,6 +65,7 @@ void CollectiveServer::StartServer() {
       }
       sleep(1);
     }
+    VLOG(1) << "CollectiveServer loop_thread end";
   }));
 }
 

@@ -31,7 +31,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::operators::distributed;
 
-std::shared_ptr<distributed::CollectiveServer> StartServer(
+std::unique_ptr<distributed::CollectiveServer> StartServer(
     const std::string& ep, int fan_in, framework::Scope* scope,
     platform::DeviceContext* dev_ctx) {
   distributed::CollectiveServer* server =
@@ -42,10 +42,10 @@ std::shared_ptr<distributed::CollectiveServer> StartServer(
                           scope, dev_ctx);
 
   std::cout << "StartServer return" << std::endl;
-  return std::shared_ptr<distributed::CollectiveServer>(server);
+  return std::unique_ptr<distributed::CollectiveServer>(server);
 }
 
-std::shared_ptr<framework::Scope> GenerateVars(platform::Place place) {
+std::unique_ptr<framework::Scope> GenerateVars(platform::Place place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
 
@@ -65,7 +65,7 @@ std::shared_ptr<framework::Scope> GenerateVars(platform::Place place) {
 
   std::cout << "src:" << slr->Info();
 
-  return std::shared_ptr<framework::Scope>(scope);
+  return std::unique_ptr<framework::Scope>(scope);
 }
 
 void Gather(std::vector<std::string> eps, platform::DeviceContext* dev_ctx) {
@@ -101,5 +101,9 @@ TEST(PREFETCH, GPU) {
 
   std::cout << "begin WaitVarBarrier" << std::endl;
   rpc_server->WaitVarBarrier("var1");
+  rpc_server->ClearRegisteredVars();
   server->Stop();
+
+  scope.release();
+  server.release();
 }

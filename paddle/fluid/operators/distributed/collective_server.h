@@ -92,8 +92,8 @@ class CollectiveServer final {
   void Stop();
 
  private:
-  std::shared_ptr<GetMonomerHandler> get_monomer_handler_;
-  std::shared_ptr<GetMonomerBarrierHandler> get_barrier_handler_;
+  std::unique_ptr<GetMonomerHandler> get_monomer_handler_;
+  std::unique_ptr<GetMonomerBarrierHandler> get_barrier_handler_;
 
   std::shared_ptr<distributed::RPCServer> rpc_server_;
   std::shared_ptr<std::thread> server_thread_;
