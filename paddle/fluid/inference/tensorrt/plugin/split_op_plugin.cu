@@ -12,25 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cassert>
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
-nvinfer1::Dims SplitPlugin::getOutputDimensions(int index,
-                                                const nvinfer1::Dims* inputDims,
-                                                int nbInputs) {
-  assert(nbInputs == 1);
-  assert(index < this->getNbOutputs());
-  nvinfer1::Dims const& input_dims = inputDims[0];
-  nvinfer1::Dims output_dims = input_dims;
+nvinfer1::Dims SplitPlugin::getOutputDimensions(
+    int index, const nvinfer1::Dims* input_dims, int num_inputs) {
+  PADDLE_ENFORCE_EQ(num_inputs, 1);
+  PADDLE_ENFORCE_LT(index, this->getNbOutputs());
+
+  nvinfer1::Dims output_dims = input_dims[0];
   output_dims.d[axis_] = output_length_.at(index);
   return output_dims;
 }
 
 int SplitPlugin::initialize() {
+  PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS);
+
   std::vector<int> segment_offsets(1, 0);
   for (int i = 0; i < this->getNbOutputs(); ++i) {
     segment_offsets.push_back(segment_offsets.back() + output_length_[i]);
@@ -75,6 +76,7 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
+}  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

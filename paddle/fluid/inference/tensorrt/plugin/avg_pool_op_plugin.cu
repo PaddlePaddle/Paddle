@@ -18,6 +18,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
 nvinfer1::Dims AvgPoolPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* inputDims, int nbInputs) {
@@ -57,6 +58,7 @@ int AvgPoolPlugin::enqueue(int batchSize, const void* const* inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
+}  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
