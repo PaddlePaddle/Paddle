@@ -26,6 +26,7 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
+// TODO(TJ): move these to some proper place
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 #define EXP_MAX_INPUT 40.0
@@ -143,6 +144,14 @@ class CRFDecodeKernel : public Kernel {
  public:
   virtual void Compute(const int seq_len, const T *x, const T *w, T *alpha,
                        int *track) const = 0;
+};
+
+template <typename T>
+class LayerNormKernel : public Kernel {
+ public:
+  virtual void Compute(T *x, T *out, T *mean, T *var, const T *scale,
+                       const T *bias, int height,
+                       const float epsilon) const = 0;
 };
 
 }  // namespace jitkernel

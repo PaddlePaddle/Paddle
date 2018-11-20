@@ -20,6 +20,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
 static const int CUDA_NUM_THREADS = 1024;
 static const int CUDA_MAX_NUM_BLOCKS = 65535;
@@ -126,6 +127,7 @@ int PReluPlugin::enqueue(int batchSize, const void *const *inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
+}  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

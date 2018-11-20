@@ -1,1 +1,3 @@
-nv_library(tensorrt_plugin SRCS trt_plugin.cc split_op_plugin.cu prelu_op_plugin.cu DEPS enforce)
+nv_library(tensorrt_plugin
+           SRCS trt_plugin.cc split_op_plugin.cu elementwise_op_plugin.cu prelu_op_plugin.cu
+           DEPS enforce device_context)
