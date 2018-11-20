@@ -102,9 +102,9 @@ class SigmoidCrossEntropyWithLogitsOpMaker
               " of elementwise logistic losses.");
     AddAttr<int>(
         "ignore_index",
-        "(int, default -1), Specifies a target value that is ignored and"
+        "(int, default -100), Specifies a target value that is ignored and"
         "does not contribute to the input gradient.")
-        .SetDefault(-1);
+        .SetDefault(-100);
     AddComment(R"DOC(
 SigmoidCrossEntropyWithLogits Operator.
 

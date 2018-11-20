@@ -31,7 +31,6 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 struct SigmoidCrossEntropyWithLogitsForward {
-  // EIGEN_EMPTY_STRUCT_CTOR(SigmoidCrossEntropyWithLogitsForward)
   HOSTDEVICE SigmoidCrossEntropyWithLogitsForward(const int &ignore_index)
       : ignore_index(ignore_index) {}
 
@@ -50,7 +49,6 @@ struct SigmoidCrossEntropyWithLogitsForward {
 
 template <typename T>
 struct SigmoidCrossEntropyWithLogitsBackward {
-  // EIGEN_EMPTY_STRUCT_CTOR(SigmoidCrossEntropyWithLogitsForward)
   HOSTDEVICE SigmoidCrossEntropyWithLogitsBackward(const int &ignore_index)
       : ignore_index(ignore_index) {}
 
@@ -83,14 +81,6 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
 
     out.device(place) = x.binaryExpr(
         labels, SigmoidCrossEntropyWithLogitsForward<T>(ignore_index));
-    // term1 = max(x, 0)
-    // auto term1 = x.cwiseMax(static_cast<T>(0));
-    // term2 = x * labels
-    // auto term2 = x * labels;
-    // term3 = log(1 + exp(-abs(x)))
-    // auto term3 = (static_cast<T>(1) + (-(x.abs())).exp()).log();
-
-    // out.device(place) = term1 - term2 + term3;
   }
 };
 

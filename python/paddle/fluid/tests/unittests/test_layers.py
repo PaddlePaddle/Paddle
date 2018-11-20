@@ -173,7 +173,7 @@ class TestBook(unittest.TestCase):
             ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl, ignore_index=-1))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
