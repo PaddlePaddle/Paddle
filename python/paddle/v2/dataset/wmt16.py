@@ -72,7 +72,8 @@ def __build_dict(tar_file, dict_size, save_path, lang):
                 sorted(
                     word_dict.iteritems(), key=lambda x: x[1], reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write("%s\n" % (word[0]))
+            fout.write(word[0].encode('utf-8'))
+            fout.write('\n')
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
@@ -300,8 +301,10 @@ def get_dict(lang, dict_size, reverse=False):
         dict: The word dictionary for the specific language.
     """
 
-    if lang == "en": dict_size = min(dict_size, TOTAL_EN_WORDS)
-    else: dict_size = min(dict_size, TOTAL_DE_WORDS)
+    if lang == "en":
+        dict_size = min(dict_size, TOTAL_EN_WORDS)
+    else:
+        dict_size = min(dict_size, TOTAL_DE_WORDS)
 
     dict_path = os.path.join(paddle.v2.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))

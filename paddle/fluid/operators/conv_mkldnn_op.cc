@@ -12,10 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-
-#include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -428,8 +428,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "same dimension sizes");
 
       if (residual_param->format() != handler.GetDstFormat()) {
-        auto output_data =
-            output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+        auto output_data = output->mutable_data<T>(
+            ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
+            handler.GetDstMemorySize());
         auto residual_data_tz =
             paddle::framework::vectorize2int(residual_param->dims());
         auto residual_data_type =
@@ -449,8 +450,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
     } else {
-      auto output_data =
-          output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+      auto output_data = output->mutable_data<T>(
+          ctx.GetPlace(), paddle::memory::Allocator::kDefault,
+          handler.GetDstMemorySize());
       dst_memory_p =
           handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
     }
@@ -692,7 +694,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
               user_diff_dst_memory_p, pipeline);
 
       const size_t size = handler.GetDiffWeightsMemorySize();
-      filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace(), size);
+      filter_grad_data = filter_grad->mutable_data<T>(
+          ctx.GetPlace(), paddle::memory::Allocator::kDefault, size);
 
       auto diff_weights_memory_p =
           handler.AcquireDiffWeightsMemoryFromWeightsPrimitive(
@@ -717,7 +720,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                                         pipeline);
 
       const size_t size = handler.GetDiffSourceMemorySize();
-      input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace(), size);
+      input_grad_data = input_grad->mutable_data<T>(
+          ctx.GetPlace(), paddle::memory::Allocator::kDefault, size);
 
       auto diff_src_memory_p = handler.AcquireDiffSrcMemoryFromDataPrimitive(
           reinterpret_cast<void*>(input_grad_data));
