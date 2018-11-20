@@ -61,7 +61,8 @@ void ReduceOpHandle::GatherSelectedRows(
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     VarHandle *out_var_handle, const platform::Place &out_place,
     SelectedRows *dst_selecte_rows) {
-  if (collective_context_.end_points_.size() <= 1) {
+  if (collective_context_.end_points_.size() <= 1 ||
+      is_cpu_place(in_places[0])) {  // TODO(gongwb): add cpu support
     GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                             dst_selecte_rows);
     return;
@@ -79,7 +80,8 @@ void ReduceOpHandle::GatherSelectedRows(
   VLOG(40) << "gathered_select_rows :" << gathered_select_rows->Info();
 
   // merge them
-  auto merged_dev_ctx = dev_ctxes.at(out_place);
+  auto merged_dev_ctx =
+      dynamic_cast<platform::CUDADeviceContext *>(dev_ctxes.at(out_place));
   std::string merged_var_name = out_var_handle->name_ + "_merged_tmp";
   auto merged_var_mid =
       local_scopes_.at(out_var_handle->scope_idx_)->FindVar(merged_var_name);
@@ -87,7 +89,8 @@ void ReduceOpHandle::GatherSelectedRows(
   // gather_select_rows->value().type()> merge_func;
   // FIXME(gongwb):get type?
   auto merged_select_rows = merged_var_mid->GetMutable<SelectedRows>();
-  operators::math::scatter::MergeAdd<platform::DeviceContext, float> merge_func;
+  operators::math::scatter::MergeAdd<platform::CUDADeviceContext, float>
+      merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
   VLOG(40) << "merged_select_rows :" << merged_select_rows->Info();
 

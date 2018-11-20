@@ -35,14 +35,24 @@ CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
   rpc_server_.reset(new RPCSERVER_T(end_point, fan_in));
 }
 
+void CollectiveServer::Stop() {
+  rpc_server_->ShutDown();
+  server_thread_->join();
+  loop_thread_->join();
+}
+
 void CollectiveServer::StartServer() {
-  get_handler_.reset(new GetMonomerHandler());
-  get_handler_->SetRPCServer(rpc_server_.get());
+  get_monomer_handler_.reset(new GetMonomerHandler());
+  get_monomer_handler_->SetRPCServer(rpc_server_.get());
+
+  get_barrier_handler_.reset(new GetMonomerBarrierHandler());
+  get_barrier_handler_->SetRPCServer(rpc_server_.get());
 
   rpc_server_->RegisterRPC(distributed::kRequestGetMonomerVariable,
-                           get_handler_.get(), FLAGS_collective_get_thread_num);
+                           get_monomer_handler_.get(),
+                           FLAGS_collective_get_thread_num);
   rpc_server_->RegisterRPC(distributed::kRequestGetMonomerBarrier,
-                           get_handler_.get(), 1);
+                           get_barrier_handler_.get(), 1);
 
   server_thread_.reset(new std::thread([&]() { rpc_server_->StartServer(); }));
   rpc_server_->WaitServerReady();

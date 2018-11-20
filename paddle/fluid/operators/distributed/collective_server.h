@@ -25,6 +25,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
@@ -43,12 +44,24 @@ class GetMonomerHandler final : public RequestHandler {
               const std::string& out_var_name = "") override {
     VLOG(50) << "GetMonomerHandler recv " << var_name;
 
-    if (var_name == FETCH_BARRIER_MESSAGE) {
-      rpc_server_->IncreaseVarBarrier(var_name);
-    } else {
-      *outvar = scope->FindVar(var_name);
-      PADDLE_ENFORCE(outvar != nullptr, "%s not found", var_name);
-    }
+    *outvar = scope->FindVar(var_name);
+    PADDLE_ENFORCE(outvar != nullptr, "%s not found", var_name);
+
+    return true;
+  }
+};
+
+class GetMonomerBarrierHandler final : public RequestHandler {
+ public:
+  GetMonomerBarrierHandler() : RequestHandler(true) {}
+  virtual ~GetMonomerBarrierHandler() {}
+  bool Handle(const std::string& var_name, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
+              const std::string& out_var_name = "") override {
+    VLOG(50) << "GetMonomerHandler recv " << var_name;
+
+    rpc_server_->IncreaseVarBarrier(var_name);
 
     return true;
   }
@@ -76,8 +89,11 @@ class CollectiveServer final {
 
   std::shared_ptr<RPCServer> GetRPCServer() { return rpc_server_; }
 
+  void Stop();
+
  private:
-  std::shared_ptr<GetMonomerHandler> get_handler_;
+  std::shared_ptr<GetMonomerHandler> get_monomer_handler_;
+  std::shared_ptr<GetMonomerBarrierHandler> get_barrier_handler_;
 
   std::shared_ptr<distributed::RPCServer> rpc_server_;
   std::shared_ptr<std::thread> server_thread_;

@@ -44,7 +44,7 @@ bool CollectiveClient::Gather(const std::vector<std::string>& eps,
     VLOG(40) << "gather from ep:" << ep
              << ", select_rows:" << select_rows->Info();
 
-    rpc_client_->AsyncGetMonomerBarrier(ep, var_name);
+    ptr = rpc_client_->AsyncGetMonomerBarrier(ep, var_name);
     PADDLE_ENFORCE(ptr->Wait());
 
     VLOG(40) << "AsyncGetMonomerBarrier from ep:" << ep;

@@ -222,13 +222,9 @@ class GRPCClient : public RPCClient {
 
   void SendComplete() override;
 
- protected:
   void InitImpl() override;
 
  private:
-  // InitEventLoop should only be called by Init()
-  void InitEventLoop();
-
   void Proceed();
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
@@ -241,7 +237,7 @@ class GRPCClient : public RPCClient {
  private:
   grpc::CompletionQueue cq_;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  std::unique_ptr<std::thread> client_thread_;
+  std::unique_ptr<std::thread> client_thread_{nullptr};
 
   // mutex for Wait client sync
   std::mutex sync_mutex_;

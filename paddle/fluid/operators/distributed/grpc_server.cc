@@ -246,8 +246,8 @@ class RequestGetMonomerBarrier final : public RequestBase {
 
  protected:
   sendrecv::VariableMessage request_;
-  ::grpc::ByteBuffer reply_;
-  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+  sendrecv::VoidMessage reply_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
   RPCServer* rpc_server_{nullptr};
 };
 

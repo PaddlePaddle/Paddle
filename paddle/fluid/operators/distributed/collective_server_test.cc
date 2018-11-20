@@ -57,12 +57,11 @@ std::shared_ptr<framework::Scope> GenerateVars(platform::Place place) {
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
 
-  tensor->Resize(framework::make_ddim({564, 128}));
+  tensor->Resize(framework::make_ddim({3, 5}));
   tensor->mutable_data<float>(place);
 
-  // int tensor_numel = 564 * 128;
   paddle::operators::math::set_constant(ctx, tensor, 32.7);
-  for (int i = 0; i < 564; ++i) rows->push_back(i);
+  for (int i = 0; i < 3; ++i) rows->push_back(i);
 
   std::cout << "src:" << slr->Info();
 
@@ -82,8 +81,8 @@ void Gather(std::vector<std::string> eps, platform::DeviceContext* dev_ctx) {
   std::cout << "dst:" << dst[0]->Info();
 }
 
-TEST(PREFETCH, CPU) {
-  platform::CPUPlace place;
+TEST(PREFETCH, GPU) {
+  platform::CUDAPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
 
@@ -102,4 +101,5 @@ TEST(PREFETCH, CPU) {
 
   std::cout << "begin WaitVarBarrier" << std::endl;
   rpc_server->WaitVarBarrier("var1");
+  server->Stop();
 }

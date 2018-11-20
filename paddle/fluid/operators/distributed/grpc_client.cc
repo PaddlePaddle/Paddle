@@ -26,11 +26,11 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-void GRPCClient::InitImpl() { InitEventLoop(); }
-
-void GRPCClient::InitEventLoop() {
+void GRPCClient::InitImpl() {
   // start the client process thread
   // TODO(wuyi): can make this in a threadpool
+  PADDLE_ENFORCE(client_thread_ == nullptr,
+                 "please not re init proceed thread");
   client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
 }
 

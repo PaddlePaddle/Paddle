@@ -33,7 +33,10 @@ namespace distributed {
 
 class CollectiveClient {
  public:
-  CollectiveClient() { rpc_client_.reset(new RPCCLIENT_T()); }
+  CollectiveClient() {
+    rpc_client_.reset(new RPCCLIENT_T());
+    rpc_client_->InitImpl();
+  }
   virtual ~CollectiveClient() {}
 
   // note this function will retain the rank order.
