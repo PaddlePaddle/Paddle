@@ -14,10 +14,15 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstring>
 #include <type_traits>
 #include <vector>
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace inference {
+namespace tensorrt {
+namespace plugin {
 
 template <typename T>
 inline void SerializeValue(void** buffer, T const& value);
@@ -26,7 +31,7 @@ template <typename T>
 inline void DeserializeValue(void const** buffer, size_t* buffer_size,
                              T* value);
 
-namespace {
+namespace details {
 
 template <typename T, class Enable = void>
 struct Serializer {};
@@ -36,10 +41,12 @@ struct Serializer<T, typename std::enable_if<std::is_arithmetic<T>::value ||
                                              std::is_enum<T>::value ||
                                              std::is_pod<T>::value>::type> {
   static size_t SerializedSize(T const& value) { return sizeof(T); }
+
   static void Serialize(void** buffer, T const& value) {
     std::memcpy(*buffer, &value, sizeof(T));
     reinterpret_cast<char*&>(*buffer) += sizeof(T);
   }
+
   static void Deserialize(void const** buffer, size_t* buffer_size, T* value) {
     assert(*buffer_size >= sizeof(T));
     std::memcpy(value, *buffer, sizeof(T));
@@ -51,10 +58,12 @@ struct Serializer<T, typename std::enable_if<std::is_arithmetic<T>::value ||
 template <>
 struct Serializer<const char*> {
   static size_t SerializedSize(const char* value) { return strlen(value) + 1; }
+
   static void Serialize(void** buffer, const char* value) {
-    std::strcpy(static_cast<char*>(*buffer), value);
+    std::strcpy(static_cast<char*>(*buffer), value);  // NOLINT
     reinterpret_cast<char*&>(*buffer) += strlen(value) + 1;
   }
+
   static void Deserialize(void const** buffer, size_t* buffer_size,
                           const char** value) {
     *value = static_cast<char const*>(*buffer);
@@ -73,39 +82,46 @@ struct Serializer<std::vector<T>,
   static size_t SerializedSize(std::vector<T> const& value) {
     return sizeof(value.size()) + value.size() * sizeof(T);
   }
+
   static void Serialize(void** buffer, std::vector<T> const& value) {
     SerializeValue(buffer, value.size());
     size_t nbyte = value.size() * sizeof(T);
     std::memcpy(*buffer, value.data(), nbyte);
     reinterpret_cast<char*&>(*buffer) += nbyte;
   }
+
   static void Deserialize(void const** buffer, size_t* buffer_size,
                           std::vector<T>* value) {
     size_t size;
     DeserializeValue(buffer, buffer_size, &size);
     value->resize(size);
     size_t nbyte = value->size() * sizeof(T);
-    assert(*buffer_size >= nbyte);
+    PADDLE_ENFORCE_GE(*buffer_size, nbyte);
     std::memcpy(value->data(), *buffer, nbyte);
     reinterpret_cast<char const*&>(*buffer) += nbyte;
     *buffer_size -= nbyte;
   }
 };
 
-}  // namespace
+}  // namespace details
 
 template <typename T>
 inline size_t SerializedSize(T const& value) {
-  return Serializer<T>::SerializedSize(value);
+  return details::Serializer<T>::SerializedSize(value);
 }
 
 template <typename T>
 inline void SerializeValue(void** buffer, T const& value) {
-  return Serializer<T>::Serialize(buffer, value);
+  return details::Serializer<T>::Serialize(buffer, value);
 }
 
 template <typename T>
 inline void DeserializeValue(void const** buffer, size_t* buffer_size,
                              T* value) {
-  return Serializer<T>::Deserialize(buffer, buffer_size, value);
+  return details::Serializer<T>::Deserialize(buffer, buffer_size, value);
 }
+
+}  // namespace plugin
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle
