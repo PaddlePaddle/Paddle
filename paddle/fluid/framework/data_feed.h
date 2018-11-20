@@ -163,7 +163,7 @@ class DataFeed {
   }
   virtual bool SetFileList(const std::vector<std::string>& files); 
   virtual bool Start() = 0;
-  virtual bool Next() = 0;
+  virtual int Next() = 0;
   virtual void SetBatchSize(int batch) { default_batch_size_ = batch; }
   virtual int GetBatchSize() { return batch_size_; }
   // for subclass with queue
@@ -217,7 +217,7 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual ~PrivateQueueDataFeed() {}
   virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
-  virtual bool Next(); // no buffer
+  virtual int Next(); // no buffer
   virtual void SetQueueSize(int queue_size);
 
  protected:
@@ -234,23 +234,27 @@ class PrivateQueueDataFeed : public DataFeed {
    *     fread one buffer and one buffer parse: 7097 ms */
   std::ifstream file_;
   size_t queue_size_;
-  // The elements in the queue are one piece of data, 
-  // with multiple fields in each piece of data
   BlockingQueue<T> queue_;
 };
 
 class MultiSlotType {
  public:
-  MultiSlotType() {
-    float_feasign_.clear();
-    uint64_feasign_.clear();
-    offset_.resize(1);
-    offset_[0] = 0;
-  }
+  MultiSlotType() {}
   ~MultiSlotType() {}
-  void SetType(std::string& type) {
+  void Init(std::string& type) {
     CheckType(type);
+    if (type_[0] == 'f') {
+      float_feasign_.clear();
+    } else if (type_[0] == 'u') {
+      uint64_feasign_.clear();
+    }
     type_ = type;
+  }
+  void InitOffset() {
+    offset_.resize(1);
+    // LoDTensor' lod is counted from 0, the size of lod 
+    // is one size larger than the size of data.
+    offset_[0] = 0;
   }
   std::vector<size_t>& GetOffset() {
     return offset_;

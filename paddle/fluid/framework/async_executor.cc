@@ -137,6 +137,18 @@ void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
   model_prefix_ = model_prefix;
 }
 
+void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers, 
+    const int thread_num, DataFeedDesc& data_feed_desc, 
+    const std::vector<std::string>& filelist) {
+  readers.resize(thread_num);
+  for (size_t i = 0; i < readers.size(); ++i) {
+    readers[i] = DataFeedFactory::CreateDataFeed(data_feed_desc.name());
+    readers[i]->Init(data_feed_desc); // set batch size here
+    //readers[i]->SetQueueSize(32);   // default is 32
+  }
+  readers[0]->SetFileList(filelist);
+}
+
 std::vector<float> AsyncExecutor::RunFromFile(
     const ProgramDesc& main_program,
     const std::string& data_feed_desc_str,
@@ -159,11 +171,8 @@ std::vector<float> AsyncExecutor::RunFromFile(
    */
   // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed> > readers;
-  readers.resize(thread_num);
-  for (unsigned int i = 0; i < readers.size(); ++i) {
-    readers[i] = DataFeedFactory::CreateDataFeed(data_feed_desc.name());
-  }
-
+  PrepareReaders(readers, thread_num, data_feed_desc, filelist);
+  
   std::vector<std::shared_ptr<ExecutorThreadWorker> > workers;
   workers.resize(thread_num);
   for (auto& worker : workers) {

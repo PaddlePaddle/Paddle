@@ -135,11 +135,11 @@ void PrivateQueueDataFeed<T>::ReadThread(){
 }
 
 template<typename T>
-bool PrivateQueueDataFeed<T>::Next(){
+int PrivateQueueDataFeed<T>::Next(){
   CheckStart();
   int index = 0;
   T instance;
-  T ins_vec(use_slots_.size());
+  T ins_vec;
   while (index < default_batch_size_) {
     if (!queue_.Receive(&instance)) {
       break;
@@ -147,8 +147,10 @@ bool PrivateQueueDataFeed<T>::Next(){
     AddInstanceToInsVec(ins_vec, instance, index++);
   }
   batch_size_ = index;
-  PutToFeedVec(ins_vec);
-  return batch_size_ != 0;
+  if (batch_size_ != 0) {
+    PutToFeedVec(ins_vec);
+  }
+  return batch_size_;
 }
 
 void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
@@ -161,6 +163,7 @@ void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
     exit(-1);
   }
   paddle::framework::MultiSlotDesc multi_slot_desc = data_feed_desc.multi_slot_desc();
+  SetBatchSize(data_feed_desc.batch());
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
@@ -178,7 +181,7 @@ void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
     }
   }
   feed_vec_.resize(use_slots_.size());
-  
+
   finish_init_ = true;
 }
 
@@ -205,7 +208,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
         exit(-1);
       }
       if (idx != -1) {
-        instance[idx].SetType(all_slots_type_[i]);
+        instance[idx].Init(all_slots_type_[i]);
         if (instance[idx].GetType()[0] == 'f') { // float
           for (int j = 0; j < num; ++j) {
             float feasign = (float)strtof(endptr, &endptr);
@@ -233,8 +236,10 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
 void MultiSlotDataFeed::AddInstanceToInsVec(std::vector<MultiSlotType>& ins_vec,
    std::vector<MultiSlotType>& instance, int index) {
   if (index == 0) {
+    ins_vec.resize(instance.size());
     for (size_t i = 0; i < instance.size(); ++i) {
-      ins_vec[i].SetType(instance[i].GetType());
+      ins_vec[i].Init(instance[i].GetType());
+      ins_vec[i].InitOffset();
     }
   }
   for (size_t i = 0; i < instance.size(); ++i){
