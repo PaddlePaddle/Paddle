@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "mkldnn.hpp"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
