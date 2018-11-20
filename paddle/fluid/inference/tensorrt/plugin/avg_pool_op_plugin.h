@@ -20,6 +20,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
 class AvgPoolPlugin : public PluginTensorRT {
  private:
@@ -104,6 +105,7 @@ class AvgPoolPlugin : public PluginTensorRT {
               void *workspace, cudaStream_t stream) override;
 };
 
+}  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

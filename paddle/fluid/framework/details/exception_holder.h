@@ -30,6 +30,8 @@ class ExceptionHolder {
       Catch(exp);
     } catch (platform::EnforceNotMet exp) {
       Catch(exp);
+    } catch (std::exception& ex) {
+      LOG(FATAL) << "std::exception caught, " << ex.what();
     } catch (...) {
       LOG(FATAL) << "Unknown exception caught";
     }

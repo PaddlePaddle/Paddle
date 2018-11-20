@@ -45,7 +45,8 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
       std::unordered_set<std::string> teller_set(
           {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
            "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-           "elementwise_add", "dropout", "split", "prelu", "conv2d_transpose"});
+           "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
+           "conv2d_transpose", "leaky_relu"});
       if (!node->IsOp()) return false;
 
       if (teller_set.count(node->Op()->Type())) {

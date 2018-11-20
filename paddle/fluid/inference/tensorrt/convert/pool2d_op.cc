@@ -137,8 +137,8 @@ class Pool2dOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; i++) {
         input_shape_v.push_back(input_shape.d[i]);
       }
-      AvgPoolPlugin *plugin =
-          new AvgPoolPlugin(ceil_mode, ksize, strides, paddings, input_shape_v);
+      plugin::AvgPoolPlugin *plugin = new plugin::AvgPoolPlugin(
+          ceil_mode, ksize, strides, paddings, input_shape_v);
       auto *avg_pool_layer = engine_->AddPlugin(&input1, 1, plugin);
       layer = avg_pool_layer;
     }
