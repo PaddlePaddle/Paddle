@@ -16,6 +16,7 @@
 import os
 import subprocess
 import multiprocessing
+from datetime import datetime
 
 import re
 import copy
@@ -192,7 +193,7 @@ class HDFSClient(object):
         if not self.is_exist(hdfs_path):
             return False
 
-        dir_cmd = ['-test', '-f', hdfs_path]
+        dir_cmd = ['-test', '-d', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
 
         if returncode:
@@ -327,7 +328,12 @@ class HDFSClient(object):
                     ret_lines.append(re_line[7])
             return ret_lines
 
-    def lsr(self, hdfs_path, only_file=True):
+    def lsr(self, hdfs_path, only_file=True, sort=True):
+        def sort_by_time(v1, v2):
+            v1_time = datetime.strptime(v1[1], '%Y-%m-%d %H:%M')
+            v2_time = datetime.strptime(v2[1], '%Y-%m-%d %H:%M')
+            return v1_time > v2_time
+
         assert hdfs_path is not None
 
         if not self.is_exist(hdfs_path):
@@ -343,7 +349,7 @@ class HDFSClient(object):
         else:
             _logger.info("HDFS list all files: {} successfully".format(
                 hdfs_path))
-            ret_lines = []
+            lines = []
             regex = re.compile('\s+')
             out_lines = output.strip().split("\n")
             for line in out_lines:
@@ -352,7 +358,11 @@ class HDFSClient(object):
                     if only_file and re_line[0][0] == "d":
                         continue
                     else:
-                        ret_lines.append(re_line[7])
+                        lines.append(
+                            (re_line[7], re_line[5] + " " + re_line[6]))
+            if sort:
+                sorted(lines, cmp=sort_by_time)
+            ret_lines = [ret[0] for ret in lines]
             return ret_lines
 
 
@@ -384,7 +394,7 @@ def multi_download(client,
     client.make_local_dirs(local_path)
     _logger.info("Make local dir {} successfully".format(local_path))
 
-    all_need_download = client.lsr(hdfs_path)
+    all_need_download = client.lsr(hdfs_path, sort=True)
     need_download = all_need_download[trainer_id::trainers]
     _logger.info("Get {} files From all {} files need to be download from {}".
                  format(len(need_download), len(all_need_download), hdfs_path))
@@ -395,7 +405,7 @@ def multi_download(client,
     for i in range(multi_processes):
         process_datas = need_download[i::multi_processes]
         p = multiprocessing.Process(
-            target=__subprocess_download, args=(process_datas))
+            target=__subprocess_download, args=(process_datas, ))
         procs.append(p)
         p.start()
 
@@ -405,3 +415,28 @@ def multi_download(client,
 
     _logger.info("Finish {} multi process to download datas".format(
         multi_processes))
+
+    return need_download
+
+
+if __name__ == "__main__":
+
+    hadoop_home = "/home/client/hadoop-client/hadoop/"
+
+    configs = {
+        "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+        "hadoop.job.ugi": "hello,hello123"
+    }
+
+    client = HDFSClient(hadoop_home, configs)
+
+    client.ls("/user/com/train-25")
+    files = client.lsr("/user/com/train-25/model")
+
+    downloads = multi_download(
+        client,
+        "/user/com/train-25/model",
+        "/home/xx/data1",
+        1,
+        5,
+        multi_processes=5)
