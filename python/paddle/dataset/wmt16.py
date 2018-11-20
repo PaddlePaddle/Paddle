@@ -78,7 +78,8 @@ def __build_dict(tar_file, dict_size, save_path, lang):
                     six.iteritems(word_dict), key=lambda x: x[1],
                     reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write("%s\n" % (cpt.to_bytes(word[0])))
+            fout.write(word[0].encode('utf-8'))
+            fout.write('\n')
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):

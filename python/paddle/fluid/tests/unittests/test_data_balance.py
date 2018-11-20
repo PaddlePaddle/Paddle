@@ -116,7 +116,7 @@ class TestDataBalance(unittest.TestCase):
                 print("WARNING: Unittest TestDataBalance skipped. \
                     For the result is not correct when device count \
                     is larger than batch size.")
-                exit(0)
+                return
             fetch_list = [image.name, label.name]
 
             data_appeared = [False] * self.total_ins_num
