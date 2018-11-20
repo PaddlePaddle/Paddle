@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/string/printf.h"
 
+DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
+
 namespace paddle {
 namespace platform {
 
@@ -193,6 +195,13 @@ RecordEvent::~RecordEvent() {
   PopEvent(name_, dev_ctx_);
 }
 
+RecordRPCEvent::RecordRPCEvent(const std::string& name,
+                               const DeviceContext* dev_ctx) {
+  if (FLAGS_enable_rpc_profiler) {
+    event_.reset(new platform::RecordEvent(name, dev_ctx));
+  }
+}
+
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   std::lock_guard<std::mutex> l(profiler_mu);
@@ -217,7 +226,7 @@ RecordBlock::~RecordBlock() {
 
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
-                 "Can't enbale profling, since the input state is ",
+                 "Can't enable profiling, since the input state is ",
                  "ProfilerState::kDisabled");
 
   std::lock_guard<std::mutex> l(profiler_mu);
@@ -370,8 +379,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
   std::vector<std::vector<Event>> merged_events_list;
   if (merge_thread) {
     std::vector<Event> merged_events;
-    for (int i = 0; i < events.size(); ++i) {
-      for (int j = 0; j < events[i].size(); ++j) {
+    for (size_t i = 0; i < events.size(); ++i) {
+      for (size_t j = 0; j < events[i].size(); ++j) {
         merged_events.push_back(events[i][j]);
       }
     }

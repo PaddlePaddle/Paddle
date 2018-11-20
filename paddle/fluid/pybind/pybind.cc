@@ -21,6 +21,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#if defined(_WIN32)
+#define NOMINMAX
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
+#include <Windows.h>
+#endif
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -29,11 +36,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+#ifndef _WIN32
 #include "paddle/fluid/framework/parallel_executor.h"
+#endif
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -50,12 +60,18 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#endif
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 #include "pybind11/stl.h"
+
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -79,6 +95,7 @@ bool IsCompiledWithDIST() {
 }
 
 PYBIND11_PLUGIN(core) {
+  paddle::memory::allocation::UseAllocatorStrategyGFlag();
   py::module m("core", "C++ core of PaddlePaddle");
 
   // using framework in this function. Since it is inside a function, it will
@@ -170,14 +187,14 @@ PYBIND11_PLUGIN(core) {
      A LoDTensor X can look like the example below. It contains 2 sequences.
      The first has length 2 and the second has length 3, as described by x.lod.
 
-     The first tensor dimension 6=2+3 is calculated from LoD if it's available.
+     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
      It means the total number of sequence element. In X, each element has 2
-     columns, hence [6, 2].
+     columns, hence [5, 2].
 
       x.lod  = [[2, 3]]
       x.data = [[1, 2], [3, 4],
-                [5, 6], [7, 8], [9, 10], [11, 12]]
-      x.shape = [6, 2]
+                [5, 6], [7, 8], [9, 10]]
+      x.shape = [5, 2]
 
       LoD can have multiple levels (for example, a paragraph can have multiple
       sentences and a sentence can have multiple words). In the following
@@ -336,22 +353,25 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
            },
            py::return_value_policy::reference)
-#endif
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+#endif
+      ;
 
+#if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ResetAll);
+#endif
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
@@ -380,7 +400,8 @@ All parameter, weight, gradient are variables in Paddle.
                                return make_ddim(shape);
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims);
+              holder->InitOnce(capacity, dims,
+                               FLAGS_reader_queue_speed_test_mode);
               return holder->GetQueue();
             },
         py::return_value_policy::copy);
@@ -475,7 +496,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                 });;
 // clang-format on
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
@@ -612,11 +633,14 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
+#ifndef _WIN32
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
+#endif
 
+#ifndef _WIN32
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -637,13 +661,18 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
+#endif
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
-      .def("set_str", [](ir::Pass &self, const std::string &name,
-                         const std::string &attr) {
-        self.Set<std::string>(name, new std::string(attr));
-      });
+      .def(
+          "set_str",
+          [](ir::Pass &self, const std::string &name, const std::string &attr) {
+            self.Set<std::string>(name, new std::string(attr));
+          })
+      .def("set_int", [](ir::Pass &self, const std::string &name,
+                         int val) { self.Set<const int>(name, new int(val)); })
+      .def("type", &ir::Pass::Type);
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
       m, "PassBuilder");
@@ -661,6 +690,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("remove_pass",
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
+#ifndef _WIN32
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
@@ -733,7 +763,12 @@ All parameter, weight, gradient are variables in Paddle.
                        will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
-              )DOC");
+              )DOC")
+      .def_property("_dry_run",
+                    [](const ExecutionStrategy &self) { return self.dry_run_; },
+                    [](ExecutionStrategy &self, bool dry_run) {
+                      self.dry_run_ = dry_run;
+                    });
 
   exec_strategy.def_property(
       "use_experimental_executor",
@@ -777,6 +812,7 @@ All parameter, weight, gradient are variables in Paddle.
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
           },
           R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
@@ -790,6 +826,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.gradient_scale_ = strategy;
           },
           R"DOC(The type is STR, there are three ways of defining :math:`loss@grad` in
@@ -801,6 +838,7 @@ All parameter, weight, gradient are variables in Paddle.
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
           R"DOC(The type is STR, debug_graphviz_path indicate the path that
@@ -810,23 +848,48 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
           [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.enable_data_balance_ = b;
           })  // FIXME(chengudo): enable_data_balance seems not important
+      .def_property(
+          "enable_sequential_execution",
+          [](const BuildStrategy &self) {
+            return self.enable_sequential_execution_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.enable_sequential_execution_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
+      .def_property(
+          "remove_unnecessary_lock",
+          [](const BuildStrategy &self) {
+            return self.remove_unnecessary_lock_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.remove_unnecessary_lock_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
           },
           [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.fuse_elewise_add_act_ops_ = b;
           },
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
-      .def("_create_passes_from_strategy",
+      .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
-             return self.CreatePassesFromStrategy();
-           });
+             return self.CreatePassesFromStrategy(true);
+           },
+           R"DOC(Allow user to customized passes. Normally model-specific
+                optimization passes should be defined in this way. BuildStrategy
+                cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -855,6 +918,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
+#endif
   return m.ptr();
 }
 }  // namespace pybind

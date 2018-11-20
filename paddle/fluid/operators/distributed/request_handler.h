@@ -75,7 +75,7 @@ class VarHandle {
       wait_cond_.wait(lk, [this] { return status_ != kDefaultState; });
       ret = status_;
     }
-    VLOG(7) << "VarHandle wait:" << ret;
+    VLOG(70) << "VarHandle wait:" << ret;
     return ret != kErrorState;
   }
 
@@ -84,7 +84,7 @@ class VarHandle {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       status_ = ok ? kFinishState : kErrorState;
     }
-    VLOG(7) << "VarHandle finish:" << ok;
+    VLOG(70) << "VarHandle finish:" << ok;
     wait_cond_.notify_all();
   }
 
@@ -190,6 +190,7 @@ class RequestHandler {
   //    }
   virtual bool Handle(const std::string& varname, framework::Scope* scope,
                       framework::Variable* var, framework::Variable** outvar,
+                      const int trainer_id,
                       const std::string& out_var_name = "") = 0;
 
  protected:

@@ -122,7 +122,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
-              "if arg “is_test” is false.")
+              "if arg \"is_test\" is false.")
         .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
@@ -174,4 +174,4 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);

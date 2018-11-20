@@ -22,22 +22,30 @@ import signal
 import subprocess
 import six
 import argparse
+import pickle
+import numpy as np
 
 import paddle.fluid as fluid
 
 RUN_STEP = 10
+DEFAULT_BATCH_SIZE = 2
 
 
 class TestDistRunnerBase(object):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=DEFAULT_BATCH_SIZE):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
     @staticmethod
-    def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers,
-                       sync_mode):
+    def get_transpiler(trainer_id,
+                       main_program,
+                       pserver_endpoints,
+                       trainers,
+                       sync_mode,
+                       dc_asgd=False):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
+        config.enable_dc_asgd = dc_asgd
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
@@ -48,12 +56,11 @@ class TestDistRunnerBase(object):
         return t
 
     def run_pserver(self, args):
-
-        self.get_model(batch_size=2)
+        self.get_model(batch_size=args.batch_size)
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode)
+                                args.trainers, args.sync_mode, args.dc_asgd)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -65,7 +72,7 @@ class TestDistRunnerBase(object):
 
     def run_trainer(self, args):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-            self.get_model(batch_size=2)
+            self.get_model(batch_size=args.batch_size)
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
@@ -73,8 +80,7 @@ class TestDistRunnerBase(object):
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
-                                    args.sync_mode)
-
+                                    args.sync_mode, args.dc_asgd)
             trainer_prog = t.get_trainer_program()
         else:
             trainer_prog = fluid.default_main_program()
@@ -97,6 +103,12 @@ class TestDistRunnerBase(object):
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         else:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+
+        if args.batch_merge_repeat > 1:
+            pass_builder = build_stra._finalize_strategy_and_create_passes()
+            mypass = pass_builder.insert_pass(
+                len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
+            mypass.set_int("num_repeats", args.batch_merge_repeat)
 
         exe = fluid.ParallelExecutor(
             args.use_cuda,
@@ -123,10 +135,15 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
+        out_losses = []
         for _ in six.moves.xrange(RUN_STEP):
             loss, = exe.run(fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
-            print(loss)
+            out_losses.append(loss[0])
+        if six.PY2:
+            print(pickle.dumps(out_losses))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 def runtime_main(test_class):
@@ -143,8 +160,12 @@ def runtime_main(test_class):
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
+    parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument(
-        '--use_reader_alloc', action='store_true', required=False, default=True)
+        '--use_reader_alloc', action='store_true', required=False)
+    parser.add_argument('--batch_size', required=False, type=int, default=2)
+    parser.add_argument(
+        '--batch_merge_repeat', required=False, type=int, default=1)
 
     args = parser.parse_args()
 
@@ -180,11 +201,12 @@ class TestDistBase(unittest.TestCase):
         self._pservers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
             self._find_free_port(), self._find_free_port())
-        self._python_interp = "python"
+        self._python_interp = sys.executable
         self._sync_mode = True
         self._enforce_place = None
         self._mem_opt = False
         self._use_reduce = False
+        self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._setup_config()
         self._after_setup_config()
@@ -229,24 +251,18 @@ class TestDistBase(unittest.TestCase):
 
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
-    def _wait_ps_ready(self, pid):
-        retry_times = 50
-        while True:
-            assert retry_times >= 0, "wait ps ready failed"
-            time.sleep(3)
-            try:
-                # the listen_and_serv_op would touch a file which contains the listen port
-                # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
-                return
-            except os.error as e:
-                sys.stderr.write('waiting for pserver: %s, left retry %d\n' %
-                                 (e, retry_times))
-                retry_times -= 1
-
-    def _run_local(self, model, envs, check_error_log):
+    def _run_local(self,
+                   model,
+                   envs,
+                   check_error_log=False,
+                   batch_size=DEFAULT_BATCH_SIZE,
+                   batch_merge_repeat=1):
 
         cmd = "%s %s --role trainer" % (self._python_interp, model)
+        if batch_size != DEFAULT_BATCH_SIZE:
+            cmd += " --batch_size %d" % batch_size
+        if batch_merge_repeat > 1:
+            cmd += " --batch_merge_repeat %d" % batch_merge_repeat
 
         if self.__use_cuda:
             cmd += " --use_cuda"
@@ -271,23 +287,20 @@ class TestDistBase(unittest.TestCase):
                 env=envs)
 
         local_out, local_err = local_proc.communicate()
-        local_ret = cpt.to_text(local_out)
 
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stdout: %s\n' % local_ret)
+        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        local_losses = local_ret.split("\n")
-        return local_losses
+        return pickle.loads(local_out)
 
     def _run_cluster(self, model, envs, check_error_log):
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
                                                           check_error_log, envs)
-        self._wait_ps_ready(ps0.pid)
-        self._wait_ps_ready(ps1.pid)
+
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
         tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist"
@@ -322,8 +335,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print("tr0_cmd:{}, env0: {}".format(tr0_cmd, env0))
-        print("tr1_cmd:{}, env1: {}".format(tr1_cmd, env1))
+        print("tr0_cmd:{}".format(tr0_cmd))
+        print("tr1_cmd:{}".format(tr1_cmd))
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
@@ -339,9 +352,7 @@ class TestDistBase(unittest.TestCase):
             env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
-        tr0_loss_text = cpt.to_text(tr0_out)
         tr1_out, tr1_err = tr1_proc.communicate()
-        tr1_loss_text = cpt.to_text(tr1_out)
 
         # close trainer file
         tr0_pipe.close()
@@ -356,15 +367,13 @@ class TestDistBase(unittest.TestCase):
         ps1.terminate()
 
         # print log
-        sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
-        sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_loss_text)
+        sys.stderr.write('trainer 0 stdout: %s\n' % pickle.loads(tr0_out))
+        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
+        sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_out))
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
 
-        tr0_losses = tr0_loss_text.split("\n")
-        tr1_losses = tr1_loss_text.split("\n")
-
-        return tr0_losses, tr1_losses
+        # return tr0_losses, tr1_losses
+        return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
     def check_with_place(self,
                          model_file,
@@ -394,9 +403,9 @@ class TestDistBase(unittest.TestCase):
                                                    check_error_log)
 
         for step_id in range(RUN_STEP):
-            local_loss = eval(local_losses[step_id])[0]
-            tr0_loss = eval(tr0_losses[step_id])[0]
-            tr1_loss = eval(tr1_losses[step_id])[0]
-            dist_loss = (tr0_loss + tr1_loss) / 2
-            print(str(local_loss) + ":" + str(dist_loss))
-            self.assertAlmostEqual(local_loss, dist_loss, delta=delta)
+            local_loss = local_losses[step_id]
+            tr0_loss = tr0_losses[step_id]
+            tr1_loss = tr1_losses[step_id]
+            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
+            print("=======", local_loss, ":", dist_loss[0], "=======")
+            self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
