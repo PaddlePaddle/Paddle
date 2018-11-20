@@ -200,7 +200,7 @@ void RPCServer::WaitVarCond(const std::string& var_name) {
     return (var_map_.find(var_name) != var_map_.end() || exit_flag_.load());
   });
 
-  VLOG(40) << "WaitVarCond var_name:" << var_name << "end";
+  VLOG(40) << "WaitVarCond var_name:" << var_name << " end";
 }
 
 MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {

@@ -291,6 +291,8 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
       new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
   s->Prepare(h, time_out);
 
+  VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+
   sendrecv::VariableMessage req;
   req.set_varname(var_name);
 

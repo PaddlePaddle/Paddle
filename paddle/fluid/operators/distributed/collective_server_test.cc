@@ -41,6 +41,7 @@ std::shared_ptr<distributed::CollectiveServer> StartServer(
   rpc_server->RegisterVar("var1", distributed::kRequestGetMonomerVariable,
                           scope, dev_ctx);
 
+  std::cout << "StartServer return" << std::endl;
   return std::shared_ptr<distributed::CollectiveServer>(server);
 }
 
@@ -88,11 +89,17 @@ TEST(PREFETCH, CPU) {
 
   std::string ep = "127.0.0.1:7164";
   auto scope = GenerateVars(place);
+
+  auto* v1 = scope->FindVar("var1");
+  std::cout << "var1:" << v1 << std::endl;
+
   auto server = StartServer(ep, 2, scope.get(), &ctx);
   auto rpc_server = server->GetRPCServer();
 
   std::vector<std::string> eps{ep};
   Gather(eps, &ctx);
   Gather(eps, &ctx);
+
+  std::cout << "begin WaitVarBarrier" << std::endl;
   rpc_server->WaitVarBarrier("var1");
 }

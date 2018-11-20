@@ -38,14 +38,16 @@ bool CollectiveClient::Gather(const std::vector<std::string>& eps,
         rpc_client_->AsyncGetMonomerVariable(ep, ctx, scope, var_name);
     PADDLE_ENFORCE(ptr->Wait());
 
-    rpc_client_->AsyncGetMonomerBarrier(ep, var_name);
-    PADDLE_ENFORCE(ptr->Wait());
-
     auto select_rows =
         scope.FindVar(var_name)->GetMutable<framework::SelectedRows>();
     dst->push_back(select_rows);
     VLOG(40) << "gather from ep:" << ep
              << ", select_rows:" << select_rows->Info();
+
+    rpc_client_->AsyncGetMonomerBarrier(ep, var_name);
+    PADDLE_ENFORCE(ptr->Wait());
+
+    VLOG(40) << "AsyncGetMonomerBarrier from ep:" << ep;
   }
 
   return true;
