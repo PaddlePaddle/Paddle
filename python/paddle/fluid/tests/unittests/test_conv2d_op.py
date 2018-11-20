@@ -117,7 +117,7 @@ class TestConv2dOp(OpTest):
             return
         place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
         self.check_grad_with_place(
-            place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
