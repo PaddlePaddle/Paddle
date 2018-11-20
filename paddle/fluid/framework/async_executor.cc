@@ -139,12 +139,14 @@ void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
 
 std::vector<float> AsyncExecutor::RunFromFile(
     const ProgramDesc& main_program,
-    const DataFeedDesc& data_feed_desc,
+    const std::string& data_feed_desc_str,
     const std::vector<std::string>& filelist,
     const int thread_num,
     const std::vector<std::string>& fetch_var_names) {
   std::vector<std::thread> threads;
 
+  DataFeedDesc data_feed_desc;
+  google::protobuf::TextFormat::ParseFromString(data_feed_desc_str, &data_feed_desc);
   /*
     readerDesc: protobuf description for reader initlization
     argument: class_name, batch_size, use_slot, queue_size, buffer_size, padding_index

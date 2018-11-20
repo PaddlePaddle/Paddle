@@ -20,25 +20,29 @@ import six
 from .framework import Program, default_main_program, Variable
 from . import core
 from .executor import global_scope
+from paddle.fluid.proto import data_feed_pb2
+from google.protobuf import text_format
 
-__all__ = ['MultiSlotDataFeed', 'AsyncExecutor']
+__all__ = ['DataFeedDesc', 'AsyncExecutor']
 
 g_scope = core.Scope()
 
 class DataFeedDesc(object):
-    def __init__(self):
-        self.desc = core.DataFeedDesc()
-    def set_batch_size(self, batch_size):
-        self.desc.set_batch(batch_size)
-    def set_field_name(self, field_names):
-        if isinstance(field_names, str):
-            field_names = [field_names]
-        self.desc.set_field_names(field_names)
+    def __init__(self, proto_file):
+        self.proto_desc = data_feed_pb2.DataFeedDesc()
+        f = open(proto_file, 'r')
+        text_format.Parse(f.read(), self.proto_desc)
+        f.close()
 
-class MultiSlotDataFeed(DataFeedDesc):
-    def __init__(self):
-        super(MultiSlotDataFeed, self).__init__()
-        self.desc.set_name("MultiSlotDataFeed")
+    def set_batch_size(self, batch_size):
+        self.proto_desc.batch = batch_size
+
+    def add_slot(self):
+        slot = self.proto_desc.multi_slot_desc.slots.add()
+        return slot
+
+    def desc(self):
+        return text_format.MessageToString(self.proto_desc)
 
 class AsyncExecutor(object):
     """
@@ -127,6 +131,6 @@ class AsyncExecutor(object):
                 fetch = [fetch]
             fetch_var_names = [var.name for var in fetch]
 
-        evaluation = self.executor.run_from_files(program_desc, data_feed.desc, filelist, thread_num, fetch_var_names)
+        evaluation = self.executor.run_from_files(program_desc, data_feed, filelist, thread_num, fetch_var_names)
         return evaluation
 

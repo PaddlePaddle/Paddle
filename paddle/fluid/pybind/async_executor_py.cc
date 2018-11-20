@@ -41,17 +41,6 @@ namespace paddle {
 namespace pybind {
 using set_name_func = void (pd::DataFeedDesc::*)(const std::string&);
 void BindAsyncExecutor(py::module* m) {
-  py::class_<pd::DataFeedDesc>(*m, "DataFeedDesc")
-    .def(pybind11::init<>())
-    .def("set_name", (set_name_func)&pd::DataFeedDesc::set_name)
-    .def("set_batch", &pd::DataFeedDesc::set_batch)
-    .def("set_field_names",
-        [] (pd::DataFeedDesc& self, const std::vector<std::string> &fields) {
-          for (auto field : fields) {
-            self.add_field_names(field);
-          }
-        });
-
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
     .def(py::init<pd::Scope&, const platform::Place&>())
     .def("run_from_files", &framework::AsyncExecutor::RunFromFile)

@@ -146,7 +146,7 @@ cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 if (NOT WIN32)
-py_proto_compile(framework_py_proto SRCS framework.proto)
+py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
