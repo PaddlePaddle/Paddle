@@ -169,7 +169,8 @@ class PaddlePredictor {
 
   // The common configs for all the predictors.
   struct Config {
-    std::string model_dir;  // path to the model directory.
+    std::string model_dir;    // path to the model directory.
+    void SetNumThreads(int);  // number of threads for each instance
   };
 };
 
