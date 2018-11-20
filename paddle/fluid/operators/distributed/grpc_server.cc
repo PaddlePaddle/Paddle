@@ -179,7 +179,6 @@ class RequestGetMonomerVariable final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
-    VLOG(40) << "RequestGetMonomer " << varname;
 
     rpc_server_->WaitVarCond(varname);
     MonomerHandle h = rpc_server_->GetMonomer(varname);
@@ -193,6 +192,9 @@ class RequestGetMonomerVariable final : public RequestBase {
 
     if (outvar) {
       SerializeToByteBuffer(varname, outvar, *h.dev_ctx_, &reply_);
+      std::cout << "var:" << varname << ", "
+                << outvar->GetMutable<framework::SelectedRows>()->Info()
+                << std::endl;
     }
     Finish(reply_, &responder_);
   }

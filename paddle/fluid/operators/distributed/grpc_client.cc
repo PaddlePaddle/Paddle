@@ -104,6 +104,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
 
 void ProcGetResponse(const VarHandle& var_h,
                      const ::grpc::ByteBuffer& ret_msg) {
+  VLOG(100) << "ProcGetResponse";
   framework::Variable* outvar = nullptr;
   // get response's trainer_id is not used
   int trainer_id;

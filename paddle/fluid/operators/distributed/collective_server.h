@@ -41,12 +41,13 @@ class GetMonomerHandler final : public RequestHandler {
               framework::Variable* var, framework::Variable** outvar,
               const int trainer_id,
               const std::string& out_var_name = "") override {
+    VLOG(50) << "GetMonomerHandler recv " << var_name;
+
     if (var_name == FETCH_BARRIER_MESSAGE) {
-      VLOG(50) << "GetMonomerHandler recv " << FETCH_BARRIER_MESSAGE;
       rpc_server_->IncreaseVarBarrier(var_name);
     } else {
-      VLOG(50) << "GetMonomerHandler recv " << var_name;
       *outvar = scope->FindVar(var_name);
+      PADDLE_ENFORCE(outvar != nullptr, "%s not found", var_name);
     }
 
     return true;

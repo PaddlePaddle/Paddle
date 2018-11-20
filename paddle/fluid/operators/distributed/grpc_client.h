@@ -204,7 +204,8 @@ class GRPCClient : public RPCClient {
   VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
-  VarHandlePtr AsyncSendFetchBarrier(const std::string& ep, int64_t time_out);
+  VarHandlePtr AsyncSendFetchBarrier(const std::string& ep,
+                                     int64_t time_out) override;
 
   VarHandlePtr AsyncGetMonomerBarrier(
       const std::string& ep, const std::string& var_name,
