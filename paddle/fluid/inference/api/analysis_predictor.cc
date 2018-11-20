@@ -551,6 +551,4 @@ USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
-
-USE_PASS(tensorrt_subgraph_pass);
 #endif
