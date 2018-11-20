@@ -91,10 +91,10 @@ void FindWhileOp(Graph* graph) {
 #undef OP_SET_IN
 #undef OP_SET_OUT
 
-  auto* X = graph->RetriveNode(34);
-  auto* LSTMOUT = graph->RetriveNode(81);
-  auto* cell_init = graph->RetriveNode(6);
-  auto* hidden_init = graph->RetriveNode(8);
+  auto* X = graph->RetrieveNode(34);
+  auto* LSTMOUT = graph->RetrieveNode(81);
+  auto* cell_init = graph->RetrieveNode(6);
+  auto* hidden_init = graph->RetrieveNode(8);
 
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
@@ -147,19 +147,19 @@ void PrepareParameters(Graph* graph, const Param& param) {
   scope->Var(param.LSTMX)->GetMutable<LoDTensor>();
   scope->Var(param.LSTMOUT)->GetMutable<LoDTensor>();
 
-#define GATE_W(name__)                                               \
-  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");            \
-  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");            \
-  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");            \
-  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);       \
-  VLOG(4) << #name__ "_w0"                                           \
-          << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_w1"                                           \
-          << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_b0"                                           \
-          << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
-  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();       \
-  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();       \
+#define GATE_W(name__)                                                \
+  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");             \
+  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");             \
+  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");             \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);        \
+  VLOG(40) << #name__ "_w0"                                           \
+           << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
+  VLOG(40) << #name__ "_w1"                                           \
+           << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
+  VLOG(40) << #name__ "_b0"                                           \
+           << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();        \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();        \
   auto& W_##name__##_b0_t = W_##name__##_b0->Get<LoDTensor>();
 
   GATE_W(forget);
@@ -208,15 +208,15 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
   out->Resize(make_ddim({D + M, 4 * D}));
-  VLOG(3) << "LSTMWeight resized to " << out->dims();
+  VLOG(30) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
-  std::array<const float*, 4> tensors(
-      {{W_forget_w0.data<float>(), W_input_w0.data<float>(),
-        W_output_w0.data<float>(), W_cell_w0.data<float>()}});
-  std::array<const float*, 4> tensors1(
-      {{W_forget_w1.data<float>(), W_input_w1.data<float>(),
-        W_output_w1.data<float>(), W_cell_w1.data<float>()}});
+  std::array<const float*, 4> tensors{
+      W_forget_w0.data<float>(), W_input_w0.data<float>(),
+      W_output_w0.data<float>(), W_cell_w0.data<float>()};
+  std::array<const float*, 4> tensors1{
+      W_forget_w1.data<float>(), W_input_w1.data<float>(),
+      W_output_w1.data<float>(), W_cell_w1.data<float>()};
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -238,9 +238,9 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
 void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out) {
-  std::array<const float*, 4> tensors(
-      {{B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-        B_cell.data<float>()}});
+  std::array<const float*, 4> tensors{
+      B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
+      B_cell.data<float>()};
 
   PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
   int D = B_forget.dims()[0];

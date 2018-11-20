@@ -105,14 +105,14 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
       int tag_num)                                                             \
       : CRFDecodeKernel<float>() {                                             \
     this->num_ = tag_num;                                                      \
-    this->end_ = this->num_ / AVX_FLOAT_BLOCK;                                 \
-    this->rest_ = this->num_ % AVX_FLOAT_BLOCK;                                \
+    this->end_ = this->num_ / YMM_FLOAT_BLOCK;                                 \
+    this->rest_ = this->num_ % YMM_FLOAT_BLOCK;                                \
   }                                                                            \
   template <>                                                                  \
   void CRFDecodeKernelImpl<float, jit::avx, block>::Compute(                   \
       const int seq_len, const float* x, const float* w, float* alpha,         \
       int* track) const {                                                      \
-    INIT_ALPHA(AVX_FLOAT_BLOCK)                                                \
+    INIT_ALPHA(YMM_FLOAT_BLOCK)                                                \
     /* Use the column-major strategy to get the location of maximum score.*/   \
     int seq_offset = 0;                                                        \
     constexpr int state_trans_base_idx = 2;                                    \
@@ -150,7 +150,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
           max_score = _mm256_max_ps(max_score, score_v);                       \
           trans_offset += this->num_;                                          \
         }                                                                      \
-        UPDATE_ALPHA(AVX_FLOAT_BLOCK)                                          \
+        UPDATE_ALPHA(YMM_FLOAT_BLOCK)                                          \
       }                                                                        \
       seq_offset += this->num_;                                                \
     }                                                                          \
@@ -161,14 +161,14 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
   CRFDecodeKernelImpl<float, isa, block>::CRFDecodeKernelImpl(int tag_num)     \
       : CRFDecodeKernel<float>() {                                             \
     this->num_ = tag_num;                                                      \
-    this->end_ = this->num_ / AVX2_FLOAT_BLOCK;                                \
-    this->rest_ = this->num_ % AVX2_FLOAT_BLOCK;                               \
+    this->end_ = this->num_ / YMM_FLOAT_BLOCK;                                 \
+    this->rest_ = this->num_ % YMM_FLOAT_BLOCK;                                \
   }                                                                            \
   template <>                                                                  \
   void CRFDecodeKernelImpl<float, isa, block>::Compute(                        \
       const int seq_len, const float* x, const float* w, float* alpha,         \
       int* track) const {                                                      \
-    INIT_ALPHA(AVX2_FLOAT_BLOCK)                                               \
+    INIT_ALPHA(YMM_FLOAT_BLOCK)                                                \
     /* Use the column-major strategy to get the location of maximum score.*/   \
     int seq_offset = 0;                                                        \
     constexpr int state_trans_base_idx = 2;                                    \
@@ -196,7 +196,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
           max_score = _mm256_max_ps(max_score, score_v);                       \
           trans_offset += this->num_;                                          \
         }                                                                      \
-        UPDATE_ALPHA(AVX2_FLOAT_BLOCK)                                         \
+        UPDATE_ALPHA(YMM_FLOAT_BLOCK)                                          \
       }                                                                        \
       seq_offset += this->num_;                                                \
     }                                                                          \
@@ -208,14 +208,14 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
       int tag_num)                                                             \
       : CRFDecodeKernel<float>() {                                             \
     this->num_ = tag_num;                                                      \
-    this->end_ = this->num_ / AVX512_FLOAT_BLOCK;                              \
-    this->rest_ = this->num_ % AVX512_FLOAT_BLOCK;                             \
+    this->end_ = this->num_ / ZMM_FLOAT_BLOCK;                                 \
+    this->rest_ = this->num_ % ZMM_FLOAT_BLOCK;                                \
   }                                                                            \
   template <>                                                                  \
   void CRFDecodeKernelImpl<float, jit::avx512f, block>::Compute(               \
       const int seq_len, const float* x, const float* w, float* alpha,         \
       int* track) const {                                                      \
-    INIT_ALPHA(AVX512_FLOAT_BLOCK)                                             \
+    INIT_ALPHA(ZMM_FLOAT_BLOCK)                                                \
     /* Use the column-major strategy to get the location of maximum score.*/   \
     int seq_offset = 0;                                                        \
     constexpr int state_trans_base_idx = 2;                                    \
@@ -250,7 +250,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
                                                        this->num_ + j_offset), \
                             max_j);                                            \
         /* Calculate the offset of next step*/                                 \
-        j_offset += AVX512_FLOAT_BLOCK;                                        \
+        j_offset += ZMM_FLOAT_BLOCK;                                           \
         if (j == this->end_ - 1) {                                             \
           if (this->rest_ > 0) {                                               \
             j_offset += last_offset;                                           \
@@ -288,7 +288,7 @@ INTRIAVX512_FLOAT(kGT16);
 #undef INIT_ALPHA
 #undef UPDATE_ALPHA
 
-REGISTER_JITKERNEL(crf_decode, CRFDecodeKernel);
+REGISTER_JITKERNEL_DEPRECATED(crf_decode, CRFDecodeKernel);
 
 }  // namespace jitkernel
 }  // namespace math

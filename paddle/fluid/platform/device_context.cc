@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
-
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -18,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 namespace paddle {
@@ -120,11 +120,15 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    return paddle::memory::Alloc(place_, num_bytes);
+    auto buf = paddle::memory::Alloc(place_, num_bytes,
+                                     memory::Allocator::kScratchpad);
+    void* retv = buf->ptr();
+    allocations_[buf->ptr()] = std::move(buf);
+    return retv;
   }
 
   void deallocate(void* buffer) const override {
-    paddle::memory::Free(place_, buffer);
+    allocations_.erase(allocations_.find(buffer));
   }
 
   void* scratchpad() const override {
@@ -151,61 +155,35 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
+  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
-class CudnnHolder {
- public:
-  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
-      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+    : workspace_(nullptr), stream_(stream), place_(place) {
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+}
+
+CudnnHolder::~CudnnHolder() {
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
+  if (required_workspace_len <= WorkspaceSize()) {
+    return;
   }
-
-  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
-
-  void RunFunc(const std::function<void(void*)>& cudnn_func,
-               size_t required_workspace_len) {
-    std::lock_guard<std::mutex> lock(mtx_);
-    if (required_workspace_len > workspace_len_) {
-      ReallocateWorkspace(required_workspace_len);
-    }
-    cudnn_func(workspace_);
+  if (workspace_ != nullptr) {
+    // Maybe someone is using the current workspace
+    PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+    workspace_.reset();
   }
-
-  ~CudnnHolder() {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-    if (workspace_ != nullptr) {
-      paddle::memory::Free(place_, workspace_);
-    }
-  }
-
- private:
-  void ReallocateWorkspace(size_t required_workspace_len) {
-    if (required_workspace_len <= workspace_len_) {
-      return;
-    }
-    if (workspace_ != nullptr) {
-      // Maybe someone is using the current workspace
-      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-      paddle::memory::Free(place_, workspace_);
-    }
-    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
-    workspace_len_ = required_workspace_len;
-  }
-
-  cudnnHandle_t cudnn_handle_;
-  void* workspace_;
-  size_t workspace_len_;
-
-  const cudaStream_t* stream_;  // not owned;
-  const CUDAPlace place_;
-
-  std::mutex mtx_;
-};
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
+                                     paddle::memory::Allocator::kScratchpad);
+}
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
-  SetDeviceId(place_.device);
+  CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
@@ -222,13 +200,16 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   driver_version_ = GetCUDADriverVersion(place_.device);
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
 
-  LOG(INFO) << "device: " << place_.device
-            << ", CUDA Capability: " << compute_capability_
-            << ", Driver Version: " << driver_version_ / 1000 << "."
-            << (driver_version_ % 100) / 10
-            << ", Runtime Version: " << runtime_version_ / 1000 << "."
-            << (runtime_version_ % 100) / 10;
-
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
+                          << ", CUDA Capability: " << compute_capability_
+                          << ", Driver Version: " << driver_version_ / 1000
+                          << "." << (driver_version_ % 100) / 10
+                          << ", Runtime Version: " << runtime_version_ / 1000
+                          << "." << (runtime_version_ % 100) / 10;
+  size_t cudnn_dso_ver = dynload::cudnnGetVersion();
+  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+                          << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
+                          << (cudnn_dso_ver % 100) / 10 << ".";
   callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
@@ -269,9 +250,8 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   return cudnn_holder_->cudnn_handle();
 }
 
-void CUDADeviceContext::RunCudnnFuncWithWorkspace(
-    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
-  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
+CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
+  return CudnnWorkspaceHandle(cudnn_holder_.get());
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

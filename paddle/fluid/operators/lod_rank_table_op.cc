@@ -30,9 +30,9 @@ class LoDRankTableOp : public framework::OperatorBase {
     auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
-    VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
+    VLOG(100) << "Level = " << static_cast<size_t>(Attr<int>("level"));
     out->Reset(x.lod(), static_cast<size_t>(Attr<int>("level")));
-    VLOG(10) << Input("X") << "'s lod information is " << *out;
+    VLOG(100) << Input("X") << "'s lod information is " << *out;
   }
 };
 

@@ -310,8 +310,8 @@ void GraphSafeRemoveNodes(Graph* graph,
                           const std::unordered_set<const Node*>& nodes);
 
 // Some pre-defined patterns those can be reused in multiple passes.
-// The related Fluid Layer or Op should be one pattern here for better reusage
-// accross different fusion.
+// The related Fluid Layer or Op should be one pattern here for better re-usage
+// across different fusion.
 namespace patterns {
 
 struct KeyCounter {
@@ -664,7 +664,7 @@ struct ElementwiseAdd : public PatternBase {
   ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise_add") {}
 
-  PDNode* operator()(PDNode* x_var);
+  PDNode* operator()(PDNode* x_var, PDNode* y_var);
 
   PATTERN_DECL_NODE(elementwise_add_op);
   PATTERN_DECL_NODE(elementwise_add_x);
