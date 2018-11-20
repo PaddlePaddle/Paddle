@@ -100,8 +100,8 @@ void ReduceOpHandle::GatherSelectedRows(
   WaitLocalSelectedRows(dev_ctxes);
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar(merged_var_name,
-                          operators::distributed::kRequestGetMonomer, scope,
-                          merged_dev_ctx);
+                          operators::distributed::kRequestGetMonomerVariable,
+                          scope, merged_dev_ctx);
 
   // 3. gather them from all nodes.
   std::vector<const SelectedRows *> all;
