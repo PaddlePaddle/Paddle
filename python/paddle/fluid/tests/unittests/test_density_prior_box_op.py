@@ -48,16 +48,16 @@ class TestDensityPriorBoxOp(OpTest):
         self.set_data()
 
     def set_density(self):
-        self.densities = []
-        self.fixed_sizes = []
-        self.fixed_ratios = []
+        self.densities = [4, 2, 1]
+        self.fixed_sizes = [32.0, 64.0, 128.0]
+        self.fixed_ratios = [1.0]
+        self.layer_w = 17
+        self.layer_h = 17
+        self.image_w = 533
+        self.image_h = 533
 
     def init_test_params(self):
-        self.layer_w = 32
-        self.layer_h = 32
-
-        self.image_w = 40
-        self.image_h = 40
+        self.set_density()
 
         self.step_w = float(self.image_w) / float(self.layer_w)
         self.step_h = float(self.image_h) / float(self.layer_h)
@@ -68,8 +68,6 @@ class TestDensityPriorBoxOp(OpTest):
 
         self.variances = [0.1, 0.1, 0.2, 0.2]
         self.variances = np.array(self.variances, dtype=np.float).flatten()
-
-        self.set_density()
 
         self.clip = True
         self.num_priors = 0
@@ -136,6 +134,10 @@ class TestDensityPriorBox(TestDensityPriorBoxOp):
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]
         self.fixed_ratios = [1.0]
+        self.layer_w = 32
+        self.layer_h = 32
+        self.image_w = 40
+        self.image_h = 40
 
 
 if __name__ == '__main__':

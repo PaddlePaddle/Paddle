@@ -43,12 +43,8 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(fixed_sizes.size(), densities.size(),
                       "The number of fixed_sizes and densities must be equal.");
     size_t num_priors = 0;
-    if ((fixed_sizes.size() > 0) && (densities.size() > 0)) {
-      for (size_t i = 0; i < densities.size(); ++i) {
-        if (fixed_ratios.size() > 0) {
-          num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
-        }
-      }
+    for (size_t i = 0; i < densities.size(); ++i) {
+      num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
     }
     std::vector<int64_t> dim_vec(4);
     dim_vec[0] = input_dims[2];
@@ -64,7 +60,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
-        platform::CPUPlace());
+        ctx.GetPlace());
   }
 };
 
