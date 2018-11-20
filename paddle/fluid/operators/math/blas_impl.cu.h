@@ -56,7 +56,12 @@ struct CUBlas<float> {
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
   // https://docs.nvidia.com/cuda/cublas/index.html#cublassetmathmode
   template <typename... ARGS>
-  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
+  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx,
+                      cublasOperation_t transa, cublasOperation_t transb, int m,
+                      int n, int k, const float *alpha, const void *A,
+                      cudaDataType_t Atype, int lda, const void *B,
+                      cudaDataType_t Btype, int ldb, const float *beta, void *C,
+                      cudaDataType_t Ctype, int ldc) {
     // Because the gcc 4.8 doesn't expand template parameter pack that
     // appears in a lambda-expression, I can not use template parameter pack
     // here.
@@ -64,8 +69,9 @@ struct CUBlas<float> {
 #if CUDA_VERSION >= 8000
       VLOG(5) << "use_tensor_op_math: "
               << (platform::TensorCoreAvailable() ? "True" : "False");
-      PADDLE_ENFORCE(
-          platform::dynload::cublasSgemmEx(dev_ctx->cublas_handle(), args...));
+      PADDLE_ENFORCE(platform::dynload::cublasSgemmEx(
+          dev_ctx->cublas_handle(), transa, transb, m, n, k, alpha, A, Atype,
+          lda, B, Btype, ldb, beta, C, Ctype, ldc));
 #else
       PADDLE_THROW("cublasSgemmEx is supported on cuda >= 8.0");
 #endif
@@ -157,7 +163,13 @@ struct CUBlas<platform::float16> {
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
   // https://docs.nvidia.com/cuda/cublas/index.html#cublassetmathmode
   template <typename... ARGS>
-  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx, ARGS... args) {
+  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx,
+                      cublasOperation_t transa, cublasOperation_t transb, int m,
+                      int n, int k, const void *alpha, const void *A,
+                      cudaDataType_t Atype, int lda, const void *B,
+                      cudaDataType_t Btype, int ldb, const void *beta, void *C,
+                      cudaDataType_t Ctype, int ldc,
+                      cudaDataType_t computeType) {
     auto cublas_call = [&]() {
 #if CUDA_VERSION >= 8000
       cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
@@ -170,8 +182,9 @@ struct CUBlas<platform::float16> {
               << (use_tensor_op_math ? "True" : "False");
 #endif  // CUDA_VERSION >= 9000
 
-      PADDLE_ENFORCE(platform::dynload::cublasGemmEx(dev_ctx->cublas_handle(),
-                                                     args..., algo));
+      PADDLE_ENFORCE(platform::dynload::cublasGemmEx(
+          dev_ctx->cublas_handle(), transa, transb, m, n, k, alpha, A, Atype,
+          lda, B, Btype, ldb, beta, C, Ctype, ldc, computeType, algo));
 #else
       PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
 #endif
@@ -289,7 +302,7 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
 
 template <>
 template <>
-void Blas<platform::CUDADeviceContext>::GEMM(
+inline void Blas<platform::CUDADeviceContext>::GEMM(
     bool transA, bool transB, int M, int N, int K, platform::float16 alpha,
     const platform::float16 *A, int lda, const platform::float16 *B, int ldb,
     platform::float16 beta, platform::float16 *C, int ldc) const {
