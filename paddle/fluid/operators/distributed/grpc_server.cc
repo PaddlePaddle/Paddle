@@ -156,6 +156,53 @@ class RequestGet final : public RequestBase {
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 
+class RequestGetMonomer final : public RequestBase {
+ public:
+  explicit RequestGetMonomer(GrpcService::AsyncService* service,
+                             ::grpc::ServerCompletionQueue* cq,
+                             RequestHandler* request_handler, int req_id,
+                             RPCServer* rpc_server)
+      : RequestBase(service, cq, request_handler, req_id),
+        responder_(&ctx_),
+        rpc_server_(rpc_server) {
+    auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestGetMonomer() {}
+
+  std::string GetReqName() override { return request_.varname(); }
+
+  void Process() override {
+    // proc request.
+    std::string varname = request_.varname();
+    VLOG(40) << "RequestGetMonomer " << varname;
+
+    rpc_server_->WaitVarCond(varname);
+    MonomerHandle h = rpc_server_->GetMonomer(varname);
+
+    auto scope = h.scope_;
+    auto invar = scope->FindVar(varname);
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar,
+                             request_.trainer_id());
+
+    if (outvar) {
+      SerializeToByteBuffer(varname, outvar, *h.dev_ctx_, &reply_);
+    }
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+  RPCServer* rpc_server_{nullptr};
+};
+
 class RequestPrefetch final : public RequestBase {
  public:
   explicit RequestPrefetch(GrpcService::AsyncService* service,
@@ -348,6 +395,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestSend(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGet) {
     b = new RequestGet(&service_, cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestGetMonomer) {
+    b = new RequestGetMonomer(&service_, cq.get(), handler, req_id, this);
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {

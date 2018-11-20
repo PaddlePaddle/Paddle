@@ -37,6 +37,7 @@ namespace distributed {
 
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
+constexpr char kRequestGetMonomer[] = "RequestGetMonomer";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";

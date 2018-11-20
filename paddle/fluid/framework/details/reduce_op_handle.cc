@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -96,10 +97,11 @@ void ReduceOpHandle::GatherSelectedRows(
       operators::distributed::CollectiveServer::GetInstance(
           collective_context_.end_points_[collective_context_.rank_id_],
           collective_context_.end_points_.size());
-  server->WaitNotInService();
-  server->ResetContext(scope, merged_dev_ctx);
   WaitLocalSelectedRows(dev_ctxes);
-  server->SetInService();
+  auto rpc_server = server->GetRPCServer();
+  rpc_server->RegisterVar(merged_var_name,
+                          operators::distributed::kRequestGetMonomer, scope,
+                          merged_dev_ctx);
 
   // 3. gather them from all nodes.
   std::vector<const SelectedRows *> all;
@@ -108,7 +110,9 @@ void ReduceOpHandle::GatherSelectedRows(
   merge_func(*merged_dev_ctx, all, dst_selecte_rows);
   VLOG(40) << "all_select_rows :" << dst_selecte_rows->Info();
 
-  server->WaitNotInService();
+  rpc_server->WaitVarBarrier(merged_var_name);
+  rpc_server->ClearRegisteredVars();
+
   std::vector<std::string> vars{gathered_var_name, merged_var_name};
   scope->EraseVars(vars);
 }

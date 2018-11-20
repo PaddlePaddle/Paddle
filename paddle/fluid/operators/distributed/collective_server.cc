@@ -32,31 +32,27 @@ std::shared_ptr<CollectiveServer> CollectiveServer::collective_server_(nullptr);
 
 CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
   VLOG(1) << "Create colllective server:" << end_point << ", fan_in:" << fan_in;
-  rpc_service_.reset(new RPCSERVER_T(end_point, fan_in));
+  rpc_server_.reset(new RPCSERVER_T(end_point, fan_in));
 }
 
 void CollectiveServer::StartServer() {
-  get_handler_.reset(new distributed::GatherGetHandler());
+  get_handler_.reset(new GetMonomerHandler());
+  get_handler_->SetRPCServer(rpc_server_.get());
 
-  rpc_service_->RegisterRPC(distributed::kRequestGet, get_handler_.get(),
-                            FLAGS_collective_get_thread_num);
+  rpc_server_->RegisterRPC(distributed::kRequestGetMonomer, get_handler_.get(),
+                           FLAGS_collective_get_thread_num);
 
-  server_thread_.reset(new std::thread([&]() { rpc_service_->StartServer(); }));
-  rpc_service_->WaitServerReady();
+  server_thread_.reset(new std::thread([&]() { rpc_server_->StartServer(); }));
+  rpc_server_->WaitServerReady();
 
   loop_thread_.reset(new std::thread([&]() {
+    rpc_server_->SetCond(kRequestGetMonomer);
     while (true) {
-      collective_server_->WaitInService();
-
-      if (rpc_service_->IsExit()) {
+      if (rpc_server_->IsExit()) {
         LOG(WARNING) << "get exit!rpc_processor break!";
         break;
       }
-
-      rpc_service_->SetCond(distributed::kRequestGet);
-      rpc_service_->WaitBarrier(distributed::kRequestGet);
-      rpc_service_->ResetBarrierCounter();
-      SetSeriviceStatus(false);
+      sleep(1);
     }
   }));
 }
