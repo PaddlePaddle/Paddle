@@ -38,9 +38,13 @@ typedef struct {
   void* checked{nullptr};
 } lstm_t;
 
-typedef struct {
+typedef struct lstm_attr_s {
   int d;
   std::string act_gate, act_cand, act_cell;
+  lstm_attr_s() = default;
+  lstm_attr_s(int _d, const std::string& _act_gate,
+              const std::string& _act_cand, const std::string& _act_cell)
+      : d(_d), act_gate(_act_gate), act_cand(_act_cand), act_cell(_act_cell) {}
 } lstm_attr_t;
 
 }  // namespace jitkernel
