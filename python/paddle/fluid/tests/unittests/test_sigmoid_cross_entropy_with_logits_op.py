@@ -119,4 +119,3 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
 
 if __name__ == '__main__':
     unittest.main()
-    np.random.seed(0)

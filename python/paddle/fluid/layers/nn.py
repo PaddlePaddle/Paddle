@@ -7892,7 +7892,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
 
 @templatedoc()
-def sigmoid_cross_entropy_with_logits(x, label, ignore_index=-1, name=None):
+def sigmoid_cross_entropy_with_logits(x, label, ignore_index=-100, name=None):
     """
     ${comment}
 
