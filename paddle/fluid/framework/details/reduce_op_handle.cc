@@ -111,7 +111,7 @@ void ReduceOpHandle::GatherSelectedRows(
   VLOG(40) << "all_select_rows :" << dst_selecte_rows->Info();
 
   rpc_server->WaitVarBarrier(merged_var_name);
-  rpc_server->ClearRegisteredVars();
+  rpc_server->ClearVar(merged_var_name);
 
   std::vector<std::string> vars{gathered_var_name, merged_var_name};
   scope->EraseVars(vars);

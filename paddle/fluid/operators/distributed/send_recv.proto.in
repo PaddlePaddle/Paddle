@@ -30,6 +30,7 @@ service SendRecvService {
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
 
   rpc GetMonomerVariable(VariableMessage) returns (VariableMessage) {}
+  rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.

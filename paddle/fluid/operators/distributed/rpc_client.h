@@ -45,6 +45,11 @@ class RPCClient {
                                    const std::string& var_name,
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
+  virtual VarHandlePtr AsyncGetMonomerVariable(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
   virtual VarHandlePtr AsyncPrefetchVar(
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& in_var_name,
@@ -54,8 +59,9 @@ class RPCClient {
   virtual VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual VarHandlePtr AsyncSendFetchBarrier(
-      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncGetMonomerBarrier(
+      const std::string& ep, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,

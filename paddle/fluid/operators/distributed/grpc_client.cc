@@ -124,6 +124,24 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
                                      const framework::Scope& scope,
                                      const std::string& var_name,
                                      int64_t time_out) {
+  return _AsyncGetVar(ep, ctx, scope, var_name,
+                      "/sendrecv.SendRecvService/GetVariable", time_out);
+}
+
+VarHandlePtr GRPCClient::AsyncGetMonomerVariable(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& var_name,
+    int64_t time_out) {
+  return _AsyncGetVar(ep, ctx, scope, var_name,
+                      "/sendrecv.SendRecvService/GetMonomerVariable", time_out);
+}
+
+VarHandlePtr GRPCClient::_AsyncGetVar(const std::string& ep,
+                                      const platform::DeviceContext& ctx,
+                                      const framework::Scope& scope,
+                                      const std::string& var_name,
+                                      const std::string& rpc_path,
+                                      int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -134,7 +152,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, s, method, p_ctx, h, this] {
+  framework::AsyncIO([var_name_val, s, method, p_ctx, h, rpc_path, this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -149,8 +167,8 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
 
     platform::RecordRPCEvent record_event(method, p_ctx);
 
-    auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
+    auto call =
+        s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
@@ -253,6 +271,32 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   platform::RecordRPCEvent record_event(method, nullptr);
 
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    h->Wait();
+  }
+
+  return h;
+}
+
+VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
+                                                const std::string& var_name,
+                                                int64_t time_out) {
+  const auto ch = GetChannel(ep);
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  const std::string method = "SendMonomerFetchBarrierRPC";
+  VarHandlePtr h(
+      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(var_name);
+
+  platform::RecordRPCEvent record_event(method, nullptr);
+
+  auto rpc = s->stub_->AsyncGetMonomerBarrier(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 

@@ -39,14 +39,15 @@ void CollectiveServer::StartServer() {
   get_handler_.reset(new GetMonomerHandler());
   get_handler_->SetRPCServer(rpc_server_.get());
 
-  rpc_server_->RegisterRPC(distributed::kRequestGetMonomer, get_handler_.get(),
-                           FLAGS_collective_get_thread_num);
+  rpc_server_->RegisterRPC(distributed::kRequestGetMonomerVariable,
+                           get_handler_.get(), FLAGS_collective_get_thread_num);
+  rpc_server_->RegisterRPC(distributed::kRequestGetMonomerBarrier,
+                           get_handler_.get(), 1);
 
   server_thread_.reset(new std::thread([&]() { rpc_server_->StartServer(); }));
   rpc_server_->WaitServerReady();
 
   loop_thread_.reset(new std::thread([&]() {
-    rpc_server_->SetCond(kRequestGetMonomer);
     while (true) {
       if (rpc_server_->IsExit()) {
         LOG(WARNING) << "get exit!rpc_processor break!";

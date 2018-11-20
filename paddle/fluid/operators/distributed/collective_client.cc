@@ -34,10 +34,12 @@ bool CollectiveClient::Gather(const std::vector<std::string>& eps,
                               int64_t time_out) {
   for (auto ep : eps) {
     VLOG(50) << "begin gather from ep:" << ep;
-    VarHandlePtr ptr = rpc_client_->AsyncGetVar(ep, ctx, scope, var_name);
+    VarHandlePtr ptr =
+        rpc_client_->AsyncGetMonomerVariable(ep, ctx, scope, var_name);
     PADDLE_ENFORCE(ptr->Wait());
 
-    rpc_client_->AsyncSendFetchBarrier(ep);
+    rpc_client_->AsyncGetMonomerBarrier(ep, var_name);
+    PADDLE_ENFORCE(ptr->Wait());
 
     auto select_rows =
         scope.FindVar(var_name)->GetMutable<framework::SelectedRows>();

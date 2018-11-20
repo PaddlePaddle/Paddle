@@ -37,11 +37,10 @@ std::shared_ptr<distributed::CollectiveServer> StartServer(
   distributed::CollectiveServer* server =
       distributed::CollectiveServer::GetInstance(ep, fan_in);
 
-  server->WaitNotInService();
-  server->ResetContext(scope, dev_ctx);
-  server->SetInService();
+  auto rpc_server = server->GetRPCServer();
+  rpc_server->RegisterVar("var1", distributed::kRequestGetMonomerVariable,
+                          scope, dev_ctx);
 
-  std::cout << "return" << std::endl;
   return std::shared_ptr<distributed::CollectiveServer>(server);
 }
 
@@ -90,10 +89,10 @@ TEST(PREFETCH, CPU) {
   std::string ep = "127.0.0.1:7164";
   auto scope = GenerateVars(place);
   auto server = StartServer(ep, 2, scope.get(), &ctx);
+  auto rpc_server = server->GetRPCServer();
 
   std::vector<std::string> eps{ep};
-  // std::thread thread1(Gather, eps, &ctx);
-  // std::thread thread2(Gather, eps, &ctx);
   Gather(eps, &ctx);
   Gather(eps, &ctx);
+  rpc_server->WaitVarBarrier("var1");
 }

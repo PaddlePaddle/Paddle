@@ -45,7 +45,7 @@ class GetMonomerHandler final : public RequestHandler {
       VLOG(50) << "GetMonomerHandler recv " << FETCH_BARRIER_MESSAGE;
       rpc_server_->IncreaseVarBarrier(var_name);
     } else {
-      VLOG(50) << "GetMonomerHandler recv " << FETCH_BARRIER_MESSAGE;
+      VLOG(50) << "GetMonomerHandler recv " << var_name;
       *outvar = scope_->FindVar(var_name);
     }
 

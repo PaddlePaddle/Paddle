@@ -395,7 +395,9 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestSend(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGet) {
     b = new RequestGet(&service_, cq.get(), handler, req_id);
-  } else if (rpc_name == kRequestGetMonomer) {
+  } else if (rpc_name == kRequestGetMonomerVariable) {
+    b = new RequestGetMonomer(&service_, cq.get(), handler, req_id, this);
+  } else if (rpc_name == kRequestGetMonomerBarrier) {
     b = new RequestGetMonomer(&service_, cq.get(), handler, req_id, this);
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);

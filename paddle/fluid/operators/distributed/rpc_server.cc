@@ -144,6 +144,9 @@ void RPCServer::RegisterVar(const std::string& var_name,
 
   {
     std::unique_lock<std::mutex> lock(mutex_);
+    if (var_map_.find(var_name) != var_map_.end()) {
+      PADDLE_ENFORCE(false, "%s alreay in var_map", var_name);
+    }
     var_map_[var_name] = h;
   }
 
@@ -213,6 +216,11 @@ MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {
 void RPCServer::ClearRegisteredVars() {
   std::unique_lock<std::mutex> lock(mutex_);
   var_map_.clear();
+}
+
+void RPCServer::ClearVar(const std::string& var_name) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  var_map_.erase(var_name);
 }
 }  // namespace distributed
 }  // namespace operators

@@ -92,6 +92,7 @@ class RPCServer {
   void SetVarCond(const std::string& var_name);
   void WaitVarCond(const std::string& var_name);
   void ClearRegisteredVars();
+  void ClearVar(const std::string& var_name);
   MonomerHandle GetMonomer(const std::string& var_name);
 
   void Complete();
