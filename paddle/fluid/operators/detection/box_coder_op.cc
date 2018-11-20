@@ -30,27 +30,30 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
-    PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
-                      "The rank of Input of PriorBoxVar must be 2");
-    PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
-    if (ctx->HasInput("PriorBoxVar")) {
-      auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
-      PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
-    }
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
+                        "The rank of Input of PriorBoxVar must be 2");
+      PADDLE_ENFORCE_EQ(prior_box_dims[1], 4,
+                        "The shape of PriorBox is [N, 4]");
+      if (ctx->HasInput("PriorBoxVar")) {
+        auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
+        PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+      }
 
-    auto code_type = GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
-    if (code_type == BoxCodeType::kEncodeCenterSize) {
-      PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
-                        "The rank of Input of TargetBox must be 2");
-      PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
-                        "The shape of TargetBox is [M, 4]");
-    } else if (code_type == BoxCodeType::kDecodeCenterSize) {
-      PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
-                        "The rank of Input of TargetBox must be 3");
-      PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
-      PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
+      auto code_type =
+          GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+      if (code_type == BoxCodeType::kEncodeCenterSize) {
+        PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
+                          "The rank of Input of TargetBox must be 2");
+        PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
+                          "The shape of TargetBox is [M, 4]");
+      } else if (code_type == BoxCodeType::kDecodeCenterSize) {
+        PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
+                          "The rank of Input of TargetBox must be 3");
+        PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
+        PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
+      }
     }
-
     ctx->SetOutputDim(
         "OutputBox",
         framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));

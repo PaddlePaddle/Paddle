@@ -88,7 +88,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     bool is_test = ctx.Attr<bool>("is_test");
-
     if (ctx.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -147,10 +146,10 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
           CreatePrimitiveDesc(src_md, dst_md, propagation, strides, padding_left_top,
                               padding_right_bottom, ksize, pooling_type,
-                              mkldnn_engine, ceil_mode,is_test);
+                              mkldnn_engine, ceil_mode, is_test);
 
       // save pool_pd into global device context to be referred in backward path
-      dev_ctx.SetBlob(key_pool_pd, pool_pd);
+      if (!is_test) dev_ctx.SetBlob(key_pool_pd, pool_pd);
 
       auto src_memory = std::make_shared<memory>(pool_pd->src_primitive_desc(),
                                                  to_void_cast<T>(input_data));
@@ -161,16 +160,17 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       dev_ctx.SetBlob(key_pool_dst_mem_p, dst_memory);
 
       if (is_test) {
-        pool_p = std::make_shared<pooling_forward>(
-            *pool_pd, *(src_memory.get()), *(dst_memory.get()));
+        pool_p = std::make_shared<pooling_forward>(*pool_pd, *src_memory,
+                                                   *dst_memory);
       } else {
         std::shared_ptr<mkldnn::memory> workspace_memory =
             CreateWorkspaceMemory(pool_pd, pooling_type, mkldnn_engine);
-         // save pool_workspace_memory to be referred in backward path
+
+        // save pool_workspace_memory to be referred in backward path
         dev_ctx.SetBlob(key_pool_workspace_memory, workspace_memory);
+
         pool_p = std::make_shared<pooling_forward>(
-            *pool_pd, *(src_memory.get()), *(dst_memory.get()),
-            *workspace_memory);
+            *pool_pd, *src_memory, *dst_memory, *workspace_memory);
       }
 
       dev_ctx.SetBlob(key_pool_p, pool_p);
@@ -260,6 +260,10 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(out_grad->layout() == DataLayout::kMKLDNN &&
                        out_grad->format() != memory::format::format_undef,
                    "Wrong layout/format set for Input output_grad tensor");
+
+    PADDLE_ENFORCE(
+        !ctx.Attr<bool>("is_test"),
+        "is_test attribute should be set to False in training phase.");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");

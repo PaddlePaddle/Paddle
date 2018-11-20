@@ -109,7 +109,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
-  AddAttr<bool>("is_test", "").SetDefault(false);
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -241,16 +244,8 @@ $$
        W_{out}= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]}+ 1
 $$
 )DOC");
+  Apply();
 }
-
-class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
-      const override {
-    return std::unordered_map<std::string, std::string>{
-        {"Input", /*->*/ "Output"}};
-  }
-};
 
 void Conv3DOpMaker::Make() {
   AddInput(
@@ -350,6 +345,7 @@ Example:
        W_{out}= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{ strides[2]}+ 1
   $$
 )DOC");
+  Apply();
 }
 
 void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {

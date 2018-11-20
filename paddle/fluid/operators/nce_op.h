@@ -19,29 +19,28 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/sampler.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using Sampler = math::Sampler;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
-void PrepareSamples(const framework::ExecutionContext& context) {
+void PrepareSamples(const framework::ExecutionContext& context,
+                    Sampler* sampler) {
   auto label = context.Input<Tensor>("Label");
   const int64_t* label_data = label->data<int64_t>();
   auto label_dims = label->dims();
-  int num_total_classes = context.Attr<int>("num_total_classes");
+  //  int num_total_classes = context.Attr<int>("num_total_classes");
   // for unitest
   std::vector<int> custom_neg_classes =
       context.Attr<std::vector<int>>("custom_neg_classes");
-  // random machine
-  std::random_device rd;
-  std::mt19937 rng(rd());
-  std::uniform_int_distribution<int> rand(0, num_total_classes - 1);
 
   auto sample_labels = context.Output<Tensor>("SampleLabels");
   auto sample_labels_dims = sample_labels->dims();
@@ -62,7 +61,7 @@ void PrepareSamples(const framework::ExecutionContext& context) {
     } else {
       for (; j < sample_labels_dims[1]; ++j) {
         // TODO(wanghaoshuang): support more distribution sampling
-        sample_labels_data[index++] = rand(rng);
+        sample_labels_data[index++] = sampler->Sample();
       }
     }
   }
@@ -72,7 +71,33 @@ template <typename DeviceContext, typename T>
 class NCEKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PrepareSamples<DeviceContext, T>(context);
+    int sampler_type = context.Attr<int>("sampler");
+    int seed = context.Attr<int>("seed");
+    int num_total_classes = context.Attr<int>("num_total_classes");
+    int num_neg_samples = context.Attr<int>("num_neg_samples");
+
+    Sampler* sampler;
+    switch (sampler_type) {
+      case 0: {
+        sampler = new math::UniformSampler(num_total_classes - 1, seed);
+        break;
+      }
+      case 1: {
+        sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
+        break;
+      }
+      case 2: {
+        auto custom_dist = context.Input<Tensor>("CustomDistribution");
+        const float* custom_dist_data = custom_dist->data<float>();
+        PADDLE_ENFORCE_EQ(custom_dist->numel(), num_total_classes);
+        sampler = new math::CustomSampler(num_total_classes - 1,
+                                          custom_dist_data, seed);
+        break;
+      }
+      default: { PADDLE_THROW("Unsupported SamplerType."); }
+    }
+
+    PrepareSamples<DeviceContext, T>(context, sampler);
     auto sample_labels = context.Output<Tensor>("SampleLabels");
     const int64_t* sample_labels_data = sample_labels->data<int64_t>();
     auto sample_out = context.Output<Tensor>("SampleLogits");
@@ -85,13 +110,12 @@ class NCEKernel : public framework::OpKernel<T> {
     }
     auto out = context.Output<Tensor>("Cost");
     T* out_data = out->mutable_data<T>(context.GetPlace());
-    int num_neg_samples = context.Attr<int>("num_neg_samples");
-    int num_total_classes = context.Attr<int>("num_total_classes");
     int64_t num_true_class = 1;
     if (label != nullptr) {
       num_true_class = label->dims()[1];
     }
-    T b = 1. / num_total_classes * num_neg_samples;
+    int64_t sampled_labels_num = sample_labels->dims()[1];
+    //    T b = 1. / num_total_classes * num_neg_samples;
     // forward bias
     auto bias = context.Input<Tensor>("Bias");
     if (bias != nullptr) {
@@ -117,22 +141,17 @@ class NCEKernel : public framework::OpKernel<T> {
     }
     // forward cost
     for (int64_t i = 0; i < sample_labels->dims()[0]; ++i) {
-      int64_t j = 0;
       out_data[i] = 0;
       T w = sample_weight == nullptr ? 1. : sample_weight_data[i];
-      // for true classes
-      for (; j < num_true_class; ++j) {
-        T o = sample_out_data[i * sample_out->dims()[1] + j];
-        T cost = -log(o / (o + b));
-        out_data[i] += w * cost;
-      }
-      // for sampled neg classes
-      for (; j < sample_labels->dims()[1]; ++j) {
-        T o = sample_out_data[i * sample_out->dims()[1] + j];
-        T cost = -log(b / (o + b));
+      for (int64_t j = 0; j < sampled_labels_num; ++j) {
+        int64_t target = sample_labels_data[i * sampled_labels_num + j];
+        T o = sample_out_data[i * sampled_labels_num + j];
+        float b = sampler->Probability(target) * num_neg_samples;
+        T cost = (j < num_true_class) ? -log(o / (o + b)) : -log(b / (o + b));
         out_data[i] += w * cost;
       }
     }
+    delete sampler;
   }
 };
 
@@ -158,20 +177,45 @@ class NCEGradKernel : public framework::OpKernel<T> {
     if (label != nullptr) {
       num_true_class = label->dims()[1];
     }
-    T b = 1. / num_total_classes * num_neg_samples;
+
+    int sampler_type = context.Attr<int>("sampler");
+    int seed = context.Attr<int>("seed");
+    Sampler* sampler;
+    switch (sampler_type) {
+      case 0: {
+        sampler = new math::UniformSampler(num_total_classes - 1, seed);
+        break;
+      }
+      case 1: {
+        sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
+        break;
+      }
+      case 2: {
+        auto custom_dist = context.Input<Tensor>("CustomDistribution");
+        const float* custom_dist_data = custom_dist->data<float>();
+        PADDLE_ENFORCE_EQ(custom_dist->numel(), num_total_classes);
+        sampler = new math::CustomSampler(num_total_classes - 1,
+                                          custom_dist_data, seed);
+        break;
+      }
+      default: { PADDLE_THROW("Unsupported SamplerType."); }
+    }
+
+    //    T b = 1. / num_total_classes * num_neg_samples;
     Tensor sample_grad;  // tmp tensor
     T* sample_grad_data =
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
     // backward cost
     for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+      int64_t label_idx = i % sample_labels->dims()[1];
+      int64_t sample_idx = i / sample_labels->dims()[1];
+      float b = sampler->Probability(sample_labels_data[i]) * num_neg_samples;
       T o = sample_out_data[i];
-      T w = sample_weight == nullptr
-                ? 1
-                : sample_weight_data[i / sample_labels->dims()[1]];
-      sample_grad_data[i] = (i % sample_labels->dims()[1]) < num_true_class
+      T w = sample_weight == nullptr ? 1 : sample_weight_data[sample_idx];
+      sample_grad_data[i] = label_idx < num_true_class
                                 ? w * (b / (o + b)) * (o - 1)
                                 : w * (o * (1 - o) / (o + b));
-      sample_grad_data[i] *= d_out_data[i / sample_labels->dims()[1]];
+      sample_grad_data[i] *= d_out_data[sample_idx];
     }
     // get d_bias
     auto d_bias = context.Output<Tensor>(framework::GradVarName("Bias"));
@@ -207,6 +251,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
             w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
       }
     }
+    delete sampler;
   }
 };
 }  // namespace operators

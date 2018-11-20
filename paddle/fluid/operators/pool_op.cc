@@ -207,10 +207,10 @@ void Pool2dOpMaker::Make() {
       "the input will be transformed automatically. ")
       .SetDefault("AnyLayout");
   AddAttr<bool>("is_test",
-      "(bool, default false) If true, the forward pass is not "
-      "part of training."
-      "MKL-DNN might be faster if this is set to true.")
-  .SetDefault(false);
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
+
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
