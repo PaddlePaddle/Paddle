@@ -15,6 +15,11 @@
 #pragma once
 #include "paddle/fluid/memory/allocation/allocator.h"
 
+#ifdef _WIN32
+#define posix_memalign_free _aligned_free
+#define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ? 0 : errno)
+#endif
+
 namespace paddle {
 namespace memory {
 namespace allocation {
