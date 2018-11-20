@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -64,7 +67,7 @@ void InitP2P(std::vector<int> devices) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
         } else {
-          cudaSetDevice(devices[i]);
+          platform::CUDADeviceGuard guard(devices[i]);
           cudaDeviceEnablePeerAccess(devices[j], 0);
         }
       }

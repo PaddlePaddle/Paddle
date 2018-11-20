@@ -43,6 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -94,6 +95,7 @@ bool IsCompiledWithDIST() {
 }
 
 PYBIND11_PLUGIN(core) {
+  paddle::memory::allocation::UseAllocatorStrategyGFlag();
   py::module m("core", "C++ core of PaddlePaddle");
 
   // using framework in this function. Since it is inside a function, it will
