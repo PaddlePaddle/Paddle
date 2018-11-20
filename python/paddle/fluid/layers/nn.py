@@ -4488,7 +4488,8 @@ def nce(input,
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
-        'sampler': sampler
+        'sampler': sampler,
+        'is_sparse': is_sparse
     }
 
     helper.append_op(

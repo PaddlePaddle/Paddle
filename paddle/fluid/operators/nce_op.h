@@ -260,6 +260,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     }
 
     bool is_sparse = context.Attr<bool>("is_sparse");
+
     if (!is_sparse) {
       // get d_x
       auto d_x = context.Output<Tensor>(framework::GradVarName("Input"));
@@ -278,7 +279,6 @@ class NCEGradKernel : public framework::OpKernel<T> {
       // get d_x
       auto d_x = context.Output<SelectedRows>(framework::GradVarName("Input"));
       if (d_x != nullptr) {
-        DDim table_dim = d_x->value().dims();
         // build selectedRows rows
         std::vector<int64_t> new_rows;
         new_rows.resize(sample_labels->dims()[0]);
@@ -288,10 +288,11 @@ class NCEGradKernel : public framework::OpKernel<T> {
         }
         d_x->set_rows(new_rows);
 
+        auto input = context.Input<Tensor>("Input");
         // build selectedRows tensor
         d_x->set_height(sample_labels->dims()[0]);
         auto* d_table_value = d_x->mutable_value();
-        d_table_value->Resize({sample_labels->dims()[0], table_dim[1]});
+        d_table_value->Resize(input->dims());
         auto* d_x_data = d_table_value->mutable_data<T>(context.GetPlace());
         std::fill(d_x_data, d_x_data + d_table_value->numel(), 0.0);
         auto d_x_matrix = EigenMatrix<T>::From(*d_table_value);

@@ -21,7 +21,6 @@ import unittest
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import Program
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,
@@ -62,59 +61,60 @@ def nce(input, weight, bias, sample_weight, labels, num_classes,
                                             num_sample_class + num_true_class))
 
 
-#class TestNCE(OpTest):
-#    def generate_data(self, dim, batch_size, num_classes, num_true_class,
-#                      num_neg_samples, is_sparse):
-#        input = np.random.randn(batch_size, dim).astype(np.float32)
-#        weight = np.random.randn(num_classes, dim).astype(np.float32)
-#        bias = np.random.randn(num_classes).astype(np.float32)
-#        sample_weight = np.random.randn(batch_size).astype(np.float32)
-#        labels = np.random.randint(0, num_classes, (batch_size, num_true_class))
-#        self.attrs = {
-#            'num_total_classes': num_classes,
-#            'num_neg_samples': num_neg_samples,
-#            'custom_neg_classes': list(range(num_neg_samples)),
-#            'seed': 0,
-#            'sampler': 0,
-#            'is_sparse': is_sparse
-#        }
-#        self.inputs = {
-#            'Input': input,
-#            'Label': labels,
-#            'Weight': weight,
-#            'Bias': bias,
-#            'SampleWeight': sample_weight
-#        }
-#
-#    def set_data(self):
-#        self.generate_data(5, 5, 4, 1, 2, False)
-#
-#    def compute(self):
-#        out = nce(self.inputs['Input'], self.inputs['Weight'],
-#                  self.inputs['Bias'], self.inputs['SampleWeight'],
-#                  self.inputs['Label'], self.attrs['num_total_classes'],
-#                  self.attrs['num_neg_samples'])
-#        self.outputs = {
-#            'Cost': out[0],
-#            'SampleLogits': out[1],
-#            'SampleLabels': out[2]
-#        }
-#
-#    def setUp(self):
-#        self.op_type = 'nce'
-#        self.set_data()
-#        self.compute()
-#
-#    def test_check_output(self):
-#        self.check_output()
-#
-#    def test_check_grad(self):
-#        self.check_grad(
-#            ["Input", "Weight", "Bias"], "Cost", max_relative_error=0.02)
+class TestNCE(OpTest):
+    def generate_data(self, dim, batch_size, num_classes, num_true_class,
+                      num_neg_samples, is_sparse):
+        input = np.random.randn(batch_size, dim).astype(np.float32)
+        weight = np.random.randn(num_classes, dim).astype(np.float32)
+        bias = np.random.randn(num_classes).astype(np.float32)
+        sample_weight = np.random.randn(batch_size).astype(np.float32)
+        labels = np.random.randint(0, num_classes, (batch_size, num_true_class))
+        self.attrs = {
+            'num_total_classes': num_classes,
+            'num_neg_samples': num_neg_samples,
+            'custom_neg_classes': list(range(num_neg_samples)),
+            'seed': 0,
+            'sampler': 0,
+            'is_sparse': is_sparse
+        }
+        self.inputs = {
+            'Input': input,
+            'Label': labels,
+            'Weight': weight,
+            'Bias': bias,
+            'SampleWeight': sample_weight
+        }
 
-#class TestNCECase1Tensor(TestNCE):
-#    def set_data(self):
-#        self.generate_data(10, 20, 10, 2, 5, False)
+    def set_data(self):
+        self.generate_data(5, 5, 4, 1, 2, False)
+
+    def compute(self):
+        out = nce(self.inputs['Input'], self.inputs['Weight'],
+                  self.inputs['Bias'], self.inputs['SampleWeight'],
+                  self.inputs['Label'], self.attrs['num_total_classes'],
+                  self.attrs['num_neg_samples'])
+        self.outputs = {
+            'Cost': out[0],
+            'SampleLogits': out[1],
+            'SampleLabels': out[2]
+        }
+
+    def setUp(self):
+        self.op_type = 'nce'
+        self.set_data()
+        self.compute()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ["Input", "Weight", "Bias"], "Cost", max_relative_error=0.02)
+
+
+class TestNCECase1Tensor(TestNCE):
+    def set_data(self):
+        self.generate_data(10, 20, 10, 2, 5, False)
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
@@ -154,12 +154,13 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         emb = fluid.layers.embedding(
             input=input_word,
             size=[dict_size, embedding_size],
+            is_sparse=True,
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
                 scale=1 / math.sqrt(dict_size))))
 
         num_total_classes = dict_size
         num_neg_samples = 5
-        sampler = "uniform"
+        sampler = "custom_dist"
         sample_weight = None
 
         w_param_name = "nce_w"
@@ -180,7 +181,8 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                                 sample_weight=sample_weight,
                                 param_attr=fluid.ParamAttr(name=w_param_name),
                                 bias_attr=fluid.ParamAttr(name=b_param_name),
-                                num_neg_samples=num_neg_samples)
+                                num_neg_samples=num_neg_samples,
+                                is_sparse=True)
 
         avg_cost = fluid.layers.mean(cost)
         # optimizer
@@ -211,7 +213,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         exe.run(startup)
         for batch_id, data in enumerate(train_reader()):
             loss_val = exe.run(prog, feed=feeder.feed(data), fetch_list=[cost])
-            print(loss_val)
+            break
 
 
 if __name__ == '__main__':

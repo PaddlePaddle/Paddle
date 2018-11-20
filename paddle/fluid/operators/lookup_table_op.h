@@ -107,7 +107,20 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
       auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+
+      auto *out_grad_var = context.InputVar(framework::GradVarName("Out"));
+      const Tensor *d_output = nullptr;
+      if (out_grad_var->IsType<LoDTensor>()) {
+        d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      } else if (out_grad_var->IsType<SelectedRows>()) {
+        d_output = &context.Input<SelectedRows>(framework::GradVarName("Out"))
+                        ->value();
+      } else {
+        PADDLE_THROW(
+            "The parameter Out@GRAD of a LookupTable must be either LoDTensor "
+            "or SelectedRows");
+      }
+
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
