@@ -22,6 +22,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/operators/math/jit_kernel_refer.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -53,12 +54,6 @@ void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
   }
 }
 
-void vrelu_ref(const int n, const float* x, float* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = x[i] > 0.f ? x[i] : 0.f;
-  }
-}
-
 #if defined __AVX__ || defined __AVX2__
 void vrelu_intri8(const int n, const float* x, float* y) {
   __m256 tmp = _mm256_loadu_ps(x);
@@ -69,6 +64,7 @@ void vrelu_intri8(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vrelu) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {3, 7, 8, 15, 16, 30, 256, 512}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
@@ -80,7 +76,7 @@ TEST(JitKernel, vrelu) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vrelu_ref(d, x_data, zref_data);
+      refer::VRelu<float>(x_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
 #if defined __AVX__ || defined __AVX2__
@@ -107,14 +103,9 @@ TEST(JitKernel, vrelu) {
   }
 }
 
-void vaddbias_ref(const int n, const float a, const float* x, float* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = x[i] + a;
-  }
-}
-
 TEST(JitKernel, vaddbias) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {7, 8, 15, 16, 30, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
@@ -127,7 +118,7 @@ TEST(JitKernel, vaddbias) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vaddbias_ref(d, a, x_data, zref_data);
+      refer::VAddBias<float>(&a, x_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
@@ -145,12 +136,6 @@ TEST(JitKernel, vaddbias) {
   }
 }
 
-void vexp_ref(const int n, const float* x, float* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = std::exp(x[i]);
-  }
-}
-
 #ifdef PADDLE_WITH_MKLML
 void vexp_mkl(const int n, const float* x, float* y) {
   paddle::platform::dynload::vsExp(n, x, y);
@@ -159,6 +144,7 @@ void vexp_mkl(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vexp) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {1, 3, 4, 6, 7, 8, 12, 15, 16, 20, 30, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
@@ -170,7 +156,7 @@ TEST(JitKernel, vexp) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vexp_ref(d, x_data, zref_data);
+      refer::VExp<float>(x_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
 
@@ -203,19 +189,6 @@ TEST(JitKernel, vexp) {
   }
 }
 
-inline float _sigmoid(float x) {
-  const float min = SIGMOID_THRESHOLD_MIN;
-  const float max = SIGMOID_THRESHOLD_MAX;
-  float tmp = (x < min) ? min : ((x > max) ? max : x);
-  return 1.f / (1.f + std::exp(-tmp));
-}
-
-void vsigmoid_ref(const int n, const float* x, float* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = _sigmoid(x[i]);
-  }
-}
-
 void vsigmoid_better(
     const std::shared_ptr<
         const paddle::operators::math::jitkernel::VExpKernel<float>>& vexp,
@@ -234,6 +207,7 @@ void vsigmoid_better(
 
 TEST(JitKernel, vsigmoid) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {1, 3, 4, 6, 7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
@@ -252,7 +226,7 @@ TEST(JitKernel, vsigmoid) {
     auto tmkle = GetCurrentUS();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vsigmoid_ref(d, x_data, zref_data);
+      refer::VSigmoid<float>(x_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
@@ -268,14 +242,6 @@ TEST(JitKernel, vsigmoid) {
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
-  }
-}
-
-inline float _tanh(float x) { return 2.f * _sigmoid(2.f * x) - 1.f; }
-
-void vtanh_ref(const int n, const float* x, float* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = _tanh(x[i]);
   }
 }
 
@@ -298,6 +264,7 @@ void vtanh_better(
 
 TEST(JitKernel, vtanh) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
@@ -320,7 +287,7 @@ TEST(JitKernel, vtanh) {
     auto tmkle = GetCurrentUS();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vtanh_ref(d, x_data, zref_data);
+      refer::VTanh<float>(x_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
@@ -336,32 +303,6 @@ TEST(JitKernel, vtanh) {
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
-  }
-}
-
-void lstm_ctht_ref(
-    const std::shared_ptr<
-        const paddle::operators::math::jitkernel::VSigmoidKernel<float>>&
-        vsigmoid_3d,
-    const std::shared_ptr<
-        const paddle::operators::math::jitkernel::VTanhKernel<float>>& vtanh_d,
-    const std::shared_ptr<
-        const paddle::operators::math::jitkernel::VExpKernel<float>>& vexp_1,
-    const int d, float* gates, const float* ct_1, float* ct, float* ht) {
-  vsigmoid_3d->Compute(gates + d, gates + d, 3 * d);
-  vtanh_d->Compute(gates, gates, d);
-  const float *i = gates + d, *f = gates + d * 2, *o = gates + d * 3;
-  const float min = SIGMOID_THRESHOLD_MIN;
-  const float max = SIGMOID_THRESHOLD_MAX;
-  for (int k = 0; k < d; ++k) {
-    // C_t = C_t-1 * fgated + cand_gated * igated
-    ct[k] = ct_1[k] * f[k] + gates[k] * i[k];
-    // H_t = act_cell(C_t) * ogated
-    float tmp = ct[k] * 2;
-    tmp = 0.f - ((tmp < min) ? min : ((tmp > max) ? max : tmp));
-    vexp_1->Compute(&tmp, &tmp, 1);
-    tmp = 2.f / (1.f + tmp) - 1.f;
-    ht[k] = tmp * o[k];
   }
 }
 
@@ -389,6 +330,7 @@ void lstm_ctht_better(
 
 TEST(JitKernel, lstm) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 30, 32, 64, 100}) {
     int d4 = d * 4;
     int d3 = d * 3;
@@ -410,8 +352,6 @@ TEST(JitKernel, lstm) {
             d3);
     const auto& vtanh_d =
         jit::KernelPool::Instance().template Get<jit::VTanhKernel<float>>(d);
-    const auto& vexp_1 =
-        jit::KernelPool::Instance().template Get<jit::VExpKernel<float>>(1);
     const auto& vmul_d =
         jit::KernelPool::Instance().template Get<jit::VMulKernel<float>>(d);
     const auto& vadd_d =
@@ -425,8 +365,14 @@ TEST(JitKernel, lstm) {
     float* ct_ref_data = ct_ref.data();
     float* ht_ref_data = ht_ref.data();
     // compute once to check correctness
-    lstm_ctht_ref(vsigmoid_3d, vtanh_d, vexp_1, d, xref_data, ct_1_data,
-                  ct_ref_data, ht_ref_data);
+    jit::lstm_t step;
+    jit::lstm_attr_t attr(d, act_gate, act_cand, act_cell);
+    step.gates = xref_data;
+    step.ct_1 = ct_1_data;
+    step.ct = ct_ref_data;
+    step.ht = ht_ref_data;
+    refer::LSTMCtHt<float>(&step, &attr);
+
     ker->ComputeCtHt(x_data, ct_1_data, ct_tgt_data, ht_tgt_data);
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ct_tgt_data[i], ct_ref_data[i], 1e-3);
@@ -441,8 +387,7 @@ TEST(JitKernel, lstm) {
     auto tmkle = GetCurrentUS();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      lstm_ctht_ref(vsigmoid_3d, vtanh_d, vexp_1, d, xref_data, ct_1_data,
-                    ct_ref_data, ht_ref_data);
+      refer::LSTMCtHt<float>(&step, &attr);
     }
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
@@ -457,16 +402,6 @@ TEST(JitKernel, lstm) {
   }
 }
 
-void vscal_ref(const int n, const float a, const float* x, float* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = a * x[i];
-  }
-}
-void vscal_inp_ref(const int n, const float a, float* x) {
-  for (int i = 0; i < n; ++i) {
-    x[i] = a * x[i];
-  }
-}
 #if defined __AVX__ || defined __AVX2__
 void vscal_intri8(const int n, const float a, const float* x, float* y) {
   __m256 tmp;
@@ -492,6 +427,7 @@ void vscal_inp_mkl(const int n, const float a, float* x) {
 
 TEST(JitKernel, vscal) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {7, 8, 15, 16, 30, 256, 512}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
@@ -506,12 +442,12 @@ TEST(JitKernel, vscal) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vscal_ref(d, a, x_data, zref_data);
+      refer::VScal<float>(&a, x_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
     auto trefs1 = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vscal_inp_ref(d, a, y_data);
+      refer::VScal<float>(&a, y_data, y_data, d);
     }
     auto trefe1 = GetCurrentUS();
 
@@ -567,12 +503,6 @@ TEST(JitKernel, vscal) {
   }
 }
 
-void vmul_ref(const int n, const float* x, const float* y, float* z) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] * y[i];
-  }
-}
-
 #if defined __AVX__ || defined __AVX2__
 void vmul_intri8(const int n, const float* x, const float* y, float* z) {
   __m256 tmpx, tmpy;
@@ -591,6 +521,7 @@ void vmul_mkl(const int n, const float* x, const float* y, float* z) {
 
 TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {7, 8, 15, 16, 20, 30, 256, 512, 1000, 1024}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
@@ -604,7 +535,7 @@ TEST(JitKernel, vmul) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vmul_ref(d, x_data, y_data, zref_data);
+      refer::VMul<float>(x_data, y_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
 
@@ -647,12 +578,6 @@ TEST(JitKernel, vmul) {
   }
 }
 
-void vadd_ref(const int n, const float* x, const float* y, float* z) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] + y[i];
-  }
-}
-
 #if defined __AVX__ || defined __AVX2__
 void vadd_intri8(const int n, const float* x, const float* y, float* z) {
   __m256 tmpx, tmpy;
@@ -671,6 +596,7 @@ void vadd_mkl(const int n, const float* x, const float* y, float* z) {
 
 TEST(JitKernel, vadd) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {7, 8, 15, 16, 30, 256, 512}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
@@ -684,7 +610,7 @@ TEST(JitKernel, vadd) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vadd_ref(d, x_data, y_data, zref_data);
+      refer::VAdd<float>(x_data, y_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
 
@@ -727,12 +653,6 @@ TEST(JitKernel, vadd) {
   }
 }
 
-void vaddrelu_ref(const int n, const float* x, const float* y, float* z) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] + y[i];
-    z[i] = z[i] > 0 ? z[i] : 0;
-  }
-}
 void vaddrelu_better(
     const std::shared_ptr<
         const paddle::operators::math::jitkernel::VAddKernel<float>>& vadd,
@@ -745,6 +665,7 @@ void vaddrelu_better(
 
 TEST(JitKernel, vaddrelu) {
   namespace jit = paddle::operators::math::jitkernel;
+  namespace refer = paddle::operators::math::jitkernel::refer;
   for (int d : {7, 8, 15, 16, 30, 256, 512}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
@@ -762,7 +683,7 @@ TEST(JitKernel, vaddrelu) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vaddrelu_ref(d, x_data, y_data, zref_data);
+      refer::VAddRelu<float>(x_data, y_data, zref_data, d);
     }
     auto trefe = GetCurrentUS();
     auto tmkls = GetCurrentUS();

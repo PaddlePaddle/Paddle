@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
-#include <cmath>  // for exp
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
+#include "paddle/fluid/operators/math/jit_kernel_refer.h"
 
 #ifdef PADDLE_WITH_XBYAK
 #include "paddle/fluid/operators/math/jit_code.h"
@@ -34,38 +34,6 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 namespace jit = platform::jit;
-
-// TODO(TJ): move refer codes to one file
-// Refer code only focus on correctness
-template <typename T>
-void VExpRefer(const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = std::exp(x[i]);
-  }
-}
-
-template <typename T>
-void VSigmoidRefer(const T* x, T* y, int n) {
-  // y = 1 / (1 + e^-x)
-  const T min = SIGMOID_THRESHOLD_MIN;
-  const T max = SIGMOID_THRESHOLD_MAX;
-  for (int i = 0; i < n; ++i) {
-    T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
-    y[i] = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-tmp));
-  }
-}
-
-template <typename T>
-void VTanhRefer(const T* x, T* y, int n) {
-  // y = 2 * sigmoid(2x) - 1
-  for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(2) * x[i];
-  }
-  VSigmoidRefer(y, y, n);
-  for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
-  }
-}
 
 #ifdef PADDLE_WITH_MKLML
 // try to use MKL to speedup
@@ -129,7 +97,7 @@ class VExpKernelImpl : public VExpKernel<T> {
       return;
     }
 #endif
-    this->Compute = VExpRefer<T>;
+    this->Compute = refer::VExp<T>;
   }
 
 #ifdef PADDLE_WITH_XBYAK
@@ -182,7 +150,7 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
       return;
     }
 #endif
-    this->Compute = VSigmoidRefer<T>;
+    this->Compute = refer::VSigmoid<T>;
   }
 
 #ifdef PADDLE_WITH_XBYAK
@@ -234,7 +202,7 @@ class VTanhKernelImpl : public VTanhKernel<T> {
       return;
     }
 #endif
-    this->Compute = VTanhRefer<T>;
+    this->Compute = refer::VTanh<T>;
   }
 
 #ifdef PADDLE_WITH_XBYAK
