@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/operators/math/jit_gen.h"
+#include "paddle/fluid/operators/math/jit_kernel_impl.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -45,14 +46,6 @@ typedef enum {
 extern const float exp_float_consts[];
 extern const int exp_int_0x7f[];
 extern int g_tmp_mem[];
-
-// TODO(TJ): move these to some proper place
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-#define XMM_FLOAT_BLOCK 4
-#define YMM_FLOAT_BLOCK 8
-#define ZMM_FLOAT_BLOCK 16
 
 #define ALIGN32 __attribute__((aligned(32)))
 #define EXP_HIG 88.3762626647949f
@@ -320,6 +313,99 @@ class VActJitCode : public JitCode {
 
   xmm_t xmm_dst = xmm_t(1);
   ymm_t ymm_dst = ymm_t(1);
+};
+
+class LSTMJitCode : public VActJitCode {
+ public:
+  const char* name() const override {
+    std::string base = "LSTMJitCode";
+    auto AddTypeStr = [&](operand_type type) {
+      switch (type) {
+        case operand_type::relu:
+          base += "_Relu";
+          break;
+        case operand_type::exp:
+          base += "_Exp";
+          break;
+        case operand_type::sigmoid:
+          base += "_Sigmoid";
+          break;
+        case operand_type::tanh:
+          base += "_Tanh";
+          break;
+        case operand_type::identity:
+          base += "_Identity";
+          break;
+        default:
+          break;
+      }
+    };
+    if (first_) {
+      base += "_C1H1";
+    }
+    AddTypeStr(act_gate_);
+    AddTypeStr(act_cand_);
+    AddTypeStr(act_cell_);
+    return base.c_str();
+  }
+
+  explicit LSTMJitCode(int d, bool first, operand_type act_gate,
+                       operand_type act_cand, operand_type act_cell,
+                       size_t code_size = 256 * 1024, void* code_ptr = nullptr)
+      : VActJitCode(d, act_gate, code_size, code_ptr),
+        num_(d),
+        first_(first),
+        act_gate_(act_gate),
+        act_cand_(act_cand),
+        act_cell_(act_cell) {}
+  static bool init(int d);
+  void generate() override;
+
+ protected:
+  int num_;
+  bool first_;
+  operand_type act_gate_;
+  operand_type act_cand_;
+  operand_type act_cell_;
+  reg64_t param1{abi_param1};
+
+  xmm_t xmm_src = xmm_t(0);
+  xmm_t xmm_c = xmm_t(1);
+  xmm_t xmm_i = xmm_t(2);
+  xmm_t xmm_f = xmm_t(3);
+
+  ymm_t ymm_src = ymm_t(0);
+  ymm_t ymm_c = ymm_t(1);
+  ymm_t ymm_i = ymm_t(2);
+  ymm_t ymm_f = ymm_t(3);
+
+  template <typename JMM>
+  void act(JMM& dst, JMM& src, operand_type type) {  // NOLINT
+    // use 15
+    JMM zero = JMM(15);
+    if (type_ == operand_type::relu) {
+      vxorps(zero, zero, zero);
+    }
+    switch (type) {
+      case operand_type::relu:
+        relu_jmm<JMM>(dst, src, zero);
+        break;
+      case operand_type::exp:
+        exp_jmm<JMM>(dst, src, 2, 3, 4, 5);
+        break;
+      case operand_type::sigmoid:
+        sigmoid_jmm<JMM>(dst, src, 2, 3, 4, 5);
+        break;
+      case operand_type::tanh:
+        tanh_jmm<JMM>(dst, src, 2, 3, 4, 5);
+        break;
+      case operand_type::identity:
+        break;
+      default:
+        // throw error
+        break;
+    }
+  }
 };
 
 }  // namespace gen

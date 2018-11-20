@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_code.h"
+#include <stddef.h>                                  // offsetof
 #include "paddle/fluid/operators/math/jit_kernel.h"  // TODO(TJ): remove me
 
 namespace paddle {
@@ -207,6 +208,54 @@ void VActJitCode::generate() {
     offset += sizeof(float) * block;
     rest -= block;
   }
+  ret();
+}
+
+bool LSTMJitCode::init(int d) { return MayIUse(avx) && d % 8 == 0; }
+
+void LSTMJitCode::generate() {
+  reg64_t reg_ptr_gates = rax;
+  reg64_t reg_ptr_ct_1 = r9;
+  reg64_t reg_ptr_ct = r10;
+  reg64_t reg_ptr_ht = r11;
+  mov(reg_ptr_gates, ptr[param1 + offsetof(lstm_t, gates)]);
+  mov(reg_ptr_ct_1, ptr[param1 + offsetof(lstm_t, ct_1)]);
+  mov(reg_ptr_ct, ptr[param1 + offsetof(lstm_t, ct)]);
+  mov(reg_ptr_ht, ptr[param1 + offsetof(lstm_t, ht)]);
+
+  int offset = 0;
+  for (int i = 0; i < num_ / YMM_FLOAT_BLOCK; ++i) {
+    /* C_t = C_t-1 * fgated + cand_gated * igated*/
+    // c
+    vmovups(ymm_src, ptr[reg_ptr_gates + offset]);
+    act<ymm_t>(ymm_c, ymm_src, act_cand_);
+    // i
+    vmovups(ymm_src, ptr[reg_ptr_gates + offset + num_]);
+    act<ymm_t>(ymm_i, ymm_src, act_gate_);
+    vmulps(ymm_c, ymm_c, ymm_i);
+    if (first_) {
+      // f
+      vmovups(ymm_src, ptr[reg_ptr_gates + offset + 2 * num_]);
+      act<ymm_t>(ymm_f, ymm_src, act_gate_);
+      vmovups(ymm_i, ptr[reg_ptr_ct_1 + offset]);
+      vmulps(ymm_f, ymm_f, ymm_i);
+      vaddps(ymm_f, ymm_f, ymm_c);
+    }
+    /* H_t = act_cell(C_t) * ogated */
+    ymm_t ymm_ct = first_ ? ymm_c : ymm_f;
+    ymm_t ymm_o = first_ ? ymm_f : ymm_c;
+    ymm_t ymm_tmp = ymm_i;
+    act<ymm_t>(ymm_tmp, ymm_ct, act_cell_);
+    vmovups(ymm_src, ptr[reg_ptr_gates + offset + 3 * num_]);
+    act<ymm_t>(ymm_o, ymm_src, act_gate_);
+    vmulps(ymm_o, ymm_tmp, ymm_o);
+    // save ct and ht
+    vmovups(ptr[reg_ptr_ct + offset], ymm_ct);
+    vmovups(ptr[reg_ptr_ht + offset], ymm_o);
+
+    offset += sizeof(float) * YMM_FLOAT_BLOCK;
+  }
+
   ret();
 }
 
