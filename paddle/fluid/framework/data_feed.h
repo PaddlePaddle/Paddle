@@ -176,8 +176,8 @@ class DataFeed {
     LOG(ERROR) << "error: The function SetBufferSize is not implemented";
     exit(-1);
   }
-  virtual const std::vector<std::string>& GetAllSlots() {return all_slots_;}
-  virtual const std::vector<std::string>& GetUseSlots() {return use_slots_;}
+  virtual const std::vector<std::string>& GetAllSlotAlias() {return all_slots_;}
+  virtual const std::vector<std::string>& GetUseSlotAlias() {return use_slots_;}
   std::vector<MixTensor>& GetFeedVec() {return feed_vec_;}
   virtual void AddFeedVar(Variable* var, const std::string& name);
  protected:

@@ -155,7 +155,7 @@ void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
   finish_set_filelist_ = false;
   finish_start_ = false;
-  /*
+  
   if (!data_feed_desc.has_multi_slot_desc()){
     LOG(ERROR) << "error: multi_slot_desc has not been set";
     exit(-1);
@@ -178,7 +178,7 @@ void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
     }
   }
   feed_vec_.resize(use_slots_.size());
-  */
+  
   finish_init_ = true;
 }
 
