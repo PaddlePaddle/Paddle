@@ -4355,7 +4355,8 @@ def hsigmoid(input,
              param_attr=None,
              bias_attr=None,
              name=None,
-             is_costum=False):
+             is_costum=False,
+             is_sparse=False):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
@@ -4394,9 +4395,11 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        is_costum: (bool|False)using user defined binary tree instead of default complete binary tree
+        is_sparse: (bool|False)using sparse update instead of dense update
 
     Returns:
-        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+        Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
 
     Examples:
 
@@ -4466,7 +4469,8 @@ def hsigmoid(input,
         inputs=inputs,
         outputs={"Out": out,
                  "PreOut": pre_out},
-        attrs={"num_classes": num_classes})
+        attrs={"num_classes": num_classes,
+               "is_sparse": is_sparse})
     return out
 
 
