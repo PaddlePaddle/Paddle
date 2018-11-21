@@ -191,10 +191,10 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       framework::Vector<int64_t> real_rows = cal_rows(path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
-
       w_grad->set_rows(real_rows);
       // build ids -> rows index map
       w_grad->SyncIndex();
+      w_grad->set_height(w->dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
       framework::DDim temp_dim(w->dims());
       set(temp_dim, 0, real_rows.size());

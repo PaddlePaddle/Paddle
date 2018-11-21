@@ -121,7 +121,9 @@ class SelectedRows {
   int64_t AutoGrownIndex(int64_t key, bool auto_grown);
 
   void SyncIndex();
-
+  /*
+   * @brief Get complete Dims before
+   */
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
@@ -136,7 +138,7 @@ class SelectedRows {
   std::unordered_map<int64_t, int64_t>
       id_to_index_;  // should not be used when ids has duplicate member
   std::unique_ptr<Tensor> value_{nullptr};
-  int64_t height_;
+  int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 

@@ -145,8 +145,9 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("PreOut"),
                    "Input(Preout) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("W")),
-                   "Output(W@Grad should not be null.)");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")));
+                   "Output(W@Grad should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output(X@Grad should not be null.");
     if (ctx->HasOutput(framework::GradVarName("Bias"))) {
       ctx->SetOutputDim(framework::GradVarName("Bias"),
                         ctx->GetInputDim("Bias"));
