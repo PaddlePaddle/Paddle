@@ -134,7 +134,7 @@ struct EOFException : public std::exception {
 #define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
 #else
 // there is no equivalent intrinsics in msvc.
-#define LIKELY(condition) !(condition)
+#define LIKELY(condition) (condition)
 #endif
 
 template <typename... Args>

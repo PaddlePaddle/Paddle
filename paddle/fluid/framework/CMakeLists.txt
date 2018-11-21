@@ -31,9 +31,7 @@ function(windows_symbolic TARGET)
 endfunction()
 
 add_subdirectory(ir)
-if (NOT WIN32)
 add_subdirectory(details)
-endif (NOT WIN32)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -118,13 +116,8 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
-if (NOT WIN32)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
     shape_inference data_transform lod_tensor profiler)
-else()
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor)
-endif(NOT WIN32)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -179,12 +172,10 @@ else()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
-if (NOT WIN32)
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
         graph build_strategy
         fast_threaded_ssa_graph_executor)
-endif() # NOT WIN32
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
