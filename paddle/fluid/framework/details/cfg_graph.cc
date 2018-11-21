@@ -24,13 +24,13 @@ namespace details {
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
   ops_ = ir::SortOperationsInSequence(graph);
   for (auto& op : ops_) {
-    PADDLE_ENFORCE(op->IsOp(), "expect operation in graph.");
+    PADDLE_ENFORCE(op->IsOp(), "expect operator in graph.");
     successors_[op] = std::list<ir::Node*>();
     predecessors_[op] = std::list<ir::Node*>();
-    live_in_[op] = std::unordered_set<ir::Node*>();
-    live_out_[op] = std::unordered_set<ir::Node*>();
-    uses_[op] = std::unordered_set<ir::Node*>();
-    defs_[op] = std::unordered_set<ir::Node*>();
+    live_in_[op] = std::unordered_set<std::string>();
+    live_out_[op] = std::unordered_set<std::string>();
+    uses_[op] = std::unordered_set<std::string>();
+    defs_[op] = std::unordered_set<std::string>();
   }
   ConnectNodes();
 }
@@ -82,12 +82,12 @@ void ControlFlowGraph::ConnectNodes() {
     }
     for (auto& input_var : op->inputs) {
       if (input_var->IsVar() && !input_var->IsCtrlVar()) {
-        uses_[op].insert(input_var);
+        uses_[op].insert(input_var->Name());
       }
     }
     for (auto& output_var : op->outputs) {
       if (output_var->IsVar() && !output_var->IsCtrlVar()) {
-        defs_[op].insert(output_var);
+        defs_[op].insert(output_var->Name());
       }
     }
   }
@@ -100,10 +100,8 @@ void ControlFlowGraph::LiveVariableAnalysis() {
   // variable set for each op, then the diff between in/out will be used for
   // the variable reuse. For detail refer to
   // http://www.cs.cornell.edu/courses/cs4120/2013fa/lectures/lec26-fa13.pdf
-  std::unordered_set<ir::Node*> node_live_in;
-  std::list<ir::Node*> worklist(ops_.rbegin(), ops_.rend());
-  auto set_equal = [](const std::unordered_set<ir::Node*>& lhs,
-                      const std::unordered_set<ir::Node*>& rhs) {
+  auto set_equal = [](const std::unordered_set<std::string>& lhs,
+                      const std::unordered_set<std::string>& rhs) {
     if (lhs.size() != rhs.size()) return false;
     for (auto& item : lhs) {
       if (rhs.find(item) == rhs.end()) {
@@ -113,6 +111,8 @@ void ControlFlowGraph::LiveVariableAnalysis() {
     return true;
   };
 
+  std::unordered_set<std::string> node_live_in;
+  std::list<ir::Node*> worklist(ops_.rbegin(), ops_.rend());
   while (!worklist.empty()) {
     ir::Node* op = worklist.front();
     worklist.pop_front();
@@ -137,10 +137,21 @@ void ControlFlowGraph::LiveVariableAnalysis() {
       }
     }
   }
+
+  // for (size_t i = 0; i < ops_.size(); ++i) {
+  //   auto& op = ops_[i];
+  //   VLOG(3) << i << " "<< op->Name();
+  //   VLOG(3) << "live in " << this->LiveIn(op).size();
+  //   VLOG(3) << "live out " << this->LiveOut(op).size();
+  //   VLOG(3) << "use " << this->Use(op).size();
+  //   VLOG(3) << "def " << this->Def(op).size();
+  //   VLOG(3) << "successors" << successors_[op].size();
+  //   VLOG(3) << "predecessors" << predecessors_[op].size();
+  // }
 }
 
-void ControlFlowGraph::UpdateGraph(ir::Node* old_node, ir::Node* new_node,
-                                   int begin_idx) {
+void ControlFlowGraph::UpdateGraph(const std::string& old_node,
+                                   const std::string& new_node, int begin_idx) {
   // update graph from begin idx to the end
   for (size_t i = begin_idx; i != ops_.size(); ++i) {
     auto* op = ops_[i];
@@ -163,7 +174,7 @@ void ControlFlowGraph::UpdateGraph(ir::Node* old_node, ir::Node* new_node,
   }
 }
 
-const std::unordered_set<ir::Node*>& ControlFlowGraph::LiveIn(
+const std::unordered_set<std::string>& ControlFlowGraph::LiveIn(
     ir::Node* op) const {
   auto it = live_in_.find(op);
   PADDLE_ENFORCE(
@@ -172,7 +183,7 @@ const std::unordered_set<ir::Node*>& ControlFlowGraph::LiveIn(
   return it->second;
 }
 
-const std::unordered_set<ir::Node*>& ControlFlowGraph::LiveOut(
+const std::unordered_set<std::string>& ControlFlowGraph::LiveOut(
     ir::Node* op) const {
   auto it = live_out_.find(op);
   PADDLE_ENFORCE(
@@ -180,7 +191,8 @@ const std::unordered_set<ir::Node*>& ControlFlowGraph::LiveOut(
       string::Sprintf("Expect %s in live_out, but Not Found.", op->Name()));
   return it->second;
 }
-const std::unordered_set<ir::Node*>& ControlFlowGraph::Def(ir::Node* op) const {
+const std::unordered_set<std::string>& ControlFlowGraph::Def(
+    ir::Node* op) const {
   auto it = defs_.find(op);
   PADDLE_ENFORCE(
       it != defs_.end(),
@@ -188,7 +200,8 @@ const std::unordered_set<ir::Node*>& ControlFlowGraph::Def(ir::Node* op) const {
   return it->second;
 }
 
-const std::unordered_set<ir::Node*>& ControlFlowGraph::Use(ir::Node* op) const {
+const std::unordered_set<std::string>& ControlFlowGraph::Use(
+    ir::Node* op) const {
   auto it = uses_.find(op);
   PADDLE_ENFORCE(
       it != uses_.end(),
@@ -199,6 +212,25 @@ const std::unordered_set<ir::Node*>& ControlFlowGraph::Use(ir::Node* op) const {
 const std::vector<ir::Node*>& ControlFlowGraph::Ops() const { return ops_; }
 
 std::vector<ir::Node*>& ControlFlowGraph::Ops() { return ops_; }
+
+ir::Node* ControlFlowGraph::GetNodeFromVarName(const std::string& name,
+                                               ir::Node* op) const {
+  // in ssa-graph, different version nodes have same name, this get the latest
+  // version var
+  // before op.
+  ir::Node* found_node = nullptr;
+  for (auto* node : ops_) {
+    if (node == op) break;
+    for (auto& output : node->outputs) {
+      if (output->Name() == name) {
+        found_node = output;
+      }
+    }
+  }
+  // PADDLE_ENFORCE(found_node != nullptr, string::Sprintf("Not found %s before
+  // op %s", name, op->Name()));
+  return found_node;
+}
 
 }  // namespace details
 }  // namespace framework

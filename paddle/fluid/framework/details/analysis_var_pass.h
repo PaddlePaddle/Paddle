@@ -35,11 +35,19 @@ class AnalysisVarPass : public ir::Pass {
 
  private:
   void UpdateGraphAndDesc(size_t idx, ir::Node* var, ir::Node* cache_var) const;
-  // search pool for a best fit Node.
-  bool NodeMatch(ir::Node* var, ir::Node** cache, int* idx) const;
-  // scan subblock and collect the variables.
+  // // search pool for a best fit Node.
+  // bool NodeMatch(ir::Node* var, ir::Node** cache, int* idx) const;
+  // valid a tensor can be reuse or not
+  bool NodeCanReused(ir::Node* node) const;
+  // scan subblock and collect the output variables.
   std::unordered_set<ir::Node*> GetSubBlockOutputVars(
       const std::unordered_set<ir::Node*>&) const;
+  // scan subblock and collect the output/input variables.
+  std::unordered_set<std::string> GetSubBlockVars(
+      const std::unordered_set<ir::Node*>&) const;
+  // check op has subblock or not
+  bool OpHasSubBlock(OpDesc* desc) const;
+
   // Reuse Node Pool, Owned.
   mutable details::OrderedReusedNodePairPool pool;
   // controlflow Graph

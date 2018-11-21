@@ -37,30 +37,34 @@ class ControlFlowGraph {
 
   void LiveVariableAnalysis();
 
-  void UpdateGraph(ir::Node* old_node, ir::Node* new_node, int beign_idx);
+  void UpdateGraph(const std::string& old_node, const std::string& new_node,
+                   int begin_idx);
 
-  const std::unordered_set<ir::Node*>& LiveIn(ir::Node* op) const;
-  const std::unordered_set<ir::Node*>& LiveOut(ir::Node* op) const;
-  const std::unordered_set<ir::Node*>& Def(ir::Node* op) const;
-  const std::unordered_set<ir::Node*>& Use(ir::Node* op) const;
+  const std::unordered_set<std::string>& LiveIn(ir::Node* op) const;
+  const std::unordered_set<std::string>& LiveOut(ir::Node* op) const;
+  const std::unordered_set<std::string>& Def(ir::Node* op) const;
+  const std::unordered_set<std::string>& Use(ir::Node* op) const;
   const std::vector<ir::Node*>& Ops() const;
   std::vector<ir::Node*>& Ops();
+
+  // for ssa-graph nodes
+  ir::Node* GetNodeFromVarName(const std::string& name, ir::Node* op) const;
 
  private:
   void ConnectNodes();
   using NodeListMap = std::unordered_map<ir::Node*, std::list<ir::Node*>>;
-  using NodeSetMap =
-      std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>>;
+  using VarSetMap =
+      std::unordered_map<ir::Node*, std::unordered_set<std::string>>;
   // successors ops use the output variables.
   NodeListMap successors_;
   // predecessors ops generated input variables.
   NodeListMap predecessors_;
   // variables lived before run current op.
-  NodeSetMap live_in_;
+  VarSetMap live_in_;
   // variables lived after run current op.
-  NodeSetMap live_out_;
-  NodeSetMap uses_;             // op inputs
-  NodeSetMap defs_;             // op outputs
+  VarSetMap live_out_;
+  VarSetMap uses_;              // op inputs
+  VarSetMap defs_;              // op outputs
   std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
 

@@ -117,10 +117,6 @@ class OpDesc {
 
   void SetIsTarget(bool is_target) { desc_.set_is_target(is_target); }
 
-  int GetOrderId() const { return desc_.order_id();}
-
-  void SetOrderId(int id) { desc_.set_order_id(id);}
-
   void Flush();
 
   BlockDesc *Block() { return this->block_; }

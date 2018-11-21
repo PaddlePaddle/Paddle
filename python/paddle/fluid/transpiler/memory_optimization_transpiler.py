@@ -191,6 +191,19 @@ class ControlFlowGraph(object):
                 if cache not in self.pool:
                     self.pool.append(cache)
 
+        def comparator(x, cache):
+            x_shape = x[1]
+            cache_shape = cache[1]
+            x_size = abs(reduce(lambda x, y: x * y, x_shape))
+            cache_size = abs(reduce(lambda x, y: x * y, cache_shape))
+            if (x_shape[0] == -1 and cache_shape[0] == -1) or \
+               (x_shape[0] != -1 and cache_shape[0] != -1) :
+                return x_size <= cache_size
+            else:
+                return False
+
+        self.pool.sort(cmp=comparator)
+
     def _get_diff(self, a, b):
         u = a & b
         return a - u, b - u
@@ -228,7 +241,7 @@ class ControlFlowGraph(object):
     def _update_skip_opt_set(self):
         for i in range(self.op_size):
             op = self._ops[i]
-            if op.type() == "fill_constant" and op.attr("force_cpu") == True:
+            if op.attr("force_cpu") == True:
                 self._skip_opt.update(op.output_arg_names())
 
     def release_memory(self, skip_opt_set=None):
@@ -328,11 +341,12 @@ class ControlFlowGraph(object):
                             continue
 
                         if PRINT_LOG:
-                            print(("Hit Cache !!!! cache pool index "
-                                   "is %d, var name is %s, "
-                                   "cached var name is %s, "
-                                   "var shape is %s ") % (index, x, cache_var,
-                                                          str(cache_shape)))
+                            print(
+                                ("!!! %d,  %s => %s, cache idx %d, pool size %d"
+                                 % (counter, x + str(x_shape),
+                                    cache_var + str(cache_shape), index,
+                                    len(self.pool))))
+                            counter += 1
                         self.pool.pop(index)
                         # Rename the var to the cache var already with
                         # memory allocated in order to reuse the memory.

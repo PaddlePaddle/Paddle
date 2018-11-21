@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include <atomic>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -102,12 +101,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     all_vars.emplace(var->Name(), var);
   }
 
-  // NOTE(dzh): the Graph/Node instance may be created/release in different
-  // passes.
-  // memory reuse need a mark to record the op sequence order.
-  std::atomic<int> order_id(-1);
   for (auto *op : program.Block(0).AllOps()) {
-    op->SetOrderId(order_id.fetch_add(1));
     ir::Node *node = CreateOpNode(op);
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
