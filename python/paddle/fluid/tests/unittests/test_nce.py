@@ -68,7 +68,9 @@ class TestNCE(OpTest):
         self.attrs = {
             'num_total_classes': num_classes,
             'num_neg_samples': num_neg_samples,
-            'custom_neg_classes': list(range(num_neg_samples))
+            'custom_neg_classes': list(range(num_neg_samples)),
+            'seed': 0,
+            'sampler': 0
         }
         self.inputs = {
             'Input': input,

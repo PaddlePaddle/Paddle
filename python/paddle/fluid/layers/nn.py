@@ -110,6 +110,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'selu',
     'log',
     'crop',
     'rank_loss',
@@ -4186,7 +4187,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False):
+def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -4211,6 +4212,7 @@ def warpctc(input, label, blank=0, norm_by_times=False):
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
+       use_cudnn (bool, default false): Whether to use cudnn.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -4234,8 +4236,11 @@ def warpctc(input, label, blank=0, norm_by_times=False):
                 'Label': [label]},
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
-        attrs={'blank': blank,
-               'norm_by_times': norm_by_times})
+        attrs={
+            'blank': blank,
+            'norm_by_times': norm_by_times,
+            'use_cudnn': use_cudnn
+        })
     return loss_out
 
 
@@ -4308,7 +4313,10 @@ def nce(input,
         param_attr=None,
         bias_attr=None,
         num_neg_samples=None,
-        name=None):
+        name=None,
+        sampler="uniform",
+        custom_dist=None,
+        seed=0):
     """
     ${comment}
 
@@ -4331,6 +4339,14 @@ def nce(input,
         num_neg_samples (int): ${num_neg_samples_comment}
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        sampler (str): The sampler used to sample class from negtive classes.
+                       It can be 'uniform', 'log_uniform' or 'custom_dist'.
+                       default: 'uniform'.
+        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+                       It is used when sampler is set to 'custom_dist'.
+                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       default: None.
+        seed (int): The seed used in sampler. default: 0.
 
     Returns:
         Variable: The output nce loss.
@@ -4360,6 +4376,16 @@ def nce(input,
             loss = layers.nce(input=embs, label=words[label_word],
                           num_total_classes=dict_size, param_attr='nce.w',
                           bias_attr='nce.b')
+
+            #or use custom distribution
+            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=5, param_attr='nce.w',
+                          bias_attr='nce.b',
+                          num_neg_samples=3,
+                          sampler="custom_dist",
+                          custom_dist=dist)
+            
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -4394,9 +4420,31 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
+    inputs = {
+        'Input': input,
+        'Label': label,
+        'Weight': w,
+        'Bias': b,
+        'SampleWeight': sample_weight if sample_weight is not None else []
+    }
+
+    if sampler == "uniform":
+        sampler = 0
+    elif sampler == "log_uniform":
+        sampler = 1
+    elif sampler == "custom_dist":
+        assert custom_dist is not None
+        assert isinstance(custom_dist, Variable)
+        inputs['CustomDistribution'] = custom_dist
+        sampler = 2
+    else:
+        raise Exception("Unsupported sampler type.")
+
     attrs = {
         'num_total_classes': int(num_total_classes),
-        'num_neg_samples': num_neg_samples
+        'num_neg_samples': num_neg_samples,
+        'seed': seed,
+        'sampler': sampler
     }
 
     helper.append_op(
@@ -5740,7 +5788,7 @@ def image_resize(input,
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.image_resize(input, out_shape=[12, 12])
+            out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
     """
     resample_methods = {
         'BILINEAR': 'bilinear',
@@ -5843,6 +5891,11 @@ def resize_bilinear(input,
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
@@ -5889,6 +5942,11 @@ def resize_nearest(input,
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
 
     return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape)
@@ -6179,6 +6237,47 @@ def relu(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def selu(x, scale=None, alpha=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): The input tensor.
+        scale(float, None): If the scale is not set,
+            the default value is 1.0507009873554804934193349852946.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        alpha(float, None): If the alpha is not set,
+            the default value is 1.6732632423543772848170429916717.
+            For more information about this value, please refer
+            to: https://arxiv.org/abs/1706.02515.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.selu(x)
+    """
+    helper = LayerHelper('selu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    attrs = {}
+    if scale is not None:
+        attrs["scale"] = scale
+    if alpha is not None:
+        attrs["alpha"] = alpha
+
+    helper.append_op(
+        type="selu", inputs={"X": x}, outputs={"Out": out}, attrs=attrs)
     return out
 
 
@@ -6860,8 +6959,15 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         t_max(${t_max_type}|24.0): ${t_max_comment}
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-     Returns:
+    Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
     """
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6883,8 +6989,15 @@ def leaky_relu(x, alpha=0.02, name=None):
         alpha(${alpha_type}|0.02): ${alpha_comment}
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-     Returns:
+    Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        y = fluid.layers.leaky_relu(x, alpha=0.01)
     """
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6905,8 +7018,15 @@ def soft_relu(x, threshold=40.0, name=None):
         threshold(${threshold_type}|40.0): ${threshold_comment}
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-     Returns:
+    Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        y = fluid.layers.soft_relu(x, threshold=20.0)
     """
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
