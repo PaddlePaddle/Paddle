@@ -273,12 +273,26 @@ class NCEGradKernel : public framework::OpKernel<T> {
       std::set<T> st(labels.begin(), labels.end());
       labels.assign(st.begin(), st.end());
 
+      auto *bias_var = context.InputVar("Bias");
+      DDim bias_dim;
+      if (bias_var->IsType<LoDTensor>()) {
+        bias_dim = context.Input<LoDTensor>("Bias")->dims();
+      } else if (bias_var->IsType<SelectedRows>()) {
+        auto *table_t = context.Input<SelectedRows>("Bias");
+        bias_dim = table_t->value().dims();
+      } else {
+        PADDLE_THROW(
+            "The parameter Bias of a NCE_OP "
+            "must be either LoDTensor or SelectedRows");
+      }
+
       auto d_bias =
           context.Output<SelectedRows>(framework::GradVarName("Bias"));
       d_bias->set_rows(labels);
-      d_bias->set_height(labels.size());
+      d_bias->set_height(bias_dim[0]);
 
-      d_bias->mutable_value()->Resize({static_cast<int64_t>(labels.size()), 1});
+      d_bias->mutable_value()->Resize(
+          {static_cast<int64_t>(labels.size()), bias_dim[1]});
       T *d_bias_data =
           d_bias->mutable_value()->mutable_data<T>(context.GetPlace());
       std::fill(d_bias_data, d_bias_data + labels.size(), 0.0);
@@ -296,14 +310,14 @@ class NCEGradKernel : public framework::OpKernel<T> {
         table_dim = table_t->value().dims();
       } else {
         PADDLE_THROW(
-            "The parameter W of a LookupTable "
+            "The parameter Weight of a NCE_OP "
             "must be either LoDTensor or SelectedRows");
       }
 
       auto d_w = context.Output<SelectedRows>(framework::GradVarName("Weight"));
 
       d_w->set_rows(labels);
-      d_w->set_height(labels.size());
+      d_w->set_height(table_dim[0]);
 
       auto *d_table_value = d_w->mutable_value();
       d_table_value->Resize(
