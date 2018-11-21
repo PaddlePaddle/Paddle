@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -439,6 +440,9 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       scope->DropKids();
     }
   }
+
+  // Clean the transfer data cache, which is used in NativeExecutor.
+  global_transfer_scope_cache().clear();
 }
 
 void Executor::RunPreparedContext(
