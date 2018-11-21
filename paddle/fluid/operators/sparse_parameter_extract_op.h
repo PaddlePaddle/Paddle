@@ -58,26 +58,22 @@ class SparseParameterExtractOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < grad_rows.size(); i++) {
       PADDLE_ENFORCE(grad_rows[i] < grad_height,
                      "Input rows index should less than height");
-      for (size_t j = 0; j < grad_row_numel; j++) {
-        auto place = ctx.GetPlace();
-        if (platform::is_cpu_place(place)) {
-          auto ctx_cpu_place = boost::get<platform::CPUPlace>(place);
-          memory::Copy(ctx_cpu_place, param_out_data + i * grad_row_numel,
-                       ctx_cpu_place,
-                       param_data + grad_rows[i] * grad_row_numel,
-                       sizeof(T) * grad_row_numel);
-        }
-#ifdef PADDLE_WITH_CUDA
-        else if (platform::is_gpu_place(place)) {  // NOLINT
-          auto ctx_gpu_place = boost::get<platform::CUDAPlace>(place);
-          auto stream =
-              reinterpret_cast<const platform::CUDADeviceContext &>(ctx)
-                  .stream();
-          memory::Copy(ctx_gpu_place, dst_ptr, ctx_gpu_place, src_ptr, size,
-                       stream);
-        }
-#endif
+      auto place = ctx.GetPlace();
+      if (platform::is_cpu_place(place)) {
+        auto ctx_cpu_place = boost::get<platform::CPUPlace>(place);
+        memory::Copy(ctx_cpu_place, param_out_data + i * grad_row_numel,
+                     ctx_cpu_place, param_data + grad_rows[i] * grad_row_numel,
+                     sizeof(T) * grad_row_numel);
       }
+#ifdef PADDLE_WITH_CUDA
+      else if (platform::is_gpu_place(place)) {  // NOLINT
+        auto ctx_gpu_place = boost::get<platform::CUDAPlace>(place);
+        auto stream =
+            reinterpret_cast<const platform::CUDADeviceContext &>(ctx).stream();
+        memory::Copy(ctx_gpu_place, dst_ptr, ctx_gpu_place, src_ptr, size,
+                     stream);
+      }
+#endif
     }
   }
 };

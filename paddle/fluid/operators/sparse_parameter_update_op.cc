@@ -31,8 +31,8 @@ class SparseParameterUpdateOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasOutput("ParamOut"),
         "Output(ParamOut) of SparseParameterUpdateOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Param"), ctx->Outputs("ParamOut"),
-                      "Param and ParamOut should be the same");
+    PADDLE_ENFORCE(ctx->Inputs("Param") == ctx->Outputs("ParamOut"),
+                   "Param and ParamOut should be the same");
   }
 
  protected:
@@ -75,7 +75,7 @@ update the value in SparseParam to Param.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sparse_parameter_update, ops::SparseParameterUpdateOp,
                   ops::SparseParameterUpdateOpMaker,
-                  paddle::framework::EmptySparseParamOpMaker,
+                  paddle::framework::EmptyGradOpMaker,
                   ops::SparseParameterUpdateOpInferVarType);
 REGISTER_OP_CPU_KERNEL(sparse_parameter_update,
                        ops::SparseParameterUpdateOpKernel<float>,
