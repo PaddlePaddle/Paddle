@@ -98,7 +98,6 @@ void DataFeed::CheckStart() {
 
 template<typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
-  CheckInit();
   if (queue_size <= 0) {
     LOG(ERROR) << "error: illegal queue size: " << queue_size;
     return;
@@ -165,6 +164,7 @@ void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
   }
   paddle::framework::MultiSlotDesc multi_slot_desc = data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch());
+  SetQueueSize(data_feed_desc.batch()); 
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);

@@ -19,7 +19,7 @@ import contextlib
 import six
 from .framework import Program, default_main_program, Variable
 from . import core
-from .executor import global_scope
+from .executor import global_scope, Executor
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 
@@ -74,6 +74,19 @@ class AsyncExecutor(object):
 
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
+
+    def run_startup_program(self, program=None, place=None):
+        if program is None:
+            program = fluid.default_startup_program()
+
+        if place is None:
+            place = core.CPUPlace()
+
+        if not isinstance(place, core.CPUPlace):
+            raise ValueError("AsyncExecutor only supports CPU device")
+
+        executor = Executor(place)
+        executor.run(program)
 
     def run(self, program, data_feed, filelist, thread_num, fetch):
         """
