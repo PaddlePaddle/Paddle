@@ -309,6 +309,14 @@ set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
+if (ON_INFER)
+    message(STATUS "On inference mode, will take place some specific optimization.")
+    add_definitions(-DPADDLE_ON_INFERENCE)
+else()
+    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
+    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
+
 add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
@@ -318,11 +326,4 @@ if(WITH_DOC)
     find_package(Sphinx REQUIRED)
     find_python_module(recommonmark REQUIRED)
     add_subdirectory(doc)
-endif()
-
-if (ON_INFER)
-    message(STATUS "On inference mode, will take place some specific optimization.")
-else()
-    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
-    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
 endif()

@@ -166,8 +166,8 @@ copy(framework_lib DEPS ${framework_lib_deps}
 
 set(module "memory")
 copy(memory_lib
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/detail/*.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/detail/*.h ${src_dir}/${module}/allocation/*.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail ${dst_dir}/${module}/allocation
         )
 
 set(inference_deps paddle_fluid_shared paddle_fluid)
