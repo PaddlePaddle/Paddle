@@ -26,12 +26,13 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
+// TODO(TJ): move these to some proper place
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 #define EXP_MAX_INPUT 40.0
-#define AVX_FLOAT_BLOCK 8
-#define AVX2_FLOAT_BLOCK 8
-#define AVX512_FLOAT_BLOCK 16
+#define XMM_FLOAT_BLOCK 4
+#define YMM_FLOAT_BLOCK 8
+#define ZMM_FLOAT_BLOCK 16
 
 typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
@@ -94,41 +95,35 @@ class VAddBiasKernel : public Kernel {
   void (*Compute)(const T *, const T *, T *, int);
 };
 
+#ifdef PADDLE_WITH_MKLDNN
+template <typename T>
+class EltwiseMulnChw16cNCKernel : public Kernel {
+ public:
+  // nChw16c = nChw16c .* NC
+  void (*Compute)(const float *, const float *, float *, int, int);
+};
+#endif
+
 template <typename T>
 class VActKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, T *y) const = 0;
+  void (*Compute)(const T *, T *, int);
 };
 
 template <typename T>
-class VReluKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VReluKernel : public VActKernel<T> {};
 
 template <typename T>
-class VIdentityKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VIdentityKernel : public VActKernel<T> {};
 
 template <typename T>
-class VExpKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VExpKernel : public VActKernel<T> {};
 
 template <typename T>
-class VSigmoidKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VSigmoidKernel : public VActKernel<T> {};
 
 template <typename T>
-class VTanhKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VTanhKernel : public VActKernel<T> {};
 
 template <typename T>
 class LSTMKernel : public Kernel {
@@ -158,6 +153,14 @@ class CRFDecodeKernel : public Kernel {
  public:
   virtual void Compute(const int seq_len, const T *x, const T *w, T *alpha,
                        int *track) const = 0;
+};
+
+template <typename T>
+class LayerNormKernel : public Kernel {
+ public:
+  virtual void Compute(T *x, T *out, T *mean, T *var, const T *scale,
+                       const T *bias, int height,
+                       const float epsilon) const = 0;
 };
 
 }  // namespace jitkernel
