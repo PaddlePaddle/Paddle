@@ -142,7 +142,7 @@ if os.name == 'nt':
 
 if '${WITH_FLUID_ONLY}'== 'OFF':
     package_data['paddle.v2.master']=['libpaddle_master' + ext_name]
-    package_data['py_paddle']=['*.py','_swig_paddle' +  + ext_name]
+    package_data['py_paddle']=['*.py','_swig_paddle' + ext_name]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',

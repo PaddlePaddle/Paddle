@@ -30,6 +30,7 @@ TEST(Analyzer, analysis_without_tensorrt) {
   Argument argument;
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetUseGPU(false);
 
   Analyzer analyser;
   analyser.Run(&argument);
@@ -41,6 +42,7 @@ TEST(Analyzer, analysis_with_tensorrt) {
   argument.SetTensorRtWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetUseGPU(false);
 
   Analyzer analyser;
   analyser.Run(&argument);
