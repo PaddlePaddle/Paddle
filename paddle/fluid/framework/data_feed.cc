@@ -41,6 +41,7 @@ namespace framework {
 std::vector<std::string> DataFeed::filelist_;
 size_t DataFeed::file_idx_;
 std::mutex DataFeed::mutex_for_pick_file_;
+bool DataFeed::finish_set_filelist_;
 
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
