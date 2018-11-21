@@ -205,7 +205,7 @@ class DataFeed {
   int batch_size_;
 
   bool finish_init_;
-  bool finish_set_filelist_;
+  static bool finish_set_filelist_;
   bool finish_binding_memory_;
   bool finish_start_;
 };
