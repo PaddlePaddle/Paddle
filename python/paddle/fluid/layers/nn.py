@@ -2326,9 +2326,11 @@ def group_norm(input,
         epsilon(float): The small value added to the variance to prevent
             division by zero.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-            scale :math:`g`.
+            scale :math:`g`. If it is set to False, no scale will be added to the output units.
+            If it is set to None, the bias is initialized one. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
-            bias :math:`b`.
+            bias :math:`b`. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         act(str): Activation to be applied to the output of group normalizaiton.
         data_layout(string|NCHW): Only NCHW is supported.
         name (str): The name of this layer. It is optional.
