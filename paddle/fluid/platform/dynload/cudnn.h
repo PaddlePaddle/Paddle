@@ -152,9 +152,16 @@ CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7001
-#define CUDNN_DNN_ROUTINE_EACH_R7(__macro) \
-  __macro(cudnnSetConvolutionGroupCount);  \
-  __macro(cudnnSetConvolutionMathType);
+#define CUDNN_DNN_ROUTINE_EACH_R7(__macro)        \
+  __macro(cudnnSetConvolutionGroupCount);         \
+  __macro(cudnnSetConvolutionMathType);           \
+  __macro(cudnnConvolutionBiasActivationForward); \
+  __macro(cudnnCreateCTCLossDescriptor);          \
+  __macro(cudnnDestroyCTCLossDescriptor);         \
+  __macro(cudnnGetCTCLossDescriptor);             \
+  __macro(cudnnSetCTCLossDescriptor);             \
+  __macro(cudnnGetCTCLossWorkspaceSize);          \
+  __macro(cudnnCTCLoss);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 

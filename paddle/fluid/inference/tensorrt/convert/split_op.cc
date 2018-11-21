@@ -26,7 +26,7 @@ class SplitOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(40) << "convert a fluid split op to tensorrt split layer";
+    VLOG(4) << "convert a fluid split op to tensorrt split layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -50,7 +50,7 @@ class SplitOpConverter : public OpConverter {
     PADDLE_ENFORCE(output_lengths.size() == output_num);
 
     //
-    SplitPlugin* plugin = new SplitPlugin(axis, output_lengths);
+    plugin::SplitPlugin* plugin = new plugin::SplitPlugin(axis, output_lengths);
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);
 

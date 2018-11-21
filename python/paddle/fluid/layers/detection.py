@@ -283,11 +283,7 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    compile_shape = scores.shape
-    run_shape = nn.shape(scores)
-    scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
