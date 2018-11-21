@@ -438,7 +438,7 @@ if __name__ == "__main__":
     client = HDFSClient(hadoop_home, configs)
 
     client.ls("/user/com/train-25")
-    files = client.lsr("/user/com/train-25/model")
+    files = client.lsr("/user/com/train-25/models")
 
     downloads = multi_download(
         client,
