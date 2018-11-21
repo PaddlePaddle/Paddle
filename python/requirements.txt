@@ -1,5 +1,5 @@
 requests==2.9.2
-numpy>=1.12 #TODO:change to ">=1.12" to support python3.7
+numpy>=1.12
 protobuf==3.1
 recordio>=0.1.0
 matplotlib==2.2.3 # TODO: let python3 paddlepaddle package use latest matplotlib

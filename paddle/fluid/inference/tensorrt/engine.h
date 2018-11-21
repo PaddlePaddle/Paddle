@@ -40,6 +40,7 @@ class TensorRTEngine : public EngineBase {
   // Weight is model parameter.
   class Weight {
    public:
+    Weight() = default;
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
@@ -127,7 +128,7 @@ class TensorRTEngine : public EngineBase {
   int GetRuntimeBatch();
   int GetDevice() { return device_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
-                                    int nbInputs, PluginTensorRT*);
+                                    int num_inputs, plugin::PluginTensorRT*);
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -170,7 +171,7 @@ class TensorRTEngine : public EngineBase {
 
   // The specific GPU id that the TensorRTEngine bounded to.
   int device_;
-  std::vector<std::unique_ptr<PluginTensorRT>> owned_plugin_;
+  std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
 
   // TensorRT related internal members
   template <typename T>
