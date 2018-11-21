@@ -18,12 +18,6 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
 
-#if defined(_WIN32)
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#define GOOGLE_GLOG_DLL_DECL
-#endif
-
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
