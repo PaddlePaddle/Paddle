@@ -7,16 +7,17 @@ set(analysis_deps # analysis_deps can be extended accross the project
 add_subdirectory(ir_passes)
 add_subdirectory(passes)
 
-cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES})
+cc_library(analysis_helper SRCS helper.cc DEPS framework_proto proto_desc graph paddle_fluid_api)
+
+cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES} analysis_helper)
 
 cc_library(argument SRCS argument.cc DEPS scope proto_desc)
 cc_library(analysis_pass SRCS analysis_pass.cc DEPS proto_desc)
 
 cc_library(analysis SRCS
   analyzer.cc
-  helper.cc
   analysis_pass
-  DEPS ${analysis_deps}
+  DEPS ${analysis_deps} analysis_helper
   )
 
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)

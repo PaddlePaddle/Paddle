@@ -42,6 +42,7 @@
 | QiJune | Jun Qi |
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
+| Sand3r- | Michal Gallus |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
