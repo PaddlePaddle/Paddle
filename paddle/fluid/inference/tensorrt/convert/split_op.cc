@@ -40,7 +40,7 @@ class SplitOpConverter : public OpConverter {
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     std::vector<int> output_lengths =
         boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
-    PADDLE_ENFORCE(axis != 0);
+    // PADDLE_ENFORCE(axis != 0);
     if (axis < 0) {
       axis += input_dims.nbDims;
     } else {
@@ -48,7 +48,6 @@ class SplitOpConverter : public OpConverter {
     }
 
     PADDLE_ENFORCE(output_lengths.size() == output_num);
-
     //
     plugin::SplitPlugin* plugin = new plugin::SplitPlugin(axis, output_lengths);
     nvinfer1::IPluginLayer* layer =
