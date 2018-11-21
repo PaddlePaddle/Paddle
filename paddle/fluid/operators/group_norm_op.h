@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
