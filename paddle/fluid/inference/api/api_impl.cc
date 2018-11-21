@@ -139,7 +139,6 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   Timer timer;
   timer.tic();
   // set feed variable
-  std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
