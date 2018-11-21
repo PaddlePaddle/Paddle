@@ -341,11 +341,11 @@ TEST(JitKernel, lstm) {
     RandomVec<float>(d, ct_1.data(), -2.f, 2.f);
     memcpy(xref.data(), x.data(), sizeof(float) * d4);
     std::string act_gate = "sigmoid", act_cand = "tanh", act_cell = "tanh";
+    const jit::lstm_attr_t attr(d, act_gate, act_cand, act_cell, false);
     const auto& ker =
         jit::KernelPool::Instance()
-            .template Get<jit::LSTMKernel<float>, const std::string&,
-                          const std::string&, const std::string&>(
-                act_gate, act_cand, act_cell, d, false);
+            .template Get<jit::LSTMKernel<float>, const jit::lstm_attr_t&>(
+                attr);
     // below kernels are used to compute refer
     const auto& vsigmoid_3d =
         jit::KernelPool::Instance().template Get<jit::VSigmoidKernel<float>>(
@@ -366,14 +366,16 @@ TEST(JitKernel, lstm) {
     float* ht_ref_data = ht_ref.data();
     // compute once to check correctness
     jit::lstm_t step;
-    jit::lstm_attr_t attr(d, act_gate, act_cand, act_cell);
     step.gates = xref_data;
     step.ct_1 = ct_1_data;
     step.ct = ct_ref_data;
     step.ht = ht_ref_data;
     refer::LSTMCtHt<float>(&step, &attr);
 
-    ker->ComputeCtHt(x_data, ct_1_data, ct_tgt_data, ht_tgt_data);
+    step.gates = x_data;
+    step.ct = ct_tgt_data;
+    step.ht = ht_tgt_data;
+    ker->ComputeCtHt(&step, &attr);
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ct_tgt_data[i], ct_ref_data[i], 1e-3);
       EXPECT_NEAR(ht_tgt_data[i], ht_ref_data[i], 1e-3);
@@ -392,7 +394,7 @@ TEST(JitKernel, lstm) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->ComputeCtHt(x_data, ct_1_data, ct_tgt_data, ht_tgt_data);
+      ker->ComputeCtHt(&step, &attr);
     }
     auto ttgte = GetCurrentUS();
     VLOG(30) << "Vec size " << d
@@ -710,21 +712,21 @@ TEST(JitKernel, pool) {
   namespace jit = paddle::operators::math::jitkernel;
   const int frame_size = 4;
   std::string act_gate = "sigmoid", act_cand = "tanh", act_cell = "tanh";
+  jit::lstm_attr_t attr(frame_size, act_gate, act_cand, act_cell, false);
+
   const auto& plstm1 =
       jit::KernelPool::Instance()
-          .template Get<jit::LSTMKernel<float>, const std::string&,
-                        const std::string&, const std::string&>(
-              act_gate, act_cand, act_cell, frame_size, false);
+          .template Get<jit::LSTMKernel<float>, const jit::lstm_attr_t&>(attr);
+
   const auto& plstm2 =
       jit::KernelPool::Instance()
-          .template Get<jit::LSTMKernel<float>, const std::string&,
-                        const std::string&, const std::string&>(
-              act_gate, act_cand, act_cell, frame_size, false);
+          .template Get<jit::LSTMKernel<float>, const jit::lstm_attr_t&>(attr);
+  EXPECT_EQ(plstm1, plstm2);
+
   const auto& peephole =
       jit::KernelPool::Instance()
-          .template Get<jit::LSTMKernel<float>, const std::string&,
-                        const std::string&, const std::string&>(
-              act_gate, act_cand, act_cell, frame_size, true);
+          .template Get<jit::LSTMKernel<float>, const jit::lstm_attr_t&>(
+              jit::lstm_attr_t(frame_size, act_gate, act_cand, act_cell, true));
   EXPECT_TRUE(plstm1 != peephole);
 
   const auto& pvmul_f =

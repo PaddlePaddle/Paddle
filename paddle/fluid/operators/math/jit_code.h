@@ -319,6 +319,12 @@ class LSTMJitCode : public VActJitCode {
  public:
   const char* name() const override {
     std::string base = "LSTMJitCode";
+    if (use_peephole_) {
+      base += "_Peephole";
+    }
+    if (compute_c1h1_) {
+      base += "_C1H1";
+    }
     auto AddTypeStr = [&](operand_type type) {
       switch (type) {
         case operand_type::relu:
@@ -340,30 +346,42 @@ class LSTMJitCode : public VActJitCode {
           break;
       }
     };
-    if (first_) {
-      base += "_C1H1";
-    }
     AddTypeStr(act_gate_);
     AddTypeStr(act_cand_);
     AddTypeStr(act_cell_);
     return base.c_str();
   }
 
-  explicit LSTMJitCode(int d, bool first, operand_type act_gate,
-                       operand_type act_cand, operand_type act_cell,
+  explicit LSTMJitCode(bool compute_c1h1, const lstm_attr_t& attr,
                        size_t code_size = 256 * 1024, void* code_ptr = nullptr)
-      : VActJitCode(d, act_gate, code_size, code_ptr),
-        num_(d),
-        first_(first),
-        act_gate_(act_gate),
-        act_cand_(act_cand),
-        act_cell_(act_cell) {}
+      : VActJitCode(attr.d, operand_type::sigmoid /* this is bugy*/, code_size,
+                    code_ptr),
+        compute_c1h1_(compute_c1h1) {
+    auto typeExchange = [](const std::string& type) -> gen::operand_type {
+      if (type == "sigmoid") {
+        return operand_type::sigmoid;
+      } else if (type == "relu") {
+        return operand_type::relu;
+      } else if (type == "tanh") {
+        return operand_type::tanh;
+      } else if (type == "identity" || type == "") {
+        return operand_type::identity;
+      }  // else throw error
+      return operand_type::identity;
+    };
+    num_ = attr.d;
+    use_peephole_ = attr.use_peephole;
+    act_gate_ = typeExchange(attr.act_gate);
+    act_cand_ = typeExchange(attr.act_cand);
+    act_cell_ = typeExchange(attr.act_cell);
+  }
   static bool init(int d);
   void generate() override;
 
  protected:
   int num_;
-  bool first_;
+  bool compute_c1h1_;
+  bool use_peephole_;
   operand_type act_gate_;
   operand_type act_cand_;
   operand_type act_cell_;

@@ -33,18 +33,24 @@ typedef struct {
   const void* ct_1;
   void* ct;
   void* ht;
-  /* below only used in peephole*/
-  const void* wp_data{nullptr};
+  /* weight_peephole and checked data are only used in peephole*/
+  const void* wp{nullptr};
   void* checked{nullptr};
 } lstm_t;
 
 typedef struct lstm_attr_s {
+  bool use_peephole;
   int d;
   std::string act_gate, act_cand, act_cell;
   lstm_attr_s() = default;
   lstm_attr_s(int _d, const std::string& _act_gate,
-              const std::string& _act_cand, const std::string& _act_cell)
-      : d(_d), act_gate(_act_gate), act_cand(_act_cand), act_cell(_act_cell) {}
+              const std::string& _act_cand, const std::string& _act_cell,
+              bool _use_peephole = false)
+      : use_peephole(_use_peephole),
+        d(_d),
+        act_gate(_act_gate),
+        act_cand(_act_cand),
+        act_cell(_act_cell) {}
 } lstm_attr_t;
 
 }  // namespace jitkernel
