@@ -1360,17 +1360,9 @@ to transpile() call.")
             varname, offset, size = block_str.split(":")
             if varname not in block_map:
                 block_map[varname] = []
-<<<<<<< HEAD
             block_map[varname].append((int(offset), int(size)))
 
         for varname, splited in six.iteritems(block_map):
-=======
-            block_map[varname].append((long(offset), long(size)))
-        # Do not remove this important debug message:
-        print("block map: %s" % block_map)
-
-        for varname, splited in block_map.iteritems():
->>>>>>> dbd25805c88c48998eb9dc0f4b2ca1fd46326482
             orig_var = program.global_block().var(varname)
             if len(splited) == 1:
                 if self.sync_mode and add_trainer_suffix:
