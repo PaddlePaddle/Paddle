@@ -43,11 +43,3 @@ limitations under the License. */
 #include <boost/mpl/less_equal.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
-
-// some platform-independent defintion
-#if defined(_WIN32)
-#define UNUSED
-#define __builtin_expect(EXP, C) (EXP)
-#else
-#define UNUSED __attribute__((unused))
-#endif

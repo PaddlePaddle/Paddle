@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/platform/compiler_specific.h"
 
 namespace paddle {
 namespace framework {

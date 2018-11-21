@@ -39,6 +39,7 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/fluid/platform/compiler_specific.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
@@ -117,25 +118,6 @@ struct EOFException : public std::exception {
 
   const char* what() const noexcept { return err_str_.c_str(); }
 };
-
-// Because most enforce conditions would evaluate to true, we can use
-// __builtin_expect to instruct the C++ compiler to generate code that
-// always forces branch prediction of true.
-// This generates faster binary code. __builtin_expect is since C++11.
-// For more details, please check https://stackoverflow.com/a/43870188/724872.
-#if !defined(_WIN32)
-#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-#else
-// there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition == 0)
-#endif
-
-#if !defined(_WIN32)
-#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
-#else
-// there is no equivalent intrinsics in msvc.
-#define LIKELY(condition) (condition != 0)
-#endif
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
