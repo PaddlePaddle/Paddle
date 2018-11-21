@@ -6904,13 +6904,13 @@ def prelu(x, mode, param_attr=None, name=None):
 
     Args:
         x (Variable): The input tensor.
-	  param_attr(ParamAttr|None): The parameter attribute for the learnable
-                                      weight (alpha).
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                       weight (alpha).
         mode (string): The mode for weight sharing. It supports all, channel
                        and element. all: all elements share same weight
                        channel:elements in a channel share same weight
                        element:each element has a weight
-	name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
 
     Returns:
@@ -6920,9 +6920,9 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
-         mode = 'channel'
-         output = fluid.layers.prelu(x,mode)
+            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            mode = 'channel'
+            output = fluid.layers.prelu(x,mode)
     """
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
