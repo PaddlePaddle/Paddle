@@ -1,9 +1,6 @@
 
-set(PYBIND_DEPS pybind python proto_desc memory executor prune feed_fetch_method pass_builder)
+set(PYBIND_DEPS pybind python proto_desc memory executor prune feed_fetch_method pass_builder parallel_executor profiler)
 set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc)
-if(NOT WIN32)
-  list(APPEND PYBIND_DEPS parallel_executor profiler)
-endif(NOT WIN32)
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
