@@ -1029,8 +1029,8 @@ def density_prior_box(input,
                       clip=False,
                       steps=[0.0, 0.0],
                       offset=0.5,
-                      name=None,
-                      flatten_to_2d=False):
+                      flatten_to_2d=False,
+                      name=None):
     """
     **Density Prior Box Operator**
 
@@ -1066,9 +1066,9 @@ def density_prior_box(input,
             height/weight of the input will be automatically calculated.
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
-       name(str): Name of the density prior box op. Default: None.
        flatten_to_2d(bool): Whether to flatten output prior boxes and variance
            to 2D shape, the second dim is 4. Default: False.
+       name(str): Name of the density prior box op. Default: None.
 
     Returns:
         tuple: A tuple with two Variable (boxes, variances)

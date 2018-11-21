@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -111,7 +111,6 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < densities.size(); ++i) {
       num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
     }
-    LOG(ERROR) << " num_priors === " << num_priors;
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
     framework::Tensor h_temp;
@@ -152,7 +151,6 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     dim3 threads(blockx, 1);
     dim3 grids(gridx, feature_height);
 
-    LOG(ERROR) << "block = " << blockx << ", grid = " << gridx;
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
     GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(
