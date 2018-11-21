@@ -20,7 +20,7 @@ import numpy as np
 from paddle.fluid.op import Operator
 
 
-class TestSpliteSelectedRows(unittest.TestCase):
+class TestMergeSelectedRows(unittest.TestCase):
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -66,7 +66,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         expected_out4_rows = [0]
 
         op = Operator(
-            "split_selected_rows",
+            "merge_selected_rows",
             X="X",
             Out=outs_name,
             height_sections=height_sections)
@@ -83,23 +83,6 @@ class TestSpliteSelectedRows(unittest.TestCase):
         self.assertAlmostEqual(2.0, np.array(outs[0].get_tensor())[0, 0])
         self.assertAlmostEqual(4.0, np.array(outs[1].get_tensor())[1, 1])
         self.assertAlmostEqual(8.0, np.array(outs[4].get_tensor())[0, 1])
-
-        merge_out_name = "MergeOut"
-        merge_out = scope.var(merge_out_name).get_selected_rows()
-
-        merge_selected_rows_op = Operator(
-            "merge_selected_rows",
-            X=outs_name,
-            Out=merge_out_name,
-            height_sections=height_sections)
-        merge_selected_rows_op.run(scope, place)
-
-        self.assertTrue(sorted(merge_out.rows()) == sorted(rows))
-        self.assertEqual(merge_out.height(), height)
-        for i in range(len(rows)):
-        #print(merge_out.rows())
-        #print(merge_out.height())
-        #print(np.array(merge_out.get_tensor()))
 
     def check_grad_with_place(self, place):
         scope = core.Scope()
@@ -140,6 +123,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         self.assertEqual(set(x_grad.rows()), set(rows0 + rows1))
         self.assertEqual(x_grad.height(), height)
 
+        print(np.array(x_grad.get_tensor()))
         self.assertAlmostEqual(2.0, np.array(x_grad.get_tensor())[0, 0])
         self.assertAlmostEqual(1.0, np.array(x_grad.get_tensor())[2, 1])
 

@@ -38,7 +38,7 @@ class SparseParameterExtractOpKernel : public framework::OpKernel<T> {
 
     // for distributed training, a sparse var may be empty,
     // just skip updating.
-    if (grad->rows().size() == 0) {
+    if (grad->rows().empty()) {
       return;
     }
 

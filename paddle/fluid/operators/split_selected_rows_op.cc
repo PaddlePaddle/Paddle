@@ -40,8 +40,11 @@ Example:
     out0.rows = {}
     out0.height = 4
 
-    out1.rows = {5, 7}
-    out2.height = 8
+    out1.rows = {1, 3}
+    out1.height = 4
+
+    out2.rows = {0}
+    out2.height = 4
 
 )DOC");
   }
