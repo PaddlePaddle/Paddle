@@ -176,6 +176,7 @@ void ExecutorThreadWorker::TrainFiles() {
   thread_reader_->Start();
 
   int cur_batch;
+  int batch_cnt = 0;
   while ((cur_batch = thread_reader_->Next()) > 0) {
     // executor run here
     for (auto& op : ops_) {
@@ -190,8 +191,14 @@ void ExecutorThreadWorker::TrainFiles() {
       fetch_values_[i] += avg_inspect;
     }
 
+    ++batch_cnt;
     thread_scope_->DropKids();
   }
+
+  for (int i = 0; i < fetch_var_num; ++i) {
+    fetch_values_[i] = fetch_values_[i] / batch_cnt;
+  }
+
 }
 
 void ExecutorThreadWorker::SetThreadId(int tid) {
