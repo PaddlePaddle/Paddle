@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <random>
 #include <thread>  // NOLINT
 #include <vector>
 #include "gtest/gtest.h"
