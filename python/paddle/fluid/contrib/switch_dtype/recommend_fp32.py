@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+# TODO(zcd): the following op had better not use fp16
+Recommend_Fp32 = [
+    # Pointwise
+    'exp',
+    'log',
+    'pow',
 
-from . import decoder
-from .decoder import *
-from . import memory_usage_calc
-from .memory_usage_calc import *
-from . import op_frequence
-from .op_frequence import *
-from . import quantize
-from .quantize import *
-from . import switch_dtype
-from .switch_dtype import *
-
-__all__ = []
-__all__ += decoder.__all__
-__all__ += memory_usage_calc.__all__
-__all__ += op_frequence.__all__
-__all__ += quantize.__all__
-__all__ += switch_dtype.__all__
+    # Reduction
+    'mean',
+    'sum',
+]

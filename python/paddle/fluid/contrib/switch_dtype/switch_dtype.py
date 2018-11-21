@@ -17,10 +17,10 @@ from __future__ import print_function
 import numpy as np
 import contextlib
 
-from .. import framework
-from .. import unique_name
+from paddle.fluid import framework
+from paddle.fluid.framework import unique_name
 
-__all__ = ['switch_dtype_block', ]
+__all__ = ['switch_dtype_guard', ]
 
 
 def _rename_arg_(cur_block, old_name, new_name, begin_idx=None, end_idx=None):
@@ -49,7 +49,7 @@ def _create_tmp_variable_(cur_block, name, dtype, stop_gradient=False):
 
 
 @contextlib.contextmanager
-def switch_dtype_block(main_program, dtype="float16"):
+def switch_dtype_guard(main_program, dtype="float16"):
     """
     Switch dtype block is used to change the dtype of input and output .
 
@@ -62,7 +62,7 @@ def switch_dtype_block(main_program, dtype="float16"):
         >>> import paddle.fluid as fluid
         >>> img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
         >>> label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        >>> with fluid.contrib.switch_dtype_block(fluid.default_main_program(), dtype="float16"):
+        >>> with fluid.contrib.switch_dtype_guard(fluid.default_main_program(), dtype="float16"):
         >>>    prediction = fluid.layers.fc(input=img, size=200, act='tanh')
         >>> prediction = fluid.layers.cast(prediction, np.float32)
         >>> loss = fluid.layers.cross_entropy(input=prediction, label=label)
