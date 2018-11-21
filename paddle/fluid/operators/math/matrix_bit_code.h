@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -134,8 +136,9 @@ class SimpleCode : public Code {
 template <typename R>
 class CustomCode : public Code {
  public:
-  CustomCode(const framework::Tensor* ptable, const framework::Tensor* pcode,
-             const int64_t* ids, const int index)
+  CustomCode(const framework::LoDTensor* ptable,
+             const framework::LoDTensor* pcode, const int64_t* ids,
+             const int index)
       : ptable_(ptable), pcode_(pcode), ids_(ids), index_(index) {}
   /**
    * Here the id of root shoud be 1 rather than 0, thus the encoding of class c
@@ -169,8 +172,8 @@ class CustomCode : public Code {
   }
 
  private:
-  const framework::Tensor* ptable_;
-  const framework::Tensor* pcode_;
+  const framework::LoDTensor* ptable_;
+  const framework::LoDTensor* pcode_;
   const int64_t* ids_;
   const int index_;
 };
@@ -194,8 +197,9 @@ class SimpleCodeTable : public CodeTable {
 template <typename R>
 class CustomCodeTable : public CodeTable {
  public:
-  explicit CustomCodeTable(const framework::Tensor* ptable,
-                           const framework::Tensor* pcode, const int64_t* ids)
+  explicit CustomCodeTable(const framework::LoDTensor* ptable,
+                           const framework::LoDTensor* pcode,
+                           const int64_t* ids)
       : ptable_(ptable), pcode_(pcode), ids_(ids) {}
 
   std::unique_ptr<Code> get_code(int64_t code) const {
@@ -209,8 +213,8 @@ class CustomCodeTable : public CodeTable {
   }
 
  private:
-  const framework::Tensor* ptable_;
-  const framework::Tensor* pcode_;
+  const framework::LoDTensor* ptable_;
+  const framework::LoDTensor* pcode_;
   const int64_t* ids_;
 };
 
@@ -222,8 +226,8 @@ class MatrixBitCodeFunctor {
         ids_(ids),
         code_table(new SimpleCodeTable(num_classes, ids)) {}
 
-  explicit MatrixBitCodeFunctor(const framework::Tensor* ptable,
-                                const framework::Tensor* pcode,
+  explicit MatrixBitCodeFunctor(const framework::LoDTensor* ptable,
+                                const framework::LoDTensor* pcode,
                                 const int64_t* ids)
       : num_classes_(static_cast<size_t>(ptable->dims()[1])),
         ids_(ids),
@@ -231,38 +235,47 @@ class MatrixBitCodeFunctor {
   /* For j < code_length
        tmat(i, j) += vec(0, index(i, j))
   */
-  void Add(framework::Tensor* tmat, const framework::Tensor& vec);
+  void Add(framework::LoDTensor* tmat, const framework::LoDTensor& vec);
 
   /* For j < code_length
        vec(0, index(i, j)) += tmat(i, j)
   */
-  void AddGrad(const framework::Tensor& tmat, framework::Tensor* vec);
+  void AddGrad(const framework::LoDTensor& tmat, framework::LoDTensor* vec);
 
   /* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
   */
-  void Sum(const framework::Tensor& tmat, framework::Tensor* sum, T scale_sum);
+  void Sum(const framework::LoDTensor& tmat, framework::LoDTensor* sum,
+           T scale_sum);
 
   /* For j < code_length
        tmat(i, j) -= bit(i, j)
   */
-  void Sub(framework::Tensor* tmat);
+  void Sub(framework::LoDTensor* tmat);
   /* For j < code_length
        input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void Mul(framework::Tensor* tmat, const framework::Tensor& weight,
-           const framework::Tensor& input);
+  void Mul(framework::LoDTensor* tmat, const framework::LoDTensor& weight,
+           const framework::LoDTensor& input);
 
   /* For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::Tensor& tmat, framework::Tensor* weight,
-                     const framework::Tensor& input);
+  void MulGradWeight(const framework::LoDTensor& tmat,
+                     framework::LoDTensor* weight,
+                     const framework::LoDTensor& input);
+  /* For SelectedRows Weight, For index(i, j) >= 0:
+      weight.row(index(i, j)) += tmat(i, j) * input.row(i)
+  */
+  void MulGradWeight(const framework::LoDTensor& tmat,
+                     framework::SelectedRows* weight,
+                     const framework::LoDTensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void MulGradError(const framework::Tensor& tmat,
-                    const framework::Tensor& weight, framework::Tensor* input);
+  void MulGradError(const framework::LoDTensor& tmat,
+                    const framework::LoDTensor& weight,
+                    framework::LoDTensor* input);
 
   size_t num_classes_;
   const int64_t* ids_;

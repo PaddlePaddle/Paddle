@@ -19,8 +19,8 @@ namespace operators {
 namespace math {
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::Add(framework::Tensor* tmat,
-                                  const framework::Tensor& vec) {
+void MatrixBitCodeFunctor<T>::Add(framework::LoDTensor* tmat,
+                                  const framework::LoDTensor& vec) {
   size_t batch_size = tmat->dims()[0];
   size_t width = tmat->dims()[1];
   for (size_t i = 0; i < batch_size; ++i) {
@@ -34,8 +34,8 @@ void MatrixBitCodeFunctor<T>::Add(framework::Tensor* tmat,
 }
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
-                                      framework::Tensor* vec) {
+void MatrixBitCodeFunctor<T>::AddGrad(const framework::LoDTensor& tmat,
+                                      framework::LoDTensor* vec) {
   size_t batch_size = tmat.dims()[0];
   size_t width = tmat.dims()[1];
   for (size_t i = 0; i < batch_size; ++i) {
@@ -49,8 +49,8 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
 }
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
-                                  framework::Tensor* sum, T scale_sum) {
+void MatrixBitCodeFunctor<T>::Sum(const framework::LoDTensor& tmat,
+                                  framework::LoDTensor* sum, T scale_sum) {
   size_t num_samples = tmat.dims()[0];
   size_t o_width = tmat.dims()[1];
   for (size_t i = 0; i < num_samples; ++i) {
@@ -69,9 +69,9 @@ void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
 }
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::Mul(framework::Tensor* tmat,
-                                  const framework::Tensor& weight,
-                                  const framework::Tensor& input) {
+void MatrixBitCodeFunctor<T>::Mul(framework::LoDTensor* tmat,
+                                  const framework::LoDTensor& weight,
+                                  const framework::LoDTensor& input) {
   size_t num_samples = tmat->dims()[0];
   size_t tmat_width = tmat->dims()[1];
   size_t input_width = input.dims()[1];
@@ -95,9 +95,9 @@ void MatrixBitCodeFunctor<T>::Mul(framework::Tensor* tmat,
 }
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor& tmat,
-                                            framework::Tensor* weight,
-                                            const framework::Tensor& input) {
+void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::LoDTensor& tmat,
+                                            framework::LoDTensor* weight,
+                                            const framework::LoDTensor& input) {
   size_t num_samples = tmat.dims()[0];
   size_t input_width = input.dims()[1];
   size_t tmat_width = tmat.dims()[1];
@@ -119,37 +119,38 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor& tmat,
   }
 }
 
-// template <typename T>
-// void MatrixBitCodeFunctor<T>::MulGradSparseWeight(const framework::Tensor&
-// tmat,
-//                                             framework::SelectedRows* weight,
-//                                             const framework::Tensor& input) {
-//   size_t num_samples = tmat.dims()[0];
-//   size_t input_width = input.dims()[1];
-//   size_t tmat_width = tmat.dims()[1];
-//   size_t weight_width = weight->dims()[1];
-//   auto tmat_value = tmat.data<T>();
-//   auto weight_value = weight->data<T>();
-//   auto input_value = input.data<T>();
-//   for (size_t i = 0; i < num_samples; ++i) {
-//     auto code = code_table->get_code(i);
-//     int code_length = code->get_length();
-//     for (int j = 0; j < code_length; ++j) {
-//       // size_t index = code->calc_index(j);
+template <typename T>
+void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::LoDTensor& tmat,
+                                            framework::SelectedRows* weight,
+                                            const framework::LoDTensor& input) {
+  size_t num_samples = tmat.dims()[0];
+  size_t input_width = input.dims()[1];
+  size_t tmat_width = tmat.dims()[1];
+  size_t weight_width = weight->value().dims()[1];
+  auto tmat_value = tmat.data<T>();
+  auto weight_value = weight->mutable_value()->data<T>();
+  auto input_value = input.data<T>();
+  for (size_t i = 0; i < num_samples; ++i) {
+    auto code = code_table->get_code(i);
+    int code_length = code->get_length();
+    for (int j = 0; j < code_length; ++j) {
+      size_t index = code->calc_index(j);
 
-//       for (size_t k = 0; k < input_width; ++k) {
-//         weight_value[j * weight_width + k] +=
-//             tmat_value[i * tmat_width + j] * input_value[input_width * i +
-//             k];
-//       }
-//     }
-//   }
-// }
+      for (size_t k = 0; k < input_width; ++k) {
+        int64_t row_index =
+            weight->AutoGrownIndex(static_cast<int64_t>(index), false);
+
+        weight_value[row_index * weight_width + k] +=
+            tmat_value[i * tmat_width + j] * input_value[input_width * i + k];
+      }
+    }
+  }
+}
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor& tmat,
-                                           const framework::Tensor& weight,
-                                           framework::Tensor* input) {
+void MatrixBitCodeFunctor<T>::MulGradError(const framework::LoDTensor& tmat,
+                                           const framework::LoDTensor& weight,
+                                           framework::LoDTensor* input) {
   size_t num_samples = tmat.dims()[0];
   size_t tmat_width = tmat.dims()[1];
   size_t input_width = input->dims()[1];
@@ -174,7 +175,7 @@ void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor& tmat,
 }
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::Sub(framework::Tensor* tmat) {
+void MatrixBitCodeFunctor<T>::Sub(framework::LoDTensor* tmat) {
   size_t num_samples = tmat->dims()[0];
   size_t o_width = tmat->dims()[1];
   for (size_t i = 0; i < num_samples; ++i) {

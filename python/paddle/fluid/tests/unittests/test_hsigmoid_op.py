@@ -16,10 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid as fluid
 import math
-# import paddle.fluid as fluid
-# import paddle.fluid.core as core
-# from op_builder import OpBuilder
 from op_test import OpTest
 
 np.random.seed(100)
@@ -141,67 +140,148 @@ def hsigmoidWithCustomTree(x, w, ptable, pcode, label, bias, num_classes):
     return pre_output, out
 
 
-class TestHSigmoidOp(OpTest):
-    def setUp(self):
-        self.op_type = "hierarchical_sigmoid"
-        num_classes = 6
-        feature_size = 8
-        batch_size = 4
-        x = np.random.random((batch_size, feature_size)).astype("float32") * 2
-        w = np.random.random(
-            (num_classes - 1, feature_size)).astype("float32") * 2
-        label = np.random.randint(0, num_classes, (batch_size, 1))
-        bias = np.random.random((1, num_classes - 1)).astype("float32")
-        self.attrs = {'num_classes': num_classes}
-        self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
-        pre_output, out = hsigmoid(x, w, label, bias, num_classes)
-        self.outputs = {'PreOut': pre_output, 'Out': out}
+# class TestHSigmoidOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "hierarchical_sigmoid"
+#         num_classes = 6
+#         feature_size = 8
+#         batch_size = 4
+#         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
+#         w = np.random.random(
+#             (num_classes - 1, feature_size)).astype("float32") * 2
+#         label = np.random.randint(0, num_classes, (batch_size, 1))
+#         bias = np.random.random((1, num_classes - 1)).astype("float32")
+#         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
+#         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
+#         pre_output, out = hsigmoid(x, w, label, bias, num_classes)
+#         self.outputs = {'PreOut': pre_output, 'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
+#     def test_check_grad(self):
+#         self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
+
+# class TestHSigmoidOpSparse(OpTest):
+#     def setUp(self):
+#         self.op_type = "hierarchical_sigmoid"
+#         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
+#         feature_size = 8
+#         batch_size = 4
+#         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
+#         w = np.random.random(
+#             (num_classes - 1, feature_size)).astype("float32") * 2
+#         label = np.array([0, 1, 4, 5])
+#         ptable = np.array(
+#             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
+#              (0, 2, -1, -1,
+#               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+#         pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
+#             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+#         bias = np.random.random((1, num_classes - 1)).astype("float32")
+#         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
+#         self.inputs = {
+#             'X': x,
+#             'W': w,
+#             'PTable': ptable,
+#             'PCode': pcode,
+#             'Label': label,
+#             'Bias': bias
+#         }
+#         pre_output, out = hsigmoidWithCustomTree(x, w, ptable, pcode, label,
+#                                                  bias, num_classes)
+#         self.outputs = {'PreOut': pre_output, 'Out': out}
+
+#     def test_check_output(self):
+#         print("checking output in CostumTree")
+#         self.check_output()
 
 
-class TestHSigmoidOpWithCostumTree(OpTest):
-    def setUp(self):
-        self.op_type = "hierarchical_sigmoid"
-        num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
-        feature_size = 8
-        batch_size = 4
-        x = np.random.random((batch_size, feature_size)).astype("float32") * 2
-        w = np.random.random(
-            (num_classes - 1, feature_size)).astype("float32") * 2
-        label = np.array([0, 1, 4, 5])
-        ptable = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
-        bias = np.random.random((1, num_classes - 1)).astype("float32")
-        self.attrs = {'num_classes': num_classes}
-        self.inputs = {
-            'X': x,
-            'W': w,
-            'PTable': ptable,
-            'PCode': pcode,
-            'Label': label,
-            'Bias': bias
-        }
-        pre_output, out = hsigmoidWithCustomTree(x, w, ptable, pcode, label,
-                                                 bias, num_classes)
-        self.outputs = {'PreOut': pre_output, 'Out': out}
+class TestHSigmoidOpWithSparseGrad():
+    def hs_net_conf(self):
+        emb = fluid.layers.data(name="x", shape=[3], dtype='int64')
+        ptable = fluid.layers.data(name='ptable', shape=[3], dtype='int64')
+        pcode = fluid.layers.data(name='pcode', shape=[3], dtype='int64')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        data_list = [emb, ptable, pcode, label]
+        cost = fluid.layers.hsigmoid(
+            input=emb,
+            label=predict_word,
+            non_leaf_num=4,
+            ptable=ptable,
+            pcode=pcode,
+            is_costum=True,
+            is_sparse=True)
 
-    def test_check_output(self):
-        print("checking output in CostumTree")
-        self.check_output()
+        avg_cost = fluid.layers.reduce_mean(cost)
 
-    def test_check_grad(self):
-        print("checking outputGrad in CostumTree")
-        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
+        return avg_cost, data_list
 
+    def test_training_test(self):
+        print("im here")
+        w = np.arange(12).reshape(4, 3)
+        x = np.ones((2, 3))
+        ptable = np.array([(1, 2, -1), (1, 2, -1)])
+        pcode = np.array([(1, 0, -1), (0, 0, -1)])
+        label = np.array([(1, 4)])
+
+        loss, data_list = hs_net_conf()
+        optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
+        optimizer.minimize(loss)
+
+        main_program = fluid.default_main_program()
+
+        place = fluid.CPUPlace()
+        feeder = fluid.DataFeeder(feed_list=data_list, place=place)
+        data_name_list = [var.name for var in data_list]
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        for pass_id in range(args.num_passes):
+            for i in range(10):
+                data = [w, x[i % 2], ptable[i % 2], pcode[i % 2], label[i % 2]]
+                loss_val = exe.run(main_program,
+                                   feed=feeder.feed(data),
+                                   fetch_list=[loss])
+                print("loss is: {loss}".format(loss=loss))
+
+
+# class TestHSigmoidOpWithCostumTree(OpTest):
+#     def setUp(self):
+#         self.op_type = "hierarchical_sigmoid"
+#         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
+#         feature_size = 8
+#         batch_size = 4
+#         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
+#         w = np.random.random(
+#             (num_classes - 1, feature_size)).astype("float32") * 2
+#         label = np.array([0, 1, 4, 5])
+#         ptable = np.array(
+#             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
+#              (0, 2, -1, -1,
+#               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+#         pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
+#             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+#         bias = np.random.random((1, num_classes - 1)).astype("float32")
+#         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
+#         self.inputs = {
+#             'X': x,
+#             'W': w,
+#             'PTable': ptable,
+#             'PCode': pcode,
+#             'Label': label,
+#             'Bias': bias
+#         }
+#         pre_output, out = hsigmoidWithCustomTree(x, w, ptable, pcode, label,
+#                                                  bias, num_classes)
+#         self.outputs = {'PreOut': pre_output, 'Out': out}
+
+#     def test_check_output(self):
+#         print("checking output in CostumTree")
+#         self.check_output()
+
+#     def test_check_grad(self):
+#         print("checking outputGrad in CostumTree")
+#         self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 if __name__ == '__main__':
     unittest.main()

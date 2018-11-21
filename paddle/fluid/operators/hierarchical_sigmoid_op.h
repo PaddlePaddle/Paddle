@@ -14,9 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <iostream>
+#include <set>
 #include <vector>
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
@@ -29,18 +30,37 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 using platform::Transform;
 
+std::vector<int64_t> cal_rows(const framework::LoDTensor* path) {
+  std::set<int64_t> tmp;
+  std::vector<int64_t> rows;
+  rows.clear();
+  for (size_t i = 0; i < static_cast<size_t>(path->dims()[0]); i++) {
+    for (size_t j = 0; j < static_cast<size_t>(path->dims()[1]); j++) {
+      int64_t temp =
+          path->data<int64_t>()[i * static_cast<size_t>(path->dims()[1]) + j];
+      if (temp >= 0) {
+        tmp.insert(temp);
+      }
+    }
+  }
+  for (std::set<int64_t>::iterator it = tmp.begin(); it != tmp.end(); ++it) {
+    rows.push_back(*it);
+  }
+  return rows;
+}
+
 template <typename DeviceContext, typename T>
 class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* w = ctx.Input<framework::Tensor>("W");
-    auto* path = ctx.Input<framework::Tensor>("PTable");
-    auto* code = ctx.Input<framework::Tensor>("PCode");
-    auto* label = ctx.Input<framework::Tensor>("Label");
-    auto* bias = ctx.Input<framework::Tensor>("Bias");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* pre_out = ctx.Output<framework::Tensor>("PreOut");
+    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* w = ctx.Input<framework::LoDTensor>("W");
+    auto* path = ctx.Input<framework::LoDTensor>("PTable");
+    auto* code = ctx.Input<framework::LoDTensor>("PCode");
+    auto* label = ctx.Input<framework::LoDTensor>("Label");
+    auto* bias = ctx.Input<framework::LoDTensor>("Bias");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* pre_out = ctx.Output<framework::LoDTensor>("PreOut");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     bool is_custom = false;
     if (path) {
@@ -51,7 +71,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     int64_t code_length =
         path ? path->dims()[1] : math::FindLastSet(num_classes - 1);
     int64_t batch_size = in->dims()[0];
-    framework::Tensor sum;
+    framework::LoDTensor sum;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto* pre_out_data = pre_out->mutable_data<T>(
         framework::make_ddim({batch_size, code_length}), ctx.GetPlace());
@@ -102,27 +122,26 @@ template <typename DeviceContext, typename T>
 class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* w = ctx.Input<framework::Tensor>("W");
-    auto* path = ctx.Input<framework::Tensor>("PTable");
-    auto* code = ctx.Input<framework::Tensor>("PCode");
-    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* w_grad = ctx.Output<framework::Tensor>(framework::GradVarName("W"));
+    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* w = ctx.Input<framework::LoDTensor>("W");
+    auto* path = ctx.Input<framework::LoDTensor>("PTable");
+    auto* code = ctx.Input<framework::LoDTensor>("PCode");
+    auto* in_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    bool is_sparse = ctx.Attr<bool>("is_sparse");
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> zero;
     auto* bias_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
-    auto* label = ctx.Input<framework::Tensor>("Label");
-    auto* pre_out = ctx.Input<framework::Tensor>("PreOut");
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Bias"));
+    auto* label = ctx.Input<framework::LoDTensor>("Label");
+    auto* pre_out = ctx.Input<framework::LoDTensor>("PreOut");
     auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    framework::Tensor pre_out_grad;
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    framework::LoDTensor pre_out_grad;
 
     pre_out_grad.mutable_data<T>(pre_out->dims(), ctx.GetPlace());
     in_grad->mutable_data<T>(ctx.GetPlace());
-    w_grad->mutable_data<T>(ctx.GetPlace());
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
     zero(dev_ctx, in_grad, static_cast<T>(0.0));
-    zero(dev_ctx, w_grad, static_cast<T>(0.0));
 
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
 
@@ -162,7 +181,28 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       zero(dev_ctx, bias_grad, static_cast<T>(0.0));
       bit_code->AddGrad(pre_out_grad, bias_grad);
     }
-    bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
+    if (!is_sparse) {
+      auto* w_grad =
+          ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
+      w_grad->mutable_data<T>(ctx.GetPlace());
+      zero(dev_ctx, w_grad, static_cast<T>(0.0));
+      bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
+    } else {
+      framework::Vector<int64_t> real_rows = cal_rows(path);
+      auto* w_grad =
+          ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
+
+      w_grad->set_rows(real_rows);
+      // build ids -> rows index map
+      w_grad->SyncIndex();
+      auto* w_grad_value = w_grad->mutable_value();
+      framework::DDim temp_dim(w->dims());
+      set(temp_dim, 0, real_rows.size());
+
+      w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
+      zero(dev_ctx, w_grad_value, static_cast<T>(0.0));
+      bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
+    }
     bit_code->MulGradError(pre_out_grad, *w, in_grad);
   }
 };
