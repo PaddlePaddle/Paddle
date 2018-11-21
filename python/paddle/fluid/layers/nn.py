@@ -726,11 +726,11 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate, 
-            reset gate and candidate calculations. If it is set to None or one 
-            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
@@ -847,11 +847,11 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate, 
-            reset gate and candidate calculations. If it is set to None or one 
-            attribute of ParamAttr, gru_unit will create ParamAttr as 
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, gru_unit will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
@@ -1064,9 +1064,9 @@ def dropout(x,
                                            inference: out = input
                                            (make is a tensor same shape with input, value is 0 or 1
                                             ratio of 0 is dropout_prob)
-                                           dropout op can be removed from the program. 
+                                           dropout op can be removed from the program.
                                            the program will be efficient
-                                        
+
 
 
     Returns:
@@ -2149,7 +2149,7 @@ def pool2d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling 
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
     Returns:
@@ -2240,7 +2240,7 @@ def pool3d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling 
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
     Returns:

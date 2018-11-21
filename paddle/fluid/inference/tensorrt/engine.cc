@@ -257,9 +257,10 @@ void TensorRTEngine::freshDeviceId() {
 }
 
 nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
-    nvinfer1::ITensor *const *inputs, int nbInputs, PluginTensorRT *plugin) {
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
-  return infer_network_.get()->addPluginExt(inputs, nbInputs, *plugin);
+  return infer_network_.get()->addPluginExt(inputs, num_inputs, *plugin);
 }
 
 }  // namespace tensorrt
