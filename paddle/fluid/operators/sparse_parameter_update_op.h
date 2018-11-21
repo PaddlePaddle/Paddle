@@ -26,30 +26,31 @@ class SparseParameterUpdateOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
-    const auto *SparseParam_var = ctx.InputVar("SparseParam");
+    const auto *sparse_param_var = ctx.InputVar("SparseParam");
 
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>());
-    PADDLE_ENFORCE(SparseParam_var->IsType<framework::SelectedRows>());
+    PADDLE_ENFORCE(sparse_param_var->IsType<framework::SelectedRows>());
 
     const auto *param = ctx.Input<framework::Tensor>("Param");
-    const auto *SparseParam = ctx.Input<framework::SelectedRows>("SparseParam");
+    const auto *sparse_param =
+        ctx.Input<framework::SelectedRows>("SparseParam");
 
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
 
     // for distributed training, a sparse var may be empty,
     // just skip updating.
-    if (SparseParam->rows().size() == 0) {
+    if (sparse_param->rows().size() == 0) {
       return;
     }
 
-    auto &sparse_param_value = SparseParam->value();
-    auto &sparse_param_rows = SparseParam->rows();
+    auto &sparse_param_value = sparse_param->value();
+    auto &sparse_param_rows = sparse_param->rows();
 
     size_t row_numel = sparse_param_value.numel() / sparse_param_rows.size();
 
     auto *param_out_data = param_out->data<T>();
 
-    auto SparseParam_height = SparseParam->height();
+    auto SparseParam_height = sparse_param->height();
 
     auto *param_data = param->data<T>();
     auto *sparse_param_data = sparse_param_value.data<T>();
