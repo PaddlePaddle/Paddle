@@ -17,6 +17,7 @@
 #include <string>
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace inference {
@@ -32,11 +33,12 @@ class IrGraphBuildPass : public AnalysisPass {
   std::string repr() const override;
 
  private:
-  std::unique_ptr<framework::ProgramDesc> LoadModel(const std::string &path,
-                                                    framework::Scope *scope);
+  std::unique_ptr<framework::ProgramDesc> LoadModel(
+      const std::string &path, framework::Scope *scope,
+      const platform::Place &place);
   std::unique_ptr<framework::ProgramDesc> LoadModel(
       const std::string &program_path, const std::string &params_path,
-      framework::Scope *scope);
+      framework::Scope *scope, const platform::Place &place);
 
   std::string model_binary_str_;
 };
