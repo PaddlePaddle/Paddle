@@ -322,6 +322,42 @@ class VActJitCode : public JitCode {
   ymm_t ymm_dst = ymm_t(1);
 };
 
+#ifdef PADDLE_WITH_MKLDNN
+struct EltwiseMulnChw16cNC : public Xbyak::CodeGenerator {
+  explicit EltwiseMulnChw16cNC(size_t code_size = 256 * 1024)
+      : Xbyak::CodeGenerator(code_size) {
+    // RDI is ptr x_input
+    // RSI is ptr y_input
+    // RDX is ptr output
+    // RCX is height
+    // r8 is width
+
+    push(rbx);
+
+    xor_(rax, rax);
+    xor_(r10, r10);
+    vmovups(zmm3, ptr[rsi]);
+
+    L("h_loop");
+    xor_(rbx, rbx);
+    L("w_loop");
+    vmovups(zmm2, ptr[rdi + rax]);
+    vmulps(zmm1, zmm2, zmm3);
+    vmovups(ptr[rdx + rax], zmm1);
+    add(rax, 64);
+    inc(rbx);
+    cmp(r8, rbx);
+    jnz("w_loop");
+    inc(r10);
+    cmp(r10, rcx);
+    jnz("h_loop");
+
+    pop(rbx);
+    ret();
+  }
+};
+#endif
+
 }  // namespace gen
 }  // namespace jitkernel
 }  // namespace math
