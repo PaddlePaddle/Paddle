@@ -122,18 +122,9 @@ class VTanhKernel : public VActKernel<T> {};
 template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  virtual void ComputeCtHt(T *gates, const T *ct_1, T *ct, T *ht,
-                           /* below only used in peephole*/
-                           const T *wp_data = nullptr,
-                           T *checked = nullptr) const = 0;
-
-  virtual void ComputeC1H1(T *gates, T *ct, T *ht,
-                           /* below only used in peephole*/
-                           const T *wp_data = nullptr) const = 0;
-
-  //  void (*ComputeCtHt)(lstm_t *);
-  // // compute c1 and h1 without c0 or h0
-  //  void (*ComputeC1H1)(lstm_t *);
+  void (*ComputeCtHt)(lstm_t *, const lstm_attr_t *);
+  // compute c1 and h1 without c0 or h0
+  void (*ComputeC1H1)(lstm_t *, const lstm_attr_t *);
 };
 
 template <typename T>

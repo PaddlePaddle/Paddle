@@ -233,7 +233,7 @@ void LSTMJitCode::generate() {
     vmovups(ymm_src, ptr[reg_ptr_gates + offset + num_]);
     act<ymm_t>(ymm_i, ymm_src, act_gate_);
     vmulps(ymm_c, ymm_c, ymm_i);
-    if (first_) {
+    if (!compute_c1h1_) {
       // f
       vmovups(ymm_src, ptr[reg_ptr_gates + offset + 2 * num_]);
       act<ymm_t>(ymm_f, ymm_src, act_gate_);
@@ -242,8 +242,8 @@ void LSTMJitCode::generate() {
       vaddps(ymm_f, ymm_f, ymm_c);
     }
     /* H_t = act_cell(C_t) * ogated */
-    ymm_t ymm_ct = first_ ? ymm_c : ymm_f;
-    ymm_t ymm_o = first_ ? ymm_f : ymm_c;
+    ymm_t ymm_ct = compute_c1h1_ ? ymm_c : ymm_f;
+    ymm_t ymm_o = compute_c1h1_ ? ymm_f : ymm_c;
     ymm_t ymm_tmp = ymm_i;
     act<ymm_t>(ymm_tmp, ymm_ct, act_cell_);
     vmovups(ymm_src, ptr[reg_ptr_gates + offset + 3 * num_]);

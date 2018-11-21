@@ -117,11 +117,13 @@ void (*getActFunc(const std::string& type))(const T*, T*, int) {  // NOLINT
 }
 
 template <typename T>
-void LSTMCtHt(lstm_t* step, lstm_attr_t* attr) {
+void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr) {
   T* gates = reinterpret_cast<T*>(step->gates);
   const T* ct_1 = reinterpret_cast<const T*>(step->ct_1);
   T* ct = reinterpret_cast<T*>(step->ct);
   T* ht = reinterpret_cast<T*>(step->ht);
+  const T* wp = reinterpret_cast<const T*>(step->wp);
+  T* checked = reinterpret_cast<T*>(step->checked);
   auto act_gate = getActFunc<T>(attr->act_gate);
   auto act_cand = getActFunc<T>(attr->act_cand);
   auto act_cell = getActFunc<T>(attr->act_cell);
@@ -129,23 +131,36 @@ void LSTMCtHt(lstm_t* step, lstm_attr_t* attr) {
   int d2 = d * 2;
   int d3 = d * 3;
   // gates: W_ch, W_ih, W_fh, W_oh
-  act_gate(gates + d, gates + d, d3);
+  if (attr->use_peephole) {
+    VMul(wp, ct_1, checked, d);
+    VMul(wp + d, ct_1, checked + d, d);
+    VAdd(checked, gates + d, gates + d, d2);
+    act_gate(gates + d, gates + d, d2);
+  } else {
+    act_gate(gates + d, gates + d, d3);
+  }
 
-  /* C_t = C_t-1 * fgated + cand_gated * igated */
+  // C_t = C_t-1 * fgated + cand_gated * igated
   act_cand(gates, gates, d);
   VMul(gates, gates + d, gates + d, d);
   VMul(ct_1, gates + d2, gates + d2, d);
   VAdd(gates + d, gates + d2, ct, d);
 
-  /* H_t = act_cell(C_t) * ogated */
+  if (attr->use_peephole) {
+    // get ogated
+    VMul(wp + d2, ct, gates + d, d);
+    VAdd(gates + d, gates + d3, gates + d3, d);
+    act_gate(gates + d3, gates + d3, d);
+  }
+  // H_t = act_cell(C_t) * ogated
   act_cell(ct, gates + d2, d);
   VMul(gates + d2, gates + d3, ht, d);
 }
 
+// compute c1 and h1 without c0 or h0
 template <typename T>
-void LSTMC1H1(lstm_t* step, lstm_attr_t* attr) {
+void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr) {
   T* gates = reinterpret_cast<T*>(step->gates);
-  const T* ct_1 = reinterpret_cast<const T*>(step->ct_1);
   T* ct = reinterpret_cast<T*>(step->ct);
   T* ht = reinterpret_cast<T*>(step->ht);
   auto act_gate = getActFunc<T>(attr->act_gate);
@@ -158,10 +173,16 @@ void LSTMC1H1(lstm_t* step, lstm_attr_t* attr) {
   act_gate(gates + d, gates + d, d);
   act_cand(gates, gates, d);
   VMul(gates, gates + d, ct, d);
+  if (attr->use_peephole) {
+    // get outgated, put W_oc * C_t on igated
+    const T* wp = reinterpret_cast<const T*>(step->wp);
+    VMul(wp + d2, ct, gates + d, d);
+    VAdd(gates + d, gates + d3, gates + d3, d);
+  }
   /* H_t = act_cell(C_t) * ogated */
   act_gate(gates + d3, gates + d3, d);
   act_cell(ct, gates + d2, d);
-  Vmul(gates + d2, gates + d3, ht, d);
+  VMul(gates + d2, gates + d3, ht, d);
 }
 
 }  // namespace refer

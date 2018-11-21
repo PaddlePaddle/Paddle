@@ -15,8 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
+#include "paddle/fluid/operators/math/jit_kernel_refer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+
+#ifdef PADDLE_WITH_XBYAK
+#include "paddle/fluid/operators/math/jit_code.h"
+#endif
 
 #ifdef __AVX__
 #include <immintrin.h>
@@ -154,211 +159,136 @@ static std::unique_ptr<AVXAct> GetAVXAct(const std::string& type) {
 #endif
 
 /* LSTM JitKernel */
-template <typename T, jit::cpu_isa_t isa, jit_block>
+template <typename T>
 class LSTMKernelImpl : public LSTMKernel<T> {
  public:
-  explicit LSTMKernelImpl(const std::string& act_gate,
-                          const std::string& act_cand,
-                          const std::string& act_cell, int d)
-      : LSTMKernel<T>() {
-    d_ = d;
-    d2_ = d * 2;
-    d3_ = d * 3;
-    act_gate_d3_ = GetActKernel<T>(act_gate, d3_);
-    act_gate_d_ = GetActKernel<T>(act_gate, d);
-    act_cand_d_ = GetActKernel<T>(act_cand, d);
-    act_cell_d_ = GetActKernel<T>(act_cell, d);
-    vmul_d_ = KernelPool::Instance().template Get<VMulKernel<T>>(d);
-    vadd_d_ = KernelPool::Instance().template Get<VAddKernel<T>>(d);
+  static inline std::string name(const lstm_attr_t& attr) {
+    PADDLE_THROW("DType should be either float or double");
+  }
+  static inline bool useJIT(int d) { return false; }
+  static inline bool useMKL(int d) { return false; }
+  explicit LSTMKernelImpl(const lstm_attr_t& attr) : LSTMKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(attr.d)) {
+      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 84 * 8;  // should change
+      jitcode0_.reset(new gen::LSTMJitCode(false, attr, sz > 4096 ? sz : 4096));
+      this->ComputeCtHt =
+          jitcode0_->getCode<void (*)(lstm_t*, const lstm_attr_t*)>();
+
+      jitcode1_.reset(new gen::LSTMJitCode(true, attr, sz > 4096 ? sz : 4096));
+      this->ComputeC1H1 =
+          jitcode1_->getCode<void (*)(lstm_t*, const lstm_attr_t*)>();
+      return;
+    }
+#endif
+
+    this->ComputeCtHt = refer::LSTMCtHt<T>;
+    this->ComputeC1H1 = refer::LSTMC1H1<T>;
   }
 
-  void ComputeCtHt(T* gates, const T* ct_1, T* ct, T* ht, const T* wp_data,
-                   T* checked) const override {
-    // gates: W_ch, W_ih, W_fh, W_oh
-    act_gate_d3_->Compute(gates + d_, gates + d_, d3_);
-
-    /* C_t = C_t-1 * fgated + cand_gated * igated */
-    act_cand_d_->Compute(gates, gates, d_);
-    vmul_d_->Compute(gates, gates + d_, gates + d_, d_);
-    vmul_d_->Compute(ct_1, gates + d2_, gates + d2_, d_);
-    vadd_d_->Compute(gates + d_, gates + d2_, ct, d_);
-
-    /* H_t = act_cell(C_t) * ogated */
-    act_cell_d_->Compute(ct, gates + d2_, d_);
-    vmul_d_->Compute(gates + d2_, gates + d3_, ht, d_);
-  }
-  void ComputeC1H1(T* gates, T* ct, T* ht, const T* wp_data) const override {
-    /* C_t = igated * cgated*/
-    act_gate_d_->Compute(gates + d_, gates + d_, d_);
-    act_cand_d_->Compute(gates, gates, d_);
-    vmul_d_->Compute(gates, gates + d_, ct, d_);
-    /* H_t = act_cell(C_t) * ogated */
-    act_gate_d_->Compute(gates + d3_, gates + d3_, d_);
-    act_cell_d_->Compute(ct, gates + d2_, d_);
-    vmul_d_->Compute(gates + d2_, gates + d3_, ht, d_);
-  }
+#ifdef PADDLE_WITH_XBYAK
 
  private:
-  int d_, d2_, d3_;
-  std::shared_ptr<const VActKernel<T>> act_gate_d3_, act_gate_d_, act_cand_d_,
-      act_cell_d_;
-  std::shared_ptr<const VMulKernel<T>> vmul_d_;
-  std::shared_ptr<const VAddKernel<T>> vadd_d_;
-#ifdef __AVX__
-  std::unique_ptr<const AVXAct> avx_act_gate_, avx_act_cand_, avx_act_cell_;
+  std::unique_ptr<gen::LSTMJitCode> jitcode0_{nullptr}, jitcode1_{nullptr};
 #endif
 };
 
-#define INTRI8_FLOAT(isa)                                                    \
-  template <>                                                                \
-  LSTMKernelImpl<float, isa, kEQ8>::LSTMKernelImpl(                          \
-      const std::string& act_gate, const std::string& act_cand,              \
-      const std::string& act_cell, int d)                                    \
-      : LSTMKernel<float>() {                                                \
-    avx_act_gate_ = GetAVXAct<isa>(act_gate);                                \
-    avx_act_cand_ = GetAVXAct<isa>(act_cand);                                \
-    avx_act_cell_ = GetAVXAct<isa>(act_cell);                                \
-  }                                                                          \
-  template <>                                                                \
-  void LSTMKernelImpl<float, isa, kEQ8>::ComputeCtHt(                        \
-      float* gates, const float* ct_1, float* ct, float* ht,                 \
-      const float* wp_data, float* checked) const {                          \
-    /* gates: W_ch, W_ih, W_fh, W_oh */                                      \
-    __m256 c, i, f, o;                                                       \
-    c = _mm256_loadu_ps(gates);                                              \
-    i = _mm256_loadu_ps(gates + 8);                                          \
-    f = _mm256_loadu_ps(gates + 16);                                         \
-    o = _mm256_loadu_ps(gates + 24);                                         \
-    /* C_t = C_t-1 * fgated + cand_gated * igated*/                          \
-    c = _mm256_mul_ps(avx_act_cand_->Compute(c), avx_act_gate_->Compute(i)); \
-    i = _mm256_loadu_ps(ct_1);                                               \
-    f = _mm256_mul_ps(i, avx_act_gate_->Compute(f));                         \
-    f = _mm256_add_ps(c, f);                                                 \
-    _mm256_storeu_ps(ct, f);                                                 \
-    /* H_t = act_cell(C_t) * ogated */                                       \
-    o = _mm256_mul_ps(avx_act_cell_->Compute(f), avx_act_gate_->Compute(o)); \
-    _mm256_storeu_ps(ht, o);                                                 \
-  }                                                                          \
-  template <>                                                                \
-  void LSTMKernelImpl<float, isa, kEQ8>::ComputeC1H1(                        \
-      float* gates, float* ct, float* ht, const float* wp_data) const {      \
-    __m256 c, i, o;                                                          \
-    c = _mm256_loadu_ps(gates);                                              \
-    i = _mm256_loadu_ps(gates + 8);                                          \
-    o = _mm256_loadu_ps(gates + 24);                                         \
-    /* C_t = igated * cgated*/                                               \
-    c = _mm256_mul_ps(avx_act_gate_->Compute(i), avx_act_cand_->Compute(c)); \
-    _mm256_storeu_ps(ct, c);                                                 \
-    /* H_t = act_cell(C_t) * ogated */                                       \
-    o = _mm256_mul_ps(avx_act_cell_->Compute(c), avx_act_gate_->Compute(o)); \
-    _mm256_storeu_ps(ht, o);                                                 \
-  }
-
-// TODO(TJ): optimize keq16
-
-#ifdef __AVX__
-INTRI8_FLOAT(jit::avx);
-#endif
-#ifdef __AVX2__
-INTRI8_FLOAT(jit::avx2);
-#endif
-#ifdef __AVX512F__
-INTRI8_FLOAT(jit::avx512f);
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool LSTMKernelImpl<float>::useJIT(int d) {
+  return false;  // not ready yet gen::LSTMJitCode::init(d);
+}
 #endif
 
 /* Peephole JitKernel */
-template <typename T, jit::cpu_isa_t isa, jit_block>
+template <typename T>
 class PeepholeKernelImpl : public LSTMKernel<T> {
  public:
-  explicit PeepholeKernelImpl(const std::string& act_gate,
-                              const std::string& act_cand,
-                              const std::string& act_cell, int d)
-      : LSTMKernel<T>() {
-    d_ = d;
-    d2_ = d * 2;
-    d3_ = d * 3;
-    act_gate_d_ = GetActKernel<T>(act_gate, d);
-    act_cand_d_ = GetActKernel<T>(act_cand, d);
-    act_cell_d_ = GetActKernel<T>(act_cell, d);
-    vmul_d_ = KernelPool::Instance().template Get<VMulKernel<T>>(d);
-    vadd_d_ = KernelPool::Instance().template Get<VAddKernel<T>>(d);
-    vadd_d2_ = KernelPool::Instance().template Get<VAddKernel<T>>(d2_);
-    act_gate_d2_ = GetActKernel<T>(act_gate, d2_);
+  static inline std::string name(const lstm_attr_t& attr) {
+    PADDLE_THROW("DType should be either float or double");
+  }
+  static inline bool useJIT(int d) { return false; }
+  static inline bool useMKL(int d) { return false; }
+  explicit PeepholeKernelImpl(const lstm_attr_t& attr) : LSTMKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(attr.d)) {
+      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 84 * 8;  // should change
+      jitcode0_.reset(new gen::LSTMJitCode(false, attr, sz > 4096 ? sz : 4096));
+      this->ComputeCtHt =
+          jitcode0_->getCode<void (*)(lstm_t*, const lstm_attr_t*)>();
+
+      jitcode1_.reset(new gen::LSTMJitCode(true, attr, sz > 4096 ? sz : 4096));
+      this->ComputeC1H1 =
+          jitcode1_->getCode<void (*)(lstm_t*, const lstm_attr_t*)>();
+      return;
+    }
+#endif
+
+    this->ComputeCtHt = refer::LSTMCtHt<T>;
+    this->ComputeC1H1 = refer::LSTMC1H1<T>;
   }
 
-  void ComputeCtHt(T* gates, const T* ct_1, T* ct, T* ht, const T* wp_data,
-                   T* checked) const override {
-    /* get fgated and igated*/
-    vmul_d_->Compute(wp_data, ct_1, checked, d_);
-    vmul_d_->Compute(wp_data + d_, ct_1, checked + d_, d_);
-    vadd_d2_->Compute(checked, gates + d_, gates + d_, d2_);
-    act_gate_d2_->Compute(gates + d_, gates + d_, d2_);
-    /* C_t = C_t-1 * fgated + cand_gated * igated*/
-    act_cand_d_->Compute(gates, gates, d_);
-    vmul_d_->Compute(gates, gates + d_, gates + d_, d_);
-    vmul_d_->Compute(ct_1, gates + d2_, gates + d2_, d_);
-    vadd_d_->Compute(gates + d_, gates + d2_, ct, d_);
-    /* get ogated*/
-    vmul_d_->Compute(wp_data + d2_, ct, gates + d_, d_);
-    vadd_d_->Compute(gates + d_, gates + d3_, gates + d3_, d_);
-    act_gate_d_->Compute(gates + d3_, gates + d3_, d_);
-    /* H_t = act_cell(C_t) * ogated */
-    act_cell_d_->Compute(ct, gates + d2_, d_);
-    vmul_d_->Compute(gates + d2_, gates + d3_, ht, d_);
-  }
-
-  void ComputeC1H1(T* gates, T* ct, T* ht, const T* wp_data) const override {
-    /* C_t = igated * cgated*/
-    act_gate_d_->Compute(gates + d_, gates + d_, d_);
-    act_cand_d_->Compute(gates, gates, d_);
-    vmul_d_->Compute(gates, gates + d_, ct, d_);
-    /* get outgated, put W_oc * C_t on igated */
-    vmul_d_->Compute(wp_data + d2_, ct, gates + d_, d_);
-    vadd_d_->Compute(gates + d_, gates + d3_, gates + d3_, d_);
-    /* H_t = act_cell(C_t) * ogated */
-    act_gate_d_->Compute(gates + d3_, gates + d3_, d_);
-    act_cell_d_->Compute(ct, gates + d2_, d_);
-    vmul_d_->Compute(gates + d2_, gates + d3_, ht, d_);
-  }
+#ifdef PADDLE_WITH_XBYAK
 
  private:
-  int d_, d2_, d3_;
-  std::shared_ptr<const VActKernel<T>> act_gate_d2_, act_gate_d_, act_cand_d_,
-      act_cell_d_;
-  std::shared_ptr<const VMulKernel<T>> vmul_d_;
-  std::shared_ptr<const VAddKernel<T>> vadd_d_, vadd_d2_;
+  std::unique_ptr<gen::LSTMJitCode> jitcode0_{nullptr}, jitcode1_{nullptr};
+#endif
 };
 
-#define JITKERNEL_DECLARE_LSTM(ker_class, ker_dtype)                  \
-  template <>                                                         \
-  std::shared_ptr<const LSTMKernel<ker_dtype>>                        \
-  KernelPool::Get<LSTMKernel<ker_dtype>, const std::string&,          \
-                  const std::string&, const std::string&, int, bool>( \
-      const std::string& act_gate, const std::string& act_cand,       \
-      const std::string& act_cell, int d, bool use_peephole)
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool PeepholeKernelImpl<float>::useJIT(int d) {
+  return false;  // peephole jitcode not ready yet
+}
+#endif
 
-#define JITKERNEL_KEY_LSTM(ker_key, dtype_key)                               \
-  #ker_key #dtype_key + std::to_string(d) + act_gate + act_cand + act_cell + \
-                                       (use_peephole ? "p" : "n")
-
-#define JITKERNEL_NEW_LSTM_IMPL(ker, dtype, isa, k)                    \
-  if (use_peephole) {                                                  \
-    p = std::dynamic_pointer_cast<ker<dtype>>(                         \
-        std::make_shared<PeepholeKernelImpl<dtype, isa, k>>(           \
-            act_gate, act_cand, act_cell, d));                         \
-  } else {                                                             \
-    p = std::dynamic_pointer_cast<ker<dtype>>(                         \
-        std::make_shared<ker##Impl<dtype, isa, k>>(act_gate, act_cand, \
-                                                   act_cell, d));      \
+#define JITKERNEL_DEFINE_NAME_LSTM(ker_key, ker_class)                 \
+  template <>                                                          \
+  std::string ker_class##Impl<float>::name(const lstm_attr_t& attr) {  \
+    std::string key(#ker_key "f");                                     \
+    key += (attr.act_gate + attr.act_cand + attr.act_cell +            \
+            (attr.use_peephole ? "p" : "n"));                          \
+    if (useJIT(attr.d)) {                                              \
+      /* only jit code need record d*/                                 \
+      return key + "jit" + std::to_string(attr.d);                     \
+    } else if (useMKL(attr.d)) {                                       \
+      return key + "mkl";                                              \
+    } else {                                                           \
+      return key + "any";                                              \
+    }                                                                  \
+  }                                                                    \
+  template <>                                                          \
+  std::string ker_class##Impl<double>::name(const lstm_attr_t& attr) { \
+    std::string key(#ker_key "d");                                     \
+    /* jit code do not support double yet*/                            \
+    if (useMKL(attr.d)) {                                              \
+      return key + "mkl";                                              \
+    } else {                                                           \
+      return key + "any";                                              \
+    }                                                                  \
   }
 
-REGISTER_JITKERNEL_ARGS_DEPRECATED(lstm, LSTMKernel, JITKERNEL_DECLARE_LSTM,
-                                   JITKERNEL_KEY_LSTM, JITKERNEL_NEW_LSTM_IMPL);
+#define JITKERNEL_DECLARE_LSTM(ker_class, ker_dtype)          \
+  template <>                                                 \
+  std::shared_ptr<const LSTMKernel<ker_dtype>>                \
+  KernelPool::Get<LSTMKernel<ker_dtype>, const lstm_attr_t&>( \
+      const lstm_attr_t& attr)
 
-#undef INTRI8_FLOAT
-#undef JITKERNEL_DECLARE_LSTM
-#undef JITKERNEL_KEY_LSTM
-#undef JITKERNEL_NEW_LSTM_IMPL
+#define JITKERNEL_FIND_KEY_LSTM(ker_class, ker_dtype) \
+  std::string key = ker_class##Impl<ker_dtype>::name(attr)
+
+#define JITKERNEL_LSTM_IMPL(ker, dtype)                     \
+  if (attr.use_peephole) {                                  \
+    p = std::dynamic_pointer_cast<ker<dtype>>(              \
+        std::make_shared<PeepholeKernelImpl<dtype>>(attr)); \
+  } else {                                                  \
+    p = std::dynamic_pointer_cast<ker<dtype>>(              \
+        std::make_shared<ker##Impl<dtype>>(attr));          \
+  }
+
+REGISTER_JITKERNEL_ARGS(lstm, LSTMKernel, JITKERNEL_DEFINE_NAME_LSTM,
+                        JITKERNEL_DECLARE_LSTM, JITKERNEL_FIND_KEY_LSTM,
+                        JITKERNEL_LSTM_IMPL);
 
 /* GRU JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
