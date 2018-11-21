@@ -184,6 +184,44 @@ bool VAddKernelImpl<double>::useMKL(int d) {
 }
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+/* EltwiseMul for nChw16c & NC inputs JitKernel */
+template <typename T>
+class EltwiseMulnChw16cNCKernelImpl
+    : public math::jitkernel::EltwiseMulnChw16cNCKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit EltwiseMulnChw16cNCKernelImpl(int d)
+      : EltwiseMulnChw16cNCKernel<T>() {
+    using mul_func_t = void (*)(const float*, const float*, float*, int, int);
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      // roughly estimate the size of code
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
+      sz = sz > 4096 ? sz : 4096;
+      jitcode_.reset(new gen::EltwiseMulnChw16cNC(sz));
+      this->Compute = (mul_func_t)jitcode_->getCode();
+      return;
+    }
+#endif
+    PADDLE_THROW(
+        "This kernel shouldn't be used in Non-Xbyak, Non-MKL-DNN "
+        "environemnt");
+  }
+
+#ifdef PADDLE_WITH_XBYAK
+
+ private:
+  std::unique_ptr<gen::EltwiseMulnChw16cNC> jitcode_{nullptr};
+};
+
+template <>
+bool EltwiseMulnChw16cNCKernelImpl<float>::useJIT(int d) {
+  return true;
+}
+#endif
+#endif
+
 /* VAddRelu JitKernel */
 template <typename T>
 class VAddReluKernelImpl : public VAddReluKernel<T> {
@@ -349,6 +387,9 @@ REGISTER_JITKERNEL(vscal, VScalKernel);
 REGISTER_JITKERNEL(vaddbias, VAddBiasKernel);
 REGISTER_JITKERNEL(vrelu, VReluKernel);
 REGISTER_JITKERNEL(videntity, VIdentityKernel);
+#ifdef PADDLE_WITH_MKLDNN
+REGISTER_JITKERNEL(eltwise_mul_nchw16c, EltwiseMulnChw16cNCKernel);
+#endif
 
 }  // namespace jitkernel
 }  // namespace math

@@ -89,6 +89,15 @@ class VAddBiasKernel : public Kernel {
   void (*Compute)(const T *, const T *, T *, int);
 };
 
+#ifdef PADDLE_WITH_MKLDNN
+template <typename T>
+class EltwiseMulnChw16cNCKernel : public Kernel {
+ public:
+  // nChw16c = nChw16c .* NC
+  void (*Compute)(const float *, const float *, float *, int, int);
+};
+#endif
+
 template <typename T>
 class VActKernel : public Kernel {
  public:
