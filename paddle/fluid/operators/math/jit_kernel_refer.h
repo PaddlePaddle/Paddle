@@ -185,6 +185,46 @@ void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr) {
   VMul(gates + d2, gates + d3, ht, d);
 }
 
+// compute h1 without h0
+template <typename T>
+void GRUH1(gru_t* step, const gru_attr_t* attr) {
+  T* gates = reinterpret_cast<T*>(step->gates);
+  T* ht = reinterpret_cast<T*>(step->ht);
+  auto act_gate = getActFunc<T>(attr->act_gate);
+  auto act_cand = getActFunc<T>(attr->act_cand);
+  int d = attr->d;
+  int d2 = d * 2;
+  act_gate(gates, gates, d);
+  act_cand(gates + d2, gates + d2, d);
+  VMul(gates, gates + d2, ht, d);
+}
+
+template <typename T>
+void GRUHtPart1(gru_t* step, const gru_attr_t* attr) {
+  // W: {W_update, W_reset; W_state}
+  T* gates = reinterpret_cast<T*>(step->gates);
+  T* ht = reinterpret_cast<T*>(step->ht);
+  const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
+  auto act_gate = getActFunc<T>(attr->act_gate);
+  act_gate(gates, gates, attr->d * 2);
+  VMul(ht_1, gates + attr->d, ht, attr->d);
+}
+
+template <typename T>
+void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
+  T* gates = reinterpret_cast<T*>(step->gates);
+  T* ht = reinterpret_cast<T*>(step->ht);
+  const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
+  auto act_cand = getActFunc<T>(attr->act_cand);
+  int d = attr->d;
+  T* y = gates + d * 2;
+  act_cand(y, y, d);
+  // out = zt*ht~ + (1-zt)*ht_1
+  for (int i = 0; i < d; ++i) {
+    ht[i] = gates[i] * y[i] + (static_cast<T>(1) - gates[i]) * ht_1[i];
+  }
+}
+
 }  // namespace refer
 }  // namespace jitkernel
 }  // namespace math

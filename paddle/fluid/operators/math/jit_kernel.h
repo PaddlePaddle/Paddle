@@ -122,18 +122,18 @@ class VTanhKernel : public VActKernel<T> {};
 template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  void (*ComputeCtHt)(lstm_t *, const lstm_attr_t *);
   // compute c1 and h1 without c0 or h0
   void (*ComputeC1H1)(lstm_t *, const lstm_attr_t *);
+  void (*ComputeCtHt)(lstm_t *, const lstm_attr_t *);
 };
 
 template <typename T>
 class GRUKernel : public Kernel {
  public:
   // compute h1 without h0
-  virtual void ComputeH1(T *gates, T *ht) const = 0;
-  virtual void ComputeHtPart1(T *gates, const T *ht_1, T *ht) const = 0;
-  virtual void ComputeHtPart2(T *gates, const T *ht_1, T *ht) const = 0;
+  void (*ComputeH1)(gru_t *, const gru_attr_t *);
+  void (*ComputeHtPart1)(gru_t *, const gru_attr_t *);
+  void (*ComputeHtPart2)(gru_t *, const gru_attr_t *);
 };
 
 template <typename T>
