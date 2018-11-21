@@ -164,7 +164,7 @@ class DataFeed {
   virtual bool SetFileList(const std::vector<std::string>& files); 
   virtual bool Start() = 0;
   virtual int Next() = 0;
-  virtual void SetBatchSize(int batch) { default_batch_size_ = batch; }
+  virtual void SetBatchSize(int batch);
   virtual int GetBatchSize() { return batch_size_; }
   // for subclass with queue
   virtual void SetQueueSize(int queue_size) {

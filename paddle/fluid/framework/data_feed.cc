@@ -69,6 +69,14 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
   return true;
 }
 
+void DataFeed::SetBatchSize(int batch_size) { 
+  if (batch_size <= 0) {
+    LOG(ERROR) << "error: illegal batch size: " << batch_size;
+    exit(-1);
+  }
+  default_batch_size_ = batch_size; 
+}
+
 bool DataFeed::PickOneFile(std::string& filename) {
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   if (file_idx_ == filelist_.size()) {
