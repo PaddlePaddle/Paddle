@@ -54,6 +54,9 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
+/// Variables with this suffix are the new Gradient.
+constexpr char kNewGradSuffix[] = "@NEWGRAD@";
+
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
@@ -63,6 +66,8 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
+const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
+Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class OperatorBase;
 class ExecutionContext;
@@ -95,6 +100,7 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
+  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
@@ -223,7 +229,7 @@ class ExecutionContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> const T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
@@ -236,7 +242,7 @@ class ExecutionContext {
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });

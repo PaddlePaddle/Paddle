@@ -35,6 +35,7 @@ class NCEOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
+    auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
@@ -69,7 +70,7 @@ class NCEOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        ctx.GetPlace());
+        platform::CPUPlace());
   }
 };
 
@@ -98,6 +99,13 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
              "each sample. And it is a dispensable input. The default value of "
              "sample is 1.")
         .AsDispensable();
+
+    AddInput(
+        "CustomDistribution",
+        "(Tensor) It is used in 'CostumDist' sampler. "
+        "It is a tensor with shape [num_total_classes]."
+        "The i-th element is the probsbility of the i-th class being sampled.")
+        .AsDispensable();
     AddOutput("Cost",
               "(Tensor) A tensor of shape [batch_size, 1]. Cost of samples.");
     AddOutput("SampleLogits",
@@ -121,6 +129,17 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("num_neg_samples",
                  "The number of negative classes. The default value is 10.")
         .SetDefault(10);
+
+    AddAttr<int>("sampler",
+                 "(int) Which sampler to be used to sample negative class."
+                 "0: Uniform; 1: LogUniform; 2: CostumDist.")
+        .SetDefault(0);
+
+    AddAttr<int>("seed",
+                 "(int) The seed used in sampler. If it is 0, "
+                 "the sampler will generate a seed randomly.")
+        .SetDefault(0);
+
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
@@ -174,7 +193,7 @@ class NCEOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        ctx.GetPlace());
+        platform::CPUPlace());
   }
 };
 

@@ -21,6 +21,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#if defined(_WIN32)
+#define NOMINMAX
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
+#include <Windows.h>
+#endif
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -29,11 +36,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+#ifndef _WIN32
 #include "paddle/fluid/framework/parallel_executor.h"
+#endif
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -50,12 +60,18 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#endif
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 #include "pybind11/stl.h"
+
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -79,6 +95,7 @@ bool IsCompiledWithDIST() {
 }
 
 PYBIND11_PLUGIN(core) {
+  paddle::memory::allocation::UseAllocatorStrategyGFlag();
   py::module m("core", "C++ core of PaddlePaddle");
 
   // using framework in this function. Since it is inside a function, it will
@@ -157,7 +174,50 @@ PYBIND11_PLUGIN(core) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
-  py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
+    LoDTensor is a Tensor with optional LoD information.
+
+    np.array(lod_tensor) can convert LoDTensor to numpy array.
+    lod_tensor.lod() can retrieve the LoD information.
+
+    LoD is short for Level of Details and is usually used for varied sequence
+    length. You can skip the following comment if you don't need optional LoD.
+
+  For example:
+     A LoDTensor X can look like the example below. It contains 2 sequences.
+     The first has length 2 and the second has length 3, as described by x.lod.
+
+     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
+     It means the total number of sequence element. In X, each element has 2
+     columns, hence [5, 2].
+
+      x.lod  = [[2, 3]]
+      x.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8], [9, 10]]
+      x.shape = [5, 2]
+
+      LoD can have multiple levels (for example, a paragraph can have multiple
+      sentences and a sentence can have multiple words). In the following
+      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+      first sequence length is 2 (has 2 sub-sequences), the second one's
+      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+      respectively. And the second sequence's 1 sub-sequence has length 3.
+
+      y.lod = [[2 1], [2 2 3]]
+      y.shape = [2+2+3, ...]
+
+  Note:
+      In above description, LoD is length-based. In Paddle internal
+      implementation, lod is offset-based. Hence, internally,
+      y.lod is represented as [[0, 2, 3], [0, 2, 4, 7]] (length-based
+      equivlent would be [[2-0, 3-2], [2-0, 4-2, 7-4]]).
+
+      Sometimes LoD is called recursive_sequence_length to be more
+      self-explanatory. In this case, it must be length-based. Due to history
+      reasons. when LoD is called lod in public API, it might be offset-based.
+      Users should be careful about it.
+
+        )DOC")
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def("__init__",
@@ -293,22 +353,28 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
            },
            py::return_value_policy::reference)
+
 #endif
+#ifndef _WIN32
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+#endif
+      ;  // NOLINT
 
+#if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ResetAll);
+#endif
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
@@ -337,7 +403,8 @@ All parameter, weight, gradient are variables in Paddle.
                                return make_ddim(shape);
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims);
+              holder->InitOnce(capacity, dims,
+                               FLAGS_reader_queue_speed_test_mode);
               return holder->GetQueue();
             },
         py::return_value_policy::copy);
@@ -432,7 +499,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                 });;
 // clang-format on
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
@@ -569,11 +636,14 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
+#ifndef _WIN32
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
+#endif
 
+#ifndef _WIN32
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -594,13 +664,18 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
+#endif
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
-      .def("set_str", [](ir::Pass &self, const std::string &name,
-                         const std::string &attr) {
-        self.Set<std::string>(name, new std::string(attr));
-      });
+      .def(
+          "set_str",
+          [](ir::Pass &self, const std::string &name, const std::string &attr) {
+            self.Set<std::string>(name, new std::string(attr));
+          })
+      .def("set_int", [](ir::Pass &self, const std::string &name,
+                         int val) { self.Set<const int>(name, new int(val)); })
+      .def("type", &ir::Pass::Type);
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
       m, "PassBuilder");
@@ -618,22 +693,24 @@ All parameter, weight, gradient are variables in Paddle.
       .def("remove_pass",
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
+#ifndef _WIN32
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
     the program in ParallelExecutor by setting the property.
 
-    The available properties include:
-        use_cuda (bool): Whether to use CUDA or not. Default True.
-        num_threads (int): The number of threads that used to run the
-            operators in ParallelExecutor. If it is not set, it will be
-            set in ParallelExecutor according to the device count.
-            Default 0.
-        allow_op_delay (bool): Whether to delay the communication operators
-            to run. Default False.
-        num_iteration_per_drop_scope (int): how many iterations between
-            the two dropping local scopes. Default 100.
+    Examples:
+        .. code-block:: python
+
+          exec_strategy = fluid.ExecutionStrategy()
+          exec_strategy.num_threads = 4
+
+          train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                             loss_name=loss.name,
+                                             exec_strategy=exec_strategy)
+
+          train_loss, = train_exe.run([loss.name], feed=feed_dict)
 
         )DOC");
 
@@ -643,19 +720,34 @@ All parameter, weight, gradient are variables in Paddle.
           [](const ExecutionStrategy &self) { return self.num_threads_; },
           [](ExecutionStrategy &self, size_t num_threads) {
             self.num_threads_ = num_threads;
-          })
+          },
+          R"DOC(The type is INT, num_threads represents the size of thread pool that
+            used to run the operators of the current program in ParallelExecutor.
+            If :math:`num\_threads=1`, all the operators will execute one by one,
+            but the order maybe difference between iterations.
+            If it is not set, it will be set in ParallelExecutor according to the
+            device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
+            :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
+            if it is not set, ParallelExecutor will get the cpu count by calling
+            `multiprocessing.cpu_count()`. Default 0.)DOC")
       .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
           [](ExecutionStrategy &self, bool use_cuda) {
             self.use_cuda_ = use_cuda;
-          })
+          })  // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
+      // make user confuse, because ParallelExecutor has a parameter named
+      // 'use_cuda' too, in current implementation, ParallelExecutor's
+      // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
-          })
+          },
+          R"DOC(The type is BOOL, allow_op_delay represents whether to delay the
+                communication operators to run, it may make the execution faster.
+                Note that in some models, allow_op_delay may cause program hang. Default False.)DOC")
       .def_property(
           "num_iteration_per_drop_scope",
           [](const ExecutionStrategy &self) {
@@ -663,7 +755,24 @@ All parameter, weight, gradient are variables in Paddle.
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
-          });
+          },
+          R"DOC(The type is INT, num_iteration_per_drop_scope indicates how
+                many iterations to clean up the temp variables which
+                is generated during execution. It may make the execution faster,
+                because the temp variable's shape maybe the same between two iterations. Default 100.
+
+                NOTES:
+                    1. If you fetch data when calling the 'run', the ParallelExecutor
+                       will clean up the temp variables at the end of the current iteration.
+                    2. In some NLP model, it may cause the GPU memory is insufficient,
+                       in this case, you should reduce `num_iteration_per_drop_scope`.
+              )DOC")
+      .def_property("_dry_run",
+                    [](const ExecutionStrategy &self) { return self.dry_run_; },
+                    [](ExecutionStrategy &self, bool dry_run) {
+                      self.dry_run_ = dry_run;
+                    });
+
   exec_strategy.def_property(
       "use_experimental_executor",
       [](const ExecutionStrategy &self) {
@@ -678,20 +787,17 @@ All parameter, weight, gradient are variables in Paddle.
     BuildStrategy allows the user to more preciously control how to
     build the SSA Graph in ParallelExecutor by setting the property.
 
-    The available properties include:
-        reduce_strategy (str): There are two reduce strategies, 'AllReduce'
-            and 'Reduce'. If you want that all parameters will be optimized
-            on all devices, you can choose 'AllReduce'; if you choose
-            'Reduce', all parameters will be evenly allocated to different
-            devices for optimization, and then broadcast the optimized
-            parameter to other devices. Default 'AllReduce'.
-        gradient_scale_strategy (str): There are two ways of defining loss@grad,
-            'CoeffNumDevice' and 'Customized'. By default, ParallelExecutor
-            sets the loss@grad according to the number of devices. If you want
-            to customize loss@grad, you can choose 'Customized'.
-            Default 'CoeffNumDevice'.
-        debug_graphviz_path (str): Whether to write the SSA Graph to file in the
-            form of graphviz. It is useful for debugging. Default "".
+    Examples:
+        .. code-block:: python
+
+          build_strategy = fluid.BuildStrategy()
+          build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+
+          train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                             loss_name=loss.name,
+                                             build_strategy=build_strategy)
+
+          train_loss, = train_exe.run([loss.name], feed=feed_dict)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -709,36 +815,84 @@ All parameter, weight, gradient are variables in Paddle.
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
-          })
+          },
+          R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
+                  'AllReduce' and 'Reduce'. If you want that all the parameters'
+                  optimization are done on all devices independently, you should choose 'AllReduce';
+                  if you choose 'Reduce', all the parameters' optimization will be evenly distributed
+                  to different devices, and then broadcast the optimized parameter to other devices.
+                  In some models, `Reduce` is faster. Default 'AllReduce'. )DOC")
       .def_property(
           "gradient_scale_strategy",
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.gradient_scale_ = strategy;
-          })
+          },
+          R"DOC(The type is STR, there are three ways of defining :math:`loss@grad` in
+                   ParallelExecutor, 'CoeffNumDevice', 'One' and 'Customized'. By default,
+                   ParallelExecutor sets the :math:`loss@grad` according to the number of devices.
+                   If you want to customize :math:`loss@grad`, you can choose 'Customized'.
+                   Default 'CoeffNumDevice'.)DOC")
       .def_property(
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
-          })
+          },
+          R"DOC(The type is STR, debug_graphviz_path indicate the path that
+                    writing the SSA Graph to file in the form of graphviz, you.
+                    It is useful for debugging. Default "")DOC")
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
-      .def_property("fuse_elewise_add_act_ops",
-                    [](const BuildStrategy &self) {
-                      return self.fuse_elewise_add_act_ops_;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      self.fuse_elewise_add_act_ops_ = b;
-                    })
-      .def("_create_passes_from_strategy",
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.enable_data_balance_ = b;
+          })  // FIXME(chengudo): enable_data_balance seems not important
+      .def_property(
+          "enable_sequential_execution",
+          [](const BuildStrategy &self) {
+            return self.enable_sequential_execution_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.enable_sequential_execution_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
+      .def_property(
+          "remove_unnecessary_lock",
+          [](const BuildStrategy &self) {
+            return self.remove_unnecessary_lock_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.remove_unnecessary_lock_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
+      .def_property(
+          "fuse_elewise_add_act_ops",
+          [](const BuildStrategy &self) {
+            return self.fuse_elewise_add_act_ops_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.fuse_elewise_add_act_ops_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
+                     to fuse elementwise_add_op and activation_op,
+                     it may make the execution faster. Default False)DOC")
+      .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
-             return self.CreatePassesFromStrategy();
-           });
+             return self.CreatePassesFromStrategy(true);
+           },
+           R"DOC(Allow user to customized passes. Normally model-specific
+                optimization passes should be defined in this way. BuildStrategy
+                cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -767,6 +921,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
+#endif
   return m.ptr();
 }
 }  // namespace pybind

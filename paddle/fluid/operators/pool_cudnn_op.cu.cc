@@ -41,6 +41,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     T *output_data = output->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    bool exclusive = ctx.Attr<bool>("exclusive");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -72,7 +73,8 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     if (pooling_type == "max") {
       pooling_mode = PoolingMode::kMaximum;
     } else {
-      pooling_mode = PoolingMode::kAverage;
+      pooling_mode = exclusive ? PoolingMode::kAverageExclusive
+                               : PoolingMode::kAverageInclusive;
     }
 
     cudnnPoolingDescriptor_t cudnn_pool_desc =
@@ -101,6 +103,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     Tensor *input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    bool exclusive = ctx.Attr<bool>("exclusive");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -141,7 +144,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
         pooling_mode = PoolingMode::kMaximum;
       }
     } else {
-      pooling_mode = PoolingMode::kAverage;
+      pooling_mode = exclusive ? PoolingMode::kAverageExclusive
+                               : PoolingMode::kAverageInclusive;
     }
 
     cudnnPoolingDescriptor_t cudnn_pool_desc =
@@ -174,7 +178,8 @@ REGISTER_OP_KERNEL(pool2d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
-                   ops::PoolCUDNNGradOpKernel<double>);
+                   ops::PoolCUDNNGradOpKernel<double>,
+                   ops::PoolCUDNNGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,

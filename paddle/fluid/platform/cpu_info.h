@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+size_t CpuTotalPhysicalMemory();
+
 //! Get the maximum allocation size for a machine.
 size_t CpuMaxAllocSize();
 
@@ -43,7 +45,7 @@ typedef enum {
   sse42,
   avx,
   avx2,
-  avx512_common,
+  avx512f,
   avx512_core,
   avx512_core_vnni,
   avx512_mic,
