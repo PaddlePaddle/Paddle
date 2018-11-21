@@ -183,7 +183,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
 
         rets = []
-
+        # for dense
         dense_scope = fluid.core.Scope()
         dense_startup_program = fluid.framework.Program()
         dense_train_program = fluid.framework.Program()
@@ -199,6 +199,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                                    fetch_list=[cost.name])
                 rets.append(np.mean(loss_val))
 
+        # for sparse
         sparse_scope = fluid.core.Scope()
         sparse_startup_program = fluid.framework.Program()
         sparse_train_program = fluid.framework.Program()
