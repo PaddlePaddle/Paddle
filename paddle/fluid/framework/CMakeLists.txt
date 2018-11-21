@@ -123,8 +123,9 @@ cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
 if (NOT WIN32)
+cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache)
 else()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
     shape_inference data_transform lod_tensor)

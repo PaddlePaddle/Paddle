@@ -825,19 +825,23 @@ Scope* OperatorWithKernel::TryTransferData(
       VLOG(30) << "Transform Variable " << var_name << " from "
                << kernel_type_for_var << " to " << expected_kernel_key;
 
-// In the inference scenerio, the scopes will be reused across the batches, so
-// the `new_scope` here will result in GPU memroy explosion over the running of
-// operators.
-// We use a thread_local cache to fix that issue, the key in the cache is the
-// combination of the `scope` argument, from_kernel_type, target_kernel_type.
-// Have a discussion with @Superjomn or the inference developers if some changes
-// on this logic for this macro might not tested on the other scenerios.
-#ifdef PADDLE_ON_INFERENCE
-      new_scope = TryCreateTransferScope(kernel_type_for_var,
-                                         expected_kernel_key, &scope);
-#endif
-
-      if (new_scope == nullptr) {
+      // In the inference scenerio, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memroy explosion
+      // over the  running of operators.
+      // We use a thread_local cache to fix that issue, the key in the cache is
+      // the combination of the `scope` argument, from_kernel_type,
+      // target_kernel_type.
+      // Have a discussion with @Superjomn or the inference developers if some
+      // changes on this logic for this macro might not tested on the other
+      // scenerios.
+      // If this op is not called by an Executor or ParallelExecutor, it should
+      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
+      // variables, that behavior a lot different.
+      if (!run_by_executor_) {
+        new_scope = TryCreateTransferScope(kernel_type_for_var,
+                                           expected_kernel_key, &scope);
+      }
+      if (!new_scope) {
         new_scope = &scope.NewScope();
       }
 
