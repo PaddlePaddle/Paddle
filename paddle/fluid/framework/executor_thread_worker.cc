@@ -195,8 +195,11 @@ void ExecutorThreadWorker::TrainFiles() {
     thread_scope_->DropKids();
   }
 
-  for (int i = 0; i < fetch_var_num; ++i) {
-    fetch_values_[i] = fetch_values_[i] / batch_cnt;
+  if (batch_cnt) {
+    // when the number of files is less than the number of threads
+    for (int i = 0; i < fetch_var_num; ++i) {
+      fetch_values_[i] = fetch_values_[i] / batch_cnt;
+    }
   }
 
 }

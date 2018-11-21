@@ -42,9 +42,6 @@ class DataFeedDesc(object):
     def set_batch_size(self, batch_size):
         self.proto_desc.batch = batch_size
 
-    def get_slot(self, name):
-        return self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]]
-
     def set_dense_slots(self, dense_slots_name):
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].dense = True
@@ -156,6 +153,6 @@ class AsyncExecutor(object):
                 fetch = [fetch]
             fetch_var_names = [var.name for var in fetch]
 
-        evaluation = self.executor.run_from_files(program_desc, data_feed, filelist, thread_num, fetch_var_names)
+        evaluation = self.executor.run_from_files(program_desc, data_feed.desc(), filelist, thread_num, fetch_var_names)
         return evaluation
 
