@@ -438,10 +438,10 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
             event_items[index].total_time += event_time;
             // min time
             event_items[index].min_time =
-                (std::min)(event_time, event_items[index].min_time);
+                std::min(event_time, event_items[index].min_time);
             // max time
             event_items[index].max_time =
-                (std::max)(event_time, event_items[index].max_time);
+                std::max(event_time, event_items[index].max_time);
           }
 
           // remove the push marker from the list

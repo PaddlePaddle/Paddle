@@ -31,6 +31,10 @@
 #include <sys/time.h>
 #include <algorithm>  // std::accumulate
 #else
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+// solve static linking error in windows
+// https://github.com/google/glog/issues/301
+#define GOOGLE_GLOG_DLL_DECL
 #include <io.h>  // _popen, _pclose
 #include <stdio.h>
 #include <windows.h>
