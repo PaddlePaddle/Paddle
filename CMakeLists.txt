@@ -137,6 +137,8 @@ if (WIN32)
             "Disable DSO when compiling for Windows" FORCE)
     set(WITH_MKL OFF CACHE STRING
             "Disable MKL when compiling for Windows" FORCE)
+    set(WITH_DISTRIBUTE OFF CACHE STRING
+            "Disable DISTRIBUTE when compiling for Windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
