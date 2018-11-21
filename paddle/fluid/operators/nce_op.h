@@ -278,7 +278,9 @@ class NCEGradKernel : public framework::OpKernel<T> {
       d_bias->set_rows(labels);
       d_bias->set_height(labels.size());
 
-      T *d_bias_data = d_bias->value().mutable_data<T>(context.GetPlace());
+      d_bias->mutable_value()->Resize({static_cast<int64_t>(labels.size()), 1});
+      T *d_bias_data =
+          d_bias->mutable_value()->mutable_data<T>(context.GetPlace());
       std::fill(d_bias_data, d_bias_data + labels.size(), 0.0);
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_bias_data[d_bias->Index(sample_labels_data[i])] +=
