@@ -182,7 +182,7 @@ class DataFeed {
   virtual void AddFeedVar(Variable* var, const std::string& name);
  protected:
   // Check if it is executed in this order:
-  //   Init -> SetFileList/BindingMemory -> Start -> Next
+  //   Init -> SetFileList(BindingMemory) -> Start -> Next
   virtual void CheckInit();
   virtual void CheckSetFileList();
   virtual void CheckStart();
@@ -206,7 +206,6 @@ class DataFeed {
 
   bool finish_init_;
   static bool finish_set_filelist_;
-  bool finish_binding_memory_;
   bool finish_start_;
 };
 
