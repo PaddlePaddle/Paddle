@@ -416,7 +416,14 @@ def multi_download(client,
     _logger.info("Finish {} multi process to download datas".format(
         multi_processes))
 
-    return need_download
+    local_downloads = []
+    for data in need_download:
+        data_name = os.path.basename(data)
+        re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
+        local_re_path = os.path.join(local_path, re_path, data_name)
+        local_downloads.append(local_re_path)
+
+    return local_downloads
 
 
 if __name__ == "__main__":
