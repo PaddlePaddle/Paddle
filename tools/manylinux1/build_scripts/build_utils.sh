@@ -53,6 +53,8 @@ function do_cpython_build {
     # NOTE --enable-shared for generating libpython shared library needed for
     # linking of some of the nupic.core test executables.
     if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.7) ]; then
+        # NOTE python 3.7 should be installed via make altinstall rather than
+        # make install, and we should specify the location of ssl
         CFLAGS="-Wformat" ./configure --prefix=${prefix} --with-openssl=/usr/local/ssl --enable-shared $unicode_flags > /dev/null
         make -j8 > /dev/null
         make altinstall > /dev/null
