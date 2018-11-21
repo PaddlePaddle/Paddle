@@ -36,9 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#ifndef _WIN32
 #include "paddle/fluid/framework/parallel_executor.h"
-#endif
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -637,7 +635,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
-#ifndef _WIN32
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -658,7 +655,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
-#endif
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
@@ -687,7 +683,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("remove_pass",
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
-#ifndef _WIN32
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
@@ -913,7 +908,6 @@ All parameter, weight, gradient are variables in Paddle.
         pybind11::gil_scoped_release release;
         self.Run(fetch_tensors, fetched_var_name);
       });
-#endif
 
   BindRecordIOWriter(&m);
   return m.ptr();

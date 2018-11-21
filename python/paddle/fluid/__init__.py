@@ -47,8 +47,7 @@ from . import profiler
 from . import unique_name
 from . import recordio_writer
 from . import parallel_executor
-if os.name != 'nt':
-    from .parallel_executor import *
+from .parallel_executor import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
