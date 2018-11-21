@@ -138,11 +138,12 @@ inline void Split(cudaStream_t stream, const bool same_shape,
 int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
                          void** outputs, void* workspace, cudaStream_t stream) {
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
-  if (axis_ == -1 && this->getNbOutputs() < 10) {
+  if (((batchSize == 1 && axis_ == 0) || axis_ == -1) &&
+      this->getNbOutputs() < 10) {
     float** output_ptrs = reinterpret_cast<float**>(outputs);
     int data_type_size = (this->getDataType() == nvinfer1::DataType::kFLOAT)
-                             ? sizeof(__half)
-                             : sizeof(float);
+                             ? sizeof(float)
+                             : sizeof(__half);
     for (int i = 0; i < this->getNbOutputs(); ++i) {
       PADDLE_ENFORCE(
           cudaMemcpyAsync(
