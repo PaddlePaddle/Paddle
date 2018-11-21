@@ -42,7 +42,7 @@ std::unique_ptr<framework::ir::Graph> MemOptimPass::ApplyImpl(
 void MemOptimPass::CollectLifeCycle(
     std::unordered_map<std::string, lifecycle_t>* lifecycles) const {
   max_lifecycle_ = 0;
-  for (auto* op_node : framework::ir::TopologySortOperations(*graph_)) {
+  for (auto* op_node : framework::ir::TopologyDfsSortOperations(*graph_)) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
@@ -329,7 +329,7 @@ void UpdateIrGraphByReuse(
 void UpdateOpDescsByReuse(
     Graph* graph,
     const std::unordered_map<std::string, std::string>& reuse_table) {
-  for (auto* node : framework::ir::TopologySortOperations(*graph)) {
+  for (auto* node : framework::ir::TopologyDfsSortOperations(*graph)) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
       std::unordered_map<std::string, std::vector<std::string>> in_args,

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_traits.h"
+
 #include <algorithm>
 #include <deque>
 #include <unordered_set>
@@ -90,6 +92,58 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
     }
   }
   return ret;
+}
+
+sttd::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
+  std::vector<ir::Node *> nodes;
+  std::unordered_map<Node *, int> in_degree;
+
+  auto set_out_ops_ready = [&](Node *var) {
+    for (auto *op : var->outputs) {
+      --in_degree[op];
+    }
+  };
+  // build in_degree
+  for (auto *node : graph.Nodes()) {
+    if (node->IsOp()) {
+      in_degree[node] += node->inputs.size();
+    } else if (node->IsVar() && node->inputs.empty()) {
+      // put all the inputs of the whole graph ready.
+      set_out_ops_ready(node);
+    }
+  }
+
+  std::deque<Node *> op_queue;
+  // first visit
+  for (auto &node : GraphTraits::DFS(graph)) {
+    if (node.IsOp()) {
+      op_queue.push_back(&node);
+    }
+  }
+
+  // traverse the graph
+  int num_times = 1000;
+  int num_ops = op_queue.size();
+  while (num_ops) {
+    if (--num_times < 0) break;
+    for (auto it = op_queue.begin(); it != op_queue.end(); it++) {
+      auto *&cur_op = *it;
+      if (!cur_op || in_degree[cur_op] > 0) continue;
+      // visit this node
+      // put all the output var of this op valid.
+      for (auto *out_var : cur_op->outputs) {
+        if (!out_var) continue;
+        set_out_ops_ready(out_var);
+      }
+      LOG(INFO) << "visit " << cur_op->Name();
+      nodes.push_back(cur_op);
+
+      cur_op = nullptr;
+      num_ops--;
+    }
+  }
+
+  return nodes;
 }
 
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
