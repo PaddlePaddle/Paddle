@@ -60,7 +60,7 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
   CheckInit();
   if (files.size() == 0) {
     LOG(ERROR) << "error: you have set an empty filelist";
-    return false;
+    exit(-1);
   }
   filelist_.assign(files.begin(), files.end());
   file_idx_ = 0;
@@ -100,7 +100,7 @@ template<typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   if (queue_size <= 0) {
     LOG(ERROR) << "error: illegal queue size: " << queue_size;
-    return;
+    exit(-1);
   }
   queue_size_ = queue_size;
   queue_.ReCap(queue_size_);

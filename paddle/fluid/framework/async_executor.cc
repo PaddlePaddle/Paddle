@@ -143,8 +143,7 @@ void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers,
   readers.resize(thread_num);
   for (size_t i = 0; i < readers.size(); ++i) {
     readers[i] = DataFeedFactory::CreateDataFeed(data_feed_desc.name());
-    readers[i]->Init(data_feed_desc); // set batch size here
-    //readers[i]->SetQueueSize(32);   // default is 32
+    readers[i]->Init(data_feed_desc); // set batch_size and queue_size here
   }
   readers[0]->SetFileList(filelist);
 }
