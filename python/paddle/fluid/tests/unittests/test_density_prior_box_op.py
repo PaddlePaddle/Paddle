@@ -36,7 +36,8 @@ class TestDensityPriorBoxOp(OpTest):
             'offset': self.offset,
             'densities': self.densities,
             'fixed_sizes': self.fixed_sizes,
-            'fixed_ratios': self.fixed_ratios
+            'fixed_ratios': self.fixed_ratios,
+            'flatten_to_2d': self.flatten_to_2d
         }
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
@@ -55,6 +56,7 @@ class TestDensityPriorBoxOp(OpTest):
         self.layer_h = 17
         self.image_w = 533
         self.image_h = 533
+        self.flatten_to_2d = False
 
     def init_test_params(self):
         self.set_density()
@@ -127,6 +129,9 @@ class TestDensityPriorBoxOp(OpTest):
                           (self.layer_h, self.layer_w, self.num_priors, 1))
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
+        if self.flatten_to_2d:
+            self.out_boxes = self.out_boxes.reshape((-1, 4))
+            self.out_var = self.out_var.reshape((-1, 4))
 
 
 class TestDensityPriorBox(TestDensityPriorBoxOp):
@@ -138,6 +143,7 @@ class TestDensityPriorBox(TestDensityPriorBoxOp):
         self.layer_h = 32
         self.image_w = 40
         self.image_h = 40
+        self.flatten_to_2d = True
 
 
 if __name__ == '__main__':

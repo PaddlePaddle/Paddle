@@ -146,12 +146,16 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopySync(h_temp, ctx.GetPlace(), &d_temp);
 
     int num = boxes->numel() / 4;
-    int block = 512;
-    int grid = (num + block - 1) / block;
-    LOG(ERROR) << "block = " << block << ", grid = " << grid;
+    int blockx = 256;
+    int gridx = (feature_width * num_priors + blockx - 1) / blockx;
+
+    dim3 threads(blockx, 1);
+    dim3 grids(gridx, feature_height);
+
+    LOG(ERROR) << "block = " << blockx << ", grid = " << gridx;
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
-    GenDensityPriorBox<T><<<grid, block, 0, stream>>>(
+    GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(
         feature_height, feature_width, img_height, img_width, offset,
         step_width, step_height, num_priors, d_temp.data<T>(), is_clip,
         variances[0], variances[1], variances[2], variances[3],

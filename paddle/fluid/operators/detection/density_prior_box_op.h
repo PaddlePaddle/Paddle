@@ -58,8 +58,10 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
-    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
 
+    auto box_dim = vars->dims();
+    boxes->Resize({feature_height, feature_width, num_priors, 4});
+    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
     for (int h = 0; h < feature_height; ++h) {
@@ -133,6 +135,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(box_num, 1));
 
     vars->Resize(var_dim);
+    boxes->Resize(box_dim);
   }
 };  // namespace operators
 
