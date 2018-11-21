@@ -45,6 +45,10 @@ class DataFeedDesc(object):
     def get_slot(self, name):
         return self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]]
 
+    def set_dense_slots(self, dense_slots_name):
+        for name in dense_slots_name:
+            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].dense = True
+
     def set_use_slots(self, use_slots_name):
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].use = True
