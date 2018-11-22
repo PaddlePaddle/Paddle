@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace {
@@ -76,7 +75,7 @@ bool NativePaddlePredictor::Init(
 #endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+  paddle::platform::SetNumThreads(config_.GetCPUNumThreads());
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);

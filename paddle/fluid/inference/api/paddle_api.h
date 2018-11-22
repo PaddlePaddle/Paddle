@@ -186,6 +186,15 @@ struct NativeConfig : public PaddlePredictor::Config {
   // Specify the variable's name of each input if input tensors don't follow the
   // `feeds` and `fetches` of the phase `save_inference_model`.
   bool specify_input_name{false};
+
+  // Set and get the number of cpu threads.
+  void SetCPUNumThreads(int cpu_num_threads) {
+    cpu_num_threads_ = cpu_num_threads;
+  }
+  int GetCPUNumThreads() const { return cpu_num_threads_; }
+
+ protected:
+  int cpu_num_threads_{1};  // number of cpu threads for each instance.
 };
 
 // A factory to help create different predictors.
