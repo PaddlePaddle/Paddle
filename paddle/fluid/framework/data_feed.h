@@ -95,9 +95,9 @@ class BlockingQueue {
       queue_.push_back(elem);
       c = size_.load();
       size_.fetch_add(1);
-    }
-    if (c + 1 < capacity_) {
-      send_cv_.notify_one();
+      if (c + 1 < capacity_) {
+        send_cv_.notify_one();
+      }
     }
 
     if (c == 0) {
@@ -117,12 +117,12 @@ class BlockingQueue {
         queue_.pop_front();
         c = size_.load();
         size_.fetch_sub(1);
+        if (c > 1) {
+          receive_cv_.notify_one();
+        }
       } else {
         return false;
       }
-    }
-    if (c > 1) {
-      receive_cv_.notify_one();
     }
     if (c == capacity_) {
       std::unique_lock<std::mutex> lock(send_mutex_);
