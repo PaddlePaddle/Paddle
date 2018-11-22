@@ -108,7 +108,7 @@ class PeepholeKernelImpl : public LSTMKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool PeepholeKernelImpl<float>::useJIT(int d) {
-  return false;  // peephole jitcode not ready yet
+  return gen::LSTMJitCode::init(d);
 }
 #endif
 
