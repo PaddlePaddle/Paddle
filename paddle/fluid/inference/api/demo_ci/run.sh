@@ -1,3 +1,4 @@
+#!/bin/bash
 set -x
 PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
@@ -53,10 +54,13 @@ cd $current_dir
 mkdir -p build
 cd build
 
+export CC=/usr/bin/gcc-4.8
+export CXX=/usr/bin/g++-4.8 
+
 for WITH_STATIC_LIB in ON OFF; do
   # -----simple_on_word2vec-----
   rm -rf *
-  cmake .. -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -DPADDLE_LIB=${inference_install_dir} \
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=simple_on_word2vec \
     -DWITH_GPU=$TEST_GPU_CPU \

@@ -63,6 +63,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
 }
 
 contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
+  other.Build();
   // fields from Config
   model_dir = other.model_dir;
   // fields from NativeConfig
@@ -78,6 +79,7 @@ contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
+  enable_memory_optim_ = other.enable_memory_optim_;
   pass_builder_ = std::move(other.pass_builder_);
 }
 
@@ -98,6 +100,21 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   tensorrt_max_batchsize_ = max_batch_size;
   // Append after the infer_clean pass.
   pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+}
+
+void contrib::AnalysisConfig::EnableMemoryOptim() {
+  enable_memory_optim_ = true;
+}
+
+bool contrib::AnalysisConfig::enable_memory_optim() const {
+  return enable_memory_optim_;
+}
+
+void contrib::AnalysisConfig::Build() const {
+  // TODO(Superjomn) consider to avoid duplicate build.
+  if (enable_memory_optim_) {
+    pass_builder()->AppendPass("memory_optim_pass");
+  }
 }
 
 }  // namespace paddle

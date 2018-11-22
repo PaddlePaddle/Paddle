@@ -174,6 +174,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_dam, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
+  cfg.Build();
 
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -220,3 +222,5 @@ TEST(Analyzer_dam, compare) {
 
 }  // namespace inference
 }  // namespace paddle
+
+USE_PASS(memory_optim_pass);

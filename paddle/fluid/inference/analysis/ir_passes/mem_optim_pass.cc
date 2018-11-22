@@ -62,12 +62,6 @@ void MemOptimPass::CollectLifeCycle(
 
     ++max_lifecycle_;
   }
-
-  LOG(INFO) << "var lifecyles";
-  for (auto& elem : *lifecycles) {
-    LOG(INFO) << elem.first << " " << elem.second.first << " "
-              << elem.second.second;
-  }
 }
 
 // TODO(Superjomn) Make this a general help method.
@@ -277,8 +271,8 @@ void MemOptimPass::MakeReusePlan(
 
   int allocated, saved_memory;
   MemoryStatis(*reuse_table, space_table, &allocated, &saved_memory);
-  LOG(INFO) << "Allocated " << allocated / 1024 << " MB for workspace";
-  LOG(INFO) << "Saved " << saved_memory / 1024 << " MB";
+  LOG(INFO) << "Allocated " << allocated / 1024. << " MB for workspace";
+  LOG(INFO) << "Saved " << saved_memory / 1024. << " MB";
   LOG(INFO) << "The saving ratio: "
             << static_cast<float>(saved_memory) / (saved_memory + allocated);
 }

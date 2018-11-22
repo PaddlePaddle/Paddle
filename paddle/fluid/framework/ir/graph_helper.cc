@@ -94,7 +94,83 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   return ret;
 }
 
-sttd::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
+// Build operator inlink edge table.
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
+    const Graph &graph) {
+  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
+
+  for (auto &n : graph.Nodes()) {
+    if (!n->IsOp()) continue;
+    if (adj_list.find(n) == adj_list.end()) {
+      adj_list[n] = std::unordered_set<ir::Node *>();
+    }
+    for (auto &var : n->inputs) {
+      for (auto &adj_n : var->inputs) {
+        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
+                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
+        adj_list[n].insert(adj_n);
+      }
+    }
+  }
+  return adj_list;
+}
+
+// Build operator outlink edge table.
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
+    const Graph &graph) {
+  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
+
+  for (auto &n : graph.Nodes()) {
+    if (!n->IsOp()) continue;
+    if (adj_list.find(n) == adj_list.end()) {
+      adj_list[n] = std::unordered_set<ir::Node *>();
+    }
+    for (auto &var : n->outputs) {
+      for (auto &adj_n : var->outputs) {
+        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
+                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
+        adj_list[n].insert(adj_n);
+      }
+    }
+  }
+  return adj_list;
+}
+
+std::vector<ir::Node *> OpDFSSort(const Graph &graph) {
+  auto edge_table = BuildOperationOutAdjList(graph);
+  LOG(INFO) << "edge table size " << edge_table.size();
+  std::stack<Node *> stack;
+  // find the feed ops
+  for (auto &ele : edge_table) {
+    if (ele.first->Name() == "feed") {
+      stack.push(ele.first);
+    }
+  }
+
+  std::vector<Node *> res;
+  // start from the feed op and DFS
+  std::unordered_set<Node *> unique_set;
+  while (!stack.empty()) {
+    // will start from the last feed by default.
+    auto cur = stack.top();
+    stack.pop();
+    unique_set.insert(cur);
+    res.push_back(cur);
+
+    for (auto *op : edge_table[cur]) {
+      if (!unique_set.count(op)) {
+        stack.push(op);
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   std::vector<ir::Node *> nodes;
   std::unordered_map<Node *, int> in_degree;
 
@@ -115,9 +191,9 @@ sttd::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
 
   std::deque<Node *> op_queue;
   // first visit
-  for (auto &node : GraphTraits::DFS(graph)) {
-    if (node.IsOp()) {
-      op_queue.push_back(&node);
+  for (auto &node : OpDFSSort(graph)) {
+    if (node->IsOp()) {
+      op_queue.push_back(node);
     }
   }
 
@@ -135,7 +211,7 @@ sttd::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
         if (!out_var) continue;
         set_out_ops_ready(out_var);
       }
-      LOG(INFO) << "visit " << cur_op->Name();
+      VLOG(8) << "visit " << cur_op->Name();
       nodes.push_back(cur_op);
 
       cur_op = nullptr;
@@ -144,28 +220,6 @@ sttd::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   }
 
   return nodes;
-}
-
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
-    const Graph &graph) {
-  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
-
-  for (auto &n : graph.Nodes()) {
-    if (n->NodeType() != ir::Node::Type::kOperation) continue;
-    if (adj_list.find(n) == adj_list.end()) {
-      adj_list[n] = std::unordered_set<ir::Node *>();
-    }
-    for (auto &var : n->inputs) {
-      for (auto &adj_n : var->inputs) {
-        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
-        VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
-                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
-        adj_list[n].insert(adj_n);
-      }
-    }
-  }
-  return adj_list;
 }
 
 size_t GraphNum(const Graph &graph) {

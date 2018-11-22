@@ -109,18 +109,21 @@ struct Argument {
   // The overall Scope to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(scope, Scope, framework::Scope);
 
+  // The default program, loaded from disk.
   DECL_ARGUMENT_UNIQUE_FIELD(main_program, MainProgram, framework::ProgramDesc);
 
   // The ir passes to perform in analysis phase.
   DECL_ARGUMENT_FIELD(ir_analysis_passes, IrAnalysisPasses,
                       std::vector<std::string>);
 
+  // Some fields passed from AnalysisConfig
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
                       std::function<bool(const framework::ir::Node*)>);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
 
   // The program transformed by IR analysis phase.
   DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,

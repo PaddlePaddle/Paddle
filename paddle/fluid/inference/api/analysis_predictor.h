@@ -58,7 +58,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool ZeroCopyRun() override;
 
   void CreateFeedFetchVar(framework::Scope *scope);
-  void PrepareFeedFetch();
+  void PrepareFeedFetch(const framework::ProgramDesc &program);
 
   void OptimizeInferenceProgram();
 
