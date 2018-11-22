@@ -218,5 +218,3 @@ TEST(AnalysisPredictor, memory_optim) {
 }
 
 }  // namespace paddle
-
-USE_PASS(memory_optim_pass);

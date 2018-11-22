@@ -70,6 +70,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.pass_builder()->TurnOnDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

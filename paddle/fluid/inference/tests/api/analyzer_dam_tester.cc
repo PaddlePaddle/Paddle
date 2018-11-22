@@ -222,5 +222,3 @@ TEST(Analyzer_dam, compare) {
 
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(memory_optim_pass);

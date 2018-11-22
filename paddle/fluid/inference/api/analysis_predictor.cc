@@ -84,6 +84,9 @@ bool AnalysisPredictor::Init(
     return true;
   }
 
+  // Get the feed_target_names and fetch_target_names
+  PrepareFeedFetch();
+
   return true;
 }
 
@@ -107,7 +110,6 @@ bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
-    PrepareFeedFetch(*inference_program_);
 
     // Optimize the program, and load parameters and modify them in the
     // scope_.
@@ -199,7 +201,6 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   }
 
   // Cache the inputs memory for better concurrency performance.
-  LOG(INFO) << "inputs.size " << inputs.size();
   feed_tensors_.resize(inputs.size());
 
   for (size_t i = 0; i < inputs.size(); ++i) {
@@ -230,7 +231,6 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = boost::get<int>(feeds_[i]->GetAttr("col"));
     }
-    LOG(INFO) << "set feed " << idx;
     framework::SetFeedVariable(scope, input, "feed", idx);
   }
   return true;
@@ -347,11 +347,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   return std::move(predictor);
 }
 
-void AnalysisPredictor::PrepareFeedFetch(
-    const framework::ProgramDesc &program) {
+void AnalysisPredictor::PrepareFeedFetch() {
   PADDLE_ENFORCE_NOT_NULL(sub_scope_);
   CreateFeedFetchVar(sub_scope_);
-  for (auto *op : program.Block(0).AllOps()) {
+  for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       int idx = boost::get<int>(op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {

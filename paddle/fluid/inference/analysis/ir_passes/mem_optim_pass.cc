@@ -50,13 +50,31 @@ void MemOptimPass::CollectLifeCycle(
     std::vector<Node*> requires(reads.begin(), reads.end());
     requires.insert(requires.end(), writes.begin(), writes.end());
 
-    for (const Node* node : requires) {
-      if (node->Var()->Persistable()) continue;
-      std::string var = node->Name();
-      if (!lifecycles->count(var)) {
-        (*lifecycles)[var] = std::make_pair(max_lifecycle_, max_lifecycle_);
-      } else {
-        (*lifecycles)[var].second = max_lifecycle_;  // max()
+    bool to_optim = true;
+
+    if (op_node->Name() == "stack") to_optim = false;
+
+    // Disable reuse of feed variables.
+    if (op_node->Name() == "feed") {
+      for (auto* node : op_node->outputs) {
+        auto var = node->Name();
+        if (!lifecycles->count(var)) {
+          (*lifecycles)[var] =
+              std::make_pair(max_lifecycle_, std::numeric_limits<int>::max());
+        }
+      }
+    } else {
+      // Normal operators.
+      for (const Node* node : requires) {
+        if (node->Var()->Persistable()) continue;
+        std::string var = node->Name();
+        if (!lifecycles->count(var)) {
+          int dead = to_optim ? max_lifecycle_ : std::numeric_limits<int>::max();
+          (*lifecycles)[var] = std::make_pair(max_lifecycle_, dead);
+        } else {
+          (*lifecycles)[var].second =
+              std::max(max_lifecycle_, lifecycles->at(var).second);  // max()
+        }
       }
     }
 
@@ -192,16 +210,17 @@ void ReuseATensor(const std::string& tensor, const std::string& tensor2reuse,
 
 void MemoryStatis(
     const std::unordered_map<std::string, std::string>& reuse_table,
-    const std::unordered_map<std::string, int>& space_table, int* allocated,
-    int* saved) {
+    const std::unordered_map<std::string, int>& space_table,
+    long long int* allocated, long long int* saved) {
   *allocated = 0;
   *saved = 0;
   for (auto elem : reuse_table) {
-    if (elem.first == "feed" || elem.second == "second") continue;
+    // if (elem.first == "feed" || elem.second == "second") continue;
     if (elem.first == elem.second) {
       *allocated += space_table.at(elem.first);
     } else {
       *saved += space_table.at(elem.first);
+      LOG(INFO) << "reuse " << elem.first << " -> " << elem.second;
     }
   }
 }
@@ -253,7 +272,9 @@ void MemOptimPass::MakeReusePlan(
       if (FindSutableTensorToReuse(space_required, tensor_nodes,
                                    &free_existing_tensors, space_table,
                                    &tensor2reuse)) {
-        VLOG(4) << tensor << " -> " << tensor2reuse;
+        if (tensor != tensor2reuse) {
+          LOG(INFO) << tensor << " -> " << tensor2reuse;
+        }
         ReuseATensor(tensor, tensor2reuse, &free_existing_tensors, reuse_table);
       } else {
         VLOG(4) << "allocate " << tensor;
@@ -269,10 +290,10 @@ void MemOptimPass::MakeReusePlan(
     }
   }
 
-  int allocated, saved_memory;
+  long long allocated, saved_memory;
   MemoryStatis(*reuse_table, space_table, &allocated, &saved_memory);
-  LOG(INFO) << "Allocated " << allocated / 1024. << " MB for workspace";
-  LOG(INFO) << "Saved " << saved_memory / 1024. << " MB";
+  LOG(INFO) << "Allocated " << allocated / 1024. / 1024. << " MB for workspace";
+  LOG(INFO) << "Saved " << saved_memory / 1024. / 1024. << " MB";
   LOG(INFO) << "The saving ratio: "
             << static_cast<float>(saved_memory) / (saved_memory + allocated);
 }
@@ -323,7 +344,8 @@ void UpdateIrGraphByReuse(
 void UpdateOpDescsByReuse(
     Graph* graph,
     const std::unordered_map<std::string, std::string>& reuse_table) {
-  for (auto* node : framework::ir::TopologyDfsSortOperations(*graph)) {
+  // for (auto* node : framework::ir::TopologyDfsSortOperations(*graph)) {
+  for (auto* node : framework::ir::TopologySortOperations(*graph)) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
       std::unordered_map<std::string, std::vector<std::string>> in_args,

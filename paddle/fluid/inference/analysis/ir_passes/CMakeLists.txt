@@ -10,7 +10,7 @@ set(analysis_deps ${analysis_deps}
 
 set(pass_file ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h)
 file(APPEND ${pass_file} "USE_PASS(tensorrt_subgraph_pass);\n")
-file(APPEND ${pass_file} "USE_PASS(mem_optim_pass);\n")
+file(APPEND ${pass_file} "USE_PASS(memory_optim_pass);\n")
 
 set(INFER_IR_PASSES ${INFER_IR_PASSES}
         tensorrt_subgraph_pass

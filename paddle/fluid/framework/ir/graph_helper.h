@@ -36,6 +36,9 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 // Topological sort, but try to DFS.
 std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph);
 
+// Clean the nodes that doesn't connect to others.
+void CleanIndividualNodes(Graph *graph);
+
 // Build an adjacency list of operations for the `graph`.
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);

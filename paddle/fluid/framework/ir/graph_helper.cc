@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
 #include <algorithm>
@@ -309,6 +310,19 @@ size_t GraphNum(const Graph &graph) {
   }
 
   return graph_count;
+}
+
+void CleanIndividualNodes(Graph *graph) {
+  std::unordered_set<Node *> nodes2rm;
+  for (auto *node : graph->Nodes()) {
+    if (node->inputs.empty() && node->outputs.empty()) {
+      nodes2rm.insert(node);
+    }
+  }
+
+  for (auto *node : nodes2rm) {
+    graph->RemoveNode(node);
+  }
 }
 
 }  // namespace ir
