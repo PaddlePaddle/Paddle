@@ -40,7 +40,7 @@ class LSTMKernelImpl : public LSTMKernel<T> {
   explicit LSTMKernelImpl(const lstm_attr_t& attr) : LSTMKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(attr.d)) {
-      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 84 * 8;  // should change
+      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 90 * 4 * 8;
       jitcode0_.reset(new gen::LSTMJitCode(false, attr, sz > 4096 ? sz : 4096));
       this->ComputeCtHt =
           jitcode0_->getCode<void (*)(lstm_t*, const lstm_attr_t*)>();
@@ -66,7 +66,7 @@ class LSTMKernelImpl : public LSTMKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool LSTMKernelImpl<float>::useJIT(int d) {
-  return false;  // not ready yet gen::LSTMJitCode::init(d);
+  return gen::LSTMJitCode::init(d);
 }
 #endif
 
@@ -82,7 +82,7 @@ class PeepholeKernelImpl : public LSTMKernel<T> {
   explicit PeepholeKernelImpl(const lstm_attr_t& attr) : LSTMKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(attr.d)) {
-      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 84 * 8;  // should change
+      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 96 * 4 * 8;
       jitcode0_.reset(new gen::LSTMJitCode(false, attr, sz > 4096 ? sz : 4096));
       this->ComputeCtHt =
           jitcode0_->getCode<void (*)(lstm_t*, const lstm_attr_t*)>();
@@ -175,11 +175,41 @@ class GRUKernelImpl : public GRUKernel<T> {
   static inline bool useJIT(int d) { return false; }
   static inline bool useMKL(int d) { return false; }
   explicit GRUKernelImpl(const gru_attr_t& attr) : GRUKernel<T>() {
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(attr.d)) {
+      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 84 * 8;  // should change
+      jitcode0_.reset(new gen::GRUJitCode(0, attr, sz > 4096 ? sz : 4096));
+      this->ComputeH1 =
+          jitcode0_->getCode<void (*)(gru_t*, const gru_attr_t*)>();
+
+      jitcode1_.reset(new gen::GRUJitCode(1, attr, sz > 4096 ? sz : 4096));
+      this->ComputeHtPart1 =
+          jitcode1_->getCode<void (*)(gru_t*, const gru_attr_t*)>();
+
+      jitcode2_.reset(new gen::GRUJitCode(2, attr, sz > 4096 ? sz : 4096));
+      this->ComputeHtPart2 =
+          jitcode1_->getCode<void (*)(gru_t*, const gru_attr_t*)>();
+      return;
+    }
+#endif
     this->ComputeH1 = refer::GRUH1<T>;
     this->ComputeHtPart1 = refer::GRUHtPart1<T>;
     this->ComputeHtPart2 = refer::GRUHtPart2<T>;
   }
+#ifdef PADDLE_WITH_XBYAK
+
+ private:
+  std::unique_ptr<gen::GRUJitCode> jitcode0_{nullptr}, jitcode1_{nullptr},
+      jitcode2_{nullptr};
+#endif
 };
+
+#ifdef PADDLE_WITH_XBYAK
+template <>
+bool GRUKernelImpl<float>::useJIT(int d) {
+  return false;  // jitcode not ready yet
+}
+#endif
 
 #define JITKERNEL_DEFINE_NAME_GRU(ker_key, ker_class)                 \
   template <>                                                         \
