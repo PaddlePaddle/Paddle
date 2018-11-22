@@ -150,5 +150,3 @@ TEST(TensorRT_mobilenet, analysis) {
 
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(tensorrt_subgraph_pass);

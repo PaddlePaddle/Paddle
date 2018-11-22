@@ -17,7 +17,14 @@ limitations under the License. */
 
 #include <algorithm>
 #include <deque>
+#include <fstream>
+#include <iosfwd>
+#include <ostream>
 #include <unordered_set>
+
+DEFINE_string(print_sub_graph_dir, "",
+              "FLAGS_print_sub_graph_dir is used "
+              "to print the nodes of sub_graphs.");
 
 namespace paddle {
 namespace framework {
@@ -272,12 +279,15 @@ size_t GraphNum(const Graph &graph) {
     graph_nodes.emplace_back(g_nodes);
   }
 
-  if (VLOG_IS_ON(100)) {
-    VLOG(100) << "graph_num: " << graph_nodes.size();
-    for (auto &g_n : graph_nodes) {
-      VLOG(100) << "graph_nodes: " << g_n.size();
-      if (g_n.size() < 10) {
-        std::stringstream out;
+  if (FLAGS_print_sub_graph_dir.size()) {
+    if (graph_nodes.size() > 1) {
+      std::stringstream out;
+      for (auto &g_n : graph_nodes) {
+        out << "graph_nodes: " << g_n.size() << "\n";
+      }
+      out << "\n\n";
+      for (auto &g_n : graph_nodes) {
+        out << "graph_nodes: " << g_n.size();
         for (auto &node : g_n) {
           out << "\nNode: " << node->Name() << " in [";
           for (auto &n : node->inputs) {
@@ -289,8 +299,12 @@ size_t GraphNum(const Graph &graph) {
           }
           out << "]";
         }
-        VLOG(100) << out.str();
+        out << "\n\n\n";
       }
+      std::unique_ptr<std::ostream> fout(
+          new std::ofstream(FLAGS_print_sub_graph_dir));
+      PADDLE_ENFORCE(fout->good());
+      *fout << out.str();
     }
   }
 

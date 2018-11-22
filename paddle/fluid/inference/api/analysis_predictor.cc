@@ -285,6 +285,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   status_program_optimized_ = true;
 
   argument_.SetUseGPU(config_.use_gpu);
+  argument_.SetGPUDeviceId(config_.device);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -492,8 +493,7 @@ bool AnalysisPredictor::LoadParameters() {
   }
 
   // Use NaiveExecutor to Load parameters.
-  platform::CPUPlace place;
-  framework::NaiveExecutor e(place);
+  framework::NaiveExecutor e(place_);
   e.Prepare(scope_.get(), *load_program, 0, false);
   e.Run();
   VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
@@ -552,4 +552,5 @@ USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
+USE_TRT_CONVERTER(leaky_relu);
 #endif
