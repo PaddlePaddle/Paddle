@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <string>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
