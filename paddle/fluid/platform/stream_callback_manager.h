@@ -18,7 +18,7 @@
 #include <cuda_runtime.h>
 #include <functional>
 #include <memory>
-#include "ThreadPool.h"
+#include <ThreadPool.h>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
