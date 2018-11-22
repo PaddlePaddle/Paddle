@@ -32,21 +32,21 @@ class DataFeedDesc(object):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
-        self.__name_to_index = {}
-        for i, slot in enumerate(self.proto_desc.multi_slot_desc.slots):
-            self.__name_to_index[slot.name] = i
-
-    def set_data_feed_type(self, data_feed):
-        self.proto_desc.name = datafeed
+        if self.proto_desc.name == "MultiSlotDataFeed":
+            self.__name_to_index = {slot.name: i for i, slot in enumerate(self.proto_desc.multi_slot_desc.slots)}
 
     def set_batch_size(self, batch_size):
         self.proto_desc.batch = batch_size
 
     def set_dense_slots(self, dense_slots_name):
+        if self.proto_desc.name != "MultiSlotDataFeed":
+            raise ValueError("Only MultiSlotDataFeed need set_dense_slots, pls check your datafeed.proto")
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].dense = True
 
     def set_use_slots(self, use_slots_name):
+        if self.proto_desc.name != "MultiSlotDataFeed":
+            raise ValueError("Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto")
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].use = True
 
