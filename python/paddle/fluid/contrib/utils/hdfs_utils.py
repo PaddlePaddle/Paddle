@@ -288,8 +288,7 @@ class HDFSClient(object):
         _logger.info('Creating directories to %r.', hdfs_path)
         assert hdfs_path is not None
 
-        if hdfs_path.is_exist(hdfs_path):
-            _logger.error("HDFS path is exist: {}".format(hdfs_path))
+        if self.is_exist(hdfs_path):
             return
 
         mkdirs_commands = ['-mkdir', hdfs_path]
@@ -366,6 +365,62 @@ class HDFSClient(object):
             return ret_lines
 
 
+def multi_upload(client,
+                 hdfs_path,
+                 local_path,
+                 multi_processes=5,
+                 overwrite=False):
+    """
+    :param overwrite: will overwrite hdfs file or not
+    :param multi_processes: the upload data process at the same time, default=5
+    :param client: instance of HDFSClient
+    :param hdfs_path: path on hdfs
+    :param local_path: path on local
+    :return:
+    """
+
+    def __subprocess_upload(datas):
+        for data in datas:
+            re_path = os.path.relpath(os.path.dirname(data), local_path)
+            hdfs_re_path = os.path.join(hdfs_path, re_path)
+            client.upload(hdfs_re_path, data, overwrite, retry_times=5)
+
+    def get_local_files(path):
+        rlist = []
+
+        if not os.path.isdir(path):
+            return rlist
+
+        for dirname, folder, files in os.walk(path):
+            for i in files:
+                t = os.path.join(dirname, i)
+                rlist.append(t)
+        return rlist
+
+    assert isinstance(client, HDFSClient)
+
+    all_files = get_local_files(local_path)
+    if not all_files:
+        _logger.info("there are nothing need to upload, exit")
+        return
+    _logger.info("Start {} multi process to upload datas".format(
+        multi_processes))
+    procs = []
+    for i in range(multi_processes):
+        process_datas = all_files[i::multi_processes]
+        p = multiprocessing.Process(
+            target=__subprocess_upload, args=(process_datas, ))
+        procs.append(p)
+        p.start()
+
+    # complete the processes
+    for proc in procs:
+        proc.join()
+
+    _logger.info("Finish {} multi process to upload datas".format(
+        multi_processes))
+
+
 def multi_download(client,
                    hdfs_path,
                    local_path,
@@ -427,7 +482,6 @@ def multi_download(client,
 
 
 if __name__ == "__main__":
-
     hadoop_home = "/home/client/hadoop-client/hadoop/"
 
     configs = {
@@ -447,3 +501,5 @@ if __name__ == "__main__":
         1,
         5,
         multi_processes=5)
+
+    multi_upload(client, "/user/com/train-25/model", "/home/xx/data1")
