@@ -43,9 +43,7 @@ std::vector<int64_t> cal_rows(const framework::LoDTensor* path) {
       }
     }
   }
-  for (std::set<int64_t>::iterator it = tmp.begin(); it != tmp.end(); ++it) {
-    rows.push_back(*it);
-  }
+  rows.assign(tmp.begin(), tmp.end());
   return rows;
 }
 
