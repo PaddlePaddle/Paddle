@@ -216,13 +216,16 @@ void TestMultiThreadPrediction(
   size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
-#ifdef PADDLE_WITH_MKLDNN
-      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
-#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
       auto &predictor = predictors[tid];
+#ifdef PADDLE_WITH_MKLDNN
+      if (use_analysis) {
+        static_cast<AnalysisPredictor *>(predictor.get())
+            ->SetMKLDNNThreadId(static_cast<int>(tid) + 1);
+      }
+#endif
 
       // warmup run
       LOG(INFO) << "Running thread " << tid << ", warm up run...";
