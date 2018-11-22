@@ -292,7 +292,7 @@ class MultiSlotType {
   void CheckType(std::string& type) {
     if (type != "uint64" && type != "float") {
       // check in here
-      LOG(ERROR) << "error: here is no this type";
+      LOG(ERROR) << "error: there is no this type<" << type << ">.";
       exit(-1);
     }
   }
