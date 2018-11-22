@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+#include <random>
 #include <thread>  // NOLINT
 #include <vector>
 #include "gtest/gtest.h"
