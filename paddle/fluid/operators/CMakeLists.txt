@@ -22,9 +22,7 @@ if(WITH_DISTRIBUTE)
     add_subdirectory(distributed_ops)
 endif()
 
-if (NOT WIN32)
-    add_subdirectory(reader)
-endif()
+add_subdirectory(reader)
 
 if (NOT WIN32)
     add_subdirectory(nccl)
@@ -41,25 +39,30 @@ endif()
 
 register_operators(EXCLUDES warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS})
 
-# warpctc_cudnn need cudnn 7 above
-if (WITH_GPU)
+# warpctc_op needs cudnn 7 above
+if (WITH_GPU AND NOT WIN32)
     if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
-  op_library(conv_fusion_op)
-  file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
+    # conv_fusion_op needs cudnn 7 above
+    if (NOT ${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+        op_library(conv_fusion_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
+    endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor dynload_warpctc sequence_padding sequence_scale cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax vol2col im2col sampler)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 if (NOT WIN32)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions)
+    set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 endif()
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax vol2col im2col sampler)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions)
 if (WITH_GPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv)
 endif()
