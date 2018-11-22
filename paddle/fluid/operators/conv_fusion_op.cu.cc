@@ -22,6 +22,7 @@ DECLARE_bool(cudnn_exhaustive_search);
 namespace paddle {
 namespace operators {
 
+#if CUDNN_VERSION >= 7001
 using Tensor = framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
@@ -178,10 +179,13 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
   }
 };
+#endif
 
 }  // namespace operators
 }  // namespace paddle
 
+#if CUDNN_VERSION >= 7001
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(conv2d_fusion, ops::CUDNNConvFusionOpKernel<float>,
                         ops::CUDNNConvFusionOpKernel<double>);
+#endif
