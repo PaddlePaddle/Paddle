@@ -2139,8 +2139,9 @@ def pool2d(input,
                           input tensor is NCHW, where N is batch size, C is
                           the number of channels, H is the height of the
                           feature, and W is the width of the feature.
-        pool_size (int): The side length of pooling windows. All pooling
-                         windows are squares with pool_size on a side.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
         pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
