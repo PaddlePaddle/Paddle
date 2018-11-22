@@ -8503,23 +8503,21 @@ def tree_conv(nodes_vector,
 
     Examples:
         .. code-block:: python
+
           nodes_vector = layers.data(name='vectors', shape=[None, 10, 5], dtype='float32)
-          # nodes_vector tensor
-          # None for batch size, 10 for max_node_size of dataset, 5 for vector width
+          None for batch size, 10 for max_node_size of dataset, 5 for vector width
           edge_set = layers.data(name='edge_set', shape=[None, 10, 2], dtype='float32')
-          # edge_set tensor
-          # None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
-          # edges must be directional
+          None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
+          edges must be directional
           out_vector = layers.tree_conv(nodes_vector, edge_set, 6, 1, 2, 'tanh',
               ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
-          # output tensor
-          # the shape of output will be [None, 10, 6, 1],
-          # None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
+          the shape of output will be [None, 10, 6, 1],
+          None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
           out_vector = layers.reshape(out_vector, shape=[None, 10, 6])
-          # After reshape, output tensor could be nodes_vector for next tree convolution
+          After reshape, output tensor could be nodes_vector for next tree convolution
           out_vector_2 = layers.tree_conv(out_vector, edge_set, 3, 4, 2, 'tanh',
               ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
-          # also output tensor could be pooling(the pooling in paper called global pooling)
+          also output tensor could be pooling(the pooling in paper called global pooling)
           pooled = layers.reduce_max(out_vector, dims=2) # global pooling
     """
     helper = LayerHelper("tree_conv", **locals())

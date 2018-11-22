@@ -75,13 +75,13 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
     }
     size_t patch_size = processing_list.size();
     Node *nodes_gpu = reinterpret_cast<Node *>(
-        memory::Alloc(gpu_place, total_size * sizeof(Node)));
+        memory::Alloc(gpu_place, total_size * sizeof(Node)).get()->ptr());
     Node *nodes_cpu = reinterpret_cast<Node *>(
-        memory::Alloc(cpu_place, total_size * sizeof(Node)));
+        memory::Alloc(cpu_place, total_size * sizeof(Node)).get()->ptr());
     int *index_gpu = reinterpret_cast<int *>(
-        memory::Alloc(gpu_place, patch_size * 2 * sizeof(int)));
+        memory::Alloc(gpu_place, patch_size * 2 * sizeof(int)).get()->ptr());
     int *index_cpu = reinterpret_cast<int *>(
-        memory::Alloc(cpu_place, patch_size * 2 * sizeof(int)));
+        memory::Alloc(cpu_place, patch_size * 2 * sizeof(int)).get()->ptr());
 
     PADDLE_ENFORCE_NOT_NULL(nodes_cpu);
     PADDLE_ENFORCE_NOT_NULL(nodes_gpu);
@@ -117,10 +117,6 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
     tree2col<T><<<grid, threads, 0, stream>>>(
         nodes_gpu, index_gpu, node_features.data<T>(), patch->data<T>(),
         max_depth, feature_size, patch_size);
-    memory::Free(cpu_place, nodes_cpu);
-    memory::Free(cpu_place, index_cpu);
-    memory::Free(gpu_place, index_gpu);
-    memory::Free(gpu_place, nodes_gpu);
   }
 };
 template <typename T>
@@ -162,13 +158,13 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
     }
 
     Node *nodes_gpu = reinterpret_cast<Node *>(
-        memory::Alloc(gpu_place, total_size * sizeof(Node)));
+        memory::Alloc(gpu_place, total_size * sizeof(Node)).get()->ptr());
     Node *nodes_cpu = reinterpret_cast<Node *>(
-        memory::Alloc(cpu_place, total_size * sizeof(Node)));
+        memory::Alloc(cpu_place, total_size * sizeof(Node)).get()->ptr());
     int *index_gpu = reinterpret_cast<int *>(
-        memory::Alloc(gpu_place, grad_size * 2 * sizeof(int)));
+        memory::Alloc(gpu_place, grad_size * 2 * sizeof(int)).get()->ptr());
     int *index_cpu = reinterpret_cast<int *>(
-        memory::Alloc(cpu_place, grad_size * 2 * sizeof(int)));
+        memory::Alloc(cpu_place, grad_size * 2 * sizeof(int)).get()->ptr());
 
     size_t nodes_idx = 0, index_idx = 0, idx = 0, patch_idx = 0;
     for (auto &tmp : grad_list) {
@@ -199,11 +195,6 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
     tree2col<T><<<grid, threads, 0, stream>>>(
         nodes_gpu, index_gpu, patch_grad.data<T>(), embedding_grad->data<T>(),
         max_depth, output_size, grad_size);
-
-    memory::Free(cpu_place, index_cpu);
-    memory::Free(cpu_place, nodes_cpu);
-    memory::Free(gpu_place, index_gpu);
-    memory::Free(gpu_place, nodes_gpu);
   }
 };
 
