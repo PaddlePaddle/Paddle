@@ -26,7 +26,7 @@ class ShuffleReader : public framework::DecoratedReader {
   ShuffleReader(const std::shared_ptr<ReaderBase>& reader, size_t buffer_size,
                 size_t seed = 0)
       : DecoratedReader(reader), buffer_size_(buffer_size), seed_(seed) {
-    VLOG(10) << "Create shuffle reader of " << reader_;
+    VLOG(100) << "Create shuffle reader of " << reader_;
     if (seed_ == 0) {
       std::random_device device;
       seed_ = device();
@@ -37,7 +37,7 @@ class ShuffleReader : public framework::DecoratedReader {
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     out->clear();
     if (iteration_pos_ >= buffer_.size()) {
-      VLOG(10) << "Resetting shuffle buffer";
+      VLOG(100) << "Resetting shuffle buffer";
       ReloadBuffer();
       if (buffer_.empty()) {
         return;
@@ -73,7 +73,7 @@ class ShuffleReader : public framework::DecoratedReader {
     std::mt19937 g(seed_);
     std::shuffle(buffer_.begin(), buffer_.end(), g);
     seed_ = g();  // update seed_;
-    VLOG(10) << "random buffer size = " << buffer_.size();
+    VLOG(100) << "random buffer size = " << buffer_.size();
   }
 
   size_t buffer_size_;

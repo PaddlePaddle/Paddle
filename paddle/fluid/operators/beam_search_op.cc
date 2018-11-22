@@ -33,11 +33,11 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
 
   auto items = SelectTopBeamSizeItems(pre_ids, pre_scores);
   auto selected_items = ToMap(items, high_level.back());
-  VLOG(3) << "selected_items:";
+  VLOG(30) << "selected_items:";
   for (size_t i = 0; i < selected_items.size(); ++i) {
-    VLOG(3) << "offset:" << i;
+    VLOG(30) << "offset:" << i;
     for (auto &item : selected_items[i]) {
-      VLOG(3) << ItemToString(item);
+      VLOG(30) << ItemToString(item);
     }
   }
 
@@ -138,11 +138,11 @@ std::vector<std::vector<BeamSearch::Item>> BeamSearch::SelectTopBeamSizeItems(
     }
     result.emplace_back(items);
   }
-  VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
+  VLOG(30) << "SelectTopBeamSizeItems result size " << result.size();
   for (auto &items : result) {
-    VLOG(3) << "item set:";
+    VLOG(30) << "item set:";
     for (auto &item : items) {
-      VLOG(3) << ItemToString(item);
+      VLOG(30) << ItemToString(item);
     }
   }
 

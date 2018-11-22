@@ -69,14 +69,26 @@ struct BuildStrategy {
 
   bool enable_data_balance_{false};
 
+  bool enable_sequential_execution_{false};
+
   bool fuse_broadcast_op_{false};
+
+  bool remove_unnecessary_lock_{false};
+
+  // NOTE:
+  // Before you add new options, think if it's a general strategy that works
+  // with other strategy. If not, the strategy should be created through
+  // CreatePassesFromStrategy and the pass can be managed separately.
 
   // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
   // from python side.
   // A new PassBuilder is created based on configs defined above and
   // passes are owned by the PassBuilder.
-  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy() const;
+  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy(
+      bool finalize_strategy) const;
+
+  bool IsFinalized() const { return is_finalized_; }
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
@@ -93,6 +105,7 @@ struct BuildStrategy {
 #endif
 
  private:
+  mutable bool is_finalized_ = false;
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
 

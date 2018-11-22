@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
@@ -27,6 +28,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    if (strategy_.enable_sequential_execution_) {
+      AppendPass("sequential_execution_pass");
+    }
+
     // Add a graph viz pass to record a graph.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
@@ -64,15 +69,25 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
+
+    if (strategy_.remove_unnecessary_lock_) {
+      AppendPass("modify_op_lock_and_record_event_pass");
+    }
   }
 
  private:
   BuildStrategy strategy_;
 };
 
-std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy()
-    const {
+std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
+    bool finalize_strategy) const {
+  if (is_finalized_) {
+    return pass_builder_;
+  }
   pass_builder_.reset(new ParallelExecutorPassBuilder(*this));
+  if (finalize_strategy) {
+    is_finalized_ = true;
+  }
   return pass_builder_;
 }
 
@@ -86,10 +101,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 #else
     const bool use_cuda) const {
 #endif
-  // Create a default one if not initialized by user.
-  if (!pass_builder_) {
-    CreatePassesFromStrategy();
-  }
+  // Create a default one if not finalized by user.
+  CreatePassesFromStrategy(false);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
@@ -110,6 +123,11 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
+    } else if (pass->Type() == "sequential_execution_pass") {
+      pass->Erase(kAllOpDescs);
+      pass->Set<const std::vector<OpDesc *>>(
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     }
     graph = pass->Apply(std::move(graph));
   }
@@ -125,3 +143,5 @@ USE_PASS(multi_batch_merge_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
+USE_PASS(sequential_execution_pass);
+USE_PASS(modify_op_lock_and_record_event_pass);
