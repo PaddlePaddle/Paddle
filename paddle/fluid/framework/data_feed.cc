@@ -19,6 +19,7 @@ limitations under the License. */
 #include <iostream>
 #include <algorithm>
 #include <utility>
+#include <errno.h>
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -131,7 +132,7 @@ void PrivateQueueDataFeed<T>::ReadThread(){
     file_.open(filename.c_str()); // is_text_feed
     if (!file_.good()) {
       LOG(ERROR) << "error: open file<" << filename << "> fail";
-      continue;
+      exit(-1);
     }
     T instance;
     while (ParseOneInstance(instance)) {
@@ -195,9 +196,90 @@ void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
 }
 
 bool MultiSlotDataFeed::CheckFile(const char* filename) {
-  // check with protobuf ?
-  std::cerr << "Check error" << std::endl;
-  return false;
+  CheckInit(); // get info of slots
+  std::ifstream fin(filename);
+  if (!fin.good()) {
+    LOG(ERROR) << "error: open file<" << filename << "> fail";
+    return false;
+  }
+  std::string line;
+  int instance_cout = 0;
+  std::string all_slots_alias = "";
+  for (auto& alias : all_slots_) {
+    all_slots_alias += alias + " ";
+  }
+  std::string use_slots_alias = "";
+  for (auto& alias : use_slots_) {
+    use_slots_alias += alias + " ";
+  }
+  LOG(INFO) << "total slots num: " << all_slots_.size();
+  LOG(INFO) << "total slots alias: " << all_slots_alias;
+  LOG(INFO) << "used slots num: " << use_slots_.size();
+  LOG(INFO) << "used slots alias: " << use_slots_alias;
+  while (getline(fin, line)) {
+    ++instance_cout;
+    const char* str = line.c_str();
+    char* endptr = (char*)str;
+    int len = line.length();
+    for (size_t i = 0; i < all_slots_.size(); ++i) {
+      long int num = strtol(endptr, &endptr, 10);
+      if (num < 0) {
+        LOG(ERROR) << "error: the number of ids is a negative number: " << num;
+        LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+        return false;
+      } else if (num == 0) {
+        LOG(ERROR) << "error: the number of ids can not be zero, you need \
+padding it in data generator; or if there is something wrong with the data, \
+please check if the data contains unresolvable characters.";
+        LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+        return false;
+      } else if (errno == ERANGE || num > INT_MAX) {
+        LOG(ERROR) << "error: the number of ids greater than INT_MAX";
+        LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+        return false;
+      }
+      if (all_slots_type_[i] == "float") {
+        for (int i = 0; i < num; ++i) {
+          strtof(endptr, &endptr);
+          if (errno == ERANGE) {
+            LOG(ERROR) << "error: the value is out of the range of representable values for float";
+            LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+            return false;
+          }
+          if (i + 1 != num && endptr - str == len) {
+            LOG(ERROR) << "error: there is a wrong with the number of ids.";
+            LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+            return false;
+          }
+        } 
+      } else if (all_slots_type_[i] == "uint64") {
+        for (int i = 0; i < num; ++i) {
+          strtoull(endptr, &endptr, 10);
+          if (errno == ERANGE) {
+            LOG(ERROR) << "error: the value is out of the range of representable values for uint64_t";
+            LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+            return false;
+          }
+          if (i + 1 != num && endptr - str == len) {
+            LOG(ERROR) << "error: there is a wrong with the number of ids.";
+            LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+            return false;
+          }
+        }
+      } else {
+        LOG(ERROR) << "error: this type<" << all_slots_type_[i] << "> is not supported";
+        return false;
+      }
+    }
+    if (endptr - str != len) {
+      LOG(ERROR) << "error: there is some data at the end of the line."; 
+      LOG(ERROR) << "please check line<" << instance_cout << "> in file<" << filename << ">";
+      return false;
+    }
+  }
+  LOG(INFO) << "instances cout: " << instance_cout;
+  LOG(INFO) << "The file format is correct";
+  return true;
 }
 
 bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
@@ -213,7 +295,10 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
       int idx = use_slots_index_[i];
       int num = (int)strtol(&str[pos], &endptr, 10);
       if (num == 0) {
-        LOG(ERROR) << "error: the number of ids can not be zero, you need padding it";
+        LOG(ERROR) << "error: the number of ids can not be zero, you need \
+padding it in data generator; or if there is something wrong with the data, \
+please check if the data contains unresolvable characters.\nplease check \
+this error line: " << line;
         exit(-1);
       }
       if (idx != -1) {
