@@ -16,12 +16,22 @@ from __future__ import print_function
 
 import os
 import time
+import logging
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import io
 from paddle.fluid import Program
+
+__all__ = [
+    "load_inference_model", "load_persistable_vars",
+    "convert_dist_to_sparse_program"
+]
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+_logger = logging.getLogger("lookup_table_utils")
+_logger.setLevel(logging.INFO)
 
 model_filename = "__model__"
 lookup_table_dir = "__lookup_table__"
@@ -41,7 +51,7 @@ def __insert_lookup_sparse_table_op(main_program, idx, ids, w, out):
         })
 
 
-def _get_prefetch_op_tuples(main_program):
+def __get_prefetch_op_tuples(main_program):
     # current lookup tables op is split_ids->prefetch->merge_ids
     prefetch_op_tuples = None
     op_types = [op.type for op in main_program.global_block().ops]
@@ -70,17 +80,10 @@ def _get_prefetch_op_tuples(main_program):
     return prefetch_op_tuples
 
 
-def clone_distributed_to_sparse_table(main_program):
-
-    print("## clone_distributed_to_sparse_table ##")
-    print("_is_distributed:       {}".format(main_program._is_distributed))
-    print("_endpoints:            {}".format(main_program._endpoints))
-    print("_distributed_lookup_ : {}".format(
-        main_program._distributed_lookup_table))
-    print("")
-
+def convert_dist_to_sparse_program(main_program):
     if not main_program._distributed_lookup_table:
-        print("There are no distributed lookup tables need to be converted")
+        _logger.warn(
+            "There are no distributed lookup tables need to be converted")
         return
 
     # create table param and grad var in pserver program
@@ -99,7 +102,7 @@ def clone_distributed_to_sparse_table(main_program):
     param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
     main_program._sync_with_cpp()
 
-    prefetch_op_tuples = _get_prefetch_op_tuples(main_program)
+    prefetch_op_tuples = __get_prefetch_op_tuples(main_program)
 
     split_ids_id = prefetch_op_tuples[0]
 
@@ -118,14 +121,17 @@ def clone_distributed_to_sparse_table(main_program):
     return main_program
 
 
-def _load_persistable_vars(executor, dirname, program, lookup_table_var):
-    def _is_checkpoint_var(exclude_fluid_vars=[]):
+def load_persistable_vars(executor, dirname, program, lookup_table_var):
+    def _is_checkpoint_var(exclude_fluid_vars=None):
         """
         the checkpoint will not save or load all the variables.
         var type is FEED_MINIBATCH/FETCH_LIST/RAW or var name ends with @GRAD are discarded.
 
         : param var(Variable)
         """
+
+        if exclude_fluid_vars is None:
+            exclude_fluid_vars = []
 
         def is_valid(var):
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -200,11 +206,12 @@ def _load_persistable_vars(executor, dirname, program, lookup_table_var):
             sums.append(param_var)
         global_block.append_op(
             type='sum', inputs={"X": sums}, outputs={'Out': emb_var}, attrs={})
-
+        global_block.append_op(type='delete_var', inputs={'X': sums})
         executor.run(convert_program)
 
-    print("Start Load persistable vars from {}, pserver_id={}, time = {}".
-          format(dirname, 0, time.ctime()))
+    _logger.info("Start Load Sparse Program With "
+                 "Distributed Lookup Table Vars from {}, time = {}".format(
+                     dirname, time.ctime()))
 
     lookup_table_vars = [lookup_table_var]
 
@@ -217,19 +224,18 @@ def _load_persistable_vars(executor, dirname, program, lookup_table_var):
 
     _load_lookup_table_vars(executor, dirname, program, lookup_table_vars)
 
-    print("Finish Load persistable vars from {}, time = {}".format(
-        dirname, time.ctime()))
+    _logger.info("Finish Load Sparse Program With "
+                 "Distributed Lookup Table Vars from {}, time = {}".format(
+                     dirname, time.ctime()))
 
 
 def load_inference_model(dirname, executor, lookup_table_var_name):
-
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
 
-    model_filename = "__model__"
-    model_filename = os.path.join(dirname, model_filename)
+    local_model = os.path.join(dirname, model_filename)
 
-    with open(model_filename, "rb") as f:
+    with open(local_model, "rb") as f:
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
@@ -239,7 +245,7 @@ def load_inference_model(dirname, executor, lookup_table_var_name):
                          program._version())
 
     # Binary data also need version.
-    _load_persistable_vars(executor, dirname, program, lookup_table_var_name)
+    load_persistable_vars(executor, dirname, program, lookup_table_var_name)
 
     feed_target_names = program.desc.get_feed_target_names()
     fetch_target_names = program.desc.get_fetch_target_names()
