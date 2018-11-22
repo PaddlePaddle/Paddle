@@ -724,11 +724,11 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate, 
-            reset gate and candidate calculations. If it is set to None or one 
-            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
@@ -845,11 +845,11 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate, 
-            reset gate and candidate calculations. If it is set to None or one 
-            attribute of ParamAttr, gru_unit will create ParamAttr as 
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, gru_unit will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
@@ -1058,9 +1058,9 @@ def dropout(x,
                                            inference: out = input
                                            (make is a tensor same shape with input, value is 0 or 1
                                             ratio of 0 is dropout_prob)
-                                           dropout op can be removed from the program. 
+                                           dropout op can be removed from the program.
                                            the program will be efficient
-                                        
+
 
 
     Returns:
@@ -2143,7 +2143,7 @@ def pool2d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling 
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
     Returns:
@@ -2234,7 +2234,7 @@ def pool3d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling 
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
     Returns:
@@ -4336,7 +4336,7 @@ def nce(input,
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+        custom_dist (Variable): A tensor with shape [num_total_classes].
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
@@ -4379,7 +4379,7 @@ def nce(input,
                           num_neg_samples=3,
                           sampler="custom_dist",
                           custom_dist=dist)
-            
+
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -4550,9 +4550,9 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra 
+            # use append_batch_size=False to avoid prepending extra
             # batch size in shape
-            x = fluid.layers.data(name='x', shape=[5, 10, 15], 
+            x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
             x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
@@ -4829,7 +4829,7 @@ def softmax_with_cross_entropy(logits,
     3) If numeric_stable_mode is True, softmax is calculated first by:
 
     .. math::
-        
+
         max_j = \\max_{i=0}^{K}{\\text{logit}_i}
 
         log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
@@ -4852,18 +4852,18 @@ def softmax_with_cross_entropy(logits,
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
                                     when soft_label is False and GPU is used.
-                                    When soft_label is True or CPU is used, 
-                                    the algorithm is always numerically stable. 
-                                    Note that the speed may be slower when use 
+                                    When soft_label is True or CPU is used,
+                                    the algorithm is always numerically stable.
+                                    Note that the speed may be slower when use
                                     stable algorithm. Default: False
-        return_softmax (bool): A flag indicating whether to return the softmax 
+        return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
 
     Returns:
-        Variable or Tuple of two Variables: Return the cross entropy loss if 
-                              `return_softmax` is False, otherwise the tuple 
-                              (loss, softmax), where the cross entropy loss is 
-                              a 2-D tensor with shape [N x 1], and softmax is a 
+        Variable or Tuple of two Variables: Return the cross entropy loss if
+                              `return_softmax` is False, otherwise the tuple
+                              (loss, softmax), where the cross entropy loss is
+                              a 2-D tensor with shape [N x 1], and softmax is a
                               2-D tensor with shape [N x K].
 
     Examples:
@@ -5744,20 +5744,20 @@ def image_resize(input,
                          Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST' 
+        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST'
                        currently.
                        Default: 'BILINEAR'
-        actual_shape(Variable): An optional input to specify output shape 
-                                dynamically. If provided, image resize  
-                                according to this given shape rather than 
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority. It is recommended to use 
-                                actual_shape instead of :attr:`out_shape` if you 
-                                want to specify output shape dynamically. When 
-                                using actual_shape to specify output shape, one of 
-                                :attr:`out_shape` and :attr:`scale` should also be 
-                                set, otherwise errors would be occured in graph 
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
 
@@ -5768,7 +5768,7 @@ def image_resize(input,
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR' 
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR'
                     or 'NEAREST' currently.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2.
@@ -5840,17 +5840,17 @@ def resize_bilinear(input,
                     name=None,
                     actual_shape=None):
     """
-    Resize input by performing bilinear interpolation based on given 
-    output shape which specified by actual_shape, out_shape and scale 
+    Resize input by performing bilinear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
     in priority order.
 
-    Bilinear interpolation is an extension of linear interpolation for 
-    interpolating functions of two variables (e.g. H-direction and 
-    W-direction in this op) on a rectilinear 2D grid. The key idea is 
-    to perform linear interpolation first in one direction, and then 
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
     again in the other direction.
 
-    For details of bilinear interpolation, please refer to Wikipedia: 
+    For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
     Args:
@@ -5863,17 +5863,17 @@ def resize_bilinear(input,
              a higher priority than scale. Default: None.
 
         name(str|None): The output variable name.
-        actual_shape(Variable): An optional input to specify output shape 
-                                dynamically. If provided, image resize  
-                                according to this given shape rather than 
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority. It is recommended to use 
-                                actual_shape instead of :attr:`out_shape` if you 
-                                want to specify output shape dynamically. When 
-                                using actual_shape to specify output shape, one of 
-                                :attr:`out_shape` and :attr:`scale` should also be 
-                                set, otherwise errors would be occured in graph 
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
 
@@ -5897,11 +5897,11 @@ def resize_nearest(input,
                    actual_shape=None):
     """
     Resize input by performing nearest neighbor interpolation in both the
-    3rd dimention(in height direction) and the 4th dimention(in width 
-    direction) based on given output shape which specified by actual_shape, 
+    3rd dimention(in height direction) and the 4th dimention(in width
+    direction) based on given output shape which specified by actual_shape,
     out_shape and scale in priority order.
 
-    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
@@ -5914,17 +5914,17 @@ def resize_nearest(input,
              a higher priority than scale. Default: None.
 
         name(str|None): The output variable name.
-        actual_shape(Variable): An optional input to specify output shape 
-                                dynamically. If provided, image resize  
-                                according to this given shape rather than 
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority. It is recommended to use 
-                                actual_shape instead of :attr:`out_shape` if you 
-                                want to specify output shape dynamically. When 
-                                using actual_shape to specify output shape, one of 
-                                :attr:`out_shape` and :attr:`scale` should also be 
-                                set, otherwise errors would be occured in graph 
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
 
@@ -6434,15 +6434,15 @@ def affine_grid(theta, out_shape, name=None):
                         [x_14, x_15, x_16]]
                        [[x_21, x_22, x_23]
                         [x_24, x_25, x_26]]]
-      
+
               out_shape = [2, 3, 5, 5]
-      
+
           Step 1:
-      
+
               Generate normalized coordinates according to out_shape.
               The values of the normalized coordinates are in the interval between -1 and 1.
               The shape of the normalized coordinates is [2, H, W] as below:
-      
+
               C = [[[-1.  -1.  -1.  -1.  -1. ]
                     [-0.5 -0.5 -0.5 -0.5 -0.5]
                     [ 0.   0.   0.   0.   0. ]
@@ -7690,6 +7690,15 @@ def logical_and(x, y, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            right = fluid.layers.data(
+                name='right', shape=[1], dtype='int32')
+            result = fluid.layers.logical_and(x=left, y=right)
     """
 
     return _logical_op(
@@ -7709,6 +7718,15 @@ def logical_or(x, y, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            right = fluid.layers.data(
+                name='right', shape=[1], dtype='int32')
+            result = fluid.layers.logical_or(x=left, y=right)
     """
 
     return _logical_op(
@@ -7728,6 +7746,15 @@ def logical_xor(x, y, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            right = fluid.layers.data(
+                name='right', shape=[1], dtype='int32')
+            result = fluid.layers.logical_xor(x=left, y=right)
     """
 
     return _logical_op(
@@ -7746,6 +7773,13 @@ def logical_not(x, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            result = fluid.layers.logical_not(x=left)
     """
 
     return _logical_op(
@@ -7765,6 +7799,13 @@ def clip(x, min, max, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[1], dtype='float32')
+            reward = fluid.layers.clip(x=input, min=-1.0, max=1.0)
     """
 
     helper = LayerHelper("clip", **locals())
@@ -7797,6 +7838,13 @@ def clip_by_norm(x, max_norm, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[1], dtype='float32')
+            reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
     """
 
     helper = LayerHelper("clip_by_norm", **locals())
@@ -7942,19 +7990,19 @@ def maxout(x, groups, name=None):
 def space_to_depth(x, blocksize, name=None):
     """
     Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
-    
-    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the 
-    input LoDtensor where values from the height and width dimensions are moved to the channel dimension. 
+
+    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the
+    input LoDtensor where values from the height and width dimensions are moved to the channel dimension.
     The attr blocksize indicates the input block size.
-    
-    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according 
+
+    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according
     to blocksize to construct output with shape [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
-    
-    space_to_depth is used to This operation is useful for resizing the activations between convolutions 
+
+    space_to_depth is used to This operation is useful for resizing the activations between convolutions
     (but keeping all data)
 
     - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
-    - The depth of the output tensor is block_size * block_size * input channel 
+    - The depth of the output tensor is block_size * block_size * input channel
     - The Y, X coordinates within each block of the input become the high order component of the output channel index
     - channel should be divisible by square of blocksize
     - height, width should be divsible by blocksize
@@ -8001,7 +8049,7 @@ def space_to_depth(x, blocksize, name=None):
 
 @templatedoc()
 def sequence_reverse(x, name=None):
-    """ 
+    """
     ${comment}
 
     Args:
@@ -8068,21 +8116,21 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
 
 
 def similarity_focus(input, axis, indexes, name=None):
-    """  
+    """
     SimilarityFocus Operator
 
     Generate a similarity focus mask with the same shape of input using the following method:
-    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
-       to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
-       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding
+       to the axis according to the indexes. For example, if axis=1 and indexes=[a],
+       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
        is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
-    2. For each index, find the largest numbers in the tensor T, so that the same 
-       row and same column has at most one number(what it means is that if the 
-       largest number has been found in the i-th row and the j-th column, then 
-       the numbers in the i-th row or j-th column will be skipped. And then the 
-       next largest number will be selected from the remaining numbers. Obviously 
-       there will be min(B, C) numbers), and mark the corresponding position of the 
-       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+    2. For each index, find the largest numbers in the tensor T, so that the same
+       row and same column has at most one number(what it means is that if the
+       largest number has been found in the i-th row and the j-th column, then
+       the numbers in the i-th row or j-th column will be skipped. And then the
+       next largest number will be selected from the remaining numbers. Obviously
+       there will be min(B, C) numbers), and mark the corresponding position of the
+       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for
        each index.
     3. Broadcast the 3-D similarity focus mask to the same shape of input X.
 
@@ -8138,16 +8186,16 @@ def similarity_focus(input, axis, indexes, name=None):
                               [1.0, 0.0]]]]
 
     Args:
-        input(Variable): The input tensor variable(default float). It should 
+        input(Variable): The input tensor variable(default float). It should
             be a 4-D tensor with shape [BatchSize, A, B, C].
         axis(int): Indicating the dimension to be selected. It can only be
             1, 2 or 3.
         indexes(list): Indicating the indexes of the selected dimension.
 
     Returns:
-        Variable: A tensor variable with the same shape and same type 
+        Variable: A tensor variable with the same shape and same type
             as the input.
-        
+
     Examples:
         .. code-block:: python
             data = fluid.layers.data(
@@ -8250,12 +8298,12 @@ def hash(input, hash_size, num_hash=1, name=None):
 @templatedoc()
 def grid_sampler(x, grid, name=None):
     """
-    This operation samples input X by using bilinear interpolation based on 
+    This operation samples input X by using bilinear interpolation based on
     flow field grid, which is usually gennerated by affine_grid. The grid of
-    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates 
-    with shape [N, H, W] each, where grid_x is indexing the 4th dimension 
-    (in width dimension) of input data x and grid_y is indexng the 3rd 
-    dimention (in height dimension), finally results is the bilinear 
+    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates
+    with shape [N, H, W] each, where grid_x is indexing the 4th dimension
+    (in width dimension) of input data x and grid_y is indexng the 3rd
+    dimention (in height dimension), finally results is the bilinear
     interpolation value of 4 nearest corner points.
 
     Step 1:
@@ -8265,7 +8313,7 @@ def grid_sampler(x, grid, name=None):
     grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
     Step 2:
-    Indices input data X with grid (x, y) in each [H, W] area, and bilinear 
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear
     interpolate point value by 4 nearest points.
 
       wn ------- y_n ------- en
@@ -8302,7 +8350,7 @@ def grid_sampler(x, grid, name=None):
         name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): Output of shape [N, C, H, W] data samples input X 
+        out(Variable): Output of shape [N, C, H, W] data samples input X
         using bilnear interpolation based on input grid.
 
     Exmples:
