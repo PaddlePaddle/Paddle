@@ -22,6 +22,7 @@ from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 from . import tensor
 from . import nn
+from . import control_flow
 from . import ops
 from ... import compat as cpt
 import math
@@ -113,8 +114,7 @@ def rpn_target_assign(bbox_pred,
         rpn_negative_overlap(float): Maximum overlap allowed between an anchor
             and ground-truth box for the (anchor, gt box) pair to be a negative
             examples.
-
-    Returns:
+:
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
                target_bbox, bbox_inside_weight) is returned. The predicted_scores 
@@ -199,6 +199,9 @@ def detection_output(loc,
                      scores,
                      prior_box,
                      prior_box_var,
+                     arm_loc=None,
+                     arm_scores=None,
+                     objectness_threshold=0.5,
                      background_label=0,
                      nms_threshold=0.3,
                      nms_top_k=400,
@@ -235,6 +238,16 @@ def detection_output(loc,
             coordinate of the anchor box.
         prior_box_var(Variable): A 2-D Tensor with shape [M, 4] holds M group
             of variance.
+        arm_loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted anchor refine locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax]. If the arm_loc is not None, the prior_box
+            will be decoded by the arm_loc first, and the result will be treated as the
+            refined prior_box and will be decoded again by the loc.
+        arm_scores(Variable): A 3-D Tensor with shape [N, M, 2] represents the
+            predicted confidence predictions. N is the batch size, M is number of bounding boxes. 
+            Each bounding box has two categories, indicate the background and foreground.
+        objectness_threshold(float): The objectness threshold in the RefineDet.
         background_label(float): The index of background label,
             the background label will be ignored. If set to -1, then all
             categories will be considered.
@@ -278,33 +291,69 @@ def detection_output(loc,
                                        prior_box_var=pbv)
     """
     helper = LayerHelper("detection_output", **locals())
-    decoded_box = box_coder(
-        prior_box=prior_box,
-        prior_box_var=prior_box_var,
-        target_box=loc,
-        code_type='decode_center_size')
+    if arm_loc:
+        decoded_box = box_coder(
+            prior_box=prior_box,
+            prior_box_var=prior_box_var,
+            refine_box=arm_loc,
+            target_box=loc,
+            code_type='decode_center_size')
+    else:
+        decoded_box = box_coder(
+            prior_box=prior_box,
+            prior_box_var=prior_box_var,
+            target_box=loc,
+            code_type='decode_center_size')
     compile_shape = scores.shape
     run_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
     scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
+
+    if arm_scores:
+        compile_shape = arm_scores.shape
+        run_shape = nn.shape(arm_scores)
+        arm_scores = nn.flatten(x=arm_scores, axis=2)
+        arm_scores = nn.softmax(input=arm_scores)
+        obj_scores = tensor.fill_constant(shape=arm_scores.shape, value=objectness_threshold, dtype='float32')
+        obj_idx = control_flow.less_than(obj_scores, arm_scores)
+        obj_idx = nn.reshape(x=obj_idx, shape=compile_shape, actual_shape=run_shape)
+        obj_idx = nn.transpose(obj_idx, perm=[0, 2, 1])
+        obj_idx = nn.split(obj_idx, num_or_sections=2, dim=1)[1]
+
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
-    helper.append_op(
-        type="multiclass_nms",
-        inputs={'Scores': scores,
-                'BBoxes': decoded_box},
-        outputs={'Out': nmsed_outs},
-        attrs={
-            'background_label': 0,
-            'nms_threshold': nms_threshold,
-            'nms_top_k': nms_top_k,
-            'keep_top_k': keep_top_k,
-            'score_threshold': score_threshold,
-            'nms_eta': 1.0
-        })
+    if arm_scores:
+        helper.append_op(
+            type="multiclass_nms",
+            inputs={'Scores': scores,
+                    'BBoxes': decoded_box,
+                    'ObjIndex': obj_idx},
+            outputs={'Out': nmsed_outs},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0
+            })
+    else:
+        helper.append_op(
+            type="multiclass_nms",
+            inputs={'Scores': scores,
+                    'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0
+            })
     nmsed_outs.stop_gradient = True
     return nmsed_outs
 
@@ -341,6 +390,7 @@ def iou_similarity(x, y, name=None):
 def box_coder(prior_box,
               prior_box_var,
               target_box,
+              refine_box=None,
               code_type="encode_center_size",
               box_normalized=True,
               name=None):
@@ -366,16 +416,29 @@ def box_coder(prior_box,
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
 
-    helper.append_op(
-        type="box_coder",
-        inputs={
-            "PriorBox": prior_box,
-            "PriorBoxVar": prior_box_var,
-            "TargetBox": target_box
-        },
-        attrs={"code_type": code_type,
-               "box_normalized": box_normalized},
-        outputs={"OutputBox": output_box})
+    if arm_loc:
+        helper.append_op(
+            type="box_coder",
+            inputs={
+                "PriorBox": prior_box,
+                "PriorBoxVar": prior_box_var,
+                "TargetBox": target_box,
+                "RefineBox": refine_box
+            },
+            attrs={"code_type": code_type,
+                   "box_normalized": box_normalized},
+            outputs={"OutputBox": output_box})
+    else:
+        helper.append_op(
+            type="box_coder",
+            inputs={
+                "PriorBox": prior_box,
+                "PriorBoxVar": prior_box_var,
+                "TargetBox": target_box
+            },
+            attrs={"code_type": code_type,
+                   "box_normalized": box_normalized},
+            outputs={"OutputBox": output_box})
     return output_box
 
 
