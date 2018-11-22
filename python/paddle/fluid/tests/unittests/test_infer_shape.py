@@ -83,6 +83,34 @@ class TestInferShape(unittest.TestCase):
         mul_op_desc.infer_shape(block)
         self.assertEqual(out.shape(), [x_shape[0], y_shape[1]])
 
+    def test_expand_op(self):
+        prog = core.ProgramDesc()
+        self.assertIsNotNone(prog)
+        block = prog.block(0)
+        self.assertIsNotNone(block)
+
+        shape = [-1, 20]
+        expand_times = [3, 1]
+
+        # prepare input/output
+        x1 = block.var(six.b("x"))
+        x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_shape(shape)
+
+        out = block.var(six.b("out"))
+        out.set_type(core.VarDesc.VarType.LOD_TENSOR)
+
+        # prepare the operator
+        sum_op_desc = block.append_op()
+        sum_op_desc.set_type("expand")
+        sum_op_desc.set_input("X", ["x"])
+        sum_op_desc.set_output("Out", ["out"])
+        sum_op_desc._set_attr('expand_times', expand_times)
+
+        sum_op_desc.check_attrs()
+        sum_op_desc.infer_shape(block)
+        self.assertEqual(out.shape(), shape)
+
 
 if __name__ == '__main__':
     unittest.main()

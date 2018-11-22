@@ -45,6 +45,10 @@ if(APPLE)
     list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
     list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
+if(NOT WITH_MKLML)
+    # this op is not support on openblas
+    list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
+endif()
 
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
@@ -86,6 +90,8 @@ if(WITH_DISTRIBUTE)
         # FIXME(typhoonzero): add this back
 	#py_test_modules(test_dist_transformer MODULES test_dist_transformer)
 	#set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
+        # TODO(typhoonzero): make dist test parallel when fix port management issue
+        set_tests_properties(test_dist_mnist test_dist_word2vec test_dist_se_resnext test_dist_ctr test_dist_simnet_bow test_dist_save_load test_dist_text_classification test_dist_mnist_batch_merge PROPERTIES RUN_SERIAL TRUE)
     endif(NOT APPLE)
     py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()

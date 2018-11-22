@@ -244,7 +244,7 @@ typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
                    size_t data_len, const T* in, T* out) {
-  for (int64_t i = 0; i < data_len; i++) {
+  for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
 }
@@ -270,7 +270,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output) {
     if (inputs.size() == 0) {
-      VLOG(3) << "no input! return";
+      VLOG(30) << "no input! return";
       return;
     }
     const framework::SelectedRows* has_value_input = nullptr;
@@ -281,7 +281,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       }
     }
     if (has_value_input == nullptr) {
-      VLOG(3) << "no input has value! just return" << std::endl;
+      VLOG(30) << "no input has value! just return" << std::endl;
       return;
     }
     auto input_width = has_value_input->value().dims()[1];
