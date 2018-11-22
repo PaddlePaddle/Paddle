@@ -18,7 +18,7 @@ nv_test(test_trt_activation_op SRCS test_activation_op.cc activation_op.cc
 nv_test(test_trt_conv_op SRCS test_conv2d_op.cc conv2d_op.cc
         DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine conv_op conv_transpose_op SERIAL)
 nv_test(test_trt_pool2d_op SRCS test_pool2d_op.cc pool2d_op.cc
-        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine pool_op SERIAL)
+        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine pool_op tensorrt_plugin SERIAL)
 nv_test(test_trt_elementwise_op SRCS test_elementwise_op.cc elementwise_op.cc
         DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine tensorrt_plugin
              elementwise_add_op elementwise_mul_op SERIAL)

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/port.h"
 
-#include <sys/time.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
