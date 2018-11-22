@@ -34,29 +34,37 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-register_operators(EXCLUDES warpctc_op conv_fusion_op)
+SET(OP_HEADER_DEPS xxhash)
+if (WITH_GPU)
+    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+endif()
 
-# warpctc_cudnn need cudnn 7 above
+register_operators(EXCLUDES warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS})
+
+# warpctc_op needs cudnn 7 above
 if (WITH_GPU)
     if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
-  op_library(conv_fusion_op)
-  file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
+    # conv_fusion_op needs cudnn 7 above
+    if (NOT ${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+        op_library(conv_fusion_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
+    endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
-set(COMMON_OP_DEPS "")
+set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xxhash selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor dynload_warpctc sequence_padding sequence_scale cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax vol2col im2col sampler)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor dynload_warpctc sequence_padding sequence_scale cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax vol2col im2col sampler)
 if (NOT WIN32)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions)
 endif()
 if (WITH_GPU)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv cub)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv)
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
