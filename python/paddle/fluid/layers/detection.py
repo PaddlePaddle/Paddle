@@ -307,7 +307,6 @@ def detection_output(loc,
     compile_shape = scores.shape
     run_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
-
     scores = nn.softmax(input=scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
 
