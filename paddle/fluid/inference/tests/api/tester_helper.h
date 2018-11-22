@@ -51,7 +51,7 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
     LOG(INFO) << *reinterpret_cast<const contrib::AnalysisConfig *>(config);
     return;
   }
-  LOG(INFO) << *config;
+  LOG(INFO) << *reinterpret_cast<const NativeConfig *>(config);
 }
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,
@@ -222,19 +222,36 @@ void TestMultiThreadPrediction(
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
       auto &predictor = predictors[tid];
-      LOG(INFO) << "running thread " << tid;
-      Timer timer;
-      timer.tic();
-      for (int i = 0; i < num_times; i++) {
-        for (const auto &input : inputs) {
-          ASSERT_TRUE(predictor->Run(input, &outputs_tid));
+
+      // warmup run
+      LOG(INFO) << "Running thread " << tid << ", warm up run...";
+      {
+        Timer warmup_timer;
+        warmup_timer.tic();
+        predictor->Run(inputs[0], outputs, batch_size);
+        PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
+#if !defined(_WIN32)
+        if (FLAGS_profile) {
+          paddle::platform::ResetProfiler();
         }
+#endif
       }
 
-      auto time = timer.toc();
-      total_time += time;
-      PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
-                inputs.size());
+      LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
+      {
+        Timer timer;
+        timer.tic();
+        for (int i = 0; i < num_times; i++) {
+          for (const auto &input : inputs) {
+            ASSERT_TRUE(predictor->Run(input, &outputs_tid));
+          }
+        }
+
+        auto time = timer.toc();
+        total_time += time;
+        PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
+                  inputs.size());
+      }
     });
   }
   for (int i = 0; i < num_threads; ++i) {

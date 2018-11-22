@@ -130,6 +130,21 @@ if (APPLE OR WIN32)
         "Disable MKL for building on mac and windows" FORCE)
 endif()
 
+if (WIN32)
+    set(WITH_AVX OFF CACHE STRING
+            "Disable AVX when compiling for Windows" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+            "Disable DSO when compiling for Windows" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+            "Disable MKL when compiling for Windows" FORCE)
+    set(WITH_DISTRIBUTE OFF CACHE STRING
+            "Disable DISTRIBUTE when compiling for Windows" FORCE)
+    set(WITH_C_API OFF CACHE STRING
+            "Disable C_API when compiling for Windows" FORCE)
+    set(WITH_FLUID_ONLY ON CACHE STRING
+            "Enable FLUID_ONLY when compiling for Windows" FORCE)
+endif()
+
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
@@ -191,11 +206,11 @@ include(external/cares)
 include(external/cub)
 include(external/xxhash)    # download xxhash
 include(external/rocprim)
-
-if (NOT WIN32)
-# there is no official support of snappystream, warpctc, nccl, cupti in windows
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+
+if (NOT WIN32)
+# there is no official support of warpctc, nccl, cupti in windows
 include(external/warpctc)   # download, build, install warpctc
 include(cupti)
 endif (NOT WIN32)
@@ -303,6 +318,14 @@ set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
+if (ON_INFER)
+    message(STATUS "On inference mode, will take place some specific optimization.")
+    add_definitions(-DPADDLE_ON_INFERENCE)
+else()
+    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
+    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
+
 add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
@@ -312,11 +335,4 @@ if(WITH_DOC)
     find_package(Sphinx REQUIRED)
     find_python_module(recommonmark REQUIRED)
     add_subdirectory(doc)
-endif()
-
-if (ON_INFER)
-    message(STATUS "On inference mode, will take place some specific optimization.")
-else()
-    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
-    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
 endif()

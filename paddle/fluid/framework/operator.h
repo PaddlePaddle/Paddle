@@ -20,8 +20,6 @@ limitations under the License. */
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
@@ -100,6 +98,7 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
+  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
