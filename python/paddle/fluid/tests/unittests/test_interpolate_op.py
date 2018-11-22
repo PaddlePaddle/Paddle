@@ -311,7 +311,7 @@ class TestNearestNeighborInterpBigScale(TestInterpolateOp):
         self.input_shape = [4, 4, 64, 32]
         self.out_h = 100
         self.out_w = 50
-        self.out_size = np.array([101, 51]).astype('int32')
+        self.out_size = np.array([103, 51]).astype('int32')
 
 
 class TestNearestNeighborInterpCase1Uint8(TestInterpolateOpUint8):
