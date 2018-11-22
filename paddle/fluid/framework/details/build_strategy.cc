@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -55,6 +56,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         viz_pass->Set<std::string>("graph_viz_path",
                                    new std::string(graph_path));
       }
+    }
+
+    CollectiveContext *context = CollectiveContext::GetInstance();
+    context->end_points_ = strategy_.trainers_end_points_;
+    context->rank_id_ = strategy_.trainer_id_;
+    PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
+    if (strategy_.trainer_id_ > 0) {
+      PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
+                         strategy_.trainers_end_points_.size(),
+                     "trainer_id_ < end_points_ size");
     }
 
     // Convert graph to run on multi-devices.

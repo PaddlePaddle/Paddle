@@ -30,11 +30,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+std::once_flag CollectiveContext::init_flag_;
+std::unique_ptr<CollectiveContext> CollectiveContext::context_;
+
 void ReduceOpHandle::GatherRemoteSelectedRows(
     platform::DeviceContext *dev_ctx, Scope *scope, const std::string &var_name,
     std::vector<const SelectedRows *> *remote) {
-  std::vector<std::string> eps = collective_context_.end_points_;
-  eps.erase(eps.begin() + collective_context_.rank_id_);
+  const CollectiveContext &collective_context =
+      *CollectiveContext::GetInstance();
+  std::vector<std::string> eps = collective_context.end_points_;
+  eps.erase(eps.begin() + collective_context.rank_id_);
 
   std::string ep_str;
   for (auto ep : eps) {
@@ -61,7 +66,13 @@ void ReduceOpHandle::GatherSelectedRows(
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     VarHandle *out_var_handle, const platform::Place &out_place,
     SelectedRows *dst_selecte_rows) {
-  if (collective_context_.end_points_.size() <= 1 ||
+  const CollectiveContext &collective_context =
+      *CollectiveContext::GetInstance();
+  VLOG(100) << "Enter GatherSelectedRows" << collective_context.String();
+  VLOG(100) << "GatherSelectedRows place(0) is_cpu_place:"
+            << is_cpu_place(in_places[0]);
+
+  if (collective_context.end_points_.size() <= 1 ||
       is_cpu_place(in_places[0])) {  // TODO(gongwb): add cpu support
     GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                             dst_selecte_rows);
@@ -71,7 +82,7 @@ void ReduceOpHandle::GatherSelectedRows(
   // 1. gather local selected rows, merge them
   std::string gathered_var_name = out_var_handle->name_ + "_gathered_tmp";
   auto scope = local_scopes_.at(out_var_handle->scope_idx_);
-  auto gathered_var_mid = scope->FindVar(gathered_var_name);
+  auto gathered_var_mid = scope->Var(gathered_var_name);
   auto gathered_select_rows =
       gathered_var_mid->GetMutable<framework::SelectedRows>();
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
@@ -83,8 +94,7 @@ void ReduceOpHandle::GatherSelectedRows(
   auto merged_dev_ctx =
       dynamic_cast<platform::CUDADeviceContext *>(dev_ctxes.at(out_place));
   std::string merged_var_name = out_var_handle->name_ + "_merged_tmp";
-  auto merged_var_mid =
-      local_scopes_.at(out_var_handle->scope_idx_)->FindVar(merged_var_name);
+  auto merged_var_mid = scope->Var(merged_var_name);
   // operators::math::scatter::MergeAdd<platform::DeviceContext,
   // gather_select_rows->value().type()> merge_func;
   // FIXME(gongwb):get type?
@@ -98,8 +108,8 @@ void ReduceOpHandle::GatherSelectedRows(
   std::vector<const SelectedRows *> remote;
   operators::distributed::CollectiveServer *server =
       operators::distributed::CollectiveServer::GetInstance(
-          collective_context_.end_points_[collective_context_.rank_id_],
-          collective_context_.end_points_.size());
+          collective_context.end_points_[collective_context.rank_id_],
+          collective_context.end_points_.size());
   WaitLocalSelectedRows(dev_ctxes);
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar(merged_var_name,
@@ -109,7 +119,7 @@ void ReduceOpHandle::GatherSelectedRows(
   // 3. gather them from all nodes.
   std::vector<const SelectedRows *> all;
   GatherRemoteSelectedRows(merged_dev_ctx, scope, out_var_handle->name_, &all);
-  all.insert(all.begin() + collective_context_.rank_id_, merged_select_rows);
+  all.insert(all.begin() + collective_context.rank_id_, merged_select_rows);
   merge_func(*merged_dev_ctx, all, dst_selecte_rows);
   VLOG(40) << "all_select_rows :" << dst_selecte_rows->Info();
 

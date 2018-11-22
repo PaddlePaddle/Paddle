@@ -412,7 +412,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                     break;
                   case BuildStrategy::ReduceStrategy::kAllReduce:
                     if (IsSparseGradient(g_name)) {
+                      VLOG(40) << "CreateReduceOP for sparse:" << g_name;
                       CreateReduceOp(&result, g_name, 0);
+                      VLOG(40) << "CreateBroadcastOp for sparse:" << g_name;
                       CreateBroadcastOp(&result, g_name, 0);
                     } else {
                       InsertAllReduceOp(&result, g_name);
