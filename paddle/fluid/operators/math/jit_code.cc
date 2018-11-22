@@ -214,6 +214,9 @@ void VActJitCode::generate() {
 bool LSTMJitCode::init(int d) { return MayIUse(avx) && d % 8 == 0; }
 
 void LSTMJitCode::generate() {
+  if (use_peephole_) {
+    preCode();
+  }
   reg64_t reg_ptr_gates = rax;
   reg64_t reg_ptr_ct_1 = r9;
   reg64_t reg_ptr_ct = r10;
@@ -224,18 +227,19 @@ void LSTMJitCode::generate() {
   mov(reg_ptr_ht, ptr[param1 + offsetof(lstm_t, ht)]);
 
   int offset = 0;
+  int d = num_ * sizeof(float);
   for (int i = 0; i < num_ / YMM_FLOAT_BLOCK; ++i) {
     /* C_t = C_t-1 * fgated + cand_gated * igated*/
     // c
     vmovups(ymm_src, ptr[reg_ptr_gates + offset]);
     act<ymm_t>(ymm_c, ymm_src, act_cand_);
     // i
-    vmovups(ymm_src, ptr[reg_ptr_gates + offset + num_]);
+    vmovups(ymm_src, ptr[reg_ptr_gates + offset + d]);
     act<ymm_t>(ymm_i, ymm_src, act_gate_);
     vmulps(ymm_c, ymm_c, ymm_i);
     if (!compute_c1h1_) {
       // f
-      vmovups(ymm_src, ptr[reg_ptr_gates + offset + 2 * num_]);
+      vmovups(ymm_src, ptr[reg_ptr_gates + offset + 2 * d]);
       act<ymm_t>(ymm_f, ymm_src, act_gate_);
       vmovups(ymm_i, ptr[reg_ptr_ct_1 + offset]);
       vmulps(ymm_f, ymm_f, ymm_i);
@@ -245,20 +249,36 @@ void LSTMJitCode::generate() {
     ymm_t ymm_ct = compute_c1h1_ ? ymm_c : ymm_f;
     ymm_t ymm_o = compute_c1h1_ ? ymm_f : ymm_c;
     ymm_t ymm_tmp = ymm_i;
+    vmovups(ptr[reg_ptr_ct + offset], ymm_ct);  // save ct
     act<ymm_t>(ymm_tmp, ymm_ct, act_cell_);
-    vmovups(ymm_src, ptr[reg_ptr_gates + offset + 3 * num_]);
+    vmovups(ymm_src, ptr[reg_ptr_gates + offset + 3 * d]);
     act<ymm_t>(ymm_o, ymm_src, act_gate_);
     vmulps(ymm_o, ymm_tmp, ymm_o);
-    // save ct and ht
-    vmovups(ptr[reg_ptr_ct + offset], ymm_ct);
-    vmovups(ptr[reg_ptr_ht + offset], ymm_o);
-
+    vmovups(ptr[reg_ptr_ht + offset], ymm_o);  // save ht
     offset += sizeof(float) * YMM_FLOAT_BLOCK;
   }
 
-  ret();
+  if (use_peephole_) {
+    postCode();
+  } else {
+    ret();
+  }
 }
 
+bool GRUJitCode::init(int d) { return MayIUse(avx) && d % 8 == 0; }
+
+void GRUJitCode::generate() {
+  reg64_t reg_ptr_gates = rax;
+  reg64_t reg_ptr_ct_1 = r9;
+  reg64_t reg_ptr_ct = r10;
+  reg64_t reg_ptr_ht = r11;
+  mov(reg_ptr_gates, ptr[param1 + offsetof(lstm_t, gates)]);
+  mov(reg_ptr_ct_1, ptr[param1 + offsetof(lstm_t, ct_1)]);
+  mov(reg_ptr_ct, ptr[param1 + offsetof(lstm_t, ct)]);
+  mov(reg_ptr_ht, ptr[param1 + offsetof(lstm_t, ht)]);
+
+  ret();
+}
 }  // namespace gen
 }  // namespace jitkernel
 }  // namespace math
