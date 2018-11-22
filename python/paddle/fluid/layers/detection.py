@@ -309,7 +309,6 @@ def detection_output(loc,
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
-
     if arm_scores:
         compile_shape = arm_scores.shape
         run_shape = nn.shape(arm_scores)
@@ -322,7 +321,6 @@ def detection_output(loc,
             x=obj_idx, shape=compile_shape, actual_shape=run_shape)
         obj_idx = nn.transpose(obj_idx, perm=[0, 2, 1])
         obj_idx = nn.split(obj_idx, num_or_sections=2, dim=1)[1]
-
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
