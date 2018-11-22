@@ -83,7 +83,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "be used only when the code type is decode_center_size. "
         "Each box is represented as [xmin, ymin, xmax, ymax], "
         "[xmin, ymin] is the left top coordinate of the box if the "
-        "input is image feature map, they are close to"
+        "input is image feature map, they are close to "
         "the origin of the coordinate system. [xmax, ymax] is the right "
         "bottom coordinate of the box. This tensor can contain LoD "
         "information to represent a batch of inputs. One instance of this "
