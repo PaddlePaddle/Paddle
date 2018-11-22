@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -95,6 +96,9 @@ bool IsCompiledWithDIST() {
 }
 
 PYBIND11_PLUGIN(core) {
+  // Not used, just make sure cpu_info.cc is linked.
+  paddle::platform::CpuTotalPhysicalMemory();
+
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   py::module m("core", "C++ core of PaddlePaddle");
 
