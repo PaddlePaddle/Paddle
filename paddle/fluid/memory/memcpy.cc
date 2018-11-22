@@ -27,6 +27,8 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
 }
 
 #ifdef PADDLE_WITH_CUDA
+static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
+
 template <>
 void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
@@ -36,6 +38,10 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
   } else {
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+    // FIXME(zjl): do we really need it?
+    if (num <= kMaxGpuAsyncCopyBytes) {
+      cudaStreamSynchronize(0);
+    }
   }
 }
 
@@ -48,6 +54,10 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
   } else {
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+    // FIXME(zjl): do we really need it?
+    if (num <= kMaxGpuAsyncCopyBytes) {
+      cudaStreamSynchronize(0);
+    }
   }
 }
 

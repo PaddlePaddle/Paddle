@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -35,6 +38,7 @@ std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
+    FLAGS_logtostderr = true;
     argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
@@ -45,7 +49,7 @@ void InitGflags(std::vector<std::string> argv) {
       line += ' ';
     }
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
+    VLOG(10) << "Init commandline: " << line;
   });
 }
 
@@ -64,7 +68,7 @@ void InitP2P(std::vector<int> devices) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
         } else {
-          cudaSetDevice(devices[i]);
+          platform::CUDADeviceGuard guard(devices[i]);
           cudaDeviceEnablePeerAccess(devices[j], 0);
         }
       }
@@ -112,10 +116,12 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
+
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
   if (platform::jit::MayIUse(platform::jit::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
@@ -157,15 +163,18 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
     AVX_GUIDE(AVX, NonAVX);
   }
 #endif
-
 #undef AVX_GUIDE
+
+#endif
 }
 
 void InitGLOG(const std::string &prog_name) {
   // glog will not hold the ARGV[0] inside.
   // Use strdup to alloc a new string.
   google::InitGoogleLogging(strdup(prog_name.c_str()));
+#ifndef _WIN32
   google::InstallFailureSignalHandler();
+#endif
 }
 
 }  // namespace framework

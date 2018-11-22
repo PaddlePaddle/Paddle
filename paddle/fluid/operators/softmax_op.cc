@@ -96,20 +96,21 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddAttr<bool>("is_test",
-                  "Disable epsilon adding to softmax results. Used by MKLDNN.")
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
     AddComment(R"DOC(
 Softmax Operator.
 
-The input of the softmax operator is a tensor of any rank. The output tensor 
+The input of the softmax operator is a tensor of any rank. The output tensor
 has the same shape as the input.
 
-The input tensor will first be logically flattened to a 2-D matrix. The matrix's 
-second dimension(row length) is as same as the last dimension of the input 
-tensor, and the first dimension(column length) is the product of all other 
-dimensions of the input tensor. For each row of the matrix, the softmax operator 
-squashes the K-dimensional(K is the width of the matrix, which is also the size 
-of the input tensor's last dimension) vector of arbitrary real values to a 
+The input tensor will first be logically flattened to a 2-D matrix. The matrix's
+second dimension(row length) is as same as the last dimension of the input
+tensor, and the first dimension(column length) is the product of all other
+dimensions of the input tensor. For each row of the matrix, the softmax operator
+squashes the K-dimensional(K is the width of the matrix, which is also the size
+of the input tensor's last dimension) vector of arbitrary real values to a
 K-dimensional vector of real values in the range [0, 1] that add up to 1.
 It computes the exponential of the given dimension and the sum of exponential
 values of all the other dimensions in the K-dimensional vector input.
@@ -121,6 +122,14 @@ For each row $i$ and each column $j$ in the matrix, we have:
     $$Out[i, j] = \frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}$$
 
 )DOC");
+  }
+};
+
+class SoftmaxOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -196,7 +205,7 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
-                  ops::SoftmaxOpGradMaker);
+                  ops::SoftmaxOpInferVarType, ops::SoftmaxOpGradMaker);
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,

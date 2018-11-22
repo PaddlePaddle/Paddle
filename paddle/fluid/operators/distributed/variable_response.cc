@@ -16,6 +16,9 @@
 #include <vector>
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
+DEFINE_string(rpc_server_profile_path, "./profile_ps",
+              "the profile log file path");
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -47,7 +50,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
         size_to_write = length - total_written;
       }
       // This log is useful to see how long a internal block size is of rpc.
-      VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
+      VLOG(70) << "copy " << size_to_write << " data to CUDAPlace";
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
@@ -76,7 +79,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     // TODO(gongwb): can we avoid copy?
     platform::CPUPlace cpu;
     // This log is useful to see how long a internal block size is of rpc.
-    VLOG(7) << "copy " << size_to_write << " data to CPUPlace";
+    VLOG(70) << "copy " << size_to_write << " data to CPUPlace";
     memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;
@@ -112,11 +115,11 @@ bool VariableResponse::CopyLodTensorData(
 
   void* tensor_data =
       tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
-  if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
-    return false;
-  }
 
-  return true;
+  VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
+          << ", Buffer Size = " << length;
+  PADDLE_ENFORCE_EQ(tensor->memory_size(), length);
+  return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
 inline framework::DDim GetDims(
@@ -195,8 +198,8 @@ bool VariableResponse::ProcSerializedField(
 #endif
   }
 
-  VLOG(7) << "ProcSerializedField:" << meta_.varname()
-          << ", type:" << meta_.type() << std::endl;
+  VLOG(70) << "ProcSerializedField:" << meta_.varname()
+           << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
     PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");

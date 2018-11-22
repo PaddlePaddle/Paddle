@@ -22,18 +22,23 @@ namespace operators {
 
 using paddle::framework::Tensor;
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
-  class OP_NAME##OpMaker                                                \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
-   public:                                                              \
-    void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME " operator");                  \
-      AddOutput("Out", "Output of " #OP_NAME " operator");              \
-      AddAttr<bool>("use_mkldnn",                                       \
-                    "(bool, default false) Only used in mkldnn kernel") \
-          .SetDefault(false);                                           \
-      AddComment(#OP_COMMENT);                                          \
-    }                                                                   \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                \
+  class OP_NAME##OpMaker                                                 \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {             \
+   public:                                                               \
+    void Make() override {                                               \
+      AddInput("X", "Input of " #OP_NAME " operator");                   \
+      AddOutput("Out", "Output of " #OP_NAME " operator");               \
+      AddAttr<bool>("use_mkldnn",                                        \
+                    "(bool, default false) Only used in mkldnn kernel")  \
+          .SetDefault(false);                                            \
+      AddAttr<bool>(                                                     \
+          "is_test",                                                     \
+          "(bool, default false) Set to true for inference only, false " \
+          "for training. Some layers may run faster when this is true.") \
+          .SetDefault(false);                                            \
+      AddComment(#OP_COMMENT);                                           \
+    }                                                                    \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -91,16 +96,12 @@ class ActivationOp : public framework::OperatorWithKernel {
   }
 };
 
-class ActivationOpInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto x_name = op_desc.Input("X")[0];
-    auto out_name = op_desc.Output("Out")[0];
-    auto& x = block->FindRecursiveOrCreateVar(x_name);
-    auto& out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(x.GetType());
-    out.SetDataType(x.GetDataType());
+class ActivationOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -273,7 +274,7 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
 :strong:`Softshrink Activation Operator`
 
 ..  math::
-    out = \begin{cases} 
+    out = \begin{cases}
          x - \lambda, \text{if } x > \lambda \\
          x + \lambda, \text{if } x < -\lambda \\
          0,  \text{otherwise}
@@ -439,7 +440,7 @@ class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 HardSigmoid Activation Operator.
 
-Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391), 
+Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
 which is much faster than sigmoid.
 
 $out = \max(0, \min(1, slope * x + shift))$
