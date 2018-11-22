@@ -70,6 +70,44 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::ProgramDesc &program() { return *inference_program_; }
 
  protected:
+  void CollectVarShapes() {
+    if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
+    std::map<std::string, std::vector<int>> var_shapes;
+    for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
+      auto *var = sub_scope_->FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(var);
+      if (var->Type() == typeid(framework::LoDTensor) ||
+          var->Type() == typeid(framework::Tensor)) {
+        auto &tensor = var->Get<framework::LoDTensor>();
+        auto shape = framework::vectorize(tensor.dims());
+        var_shapes[var_name].assign(shape.begin(), shape.end());
+      }
+    }
+    batch_var_shapes_.push_back(var_shapes);
+    LOG(INFO) << "collect " << batch_var_shapes_.size()
+              << " batch of var shapes for analysis";
+  }
+
+  void SerizlizeBatchVarShapes(const std::string &path) {
+    LOG(INFO) << "serialize batch var shapes to " << path;
+    std::ofstream file(path);
+    if (!file.is_open()) {
+      LOG(ERROR) << "failed to serialize the var shapes to " << path;
+      return;
+    }
+
+    for (auto &batch : batch_var_shapes_) {
+      for (auto &ele : batch) {
+        file << ele.first << ":";
+        for (int i = 0; i < ele.second.size() - 1; i++) {
+          file << ele.second[i] << ",";
+        }
+        file << ele.second.back() << ";";
+      }
+      file << "\n";
+    }
+  }
+
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   bool CreateExecutor();
@@ -110,6 +148,10 @@ class AnalysisPredictor : public PaddlePredictor {
   // concurrency problems, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
+
+  // Collect var shapes of batches.
+  const size_t max_shape_collect_count_{1000};
+  std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
 
  private:
   // Some status here that help to determine the status inside the predictor.

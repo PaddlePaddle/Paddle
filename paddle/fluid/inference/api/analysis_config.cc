@@ -52,6 +52,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
+  enable_memory_optim_ = other.enable_memory_optim_;
 
   if (use_gpu) {
     pass_builder_.reset(new GpuPassStrategy(

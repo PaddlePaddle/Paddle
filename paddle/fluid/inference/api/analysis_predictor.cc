@@ -188,6 +188,11 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  if (config_.enable_memory_optim()) {
+    CollectVarShapes();
+  }
+
   return true;
 }
 
@@ -509,6 +514,13 @@ AnalysisPredictor::~AnalysisPredictor() {
 #endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
+  }
+
+  if (config_.enable_memory_optim()) {
+    // TODO(Superjomn) deduce the directory path.
+    std::string out_path =
+        config_.model_dir.empty() ? config_.prog_file : config_.model_dir;
+    SerizlizeBatchVarShapes(out_path + ".cache_var_shapes");
   }
 }
 

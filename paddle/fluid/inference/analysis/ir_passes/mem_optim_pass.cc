@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/mem_optim_pass.h"
+#include <fstream>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -28,10 +29,10 @@ const int kBatchSize = 13;  // replace the placement -1 in shape
 
 std::unique_ptr<framework::ir::Graph> MemOptimPass::ApplyImpl(
     std::unique_ptr<framework::ir::Graph> graph) const {
-  graph_ = graph.get();
-  std::unordered_map<std::string, std::string> reuse_table;
-  MakeReusePlan(&reuse_table);
-  PerformReusePlan(reuse_table);
+  // graph_ = graph.get();
+  // std::unordered_map<std::string, std::string> reuse_table;
+  // MakeReusePlan(&reuse_table);
+  // PerformReusePlan(reuse_table);
   return graph;
 }
 
@@ -69,7 +70,8 @@ void MemOptimPass::CollectLifeCycle(
         if (node->Var()->Persistable()) continue;
         std::string var = node->Name();
         if (!lifecycles->count(var)) {
-          int dead = to_optim ? max_lifecycle_ : std::numeric_limits<int>::max();
+          int dead =
+              to_optim ? max_lifecycle_ : std::numeric_limits<int>::max();
           (*lifecycles)[var] = std::make_pair(max_lifecycle_, dead);
         } else {
           (*lifecycles)[var].second =
@@ -390,6 +392,71 @@ void MemOptimPass::PerformReusePlan(
   BuildVarNodeTable(graph_, &var_node_table);
   // UpdateIrGraphByReuse(graph_, reuse_table, var_node_table);
   UpdateOpDescsByReuse(graph_, reuse_table);
+}
+
+std::vector<std::string> split(const std::string& line, char delim) {
+  std::vector<std::string> res;
+  std::string field;
+  std::stringstream line_stream(line);
+  while (std::getline(line_stream, field, delim)) {
+    res.emplace_back(field);
+  }
+  return res;
+}
+
+std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
+    const std::string& path) {
+  std::ifstream file(path);
+  PADDLE_ENFORCE(file.is_open(), "failed to open %s  to read cache", path);
+  auto length = file.tellg();
+  file.seekg(0);
+  std::string content(length, ' ');
+  file.read(&content[0], length);
+
+  std::string line;
+  std::vector<std::map<std::string, std::vector<int>>> batch_shapes;
+
+  for (auto line : split(content, '\n')) {
+    std::map<std::string, std::vector<int>> batch;
+    for (auto var_info : split(line, ';')) {
+      auto fields = split(var_info, ':');
+      PADDLE_ENFORCE_EQ(fields.size(), 2UL);
+      auto var_name = fields.front();
+      auto shape_str = split(fields[1], ',');
+      std::vector<int> shape;
+      for (auto v : shape_str) shape.push_back(std::stoi(v));
+      batch[var_name] = shape;
+    }
+    batch_shapes.push_back(batch);
+  }
+  return batch_shapes;
+}
+
+std::vector<std::unordered_set<std::string>> AnalysisBatchShapes(
+    const std::vector<std::map<std::string, std::vector<int>>>& batches) {
+  // collect the batch size of each shape and combine to a stringstream in
+  // converient to generate a hash.
+  std::unordered_map<std::string, std::stringstream> var_batchsize_hashes;
+  for (auto& batch : batches) {
+    for (auto& ele : batch) {
+      int batch_size = ele.second.front();
+      // TODO(Superjomn) might consume large memory here, use combine hash.
+      var_batchsize_hashes[ele.first] << batch_size;
+    }
+  }
+
+  // Split to sets by batch size sequences.
+  std::unordered_map<size_t /*hash*/, std::unordered_set<std::string>>
+      shape_sets;
+  for (auto& ele : var_batchsize_hashes) {
+    auto hash = std::hash<std::string>()(ele.second.str());
+    shape_sets[hash].insert(ele.first);
+  }
+  std::vector<std::unordered_set<std::string>> res;
+  for (auto& ele : shape_sets) {
+    res.emplace_back(std::move(ele.second));
+  }
+  return res;
 }
 
 }  // namespace analysis
