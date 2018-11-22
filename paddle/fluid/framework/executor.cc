@@ -440,9 +440,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       scope->DropKids();
     }
   }
-
-  // Clean the transfer data cache, which is used in NativeExecutor.
-  global_transfer_scope_cache().clear();
 }
 
 void Executor::RunPreparedContext(
