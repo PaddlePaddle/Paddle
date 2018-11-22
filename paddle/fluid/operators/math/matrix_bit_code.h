@@ -67,7 +67,7 @@ inline constexpr size_t FindLastSet(size_t x) {
              : (std::is_same<size_t, unsigned long>::value  // NOLINT
                     ? (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
                     : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
-
+}
 #else
 // windows don't have built-in clz, ctz function
 template <typename T>
@@ -92,7 +92,6 @@ inline int clz(const T& value) {
 
 inline size_t FindLastSet(size_t x) { return sizeof(size_t) * 8 - clz(x); }
 #endif  // !_WIN32
-}
 
 struct SimpleCode {
   SimpleCode(size_t code, size_t num_classes) : c_(code + num_classes) {}
