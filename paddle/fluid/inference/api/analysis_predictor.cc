@@ -188,6 +188,11 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  // We should delete all kid scopes after run executor because
+  // MKL-DNN operators create local scope for reorders
+  if (scope) scope->DropKids();
+
   return true;
 }
 
