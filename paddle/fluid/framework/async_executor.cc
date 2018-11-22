@@ -158,6 +158,17 @@ std::vector<float> AsyncExecutor::RunFromFile(
 
   DataFeedDesc data_feed_desc;
   google::protobuf::TextFormat::ParseFromString(data_feed_desc_str, &data_feed_desc);
+
+  int actual_thread_num = thread_num;
+  int file_cnt = filelist.size();
+  PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
+
+  if (actual_thread_num > file_cnt) {
+    LOG(ERROR) << "Thread num = " << thread_num << ", file num = " << file_cnt
+               << ". Changing thread_num = " << file_cnt;
+    actual_thread_num = file_cnt;
+  }
+
   /*
     readerDesc: protobuf description for reader initlization
     argument: class_name, batch_size, use_slot, queue_size, buffer_size, padding_index
@@ -170,22 +181,22 @@ std::vector<float> AsyncExecutor::RunFromFile(
    */
   // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed> > readers;
-  PrepareReaders(readers, thread_num, data_feed_desc, filelist);
+  PrepareReaders(readers, actual_thread_num, data_feed_desc, filelist);
   
   std::vector<std::shared_ptr<ExecutorThreadWorker> > workers;
-  workers.resize(thread_num);
+  workers.resize(actual_thread_num);
   for (auto& worker : workers) {
     worker.reset(new ExecutorThreadWorker);
   }
 
   // prepare thread resource here
-  for (int thidx = 0; thidx < thread_num; ++thidx) {
+  for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
     CreateThreads(workers[thidx].get(), main_program,
                   readers[thidx], fetch_var_names, root_scope_, thidx);
   }
 
   // start executing ops in multiple threads
-  for (int thidx = 0; thidx < thread_num; ++thidx) {
+  for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
     threads.push_back(std::thread(&ExecutorThreadWorker::TrainFiles,
                                   workers[thidx].get()));
   }
@@ -194,22 +205,15 @@ std::vector<float> AsyncExecutor::RunFromFile(
     th.join();
   }
 
+  root_scope_.DropKids();
+
   std::vector<float> fetch_values;
   fetch_values.resize(fetch_var_names.size(), 0);
 
-  std::vector<std::vector<float>*> fetch_value_vectors;
-  fetch_value_vectors.resize(thread_num);
-  for (int i = 0; i < thread_num; ++i) {
-    fetch_value_vectors[i] = &workers[i]->GetFetchValues();
-  }
+  std::vector<float>& fetch_value_vectors = workers[0]->GetFetchValues();
 
   for (unsigned int i = 0; i < fetch_var_names.size(); ++i) {
-    float value = 0.0;
-    for (int j = 0; j < thread_num; ++j) {
-      value += fetch_value_vectors[j]->at(i);
-    }
-    value /= thread_num;
-    fetch_values[i] = value;
+    fetch_values[i] = fetch_value_vectors[i];
   }
 
   return fetch_values;

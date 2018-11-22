@@ -23,7 +23,6 @@ limitations under the License. */
 #include <thread>   // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/datafeed_creator.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"

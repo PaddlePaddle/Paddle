@@ -25,7 +25,6 @@ limitations under the License. */
 #include <typeinfo>
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/executor_thread_worker.h"
-#include "paddle/fluid/framework/datafeed_creator.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
