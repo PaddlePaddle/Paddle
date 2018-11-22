@@ -139,6 +139,10 @@ if (WIN32)
             "Disable MKL when compiling for Windows" FORCE)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
+    set(WITH_C_API OFF CACHE STRING
+            "Disable C_API when compiling for Windows" FORCE)
+    set(WITH_FLUID_ONLY ON CACHE STRING
+            "Enable FLUID_ONLY when compiling for Windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
