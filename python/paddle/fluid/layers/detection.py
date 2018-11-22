@@ -240,8 +240,8 @@ def detection_output(loc,
             of variance.
         arm_loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted anchor refine locations of M bounding bboxes. N is the batch size,
-            and each bounding box has four coordinate values and the layout
-            is [xmin, ymin, xmax, ymax]. If the arm_loc is not None, the prior_box
+            and each bounding box has four coordinate values and the layout is
+            [xmin, ymin, xmax, ymax]. If the arm_loc is not None, the prior_box
             will be decoded by the arm_loc first, and the result will be treated as the
             refined prior_box and will be decoded again by the loc.
         arm_scores(Variable): A 3-D Tensor with shape [N, M, 2] represents the
@@ -316,9 +316,11 @@ def detection_output(loc,
         run_shape = nn.shape(arm_scores)
         arm_scores = nn.flatten(x=arm_scores, axis=2)
         arm_scores = nn.softmax(input=arm_scores)
-        obj_scores = tensor.fill_constant(shape=arm_scores.shape, value=objectness_threshold, dtype='float32')
+        obj_scores = tensor.fill_constant(
+            shape=arm_scores.shape, value=objectness_threshold, dtype='float32')
         obj_idx = control_flow.less_than(obj_scores, arm_scores)
-        obj_idx = nn.reshape(x=obj_idx, shape=compile_shape, actual_shape=run_shape)
+        obj_idx = nn.reshape(
+            x=obj_idx, shape=compile_shape, actual_shape=run_shape)
         obj_idx = nn.transpose(obj_idx, perm=[0, 2, 1])
         obj_idx = nn.split(obj_idx, num_or_sections=2, dim=1)[1]
 
@@ -328,9 +330,11 @@ def detection_output(loc,
     if arm_scores:
         helper.append_op(
             type="multiclass_nms",
-            inputs={'Scores': scores,
-                    'BBoxes': decoded_box,
-                    'ObjIndex': obj_idx},
+            inputs={
+                'Scores': scores,
+                'BBoxes': decoded_box,
+                'ObjIndex': obj_idx
+            },
             outputs={'Out': nmsed_outs},
             attrs={
                 'background_label': 0,
