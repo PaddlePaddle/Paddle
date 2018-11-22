@@ -25,6 +25,7 @@
 | kexinzhao | Ke-Xin Zhao |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
+| cjld | Dun Liang |
 | lipeng-unisound | Peng Li |
 | liuyuan | Yuan Liu |
 | livc | Zhao Li |
