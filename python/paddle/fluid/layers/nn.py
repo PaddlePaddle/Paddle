@@ -6993,7 +6993,7 @@ def swish(x, beta=1.0, name=None):
         .. code-block:: python
 
         x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-        y = fluid.layers.swish(x, beta=1.2)
+        y = fluid.layers.swish(x, beta=2.0)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
