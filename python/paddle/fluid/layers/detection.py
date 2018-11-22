@@ -291,7 +291,7 @@ def detection_output(loc,
                                        prior_box_var=pbv)
     """
     helper = LayerHelper("detection_output", **locals())
-    if arm_loc:
+    if arm_loc is not None:
         decoded_box = box_coder(
             prior_box=prior_box,
             prior_box_var=prior_box_var,
@@ -420,7 +420,7 @@ def box_coder(prior_box,
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
 
-    if arm_loc:
+    if refine_box is not None:
         helper.append_op(
             type="box_coder",
             inputs={

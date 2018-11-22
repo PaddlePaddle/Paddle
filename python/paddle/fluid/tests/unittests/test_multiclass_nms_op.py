@@ -175,9 +175,9 @@ class TestMulticlassNMSOp(OpTest):
         obj_idx = np.random.random((N * M, 1)).astype('float32') < objectness_threshold
         for i in range(C):
             if i == 0:
-                scores[np.where(obj_idx == True),i:i+1] = 1
+                scores[np.where(obj_idx == False),i:i+1] = 1
             else:
-                scores[np.where(obj_idx == True),i:i+1] = 0
+                scores[np.where(obj_idx == False),i:i+1] = 0
         obj_idx = np.reshape(obj_idx, (N, M, 1))
         obj_idx = np.transpose(obj_idx, (0, 2, 1))
 
