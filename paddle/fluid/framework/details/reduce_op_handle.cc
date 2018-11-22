@@ -27,7 +27,7 @@ namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
+  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
   if (places_.size() == 1) return;
   // the input and output may have dummy var.

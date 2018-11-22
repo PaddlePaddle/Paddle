@@ -31,7 +31,10 @@ constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
-  explicit OpHandleBase(ir::Node *node) : node_(node) {}
+  // Owned by `node`. No need to be deleted explicitly.
+  explicit OpHandleBase(ir::Node *node) : node_(node) {
+    node_->WrappedBy(this);
+  }
 
   virtual ~OpHandleBase();
 

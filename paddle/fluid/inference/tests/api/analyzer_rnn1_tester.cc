@@ -210,7 +210,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->device = 0;
   cfg->specify_input_name = true;
   cfg->enable_ir_optim = true;
-  cfg->ir_passes.clear();  // Do not exclude any pass.
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -226,13 +225,16 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_rnn1, profile) {
-  contrib::AnalysisConfig cfg;
+  contrib::AnalysisConfig cfg(false);
   SetConfig(&cfg);
+  cfg.fraction_of_gpu_memory = 0.1;
+  cfg.pass_builder()->TurnOnDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 }
 
 // Check the fuse status
@@ -259,7 +261,8 @@ TEST(Analyzer_rnn1, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 // Test Multi-Thread.
@@ -270,32 +273,8 @@ TEST(Analyzer_rnn1, multi_thread) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, 4 /* multi_thread */);
-}
-
-bool CompareTensors(const framework::Scope &a_scope,
-                    const framework::Scope &b_scope,
-                    const std::vector<std::string> &tensors) {
-  for (auto &x : tensors) {
-    auto *a_var = a_scope.FindVar(x);
-    auto *b_var = b_scope.FindVar(x);
-    if (a_var && b_var) {
-      if (a_var->Type() == typeid(framework::LoDTensor) ||
-          a_var->Type() == typeid(framework::Tensor)) {
-        LOG(INFO) << "comparing tensor " << x;
-        auto &a_t = a_var->Get<framework::LoDTensor>();
-        auto &b_t = b_var->Get<framework::LoDTensor>();
-        if (!inference::CompareTensor(a_t, b_t)) {
-          LOG(ERROR) << string::Sprintf("tensor %s not match in two scopes", x);
-        }
-      } else {
-        LOG(INFO) << "skip no tensor " << x;
-      }
-    } else {
-      LOG(INFO) << "skip tensor " << x;
-    }
-  }
-  return true;
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, 4 /* multi_thread */);
 }
 
 // Validate that the AnalysisPredictor + ZeroCopyTensor really works by testing
@@ -306,7 +285,6 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   config.use_feed_fetch_ops = false;
 
   PaddlePlace place;
-  int output_size{0};
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
@@ -352,86 +330,22 @@ TEST(Analyzer_rnn1, ZeroCopy) {
 
   Timer timer;
   double total_time{0};
-  double native_total_time{0};
-  double analysis_total_time{0.};
-
   for (int i = 0; i < FLAGS_repeat; i++) {
     timer.tic();
     predictor->ZeroCopyRun();
     total_time += timer.toc();
   }
+  LOG(INFO) << "ZeroCopy output: " << DescribeZeroCopyTensor(*output_tensor);
 
-  auto *output_data = output_tensor->data<float>(&place, &output_size);
-  ASSERT_GT(output_size, 0);  // more than one output!
+  ASSERT_TRUE(native_predictor->Run(native_inputs.front(), &native_outputs));
+  LOG(INFO) << "native output " << DescribeTensor(native_outputs.front());
 
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    // Run native predictor.
-    timer.tic();
-    ASSERT_TRUE(native_predictor->Run(native_inputs.front(), &native_outputs));
-    native_total_time += timer.toc();
+  int output_size{0};
+  auto *zero_copy_data = output_tensor->data<float>(&place, &output_size);
+  auto *native_data = static_cast<float *>(native_outputs.front().data.data());
+  for (size_t i = 0; i < output_size / sizeof(float); i++) {
+    EXPECT_NEAR(zero_copy_data[i], native_data[i], 1e-3);
   }
-
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    timer.tic();
-    ASSERT_TRUE(
-        analysis_predictor->Run(native_inputs.front(), &analysis_outputs));
-    analysis_total_time += timer.toc();
-  }
-
-  if (!FLAGS_with_precision_check) {
-    return;
-  }
-  int native_output_size = VecReduceToInt(native_outputs.front().shape);
-
-  EXPECT_EQ(native_output_size, output_size);
-
-  // Compare tensors between analysis and zerocopy
-  auto *p0 = static_cast<AnalysisPredictor *>(predictor.get());
-  auto *p1 = static_cast<AnalysisPredictor *>(analysis_predictor.get());
-  auto *p2 = static_cast<NativePaddlePredictor *>(native_predictor.get());
-
-  std::vector<std::string> tensor_names;
-  for (auto &var_desc : p0->program().Block(0).AllVars()) {
-    tensor_names.push_back(var_desc->Name());
-  }
-
-  LOG(INFO) << "Comparing tensors";
-  ASSERT_TRUE(
-      CompareTensors(*p0->scope(), *p1->scope(), {"final_output.tmp_1"}));
-  ASSERT_TRUE(
-      CompareTensors(*p0->scope(), *p2->scope(), {"final_output.tmp_1"}));
-
-  LOG(INFO) << "output1 " << inference::LoDTensorSummary<float>(
-                                 p0->scope()
-                                     ->FindVar("final_output.tmp_1")
-                                     ->Get<framework::LoDTensor>());
-  LOG(INFO) << "output2 " << inference::LoDTensorSummary<float>(
-                                 p1->scope()
-                                     ->FindVar("final_output.tmp_1")
-                                     ->Get<framework::LoDTensor>());
-  LOG(INFO) << "output3 " << inference::LoDTensorSummary<float>(
-                                 p2->scope()
-                                     ->FindVar("final_output.tmp_1")
-                                     ->Get<framework::LoDTensor>());
-
-  for (int i = 0; i < output_size; i++) {
-    LOG(INFO) << output_data[i] << " "
-              << static_cast<float *>(native_outputs.front().data.data())[i]
-              << " "
-              << static_cast<float *>(analysis_outputs.front().data.data())[i];
-    EXPECT_NEAR(output_data[i],
-                static_cast<float *>(native_outputs.front().data.data())[i],
-                1e-3);
-  }
-
-  LOG(INFO) << "batch_size: " << FLAGS_batch_size;
-
-  LOG(INFO) << "zero average time: "
-            << total_time / (FLAGS_repeat * FLAGS_batch_size);
-  LOG(INFO) << "analysis average time: "
-            << analysis_total_time / (FLAGS_repeat * FLAGS_batch_size);
-  LOG(INFO) << "native average time: "
-            << native_total_time / (FLAGS_repeat * FLAGS_batch_size);
 }
 
 TEST(Analyzer_rnn1, ZeroCopyMultiThread) {

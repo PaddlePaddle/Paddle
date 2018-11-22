@@ -40,10 +40,10 @@ class ROIPoolOp : public framework::OperatorWithKernel {
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -110,7 +110,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4)"
-             "given as [[x1, y1, x2, y2], …]. "
+             "given as [[x1, y1, x2, y2], ...]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -122,7 +122,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
-              "if arg “is_test” is false.")
+              "if arg \"is_test\" is false.")
         .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "

@@ -81,6 +81,12 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
+    // NOTE(minqiyang): grad_inplace is an temporal attribute,
+    // please do NOT set this attribute in python layer.
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -115,7 +121,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -128,13 +134,13 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
-              << " is set to SelectedRows";
+      VLOG(30) << "lookup_table_grad op " << framework::GradVarName("W")
+               << " is set to SelectedRows";
       block->Var(out_var_name)
           ->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
-      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+      VLOG(30) << "lookup_table_grad op " << framework::GradVarName("W")
+               << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
     block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());

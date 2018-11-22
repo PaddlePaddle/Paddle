@@ -32,19 +32,23 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+static void SerializeDestroyCallback(void* payload) {
+  if (payload != nullptr) {
+    auto* shared_payload = reinterpret_cast<TensorPayload*>(payload);
+    delete shared_payload;
+  }
+}
+
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg,
-                           const std::string& out_name) {
+                           ::grpc::ByteBuffer* msg, const std::string& out_name,
+                           const int trainer_id) {
   platform::RecordRPCEvent record_event("serial", &ctx);
-  // Default DestroyCallback does nothing, When using GPU
-  // the CPU buffer need to be freed.
-  DestroyCallback destroy_callback = [](void* backing) {};
   VarMsg request;
-  void* payload = nullptr;
-  size_t payload_size;
+  TensorPayload* payload = nullptr;
 
   request.set_varname(name);
+  request.set_trainer_id(trainer_id);
   // Note: normally the profiler is enabled in 1 trainer, hence only
   // 1 trainer returns true for ShouldSendProfileState(). It tells PS
   // servers the trainer's profiling state so that PS can follow the
@@ -61,10 +65,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
   if (var->IsType<framework::LoDTensor>()) {
     request.set_type(::sendrecv::LOD_TENSOR);
-    GetTensorPayload(var, ctx, &request, &payload, &payload_size);
+    payload = new TensorPayload(GetTensorPayload(var, ctx, &request));
   } else if (var->IsType<framework::SelectedRows>()) {
     request.set_type(::sendrecv::SELECTED_ROWS);
-    GetSelectedRowsPayload(var, ctx, &request, &payload, &payload_size);
+    payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, &request));
 #ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     request.set_type(::sendrecv::NCCL_ID);
@@ -72,17 +76,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   } else {
     PADDLE_THROW("Serialize does not support type: %s",
                  typeid(var->Type()).name());
-  }
-
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-    // GPU data is copied to CPU buffer when sending,
-    // free the buffer when possible.
-    destroy_callback = [](void* backing) {
-      platform::CUDAPinnedPlace cuda_pinned;
-      memory::Free(cuda_pinned, backing);
-    };
-#endif
   }
 
   std::string header;
@@ -108,16 +101,18 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     return;
   }
 #endif
+  PADDLE_ENFORCE_NOT_NULL(payload);
 
-  e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
+  e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
+                            payload->memory_size());
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
   int num_slices = 2;       // only SelectedRows have rows buffer
   slices[0] = ::grpc::Slice(e.size());
   memcpy(const_cast<uint8_t*>(slices[0].begin()), e.data(), e.size());
   slices[1] = ::grpc::Slice(
-      grpc_slice_new_with_user_data(payload, payload_size, destroy_callback,
-                                    static_cast<char*>(payload)),
+      grpc_slice_new_with_user_data(payload->ptr(), payload->memory_size(),
+                                    SerializeDestroyCallback, payload),
       ::grpc::Slice::STEAL_REF);
 
   if (var->IsType<framework::SelectedRows>()) {
@@ -147,11 +142,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable** var) {
+                               framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial", &ctx);
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
+  *trainer_id = resp.GetTrainerId();
 }
 
 }  // namespace distributed

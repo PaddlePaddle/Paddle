@@ -10,12 +10,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+#include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
@@ -72,7 +73,75 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
-class CudnnHolder;
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place);
+  ~CudnnHolder();
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+ private:
+  friend class CudnnWorkspaceHandle;
+  void ReallocateWorkspace(size_t required_workspace_len);
+
+  template <typename Callback>
+  void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (required_workspace_len > WorkspaceSize()) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(WorkspacePtr());
+  }
+
+  inline void* WorkspacePtr() {
+    if (workspace_) {
+      return workspace_->ptr();
+    } else {
+      return nullptr;
+    }
+  }
+
+  inline size_t WorkspaceSize() {
+    if (workspace_) {
+      return workspace_->size();
+    } else {
+      return 0;
+    }
+  }
+
+  std::mutex& Mutex() { return mtx_; }
+
+  cudnnHandle_t cudnn_handle_;
+  memory::AllocationPtr workspace_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+class CudnnWorkspaceHandle {
+ public:
+  /*! \brief The lock would not be acquired when constructor calls.
+   *  The lock would be acquired when RunFunc() is called first time. */
+  inline explicit CudnnWorkspaceHandle(CudnnHolder* holder) : holder_(holder) {}
+
+  /*! \brief Thread which call RunFunc() would acquire the lock first
+   *  before invoking cudnn functions. */
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+  }
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  CudnnHolder* holder_;  // not own
+  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
+};
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -100,10 +169,14 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
-  /*! \brief  Run a cudnn function with the workspace provided by
-   * CUDADeviceContext */
-  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
-                                 size_t workspace_len) const;
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
+   *  sequential cudnn function calls. */
+  CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
@@ -176,6 +249,12 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
+using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
+using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+
+void set_cur_thread_id(int);
+int get_cur_thread_id(void);
+
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
@@ -191,8 +270,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
  private:
   mkldnn::engine engine_;
-  std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<void>>>
-      p_blobs_;
+  std::shared_ptr<BlobMap> p_blobmap_;
+  std::shared_ptr<std::mutex> p_mutex_;
 };
 #endif
 
@@ -217,9 +296,6 @@ class DeviceContextPool {
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
 
-  /*! \brief  Return all the device contexts. */
-  const std::vector<const DeviceContext*> GetAllDeviceContexts() const;
-
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
       const Place& place) {
@@ -231,7 +307,8 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::map<Place, std::unique_ptr<DeviceContext>> device_contexts_;
+  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
+      device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

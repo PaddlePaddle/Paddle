@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <vector>
@@ -91,19 +92,19 @@ void GraphPatternDetector::operator()(Graph *graph,
   PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
   int id = 0;
   for (auto &g : subgraphs) {
-    VLOG(3) << "optimizing #" << id++ << " subgraph";
+    VLOG(30) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
 
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
-  VLOG(3) << "mark pdnodes in graph";
+  VLOG(30) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "pdnode " << pdnode->name() << " marked";
+        VLOG(40) << "pdnode " << pdnode->name() << " marked";
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -111,7 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   // Check to early stop if some PDNode can't find matched Node.
   for (auto &pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
-      VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
+      VLOG(40) << pdnode->name() << " can't find matched Node, early stop";
       // return false;
     }
   }
@@ -120,7 +121,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
       GetMarkedNodes(const_cast<Graph *>(&graph)).insert(n);
     }
   }
-  VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
+  VLOG(30) << pdnodes2nodes_.size() << " nodes marked";
 
   return !pdnodes2nodes_.empty();
 }
@@ -166,10 +167,12 @@ struct HitGroup {
 
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
-      if (!roles.count(pat)) return false;
-      return roles[pat] == node;
+      if (roles.count(pat) && roles[pat] == node) return true;
+      return false;
+    } else {
+      if (roles.count(pat) && roles[pat] != node) return false;
+      return true;
     }
-    return !roles.count(pat) || roles.at(pat) == node;
   }
 
   void Register(Node *node, PDNode *pat) {
@@ -197,7 +200,6 @@ GraphPatternDetector::DetectPatterns() {
   std::vector<GraphPatternDetector::subgraph_t> result;
   std::vector<HitGroup> init_groups;
   std::array<std::vector<HitGroup>, 2> bi_records;
-  // PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
   auto *first_pnode = pattern_.edges().empty() ? pattern().nodes().front().get()
                                                : pattern_.edges().front().first;
   if (!pdnodes2nodes_.count(first_pnode)) return result;
@@ -213,7 +215,7 @@ GraphPatternDetector::DetectPatterns() {
   // Extend a PDNode to subgraphs by deducing the connection relations defined
   // in edges of PDNodes.
   for (const auto &edge : pattern_.edges()) {
-    VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();
+    VLOG(40) << "check " << edge.first->name() << " -> " << edge.second->name();
     // TODO(Superjomn) Fix bug here, the groups might be duplicate here.
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
@@ -224,14 +226,15 @@ GraphPatternDetector::DetectPatterns() {
     // source -> target
     for (Node *source : pdnodes2nodes_[edge.first]) {
       for (Node *target : pdnodes2nodes_[edge.second]) {
-        VLOG(8) << "check " << source->id() << " -- " << target->id();
+        VLOG(80) << "check " << source->id() << " -- " << target->id();
         // TODO(Superjomn) add some prune strategies.
         for (const auto &group : pre_groups) {
-          HitGroup new_group = group;
-          if (IsNodesLink(source, target) &&
-              new_group.Match(source, edge.first)) {
-            new_group.Register(source, edge.first);
-            if (new_group.Match(target, edge.second)) {
+          if (IsNodesLink(source, target)) {
+            HitGroup new_group = group;
+            bool flag = new_group.Match(source, edge.first) &&
+                        new_group.Match(target, edge.second);
+            if (flag) {
+              new_group.Register(source, edge.first);
               new_group.Register(target, edge.second);
               cur_groups.push_back(new_group);
               // TODO(Superjomn) need to unique
@@ -240,12 +243,13 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    VLOG(3) << "step " << step << " get records: " << cur_groups.size();
+    VLOG(30) << "step " << step << " get records: " << cur_groups.size();
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
-        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
+        VLOG(40) << "node " << item.second->id() << " as "
+                 << item.first->name();
       }
-      VLOG(4) << "=========================================================";
+      VLOG(40) << "=========================================================";
     }
   }
 
@@ -259,6 +263,17 @@ GraphPatternDetector::DetectPatterns() {
   return result;
 }
 
+struct GraphItemLessThan {
+  bool operator()(const std::pair<PDNode *, Node *> &a,
+                  const std::pair<PDNode *, Node *> &b) {
+    if (a.first != b.first) {
+      return a.first < b.first;
+    } else {
+      return a.second < b.second;
+    }
+  }
+};
+
 // TODO(Superjomn) enhance the function as it marks unique unique as duplicates
 // see https://github.com/PaddlePaddle/Paddle/issues/13550
 void GraphPatternDetector::UniquePatterns(
@@ -267,12 +282,16 @@ void GraphPatternDetector::UniquePatterns(
   std::vector<GraphPatternDetector::subgraph_t> result;
 
   std::unordered_set<size_t> set;
+  std::hash<std::string> hasher;
   for (auto &g : *subgraphs) {
-    size_t key = 0;
-    for (auto &item : g) {
-      key ^= std::hash<void *>{}(item.first);
-      key ^= std::hash<void *>{}(item.second);
+    // Sort the items in the sub-graph, and transform to a string key.
+    std::vector<std::pair<PDNode *, Node *>> sorted_keys(g.begin(), g.end());
+    std::sort(sorted_keys.begin(), sorted_keys.end(), GraphItemLessThan());
+    std::stringstream ss;
+    for (auto &item : sorted_keys) {
+      ss << item.first << ":" << item.second;
     }
+    auto key = hasher(ss.str());
     if (!set.count(key)) {
       result.emplace_back(g);
       set.insert(key);
@@ -1065,16 +1084,12 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var) {
+PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
 
-  x_var->assert_is_op_input("elementwise_add", "X");
-
-  auto y_var = pattern->NewNode(elementwise_add_x_repr())
-                   ->AsInput()
-                   ->assert_is_op_input("elementwise_add", "Y");
-
+  x_var->AsInput()->assert_is_op_input("elementwise_add", "X");
+  y_var->AsInput()->assert_is_op_input("elementwise_add", "Y");
   auto out_var = pattern->NewNode(elementwise_add_out_repr())
                      ->AsOutput()
                      ->assert_is_op_output("elementwise_add", "Out");

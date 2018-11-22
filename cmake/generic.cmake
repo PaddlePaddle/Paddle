@@ -261,6 +261,17 @@ function(cc_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} mklml)
         target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
       endif()
+      # remove link to python, see notes at:
+      # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
+      if("${cc_library_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cc_library_DEPS python)
+        add_dependencies(${TARGET_NAME} python)
+        if(WIN32)
+          target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+        else()
+          target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
+        endif(WIN32)
+      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
@@ -280,6 +291,45 @@ function(cc_library TARGET_NAME)
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
+
+# The link operation under windows may exceeds the maximum characters limit, simply break the link command
+# into multiple link opeartion can fix that, say
+# original:
+#     lib /out:target.lib a.lib b.lib c.lib d.lib
+# after:
+#    1. lib /out:dummy_lib_1.lib a.lib b.lib
+#    2. lib /out:dummy_lib_2.lib c.lib d.lib
+#    1. lib /out:target.lib dummy_lib_1.lib dummy_lib_2.lib
+function(sep_library TARGET_NAME)
+  set(options STATIC static SHARED shared)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(sep_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(dummy_index 1)
+  set(dummy_offset 1)
+  # the dummy target would be consisted of limit size libraries
+  set(dummy_limit 50)
+  list(LENGTH sep_library_DEPS sep_all_len)
+  foreach(v ${sep_library_DEPS})
+    list(APPEND dummy_list ${v})
+    list(LENGTH dummy_list listlen )
+    if ((${listlen} GREATER ${dummy_limit}) OR (${dummy_offset} EQUAL ${sep_all_len}))
+      message("create dummy library ${TARGET_NAME}_dummy_lib_${dummy_index} for ${TARGET_NAME}")
+      cc_library(${TARGET_NAME}_dummy_lib_${dummy_index} STATIC DEPS ${dummy_list})
+      foreach(i ${dummy_list})
+        list(REMOVE_AT dummy_list 0)
+      endforeach()
+      list(APPEND ${TARGET_NAME}_dummy_list ${TARGET_NAME}_dummy_lib_${dummy_index})
+      MATH(EXPR dummy_index "${dummy_index}+1")
+    endif()
+    MATH(EXPR dummy_offset "${dummy_offset}+1")
+  endforeach()
+  if(${sep_library_SHARED})
+    cc_library(${TARGET_NAME} SHARED SRCS ${sep_library_SRCS} DEPS ${${TARGET_NAME}_dummy_list})
+  else(${sep_library_SHARED})
+    cc_library(${TARGET_NAME} STATIC SRCS ${sep_library_SRCS} DEPS ${${TARGET_NAME}_dummy_list})
+  endif(${sep_library_SHARED})
+endfunction(sep_library)
 
 function(cc_binary TARGET_NAME)
   set(options "")
@@ -301,6 +351,9 @@ function(cc_test TARGET_NAME)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    if(WIN32)
+      target_link_libraries(${TARGET_NAME} shlwapi)
+    endif(WIN32)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}

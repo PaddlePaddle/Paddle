@@ -27,21 +27,23 @@ namespace analysis {
 using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.SetModelDir(FLAGS_inference_model_dir);
+  argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetUseGPU(false);
+
   Analyzer analyser;
   analyser.Run(&argument);
 }
 
 TEST(Analyzer, analysis_with_tensorrt) {
-  FLAGS_IA_enable_tensorrt_subgraph_engine = true;
   Argument argument;
-  argument.Set<int>("minimum_subgraph_size", new int(0));
-  argument.Set<int>("max_batch_size", new int(3));
-  argument.Set<int>("workspace_size", new int(1 << 20));
-  argument.Set<std::string>("precision_mode", new std::string("FP32"));
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.SetTensorRtMaxBatchSize(3);
+  argument.SetTensorRtWorkspaceSize(1 << 20);
+  argument.SetModelDir(FLAGS_inference_model_dir);
+  argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetUseGPU(false);
+
   Analyzer analyser;
   analyser.Run(&argument);
 }
