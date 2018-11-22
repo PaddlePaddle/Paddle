@@ -33,6 +33,9 @@ limitations under the License. */
 
 constexpr int repeat = 20000;
 
+// TODO(TJ): benchmark and test should be seperated,
+// benchmark should verify more sizes
+
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
@@ -66,7 +69,7 @@ void vrelu_intri8(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vrelu) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 256, 512}) {
+  for (int d : {3, 7, 8, 15, 16, 30, 256, 512}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -10.f, 1.f);
@@ -92,7 +95,7 @@ TEST(JitKernel, vrelu) {
 #endif
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
     VLOG(30) << "Vec size " << d
@@ -156,7 +159,7 @@ void vexp_mkl(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vexp) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 128, 256}) {
+  for (int d : {1, 3, 4, 6, 7, 8, 12, 15, 16, 20, 30, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -181,7 +184,8 @@ TEST(JitKernel, vexp) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, ztgt_data);
+      // ker->Compute(x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -222,7 +226,7 @@ void vsigmoid_better(
     y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
     y[i] = 0.f - y[i];
   }
-  vexp->Compute(y, y);
+  vexp->Compute(y, y, n);
   for (int i = 0; i < n; ++i) {
     y[i] = 1.f / (1.f + y[i]);
   }
@@ -230,7 +234,7 @@ void vsigmoid_better(
 
 TEST(JitKernel, vsigmoid) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
+  for (int d : {1, 3, 4, 6, 7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -253,7 +257,7 @@ TEST(JitKernel, vsigmoid) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -287,14 +291,14 @@ void vtanh_better(
     const int n, const float* x, float* y) {
   const float a = 2.f, b = -1.f;
   vscal->Compute(&a, x, y, n);
-  vsigmoid->Compute(y, y);
+  vsigmoid->Compute(y, y, n);
   vscal->Compute(&a, y, y, n);
   vaddbias->Compute(&b, y, y, n);
 }
 
 TEST(JitKernel, vtanh) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
+  for (int d : {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -321,7 +325,7 @@ TEST(JitKernel, vtanh) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data, d);
     }
     auto ttgte = GetCurrentUS();
 
@@ -344,8 +348,8 @@ void lstm_ctht_ref(
     const std::shared_ptr<
         const paddle::operators::math::jitkernel::VExpKernel<float>>& vexp_1,
     const int d, float* gates, const float* ct_1, float* ct, float* ht) {
-  vsigmoid_3d->Compute(gates + d, gates + d);
-  vtanh_d->Compute(gates, gates);
+  vsigmoid_3d->Compute(gates + d, gates + d, 3 * d);
+  vtanh_d->Compute(gates, gates, d);
   const float *i = gates + d, *f = gates + d * 2, *o = gates + d * 3;
   const float min = SIGMOID_THRESHOLD_MIN;
   const float max = SIGMOID_THRESHOLD_MAX;
@@ -355,7 +359,7 @@ void lstm_ctht_ref(
     // H_t = act_cell(C_t) * ogated
     float tmp = ct[k] * 2;
     tmp = 0.f - ((tmp < min) ? min : ((tmp > max) ? max : tmp));
-    vexp_1->Compute(&tmp, &tmp);
+    vexp_1->Compute(&tmp, &tmp, 1);
     tmp = 2.f / (1.f + tmp) - 1.f;
     ht[k] = tmp * o[k];
   }
@@ -373,19 +377,19 @@ void lstm_ctht_better(
         const paddle::operators::math::jitkernel::VAddKernel<float>>& vadd_d,
     const int d, float* gates, const float* ct_1, float* ct, float* ht) {
   int d2 = d * 2;
-  vsigmoid_3d->Compute(gates + d, gates + d);
-  vtanh_d->Compute(gates, gates);
+  vsigmoid_3d->Compute(gates + d, gates + d, 3 * d);
+  vtanh_d->Compute(gates, gates, d);
   vmul_d->Compute(gates, gates + d, gates + d, d);
   vmul_d->Compute(ct_1, gates + d2, gates + d2, d);
   vadd_d->Compute(gates + d, gates + d2, ct, d);
   /* H_t = act_cell(C_t) * ogated */
-  vtanh_d->Compute(ct, gates + d2);
+  vtanh_d->Compute(ct, gates + d2, d);
   vmul_d->Compute(gates + d2, gates + d * 3, ht, d);
 }
 
 TEST(JitKernel, lstm) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 32, 64, 100}) {
+  for (int d : {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 30, 32, 64, 100}) {
     int d4 = d * 4;
     int d3 = d * 3;
     std::vector<float> x(d4), xref(d4);
@@ -736,7 +740,7 @@ void vaddrelu_better(
         const paddle::operators::math::jitkernel::VReluKernel<float>>& vrelu,
     const float* x, const float* y, float* z, int d) {
   vadd->Compute(x, y, z, d);
-  vrelu->Compute(z, z);
+  vrelu->Compute(z, z, d);
 }
 
 TEST(JitKernel, vaddrelu) {
@@ -758,7 +762,7 @@ TEST(JitKernel, vaddrelu) {
     float* zref_data = zref.data();
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      vadd_ref(d, x_data, y_data, zref_data);
+      vaddrelu_ref(d, x_data, y_data, zref_data);
     }
     auto trefe = GetCurrentUS();
     auto tmkls = GetCurrentUS();

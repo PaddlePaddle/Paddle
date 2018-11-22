@@ -43,20 +43,6 @@ using DataLayout = platform::DataLayout;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-static constexpr char kCUDNNFwdAlgoCache[] = "kCUDNNFwdAlgoCache";
-static constexpr char kCUDNNBwdDataAlgoCache[] = "kCUDNNBwdDataAlgoCache";
-static constexpr char kCUDNNBwdFilterAlgoCache[] = "kCUDNNBwdFilterAlgoCache";
-
-static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
-    static_cast<size_t>(1024) * 1024 * 1024;
-
-static constexpr size_t kNUM_CUDNN_FWD_ALGS =
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
-static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
-static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS =
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
-
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:

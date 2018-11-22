@@ -86,12 +86,13 @@ class CpuPassStrategy : public PassStrategy {
         "fc_fuse_pass",                  //
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
+        "is_test_pass",                  //
     });
   }
 
   virtual ~CpuPassStrategy() = default;
 
-  virtual void EnableMKLDNN() override {
+  void EnableMKLDNN() override {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
@@ -115,15 +116,19 @@ class CpuPassStrategy : public PassStrategy {
 class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
+    // TODO(NHZlX) Problem with Data synchronization between GPU and CPU
+    // When running in GPU mode, the parameters are all on GPU. But the
+    // opearations of "conv_bn_fuse_pass" are on CPU.
     passes_.assign({
-        "infer_clean_graph_pass", "conv_bn_fuse_pass",
+        "infer_clean_graph_pass",
+        // "infer_clean_graph_pass", "conv_bn_fuse_pass",
     });
   }
 
   GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {}
 
-  virtual void EnableMKLDNN() override;
+  void EnableMKLDNN() override;
 
   virtual ~GpuPassStrategy() = default;
 };

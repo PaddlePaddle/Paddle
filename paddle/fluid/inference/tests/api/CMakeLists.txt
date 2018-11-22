@@ -1,5 +1,9 @@
 set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor)
 
+if(WITH_GPU AND TENSORRT_FOUND)
+    set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor)
+endif()
+
 function(download_model install_dir model_name)
     if (NOT EXISTS ${install_dir})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${model_name})
@@ -27,14 +31,14 @@ function(inference_analysis_api_test_with_fake_data target install_dir filename 
 endfunction()
 
 # RNN1
-if(NOT APPLE)
+if(NOT APPLE AND WITH_MKLML)
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
     download_model_and_data(${RNN1_INSTALL_DIR} "rnn1%2Fmodel.tar.gz" "rnn1%2Fdata.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR} analyzer_rnn1_tester.cc)
 else()
-    # TODO: fix this test on MACOS, the reason is that
-    # fusion_seqexpand_concat_fc_op is not supported on MACOS
-    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_analyzer_rnn1")
+    # TODO: fix this test on MACOS and OPENBLAS, the reason is that
+    # fusion_seqexpand_concat_fc_op is not supported on MACOS and OPENBLAS
+    message(WARNING "These tests has been disabled in OSX or WITH_MKL=OFF before being fixed: \n test_analyzer_rnn1")
 endif()
 
 # RNN2
@@ -45,11 +49,7 @@ inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2
 # DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-inference_analysis_test(test_analyzer_dam SRCS analyzer_dam_tester.cc
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} ARGS
-        --infer_model=${DAM_INSTALL_DIR}/model
-        --infer_data=${DAM_INSTALL_DIR}/data.txt
-        --use_analysis=0)
+inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc)
 
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
@@ -79,8 +79,12 @@ endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
 # resnet50
-inference_analysis_api_test_with_fake_data(test_analyzer_resnet50 
+inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
+
+# mobilenet with depthwise_conv op
+inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet
+  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
 
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
@@ -89,15 +93,15 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
    set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
    inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn.anakin2.model.bin")
    inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn_data.txt")
-   cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc 
-           ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
+   cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc
+           ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
                 --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
            DEPS inference_anakin_api_shared SERIAL)
    # anakin mobilenet
    if(WITH_GPU)
        set(ANAKIN_MOBILENET_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/mobilenet")
        inference_download(${ANAKIN_MOBILENET_INSTALL_DIR} ${INFERENCE_URL} "mobilenet_v2.anakin.bin")
-       cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc 
+       cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc
                ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
    endif()
@@ -108,8 +112,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
    if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
    endif()
-
    inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
-      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor
-        ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
+      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
 endif()

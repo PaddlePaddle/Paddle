@@ -200,7 +200,8 @@ void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst,
 Buffer &TensorRTEngine::buffer(const std::string &name) {
   PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
   auto it = buffer_sizes_.find(name);
-  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  PADDLE_ENFORCE(it != buffer_sizes_.end(), "tried to access buffer named %s",
+                 name);
   auto slot_offset = infer_engine_->getBindingIndex(name.c_str());
   return buffers_[slot_offset];
 }
@@ -253,6 +254,13 @@ void TensorRTEngine::freshDeviceId() {
   cudaGetDeviceCount(&count);
   PADDLE_ENFORCE_LT(device_, count);
   cudaSetDevice(device_);
+}
+
+nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    plugin::PluginTensorRT *plugin) {
+  owned_plugin_.emplace_back(plugin);
+  return infer_network_.get()->addPluginExt(inputs, num_inputs, *plugin);
 }
 
 }  // namespace tensorrt
