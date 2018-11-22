@@ -309,7 +309,6 @@ def detection_output(loc,
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
-
     if arm_scores:
         compile_shape = arm_scores.shape
         run_shape = nn.shape(arm_scores)
