@@ -35,6 +35,10 @@ __activations_noattr__ = [
     'square',
     'softplus',
     'softsign',
+    'not_equal',
+    'less_equal',
+    'greater_than',
+    'greater_equal',
 ]
 
 __all__ = []
