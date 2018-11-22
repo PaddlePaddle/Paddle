@@ -14,21 +14,22 @@ limitations under the License. */
 
 #include <future>  // NOLINT
 #include <ostream>
-#include <vector>
 #include <set>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-inline size_t GetSectionIndex(int64_t id, const std::vector<int64_t>& abs_sections) {
+inline size_t GetSectionIndex(int64_t id,
+                              const std::vector<int64_t>& abs_sections) {
   for (size_t i = 1; i < abs_sections.size(); ++i) {
     if (row < abs_sections[i]) {
       return i - 1;
@@ -38,7 +39,7 @@ inline size_t GetSectionIndex(int64_t id, const std::vector<int64_t>& abs_sectio
 }
 
 inline std::vector<int64_t> ToAbsoluteSection(
-        const std::vector<int64_t>& height_sections) {
+    const std::vector<int64_t>& height_sections) {
   std::vector<int64_t> abs_sections;
   abs_sections.resize(height_sections.size());
   abs_sections[0] = 0;
@@ -49,9 +50,8 @@ inline std::vector<int64_t> ToAbsoluteSection(
 }
 
 inline std::vector<std::vector<int64_t>> SplitIds(
-        const std::string& id_name,
-        const std::vector<int64_t>& height_section,
-        framework::Scope* scope) {
+    const std::string& id_name, const std::vector<int64_t>& height_section,
+    framework::Scope* scope) {
   auto& id_tensor = scope->Var(id_name)->Get<framework::LoDTensor>();
   auto* id_data = id_tensor.data<int64_t>();
   std::set<int64_t> all_ids;
@@ -68,32 +68,32 @@ inline std::vector<std::vector<int64_t>> SplitIds(
 }
 
 inline void SplitIdsIntoMultipleVarsBySection(
-        const std::string& id_name,
-        const std::vector<std::string>& in_var_names,
-        const std::vector<int64_t>& height_section,
-        const std::vector<std::vector<int64_t>>& splited_ids,
-        framework::Scope* scope) {
+    const std::string& id_name, const std::vector<std::string>& in_var_names,
+    const std::vector<int64_t>& height_section,
+    const std::vector<std::vector<int64_t>>& splited_ids,
+    framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size() + 1, "");
 
   auto place = platform::CPUPlace();
 
   for (size_t i = 0; i < in_var_names.size(); ++i) {
-    auto* id_tensor = scope->Var(in_var_names[i])->GetMutable<framework::LoDTensor>();
+    auto* id_tensor =
+        scope->Var(in_var_names[i])->GetMutable<framework::LoDTensor>();
     auto& ids = splited_ids[i];
     if (!ids.empty()) {
-      auto* id_tensor_data = id_tensor->mutable_data<int64_t>(framework::make_ddim({ids.size(), 1}), place);
+      auto* id_tensor_data = id_tensor->mutable_data<int64_t>(
+          framework::make_ddim({ids.size(), 1}), place);
       memcpy(id_tensor_data, ids.data(), sizeof(int64_t) * ids.size());
     }
   }
 }
 
 inline void MergeMultipleVarsIntoOnBySection(
-        const std::string& id_name,
-        const std::string& out_name,
-        const std::vector<std::string>& out_var_names,
-        const std::vector<int64_t>& height_section,
-        const std::vector<std::vector<int64_t>>& splited_ids,
-        framework::Scope* scope) {
+    const std::string& id_name, const std::string& out_name,
+    const std::vector<std::string>& out_var_names,
+    const std::vector<int64_t>& height_section,
+    const std::vector<std::vector<int64_t>>& splited_ids,
+    framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size() + 1, "");
 
   auto cpu_place = platform::CPUPlace();
@@ -109,9 +109,11 @@ inline void MergeMultipleVarsIntoOnBySection(
   auto& out_tensor = scope->Var(out_name)->Get<framework::LoDTensor>();
   auto* out_tensor_data = out_tensor.mutable_data<float>();
 
-  for (size_t section_idx = 0; section_idx < out_var_names.size(); ++section_idx) {
+  for (size_t section_idx = 0; section_idx < out_var_names.size();
+       ++section_idx) {
     auto& ids_in_this_section = splited_ids[section_idx];
-    auto& prefetch_out_var = scope->Var(out_var_names[section_idx])->Get<framework::LoDTensor>();
+    auto& prefetch_out_var =
+        scope->Var(out_var_names[section_idx])->Get<framework::LoDTensor>();
     const auto* out_var_data = prefetch_out_var.mutable_data<float>();
     auto& dims = prefetch_out_var.dims();
 
@@ -126,31 +128,27 @@ inline void MergeMultipleVarsIntoOnBySection(
       auto& offsets = id_to_offset[origin_id];
       for (auto& offset : offsets) {
         // should support GPU tensor
-        memory::Copy(cpu_place, out_tensor_data + offset * row_numel,
-                     cpu_place, out_var_data + i * grad_row_numel,
+        memory::Copy(cpu_place, out_tensor_data + offset * row_numel, cpu_place,
+                     out_var_data + i * grad_row_numel,
                      sizeof(T) * grad_row_numel);
       }
     }
   }
 }
 
-inline void prefetch(
-        const std::string& table_name,
-        const std::string& id_name,
-        const std::string& out_name,
-        const std::vector<std::string>& epmap,
-        const std::vector<int64_t>& height_section,
-        const framework::Scope& scope,
-        const platform::Place& place) const {
-
+inline void prefetch(const std::string& table_name, const std::string& id_name,
+                     const std::string& out_name,
+                     const std::vector<std::string>& epmap,
+                     const std::vector<int64_t>& height_section,
+                     const framework::Scope& scope,
+                     const platform::Place& place) const {
   auto local_scope = scope.NewScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
 
   distributed::RPCClient* rpc_client =
-          distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-                  Attr<int>("trainer_id"));
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(Attr<int>("trainer_id"));
 
   std::vector<std::string> in_var_names;
   std::vector<std::string> out_var_names;
@@ -160,7 +158,8 @@ inline void prefetch(
   }
 
   auto splited_ids = SplitIds(id_name, height_section, local_scope);
-  SplitIdsIntoMultipleVarsBySection(id_name, in_var_names, height_section, splited_ids, local_scope);
+  SplitIdsIntoMultipleVarsBySection(id_name, in_var_names, height_section,
+                                    splited_ids, local_scope);
 
   // create output var in local scope
   for (auto& name : out_var_names) {
@@ -171,9 +170,9 @@ inline void prefetch(
   for (size_t i = 0; i < ins.size(); i++) {
     if (NeedSend(local_scope, ins[i])) {
       VLOG(30) << "sending " << ins[i] << " to " << epmap[i] << " to get "
-      << outs[i] << " back";
-      rets.push_back(rpc_client->AsyncPrefetchVar(epmap[i], ctx, local_scope,
-                                                  in_var_names[i], out_var_names[i]));
+               << outs[i] << " back";
+      rets.push_back(rpc_client->AsyncPrefetchVar(
+          epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i]));
     } else {
       VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
     }
@@ -182,10 +181,70 @@ inline void prefetch(
     PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
   }
 
-  MergeMultipleVarsIntoOnBySection(id_name, out_name, out_var_names, height_section, plited_ids, scope)
+  MergeMultipleVarsIntoOnBySection(id_name, out_name, out_var_names,
+                                   height_section, plited_ids, scope)
 
-  scope.DeleteScope(local_scope);
+      scope.DeleteScope(local_scope);
 }
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using SelectedRows = framework::SelectedRows;
+using DDim = framework::DDim;
+
+constexpr int64_t kNoPadding = -1;
+
+template <typename T>
+class LookupRemoteTableKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* ids_t = context.Input<LoDTensor>("Ids");      // int tensor
+    auto* output_t = context.Output<LoDTensor>("Out");  // float tensor
+    auto* table_var = context.InputVar("W");
+
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+    int64_t* ids = const_cast<int64_t*>(ids_t->data<int64_t>());
+    int64_t ids_numel = ids_t->numel();
+
+    if (table_var->IsType<LoDTensor>()) {
+      auto* table_t = context.Input<LoDTensor>("W");
+      int64_t row_number = table_t->dims()[0];
+      int64_t row_width = table_t->dims()[1];
+
+      auto* table = table_t->data<T>();
+      auto* output = output_t->mutable_data<T>(context.GetPlace());
+
+      for (int64_t i = 0; i < ids_numel; ++i) {
+        if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+          memset(output + i * row_width, 0, row_width * sizeof(T));
+        } else {
+          PADDLE_ENFORCE_LT(ids[i], row_number);
+          PADDLE_ENFORCE_GE(ids[i], 0, "ids %d", i);
+          memcpy(output + i * row_width, table + ids[i] * row_width,
+                 row_width * sizeof(T));
+        }
+      }
+    } else if (table_var->IsType<SelectedRows>()) {
+      const auto& table_t = table_var->Get<SelectedRows>();
+      int64_t row_width = table_t.value().dims()[1];
+      const auto* table = table_t.value().data<T>();
+      auto* output = output_t->mutable_data<T>(context.GetPlace());
+
+      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      for (int64_t i = 0; i < ids_numel; ++i) {
+        if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+          memset(output + i * row_width, 0, row_width * sizeof(T));
+        } else {
+          PADDLE_ENFORCE_GE(ids[i], 0);
+          auto id_index = table_t.Index(ids[i]);
+          PADDLE_ENFORCE_GE(id_index, 0, "the input key should be exists.");
+          blas.VCOPY(row_width, table + id_index * row_width,
+                     output + i * row_width);
+        }
+      }
+    }
+  }
+};
 
 }  // namespace distributed
 }  // namespace operators
