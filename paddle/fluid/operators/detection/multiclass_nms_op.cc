@@ -288,6 +288,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* boxes = ctx.Input<Tensor>("BBoxes");
     auto* scores = ctx.Input<Tensor>("Scores");
+    auto* obj_idx = ctx.Input<Tensor>("ObjIndex");
     auto* outs = ctx.Output<LoDTensor>("Out");
 
     auto score_dims = scores->dims();
@@ -298,10 +299,30 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t box_dim = boxes->dims()[2];
     int64_t out_dim = boxes->dims()[2] + 2;
 
+    Tensor* scores_refine = new Tensor; 
+    framework::TensorCopy(*scores, ctx.GetPlace(), scores_refine);
+    // For RefineDet
+    if (obj_idx) {
+        auto* obj_idx_data = obj_idx->data<bool>();
+        auto* scores_data = scores_refine->data<T>();
+        for (int64_t i = 0; i < batch_size; ++i)
+            for (int64_t j = 0; j < predict_dim; ++j)
+                for (int64_t c = 0; c < class_num; ++c) {
+                    int offset = i * predict_dim * class_num + c * predict_dim + j;
+                    if (obj_idx_data[i * predict_dim + j])
+                        continue;
+                    if (c == 0) {
+                        scores_data[offset] = 1;
+                    } else {
+                        scores_data[offset] = 0;
+                    }
+                }
+    }
+
     std::vector<std::map<int, std::vector<int>>> all_indices;
     std::vector<size_t> batch_starts = {0};
     for (int64_t i = 0; i < batch_size; ++i) {
-      Tensor ins_score = scores->Slice(i, i + 1);
+      Tensor ins_score = scores_refine->Slice(i, i + 1);
       ins_score.Resize({class_num, predict_dim});
 
       Tensor ins_boxes = boxes->Slice(i, i + 1);
@@ -321,7 +342,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       for (int64_t i = 0; i < batch_size; ++i) {
-        Tensor ins_score = scores->Slice(i, i + 1);
+        Tensor ins_score = scores_refine->Slice(i, i + 1);
         ins_score.Resize({class_num, predict_dim});
 
         Tensor ins_boxes = boxes->Slice(i, i + 1);
@@ -358,6 +379,11 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
              " Please note, M is equal to the 1st dimension of BBoxes. ");
+    AddInput("ObjIndex",
+             "(Tensor) A 3-D Tensor<bool> with shape [N, 1, M], each value "
+             "indicates wether a box in the BBoxes with the same location "
+             "contains a object. ")
+        .AsDispensable();
     AddAttr<int>(
         "background_label",
         "(int, defalut: 0) "

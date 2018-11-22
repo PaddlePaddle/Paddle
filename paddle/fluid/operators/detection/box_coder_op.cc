@@ -79,6 +79,18 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
              "of variance. PriorBoxVar will set all elements to 1 by "
              "default.")
         .AsDispensable();
+    AddInput("RefineBox",
+             "(LoDTensor or Tensor, default LoDTensor<float>, optional) "
+             "RefineBox is a 3-D Tensor with shape [N, M, 4], and it will "
+             "be used only when the code type is decode_center_size. "
+             "Each box is represented as [xmin, ymin, xmax, ymax], "
+             "[xmin, ymin] is the left top coordinate of the box if the "
+             "input is image feature map, they are close to the origin "
+             "of the coordinate system. [xmax, ymax] is the right "
+             "bottom coordinate of the box. This tensor can contain LoD "
+             "information to represent a batch of inputs. One instance of this "
+             "batch can contain different numbers of entities.")
+        .AsDispensable();
     AddInput(
         "TargetBox",
         "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
@@ -107,7 +119,6 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
               "target boxes encoded with M Prior boxes and variances. When "
               "code_type is 'decode_center_size', N represents the batch size "
               "and M represents the number of deocded boxes.");
-
     AddComment(R"DOC(
 
 Bounding Box Coder.

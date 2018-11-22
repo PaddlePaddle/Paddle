@@ -68,19 +68,26 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
                                        const T* prior_box_var_data,
                                        const T* target_box_data, const int row,
                                        const int col, const int len,
-                                       const bool normalized, T* output) {
+                                       const bool normalized, const bool is_refine,
+                                       T* output) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < row * col) {
     const int col_idx = idx % col;
-    T prior_box_width = prior_box_data[col_idx * len + 2] -
-                        prior_box_data[col_idx * len] + (normalized == false);
-    T prior_box_height = prior_box_data[col_idx * len + 3] -
-                         prior_box_data[col_idx * len + 1] +
+    int prior_offset;
+    if (is_refine) {
+        prior_offset = idx * len;
+    } else {
+        prior_offset = col_idx * len;
+    }
+    T prior_box_width = prior_box_data[prior_offset + 2] -
+                        prior_box_data[prior_offset] + (normalized == false);
+    T prior_box_height = prior_box_data[prior_offset + 3] -
+                         prior_box_data[prior_offset + 1] +
                          (normalized == false);
     T prior_box_center_x =
-        (prior_box_data[col_idx * len + 2] + prior_box_data[col_idx * len]) / 2;
-    T prior_box_center_y = (prior_box_data[col_idx * len + 3] +
-                            prior_box_data[col_idx * len + 1]) /
+        (prior_box_data[prior_offset + 2] + prior_box_data[prior_offset]) / 2;
+    T prior_box_center_y = (prior_box_data[prior_offset + 3] +
+                            prior_box_data[prior_offset + 1]) /
                            2;
     T target_box_width, target_box_height;
     T target_box_center_x, target_box_center_y;
@@ -126,6 +133,7 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto* prior_box = context.Input<framework::Tensor>("PriorBox");
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
+    auto* refine_box = context.Input<framework::LoDTensor>("RefineBox");
     auto* output_box = context.Output<framework::Tensor>("OutputBox");
 
     const T* prior_box_data = prior_box->data<T>();
@@ -154,9 +162,19 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
           prior_box_data, prior_box_var_data, target_box_data, row, col, len,
           normalized, output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
-      DecodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
-          prior_box_data, prior_box_var_data, target_box_data, row, col, len,
-          normalized, output);
+      if (refine_box) {
+          const T* refine_box_data = refine_box->data<T>();
+          DecodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
+              prior_box_data, prior_box_var_data, refine_box_data, row, col, len,
+              normalized, false, output);
+          DecodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
+              output, prior_box_var_data, target_box_data, row, col, len,
+              normalized, true, output);
+      } else {
+          DecodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
+              prior_box_data, prior_box_var_data, target_box_data, row, col, len,
+              normalized, false, output);
+      }
     }
   }
 };

@@ -79,7 +79,7 @@ def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
 
 
 def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
-                    box_normalized):
+                    box_normalized, refine_box=None):
     n = target_box.shape[0]
     m = prior_box.shape[0]
     output_box = np.zeros((n, m, 4), dtype=np.float32)
@@ -91,10 +91,22 @@ def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
                       output_box[cur_offset:(cur_offset + lod[i]), :, :],
                       code_type, box_normalized)
         elif (code_type == "DecodeCenterSize"):
-            box_coder(target_box[cur_offset:(cur_offset + lod[i]), :, :],
-                      prior_box, prior_box_var,
-                      output_box[cur_offset:(cur_offset + lod[i]), :, :],
-                      code_type, box_normalized)
+            if refine_box is not None:
+                box_coder(refine_box[cur_offset:(cur_offset + lod[i]), :, :],
+                          prior_box, prior_box_var,
+                          output_box[cur_offset:(cur_offset + lod[i]), :, :],
+                          code_type, box_normalized)
+                tmp = output_box[cur_offset:(cur_offset + lod[i]), :, :]
+                box_coder(target_box[cur_offset:(cur_offset + lod[i]), :, :],
+                          np.squeeze(output_box[cur_offset:(cur_offset + lod[i]), :, :]), 
+                          prior_box_var,
+                          output_box[cur_offset:(cur_offset + lod[i]), :, :],
+                          code_type, box_normalized)
+            else:
+                box_coder(target_box[cur_offset:(cur_offset + lod[i]), :, :],
+                          prior_box, prior_box_var,
+                          output_box[cur_offset:(cur_offset + lod[i]), :, :],
+                          code_type, box_normalized)
         cur_offset += lod[i]
     return output_box
 
@@ -109,15 +121,17 @@ class TestBoxCoderOp(OpTest):
         prior_box = np.random.random((10, 4)).astype('float32')
         prior_box_var = np.random.random((10, 4)).astype('float32')
         target_box = np.random.random((5, 10, 4)).astype('float32')
+        refine_box = np.random.random((5, 10, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized)
+                                     lod[0], code_type, box_normalized, refine_box=refine_box)
 
         self.inputs = {
             'PriorBox': prior_box,
             'PriorBoxVar': prior_box_var,
             'TargetBox': target_box,
+            'RefineBox': refine_box,
         }
         self.attrs = {
             'code_type': 'decode_center_size',

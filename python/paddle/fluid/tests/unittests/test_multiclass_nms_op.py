@@ -168,9 +168,19 @@ class TestMulticlassNMSOp(OpTest):
         nms_threshold = 0.3
         nms_top_k = 400
         keep_top_k = 200
+        objectness_threshold = 0.5
         score_threshold = self.score_threshold
 
         scores = np.random.random((N * M, C)).astype('float32')
+        obj_idx = np.random.random((N * M, 1)).astype('float32') < objectness_threshold
+        for i in range(C):
+            if i == 0:
+                scores[np.where(obj_idx == False),i:i+1] = 1
+            else:
+                scores[np.where(obj_idx == False),i:i+1] = 0
+        obj_idx = np.reshape(obj_idx, (N, M, 1))
+        obj_idx = np.transpose(obj_idx, (0, 2, 1))
+
 
         def softmax(x):
             shiftx = x - np.max(x).clip(-64.)
@@ -180,6 +190,7 @@ class TestMulticlassNMSOp(OpTest):
         scores = np.apply_along_axis(softmax, 1, scores)
         scores = np.reshape(scores, (N, M, C))
         scores = np.transpose(scores, (0, 2, 1))
+
 
         boxes = np.random.random((N, M, BOX_SIZE)).astype('float32')
         boxes[:, :, 0:2] = boxes[:, :, 0:2] * 0.5
@@ -192,7 +203,7 @@ class TestMulticlassNMSOp(OpTest):
         nmsed_outs = np.array(nmsed_outs).astype('float32')
 
         self.op_type = 'multiclass_nms'
-        self.inputs = {'BBoxes': boxes, 'Scores': scores}
+        self.inputs = {'BBoxes': boxes, 'Scores': scores, 'ObjIndex': obj_idx}
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
             'background_label': 0,
