@@ -59,20 +59,53 @@ void TensorRTSplitTest(const std::vector<int> &in_shape,
   validator.Execute(BatchSize);
 }
 
-TEST(split_op, test_same_shape_batch1) {
+// batch = 0, axis = 1, same shape
+TEST(split_op, test_same_shape_axis1_batch1) {
   TensorRTSplitTest<1, 1>({4, 2, 2}, {2, 2});
 }
-
-TEST(split_op, test_different_shape_batch1) {
+// batch = 0, axis = 1, different shape
+TEST(split_op, test_different_shape_axis1_batch1) {
   TensorRTSplitTest<1, 1>({3, 2, 2}, {2, 1});
 }
-
-TEST(split_op, test_same_shape_batch10) {
+// batch = 10, axis = 1, same shape
+TEST(split_op, test_same_shape_axis1_batch10) {
   TensorRTSplitTest<10, 1>({4, 2, 2}, {2, 2});
 }
-
-TEST(split_op, test_different_shape_batch10) {
+// batch = 10, axis = 1, different shape
+TEST(split_op, test_different_shape_axis1_batch10) {
   TensorRTSplitTest<10, 1>({3, 2, 2}, {2, 1});
+}
+// batch = 0, axis = 2, same shape
+TEST(split_op, test_same_shape_axis2_batch1) {
+  TensorRTSplitTest<1, 2>({3, 4, 2}, {2, 2});
+}
+// batch = 0, axis = 2, different shape
+TEST(split_op, test_different_shape_axis2_batch1) {
+  TensorRTSplitTest<1, 2>({3, 3, 2}, {2, 1});
+}
+// batch = 10, axis = 2, same shape
+TEST(split_op, test_same_shape_axis2_batch10) {
+  TensorRTSplitTest<10, 2>({3, 4, 2}, {2, 2});
+}
+// batch = 10, axis = 2, different shape
+TEST(split_op, test_different_shape_axis2_batch10) {
+  TensorRTSplitTest<10, 2>({3, 3, 2}, {2, 1});
+}
+// batch = 0, axis = 3, same shape
+TEST(split_op, test_same_shape_axis3_batch1) {
+  TensorRTSplitTest<1, 3>({3, 2, 4}, {2, 2});
+}
+// batch = 0, axis = 3, different shape
+TEST(split_op, test_different_shape_axis3_batch1) {
+  TensorRTSplitTest<1, 3>({3, 2, 3}, {2, 1});
+}
+// batch = 10, axis = 3, same shape
+TEST(split_op, test_same_shape_axis3_batch10) {
+  TensorRTSplitTest<10, 3>({3, 2, 4}, {2, 2});
+}
+// batch = 10, axis = 3, different shape
+TEST(split_op, test_different_shape_axis3_batch10) {
+  TensorRTSplitTest<10, 3>({3, 2, 3}, {2, 1});
 }
 
 }  // namespace tensorrt
