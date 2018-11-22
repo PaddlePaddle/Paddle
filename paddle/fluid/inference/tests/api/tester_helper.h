@@ -42,6 +42,7 @@ DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
 
 DECLARE_bool(profile);
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
