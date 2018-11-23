@@ -61,9 +61,6 @@ extern void *cublas_dso_handle;
   extern DynLoad__##__name __name
 #endif
 
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) \
-  DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
-
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
   __macro(cublasDaxpy_v2);                \
@@ -93,22 +90,23 @@ CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 // APIs available after CUDA 8.0
 #if CUDA_VERSION >= 8000
-#define CUBLAS_BLAS_ROUTINE_EACH_R2(__macro) \
-  __macro(cublasGemmEx);                     \
-  __macro(cublasSgemmStridedBatched);        \
-  __macro(cublasDgemmStridedBatched);        \
-  __macro(cublasCgemmStridedBatched);        \
-  __macro(cublasZgemmStridedBatched);        \
-  __macro(cublasHgemmStridedBatched);
-
-CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasGemmEx);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgemmStridedBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgemmStridedBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasCgemmStridedBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasZgemmStridedBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasHgemmStridedBatched);
 #endif
 
 // APIs available after CUDA 9.0
 #if CUDA_VERSION >= 9000
-#define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) __macro(cublasSetMathMode);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasSetMathMode);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasGetMathMode);
+#endif
 
-CUBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#if CUDA_VERSION >= 9010
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasGemmBatchedEx);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasGemmStridedBatchedEx);
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP

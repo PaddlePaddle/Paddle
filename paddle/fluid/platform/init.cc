@@ -38,6 +38,7 @@ std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
+    FLAGS_logtostderr = true;
     argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
@@ -115,13 +116,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
-
-// windows has no support for openblas multi-thread
-#ifdef _WIN32
-  if (FLAGS_paddle_num_threads > 1) {
-    FLAGS_paddle_num_threads = 1;
-  }
-#endif
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
