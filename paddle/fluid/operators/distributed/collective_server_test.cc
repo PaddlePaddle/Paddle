@@ -68,7 +68,8 @@ std::unique_ptr<framework::Scope> GenerateVars(platform::Place place) {
   return std::unique_ptr<framework::Scope>(scope);
 }
 
-void Gather(std::vector<std::string> eps, platform::DeviceContext* dev_ctx) {
+void Gather(const std::vector<distributed::RemoteVar>& vars,
+            platform::DeviceContext* dev_ctx) {
   distributed::CollectiveClient* client =
       distributed::CollectiveClient::GetInstance();
 
@@ -77,7 +78,7 @@ void Gather(std::vector<std::string> eps, platform::DeviceContext* dev_ctx) {
   var->GetMutable<framework::SelectedRows>();
 
   std::vector<const framework::SelectedRows*> dst;
-  client->Gather(eps, *dev_ctx, *scope, "var1", &dst);
+  client->Gather(vars, &dst, *dev_ctx, scope);
   std::cout << "dst:" << dst[0]->Info();
 }
 
@@ -95,9 +96,14 @@ TEST(PREFETCH, GPU) {
   auto server = StartServer(ep, 2, scope.get(), &ctx);
   auto rpc_server = server->GetRPCServer();
 
-  std::vector<std::string> eps{ep};
-  Gather(eps, &ctx);
-  Gather(eps, &ctx);
+  distributed::RemoteVar var;
+  var.ep_ = ep;
+  var.var_name_ = "var1";
+  var.rank_id_ = 0;
+
+  std::vector<distributed::RemoteVar> vars{var};
+  Gather(vars, &ctx);
+  Gather(vars, &ctx);
 
   std::cout << "begin WaitVarBarrier" << std::endl;
   rpc_server->WaitVarBarrier("var1");

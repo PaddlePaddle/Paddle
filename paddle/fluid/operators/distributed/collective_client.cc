@@ -26,30 +26,30 @@ namespace distributed {
 std::once_flag CollectiveClient::init_flag_;
 std::unique_ptr<CollectiveClient> CollectiveClient::client_(nullptr);
 
-bool CollectiveClient::Gather(const std::vector<std::string>& eps,
-                              const platform::DeviceContext& ctx,
-                              const framework::Scope& scope,
-                              const std::string& var_name,
+bool CollectiveClient::Gather(const std::vector<RemoteVar>& remote_vars,
                               std::vector<const framework::SelectedRows*>* dst,
-                              int64_t time_out) {
-  for (auto ep : eps) {
-    VLOG(50) << "begin gather from ep:" << ep;
-    VarHandlePtr ptr =
-        rpc_client_->AsyncGetMonomerVariable(ep, ctx, scope, var_name);
-    PADDLE_ENFORCE(ptr->Wait());
-
-    auto select_rows =
-        scope.FindVar(var_name)->GetMutable<framework::SelectedRows>();
-    dst->push_back(select_rows);
-    VLOG(40) << "gather from ep:" << ep
-             << ", select_rows:" << select_rows->Info();
-
-    ptr = rpc_client_->AsyncGetMonomerBarrier(ep, var_name);
-    PADDLE_ENFORCE(ptr->Wait());
-
-    VLOG(40) << "AsyncGetMonomerBarrier from ep:" << ep;
+                              const platform::DeviceContext& ctx,
+                              framework::Scope* scope, int64_t time_out) {
+  for (auto r : remote_vars) {
+    VLOG(50) << "begin gather from ep:" << r.String();
+    VarHandlePtr ptr = rpc_client_->AsyncGetMonomerVariable(
+        r.ep_, ctx, *scope, r.var_name_, time_out);
   }
 
+  rpc_client_->Wait();
+
+  for (auto r : remote_vars) {
+    auto select_rows =
+        scope->Var(r.var_name_)->GetMutable<framework::SelectedRows>();
+    dst->push_back(select_rows);
+
+    VLOG(40) << "gather from ep:" << r.String()
+             << ", select_rows:" << select_rows->Info();
+
+    rpc_client_->AsyncGetMonomerBarrier(r.ep_, r.var_name_);
+  }
+
+  rpc_client_->Wait();
   return true;
 }
 

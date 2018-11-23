@@ -31,6 +31,20 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+struct RemoteVar {
+  std::string ep_;
+  std::string var_name_;
+  int rank_id_{0};
+
+  std::string String() {
+    std::stringstream ss;
+    ss << "ep:" << ep_ << ", var_name:" << var_name_
+       << ", rank_id:" << rank_id_;
+
+    return ss.str();
+  }
+};
+
 class CollectiveClient {
  public:
   CollectiveClient() {
@@ -40,10 +54,9 @@ class CollectiveClient {
   virtual ~CollectiveClient() {}
 
   // note this function will retain the rank order.
-  bool Gather(const std::vector<std::string>& eps,
-              const platform::DeviceContext& ctx, const framework::Scope& scope,
-              const std::string& var_name,
+  bool Gather(const std::vector<RemoteVar>& remote_vars,
               std::vector<const framework::SelectedRows*>* dst,
+              const platform::DeviceContext& ctx, framework::Scope* scope,
               int64_t time_out = FLAGS_rpc_deadline);
 
   static CollectiveClient* GetInstance() {
