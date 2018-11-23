@@ -45,8 +45,8 @@ void CreateInput(LoDTensor* ids, LoDTensor* scores) {
   auto* ids_data = ids->mutable_data<int64_t>(place);
   auto* scores_data = scores->mutable_data<float>(place);
   vector<int64_t> _ids({4, 2, 5, 2, 1, 3, 3, 5, 2, 8, 2, 1});
-  vector<float> _scores({0.5f, 0.3f, 0.2f, 0.6f, 0.3f, 0.1f,
-                        0.9f, 0.5f, 0.1f, 0.7f, 0.5f, 0.1f});
+  vector<float> _scores(
+      {0.5f, 0.3f, 0.2f, 0.6f, 0.3f, 0.1f, 0.9f, 0.5f, 0.1f, 0.7f, 0.5f, 0.1f});
 
   for (int i = 0; i < 12; i++) {
     ids_data[i] = _ids[i];
