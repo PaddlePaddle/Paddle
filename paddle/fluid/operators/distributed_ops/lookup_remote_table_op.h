@@ -34,6 +34,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using SelectedRows = framework::SelectedRows;
+using DDim = framework::DDim;
+
+constexpr int64_t kNoPadding = -1;
+
 inline size_t GetSectionIndex(int64_t id,
                               const std::vector<int64_t>& abs_sections) {
   for (size_t i = 1; i < abs_sections.size(); ++i) {
@@ -141,66 +148,6 @@ inline void MergeMultipleVarsIntoOnBySection(
     }
   }
 }
-
-// inline void prefetch(const std::string& table_name, const std::string&
-// id_name,
-//                     const std::string& out_name,
-//                     const std::vector<std::string>& epmap,
-//                     const std::vector<int64_t>& height_section,
-//                     const framework::Scope& scope,
-//                     const platform::Place& place) {
-//  auto& local_scope = scope.NewScope();
-//
-//  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-//  auto& ctx = *pool.Get(place);
-//
-//  distributed::RPCClient* rpc_client =
-//      distributed::RPCClient::GetInstance<RPCCLIENT_T>(Attr<int>("trainer_id"));
-//
-//  std::vector<std::string> in_var_names;
-//  std::vector<std::string> out_var_names;
-//  for (size_t i = 0; i < epmap.size(); ++i) {
-//    in_var_names.push_back(id_name + "@" + epmap[i]);
-//    out_var_names.push_back(out_name + "@" + epmap[i]);
-//  }
-//
-//  auto splited_ids = SplitIds(id_name, height_section, &local_scope);
-//  SplitIdsIntoMultipleVarsBySection(id_name, in_var_names, height_section,
-//                                    splited_ids, &local_scope);
-//
-//  // create output var in local scope
-//  for (auto& name : out_var_names) {
-//    local_scope.Var(name)->GetMutable<framework::LoDTensor>();
-//  }
-//
-//  std::vector<distributed::VarHandlePtr> rets;
-//  for (size_t i = 0; i < in_var_names.size(); i++) {
-//    if (NeedSend(local_scope, in_var_names[i])) {
-//      VLOG(30) << "sending " << in_var_names[i] << " to " << epmap[i] << " to
-//      get "
-//               << out_var_names[i] << " back";
-//      rets.push_back(rpc_client->AsyncPrefetchVar(
-//          epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i]));
-//    } else {
-//      VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
-//    }
-//  }
-//  for (size_t i = 0; i < rets.size(); i++) {
-//    PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-//  }
-//
-//  MergeMultipleVarsIntoOnBySection(id_name, out_name, out_var_names,
-//                                   height_section, splited_ids, &local_scope);
-//
-//  scope.DeleteScope(&local_scope);
-//}
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
-using DDim = framework::DDim;
-
-constexpr int64_t kNoPadding = -1;
 
 template <typename T>
 class LookupRemoteTableKernel : public framework::OpKernel<T> {
