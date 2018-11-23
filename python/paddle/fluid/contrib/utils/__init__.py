@@ -11,7 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
 from . import lookup_table_utils
 from .lookup_table_utils import *
+from . import hdfs_utils
+from .hdfs_utils import *
+
 __all__ = lookup_table_utils.__all__
+__all__ = hdfs_utils.__all__

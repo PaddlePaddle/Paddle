@@ -23,7 +23,9 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
 endif(NOT WITH_DISTRIBUTE)
 
-if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+if (NOT ${WITH_GPU})
+    LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
