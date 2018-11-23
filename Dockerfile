@@ -33,44 +33,49 @@ RUN apt-get update && \
     automake locales clang-format swig cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
+    build-essential checkinstall \
+    libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev \
     net-tools libtool ccache && \
     apt-get clean -y
 
-# Install Go and glide
-RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
-    tar -xz -C /usr/local && \
-    mkdir /root/gopath && \
-    mkdir /root/gopath/bin && \
-    mkdir /root/gopath/src
-ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
-ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
-# install glide
-RUN curl -s -q https://glide.sh/get | sh
+COPY tools/manylinux1/build_scripts/* /root/python/
+RUN cd /root/python/ && source build_utils && MY_DIR=/root/python/ build_cpythons 3.6.0 3.7.0
 
-# Install TensorRT
-# following TensorRT.tar.gz is not the default official one, we do two miny changes:
-# 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
-#    and its size is only one-third of the official one.
-# 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
-#    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
-RUN wget -qO- http://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
-    tar -xz -C /usr/local && \
-    cp -rf /usr/local/TensorRT/include /usr && \
-    cp -rf /usr/local/TensorRT/lib /usr
+# # Install Go and glide
+# RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+    # tar -xz -C /usr/local && \
+    # mkdir /root/gopath && \
+    # mkdir /root/gopath/bin && \
+    # mkdir /root/gopath/src
+# ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+# ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
+# # install glide
+# RUN curl -s -q https://glide.sh/get | sh
 
-# git credential to skip password typing
-RUN git config --global credential.helper store
+# # Install TensorRT
+# # following TensorRT.tar.gz is not the default official one, we do two miny changes:
+# # 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
+# #    and its size is only one-third of the official one.
+# # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
+# #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
+# RUN wget -qO- http://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
+    # tar -xz -C /usr/local && \
+    # cp -rf /usr/local/TensorRT/include /usr && \
+    # cp -rf /usr/local/TensorRT/lib /usr
 
-# Fix locales to en_US.UTF-8
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+# # git credential to skip password typing
+# RUN git config --global credential.helper store
 
-# FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
-# version util jupyter fixes this issue.
+# # Fix locales to en_US.UTF-8
+# RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# specify sphinx version as 1.5.6 and remove -U option for [pip install -U
-# sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
-# version(1.7.1 for now), which causes building documentation failed.
+# # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
+# # version util jupyter fixes this issue.
+
+# # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
+# # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
+# # version(1.7.1 for now), which causes building documentation failed.
 # RUN pip3 install -U wheel && \
     # pip3 install -U docopt PyYAML sphinx==1.5.6 && \
     # pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
