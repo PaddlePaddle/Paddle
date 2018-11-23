@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,allocator_strategy"));
 #else
