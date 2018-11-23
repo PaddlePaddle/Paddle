@@ -177,7 +177,7 @@ class GRUKernelImpl : public GRUKernel<T> {
   explicit GRUKernelImpl(const gru_attr_t& attr) : GRUKernel<T>() {
 #ifdef PADDLE_WITH_XBYAK
     if (useJIT(attr.d)) {
-      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 84 * 8;  // should change
+      size_t sz = 96 + attr.d / YMM_FLOAT_BLOCK * 96 * 2 * 8;
       jitcode0_.reset(new gen::GRUJitCode(0, attr, sz > 4096 ? sz : 4096));
       this->ComputeH1 =
           jitcode0_->getCode<void (*)(gru_t*, const gru_attr_t*)>();
@@ -188,7 +188,7 @@ class GRUKernelImpl : public GRUKernel<T> {
 
       jitcode2_.reset(new gen::GRUJitCode(2, attr, sz > 4096 ? sz : 4096));
       this->ComputeHtPart2 =
-          jitcode1_->getCode<void (*)(gru_t*, const gru_attr_t*)>();
+          jitcode2_->getCode<void (*)(gru_t*, const gru_attr_t*)>();
       return;
     }
 #endif
@@ -207,7 +207,7 @@ class GRUKernelImpl : public GRUKernel<T> {
 #ifdef PADDLE_WITH_XBYAK
 template <>
 bool GRUKernelImpl<float>::useJIT(int d) {
-  return false;  // jitcode not ready yet
+  return gen::GRUJitCode::init(d);
 }
 #endif
 

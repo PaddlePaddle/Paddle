@@ -169,31 +169,34 @@ class VActJitCode : public JitCode {
  protected:
   // compute relu with ymm, xmm
   template <typename JMM>
-  void relu_jmm(JMM& dst, JMM& src, JMM& zero) {  // NOLINT
+  void relu_jmm(JMM& dst, JMM& src, int zero_idx = 15) {  // NOLINT
+    JMM zero = JMM(zero_idx);
+    vxorps(zero, zero, zero);
     vmaxps(dst, src, zero);
   }
 
   // compute exp with ymm, xmm
   template <typename JMM>
-  void exp_jmm(JMM& dst, JMM& src, int fx_idx = 2, int fy_idx = 3,  // NOLINT
-               int mask_idx = 4, int tmp_idx = 5) {
-    using namespace platform::jit;         // NOLINT
-    assert(src.getIdx() != dst.getIdx());  // TODO(TJ): use enfore
+  void exp_jmm(JMM& dst, JMM& src, int src_idx = 11, int fx_idx = 12,  // NOLINT
+               int fy_idx = 13, int mask_idx = 14, int tmp_idx = 15) {
+    using namespace platform::jit;  // NOLINT
     // check all idx can not equal
+    JMM jmm_src = JMM(src_idx);
     JMM jmm_fx = JMM(fx_idx);
     JMM jmm_fy = JMM(fy_idx);
     JMM jmm_mask = JMM(mask_idx);
     JMM jmm_tmp = JMM(tmp_idx);
     reg64_t reg_ptr_global = rax;
     push(reg_ptr_global);
+    vmovaps(jmm_src, src);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_HIG]);
-    vminps(src, src, jmm_tmp);
+    vminps(jmm_src, jmm_src, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_LOW]);
-    vmaxps(src, src, jmm_tmp);
+    vmaxps(jmm_src, jmm_src, jmm_tmp);
     // express exp(x) as exp(g + n*log(2))
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_LOG2EF]);
-    vmulps(jmm_fx, src, jmm_tmp);
+    vmulps(jmm_fx, jmm_src, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_0P5]);
     vaddps(jmm_fx, jmm_fx, jmm_tmp);
     vroundps(jmm_fy, jmm_fx, 0x01);
@@ -207,21 +210,21 @@ class VActJitCode : public JitCode {
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_C2]);
     JMM ymm_z = JMM(jmm_mask.getIdx());
     vmulps(ymm_z, jmm_fx, jmm_tmp);
-    vsubps(src, src, jmm_fy);
-    vsubps(src, src, ymm_z);
-    vmulps(ymm_z, src, src);
+    vsubps(jmm_src, jmm_src, jmm_fy);
+    vsubps(jmm_src, jmm_src, ymm_z);
+    vmulps(ymm_z, jmm_src, jmm_src);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_P0]);
-    vmulps(dst, src, jmm_tmp);
+    vmulps(dst, jmm_src, jmm_tmp);
     for (size_t i = OFFSET_EXP_P1; i < OFFSET_EXP_P5;
          i += (YMM_FLOAT_BLOCK * sizeof(float))) {
       vmovaps(jmm_tmp, ptr[reg_ptr_global + i]);  // P1~P4
       vaddps(dst, dst, jmm_tmp);
-      vmulps(dst, dst, src);
+      vmulps(dst, dst, jmm_src);
     }
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_P5]);
     vaddps(dst, dst, jmm_tmp);
     vmulps(dst, dst, ymm_z);
-    vaddps(dst, dst, src);
+    vaddps(dst, dst, jmm_src);
     vmovaps(jmm_tmp, ptr[reg_ptr_global]);
     vaddps(dst, dst, jmm_tmp);
     // build 2^n
@@ -258,20 +261,23 @@ class VActJitCode : public JitCode {
 
   // compute sigmoid with ymm, xmm
   template <typename JMM>
-  void sigmoid_jmm(JMM& dst, JMM& src, int fx_idx = 2,  // NOLINT
-                   int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5) {
+  void sigmoid_jmm(JMM& dst, JMM& src, int src_idx = 11,  // NOLINT
+                   int fx_idx = 12, int fy_idx = 13, int mask_idx = 14,
+                   int tmp_idx = 15) {
     // y = 1 / (1 + e^-x)
     JMM jmm_tmp = JMM(tmp_idx);
+    JMM jmm_src = JMM(src_idx);
     reg64_t reg_ptr_global = rax;
     push(reg_ptr_global);
+    vmovaps(jmm_src, src);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MAX]);
-    vminps(src, src, jmm_tmp);
+    vminps(jmm_src, jmm_src, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MIN]);
-    vmaxps(src, src, jmm_tmp);
+    vmaxps(jmm_src, jmm_src, jmm_tmp);
     vxorps(jmm_tmp, jmm_tmp, jmm_tmp);
-    vsubps(src, jmm_tmp, src);
-    exp_jmm<JMM>(dst, src, fx_idx, fy_idx, mask_idx, tmp_idx);
+    vsubps(jmm_src, jmm_tmp, jmm_src);
+    exp_jmm<JMM>(dst, jmm_src, src_idx, fx_idx, fy_idx, mask_idx, tmp_idx);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
     vaddps(dst, dst, jmm_tmp);
     vdivps(dst, jmm_tmp, dst);
@@ -280,19 +286,22 @@ class VActJitCode : public JitCode {
 
   // compute tanh with ymm, xmm
   template <typename JMM>
-  void tanh_jmm(JMM& dst, JMM& src, int fx_idx = 2, int fy_idx = 3,  // NOLINT
-                int mask_idx = 4, int tmp_idx = 5) {
+  void tanh_jmm(JMM& dst, JMM& src, int src_idx = 11,  // NOLINT
+                int fx_idx = 12, int fy_idx = 13, int mask_idx = 14,
+                int tmp_idx = 15) {
     // y = 2 / (1 + e^(-2x)) - 1
+    JMM jmm_src = JMM(src_idx);
     JMM jmm_tmp = JMM(tmp_idx);
     JMM jmm_zero = JMM(mask_idx);
     reg64_t reg_ptr_global = rax;
     push(reg_ptr_global);
+    vmovaps(jmm_src, src);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
     vxorps(jmm_zero, jmm_zero, jmm_zero);
     vsubps(jmm_tmp, jmm_zero, jmm_tmp);
-    vmulps(src, src, jmm_tmp);
-    exp_jmm<JMM>(dst, src, fx_idx, fy_idx, mask_idx, tmp_idx);
+    vmulps(jmm_src, jmm_src, jmm_tmp);
+    exp_jmm<JMM>(dst, jmm_src, src_idx, fx_idx, fy_idx, mask_idx, tmp_idx);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
     vaddps(dst, dst, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
@@ -304,23 +313,19 @@ class VActJitCode : public JitCode {
 
   template <typename JMM>
   void act(JMM& dst, JMM& src, operand_type type) {  // NOLINT
-    // use 15
-    JMM zero = JMM(15);
-    if (type_ == operand_type::relu) {
-      vxorps(zero, zero, zero);
-    }
+    // use 11~15
     switch (type) {
       case operand_type::relu:
-        relu_jmm<JMM>(dst, src, zero);
+        relu_jmm<JMM>(dst, src, 15);
         break;
       case operand_type::exp:
-        exp_jmm<JMM>(dst, src, 2, 3, 4, 5);
+        exp_jmm<JMM>(dst, src, 11, 12, 13, 14, 15);
         break;
       case operand_type::sigmoid:
-        sigmoid_jmm<JMM>(dst, src, 2, 3, 4, 5);
+        sigmoid_jmm<JMM>(dst, src, 11, 12, 13, 14, 15);
         break;
       case operand_type::tanh:
-        tanh_jmm<JMM>(dst, src, 2, 3, 4, 5);
+        tanh_jmm<JMM>(dst, src, 11, 12, 13, 14, 15);
         break;
       case operand_type::identity:
         break;
@@ -414,15 +419,6 @@ class LSTMJitCode : public VActJitCode {
   operand_type act_cand_;
   operand_type act_cell_;
   reg64_t param1{abi_param1};
-  xmm_t xmm_src = xmm_t(0);
-  xmm_t xmm_c = xmm_t(1);
-  xmm_t xmm_i = xmm_t(6);
-  xmm_t xmm_f = xmm_t(7);
-
-  ymm_t ymm_src = ymm_t(0);
-  ymm_t ymm_c = ymm_t(1);  // 2~5 for act
-  ymm_t ymm_i = ymm_t(6);
-  ymm_t ymm_f = ymm_t(7);
 };
 
 class GRUJitCode : public VActJitCode {
@@ -492,16 +488,6 @@ class GRUJitCode : public VActJitCode {
   operand_type act_gate_;
   operand_type act_cand_;
   reg64_t param1{abi_param1};
-
-  xmm_t xmm_src = xmm_t(0);
-  xmm_t xmm_c = xmm_t(1);
-  xmm_t xmm_i = xmm_t(6);
-  xmm_t xmm_f = xmm_t(7);
-
-  ymm_t ymm_src = ymm_t(0);
-  ymm_t ymm_c = ymm_t(1);
-  ymm_t ymm_i = ymm_t(6);
-  ymm_t ymm_f = ymm_t(7);
 };
 
 #ifdef PADDLE_WITH_MKLDNN

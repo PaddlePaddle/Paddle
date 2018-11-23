@@ -714,6 +714,8 @@ TEST(JitKernel, pool) {
   std::string act_gate = "sigmoid", act_cand = "tanh", act_cell = "tanh";
   jit::lstm_attr_t attr(frame_size, act_gate, act_cand, act_cell, false);
 
+  // empty call it to avoid unknown flag 'use_pinned_memory' on Mac
+  paddle::platform::jit::MayIUse(paddle::platform::jit::avx);
   const auto& plstm1 =
       jit::KernelPool::Instance()
           .template Get<jit::LSTMKernel<float>, const jit::lstm_attr_t&>(attr);

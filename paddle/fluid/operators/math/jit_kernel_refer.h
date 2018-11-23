@@ -206,7 +206,7 @@ void GRUHtPart1(gru_t* step, const gru_attr_t* attr) {
   T* ht = reinterpret_cast<T*>(step->ht);
   const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
   auto act_gate = getActFunc<T>(attr->act_gate);
-  act_gate(gates, gates, attr->d * 2);
+  act_gate(gates + attr->d, gates + attr->d, attr->d);
   VMul(ht_1, gates + attr->d, ht, attr->d);
 }
 
@@ -215,9 +215,11 @@ void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
   T* gates = reinterpret_cast<T*>(step->gates);
   T* ht = reinterpret_cast<T*>(step->ht);
   const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
+  auto act_gate = getActFunc<T>(attr->act_gate);
   auto act_cand = getActFunc<T>(attr->act_cand);
   int d = attr->d;
   T* y = gates + d * 2;
+  act_gate(gates, gates, d);
   act_cand(y, y, d);
   // out = zt*ht~ + (1-zt)*ht_1
   for (int i = 0; i < d; ++i) {
