@@ -54,6 +54,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
       }
     }
+
     ctx->SetOutputDim(
         "OutputBox",
         framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));

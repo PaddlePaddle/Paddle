@@ -46,7 +46,6 @@ def iou(box_a, box_b):
 
     box_a_area = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
     box_b_area = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
-
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 
     return iou_ratio
@@ -172,15 +171,15 @@ class TestMulticlassNMSOp(OpTest):
         score_threshold = self.score_threshold
 
         scores = np.random.random((N * M, C)).astype('float32')
-        obj_idx = np.random.random((N * M, 1)).astype('float32') < objectness_threshold
+        obj_idx = np.random.random(
+            (N * M, 1)).astype('float32') < objectness_threshold
         for i in range(C):
             if i == 0:
-                scores[np.where(obj_idx == False),i:i+1] = 1
+                scores[np.where(obj_idx == False), i:i + 1] = 1
             else:
-                scores[np.where(obj_idx == False),i:i+1] = 0
+                scores[np.where(obj_idx == False), i:i + 1] = 0
         obj_idx = np.reshape(obj_idx, (N, M, 1))
         obj_idx = np.transpose(obj_idx, (0, 2, 1))
-
 
         def softmax(x):
             shiftx = x - np.max(x).clip(-64.)
@@ -190,7 +189,6 @@ class TestMulticlassNMSOp(OpTest):
         scores = np.apply_along_axis(softmax, 1, scores)
         scores = np.reshape(scores, (N, M, C))
         scores = np.transpose(scores, (0, 2, 1))
-
 
         boxes = np.random.random((N, M, BOX_SIZE)).astype('float32')
         boxes[:, :, 0:2] = boxes[:, :, 0:2] * 0.5

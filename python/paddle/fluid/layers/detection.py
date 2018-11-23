@@ -304,6 +304,7 @@ def detection_output(loc,
             prior_box_var=prior_box_var,
             target_box=loc,
             code_type='decode_center_size')
+
     compile_shape = scores.shape
     run_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)

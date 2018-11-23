@@ -245,7 +245,6 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
                        SortScorePairDescend<std::pair<int, int>>);
       score_index_pairs.resize(keep_top_k);
-
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
       for (size_t j = 0; j < score_index_pairs.size(); ++j) {
@@ -299,24 +298,23 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t box_dim = boxes->dims()[2];
     int64_t out_dim = boxes->dims()[2] + 2;
 
-    Tensor* scores_refine = new Tensor; 
+    Tensor* scores_refine = new Tensor;
     framework::TensorCopy(*scores, ctx.GetPlace(), scores_refine);
     // For RefineDet
     if (obj_idx) {
-        auto* obj_idx_data = obj_idx->data<bool>();
-        auto* scores_data = scores_refine->data<T>();
-        for (int64_t i = 0; i < batch_size; ++i)
-            for (int64_t j = 0; j < predict_dim; ++j)
-                for (int64_t c = 0; c < class_num; ++c) {
-                    int offset = i * predict_dim * class_num + c * predict_dim + j;
-                    if (obj_idx_data[i * predict_dim + j])
-                        continue;
-                    if (c == 0) {
-                        scores_data[offset] = 1;
-                    } else {
-                        scores_data[offset] = 0;
-                    }
-                }
+      auto* obj_idx_data = obj_idx->data<bool>();
+      auto* scores_data = scores_refine->data<T>();
+      for (int64_t i = 0; i < batch_size; ++i)
+        for (int64_t j = 0; j < predict_dim; ++j)
+          for (int64_t c = 0; c < class_num; ++c) {
+            int offset = i * predict_dim * class_num + c * predict_dim + j;
+            if (obj_idx_data[i * predict_dim + j]) continue;
+            if (c == 0) {
+              scores_data[offset] = 1;
+            } else {
+              scores_data[offset] = 0;
+            }
+          }
     }
 
     std::vector<std::map<int, std::vector<int>>> all_indices;

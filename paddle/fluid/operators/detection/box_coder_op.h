@@ -90,12 +90,13 @@ class BoxCoderKernel : public framework::OpKernel<T> {
                         T* output) const {
     int64_t row = target_box->dims()[0];
     int64_t col, len;
+
     if (is_refine) {
-        col = prior_box->dims()[1];
-        len = prior_box->dims()[2];
+      col = prior_box->dims()[1];
+      len = prior_box->dims()[2];
     } else {
-        col = prior_box->dims()[0];
-        len = prior_box->dims()[1];
+      col = prior_box->dims()[0];
+      len = prior_box->dims()[1];
     }
 
     auto* target_box_data = target_box->data<T>();
@@ -108,19 +109,22 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         size_t offset = i * col * len + j * len;
         size_t prior_offset;
         if (is_refine) {
-            prior_offset = offset;
+          prior_offset = offset;
         } else {
-            prior_offset = j * len;
+          prior_offset = j * len;
         }
         T prior_box_width = prior_box_data[prior_offset + 2] -
-                            prior_box_data[prior_offset] + (normalized == false);
+                            prior_box_data[prior_offset] +
+                            (normalized == false);
         T prior_box_height = prior_box_data[prior_offset + 3] -
                              prior_box_data[prior_offset + 1] +
                              (normalized == false);
         T prior_box_center_x =
-            (prior_box_data[prior_offset + 2] + prior_box_data[prior_offset]) / 2;
-        T prior_box_center_y =
-            (prior_box_data[prior_offset + 3] + prior_box_data[prior_offset + 1]) / 2;
+            (prior_box_data[prior_offset + 2] + prior_box_data[prior_offset]) /
+            2;
+        T prior_box_center_y = (prior_box_data[prior_offset + 3] +
+                                prior_box_data[prior_offset + 1]) /
+                               2;
 
         T target_box_center_x = 0, target_box_center_y = 0;
         T target_box_width = 0, target_box_height = 0;
@@ -184,13 +188,13 @@ class BoxCoderKernel : public framework::OpKernel<T> {
                        output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       if (refine_box) {
-          DecodeCenterSize(refine_box, prior_box, prior_box_var,
-                           normalized, false, output);
-          DecodeCenterSize(target_box, output_box, prior_box_var,
-                           normalized, true, output);
+        DecodeCenterSize(refine_box, prior_box, prior_box_var, normalized,
+                         false, output);
+        DecodeCenterSize(target_box, output_box, prior_box_var, normalized,
+                         true, output);
       } else {
-          DecodeCenterSize(target_box, prior_box, prior_box_var,
-                           normalized, false, output);
+        DecodeCenterSize(target_box, prior_box, prior_box_var, normalized,
+                         false, output);
       }
     }
   }

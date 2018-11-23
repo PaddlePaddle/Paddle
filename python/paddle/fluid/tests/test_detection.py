@@ -82,7 +82,6 @@ class TestDetection(unittest.TestCase):
                 gt2, matched_indices, mismatch_value=0)
             self.assertIsNotNone(trg)
             self.assertIsNotNone(trg_weight)
-
         print(str(program))
 
     def test_ssd_loss(self):

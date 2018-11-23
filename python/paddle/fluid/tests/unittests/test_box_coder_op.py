@@ -36,7 +36,6 @@ def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
     if not box_normalized:
         prior_box_height = prior_box_height + 1
         prior_box_width = prior_box_width + 1
-
     if (code_type == "EncodeCenterSize"):
         target_box_x = ((target_box[:, 2] + target_box[:, 0]) / 2).reshape(
             target_box.shape[0], 1)
@@ -78,8 +77,13 @@ def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
             output_box[:, :, 3] = output_box[:, :, 3] - 1
 
 
-def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
-                    box_normalized, refine_box=None):
+def batch_box_coder(prior_box,
+                    prior_box_var,
+                    target_box,
+                    lod,
+                    code_type,
+                    box_normalized,
+                    refine_box=None):
     n = target_box.shape[0]
     m = prior_box.shape[0]
     output_box = np.zeros((n, m, 4), dtype=np.float32)
@@ -98,8 +102,8 @@ def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
                           code_type, box_normalized)
                 tmp = output_box[cur_offset:(cur_offset + lod[i]), :, :]
                 box_coder(target_box[cur_offset:(cur_offset + lod[i]), :, :],
-                          np.squeeze(output_box[cur_offset:(cur_offset + lod[i]), :, :]), 
-                          prior_box_var,
+                          np.squeeze(output_box[cur_offset:(cur_offset + lod[
+                              i]), :, :]), prior_box_var,
                           output_box[cur_offset:(cur_offset + lod[i]), :, :],
                           code_type, box_normalized)
             else:
@@ -124,8 +128,14 @@ class TestBoxCoderOp(OpTest):
         refine_box = np.random.random((5, 10, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized, refine_box=refine_box)
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+            refine_box=refine_box)
 
         self.inputs = {
             'PriorBox': prior_box,
