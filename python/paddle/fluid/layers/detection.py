@@ -1639,31 +1639,22 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
     ** Generate Mask Labels of Mask-RCNN **
-    TODO(buxingyuan): Add Doc
-    This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
-    to sample foreground boxes and background boxes, and compute loss target.
-
-    RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
-    were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
-    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
-    If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
-    then it was considered as a background sample.
-    After all foreground and background boxes are chosen (so called Rois),
-    then we apply random sampling to make sure
-    the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
-
-    For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
-    Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+    This operator can be, for given the GenerateProposalLabelsOp output rois and labels_int32,
+    to sample foreground rois, and compute mask label.
+    Rois are the output boxes of generate_proposal_labels. These boxes with its class label, i.e. labels_int32,
+    are used to crop groundtruth mask, i.e. gt_segms, if gt_segms is not crowded.
+    Finally the cropped masks are resized to resolution * resolution, and expanded to num_classes * resolution * resolution.
 
     Args:
-        rpn_rois(Variable): A 2-D LoDTensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
         gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth.
         is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd.
-        gt_boxes(Variable): A 2-D LoDTensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
-        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
+        gt_segms(Variable): A 2-D LoDTensor with shape [M, H, W]. M is the number of groundtruth, each element is a mask label map.
+        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the number of the GenerateProposalLabelsOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        labels_int32(Variable): A 2-D LoDTensor with shape [R, 1]. R is the number of the GenerateProposalLabelsOp's output, each element repersents a class label of a roi.
 
-        num_classes(int): Batch size of rois per images.
-        resolution(int): Foreground fraction in total batch_size_per_im.
+        num_classes(int): Class number.
+        resolution(int): Resolution of mask.
     """
 
     helper = LayerHelper('generate_mask_labels', **locals())

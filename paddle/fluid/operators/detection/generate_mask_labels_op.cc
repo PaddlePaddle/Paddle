@@ -127,27 +127,28 @@ template <typename T>
 static inline Tensor CropAndResize(const platform::CPUDeviceContext& context,
                                    const Tensor& masks_gt, const int mask_idx,
                                    const Tensor& rois_fg, const int roi_idx,
-                                   const int M) {
+                                   const int resolution) {
   const uint8_t* masks_gt_data = masks_gt.data<uint8_t>();
   // int height = masks_gt.dims()[1];
   int width = masks_gt.dims()[2];
   const T* rois_fg_data = rois_fg.data<T>();
 
   Tensor result;
-  uint8_t* result_data =
-      result.mutable_data<uint8_t>({M, M}, context.GetPlace());
+  uint8_t* result_data = result.mutable_data<uint8_t>({resolution, resolution},
+                                                      context.GetPlace());
 
   T w = rois_fg_data[roi_idx + 2] - rois_fg_data[roi_idx + 0];
   T h = rois_fg_data[roi_idx + 3] - rois_fg_data[roi_idx + 1];
   w = std::max<T>(w, (T)1.);
   h = std::max<T>(h, (T)1.);
-  for (int i = 0; i < M; ++i) {
-    for (int j = 0; j < M; ++j) {
-      int x = static_cast<int>(i / static_cast<T>(M) * w +
+  for (int i = 0; i < resolution; ++i) {
+    for (int j = 0; j < resolution; ++j) {
+      int x = static_cast<int>(i / static_cast<T>(resolution) * w +
                                rois_fg_data[roi_idx + 0]);
-      int y = static_cast<int>(j / static_cast<T>(M) * h +
+      int y = static_cast<int>(j / static_cast<T>(resolution) * h +
                                rois_fg_data[roi_idx + 1]);
-      result_data[j * M + i] = masks_gt_data[mask_idx + y * width + x] > 0;
+      result_data[j * resolution + i] =
+          masks_gt_data[mask_idx + y * width + x] > 0;
     }
   }
   return result;
@@ -208,18 +209,15 @@ std::vector<Tensor> SampleMaskForOneImage(
       fg_inds.emplace_back(i);
     }
   }
-  Tensor mask_gt_inds_t, fg_inds_t;
   int gt_num = mask_gt_inds.size();
   int fg_num = fg_inds.size();
-  int* mask_gt_inds_data =
-      mask_gt_inds_t.mutable_data<int>({gt_num}, context.GetPlace());
-  int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
-  std::copy(mask_gt_inds.begin(), mask_gt_inds.end(), mask_gt_inds_data);
-  std::copy(fg_inds.begin(), fg_inds.end(), fg_inds_data);
   Tensor masks_gt;
   masks_gt.mutable_data<uint8_t>(
       {gt_num, gt_segms->dims()[1], gt_segms->dims()[2]}, context.GetPlace());
-  CPUGather<uint8_t>(context, *gt_segms, mask_gt_inds_t, &masks_gt);
+  int gt_segms_stride = gt_segms->dims()[1] * gt_segms->dims()[2];
+  Gather<uint8_t>(gt_segms->data<uint8_t>(), gt_segms_stride,
+                  mask_gt_inds.data(), mask_gt_inds.size(),
+                  masks_gt.data<uint8_t>());
 
   Tensor boxes_from_masks = MasksToBoxes<T>(context, masks_gt);
   std::vector<int> roi_has_mask =
@@ -231,14 +229,17 @@ std::vector<Tensor> SampleMaskForOneImage(
   if (fg_num > 0) {
     // Class labels for the foreground rois
     mask_class_labels.mutable_data<int>({fg_num, 1}, context.GetPlace());
-    CPUGather<int>(context, *label_int32, fg_inds_t, &mask_class_labels);
+    Gather<int>(label_int32_data, 1, fg_inds.data(), fg_inds.size(),
+                mask_class_labels.data<int>());
+
     uint8_t* masks_data = masks.mutable_data<uint8_t>(
         {fg_num, resolution * resolution}, context.GetPlace());
 
     // Find overlap between all foreground rois and the bounding boxes
     // enclosing each segmentation
     rois_fg.mutable_data<T>({fg_num, 4}, context.GetPlace());
-    CPUGather<T>(context, *rois, fg_inds_t, &rois_fg);
+    Gather<T>(rois->data<T>(), 4, fg_inds.data(), fg_inds.size(),
+              rois_fg.data<T>());
     Tensor overlaps_bbfg_bbmasks;
     overlaps_bbfg_bbmasks.mutable_data<T>({fg_num, gt_num}, context.GetPlace());
     BboxOverlaps<T>(rois_fg, boxes_from_masks, &overlaps_bbfg_bbmasks);
@@ -285,12 +286,9 @@ std::vector<Tensor> SampleMaskForOneImage(
     }
     int bg_num = 1;
     bg_inds = std::vector<int>(bg_inds.begin(), bg_inds.begin() + bg_num);
-    Tensor bg_inds_t;
-    int* bg_inds_data =
-        bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
-    std::copy(bg_inds.begin(), bg_inds.end(), bg_inds_data);
     rois_fg.mutable_data<T>({bg_num, 4}, context.GetPlace());
-    CPUGather<T>(context, *rois, bg_inds_t, &rois_fg);
+    Gather<T>(rois->data<T>(), 4, bg_inds.data(), bg_inds.size(),
+              rois_fg.data<T>());
     masks.mutable_data<int>({bg_num, resolution * resolution},
                             context.GetPlace());
     math::set_constant(context, &masks, -1);
@@ -452,7 +450,11 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 GenerateMaskLabelsOp
-TODO(buxingyuan): Add Doc
+This operator can be, for given the GenerateProposalLabelsOp output rois and labels_int32,
+to sample foreground rois, and compute mask label.
+Rois are the output boxes of generate_proposal_labels. These boxes with its class label, i.e. labels_int32,
+are used to crop groundtruth mask, i.e. gt_segms, if gt_segms is not crowded.
+Finally the cropped masks are resized to resolution * resolution, and expanded to num_classes * resolution * resolution.
     )DOC");
   }
 };
