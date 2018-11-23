@@ -78,3 +78,5 @@ IF(WITH_GPU)
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
 ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
+
+cc_test(repeated_lock_mutex_test SRCS repeated_lock_mutex_test.cc)

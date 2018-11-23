@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/repeated_lock_mutex.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
@@ -107,7 +108,7 @@ class CudnnHolder {
     }
   }
 
-  std::mutex& Mutex() { return mtx_; }
+  platform::RepeatedLockMutex<std::mutex>& Mutex() { return mtx_; }
 
   cudnnHandle_t cudnn_handle_;
   memory::AllocationPtr workspace_;
@@ -115,7 +116,7 @@ class CudnnHolder {
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;
 
-  std::mutex mtx_;
+  platform::RepeatedLockMutex<std::mutex> mtx_;
 };
 
 class CudnnWorkspaceHandle {
@@ -128,19 +129,20 @@ class CudnnWorkspaceHandle {
    *  before invoking cudnn functions. */
   template <typename Callback>
   inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
-    if (!guard_) {
-      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
-    }
+    holder_->Mutex().lock();
     holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
                          required_workspace_len);
   }
 
+  CudnnWorkspaceHandle(const CudnnWorkspaceHandle&) = delete;
   CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(const CudnnWorkspaceHandle&) = delete;
   CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+  ~CudnnWorkspaceHandle() { holder_->Mutex().unlock(); }
 
  private:
   CudnnHolder* holder_;  // not own
-  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
 };
 
 #if CUDA_VERSION >= 9000
