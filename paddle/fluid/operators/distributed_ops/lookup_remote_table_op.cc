@@ -68,6 +68,15 @@ class LookupRemoteTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "contains the ids to be looked up in W. "
              "The last dimension size must be 1.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({"127.0.0.1:6164"});
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
                      "If the value is -1, it makes no effect to lookup. "
@@ -98,7 +107,8 @@ or not. And the output only shares the LoD information with input Ids.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lookup_remote_table, ops::LookupRemoteTableOp,
-                  ops::EmptyGradOpMaker, ops::LookupRemoteTableOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::LookupRemoteTableOpMaker);
 
 REGISTER_OP_CPU_KERNEL(lookup_remote_table, ops::LookupRemoteTableKernel<float>,
                        ops::LookupRemoteTableKernel<double>);
