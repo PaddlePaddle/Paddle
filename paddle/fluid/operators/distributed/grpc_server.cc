@@ -181,6 +181,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
     VLOG(40) << "RequestPrefetch, in_var_name: " << in_var_name
              << " out_var_name: " << out_var_name;
