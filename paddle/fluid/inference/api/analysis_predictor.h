@@ -69,7 +69,7 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
-  void SetMKLDNNThreadId(int tid);
+  void SetMkldnnThreadID(int tid);
 
  protected:
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);

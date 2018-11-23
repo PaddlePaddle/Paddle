@@ -75,7 +75,7 @@ bool NativePaddlePredictor::Init(
 #endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(config_.GetCPUNumThreads());
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
