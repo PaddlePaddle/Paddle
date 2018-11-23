@@ -118,7 +118,57 @@ class SelectedRows {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
+  inline int64_t AutoGrownIndex(int64_t key, bool auto_grown,
+                                bool is_test = false) {
+    if (is_test) {
+      auto iter = id_to_index_.find(key);
+      if (iter == id_to_index_.end()) {
+        return -1;
+      } else {
+        return iter->second;
+      }
+    }
+
+    rwlock_->RDLock();
+    auto iter = id_to_index_.find(key);
+    if (iter == id_to_index_.end()) {
+      rwlock_->UNLock();
+      if (!auto_grown) {
+        PADDLE_THROW("key %d not found", key);
+      }
+      rwlock_->WRLock();
+      auto map_size = id_to_index_.size();
+      auto vector_size = rows_.size();
+      if (map_size != vector_size) {
+        rwlock_->UNLock();
+        PADDLE_THROW(
+            "id_to_index_ size %d should have the same size with rows_ %d",
+            map_size, vector_size);
+      }
+      auto write_iter = id_to_index_.find(key);
+      if (write_iter == id_to_index_.end()) {
+        int row_num = rows_.size();
+        if (row_num == value_->dims()[0]) {
+          rwlock_->UNLock();
+          PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
+        }
+        // key logic to put a key into id_to_index_
+        rows_.push_back(key);
+        auto index = static_cast<int64_t>(rows_.size() - 1);
+        id_to_index_[key] = index;
+        rwlock_->UNLock();
+        return index;
+      } else {
+        auto index = write_iter->second;
+        rwlock_->UNLock();
+        return index;
+      }
+    } else {
+      auto index = iter->second;
+      rwlock_->UNLock();
+      return index;
+    }
+  }
 
   void SyncIndex();
 
