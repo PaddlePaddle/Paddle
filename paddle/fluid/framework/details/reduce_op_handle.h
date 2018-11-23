@@ -60,7 +60,6 @@ struct CollectiveContext {
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-// CollectiveContext collective_context_;
 
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
@@ -99,14 +98,6 @@ struct ReduceOpHandle : public OpHandleBase {
 
   void WaitLocalSelectedRows(
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
-
-  /*
-  void GatherRemoteSelectedRows(
-      const CollectiveContext& CollectiveContext,
-      platform::DeviceContext *dev_ctx, Scope *scope,
-      const std::string &var_name,
-                                std::vector<const SelectedRows *> *remote);
-                                */
 
   template <typename T>
   std::vector<const T *> GetInputValues(

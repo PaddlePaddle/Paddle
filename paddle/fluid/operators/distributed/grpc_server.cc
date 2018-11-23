@@ -192,9 +192,6 @@ class RequestGetMonomerVariable final : public RequestBase {
 
     if (outvar) {
       SerializeToByteBuffer(varname, outvar, *h.dev_ctx_, &reply_);
-      std::cout << "var:" << varname << ", "
-                << outvar->GetMutable<framework::SelectedRows>()->Info()
-                << std::endl;
     }
     Finish(reply_, &responder_);
   }

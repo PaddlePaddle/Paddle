@@ -140,9 +140,6 @@ class SelectedRows {
       }
     }
     ss << "], dims:" << value_->dims();
-    // can't print?
-    // << ", value.IsInitialized:" << value().IsInitialized()
-    // << ", value.place:" << value().place();
 
     return ss.str();
   }
