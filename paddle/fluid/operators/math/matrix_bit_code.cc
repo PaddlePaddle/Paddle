@@ -142,7 +142,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::LoDTensor& tmat,
 
       for (size_t k = 0; k < input_width; ++k) {
         int64_t row_index =
-            weight->AutoGrownIndex(static_cast<int64_t>(index), false);
+            weight->AutoGrownIndex(static_cast<int64_t>(index), false, true);
 
         weight_value[row_index * weight_width + k] +=
             tmat_value[i * tmat_width + j] * input_value[input_width * i + k];
