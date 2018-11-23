@@ -67,7 +67,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                          strategy_.trainers_end_points_.size(),
                      "trainer_id_ < end_points_ size");
     }
-    VLOG(1) << "CollectiveContext:" << context.String();
+    VLOG(1) << "CollectiveContext:" << context->String();
 
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
