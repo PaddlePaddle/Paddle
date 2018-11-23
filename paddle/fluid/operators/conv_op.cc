@@ -303,6 +303,9 @@ void Conv3DOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("AnyLayout");
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Only used in mkldnn INT8 kernel")
+      .SetDefault(false);
   // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. workspace size for cudnn, in MB, "

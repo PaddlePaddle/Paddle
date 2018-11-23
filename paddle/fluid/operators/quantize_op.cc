@@ -98,6 +98,9 @@ void QuantOpMaker::Make() {
   AddInput("Input","input data");
   AddInput("Scale","scale data");
   AddOutput("Output","output data");
+  AddAttr<bool>("is_negative_input",
+                "(bool, default false) Only used in mkldnn INT8 kernel")
+      .SetDefault(false);
   AddComment(R"DOC(This op will quantize data from FP32 to INT8)DOC");
 }
 
