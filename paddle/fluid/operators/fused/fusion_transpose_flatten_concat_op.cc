@@ -53,7 +53,7 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
     std::vector<int> out_dims(dims0);
     for (size_t i = 1; i < n; i++) {
       auto dimsi =
-          GetFlattenShape(flatten_axis, GetPermuteShape(trans_axis, ins[1]));
+          GetFlattenShape(flatten_axis, GetPermuteShape(trans_axis, ins[i]));
       for (int j = 0; j < static_cast<int>(dims0.size()); j++) {
         if (j == concat_axis) {
           out_dims[concat_axis] += dimsi[j];
@@ -78,7 +78,8 @@ class TransposeFlattenConcatFusionOpMaker
   void Make() override {
     AddInput(
         "X",
-        "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
+        "(Tensor) The input tensor, tensors with rank up to 6 are supported.")
+        .AsDuplicable();
     AddOutput("Out", "(Tensor)The output tensor.");
     AddAttr<std::vector<int>>(
         "trans_axis",

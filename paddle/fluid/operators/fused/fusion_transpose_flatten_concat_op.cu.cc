@@ -33,6 +33,7 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
     auto odims = out->dims();
 
     std::vector<int> trans_axis = ctx.Attr<std::vector<int>>("trans_axis");
+    int flatten_axis = ctx.Attr<int>("flatten_axis");
     int concat_axis = ctx.Attr<int>("concat_axis");
 
     int rank = ins[0]->dims().size();
@@ -52,10 +53,10 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
 
     T* odata = out->data<T>();
-    for (size_t i = 0; i < ins.size(); ++i) {
-      auto perm_shape = GetPermuteShape(trans_axis, ins[i]->dims());
+    for (size_t k = 0; k < ins.size(); ++k) {
+      auto perm_shape = GetPermuteShape(trans_axis, ins[k]->dims());
       int osize = 1;
-      auto idims = ins[i]->dims();
+      auto idims = ins[k]->dims();
       for (int i = 0; i < rank; i++) {
         stride_x[i] = 1;
         for (int j = trans_axis[i] + 1; j < rank; j++) {
@@ -65,20 +66,25 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         osize *= perm_shape[i];
       }
       stride_y[rank - 1] = 1;
-      for (int i = rank - 2; i >= 1; i--) {
-        stride_y[i] = stride_y[i + 1] * perm_shape[i + 1];
+      for (int i = rank - 2; i >= 0; i--) {
+        if (((i + 1) == flatten_axis) && (concat_axis == 1)) {
+          stride_y[i] = odims[1];
+        } else {
+          stride_y[i] = stride_y[i + 1] * perm_shape[i + 1];
+        }
       }
+
       // Since concat is aftern flatten, the output is 2D tensor.
       // If concat_axis is 0, each input's permutated tensor is continuous.
       // If concat_axis is 1, the stride of 0-th dim of each input's
       // permutated tensor is odims()[1].
-      stride_y[0] = concat_axis == 0 ? stride_y[1] * perm_shape[1] : odims[1];
 
       for (int i = rank; i < max_dim; i++) {
         stride_x[i] = 1;
         stride_y[i] = 1;
         dims_y[i] = 1;
       }
+
       CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
           in_desc, cudnn_dtype, max_dim, dims_y.data(), stride_x.data()));
       CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
@@ -86,10 +92,13 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 
       CUDNN_ENFORCE(platform::dynload::cudnnTransformTensor(
           handle, CudnnDataType<T>::kOne(), in_desc,
-          static_cast<const void*>(ins[0]->data<T>()),
+          static_cast<const void*>(ins[k]->data<T>()),
           CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)));
       if (concat_axis == 0) {
         odata += osize;
+      } else {
+        auto flat_shape = GetFlattenShape(flatten_axis, perm_shape);
+        odata += flat_shape[1];
       }
     }
     CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(in_desc));
