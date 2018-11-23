@@ -221,7 +221,7 @@ void TestMultiThreadPrediction(
 #ifdef PADDLE_WITH_MKLDNN
       if (use_analysis) {
         static_cast<AnalysisPredictor *>(predictor.get())
-            ->SetMKLDNNThreadId(static_cast<int>(tid) + 1);
+            ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
       }
 #endif
 

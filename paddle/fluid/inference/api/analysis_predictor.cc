@@ -66,7 +66,7 @@ bool AnalysisPredictor::Init(
 #endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(config_.GetCPUNumThreads());
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (!PrepareScope(parent_scope)) {
     return false;
@@ -159,7 +159,7 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::SetMKLDNNThreadId(int tid) {
+void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 #ifdef PADDLE_WITH_MKLDNN
   platform::set_cur_thread_id(tid);
 #else
