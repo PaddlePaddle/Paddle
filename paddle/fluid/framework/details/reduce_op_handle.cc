@@ -82,8 +82,6 @@ void ReduceOpHandle::GatherSelectedRows(
   auto merged_select_rows =
       scope->Var(merged_var_name)->GetMutable<SelectedRows>();
   // FIXME(gongwb):get type?
-  // operators::math::scatter::MergeAdd<platform::DeviceContext,
-  // gather_select_rows->value().type()> merge_func;
   operators::math::scatter::MergeAdd<platform::CUDADeviceContext, float>
       merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
