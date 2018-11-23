@@ -44,8 +44,8 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 
     cudnnTensorDescriptor_t in_desc;
     cudnnTensorDescriptor_t out_desc;
-    CUDNN_ENFORCE(cudnnCreateTensorDescriptor(&in_desc));
-    CUDNN_ENFORCE(cudnnCreateTensorDescriptor(&out_desc));
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&in_desc));
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&out_desc));
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -79,12 +79,12 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         stride_y[i] = 1;
         dims_y[i] = 1;
       }
-      CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(in_desc, cudnn_dtype, max_dim,
-                                               dims_y.data(), stride_x.data()));
-      CUDNN_ENFORCE(cudnnSetTensorNdDescriptor(out_desc, cudnn_dtype, max_dim,
-                                               dims_y.data(), stride_y.data()));
+      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+          in_desc, cudnn_dtype, max_dim, dims_y.data(), stride_x.data()));
+      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+          out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()));
 
-      CUDNN_ENFORCE(cudnnTransformTensor(
+      CUDNN_ENFORCE(platform::dynload::cudnnTransformTensor(
           handle, CudnnDataType<T>::kOne(), in_desc,
           static_cast<const void*>(ins[0]->data<T>()),
           CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)));
@@ -92,8 +92,8 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         odata += osize;
       }
     }
-    CUDNN_ENFORCE(cudnnDestroyTensorDescriptor(in_desc));
-    CUDNN_ENFORCE(cudnnDestroyTensorDescriptor(out_desc));
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(in_desc));
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(out_desc));
   }
 };
 
