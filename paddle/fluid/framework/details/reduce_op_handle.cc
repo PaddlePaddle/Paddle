@@ -117,8 +117,8 @@ void ReduceOpHandle::GatherSelectedRows(
                           operators::distributed::kRequestGetMonomerVariable,
                           scope, merged_dev_ctx);
 
-  // 3. gather them from all nodes.
-  std::vector<const SelectedRows *> all;
+  // 3. gather them from all remote nodes.
+  std::vector<const SelectedRows *> remote;
   operators::distributed::CollectiveClient *client =
       operators::distributed::CollectiveClient::GetInstance();
 
@@ -130,18 +130,29 @@ void ReduceOpHandle::GatherSelectedRows(
     var.rank_id_ = i;
     var.var_name_ = GetRemoteVarName(out_var_handle->name_, i);
     var.ep_ = collective_context.end_points_[i];
+
+    vars.push_back(var);
+    VLOG(100) << "gather from:" << var.String();
   }
 
-  PADDLE_ENFORCE(client->Gather(vars, &all, *merged_dev_ctx, scope));
+  PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
+  PADDLE_ENFORCE(remote.size() == vars.size());
 
-  all.insert(all.begin() + collective_context.rank_id_, merged_select_rows);
+  // 4. merged local selected rows.
+  std::vector<const SelectedRows *> all;
+  all.resize(collective_context.end_points_.size());
+  for (auto v : vars) {
+    all[v.rank_id_] = scope->FindVar(v.var_name_)->GetMutable<SelectedRows>();
+  }
+  all[collective_context.rank_id_] = merged_select_rows;
+
   merge_func(*merged_dev_ctx, all, dst_selected_rows);
   VLOG(40) << "dst_select_rows :" << dst_selected_rows->Info();
 
   rpc_server->WaitVarBarrier(merged_var_name);
   rpc_server->ClearVar(merged_var_name);
 
-  // 4. clear mid vars
+  // 5. clear mid vars
   std::vector<std::string> tmp_vars{gathered_var_name, merged_var_name};
   for (auto r : vars) {
     tmp_vars.push_back(r.var_name_);

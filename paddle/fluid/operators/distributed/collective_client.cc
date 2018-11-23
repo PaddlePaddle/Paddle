@@ -32,6 +32,7 @@ bool CollectiveClient::Gather(const std::vector<RemoteVar>& remote_vars,
                               framework::Scope* scope, int64_t time_out) {
   for (auto r : remote_vars) {
     VLOG(50) << "begin gather from ep:" << r.String();
+    scope->Var(r.var_name_)->GetMutable<framework::SelectedRows>();
     VarHandlePtr ptr = rpc_client_->AsyncGetMonomerVariable(
         r.ep_, ctx, *scope, r.var_name_, time_out);
   }
@@ -40,7 +41,7 @@ bool CollectiveClient::Gather(const std::vector<RemoteVar>& remote_vars,
 
   for (auto r : remote_vars) {
     auto select_rows =
-        scope->Var(r.var_name_)->GetMutable<framework::SelectedRows>();
+        scope->FindVar(r.var_name_)->GetMutable<framework::SelectedRows>();
     dst->push_back(select_rows);
 
     VLOG(40) << "gather from ep:" << r.String()
