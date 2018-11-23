@@ -83,8 +83,6 @@ void ReduceOpHandle::GatherSelectedRows(
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
   WaitLocalSelectedRows(dev_ctxes);
-  VLOG(40) << "gathered_select_rows :" << gathered_select_rows->Info();
-  VLOG(40) << "gathered_select_rows place:" << gathered_select_rows->place();
 
   // merge them
   auto merged_dev_ctx =
@@ -99,19 +97,19 @@ void ReduceOpHandle::GatherSelectedRows(
   operators::math::scatter::MergeAdd<platform::CUDADeviceContext, float>
       merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
-  // merge_func(*merged_dev_ctx, *gathered_select_rows, dst_selected_rows);
-  WaitLocalSelectedRows(dev_ctxes);
-  VLOG(40) << "merged_select_rows :" << merged_select_rows->Info();
-  VLOG(40) << "merged_select_rows :" << merged_select_rows->place();
-  // VLOG(40) << "dst_selected_rows :" << dst_selected_rows->Info();
-  // VLOG(40) << "dst_selected_rows place:" << dst_selected_rows->place();
 
   // 2. start collective server if it doesn't exist
   operators::distributed::CollectiveServer *server =
       operators::distributed::CollectiveServer::GetInstance(
           collective_context.end_points_[collective_context.rank_id_],
           collective_context.end_points_.size() - 1);
+
   WaitLocalSelectedRows(dev_ctxes);
+  VLOG(40) << "gathered_select_rows :" << gathered_select_rows->Info();
+  VLOG(40) << "gathered_select_rows place:" << gathered_select_rows->place();
+  VLOG(40) << "merged_select_rows :" << merged_select_rows->Info();
+  VLOG(40) << "merged_select_rows :" << merged_select_rows->place();
+
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar(merged_var_name,
                           operators::distributed::kRequestGetMonomerVariable,
@@ -147,7 +145,7 @@ void ReduceOpHandle::GatherSelectedRows(
   all[collective_context.rank_id_] = merged_select_rows;
 
   merge_func(*merged_dev_ctx, all, dst_selected_rows);
-  VLOG(40) << "dst_select_rows :" << dst_selected_rows->Info();
+  // VLOG(40) << "dst_select_rows :" << dst_selected_rows->Info();
 
   rpc_server->WaitVarBarrier(merged_var_name);
   rpc_server->ClearVar(merged_var_name);
