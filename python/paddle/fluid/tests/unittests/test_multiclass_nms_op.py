@@ -149,7 +149,6 @@ def batched_multiclass_nms(boxes, scores, background, score_threshold,
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = boxes[n][idx][:]
-                det_outs.append([c, scores[n][c][idx], xmin, ymin, xmax, ymax])
                 tmp_det_out.append(
                     [c, scores[n][c][idx], xmin, ymin, xmax, ymax])
         sorted_det_out = sorted(
