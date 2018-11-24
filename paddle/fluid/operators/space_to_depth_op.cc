@@ -86,7 +86,7 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
         .GreaterThan(1);
     AddComment(R"DOC(
         reorg operator used in Yolo v2.
-        The equation is: C2 = C1/blocksize * blocksize, W2 = W1 ∗ blocksize + offset % blocksize, H2 = H1 ∗ blocksize + offset / blocksize, 
+        The equation is: C2 = C1/blocksize * blocksize, W2 = W1 * blocksize + offset % blocksize, H2 = H1 * blocksize + offset / blocksize,
 
         Reshape Input(X) into the shape according to Attr(blocksize). The
         data in Input(X) are unchanged.

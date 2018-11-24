@@ -35,7 +35,6 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(profile);
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 
@@ -67,7 +66,7 @@ bool AnalysisPredictor::Init(
 #endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (!PrepareScope(parent_scope)) {
     return false;
@@ -158,6 +157,14 @@ bool AnalysisPredictor::PrepareExecutor() {
   PADDLE_ENFORCE_NOT_NULL(sub_scope_);
 
   return true;
+}
+
+void AnalysisPredictor::SetMkldnnThreadID(int tid) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::set_cur_thread_id(tid);
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+#endif
 }
 
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
@@ -285,6 +292,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   status_program_optimized_ = true;
 
   argument_.SetUseGPU(config_.use_gpu);
+  argument_.SetGPUDeviceId(config_.device);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -491,8 +499,7 @@ bool AnalysisPredictor::LoadParameters() {
   }
 
   // Use NaiveExecutor to Load parameters.
-  platform::CPUPlace place;
-  framework::NaiveExecutor e(place);
+  framework::NaiveExecutor e(place_);
   e.Prepare(scope_.get(), *load_program, 0, false);
   e.Run();
   VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
@@ -549,4 +556,7 @@ USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(split);
+USE_TRT_CONVERTER(prelu);
+USE_TRT_CONVERTER(conv2d_transpose);
+USE_TRT_CONVERTER(leaky_relu);
 #endif
