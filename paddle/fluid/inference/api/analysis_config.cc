@@ -63,27 +63,6 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   }
 }
 
-contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
-  other.Build();
-  // fields from Config
-  model_dir = other.model_dir;
-  // fields from NativeConfig
-  use_gpu = other.use_gpu;
-  device = other.device;
-  fraction_of_gpu_memory = other.fraction_of_gpu_memory;
-  prog_file = other.prog_file;
-  param_file = other.param_file;
-  specify_input_name = other.specify_input_name;
-  // fields from this.
-  enable_ir_optim = other.enable_ir_optim;
-  use_feed_fetch_ops = other.use_feed_fetch_ops;
-  use_tensorrt_ = other.use_tensorrt_;
-  tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
-  tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
-  enable_memory_optim_ = other.enable_memory_optim_;
-  pass_builder_ = std::move(other.pass_builder_);
-}
-
 void contrib::AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   pass_builder()->EnableMKLDNN();
@@ -114,7 +93,7 @@ bool contrib::AnalysisConfig::enable_memory_optim() const {
 void contrib::AnalysisConfig::Build() const {
   // TODO(Superjomn) consider to avoid duplicate build.
   if (enable_memory_optim_) {
-    pass_builder()->AppendPass("memory_optim_pass");
+    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 }
 

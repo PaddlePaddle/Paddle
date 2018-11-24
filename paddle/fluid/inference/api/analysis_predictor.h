@@ -84,8 +84,8 @@ class AnalysisPredictor : public PaddlePredictor {
       }
     }
     batch_var_shapes_.push_back(var_shapes);
-    LOG(INFO) << "collect " << batch_var_shapes_.size()
-              << " batch of var shapes for analysis";
+    LOG_FIRST_N(INFO, 1) << "Collected " << batch_var_shapes_.size()
+                         << " batch of var shapes for analysis";
   }
 
   void SerizlizeBatchVarShapes(const std::string &path) {

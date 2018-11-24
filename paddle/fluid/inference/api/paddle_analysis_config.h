@@ -36,7 +36,6 @@ namespace contrib {
 struct AnalysisConfig : public NativeConfig {
   explicit AnalysisConfig(bool use_gpu = false);
   explicit AnalysisConfig(const AnalysisConfig& other);
-  explicit AnalysisConfig(AnalysisConfig&& other);
 
   // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;

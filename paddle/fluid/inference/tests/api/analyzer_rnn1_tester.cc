@@ -258,6 +258,10 @@ TEST(Analyzer_rnn1, fuse_statis) {
 TEST(Analyzer_rnn1, compare) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
+  cfg.Build();
+  LOG(INFO) << "analysis pass count "
+            << cfg.pass_builder()->AnalysisPasses().size();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

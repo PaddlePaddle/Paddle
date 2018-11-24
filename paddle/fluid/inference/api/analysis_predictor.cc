@@ -30,10 +30,11 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
+#include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/inference/api/helper.h"
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
@@ -292,6 +293,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.SetUseGPU(config_.use_gpu);
   argument_.SetGPUDeviceId(config_.device);
+  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -313,6 +315,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.enable_ir_optim) passes.clear();
   argument_.SetIrAnalysisPasses(passes);
+  argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
   Analyzer().Run(&argument_);
 
@@ -518,9 +521,8 @@ AnalysisPredictor::~AnalysisPredictor() {
   }
 
   // TODO(Superjomn) deduce the directory path.
-  std::string out_path =
-      config_.model_dir.empty() ? config_.prog_file : config_.model_dir;
-  out_path += ".memory_optimize_cache";
+  std::string out_path = inference::analysis::GetMemoryCachePath(
+      config_.model_dir, config_.prog_file);
   if (config_.enable_memory_optim() && !inference::IsFileExists(out_path)) {
     SerizlizeBatchVarShapes(out_path);
   }

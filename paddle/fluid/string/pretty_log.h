@@ -66,5 +66,22 @@ static void PrettyLog(const std::string &style, const char *fmt,
   std::cerr << style << Sprintf(fmt, args...) << reset();
 }
 
+template <typename... Args>
+static void PrettyLogInfo(const char *fmt, const Args &... args) {
+  PrettyLogEndl(Style::info(), fmt, args...);
+}
+template <typename... Args>
+static void PrettyLogDetail(const char *fmt, const Args &... args) {
+  PrettyLogEndl(Style::detail(), fmt, args...);
+}
+template <typename... Args>
+static void PrettyLogH1(const char *fmt, const Args &... args) {
+  PrettyLogEndl(Style::H1(), fmt, args...);
+}
+template <typename... Args>
+static void PrettyLogH2(const char *fmt, const Args &... args) {
+  PrettyLogEndl(Style::H2(), fmt, args...);
+}
+
 }  // namespace string
 }  // namespace paddle

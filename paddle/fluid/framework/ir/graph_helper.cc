@@ -150,7 +150,6 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
 
 std::vector<ir::Node *> OpDFSSort(const Graph &graph) {
   auto edge_table = BuildOperationOutAdjList(graph);
-  LOG(INFO) << "edge table size " << edge_table.size();
   std::stack<Node *> stack;
   // find the feed ops
   for (auto &ele : edge_table) {

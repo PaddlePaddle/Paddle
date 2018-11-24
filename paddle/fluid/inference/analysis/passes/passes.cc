@@ -16,6 +16,7 @@
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+#include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -27,6 +28,8 @@ PassRegistry::PassRegistry() {
                   std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
   passes_.emplace("ir_analysis_compose_pass",
                   std::unique_ptr<AnalysisPass>(new IrAnalysisComposePass));
+  passes_.emplace("memory_optimize_pass",
+                  std::unique_ptr<AnalysisPass>(new MemoryOptimizePass));
 }
 
 }  // namespace analysis

@@ -212,6 +212,8 @@ TEST(Analyzer_dam, fuse_statis) {
 TEST(Analyzer_dam, compare) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
+  cfg.Build();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

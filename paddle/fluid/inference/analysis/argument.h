@@ -115,6 +115,8 @@ struct Argument {
   // The ir passes to perform in analysis phase.
   DECL_ARGUMENT_FIELD(ir_analysis_passes, IrAnalysisPasses,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(analysis_passes, AnalysisPasses,
+                      std::vector<std::string>);
 
   // Some fields passed from AnalysisConfig
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);

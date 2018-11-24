@@ -54,7 +54,7 @@ class Analyzer final {
   DISABLE_COPY_AND_ASSIGN(Analyzer);
 
  protected:
-  void RunIrAnalysis(Argument* argument);
+  void RunAnalysis(Argument* argument);
 };
 
 }  // namespace analysis

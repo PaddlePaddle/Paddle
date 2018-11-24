@@ -24,9 +24,6 @@ namespace paddle {
  */
 class PaddlePassBuilder {
  public:
-  explicit PaddlePassBuilder(const std::vector<std::string> &passes)
-      : passes_(passes) {}
-
   void AppendPass(const std::string &pass_type);
 
   void InsertPass(size_t idx, const std::string &pass_type);
@@ -37,6 +34,9 @@ class PaddlePassBuilder {
   // Delete all the passes that has type `pass_type`.
   void DeletePass(const std::string &pass_type);
 
+  // Append an analysis pass.
+  void AppendAnalysisPass(const std::string &pass);
+
   // Visualize the computation graph after each pass by generating a DOT
   // language file, one can draw them with the Graphviz toolkit.
   void TurnOnDebug();
@@ -45,8 +45,12 @@ class PaddlePassBuilder {
   std::string DebugString();
 
   const std::vector<std::string> &AllPasses() const { return passes_; }
+  const std::vector<std::string> &AnalysisPasses() const {
+    return analysis_passes_;
+  }
 
  protected:
+  std::vector<std::string> analysis_passes_{{"ir_analysis_compose_pass"}};
   std::vector<std::string> passes_;
 };
 
@@ -55,9 +59,6 @@ class PaddlePassBuilder {
  */
 class PassStrategy : public PaddlePassBuilder {
  public:
-  explicit PassStrategy(const std::vector<std::string> &passes)
-      : PaddlePassBuilder(passes) {}
-
   // The MKLDNN control exists in both CPU and GPU mode, because there can be
   // still some CPU kernels running in CPU mode.
   virtual void EnableMKLDNN() = 0;
@@ -70,7 +71,7 @@ class PassStrategy : public PaddlePassBuilder {
  */
 class CpuPassStrategy : public PassStrategy {
  public:
-  CpuPassStrategy() : PassStrategy({}) {
+  CpuPassStrategy() {
     // NOTE the large fusions should be located in the front, so that they will
     // not be damaged by smaller ones.
     passes_.assign({
@@ -106,8 +107,6 @@ class CpuPassStrategy : public PassStrategy {
     }
 #endif
   }
-
-  CpuPassStrategy(const CpuPassStrategy &other) : PassStrategy(other.passes_) {}
 };
 
 /*
@@ -124,9 +123,6 @@ class GpuPassStrategy : public PassStrategy {
         // "infer_clean_graph_pass", "conv_bn_fuse_pass",
     });
   }
-
-  GpuPassStrategy(const GpuPassStrategy &other)
-      : PassStrategy(other.AllPasses()) {}
 
   void EnableMKLDNN() override;
 

@@ -30,11 +30,6 @@ void IrAnalysisComposePass::RunImpl(Argument *argument) {
   if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
     InitTensorRTAttrs(argument);
   }
-  if (argument->enable_memory_optim_valid() && argument->enable_memory_optim()) {
-    std::string path = argument->model_dir_valid()? argument->model_program_path() : argument->model_dir();
-    path += ".memory_optimize_cache";
-    argument->main_graph().Set("memory_optimize_cache_path", new std::string(path));
-  }
   ApplyIrPasses(argument);
   CollectFusionStatis(argument);
 }
@@ -64,6 +59,7 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
 }
 
 void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
+  // TODO(Superjomn) move these to Argument.analysis_pass.
   std::vector<std::string> passes({
       "ir_graph_build_pass", "ir_analysis_pass",
   });

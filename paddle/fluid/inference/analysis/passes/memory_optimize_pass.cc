@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/ir_passes/mem_optim_pass.h"
+#include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include <fstream>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -28,14 +29,25 @@ using framework::ir::Node;
 
 const int kBatchSize = 13;  // replace the placement -1 in shape
 
+// Several kinds of topological sort.
+std::vector<Node*> TopoSort(const Graph& graph, int sort_kind) {
+  switch (sort_kind) {
+    case 0:
+      return framework::ir::TopologySortOperations(graph);
+    default:
+      return framework::ir::TopologyDfsSortOperations(graph);
+  }
+}
+
 // Collect the lifecycles of the tensors.
 // Traverse the graph in topological order.
 // TODO(Superjomn) the traversal order also affect the lifecycles, try to change
 // the order to improve the reuse performance latter.
-void MemOptimPass::CollectLifeCycle(
-    std::unordered_map<std::string, lifecycle_t>* lifecycles) const {
+void MemoryOptimizePass::CollectLifeCycle(
+    std::unordered_map<std::string, lifecycle_t>* lifecycles,
+    int sort_kind) const {
   max_lifecycle_ = 0;
-  for (auto* op_node : framework::ir::TopologyDfsSortOperations(*graph_)) {
+  for (auto* op_node : TopoSort(*graph_, sort_kind)) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
@@ -107,7 +119,7 @@ int ShapeToSpace(const std::vector<long>& shape,
 }
 
 // Collect the shape information of the tensors.
-void MemOptimPass::CollectShapes(
+void MemoryOptimizePass::CollectShapes(
     std::unordered_map<std::string, Node*>* tensor_nodes,
     std::unordered_map<std::string, int>* space_table) const {
   // Collect tensors from graph.
@@ -137,20 +149,19 @@ void MemOptimPass::CollectShapes(
 // false if no sutable tensor to reuse, one need to allocate a new tensor for
 // this requirement.
 __attribute__((warn_unused_result)) //
-bool FindSutableTensorToReuse(const std::string &tensor,
-                              int space_required,
-                              const std::unordered_map<std::string, Node *> &tensor_nodes,
-                              std::unordered_set<std::string> *free_existing_tensors,
-                              const std::unordered_map<std::string, int> &space_table,
-                              const std::vector<std::unordered_set<std::string>> &var_clusters,
-                              std::string *tensor2use) {
+bool FindSuitableTensorToReuse(const std::string &tensor,
+                               int space_required,
+                               const std::unordered_map<std::string, Node *> &tensor_nodes,
+                               std::unordered_set<std::string> *free_existing_tensors,
+                               const std::unordered_map<std::string, int> &space_table,
+                               const std::vector<std::unordered_set<std::string>> &var_clusters,
+                               std::string *tensor2use) {
   std::pair<std::string, int> best_fit;
   best_fit.second = std::numeric_limits<int>::max();
-
-  LOG(INFO) << "cluster_var.size " << var_clusters.size();
+  VLOG(3) << "Split Tensors to " << var_clusters.size() << " clusters";
 
   // find the cluster this var belongs to.
-  const std::unordered_set<std::string> *cluster = nullptr;
+  const std::unordered_set<std::string>* cluster = nullptr;
   for (const auto& c : var_clusters) {
     if (c.count(tensor)) {
       cluster = &c;
@@ -230,14 +241,20 @@ void MemoryStatis(
       *allocated += space_table.at(elem.first);
     } else {
       *saved += space_table.at(elem.first);
-      LOG(INFO) << "reuse " << elem.first << " -> " << elem.second;
+      VLOG(4) << "reuse " << elem.first << " -> " << elem.second;
     }
   }
 }
 
-void MemOptimPass::MakeReusePlan(const std::vector<std::unordered_set<std::string>> &var_clusters,
-                                 std::unordered_map<std::string, std::string> *reuse_table) const {
-  std::unordered_map<std::string, lifecycle_t> lifecycles;
+// Return saved ratio.
+void MemoryOptimizePass::MakeReusePlan(
+    const std::vector<std::unordered_set<std::string>>& var_clusters,
+    std::unordered_map<std::string, std::string>* reuse_table, int sort_kind,
+    MemoryAllocation* memory_allocation) const {
+  // Clear the existing plan.
+  reuse_table->clear();
+
+  std::unordered_map<std::string, lifecycle_t> life_cycles;
   std::unordered_map<std::string, Node*> tensor_nodes;
   // The allocated tensors whose memory can be reused, they will live across the
   // program execution.
@@ -246,14 +263,14 @@ void MemOptimPass::MakeReusePlan(const std::vector<std::unordered_set<std::strin
   std::unordered_set<std::string> free_existing_tensors;
   std::unordered_map<std::string, int> space_table;
 
-  CollectLifeCycle(&lifecycles);
+  CollectLifeCycle(&life_cycles, sort_kind);
   CollectShapes(&tensor_nodes, &space_table);
 
   for (int age = 0; age < max_lifecycle_; ++age) {
     std::unordered_set<std::string> born_tensors;
     std::unordered_set<std::string> dead_tensors;
     // Gather the dead and born tensors.
-    for (auto elem_it = lifecycles.begin(); elem_it != lifecycles.end();
+    for (auto elem_it = life_cycles.begin(); elem_it != life_cycles.end();
          elem_it++) {
       if (elem_it->second.first == -1) continue;
       const auto& tensor = elem_it->first;
@@ -279,11 +296,11 @@ void MemOptimPass::MakeReusePlan(const std::vector<std::unordered_set<std::strin
       std::string tensor2reuse;
       if (!space_table.count(tensor)) continue;
       int space_required = space_table.at(tensor);
-      if (FindSutableTensorToReuse(tensor, space_required,
-                                   tensor_nodes, &free_existing_tensors,
-                                   space_table, var_clusters, &tensor2reuse)) {
+      if (FindSuitableTensorToReuse(tensor, space_required, tensor_nodes,
+                                    &free_existing_tensors, space_table,
+                                    var_clusters, &tensor2reuse)) {
         if (tensor != tensor2reuse) {
-          LOG(INFO) << tensor << " -> " << tensor2reuse;
+          VLOG(4) << tensor << " -> " << tensor2reuse;
         }
         ReuseATensor(tensor, tensor2reuse, &free_existing_tensors, reuse_table);
       } else {
@@ -302,10 +319,11 @@ void MemOptimPass::MakeReusePlan(const std::vector<std::unordered_set<std::strin
 
   long long allocated, saved_memory;
   MemoryStatis(*reuse_table, space_table, &allocated, &saved_memory);
-  LOG(INFO) << "Allocated " << allocated / 1024. / 1024. << " MB for workspace";
-  LOG(INFO) << "Saved " << saved_memory / 1024. / 1024. << " MB";
-  LOG(INFO) << "The saving ratio: "
-            << static_cast<float>(saved_memory) / (saved_memory + allocated);
+  float saved_ratio =
+      static_cast<float>(saved_memory) / (saved_memory + allocated);
+  memory_allocation->allocated = allocated / 1024. / 1024.;
+  memory_allocation->saved = saved_memory / 1024. / 1024.;
+  memory_allocation->saving_ratio = saved_ratio;
 }
 
 void BuildVarNodeTable(Graph* graph,
@@ -317,45 +335,11 @@ void BuildVarNodeTable(Graph* graph,
   }
 }
 
-void UpdateIrGraphByReuse(
-    Graph* graph,
-    const std::unordered_map<std::string, std::string>& reuse_table,
-    const std::unordered_map<std::string, Node*>& var_node_table) {
-  // Unneeded nodes.
-  std::unordered_set<const Node*> nodes2rm;
-  for (auto* node : graph->Nodes()) {
-    if (!node->IsOp()) {
-      continue;
-    }
-
-    for (auto*& x : node->inputs) {
-      PADDLE_ENFORCE(x->IsVar());
-      auto name = x->Var()->Name();
-      if (reuse_table.count(name) && reuse_table.at(name) != name) {
-        nodes2rm.insert(var_node_table.at(name));
-        auto* node = var_node_table.at(reuse_table.at(name));
-        x = node;
-      }
-    }
-
-    for (auto*& x : node->outputs) {
-      PADDLE_ENFORCE(x->IsVar());
-      auto name = x->Var()->Name();
-      if (reuse_table.count(name) && reuse_table.at(name) != name) {
-        nodes2rm.insert(var_node_table.at(name));
-        auto* node = var_node_table.at(reuse_table.at(name));
-        x = node;
-      }
-    }
-  }
-  framework::ir::GraphSafeRemoveNodes(graph, nodes2rm);
-}
-
 void UpdateOpDescsByReuse(
     Graph* graph,
-    const std::unordered_map<std::string, std::string>& reuse_table) {
-  // for (auto* node : framework::ir::TopologyDfsSortOperations(*graph)) {
-  for (auto* node : framework::ir::TopologySortOperations(*graph)) {
+    const std::unordered_map<std::string, std::string>& reuse_table,
+    int sort_kind) {
+  for (auto* node : TopoSort(*graph, sort_kind)) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
       std::unordered_map<std::string, std::vector<std::string>> in_args,
@@ -394,12 +378,13 @@ void UpdateOpDescsByReuse(
   }
 }
 
-void MemOptimPass::PerformReusePlan(
-    const std::unordered_map<std::string, std::string>& reuse_table) const {
+void MemoryOptimizePass::PerformReusePlan(
+    const std::unordered_map<std::string, std::string>& reuse_table,
+    int sort_kind) const {
   std::unordered_map<std::string, Node*> var_node_table;
   BuildVarNodeTable(graph_, &var_node_table);
   // UpdateIrGraphByReuse(graph_, reuse_table, var_node_table);
-  UpdateOpDescsByReuse(graph_, reuse_table);
+  UpdateOpDescsByReuse(graph_, reuse_table, sort_kind);
 }
 
 std::vector<std::string> split(const std::string& line, char delim) {
@@ -419,8 +404,7 @@ std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
   std::string line;
   std::vector<std::map<std::string, std::vector<int>>> batch_shapes;
 
-  while(std::getline(file, line)) {
-    LOG(INFO) << "get line";
+  while (std::getline(file, line)) {
     std::map<std::string, std::vector<int>> batch;
     for (auto var_info : split(line, ';')) {
       auto fields = split(var_info, ':');
@@ -463,30 +447,48 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapes(
   return res;
 }
 
-std::unique_ptr<framework::ir::Graph> MemOptimPass::ApplyImpl(
-    std::unique_ptr<framework::ir::Graph> graph) const {
-  /*
-  if (!graph->Has("memory_optimize_cache_path")) {
-    return graph;
+std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
+
+void MemoryOptimizePass::RunImpl(Argument* argument) {
+  if (!argument->enable_memory_optim()) {
+    return;
   }
-   */
-  const std::string path = "/home/chunwei/project/Paddle/cmake-build-relwithdebinfo/third_party/inference_demo/text_classification/model.memory_optimize_cache";
-      //graph_->Get<std::string>("memory_optimize_cache_path");
+  auto path = GetMemoryCachePath(
+      argument->model_dir_valid() ? argument->model_dir() : "",
+      argument->model_program_path_valid() ? argument->model_program_path()
+                                           : "");
+  VLOG(3) << "Load memory cache from " << path;
   if (inference::IsFileExists(path)) {
-    LOG(INFO) << "Performing memory optimize";
+    VLOG(4) << "Performing memory optimize";
     auto batches = DeseralizeBatchVarShapes(path);
     auto clustered_vars = AnalysisBatchShapes(batches);
 
-    graph_ = graph.get();
+    graph_ = argument->main_graph_ptr();
     std::unordered_map<std::string, std::string> reuse_table;
-    MakeReusePlan(clustered_vars, &reuse_table);
-    PerformReusePlan(reuse_table);
+    float max_saving_ratio = 0.;
+    int best_sort_kind = 0;
+    // Try all the sorting algorithms to get a best reusing strategy.
+    MemoryAllocation memory_allocation;
+    for (int sort_kind = 0; sort_kind < 2; sort_kind++) {
+      MakeReusePlan(clustered_vars, &reuse_table, sort_kind,
+                    &memory_allocation);
+      if (memory_allocation.saving_ratio > max_saving_ratio) {
+        max_saving_ratio = memory_allocation.saving_ratio;
+        best_sort_kind = sort_kind;
+      }
+    }
+    MakeReusePlan(clustered_vars, &reuse_table, best_sort_kind,
+                  &memory_allocation);
+
+    string::PrettyLogDetail("---  Allocated %d MB for workspace.",
+                            memory_allocation.allocated);
+    string::PrettyLogDetail("---  Saved %d MB", memory_allocation.saved);
+    string::PrettyLogDetail("---  Saving percentage %f",
+                            memory_allocation.saving_ratio);
+    PerformReusePlan(reuse_table, 0);
   }
-  return graph;
 }
 
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-REGISTER_PASS(memory_optim_pass, paddle::inference::analysis::MemOptimPass);//.RequireGraphAttr("memory_optimize_cache_path");
