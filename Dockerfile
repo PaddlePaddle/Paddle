@@ -34,13 +34,13 @@ RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-a
     ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
     wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
     tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.6 --enable-shared > /dev/null && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null
 
 # Install Python3.7
 RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.7 --enable-shared > /dev/null && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null
 
 RUN apt-get update && \
@@ -54,8 +54,6 @@ RUN apt-get update && \
     automake locales clang-format swig cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    build-essential checkinstall \
-    libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev \
     net-tools libtool ccache && \
     apt-get clean -y
 
@@ -94,9 +92,9 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3.5 install -U wheel && \
-    pip3.5 install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.5 install sphinx-rtd-theme==0.1.9 recommonmark && \
+RUN pip3 install -U wheel && \
+    pip3 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.6 install -U wheel && \
     pip3.6 install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.6 install sphinx-rtd-theme==0.1.9 recommonmark && \
@@ -108,9 +106,9 @@ RUN pip3.5 install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3.5 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3.5 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.5 install opencv-python && \
+RUN pip3 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3 install opencv-python && \
     pip3.6 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.6 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3.6 install opencv-python && \
@@ -122,13 +120,13 @@ RUN pip3.5 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip install opencv-python
 
 #For docstring checker
-RUN pip3.5 install pylint pytest astroid isort
+RUN pip3 install pylint pytest astroid isort
 RUN pip3.6 install pylint pytest astroid isort
 RUN pip3.7 install pylint pytest astroid isort
 RUN pip install pylint pytest astroid isort LinkChecker
 
 COPY ./python/requirements.txt /root/
-RUN pip3.5 install -r /root/requirements.txt
+RUN pip3 install -r /root/requirements.txt
 RUN pip3.6 install -r /root/requirements.txt
 RUN pip3.7 install -r /root/requirements.txt
 RUN pip install -r /root/requirements.txt
@@ -136,7 +134,7 @@ RUN pip install -r /root/requirements.txt
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
-RUN pip3.5 install certifi urllib3[secure]
+RUN pip3 install certifi urllib3[secure]
 RUN pip3.6 install certifi urllib3[secure]
 RUN pip3.7 install certifi urllib3[secure]
 RUN pip install certifi urllib3[secure]
