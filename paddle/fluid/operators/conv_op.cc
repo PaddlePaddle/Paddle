@@ -225,16 +225,8 @@ $$
        W_{out}= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]}+ 1
 $$
 )DOC");
+  Apply();
 }
-
-class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
-      const override {
-    return std::unordered_map<std::string, std::string>{
-        {"Input", /*->*/ "Output"}};
-  }
-};
 
 void Conv3DOpMaker::Make() {
   AddInput(
@@ -334,6 +326,7 @@ Example:
        W_{out}= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{ strides[2]}+ 1
   $$
 )DOC");
+  Apply();
 }
 
 void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {

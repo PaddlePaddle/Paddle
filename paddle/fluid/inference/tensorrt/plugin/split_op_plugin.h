@@ -14,61 +14,63 @@
 
 #pragma once
 
+#include <thrust/device_vector.h>
+#include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace plugin {
 
 class SplitPlugin : public PluginTensorRT {
-  int axis_;
-  std::vector<int> output_length_;
-  int nx_, ny_, nz_;
-  std::vector<int> segment_offsets_;
-
- protected:
-  virtual size_t getSerializationSize() override {
-    return SerializedSize(axis_) + SerializedSize(output_length_) +
-           getBaseSerializationSize();
-  }
-
-  // TRT will call this func when we need to serialize the configuration of
-  // tensorrt.
-  // It should not be called by users.
-  virtual void serialize(void *buffer) override {
-    serializeBase(buffer);
-    SerializeValue(&buffer, axis_);
-    SerializeValue(&buffer, output_length_);
-  }
-
  public:
   SplitPlugin(int axis, std::vector<int> const &output_lengths)
-      : axis_(axis), output_length_(output_lengths) {
-    assert(axis <= nvinfer1::Dims::MAX_DIMS);
-  }
+      : axis_(axis), same_shape_(true), output_length_(output_lengths) {}
 
-  // It was used for tensorrt deserialization.
-  // It should not be called by users.
-  SplitPlugin(void const *serialData, size_t serialLength) {
-    deserializeBase(serialData, serialLength);
-    DeserializeValue(&serialData, &serialLength, &axis_);
-    DeserializeValue(&serialData, &serialLength, &output_length_);
+  SplitPlugin(void const *serial_data, size_t serial_length) {
+    deserializeBase(serial_data, serial_length);
+    DeserializeValue(&serial_data, &serial_length, &axis_);
+    DeserializeValue(&serial_data, &serial_length, &output_length_);
   }
 
   SplitPlugin *clone() const override {
     return new SplitPlugin(axis_, output_length_);
   }
 
-  virtual const char *getPluginType() const override { return "split"; }
-  virtual int getNbOutputs() const override { return output_length_.size(); }
-  virtual nvinfer1::Dims getOutputDimensions(int index,
-                                             const nvinfer1::Dims *inputs,
-                                             int nbInputDims) override;
-  virtual int initialize() override;
-  virtual int enqueue(int batchSize, const void *const *inputs, void **outputs,
-                      void *workspace, cudaStream_t stream) override;
+  const char *getPluginType() const override { return "split"; }
+  int getNbOutputs() const override { return output_length_.size(); }
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims *input_dims,
+                                     int num_inputs) override;
+
+  int initialize() override;
+  int enqueue(int batchSize, const void *const *inputs, void **outputs,
+              void *workspace, cudaStream_t stream) override;
+
+ protected:
+  size_t getSerializationSize() override {
+    return SerializedSize(axis_) + SerializedSize(output_length_) +
+           getBaseSerializationSize();
+  }
+
+  void serialize(void *buffer) override {
+    serializeBase(buffer);
+    SerializeValue(&buffer, axis_);
+    SerializeValue(&buffer, output_length_);
+  }
+
+  int axis_;
+  int outer_rows_;
+  int inner_cols_;
+  bool same_shape_;
+  std::vector<int> output_length_;
+  std::vector<int> segment_offsets_;
+  thrust::device_vector<int> d_segment_offsets_;
+  thrust::device_vector<float *> d_output_ptrs_;
 };
 
-}  // tensorrt
-}  // inference
-}  // paddle
+}  // namespace plugin
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle
