@@ -1,6 +1,5 @@
 *.DS_Store
 build/
-build*
 *.user
 .vscode
 .idea
