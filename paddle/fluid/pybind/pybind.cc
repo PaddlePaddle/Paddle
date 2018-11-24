@@ -86,12 +86,12 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
-PYBIND11_MODULE(core) {
+PYBIND11_MODULE(core, m) {
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
-  py::module m("core", "C++ core of PaddlePaddle");
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -907,7 +907,6 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle
