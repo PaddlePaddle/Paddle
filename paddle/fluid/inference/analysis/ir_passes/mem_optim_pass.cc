@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/inference/api/helper.h"
 
 namespace paddle {
 namespace inference {
@@ -26,15 +27,6 @@ using framework::ir::Graph;
 using framework::ir::Node;
 
 const int kBatchSize = 13;  // replace the placement -1 in shape
-
-std::unique_ptr<framework::ir::Graph> MemOptimPass::ApplyImpl(
-    std::unique_ptr<framework::ir::Graph> graph) const {
-  // graph_ = graph.get();
-  // std::unordered_map<std::string, std::string> reuse_table;
-  // MakeReusePlan(&reuse_table);
-  // PerformReusePlan(reuse_table);
-  return graph;
-}
 
 // Collect the lifecycles of the tensors.
 // Traverse the graph in topological order.
@@ -145,21 +137,37 @@ void MemOptimPass::CollectShapes(
 // false if no sutable tensor to reuse, one need to allocate a new tensor for
 // this requirement.
 __attribute__((warn_unused_result)) //
-bool FindSutableTensorToReuse(
-    int space_required,
-    const std::unordered_map<std::string, Node*>& tensor_nodes,
-    std::unordered_set<std::string>* free_existing_tensors,
-    const std::unordered_map<std::string, int> &space_table,
-    std::string* tensor2use) {
+bool FindSutableTensorToReuse(const std::string &tensor,
+                              int space_required,
+                              const std::unordered_map<std::string, Node *> &tensor_nodes,
+                              std::unordered_set<std::string> *free_existing_tensors,
+                              const std::unordered_map<std::string, int> &space_table,
+                              const std::vector<std::unordered_set<std::string>> &var_clusters,
+                              std::string *tensor2use) {
   std::pair<std::string, int> best_fit;
   best_fit.second = std::numeric_limits<int>::max();
 
-  for (auto& tensor : *free_existing_tensors) {
-    if (!space_table.count(tensor)) continue;
-    int space = space_table.at(tensor);
+  LOG(INFO) << "cluster_var.size " << var_clusters.size();
+
+  // find the cluster this var belongs to.
+  const std::unordered_set<std::string> *cluster = nullptr;
+  for (const auto& c : var_clusters) {
+    if (c.count(tensor)) {
+      cluster = &c;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      cluster,
+      "something wrong in memory optimization, the variable cluster phase.");
+
+  for (auto& candidate : *free_existing_tensors) {
+    if (!space_table.count(candidate)) continue;
+    int space = space_table.at(candidate);
     int space_diff = space - space_required;
-    if (space_diff >= 0 && space_diff < best_fit.second) {
-      best_fit.first = tensor;
+    if (space_diff >= 0 && space_diff < best_fit.second &&
+        cluster->count(candidate)) {
+      best_fit.first = candidate;
       best_fit.second = space_diff;
     }
   }
@@ -227,8 +235,8 @@ void MemoryStatis(
   }
 }
 
-void MemOptimPass::MakeReusePlan(
-    std::unordered_map<std::string, std::string>* reuse_table) const {
+void MemOptimPass::MakeReusePlan(const std::vector<std::unordered_set<std::string>> &var_clusters,
+                                 std::unordered_map<std::string, std::string> *reuse_table) const {
   std::unordered_map<std::string, lifecycle_t> lifecycles;
   std::unordered_map<std::string, Node*> tensor_nodes;
   // The allocated tensors whose memory can be reused, they will live across the
@@ -271,9 +279,9 @@ void MemOptimPass::MakeReusePlan(
       std::string tensor2reuse;
       if (!space_table.count(tensor)) continue;
       int space_required = space_table.at(tensor);
-      if (FindSutableTensorToReuse(space_required, tensor_nodes,
-                                   &free_existing_tensors, space_table,
-                                   &tensor2reuse)) {
+      if (FindSutableTensorToReuse(tensor, space_required,
+                                   tensor_nodes, &free_existing_tensors,
+                                   space_table, var_clusters, &tensor2reuse)) {
         if (tensor != tensor2reuse) {
           LOG(INFO) << tensor << " -> " << tensor2reuse;
         }
@@ -408,15 +416,11 @@ std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
     const std::string& path) {
   std::ifstream file(path);
   PADDLE_ENFORCE(file.is_open(), "failed to open %s  to read cache", path);
-  auto length = file.tellg();
-  file.seekg(0);
-  std::string content(length, ' ');
-  file.read(&content[0], length);
-
   std::string line;
   std::vector<std::map<std::string, std::vector<int>>> batch_shapes;
 
-  for (auto line : split(content, '\n')) {
+  while(std::getline(file, line)) {
+    LOG(INFO) << "get line";
     std::map<std::string, std::vector<int>> batch;
     for (auto var_info : split(line, ';')) {
       auto fields = split(var_info, ':');
@@ -459,8 +463,30 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapes(
   return res;
 }
 
+std::unique_ptr<framework::ir::Graph> MemOptimPass::ApplyImpl(
+    std::unique_ptr<framework::ir::Graph> graph) const {
+  /*
+  if (!graph->Has("memory_optimize_cache_path")) {
+    return graph;
+  }
+   */
+  const std::string path = "/home/chunwei/project/Paddle/cmake-build-relwithdebinfo/third_party/inference_demo/text_classification/model.memory_optimize_cache";
+      //graph_->Get<std::string>("memory_optimize_cache_path");
+  if (inference::IsFileExists(path)) {
+    LOG(INFO) << "Performing memory optimize";
+    auto batches = DeseralizeBatchVarShapes(path);
+    auto clustered_vars = AnalysisBatchShapes(batches);
+
+    graph_ = graph.get();
+    std::unordered_map<std::string, std::string> reuse_table;
+    MakeReusePlan(clustered_vars, &reuse_table);
+    PerformReusePlan(reuse_table);
+  }
+  return graph;
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_PASS(memory_optim_pass, paddle::inference::analysis::MemOptimPass);
+REGISTER_PASS(memory_optim_pass, paddle::inference::analysis::MemOptimPass);//.RequireGraphAttr("memory_optimize_cache_path");

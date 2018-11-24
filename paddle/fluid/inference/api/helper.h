@@ -15,9 +15,9 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <fstream>
 #if !defined(_WIN32)
 #include <sys/time.h>
-#else
 #endif
 
 #include <algorithm>
@@ -239,6 +239,13 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
               << ", average latency of each sample: " << latency / samples
               << "ms ======";
   }
+}
+
+static bool IsFileExists(const std::string &path) {
+  std::ifstream file(path);
+  bool exists = file.is_open();
+  file.close();
+  return exists;
 }
 
 }  // namespace inference

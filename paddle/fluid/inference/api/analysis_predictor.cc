@@ -33,6 +33,7 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/inference/api/helper.h"
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
@@ -516,11 +517,12 @@ AnalysisPredictor::~AnalysisPredictor() {
     scope_->DeleteScope(sub_scope_);
   }
 
-  if (config_.enable_memory_optim()) {
-    // TODO(Superjomn) deduce the directory path.
-    std::string out_path =
-        config_.model_dir.empty() ? config_.prog_file : config_.model_dir;
-    SerizlizeBatchVarShapes(out_path + ".cache_var_shapes");
+  // TODO(Superjomn) deduce the directory path.
+  std::string out_path =
+      config_.model_dir.empty() ? config_.prog_file : config_.model_dir;
+  out_path += ".memory_optimize_cache";
+  if (config_.enable_memory_optim() && !inference::IsFileExists(out_path)) {
+    SerizlizeBatchVarShapes(out_path);
   }
 }
 

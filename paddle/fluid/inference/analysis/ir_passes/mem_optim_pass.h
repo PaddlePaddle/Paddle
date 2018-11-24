@@ -36,8 +36,8 @@ class MemOptimPass : public framework::ir::Pass {
       std::unordered_map<std::string, framework::ir::Node*>* tensor_nodes,
       std::unordered_map<std::string, int>* space_table) const;
 
-  void MakeReusePlan(
-      std::unordered_map<std::string, std::string>* reuse_table) const;
+  void MakeReusePlan(const std::vector<std::unordered_set<std::string>> &var_clusters,
+                       std::unordered_map<std::string, std::string> *reuse_table) const;
 
   void PerformReusePlan(
       const std::unordered_map<std::string, std::string>& reuse_table) const;
