@@ -22,6 +22,27 @@ ENV HOME /root
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
+# Prepare packages for Python
+RUN apt-get update && \
+    apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev
+
+# Install Python3.6
+RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+    tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
+    ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+    wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
+    tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.6 --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+
+# Install Python3.7
+RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
+    tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.7 --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+
 RUN apt-get update && \
     apt-get install -y --allow-downgrades patchelf \
     python3 python3-dev python3-pip \
@@ -34,88 +55,103 @@ RUN apt-get update && \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     build-essential checkinstall \
-    libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev \
+    libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev \
     net-tools libtool ccache && \
     apt-get clean -y
 
-COPY tools/manylinux1/build_scripts/* /root/python/
-RUN cd /root/python/ && source build_utils && MY_DIR=/root/python/ build_cpythons 3.6.0 3.7.0
+# Install Go and glide
+RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+    tar -xz -C /usr/local && \
+    mkdir /root/gopath && \
+    mkdir /root/gopath/bin && \
+    mkdir /root/gopath/src
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
+# install glide
+RUN curl -s -q https://glide.sh/get | sh
 
-# # Install Go and glide
-# RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
-    # tar -xz -C /usr/local && \
-    # mkdir /root/gopath && \
-    # mkdir /root/gopath/bin && \
-    # mkdir /root/gopath/src
-# ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-# # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
-# ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
-# # install glide
-# RUN curl -s -q https://glide.sh/get | sh
+# Install TensorRT
+# following TensorRT.tar.gz is not the default official one, we do two miny changes:
+# 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
+#    and its size is only one-third of the official one.
+# 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
+#    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
+RUN wget -qO- http://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
+    tar -xz -C /usr/local && \
+    cp -rf /usr/local/TensorRT/include /usr && \
+    cp -rf /usr/local/TensorRT/lib /usr
 
-# # Install TensorRT
-# # following TensorRT.tar.gz is not the default official one, we do two miny changes:
-# # 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
-# #    and its size is only one-third of the official one.
-# # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
-# #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
-# RUN wget -qO- http://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
-    # tar -xz -C /usr/local && \
-    # cp -rf /usr/local/TensorRT/include /usr && \
-    # cp -rf /usr/local/TensorRT/lib /usr
+# git credential to skip password typing
+RUN git config --global credential.helper store
 
-# # git credential to skip password typing
-# RUN git config --global credential.helper store
+# Fix locales to en_US.UTF-8
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# # Fix locales to en_US.UTF-8
-# RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+# FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
+# version util jupyter fixes this issue.
 
-# # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
-# # version util jupyter fixes this issue.
+# specify sphinx version as 1.5.6 and remove -U option for [pip install -U
+# sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
+# version(1.7.1 for now), which causes building documentation failed.
+RUN pip3.5 install -U wheel && \
+    pip3.5 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3.5 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip3.6 install -U wheel && \
+    pip3.6 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3.6 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip3.7 install -U wheel && \
+    pip3.7 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3.7 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    easy_install -U pip && \
+    pip install -U pip setuptools wheel && \
+    pip install -U docopt PyYAML sphinx==1.5.6 && \
+    pip install sphinx-rtd-theme==0.1.9 recommonmark
 
-# # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
-# # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
-# # version(1.7.1 for now), which causes building documentation failed.
-# RUN pip3 install -U wheel && \
-    # pip3 install -U docopt PyYAML sphinx==1.5.6 && \
-    # pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
-    # easy_install -U pip && \
-    # pip install -U pip setuptools wheel && \
-    # pip install -U docopt PyYAML sphinx==1.5.6 && \
-    # pip install sphinx-rtd-theme==0.1.9 recommonmark
+RUN pip3.5 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.5 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3.5 install opencv-python && \
+    pip3.6 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.6 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3.6 install opencv-python && \
+    pip3.7 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.7 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3.7 install opencv-python && \
+    pip install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip install opencv-python
 
-# RUN pip3 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    # pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    # pip3 install opencv-python && \
-    # pip install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    # pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    # pip install opencv-python
+#For docstring checker
+RUN pip3.5 install pylint pytest astroid isort
+RUN pip3.6 install pylint pytest astroid isort
+RUN pip3.7 install pylint pytest astroid isort
+RUN pip install pylint pytest astroid isort LinkChecker
 
-# #For docstring checker
-# RUN pip3 install pylint pytest astroid isort
-# RUN pip install pylint pytest astroid isort LinkChecker
+COPY ./python/requirements.txt /root/
+RUN pip3.5 install -r /root/requirements.txt
+RUN pip3.6 install -r /root/requirements.txt
+RUN pip3.7 install -r /root/requirements.txt
+RUN pip install -r /root/requirements.txt
 
-# COPY ./python/requirements.txt /root/
-# RUN pip3 install -r /root/requirements.txt
-# RUN pip install -r /root/requirements.txt
-
-# # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
-# # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
-# RUN apt-get install -y libssl-dev libffi-dev
-# RUN pip3 install certifi urllib3[secure]
-# RUN pip install certifi urllib3[secure]
+# To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
+# the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
+RUN apt-get install -y libssl-dev libffi-dev
+RUN pip3.5 install certifi urllib3[secure]
+RUN pip3.6 install certifi urllib3[secure]
+RUN pip3.7 install certifi urllib3[secure]
+RUN pip install certifi urllib3[secure]
 
 
-# # Install woboq_codebrowser to /woboq
-# RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
-    # (cd /woboq \
-     # cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
-           # -DCMAKE_BUILD_TYPE=Release . \
-     # make)
+# Install woboq_codebrowser to /woboq
+RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
+    (cd /woboq \
+     cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
+           -DCMAKE_BUILD_TYPE=Release . \
+     make)
 
-# # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-# RUN mkdir /var/run/sshd
-# RUN echo 'root:root' | chpasswd
-# RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-# RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-# EXPOSE 22
+# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+RUN mkdir /var/run/sshd
+RUN echo 'root:root' | chpasswd
+RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+EXPOSE 22
