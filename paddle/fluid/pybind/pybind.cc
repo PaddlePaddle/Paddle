@@ -86,7 +86,7 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
+PYBIND11_MODULE(core) {
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
