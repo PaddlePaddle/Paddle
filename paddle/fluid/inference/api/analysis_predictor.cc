@@ -186,7 +186,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   VLOG(30) << "predict cost: " << timer.toc() << "ms";
 
   // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(scope_.get());
+  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
   tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
@@ -398,7 +398,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
