@@ -229,11 +229,15 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                   inputs[i].data.length());
     } else {
+#ifdef PADDLE_WITH_CUDA
       auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(),
                    0);  // stream 0 for sync copy
+#else
+      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+#endif
     }
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
