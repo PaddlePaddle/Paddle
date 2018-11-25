@@ -87,6 +87,18 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "If the grad op reuse the input's variable.")
         .SetDefault(false);
+
+    // for parameter prefetch
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({"127.0.0.1:6164"});
+
     AddComment(R"DOC(
 Lookup Table Operator.
 
