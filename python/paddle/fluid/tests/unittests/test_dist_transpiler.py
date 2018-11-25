@@ -447,19 +447,23 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
 
 
 class TestDistLookupTableBase(TranspilerTest):
-    def network_with_table(self, is_sparse, is_distributed):
+    def network_with_table(self,
+                           is_sparse,
+                           is_distributed,
+                           remote_prefetch=False):
         self.table_size = 1000
         self.emb_size = 64
         self.lookup_table_name = 'shared_w'
 
-        def emb_pool(ids, table_name, is_distributed):
+        def emb_pool(ids, table_name, is_distributed, remote_prefetch):
             emb = fluid.layers.embedding(
                 input=ids,
                 size=[self.table_size, self.emb_size],
                 dtype='float32',
                 param_attr=table_name,
                 is_sparse=is_sparse,
-                is_distributed=is_distributed)
+                is_distributed=is_distributed,
+                remote_prefetch=remote_prefetch)
             pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
             return pool
 
@@ -469,9 +473,12 @@ class TestDistLookupTableBase(TranspilerTest):
             name='brand_ids', shape=[1], dtype='int64', lod_level=1)
         profile_ids = fluid.layers.data(
             name='brand_ids', shape=[1], dtype='int64', lod_level=1)
-        title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed)
-        brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed)
-        profile_emb = emb_pool(profile_ids, "profile_emb", False)
+        title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed,
+                             False)
+        brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed,
+                             False)
+        profile_emb = emb_pool(profile_ids, "profile_emb", False,
+                               remote_prefetch)
         fc0 = fluid.layers.concat(
             input=[title_emb, brand_emb, profile_emb], axis=1)
         predict = fluid.layers.fc(input=fc0,
@@ -528,6 +535,57 @@ class TestLocalLookupTable(TestDistLookupTableBase):
 class TestDistLookupTable(TestDistLookupTableBase):
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=True)
+
+    def transpiler_test_impl(self):
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep)
+
+        self.assertEqual(len(pserver1.blocks), 6)
+        # 0 listen_and_serv
+        # 1 optimize for fc_w or fc_b adam
+        self.assertEqual([op.type for op in pserver1.blocks[1].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+        # 4 prefetch -> lookup_sparse_table for data0
+        self.assertEqual([op.type for op in pserver1.blocks[2].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+        # 2 optimize for table sgd
+        self.assertEqual([op.type for op in pserver1.blocks[3].ops],
+                         ["sum", "sgd"])
+        # 3 prefetch -> lookup_sparse_table for data0
+        self.assertEqual([op.type for op in pserver1.blocks[4].ops],
+                         ["lookup_sparse_table"])
+        # 5 save table
+        self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
+
+        trainer, trainer_startup = self.get_trainer()
+        self.assertEqual(len(trainer.blocks), 1)
+        ops = [
+            'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
+            'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
+            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'split_selected_rows', 'send',
+            'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sum', 'split_ids', 'send', 'send_barrier',
+            'recv', 'recv', 'recv', 'fetch_barrier', 'concat'
+        ]
+        self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+        startup_ops = [
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'uniform_random',
+            'uniform_random', 'recv', 'recv', 'recv', 'fetch_barrier', 'concat',
+            'fake_init'
+        ]
+        self.assertEqual([op.type for op in trainer_startup.blocks[0].ops],
+                         startup_ops)
+
+
+class TestRemoteLookupTable(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(
+            is_sparse=True, is_distributed=False, remote_prefetch=True)
 
     def transpiler_test_impl(self):
         pserver1, startup1 = self.get_pserver(self.pserver1_ep)
@@ -780,6 +838,46 @@ class TestNCCL2Transpile(TranspilerTest):
             self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
         else:
             pass
+
+
+# test for remote prefetch
+class TestRemoteLookupTable(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(
+            is_sparse=True, is_distributed=False, remote_prefetch=True)
+
+    def transpiler_test_impl(self):
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep)
+
+        self.assertEqual(len(pserver1.blocks), 4)
+        # 0 listen_and_serv
+        # 1 optimize for fc_w or fc_b adam
+        self.assertEqual([op.type for op in pserver1.blocks[1].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+        # 2 optimize for table adam
+        # NOTE: if param is not selected rows, the grad will scaled to grad / trainer_num
+        self.assertEqual([op.type for op in pserver1.blocks[2].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+
+        # 3 optimize for table 2 adam
+        # NOTE: if param is not selected rows, the grad will scaled to grad / trainer_num
+        self.assertEqual([op.type for op in pserver1.blocks[3].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+
+        trainer, _ = self.get_trainer()
+        self.assertEqual(len(trainer.blocks), 1)
+        ops = [
+            'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
+            'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
+            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'split_selected_rows', 'send', 'sequence_pool_grad',
+            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sum', 'split_selected_rows', 'send', 'send_barrier', 'recv',
+            'recv', 'recv', 'fetch_barrier', 'concat'
+        ]
+        self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
 
 if __name__ == "__main__":
