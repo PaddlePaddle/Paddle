@@ -236,21 +236,29 @@ class DistributeTranspiler(object):
         else:
             raise ValueError("must set trainer_id > 0")
 
-    def _get_all_sparse_update_op(self, main_program):
+    def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
         sparse_update_op_types = ["lookup_table"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
-                    'is_sparse') is True and not op.attr('is_distributed'):
+                    'remote_prefetch') is True and not op.attr(
+                        'is_distributed'):
                 sparse_update_ops.append(op)
         return sparse_update_ops
 
-    def _update_sparse_update_op(self, param_varname, height_sections,
-                                 endpint_map):
+    def _update_remote_sparse_update_op(self, param_varname, height_sections,
+                                        endpint_map):
         for op in self.sparse_update_ops:
             if param_varname in op.input_arg_names:
                 op._set_attr('epmap', endpint_map)
                 op._set_attr('height_sections', height_sections)
+                op._set_attr('trainer_id', self.trainer_id)
+
+    def _is_input_of_remote_sparse_update_op(self, param_name):
+        for op in self.sparse_update_ops:
+            if param_name in op.input_arg_names:
+                return True
+        return False
 
     def transpile(self,
                   trainer_id,
@@ -316,7 +324,7 @@ class DistributeTranspiler(object):
             self.grad_name_to_param_name[grad_var.name] = param_var.name
 
         # get all sparse update ops
-        self.sparse_update_ops = self._get_all_sparse_update_op(
+        self.sparse_update_ops = self._get_all_remote_sparse_update_op(
             self.origin_program)
         self.sparse_param_to_height_sections = dict()
 
@@ -449,8 +457,8 @@ class DistributeTranspiler(object):
             if param_varname in self.sparse_param_to_height_sections:
                 height_sections = self.sparse_param_to_height_sections[
                     param_varname]
-                self._update_sparse_update_op(param_varname, height_sections,
-                                              eps)
+                self._update_remote_sparse_update_op(param_varname,
+                                                     height_sections, eps)
             else:
                 program.global_block().append_op(
                     type="recv",
@@ -481,8 +489,6 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[param_varname]
-            print("sparse_param_to_height_sections: " + str(
-                self.sparse_param_to_height_sections))
             if param_varname not in self.sparse_param_to_height_sections:
                 program.global_block().append_op(
                     type="concat",
@@ -1448,7 +1454,7 @@ to transpile() call.")
             for v in splited_vars:
                 height_sections.append(v.shape[0])
             sparse_param_name = self.grad_name_to_param_name[orig_var.name]
-            if sparse_param_name != self.table_name:
+            if self._is_input_of_remote_sparse_update_op(sparse_param_name):
                 self.sparse_param_to_height_sections[
                     sparse_param_name] = height_sections
             program.global_block()._insert_op(
