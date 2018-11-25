@@ -17,8 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/jit_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -43,7 +41,7 @@ inline void FCCompute(const BlasT<DeviceContext, T>& blas, const int M,
                            .template Get<jitkernel::VAddKernel<T>>(N);
 
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
+#pragma omp parallel for
 #endif
     for (int i = 0; i < M; i++) {
       T* dst = Y + i * N;
