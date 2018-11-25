@@ -38,6 +38,8 @@ class NaiveExecutor {
   void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id,
                bool with_feed_fetch_ops);
 
+  void SetScope(const Scope* scope) { scope_ = scope; }
+
   // Create variables before head.
   // Create parameters if persistable is ture, or create the temporary variables
   // instead.
@@ -50,7 +52,7 @@ class NaiveExecutor {
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);
 
-  Scope* scope() { return scope_; }
+  const Scope* scope() { return scope_; }
 
   void CleanFeedFetchOps();
 
@@ -62,7 +64,7 @@ class NaiveExecutor {
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  Scope* scope_;
+  const Scope* scope_;
 };
 
 }  // namespace framework

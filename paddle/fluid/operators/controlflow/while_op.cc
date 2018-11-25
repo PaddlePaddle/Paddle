@@ -15,6 +15,7 @@
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -38,7 +39,8 @@ class WhileOp : public framework::OperatorBase {
   WhileOp(const std::string &type, const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
-      : framework::OperatorBase(type, inputs, outputs, attrs) {}
+      : framework::OperatorBase(type, inputs, outputs, attrs),
+        naive_executor_(platform::CPUPlace()) {}
 
  private:
   void RunImpl(const framework::Scope &scope,
@@ -46,29 +48,61 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
-
-    framework::Executor executor(dev_place);
-    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
-
-    auto *program = block->Program();
+    PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
+                   "Condition of while op must in CPU memory.");
 
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
-                   "Condition of while op must in CPU memory.");
-
     bool is_test = Attr<bool>("is_test");
-    auto ctx = executor.Prepare(*program, block->ID());
-    while (cond.data<bool>()[0]) {
-      auto &current_scope = scope.NewScope();
-      step_scopes->push_back(&current_scope);
-      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
-      if (is_test) {
-        scope.DeleteScope(&current_scope);
+
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+    auto *program = block->Program();
+    if (!is_test) {  // for train
+      framework::Executor executor(dev_place);
+
+      auto ctx = executor.Prepare(*program, block->ID());
+      while (cond.data<bool>()[0]) {
+        auto &current_scope = scope.NewScope();
+        step_scopes->push_back(&current_scope);
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
+                                    true);
+      }
+    } else {  // for inference
+      if (!ops_created_) {
+        LOG(INFO) << "create operators";
+        InitNaiveExecutorForSubblock(*program, &scope);
+      }
+      size_t num_steps{0};
+      while (cond.data<bool>()[0]) {
+        ++num_steps;
+        if (num_steps > step_scopes->size()) {
+          auto &new_scope = scope.NewScope();
+          step_scopes->push_back(&new_scope);
+        }
+
+        framework::Scope *cur_scope = step_scopes->at(num_steps - 1);
+        naive_executor_.SetScope(cur_scope);
+        naive_executor_.Run();
       }
     }
   }
+
+  // Init the NaiveExecutor on the first time called, the executor will hold the
+  // operators until the end.
+  // Inputs:
+  // @program: the subblock program.
+  // @scope: the scope of this op.
+  void InitNaiveExecutorForSubblock(const framework::ProgramDesc &program,
+                                    const framework::Scope *scope) const {
+    // Create ops.
+    naive_executor_.Prepare(const_cast<framework::Scope *>(scope), program, 0,
+                            true);
+  }
+
+  // NaiveExecutor only works on test mode.
+  mutable framework::NaiveExecutor naive_executor_;
+  mutable bool ops_created_{false};
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
