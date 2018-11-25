@@ -55,10 +55,6 @@ void MemoryOptimizePass::CollectLifeCycle(
     std::vector<Node*> requires(reads.begin(), reads.end());
     requires.insert(requires.end(), writes.begin(), writes.end());
 
-    bool to_optim = true;
-
-    if (op_node->Name() == "stack") to_optim = false;
-
     // Disable reuse of feed variables.
     if (op_node->Name() == "feed") {
       for (auto* node : op_node->outputs) {
@@ -74,8 +70,7 @@ void MemoryOptimizePass::CollectLifeCycle(
         if (node->Var()->Persistable()) continue;
         std::string var = node->Name();
         if (!lifecycles->count(var)) {
-          int dead =
-              to_optim ? max_lifecycle_ : std::numeric_limits<int>::max();
+          int dead = max_lifecycle_;
           (*lifecycles)[var] = std::make_pair(max_lifecycle_, dead);
         } else {
           (*lifecycles)[var].second =
