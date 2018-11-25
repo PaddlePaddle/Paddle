@@ -98,7 +98,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
-        .SetDefault({"127.0.0.1:6164"});
+        .SetDefault({});
 
     AddComment(R"DOC(
 Lookup Table Operator.
