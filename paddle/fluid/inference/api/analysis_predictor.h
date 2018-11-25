@@ -69,6 +69,8 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
+  void SetMkldnnThreadID(int tid);
+
  protected:
   void CollectVarShapes() {
     if (batch_var_shapes_.size() >= max_shape_collect_count_) return;

@@ -46,6 +46,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   prog_file = other.prog_file;
   param_file = other.param_file;
   specify_input_name = other.specify_input_name;
+  cpu_math_library_num_threads_ = other.cpu_math_library_num_threads_;
   // fields from this.
   enable_ir_optim = other.enable_ir_optim;
   use_feed_fetch_ops = other.use_feed_fetch_ops;

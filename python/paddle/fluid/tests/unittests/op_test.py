@@ -381,8 +381,8 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
 
-    def __assert_is_close(self, numeric_grads, analytic_grads, names,
-                          max_relative_error, msg_prefix):
+    def _assert_is_close(self, numeric_grads, analytic_grads, names,
+                         max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
@@ -451,9 +451,9 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
 
-        self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
-                               max_relative_error,
-                               "Gradient Check On %s" % str(place))
+        self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
+                              max_relative_error,
+                              "Gradient Check On %s" % str(place))
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

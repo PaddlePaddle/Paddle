@@ -50,9 +50,9 @@ struct AnalysisConfig : public NativeConfig {
                             int max_batch_size = 1);
   bool use_tensorrt() const { return use_tensorrt_; }
 
+  void EnableMKLDNN();
   // NOTE this is just for internal development, please not use it.
   // NOT stable yet.
-  void EnableMKLDNN();
   bool use_mkldnn() const { return use_mkldnn_; }
 
   void EnableMemoryOptim();
