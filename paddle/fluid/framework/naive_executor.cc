@@ -83,6 +83,7 @@ void NaiveExecutor::Run() {
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
+    op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
   }
 }
