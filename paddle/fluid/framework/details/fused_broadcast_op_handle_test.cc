@@ -22,8 +22,10 @@ namespace details {
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;
+  std::vector<std::unique_ptr<ir::Node>> nodes_;
 
   void InitFusedBroadcastOp(std::vector<size_t> input_scope_idxes) {
+    nodes_.clear();
     // initialize scope and var
     for (size_t i = 0; i < place_list_.size(); ++i) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
@@ -39,41 +41,41 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     }
 
     // create op handle node
-    std::unique_ptr<ir::Node> n =
-        ir::CreateNodeForTest("fused_broadcast", ir::Node::Type::kOperation);
+    nodes_.emplace_back(
+        ir::CreateNodeForTest("fused_broadcast", ir::Node::Type::kOperation));
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
-      op_handle_.reset(new FusedBroadcastOpHandle(
-          n.get(), local_scopes_, place_list_, nccl_ctxs_.get()));
+      op_handle_ = new FusedBroadcastOpHandle(
+          nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
       PADDLE_THROW("CUDA is not supported.");
 #endif
     } else {
 #ifdef PADDLE_WITH_CUDA
-      op_handle_.reset(new FusedBroadcastOpHandle(
-          n.get(), local_scopes_, place_list_, nccl_ctxs_.get()));
+      op_handle_ = new FusedBroadcastOpHandle(
+          nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
-      op_handle_.reset(
-          new FusedBroadcastOpHandle(n.get(), local_scopes_, place_list_));
+      op_handle_ = new FusedBroadcastOpHandle(nodes_.back().get(),
+                                              local_scopes_, place_list_);
 #endif
     }
 
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
       // add input var handle
-      std::unique_ptr<ir::Node> in_node =
-          ir::CreateNodeForTest("in_node" + i, ir::Node::Type::kVariable);
+      nodes_.emplace_back(
+          ir::CreateNodeForTest("in_node" + i, ir::Node::Type::kVariable));
       VarHandle* in_var_handle =
-          new VarHandle(in_node.get(), 1, input_scope_idxes[i], "in_var" + i,
-                        place_list_[input_scope_idxes[i]]);
+          new VarHandle(nodes_.back().get(), 1, input_scope_idxes[i],
+                        "in_var" + i, place_list_[input_scope_idxes[i]]);
       vars_.emplace_back(in_var_handle);
       op_handle_->AddInput(in_var_handle);
 
       // add output var handle
       for (size_t j = 0; j < place_list_.size(); ++j) {
-        std::unique_ptr<ir::Node> out_node =
-            ir::CreateNodeForTest("out_node" + i, ir::Node::Type::kVariable);
-        VarHandle* out_var_handle =
-            new VarHandle(out_node.get(), 2, j, "out_var" + i, place_list_[j]);
+        nodes_.emplace_back(
+            ir::CreateNodeForTest("out_node" + i, ir::Node::Type::kVariable));
+        VarHandle* out_var_handle = new VarHandle(
+            nodes_.back().get(), 2, j, "out_var" + i, place_list_[j]);
         vars_.emplace_back(out_var_handle);
         op_handle_->AddOutput(out_var_handle);
       }

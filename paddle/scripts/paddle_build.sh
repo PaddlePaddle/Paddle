@@ -94,6 +94,30 @@ function cmake_gen() {
             else
                 exit 1
             fi
+        elif [ "$1" == "cp36-cp36m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
+                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp37-cp37m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
+                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
@@ -116,6 +140,18 @@ function cmake_gen() {
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
+            elif [ "$1" == "cp36-cp36m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so"
+            elif [ "$1" == "cp37-cp37m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
            fi
         fi
     fi
@@ -139,6 +175,7 @@ function cmake_gen() {
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
+        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
@@ -155,6 +192,8 @@ function cmake_gen() {
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
+        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
+        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
     ========================================
@@ -171,6 +210,7 @@ EOF
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
+        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
@@ -186,6 +226,8 @@ EOF
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
+        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
+        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
 
@@ -367,7 +409,12 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        ctest --output-on-failure
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            ctest -V
+        else
+            ctest --output-on-failure
+        fi
+
         # make install should also be test when unittest
         make install -j `nproc`
         pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
@@ -408,7 +455,7 @@ function assert_api_not_changed() {
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
-    if [ "$1" == "cp35-cp35m" ]; then
+    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' new.spec
         sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
@@ -609,7 +656,24 @@ EOF
         CMD='"true"'
     fi
 
-    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    if [ "$1" == "cp35-cp35m" ]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    ADD python/dist/*.whl /
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
+        pip3 install opencv-python && pip3 install /*.whl; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f /*.whl && \
+        ${PADDLE_VERSION} && \
+        ldconfig
+    ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
+    ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
+EOF
+    else
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
@@ -624,6 +688,8 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
+    fi
+
     if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
         ADD go/cmd/pserver/pserver /usr/bin/
@@ -698,7 +764,7 @@ function main() {
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        gen_dockerfile
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       build_android)
         build_android
@@ -725,7 +791,7 @@ function main() {
         gen_html
         ;;
       dockerfile)
-        gen_dockerfile
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       capi)
         cmake_gen ${PYTHON_ABI:-""}
@@ -749,6 +815,17 @@ function main() {
         gen_capi_package
         gen_fluid_lib
         test_fluid_lib
+        assert_api_spec_approvals
+        ;;
+      assert_api)
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        ;;
+      test_inference)
+        gen_capi_package
+        gen_fluid_lib
+        test_fluid_lib
+        ;;
+      assert_api_approvals)
         assert_api_spec_approvals
         ;;
       maccheck)

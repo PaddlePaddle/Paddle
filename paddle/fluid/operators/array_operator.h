@@ -49,7 +49,7 @@ class ArrayOp : public framework::OperatorBase {
     } else {
       offset = static_cast<size_t>(*i_tensor.data<int64_t>());
     }
-    VLOG(10) << " Offset = " << offset;
+    VLOG(100) << " Offset = " << offset;
     return offset;
   }
 };

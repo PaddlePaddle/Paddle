@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace {
@@ -76,7 +75,7 @@ bool NativePaddlePredictor::Init(
 #endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -157,7 +156,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+  VLOG(30) << "predict cost: " << timer.toc() << "ms";
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());

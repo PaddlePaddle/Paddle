@@ -118,7 +118,7 @@ void generateSequenceStartPositions(size_t batchSize,
     }
     buf[i] = pos;
     pos += len;
-    VLOG(1) << " len=" << len;
+    VLOG(10) << " len=" << len;
   }
   buf[numSeqs] = batchSize;
 }

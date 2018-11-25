@@ -25,7 +25,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
                      const std::string& var_name, size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
-  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
+  VLOG(30) << "SetFeedVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = scope->Var(var_name);
   auto& feed_inputs = *(g_feed_value->GetMutable<FeedFetchList>());
   if (index >= feed_inputs.size()) {
@@ -47,8 +47,8 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
                  typeid(FeedFetchList).name());
   auto& fetch_outputs = *g_fetch_value->GetMutable<FeedFetchList>();
   auto& tensor = fetch_outputs[index];
-  VLOG(3) << "Fetch " << var_name << " with index " << index
-          << " shape= " << tensor.dims();
+  VLOG(30) << "Fetch " << var_name << " with index " << index
+           << " shape= " << tensor.dims();
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());
   return tensor;
 }
