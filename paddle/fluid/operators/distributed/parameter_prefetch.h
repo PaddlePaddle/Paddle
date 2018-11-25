@@ -1,38 +1,41 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
-#include <future>  // NOLINT
-#include <ostream>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/detail/macros.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/framework/var_type.h"
+
+#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/distributed/grpc_bytebuffer_stream.h"
+#include "paddle/fluid/operators/distributed/variable_response.h"
 
 namespace paddle {
 namespace operators {
+namespace distributed {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
@@ -201,74 +204,6 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   context.scope().DeleteScope(&local_scope);
 }
 
-template <typename T>
-class LookupRemoteTableKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    std::string id_name = context.Inputs("Ids").front();
-    auto* ids_t = context.Input<LoDTensor>("Ids");  // int tensor
-
-    std::string out_name = context.Outputs("Out").front();
-    auto* output_t = context.Output<LoDTensor>("Out");  // float tensor
-
-    std::string table_name = context.Inputs("W").front();
-    auto* table_var = context.InputVar("W");
-
-    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-    int64_t* ids = const_cast<int64_t*>(ids_t->data<int64_t>());
-    int64_t ids_numel = ids_t->numel();
-
-    auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
-
-    auto& local_scope = context.scope().NewScope();
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(context.GetPlace());
-
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-            context.Attr<int>("trainer_id"));
-
-    std::vector<std::string> in_var_names;
-    std::vector<std::string> out_var_names;
-    for (size_t i = 0; i < epmap.size(); ++i) {
-      in_var_names.push_back(id_name + "@" + epmap[i]);
-      out_var_names.push_back(out_name + "@" + epmap[i]);
-    }
-
-    auto splited_ids = SplitIds(id_name, height_sections, &local_scope);
-    SplitIdsIntoMultipleVarsBySection(id_name, in_var_names, height_sections,
-                                      splited_ids, &local_scope);
-
-    // create output var in local scope
-    for (auto& name : out_var_names) {
-      local_scope.Var(name)->GetMutable<framework::LoDTensor>();
-    }
-
-    std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < in_var_names.size(); i++) {
-      if (NeedSend(local_scope, in_var_names[i])) {
-        VLOG(30) << "sending " << in_var_names[i] << " to " << epmap[i]
-                 << " to get " << out_var_names[i] << " back";
-        rets.push_back(rpc_client->AsyncPrefetchVar(
-            epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i]));
-      } else {
-        VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
-      }
-    }
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-    }
-
-    MergeMultipleVarsIntoOnBySection(id_name, out_name, out_var_names,
-                                     height_sections, splited_ids, context,
-                                     &local_scope);
-
-    context.scope().DeleteScope(&local_scope);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
+};  // namespace distributed
+};  // namespace operators
+};  // namespace paddle
