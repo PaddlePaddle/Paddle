@@ -71,8 +71,6 @@ TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.pass_builder()->TurnOnDebug();
-  cfg.EnableMemoryOptim();
-  cfg.Build();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
