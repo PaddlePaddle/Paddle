@@ -51,7 +51,7 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
     LOG(INFO) << *reinterpret_cast<const contrib::AnalysisConfig *>(config);
     return;
   }
-  LOG(INFO) << *config;
+  LOG(INFO) << *reinterpret_cast<const NativeConfig *>(config);
 }
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,

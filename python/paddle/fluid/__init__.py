@@ -116,7 +116,8 @@ def __bootstrap__():
         'use_mkldnn', 'use_ngraph', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
         "dist_threadpool_size", 'cpu_deterministic', 'eager_delete_tensor_gb',
-        'allocator_strategy', 'reader_queue_speed_test_mode'
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir'
     ]
     if os.name != 'nt':
         read_env_flags.append('warpctc_dir')
