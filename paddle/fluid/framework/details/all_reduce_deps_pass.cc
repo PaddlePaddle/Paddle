@@ -65,7 +65,6 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   // get allreduce ops.
   for (auto& op : graph_ops) {
     if (op->Name() == "all_reduce" || op->Name() == "reduce") {
-      // op->Name() == "broadcast"){
       dist_ops.push_back(op);
     }
   }
