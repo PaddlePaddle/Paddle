@@ -106,7 +106,7 @@ inline void MergeMultipleVarsIntoOnBySection(
     const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     const framework::ExecutionContext& context, framework::Scope* scope) {
-  PADDLE_ENFORCE_EQ(out_var_names.size(), height_section.size() + 1, "");
+  PADDLE_ENFORCE_EQ(out_var_names.size(), height_section.size(), "");
 
   auto cpu_place = platform::CPUPlace();
 
@@ -185,7 +185,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
                << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
           epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i],
-          table_name));
+          table_name + ".block" + std::to_string(i)));
     } else {
       VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
     }
