@@ -1029,6 +1029,7 @@ def density_prior_box(input,
                       clip=False,
                       steps=[0.0, 0.0],
                       offset=0.5,
+                      flatten_to_2d=False,
                       name=None):
     """
     **Density Prior Box Operator**
@@ -1065,22 +1066,24 @@ def density_prior_box(input,
             height/weight of the input will be automatically calculated.
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
+       flatten_to_2d(bool): Whether to flatten output prior boxes and variance
+           to 2D shape, the second dim is 4. Default: False.
        name(str): Name of the density prior box op. Default: None.
 
     Returns:
         tuple: A tuple with two Variable (boxes, variances)
 
         boxes: the output density prior boxes of PriorBox.
-        The layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input,
-        num_priors is the total
-        box count of each position of input.
+            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input,
+            num_priors is the total box count of each position of input.
 
         variances: the expanded variances of PriorBox.
-        The layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input
-        num_priors is the total
-        box count of each position of input
+            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input
+            num_priors is the total box count of each position of input.
 
 
     Examples:
@@ -1089,14 +1092,11 @@ def density_prior_box(input,
             box, var = fluid.layers.density_prior_box(
                 input=conv1,
                 image=images,
-                min_sizes=[100.],
-                max_sizes=[200.],
-                aspect_ratios=[1.0, 1.0 / 2.0, 2.0],
-                densities=[3, 4],
-                fixed_sizes=[50., 60.],
-                fixed_ratios=[1.0, 3.0, 1.0 / 3.0],
-                flip=True,
-                clip=True)
+                densities=[4, 2, 1],
+                fixed_sizes=[32.0, 64.0, 128.0],
+                fixed_ratios=[1.],
+                clip=True,
+                flatten_to_2d=True)
     """
     helper = LayerHelper("density_prior_box", **locals())
     dtype = helper.input_dtype()
@@ -1127,14 +1127,11 @@ def density_prior_box(input,
         'step_w': steps[0],
         'step_h': steps[1],
         'offset': offset,
+        'densities': densities,
+        'fixed_sizes': fixed_sizes,
+        'fixed_ratios': fixed_ratios,
+        'flatten_to_2d': flatten_to_2d,
     }
-    if densities is not None and len(densities) > 0:
-        attrs['densities'] = densities
-    if fixed_sizes is not None and len(fixed_sizes) > 0:
-        attrs['fixed_sizes'] = fixed_sizes
-    if fixed_ratios is not None and len(fixed_ratios) > 0:
-        attrs['fixed_ratios'] = fixed_ratios
-
     box = helper.create_variable_for_type_inference(dtype)
     var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

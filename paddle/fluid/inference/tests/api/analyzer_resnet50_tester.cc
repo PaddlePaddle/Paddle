@@ -27,6 +27,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->device = 0;
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
