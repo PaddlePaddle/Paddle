@@ -56,7 +56,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int64_t>>("height_sections");
 
     if (remote_prefetch) {
-// if emap is not empty, then the paramter will be fetched from remote parameter
+// if emap is not empty, then the parameter will be fetched from remote
+// parameter
 // server
 #ifdef PADDLE_WITH_DISTRIBUTE
       operators::distributed::prefetch(id_name, out_name, table_name, epmap,

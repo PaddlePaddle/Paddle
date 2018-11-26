@@ -63,7 +63,7 @@ inline std::vector<int64_t> ToAbsoluteSection(
 inline std::vector<std::vector<int64_t>> SplitIds(
     const std::string& id_name, const std::vector<int64_t>& height_section,
     framework::Scope* scope) {
-  auto& id_tensor = scope->Var(id_name)->Get<framework::LoDTensor>();
+  auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
   auto* id_data = id_tensor.data<int64_t>();
   std::set<int64_t> all_ids;
   for (size_t i = 0; i < id_tensor.numel(); ++i) {
@@ -111,14 +111,15 @@ inline void MergeMultipleVarsIntoOnBySection(
   auto cpu_place = platform::CPUPlace();
 
   auto abs_sections = ToAbsoluteSection(height_section);
-  auto& id_tensor = scope->Var(id_name)->Get<framework::LoDTensor>();
+  auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
   auto* id_data = id_tensor.data<int64_t>();
   std::unordered_map<int64_t, std::vector<size_t>> id_to_offset;
   for (size_t i = 0; i < id_tensor.numel(); ++i) {
     id_to_offset[id_data[i]].push_back(i);
   }
 
-  auto* out_tensor = scope->Var(out_name)->GetMutable<framework::LoDTensor>();
+  auto* out_tensor =
+      scope->FindVar(out_name)->GetMutable<framework::LoDTensor>();
   auto* out_tensor_data = out_tensor->mutable_data<float>(context.GetPlace());
 
   for (size_t section_idx = 0; section_idx < out_var_names.size();
