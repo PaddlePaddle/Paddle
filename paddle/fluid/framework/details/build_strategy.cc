@@ -132,7 +132,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-    } else if (pass->Type() == "all_reduce_deps_pass") {
+    } else if (pass->Type() == "sequential_execution_pass") {
       VLOG(1) << "set enable_sequential_execution:"
               << enable_sequential_execution_;
 
@@ -140,7 +140,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
-    } else if (pass->Type() == "sequential_execution_pass") {
+    } else if (pass->Type() == "all_reduce_deps_pass") {
       VLOG(1) << ", SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
               << ", num_trainers:" << num_trainers_;
 
