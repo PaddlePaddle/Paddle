@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -74,6 +75,8 @@ struct BuildStrategy {
   bool fuse_broadcast_op_{false};
 
   bool remove_unnecessary_lock_{false};
+
+  std::set<std::string> model_parallelism_weights_;
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works

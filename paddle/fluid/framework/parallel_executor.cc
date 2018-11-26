@@ -110,8 +110,12 @@ ParallelExecutor::ParallelExecutor(
     if (nccl_id_var != nullptr) {
       nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
     }
+    // member_->nccl_ctxs_.reset(platform::NCCLContextMap::Init(
+    //    member_->places_, nccl_id, num_trainers, trainer_id));
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, num_trainers, trainer_id));
+    platform::NCCLContextMap::Init(member_->places_, nccl_id, num_trainers,
+                                   trainer_id);
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif

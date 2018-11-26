@@ -31,144 +31,36 @@ from functools import reduce
 from .. import core
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'sequence_unpad',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'sequence_slice',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'hsigmoid',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'group_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'squeeze',
-    'unsqueeze',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'roi_pool',
-    'roi_align',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'resize_nearest',
-    'gather',
-    'scatter',
-    'sequence_scatter',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'selu',
-    'log',
-    'crop',
-    'rank_loss',
-    'margin_rank_loss',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
-    'prelu',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
-    'flatten',
-    'sequence_mask',
-    'stack',
-    'pad2d',
-    'unstack',
-    'sequence_enumerate',
-    'expand',
-    'sequence_concat',
-    'scale',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
-    'uniform_random_batch_size_like',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'shape',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
-    'clip',
-    'clip_by_norm',
-    'mean',
-    'mul',
-    'sigmoid_cross_entropy_with_logits',
-    'maxout',
-    'space_to_depth',
-    'affine_grid',
-    'sequence_reverse',
-    'affine_channel',
-    'similarity_focus',
-    'hash',
-    'grid_sampler',
-    'log_loss',
-    'add_position_encoding',
-    'bilinear_tensor_product',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'sequence_expand_as', 'sequence_pad', 'sequence_unpad',
+    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
+    'reduce_prod', 'sequence_first_step', 'sequence_last_step',
+    'sequence_slice', 'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance',
+    'l2_normalize', 'matmul', 'topk', 'warpctc', 'sequence_reshape',
+    'transpose', 'im2sequence', 'nce', 'hsigmoid', 'beam_search', 'row_conv',
+    'multiplex', 'layer_norm', 'group_norm', 'softmax_with_cross_entropy',
+    'smooth_l1', 'one_hot', 'autoincreased_step_counter', 'reshape', 'squeeze',
+    'unsqueeze', 'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth',
+    'roi_pool', 'roi_align', 'dice_loss', 'image_resize', 'image_resize_short',
+    'resize_bilinear', 'resize_nearest', 'gather', 'scatter',
+    'sequence_scatter', 'random_crop', 'mean_iou', 'relu', 'selu', 'log',
+    'crop', 'rank_loss', 'margin_rank_loss', 'elu', 'relu6', 'pow', 'stanh',
+    'hard_sigmoid', 'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu',
+    'flatten', 'sequence_mask', 'stack', 'pad2d', 'unstack',
+    'sequence_enumerate', 'expand', 'sequence_concat', 'scale',
+    'elementwise_add', 'elementwise_div', 'elementwise_sub', 'elementwise_mul',
+    'elementwise_max', 'elementwise_min', 'elementwise_pow',
+    'uniform_random_batch_size_like', 'gaussian_random', 'sampling_id',
+    'gaussian_random_batch_size_like', 'sum', 'slice', 'shape', 'logical_and',
+    'logical_or', 'logical_xor', 'logical_not', 'clip', 'clip_by_norm', 'mean',
+    'mul', 'sigmoid_cross_entropy_with_logits', 'maxout', 'space_to_depth',
+    'affine_grid', 'sequence_reverse', 'affine_channel', 'similarity_focus',
+    'hash', 'grid_sampler', 'log_loss', 'add_position_encoding',
+    'bilinear_tensor_product', 'sync_fc'
 ]
 
 
@@ -179,7 +71,9 @@ def fc(input,
        bias_attr=None,
        act=None,
        is_test=False,
-       name=None):
+       name=None,
+       distributed=False,
+       trainers=1):
     """
     **Fully Connected Layer**
 
@@ -229,6 +123,10 @@ def fc(input,
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
         name (str, default None): The name of this layer.
+        distributed (bool, default False): If it is set to True, the fc layer would synchronize weight
+            amount all trainers processes,  
+        trainers (int, default 1): Total trainer process count, this argument was only used in
+            distributed mode FC.
 
     Returns:
         Variable: The transformation result.
@@ -256,15 +154,41 @@ def fc(input,
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type="mul",
-            inputs={"X": input_var,
-                    "Y": w},
-            outputs={"Out": tmp},
-            attrs={"x_num_col_dims": num_flatten_dims,
-                   "y_num_col_dims": 1})
-        mul_results.append(tmp)
+        if distributed:
+            allgather_out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="sync_fc_allgather",
+                inputs={"X": input},
+                outputs={"Out": allgather_out},
+                attrs={"trainers": trainers})
+            mul_out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="mul",
+                inputs={"X": allgather_out,
+                        "Y": w},
+                outputs={"Out": mul_out},
+                attrs={
+                    "x_num_col_dims": num_flatten_dims,
+                    "y_num_col_dims": 1
+                })
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="sync_fc_gather",
+                inputs={"X": mul_out},
+                outputs={"Out": out})
+            mul_results.append(out)
+        else:
+            tmp = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="mul",
+                inputs={"X": input_var,
+                        "Y": w},
+                outputs={"Out": tmp},
+                attrs={
+                    "x_num_col_dims": num_flatten_dims,
+                    "y_num_col_dims": 1
+                })
+            mul_results.append(tmp)
 
     if len(mul_results) == 1:
         pre_bias = mul_results[0]
@@ -8623,3 +8547,51 @@ def bilinear_tensor_product(x,
 
     # add activation
     return helper.append_activation(out)
+
+
+def sync_fc(input,
+            size,
+            num_flatten_dims=1,
+            param_attr=None,
+            bias_attr=None,
+            act=None,
+            name=None):
+    """
+    **Synchronous Fully Connected Layer**
+
+    Args:
+    Returns:
+    Examples:
+    """
+    helper = LayerHelper("sync_fc", **locals())
+    input_shape = input_var.shape
+    param_shape = [
+        reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+    ] + [size]
+    dtype = helper.input_dtype()
+    w = helper.create_parameter(
+        attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+    allgather_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="sync_fc_allgather",
+        inputs={"X": input},
+        outputs={"Out": allgather_out},
+        attrs={"trainers": trainers})
+    mul_out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="mul",
+        inputs={"X": allgather_out,
+                "Y": w},
+        outputs={"Out": mul_out},
+        attrs={"x_num_col_dims": num_flatten_dims,
+               "y_num_col_dims": 1})
+
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="sync_fc_gather", inputs={"X": mul_out}, outputs={"Out": out})
+
+    # add bias
+    pre_activation = helper.append_bias_op(out, dim_start=1)
+    # add activation
+    return helper.append_activation(pre_activation)

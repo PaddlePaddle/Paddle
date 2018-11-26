@@ -24,6 +24,22 @@ from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
 from six.moves import zip
+import contextlib
+
+__all__ = ["weight_vars_guard"]
+_global_weight_vars_ = []
+
+
+@contextlib.contextmanager
+def weight_vars_guard(weight_vars):
+    if not isinstance(weight_vars, list):
+        raise TypeError("weight_vars should be list")
+
+    global _global_weight_vars_
+    prev_list = copy.copy(_global_weight_vars_)
+    _global_weight_vars_ = weight_vars
+    yield
+    _global_weight_vars_ = copy.copy(prev_list)
 
 
 class LayerHelper(object):
@@ -315,8 +331,10 @@ class LayerHelper(object):
 
         self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr._to_kwargs(with_initializer=True))
-        return self.main_program.global_block().create_parameter(
+        w = self.main_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr._to_kwargs())
+        _global_weight_vars_.append(w)
+        return w
 
     def get_parameter(self, name):
         param = self.main_program.global_block().var(name)

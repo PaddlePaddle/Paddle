@@ -293,6 +293,7 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
 
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
+  VLOG(10) << "in multi devices pass...";
   Init();
   // Give the topology sort order and rebuild the graph structure.
   std::vector<ir::Node *> sorted_ops = SortOpsAndDelayOptimizeOp(*graph);
@@ -326,6 +327,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   std::unordered_map<std::string, int> sharded_var_device;
 
   for (ir::Node *node : sorted_ops) {
+    VLOG(10) << node->Op()->Type();
     if (boost::get<int>(
             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
         static_cast<int>(OpRole::kRPC)) {
@@ -382,7 +384,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         } else {
           CreateComputationalOps(&result, node, places_.size());
         }
-
         if (!is_forwarding && places_.size() > 1) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
@@ -415,7 +416,14 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                       CreateReduceOp(&result, g_name, 0);
                       CreateBroadcastOp(&result, g_name, 0);
                     } else {
-                      InsertAllReduceOp(&result, g_name);
+                      if (strategy_.model_parallelism_weights_.find(
+                              framework::ParamVarName(g_name)) ==
+                          strategy_.model_parallelism_weights_.end()) {
+                        InsertAllReduceOp(&result, g_name);
+                      } else {
+                        VLOG(100) << "skip model parallel weight gradient: "
+                                  << g_name;
+                      }
                     }
                     break;
                   default:

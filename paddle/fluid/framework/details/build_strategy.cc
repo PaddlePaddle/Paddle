@@ -67,6 +67,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           "graph_printer", new details::GraphvizSSAGraphPrinter);
     }
 
+    if (strategy_.model_parallelism_weights_.size() > 0 &&
+        strategy_.reduce_ != BuildStrategy::ReduceStrategy::kAllReduce)
+      PADDLE_THROW(
+          "ReduceStrategy should be AllReduce if"
+          "model parallelism weights exists.");
+
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
 
