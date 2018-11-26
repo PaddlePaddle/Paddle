@@ -54,7 +54,7 @@ class PyLayer(core.Layer):
                         dtype=x.dtype)
                     var = self._scope.var(py_var.name)
                     tensor = var.get_tensor()
-                    tensor.set_float(x, core.CPUPlace())
+                    tensor.set(x, core.CPUPlace())
                     var_inputs.append(py_var)
                 elif isinstance(x, framework.Variable):
                     var_inputs.append(x)

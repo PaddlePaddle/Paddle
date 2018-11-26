@@ -50,7 +50,6 @@ class LayerHelper(object):
 
     def _np_to_variable(self, x):
         tensor = core.LoDTensor()
-        sys.stderr.write('%s %s\n' % (tensor, x))
         tensor.set(x, core.CPUPlace())
         return Variable(
             self.main_program.current_block(),
@@ -66,12 +65,6 @@ class LayerHelper(object):
             return self._np_to_variable(x)
         else:
             raise ValueError("inputs wrong type %s\n" % x)
-
-    def to_variables(self, inputs):
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
-            return [self._to_variable(x) for x in inputs]
-        else:
-            return [self._to_variable(inputs)]
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)

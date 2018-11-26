@@ -159,7 +159,6 @@ PYBIND11_MODULE(core, m) {
              self.mutable_data<float>(place);
            })
       .def("set", PyCPUTensorSetFromArray<float>)
-      .def("set_float", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
       .def("set", PyCPUTensorSetFromArray<int64_t>)
