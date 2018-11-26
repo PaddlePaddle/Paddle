@@ -19,10 +19,16 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#ifndef _WIN32
+const float fraction_of_gpu_memory_to_use = 0.92f;
+#else
 // fraction_of_gpu_memory_to_use cannot be too high on windows,
 // since the win32 graphic sub-system can occupy some GPU memory
 // which may lead to insufficient memory left for paddle
-DEFINE_double(fraction_of_gpu_memory_to_use, 0.5,
+const float fraction_of_gpu_memory_to_use = 0.5f;
+#endif
+
+DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
               "from the trunk. If the trunk doesn't have enough gpu memory, "
