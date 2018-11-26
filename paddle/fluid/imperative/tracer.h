@@ -14,8 +14,12 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/engine.h"
 
 namespace paddle {
@@ -26,10 +30,47 @@ class Tracer {
   Tracer() {}
 
   void Trace(framework::OpDesc* op_desc) {
-    LOG(ERROR) << "tracing " << op_desc->Type();
+    LOG(ERROR) << "tracer tracing " << op_desc->Type();
+    op_desc->InferShape(*block_);
+    op_desc->InferVarType(block_);
+    std::unique_ptr<framework::OperatorBase> op =
+        framework::OpRegistry::CreateOp(*op_desc);
+    for (const std::string& vname : op_desc->InputArgumentNames()) {
+      framework::Variable* var = scope_->Var(vname);
+      if (!var->IsInitialized()) {
+        framework::VarDesc* var_desc = block_->FindVar(vname);
+        if (var_desc->GetType() == framework::proto::VarType::LOD_TENSOR) {
+          var->GetMutable<framework::LoDTensor>();
+        } else {
+          LOG(ERROR) << "tracer doesn't support yet";
+        }
+      }
+    }
+    for (const std::string& vname : op_desc->OutputArgumentNames()) {
+      framework::Variable* var = scope_->Var(vname);
+      if (!var->IsInitialized()) {
+        framework::VarDesc* var_desc = block_->FindVar(vname);
+        if (var_desc->GetType() == framework::proto::VarType::LOD_TENSOR) {
+          var->GetMutable<framework::LoDTensor>();
+        } else {
+          LOG(ERROR) << "tracer doesn't support yet";
+        }
+      }
+    }
+    op->Run(*scope_, platform::CPUPlace());
   }
 
+  void SetScope(framework::Scope* scope) { scope_ = scope; }
+
+  void SetBlock(framework::BlockDesc* block) { block_ = block; }
+
+  framework::Scope* Scope() const { return scope_; }
+
+  framework::BlockDesc* Block() const { return block_; }
+
  private:
+  framework::BlockDesc* block_;
+  framework::Scope* scope_;
   std::vector<Runnable*> runnables_;
 };
 

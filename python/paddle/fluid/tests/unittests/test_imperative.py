@@ -31,25 +31,18 @@ class MyLayer(fluid.imperative.PyLayer):
 
 class TestImperative(unittest.TestCase):
     def test_layer(self):
-        cl = core.Layer()
-        cl.forward([])
-        l = fluid.imperative.PyLayer()
-        l.forward([])
-
-    def test_imperative_trace(self):
         with fluid.imperative.guard():
-            self.assertTrue(fluid.imperative.enabled())
-            x = fluid.layers.data(name='abc', shape=[3, 4], dtype='float32')
-            for _ in xrange(2):
-                x = fluid.layers.relu(x)
-                x = fluid.layers.elementwise_mul(x, x)
-                self.assertIsNotNone(x)
+            cl = core.Layer()
+            cl.forward([])
+            l = fluid.imperative.PyLayer()
+            l.forward([])
 
     def test_layer_in_out(self):
-        l = MyLayer()
-        x = l(np.ones([1], np.float32))[0]
-        self.assertIsNotNone(x)
-        sys.stderr.write("%s output: %s\n" % (x, x.numpy(scope=l._scope)))
+        with fluid.imperative.guard():
+            l = MyLayer()
+            x = l(np.array([1.0, 2.0, -1.0], dtype=np.float32))[0]
+            self.assertIsNotNone(x)
+            sys.stderr.write("%s output: %s\n" % (x, x.numpy(scope=l._scope)))
 
 
 if __name__ == '__main__':

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/tracer.h"
 
 namespace paddle {
@@ -22,7 +24,19 @@ namespace pybind {
 void BindTracer(pybind11::module *m) {
   pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
       .def(pybind11::init<>())
-      .def("trace", &imperative::Tracer::Trace);
+      .def("trace", &imperative::Tracer::Trace)
+      .def_property("scope",
+                    [](const imperative::Tracer &self) { return self.Scope(); },
+                    [](imperative::Tracer &self, framework::Scope *scope) {
+                      self.SetScope(scope);
+                    },
+                    R"DOC()DOC")
+      .def_property("block",
+                    [](const imperative::Tracer &self) { return self.Block(); },
+                    [](imperative::Tracer &self, framework::BlockDesc *block) {
+                      self.SetBlock(block);
+                    },
+                    R"DOC()DOC");
 }
 
 }  // namespace pybind

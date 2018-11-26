@@ -58,15 +58,7 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
   Variable* var = scope.FindVar(var_name);
   PADDLE_ENFORCE(var, "%s no in scope", var_name);
-  // TODO(panyx0718): hack, remove it once we run oprerator.
-  LoDTensor* tensor = var->GetMutable<LoDTensor>();
-  int numel = 10;
-  float* data =
-      tensor->mutable_data<float>(framework::make_ddim({numel}),
-                                  platform::CPUPlace(), sizeof(float) * numel);
-  for (size_t i = 0; i < numel; ++i) data[i] = 1;
-
-  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "Variable is not LoDTensor");
+  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "Only support lod tensor now.");
   return *var->GetMutable<LoDTensor>();
 }
 
