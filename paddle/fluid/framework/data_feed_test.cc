@@ -19,20 +19,19 @@
 #include <fcntl.h>
 #include <iostream>
 #include <fstream>
+#include <mutex>
 #include "gtest/gtest.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-using paddle::framework::DataFeed;
-using paddle::framework::DataFeedFactory;
 
-paddle::framework::DataFeedDesc load_datafeed_param_from_file(const char* filename){
+paddle::framework::DataFeedDesc load_datafeed_param_from_file(const char* filename) {
   paddle::framework::DataFeedDesc data_feed_desc;
   int file_descriptor = open(filename, O_RDONLY);
   if (file_descriptor == -1){
-    std::cerr << "FATAL: cant open " << filename << std::endl;
+    LOG(ERROR) << "FATAL: cant open " << filename << std::endl;
     exit(-1);
   }   
   google::protobuf::io::FileInputStream fileInput(file_descriptor);
@@ -41,43 +40,72 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(const char* filena
   return data_feed_desc;
 }   
 
+const std::vector<std::string> load_filelist_from_file(const char* filename) {
+  std::vector<std::string> filelist;
+  std::ifstream fin(filename);
+  if (!fin.good()) {
+    LOG(ERROR) << "FATAL: cant open " << filename << std::endl;
+    exit(-1);
+  }
+  std::string line;
+  while (getline(fin, line)) {
+    filelist.push_back(line);
+  }
+  fin.close();
+  return filelist;
+}
+
 void GetElemSetFromReader(std::vector<std::set<int64_t>>& reader_elem_set,
         const paddle::framework::DataFeedDesc& data_feed_desc,
-        const std::vector<std::string>& filelist) {
-  std::shared_ptr<DataFeed> reader = DataFeedFactory::CreateDataFeed(data_feed_desc.name());
-  reader->Init(data_feed_desc);
-  reader->SetFileList(filelist);
-  auto* scope = new paddle::framework::Scope();
-  const std::vector<std::string> & use_slot_alias =
-      reader->GetUseSlotAlias();
-  for (auto name: use_slot_alias){
-      reader->AddFeedVar(scope->Var(name), name);
+        const std::vector<std::string>& filelist, const int thread_num) {
+  reader_elem_set.resize(data_feed_desc.multi_slot_desc().slots_size());
+  std::vector<std::thread> threads;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers;
+  readers.resize(thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    readers[i] = paddle::framework::DataFeedFactory::CreateDataFeed(data_feed_desc.name());
+    readers[i]->Init(data_feed_desc);
   }
-  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
-  for (auto name: use_slot_alias) {
-      feed_targets[name] = &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
-  }
-  reader_elem_set.resize(use_slot_alias.size());
-  reader->Start();
-  while (reader->Next()) {
-    for (auto i = 0; i < use_slot_alias.size(); ++i){
-      auto name = use_slot_alias[i];
-      const paddle::framework::LoDTensor *tens = feed_targets[name];
-      const int64_t* data = tens->data<int64_t>();
-      for (auto i = 0; i < tens->NumElements(); ++i){
-        std::pair<size_t, size_t> element = tens->lod_element(0, i);
-        for (auto j = element.first; j < element.second; ++j){
-          reader_elem_set[i].insert(data[j]);
-        }
+  readers[0]->SetFileList(filelist);
+  std::mutex mu;
+  for (int idx = 0; idx < thread_num; ++idx) {
+    threads.emplace_back(std::thread([&, idx] {
+      auto* scope = new paddle::framework::Scope();
+      const std::vector<std::string> & use_slot_alias =
+          readers[idx]->GetUseSlotAlias();
+      for (auto name: use_slot_alias){
+        readers[idx]->AddFeedVar(scope->Var(name), name);
       }
-    }
+      std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+      for (auto name: use_slot_alias) {
+        feed_targets[name] = &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
+      }
+      readers[idx]->Start();
+      while (readers[idx]->Next()) {
+        for (size_t k = 0; k < use_slot_alias.size(); ++k){
+          auto name = use_slot_alias[k];
+          const paddle::framework::LoDTensor *tens = feed_targets[name];
+          const int64_t* data = tens->data<int64_t>();
+          for (size_t i = 0; i < tens->NumElements(); ++i){
+            std::pair<size_t, size_t> element = tens->lod_element(0, i);
+            for (size_t j = element.first; j < element.second; ++j){
+              std::lock_guard<std::mutex> lock(mu);
+              reader_elem_set[k].insert(data[j]);
+            }
+          }
+        } // end slots loop
+      } // end while Next()
+    })); // end anonymous function
+  }
+  for (auto& th : threads) {
+    th.join();
   }
 }
 
 void CheckIsUnorderedSame(const std::vector<std::set<int64_t>>& s1,
         const std::vector<std::set<int64_t>>& s2) {
   EXPECT_EQ(s1.size(), s2.size());
-  for (auto i = 0; i < s1.size(); ++i) {
+  for (size_t i = 0; i < s1.size(); ++i) {
     EXPECT_EQ(s1[i].size(), s2[i].size());
     auto it1 = s1[i].begin();
     auto it2 = s2[i].begin();
@@ -89,43 +117,47 @@ void CheckIsUnorderedSame(const std::vector<std::set<int64_t>>& s1,
   }
 }
 
-void GetElemSetFromFile(std::vector<std::set<int64_t>> file_elem_set,
+void GetElemSetFromFile(std::vector<std::set<int64_t>>& file_elem_set,
         const paddle::framework::DataFeedDesc& data_feed_desc,
         const std::vector<std::string>& filelist) {
   file_elem_set.resize(data_feed_desc.multi_slot_desc().slots_size());
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
-    for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
-      int num;
-      fin >> num;
-      while (num--) {
-        uint64_t feasign;
-        fin >> feasign;
-        file_elem_set[i].insert(feasign);
+    if (!fin.good()) {
+      LOG(ERROR) << "FATAL: cant open " << file << std::endl;
+      exit(-1);
+    }
+    while (1) {
+      bool end_flag = false;
+      for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
+        int num;
+        if (fin >> num) {
+          while (num--) {
+            uint64_t feasign;
+            fin >> feasign;
+            file_elem_set[i].insert(feasign);
+          }
+        } else {
+          end_flag = true;
+          break;
+        }
+      }
+      if (end_flag) {
+        break;
       }
     }
+    fin.close();
   }
 }
 
 TEST(DataFeed, ReadUintTest) {
   const char* protofile = "data_feed_desc.prototxt";
-  std::vector<std::string> filelist;
-  filelist.push_back("train_data_new/part-0");
-  filelist.push_back("train_data_new/part-1");
-  filelist.push_back("train_data_new/part-2");
-  filelist.push_back("train_data_new/part-3");
-  filelist.push_back("train_data_new/part-4");
-  filelist.push_back("train_data_new/part-5");
-  filelist.push_back("train_data_new/part-6");
-  filelist.push_back("train_data_new/part-7");
-  filelist.push_back("train_data_new/part-8");
-  filelist.push_back("train_data_new/part-9");
-  filelist.push_back("train_data_new/part-10");
-  filelist.push_back("train_data_new/part-11");
+  const char* filelist_name = "filelist.txt";
+  const std::vector<std::string> filelist = load_filelist_from_file(filelist_name);
   paddle::framework::DataFeedDesc data_feed_desc = load_datafeed_param_from_file(protofile);
   std::vector<std::set<int64_t>> reader_elem_set;
   std::vector<std::set<int64_t>> file_elem_set;
-  GetElemSetFromReader(reader_elem_set, data_feed_desc, filelist);
+  GetElemSetFromReader(reader_elem_set, data_feed_desc, filelist, 12);
   GetElemSetFromFile(file_elem_set, data_feed_desc, filelist);
   CheckIsUnorderedSame(reader_elem_set, file_elem_set);
 }

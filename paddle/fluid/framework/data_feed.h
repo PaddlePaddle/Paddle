@@ -83,10 +83,6 @@ class BlockingQueue {
     size_.store(0);
   }
   
-  void ReCap(size_t capacity) {
-    capacity_ = capacity;
-  }
-
   bool Send(T& elem) {
     int c = -1;
     {
@@ -112,7 +108,7 @@ class BlockingQueue {
     return true;
   }
 
-  bool Receive(T* elem, int n) {
+  bool Receive(T* elem) {
     int c = -1;
     {
       std::unique_lock<std::mutex> lock(receive_mutex_);
@@ -238,6 +234,7 @@ class PrivateQueueDataFeed : public DataFeed {
    *     fread one buffer and one buffer parse: 7097 ms */
   std::ifstream file_;
   size_t queue_size_;
+  //std::unique_ptr<BlockingQueue<T>> queue_;
   std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };
 
