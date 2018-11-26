@@ -64,7 +64,6 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -73,7 +72,6 @@ bool NativePaddlePredictor::Init(
                                            : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   }
-#endif
 
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -121,12 +119,10 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
-#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
