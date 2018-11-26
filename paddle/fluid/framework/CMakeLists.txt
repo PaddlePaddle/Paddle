@@ -179,6 +179,7 @@ cc_library(async_executor
               lod_rank_table feed_fetch_method graph_to_program_pass
               async_executor_proto)
 
+cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
