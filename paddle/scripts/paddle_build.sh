@@ -469,8 +469,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=('paddle/fluid/API.spec' 'paddle/fluid/framework/operator.h')
-    for API_FILE in ${API_FILES}; do
+    API_FILES=("paddle/fluid/API.spec" "paddle/fluid/framework/operator.h")
+    for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
