@@ -134,6 +134,7 @@ def __bootstrap__():
         read_env_flags.append('rpc_send_thread_num')
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
+        read_env_flags.append('rpc_disable_reuse_port')
 
     if core.is_compiled_with_cuda():
         read_env_flags += [

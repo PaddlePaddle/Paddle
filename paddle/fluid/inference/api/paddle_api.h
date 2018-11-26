@@ -186,6 +186,19 @@ struct NativeConfig : public PaddlePredictor::Config {
   // Specify the variable's name of each input if input tensors don't follow the
   // `feeds` and `fetches` of the phase `save_inference_model`.
   bool specify_input_name{false};
+
+  // Set and get the number of cpu math library threads.
+  void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads) {
+    cpu_math_library_num_threads_ = cpu_math_library_num_threads;
+  }
+  int cpu_math_library_num_threads() const {
+    return cpu_math_library_num_threads_;
+  }
+
+ protected:
+  // number of cpu math library (such as MKL, OpenBlas) threads for each
+  // instance.
+  int cpu_math_library_num_threads_{1};
 };
 
 // A factory to help create different predictors.
