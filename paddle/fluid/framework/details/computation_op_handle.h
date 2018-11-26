@@ -43,6 +43,8 @@ struct ComputationOpHandle : public OpHandleBase {
 
   OperatorBase &GetOp() { return *op_; }
 
+  void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }
+
  protected:
   void RunImpl() override;
 
@@ -53,6 +55,7 @@ struct ComputationOpHandle : public OpHandleBase {
   Scope *scope_;
   platform::Place place_;
   size_t scope_idx_;
+  bool is_lock_and_record_event_free_{false};
 };
 }  // namespace details
 }  // namespace framework
