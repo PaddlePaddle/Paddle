@@ -17,10 +17,12 @@ from __future__ import print_function
 import numpy as np
 import contextlib
 
+import recommend_fp16
+
 from paddle.fluid import framework
 from paddle.fluid.framework import unique_name
 
-__all__ = ['switch_dtype_guard', ]
+__all__ = ['switch_to_fp16', ]
 
 
 def _rename_arg_(cur_block, old_name, new_name, begin_idx=None, end_idx=None):
@@ -48,26 +50,48 @@ def _create_tmp_variable_(cur_block, name, dtype, stop_gradient=False):
         stop_gradient=stop_gradient)
 
 
+def _dtype_to_str_(np_dtype):
+    dtype = np.dtype(np_dtype)
+    if dtype == np.float32:
+        return "float32"
+    elif dtype == np.float64:
+        return "float64"
+    elif dtype == np.float16:
+        return "float16"
+    else:
+        raise ValueError("Not supported numpy dtype %s" % dtype)
+
+
+def _numerical_overflow_check_(op_type):
+    if op_type in recommend_fp16.black_list:
+        print("%s should not apply fp16 computation, because it's output"
+              " maybe overflow or underflow." % (op_type))
+    if op_type in recommend_fp16.gray_list:
+        print("%s's gradient operator may be overflow or underflow when"
+              " using fp16 computation." % (op_type))
+
+
 @contextlib.contextmanager
-def switch_dtype_guard(main_program, dtype="float16"):
+def switch_to_fp16(main_program, verbose=True):
     """
-    Switch dtype block is used to change the dtype of input and output .
+    switch_to_fp16 is used to change the dtype of input and output to fp16.
 
     Args:
-        program(Program): The current main program.
-        dtype(basestring): The type of data: float32, float_16, int etc.
+        main_program(Program): The current main program.
+        verbose(bool): Whether to print warning info of
+            numerical_overflow_check and dtype cast.
 
     Examples:
 
         >>> import paddle.fluid as fluid
         >>> img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
         >>> label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        >>> with fluid.contrib.switch_dtype_guard(fluid.default_main_program(), dtype="float16"):
+        >>> with fluid.contrib.switch_to_fp16(fluid.default_main_program()):
         >>>    prediction = fluid.layers.fc(input=img, size=200, act='tanh')
         >>> prediction = fluid.layers.cast(prediction, np.float32)
         >>> loss = fluid.layers.cross_entropy(input=prediction, label=label)
     """
-    dtype = np.dtype(dtype)
+    dtype = np.float16
 
     pre_op_idx = len(main_program.current_block().ops)
     yield
@@ -87,29 +111,34 @@ def switch_dtype_guard(main_program, dtype="float16"):
     inner_inputs = set()
     inner_outputs = set()
     for op in ops:
+        if verbose:
+            _numerical_overflow_check_(op.type)
+
         for iname in op.input_names:
             for in_var_name in op.input(iname):
                 if in_var_name not in inner_outputs:
                     inner_inputs.add(in_var_name)
-                    if op.type in not_cast_param_ops and cur_block.var(
-                            in_var_name).persistable and dtype == np.float16:
+                    if op.type in not_cast_param_ops \
+                       and cur_block.var(in_var_name).persistable:
                         avoid_convert_var.add(in_var_name)
         for oname in op.output_names:
             for out_var_name in op.output(oname):
                 inner_outputs.add(out_var_name)
 
-    # reset the argument of cur_block.ops and insert them to the current block
+    # insert cast to the current block
     next_op_idx = pre_op_idx
     cast_to_dtype = framework.convert_np_dtype_to_dtype_(dtype)
-
     for in_var_name in inner_inputs:
         if in_var_name in avoid_convert_var:
             continue
         in_var = cur_block.var(in_var_name)
         if in_var.dtype == cast_to_dtype:
             continue
-        out_var = _create_tmp_variable_(cur_block, "casted_" + in_var.name,
-                                        cast_to_dtype)
+
+        out_var = _create_tmp_variable_(
+            cur_block, "casted_" + _dtype_to_str_(dtype) + "_" + in_var.name,
+            cast_to_dtype)
+
         cur_block._insert_op(
             next_op_idx,
             type="cast",
@@ -117,14 +146,18 @@ def switch_dtype_guard(main_program, dtype="float16"):
             outputs={"Out": out_var},
             attrs={'in_dtype': in_var.dtype,
                    'out_dtype': cast_to_dtype})
+
+        if verbose:
+            print("Add cast, %s(%s) -> %s(%s)" %
+                  (in_var.name, in_var.dtype, out_var.name, out_var.dtype))
+
         next_op_idx += 1
         _rename_arg_(cur_block, in_var.name, out_var.name, next_op_idx)
 
+    # ReInfer the output var's dtype
     cur_op_idx = len(main_program.current_block().ops)
     ops = [
         cur_block.ops[i + pre_op_idx] for i in range(cur_op_idx - pre_op_idx)
     ]
-
     for op in ops:
-        # ReInfer the output var's dtype
         op.desc.infer_var_type(cur_block.desc)

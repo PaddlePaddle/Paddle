@@ -73,7 +73,7 @@ def train(nn_type, parallel):
 
     net_conf = mlp if nn_type == 'mlp' else conv_net
 
-    with fluid.contrib.switch_dtype_guard(fluid.default_main_program()):
+    with fluid.contrib.switch_to_fp16(fluid.default_main_program()):
         hidden, label = net_conf(img, label)
 
     hidden = fluid.layers.cast(hidden, np.float32)
