@@ -120,8 +120,6 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::LoDTensor& tmat,
   size_t input_width = input.dims()[1];
   size_t tmat_width = tmat.dims()[1];
   size_t weight_width = weight->dims()[1];
-  VLOG(30) << "sparse w_grad dims is [" << weight->dims()[0] << " ,"
-           << weight->dims()[1] << " ]";
   auto tmat_value = tmat.data<T>();
   auto weight_value = weight->data<T>();
   auto input_value = input.data<T>();
@@ -147,8 +145,6 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::LoDTensor& tmat,
   size_t input_width = input.dims()[1];
   size_t tmat_width = tmat.dims()[1];
   size_t weight_width = weight->value().dims()[1];
-  VLOG(30) << "sparse w_grad dims is: [" << weight->value().dims()[0] << " ,"
-           << weight->value().dims()[1] << " ]";
   auto tmat_value = tmat.data<T>();
   auto weight_value = weight->mutable_value()->data<T>();
   auto input_value = input.data<T>();
@@ -157,11 +153,9 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::LoDTensor& tmat,
     int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
       size_t index = code->calc_index(j);
-
       for (size_t k = 0; k < input_width; ++k) {
         int64_t row_index =
             weight->AutoGrownIndex(static_cast<int64_t>(index), false, true);
-
         weight_value[row_index * weight_width + k] +=
             tmat_value[i * tmat_width + j] * input_value[input_width * i + k];
       }

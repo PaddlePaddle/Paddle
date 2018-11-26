@@ -4581,7 +4581,8 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        is_costum: (bool|False)using user defined binary tree instead of default complete binary tree
+        is_costum: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+             set you need to set ptable/pcode/non_leaf_num, otherwise num_classes should be set
         is_sparse: (bool|False)using sparse update instead of dense update
 
     Returns:
