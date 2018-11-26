@@ -399,7 +399,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
               for (size_t i = 0; i < backward_vars.size(); i += 2) {
                 auto &p_name = backward_vars[i];
                 auto &g_name = backward_vars[i + 1];
-                VLOG(100) << "Bcast " << g_name << " for parameter " << p_name;
+                VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
                 switch (strategy_.reduce_) {
                   case BuildStrategy::ReduceStrategy::kReduce:
@@ -809,8 +809,8 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(send_param_grad.size(), 2U);
       op_dev_id = GetAppropriateDeviceID({send_param_grad[1]});
-      VLOG(100) << "send grad " << input_var_names[0] << " origin "
-                << send_param_grad[1] << " place: " << op_dev_id;
+      VLOG(10) << "send grad " << input_var_names[0] << " origin "
+               << send_param_grad[1] << " place: " << op_dev_id;
       for (auto &varname : input_var_names) {
         sharded_var_device->emplace(varname, op_dev_id);
       }
@@ -826,9 +826,9 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
     if (recv_param_grad.size() == 2U) {
       op_dev_id =
           GetVarDeviceID(*result, recv_param_grad[1], *sharded_var_device);
-      VLOG(100) << "recv param " << recv_param_grad[0]
-                << " get grad place: " << recv_param_grad[1]
-                << " place: " << op_dev_id;
+      VLOG(10) << "recv param " << recv_param_grad[0]
+               << " get grad place: " << recv_param_grad[1]
+               << " place: " << op_dev_id;
     } else {
       op_dev_id = GetAppropriateDeviceID(output_var_names);
     }
