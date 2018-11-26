@@ -28,6 +28,52 @@ __all__ = ['DataFeedDesc', 'AsyncExecutor']
 g_scope = core.Scope()
 
 class DataFeedDesc(object):
+    """
+    Datafeed descriptor, describing input training data format. This class is
+    currently only used for AsyncExecutor (See comments for class AsyncExecutor
+    for a brief introduction)
+
+    DataFeedDesc shall be initialized from a valid protobuf message from disk:
+    >>> data_feed = fluid.DataFeedDesc('data.proto')
+
+    See :code:`paddle/fluid/framework/data_feed.proto` for message definition.
+    A typical message might look like:
+
+    >>> name: "MultiSlotDataFeed"
+    >>> batch: 2
+    >>> multi_slot_desc {
+    >>>     slots {
+    >>>         name: "words"
+    >>>         type: "uint64"
+    >>>         dense: false
+    >>>         use: true
+    >>>     }
+    >>>     slots {
+    >>>         name: "label"
+    >>>         type: "uint64"
+    >>>         dense: false
+    >>>         use: true
+    >>>     }
+    >>> }
+
+    However, users usually shouldn't care about the message format; instead,
+    they are encouragd to use :code:`Data Generator` as a tool to generate a
+    valid data description, in the process of converting their raw log files to
+    training files acceptable to AsyncExecutor.
+
+    DataFeedDesc can also be changed during runtime. Once you got familiar with
+    what each field mean, you can modify it to better suit your need. E.g.:
+    >>> data_feed.set_batch_size(128)
+    >>> data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
+    >>> data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
+
+    Finally, the content can be dumped out for debugging purpose:
+    >>> print(data_feed.desc())
+
+    Args:
+        proto_file(string): Disk file containing a data feed description.
+    
+    """
     def __init__(self, proto_file):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         with open(proto_file, 'r') as f:
@@ -36,32 +82,113 @@ class DataFeedDesc(object):
             self.__name_to_index = {slot.name: i for i, slot in enumerate(self.proto_desc.multi_slot_desc.slots)}
 
     def set_batch_size(self, batch_size):
+        """
+        Set batch size. Will be effective during training
+
+        Example:
+            >>> data_feed = fluid.DataFeedDesc('data.proto')
+            >>> data_feed.set_batch_size(128)
+
+        Args:
+            batch_size: batch size
+
+        """
         self.proto_desc.batch = batch_size
 
     def set_dense_slots(self, dense_slots_name):
+        """
+        Set if a specific slot will be dense. Will be effective during training.
+        features for a dense slot will be fed into a Tensor, while those for a
+        sparse slot will be fed into a LoDTensor
+
+        Example:
+            >>> data_feed = fluid.DataFeedDesc('data.proto')
+            >>> data_feed.set_dense_slots(['words'])
+
+        Args:
+            dense_slots_name: a list of slot names which will be set dense
+
+        Note:
+            Default is sparse for all slots
+        """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError("Only MultiSlotDataFeed need set_dense_slots, pls check your datafeed.proto")
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].dense = True
 
     def set_use_slots(self, use_slots_name):
+        """
+        Set if a specific slot will be used for training. A dataset shall
+        contain a lot of features, through this function one can select which
+        ones will be used for a specific model.
+
+        Example:
+            >>> data_feed = fluid.DataFeedDesc('data.proto')
+            >>> data_feed.set_use_slots(['words'])
+
+        Args:
+            use_slots_name: a list of slot names which will be used in training
+            
+        """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError("Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto")
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].use = True
 
     def desc(self):
+        """
+        Returns a protobuf message for this DataFeedDesc
+
+        Example:
+            >>> data_feed = fluid.DataFeedDesc('data.proto')
+            >>> print(data_feed.desc())
+
+        Returns:
+            A string message
+        """
         return text_format.MessageToString(self.proto_desc)
 
 class AsyncExecutor(object):
     """
-    An asynchronous Executor in Python
+    An asynchronous Executor in Python. Through exploiting the power of
+    multi-core processor and data queueing, AsyncExecutor makes data reading
+    and cosuming decoupled, each run in multiple threads in parallel.
+
+    Instead of reading data in python side, AsyncExecutor accepts a training
+    file list, which will be retrieved in C++, then training inputs will be
+    read, parsed and fed to training network within C++ code.
+
+    Example:
+        >>> data_feed = fluid.DataFeedDesc('data.proto')
+        >>> startup_program = fluid.default_startup_program()
+        >>> main_program = fluid.default_main_program()
+        >>> filelist = ["train_data/part-%d" % i for i in range(100)]
+        >>> thread_num = len(filelist) / 4
+        >>>
+        >>> place = fluid.CPUPlace()
+        >>> async_executor = fluid.AsyncExecutor(place)
+        >>>
+        >>> async_executor.run_startup_program(startup_program)
+        >>>
+        >>> epoch = 10
+        >>> for i in range(epoch):
+        >>>     async_executor.run(main_program,
+        >>>                        data_feed,
+        >>>                        filelist,
+        >>>                        thread_num,
+        >>>                        [acc],
+        >>>                        debug=False)
 
     Args:
-        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
+        place(fluid.CPUPlace|None): indicate the executor run on which device.
+                                   Only CPUPlace supported
 
-    Note: For debugging complicated network in parallel-GPUs, you can test it on the executor.
-    They has the exactly same arguments, and expected the same results.
+    Note:
+        For debugging complicated network in parallel-GPUs, you can test it
+        on the executor. They has the exactly same arguments, and expected
+        the same results.
+
+    Note: Only running on CPUPlace supported.
     """
 
     def __init__(self, place=None):
@@ -77,6 +204,22 @@ class AsyncExecutor(object):
         self.executor = core.AsyncExecutor(scope, p)
 
     def run_startup_program(self, program=None, place=None):
+        """
+        Run startup program.
+
+        Example:
+            >>> place = fluid.CPUPlace()
+            >>> async_executor = fluid.AsyncExecutor(place)
+            >>>
+            >>> startup_program = fluid.default_startup_program()
+            >>> async_executor.run_startup_program(startup_program)
+
+        Args:
+            program(Program|None): startup program to run. If None,
+                                   fluid.default_startup_program() will be used
+            place(fluid.CPUPlace|None): Place to run the program. Only CPUPlace
+                                        is supported
+        """
         if program is None:
             program = fluid.default_startup_program()
 
@@ -91,46 +234,42 @@ class AsyncExecutor(object):
 
     def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
         """
-        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-        Python executor takes a program, add feed operators and fetch operators to this program according
-        to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run.
+        Run program by this AsyncExecutor. Training dataset will be in filelist.
 
-        Note: the executor will run all
-        operators in the program but not only the operators dependent by the fetch_list
+        Users can also inspect certain variables by naming them in parameter
+        :code:`fetch`, like in fluid.Executor. Unlike fluid.Executor, however,
+        AsyncExecutor doesn't return fetched variables, instead, it will dump
+        the values of each fetched variable to stdandard output.
+
+        Running the dataset will be on multiple threads, within each a thread
+        local scope will be created, then all OPs also created in that scope.
+        Parameters are updated by all the OPs simultaneously.
+
 
         Args:
-            program(Program): the program that need to run, if not provied, then default_main_program will be used.
-            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
-            fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
-            feed_var_name(str): the name for the input variable of feed Operator.
-            fetch_var_name(str): the name for the output variable of fetch Operator.
-            scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
-            return_numpy(bool): if convert the fetched tensor to numpy
-            use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
+            program(Program): the program that need to run, if not provied,
+                              then default_main_program will be used.
+            data_feed(DataFeedDesc): A DataFeedDesc object
+            filelist(str): a file containing the training dataset file list
+            thread_num(int): number of concurrent training threads. See
+                             :code:`Note` for how to set this properly
+            fetch(str|list): the var name or a list of var names to inspect
+            debug(bool): When set to True, fetch vars will be printed to
+                         standard output after each minibatch
 
         Returns:
 
             list(numpy.array): fetch result according to fetch_list.
 
+        Note:
+            the executor will run all operators in the program but not only
+            the operators dependent by the fetch_list.
 
-        Examples:
+        Note:
+            Running AsyncExecutor will be on multiple threads, each bound to a
+            CPU core. To achieve best performance, it's suggested to set thread
+            num to be equal or slightly less than that of CPU cores.
 
-            >>> data = layers.data(name='X', shape=[1], dtype='float32')
-            >>> hidden = layers.fc(input=data, size=10)
-            >>> layers.assign(hidden, out)
-            >>> loss = layers.mean(out)
-            >>> adam = fluid.optimizer.Adam()
-            >>> adam.minimize(loss)
-
-            >>> cpu = core.CPUPlace()
-            >>> exe = Executor(cpu)
-            >>> exe.run(default_startup_program())
-
-            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> outs = exe.run(
-            >>>     feed={'X': x},
-            >>>     fetch_list=[loss.name])
         """
         if program is None:
             program = default_main_program()
@@ -160,12 +299,6 @@ class AsyncExecutor(object):
                         "with the last dimension size 1 supported."
                         % (fetch_var.name))
 
-        evaluation = self.executor.run_from_files(
-                program_desc,
-                data_feed.desc(),
-                filelist,
-                thread_num,
-                fetch_var_names,
-                debug)
-        return evaluation
+        self.executor.run_from_files(program_desc, data_feed.desc(), filelist,
+                thread_num, fetch_var_names, debug)
 
