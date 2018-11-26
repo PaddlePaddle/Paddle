@@ -241,6 +241,11 @@ class MatrixBitCodeFunctor {
   */
   void AddGrad(const framework::LoDTensor& tmat, framework::LoDTensor* vec);
 
+  /* For selected rows For j < code_length
+       vec(0, index(i, j)) += tmat(i, j)
+  */
+  void AddGrad(const framework::LoDTensor& tmat, framework::SelectedRows* vec);
+
   /* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
   */

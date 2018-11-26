@@ -124,13 +124,12 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto* w = ctx.Input<framework::LoDTensor>("W");
     auto* path = ctx.Input<framework::LoDTensor>("PTable");
     auto* code = ctx.Input<framework::LoDTensor>("PCode");
+    auto* bias = ctx.Input<framework::LoDTensor>("Bias");
     auto* in_grad =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> zero;
-    auto* bias_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Bias"));
     auto* label = ctx.Input<framework::LoDTensor>("Label");
     auto* pre_out = ctx.Input<framework::LoDTensor>("PreOut");
     auto* out_grad =
@@ -174,12 +173,15 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
         pre_out_grad_mat * out_grad_mat.broadcast(bcast);
     // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
     // be consistent with the clipping in forward.
-    if (bias_grad) {
-      bias_grad->mutable_data<T>(ctx.GetPlace());
-      zero(dev_ctx, bias_grad, static_cast<T>(0.0));
-      bit_code->AddGrad(pre_out_grad, bias_grad);
-    }
+
     if (!is_sparse) {
+      auto* bias_grad =
+          ctx.Output<framework::LoDTensor>(framework::GradVarName("Bias"));
+      if (bias_grad) {
+        bias_grad->mutable_data<T>(ctx.GetPlace());
+        zero(dev_ctx, bias_grad, static_cast<T>(0.0));
+        bit_code->AddGrad(pre_out_grad, bias_grad);
+      }
       auto* w_grad =
           ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
       w_grad->mutable_data<T>(ctx.GetPlace());
@@ -199,6 +201,21 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
 
       w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
       zero(dev_ctx, w_grad_value, static_cast<T>(0.0));
+      auto* bias_grad =
+          ctx.Output<framework::SelectedRows>(framework::GradVarName("Bias"));
+      if (bias_grad) {
+        bias_grad->set_rows(real_rows);
+        // build ids -> rows index map
+        bias_grad->SyncIndex();
+        bias_grad->set_height(bias->dims()[0]);
+        auto* bias_grad_value = bias_grad->mutable_value();
+        std::vector<int64_t> dims = {static_cast<int64_t>(real_rows.size()),
+                                     bias->dims()[1]};
+        bias_grad_value->mutable_data<T>(framework::make_ddim(dims),
+                                         ctx.GetPlace());
+        zero(dev_ctx, bias_grad_value, static_cast<T>(0.0));
+        bit_code->AddGrad(pre_out_grad, bias_grad);
+      }
       bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
     }
     bit_code->MulGradError(pre_out_grad, *w, in_grad);

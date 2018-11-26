@@ -77,7 +77,7 @@ def hsigmoid(x, w, label, bias, num_classes):
         length = code_table.get_length()
         for j in range(length):
             idx = code_table.cal_index(j)
-            pre_output[i][j] += bias[0][idx]
+            pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -115,7 +115,7 @@ def hsigmoidWithCustomTree(x, w, ptable, pcode, label, bias, num_classes):
         length = code_table.get_length()
         for j in range(length):
             idx = code_table.cal_index(j)
-            pre_output[i][j] += bias[0][idx]
+            pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
         code_table = CodeTableWithCustomTree(ptable, pcode, i)
         length = code_table.get_length()
@@ -150,7 +150,7 @@ class TestHSigmoidOp(OpTest):
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
         label = np.random.randint(0, num_classes, (batch_size, 1))
-        bias = np.random.random((1, num_classes - 1)).astype("float32")
+        bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
         pre_output, out = hsigmoid(x, w, label, bias, num_classes)
@@ -178,7 +178,7 @@ class TestHSigmoidOpSparse(OpTest):
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
-        bias = np.random.random((1, num_classes - 1)).astype("float32")
+        bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
             'X': x,
@@ -193,7 +193,6 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        print("checking output in CostumTree")
         self.check_output()
 
 
@@ -208,7 +207,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
 
         emb = fluid.layers.embedding(
             input=input_word,
-            is_sparse=False,
+            is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
                 scale=1 / math.sqrt(3))))
@@ -220,6 +219,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             ptable=ptable,
             pcode=pcode,
             is_costum=True,
+            bias_attr=True,
             is_sparse=is_sparse)
 
         avg_cost = fluid.layers.reduce_mean(cost)
@@ -240,7 +240,6 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             optimizer.minimize(loss)
 
             main_program = fluid.default_main_program()
-            # print("main program: {program}".format{program=str(main_program)})
             place = fluid.CPUPlace()
             feeder = fluid.DataFeeder(feed_list=data_list, place=place)
             exe = fluid.Executor(place)
@@ -279,7 +278,7 @@ class TestHSigmoidOpWithCostumTree(OpTest):
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
-        bias = np.random.random((1, num_classes - 1)).astype("float32")
+        bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
             'X': x,
@@ -294,11 +293,9 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        print("checking output in CostumTree")
         self.check_output()
 
     def test_check_grad(self):
-        print("checking outputGrad in CostumTree")
         self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 
