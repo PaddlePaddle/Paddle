@@ -192,7 +192,7 @@ class RequestPrefetch final : public RequestBase {
     framework::Variable* outvar = scope->Var(out_var_name);
 
     request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
-                             out_var_name);
+                             out_var_name, table_name);
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
