@@ -175,6 +175,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
   const std::string out_var_name_val = out_var_name;
+  const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
@@ -185,12 +186,12 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      s, method, h, table_name, this] {
+                      s, method, h, table_name_val, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val,
-                          0, table_name);
+                          0, table_name_val);
 
     VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
 
