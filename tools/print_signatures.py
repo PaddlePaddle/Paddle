@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
 """
 from __future__ import print_function
 
@@ -30,7 +30,7 @@ member_dict = collections.OrderedDict()
 
 def visit_member(parent_name, member):
     cur_name = ".".join([parent_name, member.__name__])
-    if inspect.isclass(member):
+    if inspect.isclass(member) or inspect.isgetsetdescriptor(member):
         for name, value in inspect.getmembers(member):
             if hasattr(value, '__name__') and (not name.startswith("_") or
                                                name == "__init__"):
@@ -63,7 +63,9 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
-visit_all_module(importlib.import_module(sys.argv[1]))
+modules = sys.argv[1].split(",")
+for m in modules:
+    visit_all_module(importlib.import_module(m))
 
 for name in member_dict:
     print(name, member_dict[name])

@@ -411,3 +411,20 @@ paddle.fluid.Scope.drop_kids drop_kids(self: paddle.fluid.core.Scope) -> None
 paddle.fluid.Scope.find_var find_var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
 paddle.fluid.Scope.new_scope new_scope(self: paddle.fluid.core.Scope) -> paddle.fluid.core.Scope
 paddle.fluid.Scope.var var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
+paddle.reader.map_readers ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None)
+paddle.reader.buffered ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None)
+paddle.reader.compose ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None)
+paddle.reader.chain ArgSpec(args=[], varargs='readers', keywords=None, defaults=None)
+paddle.reader.shuffle ArgSpec(args=['reader', 'buf_size'], varargs=None, keywords=None, defaults=None)
+paddle.reader.ComposeNotAligned.__init__ 
+paddle.reader.ComposeNotAligned.args.__init__ 
+paddle.reader.ComposeNotAligned.message.__init__ 
+paddle.reader.firstn ArgSpec(args=['reader', 'n'], varargs=None, keywords=None, defaults=None)
+paddle.reader.xmap_readers ArgSpec(args=['mapper', 'reader', 'process_num', 'buffer_size', 'order'], varargs=None, keywords=None, defaults=(False,))
+paddle.reader.PipeReader.__init__ ArgSpec(args=['self', 'command', 'bufsize', 'file_type'], varargs=None, keywords=None, defaults=(8192, 'plain'))
+paddle.reader.PipeReader.get_line ArgSpec(args=['self', 'cut_lines', 'line_break'], varargs=None, keywords=None, defaults=(True, '\n'))
+paddle.reader.multiprocess_reader ArgSpec(args=['readers', 'use_pipe', 'queue_size'], varargs=None, keywords=None, defaults=(True, 1000))
+paddle.reader.Fake.__init__ ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
+paddle.reader.creator.np_array ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
+paddle.reader.creator.text_file ArgSpec(args=['path'], varargs=None, keywords=None, defaults=None)
+paddle.reader.creator.recordio ArgSpec(args=['paths', 'buf_size'], varargs=None, keywords=None, defaults=(100,))
