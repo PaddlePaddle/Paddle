@@ -30,7 +30,7 @@ namespace pybind11 {
 namespace detail {
 
 // Can be replaced by a generic lambda in C++14
-struct __attribute__((visibility("hidden"))) paddle_variant_caster_visitor
+PYBIND11_EXPORT struct paddle_variant_caster_visitor
     : public boost::static_visitor<handle> {
   return_value_policy policy;
   handle parent;
