@@ -193,7 +193,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
       block->Var(out_W_var_name)
           ->SetType(framework::proto::VarType::LOD_TENSOR);
       VLOG(3) << "hierarchical_sigmoid_grad op "
-              << framework::GradVarName("Bias") << " is set to SelectedRows";
+              << framework::GradVarName("Bias") << " is set to LoDTensor";
       block->Var(out_Bias_var_name)
           ->SetType(framework::proto::VarType::LOD_TENSOR);
     }
