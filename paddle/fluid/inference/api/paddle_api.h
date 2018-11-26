@@ -91,6 +91,7 @@ struct PaddleTensor {
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
+  bool feed_to_device{true};
 };
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };

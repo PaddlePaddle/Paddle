@@ -136,6 +136,15 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
   VLOG(3) << "Predictor::predict";
+  if (platform::is_gpu_place(place_)) {
+#ifndef PADDLE_WITH_CUDA
+    PADDLE_THROW("Predictor cannot run on place %s", place_);
+#else
+// auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
+// platform::SetDeviceId(dev_id);
+#endif
+  }
+
   Timer timer;
   timer.tic();
   // set feed variable
@@ -193,25 +202,35 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     framework::LoDTensor input;
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
+    bool feed_to_cpu =
+        platform::is_cpu_place(place_) || !inputs[i].feed_to_device;
+    // LOG(INFO) << "feed_to_cpu: " << feed_to_cpu;
+    platform::Place feed_place = feed_to_cpu ? platform::CPUPlace() : place_;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, place_);
+      input_ptr = input.mutable_data<int64_t>(ddim, feed_place);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, place_);
+      input_ptr = input.mutable_data<float>(ddim, feed_place);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    if (platform::is_cpu_place(place_)) {
+    if (feed_to_cpu) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                   inputs[i].data.length());
     } else {
 #ifdef PADDLE_WITH_CUDA
       auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
+      // auto *dev_ctx =
+      // platform::DeviceContextPool::Instance().Get(dst_gpu_place);
+      // LOG(INFO) << "length: " << inputs[i].data.length();
+      // LOG(INFO) << "input_ptr: " << input_ptr;
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(),
+                   // reinterpret_cast<platform::CUDADeviceContext
+                   // *>(dev_ctx)->stream());  // stream 0 for sync copy
                    0);  // stream 0 for sync copy
 #else
       PADDLE_THROW("Not compile with CUDA, should not reach here.");
@@ -265,6 +284,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
+    output->name = fetchs_[idx]->Input("X")[0];
     if (type == typeid(float)) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
