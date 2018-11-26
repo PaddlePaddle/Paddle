@@ -6935,7 +6935,7 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
         .. code-block:: python
 
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.stanh(x, scale_a=0.6667, scale_b=1.7159)
+            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
