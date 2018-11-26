@@ -6972,18 +6972,18 @@ def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
 
-        y = \max(0, x) + alpha \min(0, x)
+        y = \max(0, x) + alpha * \min(0, x)
 
     Args:
         x (Variable): The input tensor.
-	  param_attr(ParamAttr|None): The parameter attribute for the learnable
-                                    weight (alpha).
-        mode (string): The mode for weight sharing
-		       all: all elements share same weight
- 		       channel:elements in a channel share same weight
- 		       element:each element has a weight
-	name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                       weight (alpha).
+        mode (string): The mode for weight sharing. It supports all, channel
+                       and element. all: all elements share same weight
+                       channel:elements in a channel share same weight
+                       element:each element has a weight
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -6992,7 +6992,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
             mode = 'channel'
             output = fluid.layers.prelu(x,mode)
     """
