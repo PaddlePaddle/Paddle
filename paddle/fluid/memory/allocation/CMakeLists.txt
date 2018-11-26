@@ -41,7 +41,7 @@ cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
 cc_library(auto_increment_allocator SRCS auto_increment_allocator.cc DEPS allocator)
 cc_library(zero_size_allocator SRCS zero_size_allocator.cc DEPS allocator)
 cc_library(conditional_allocator SRCS conditional_allocator.cc DEPS allocator)
-cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags)
+cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags glog)
 cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         ${AllocatorFacadeDeps}
         cpu_allocator

@@ -148,8 +148,10 @@ Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
     }
   }
   if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
-    throw BadAlloc(string::Sprintf(
-        "Cannot allocate %d, All fragments size is %d", size, FreeSize()));
+    throw BadAlloc(
+        string::Sprintf("Cannot allocate %s, All fragments size is %s",
+                        string::HumanReadableSize(size),
+                        string::HumanReadableSize(FreeSize())));
   }
   auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
   return new BestFitAllocation(this, chunk_it);

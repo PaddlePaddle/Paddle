@@ -22,6 +22,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include <sstream>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -37,10 +38,16 @@ std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
+  if (VLOG_IS_ON(3)) {
+    std::ostringstream sout;
+    std::copy(argv.begin(), argv.end(),
+              std::ostream_iterator<std::string>(sout, ","));
+    VLOG(3) << "Initialize gflags " << sout.str();
+  }
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
     argv.insert(argv.begin(), "dummy");
-    int argc = argv.size();
+    int argc = static_cast<int>(argv.size());
     char **arr = new char *[argv.size()];
     std::string line;
     for (size_t i = 0; i < argv.size(); i++) {
