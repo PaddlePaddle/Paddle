@@ -76,11 +76,12 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
-    AddAttr<std::string>(
-        "interp_method",
-        "(string), interpolation method, can be \"bilinear\" for "
-        "bilinear interpolation and \"nearest\" for nearest "
-        "neighbor interpolation.");
+    AddAttr<std::string>("interp_method",
+                         "(string, default \"bilinear\"), interpolation "
+                         "method, can be \"bilinear\" for "
+                         "bilinear interpolation and \"nearest\" for nearest "
+                         "neighbor interpolation.")
+        .SetDefault("bilinear");
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
