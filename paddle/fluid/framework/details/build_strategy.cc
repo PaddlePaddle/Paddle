@@ -141,7 +141,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "all_reduce_deps_pass") {
-      VLOG(1) << ", SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
               << ", num_trainers:" << num_trainers_;
 
       pass->Erase(kAllOpDescs);

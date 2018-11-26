@@ -128,7 +128,6 @@ class ParallelExecutor(object):
             build_strategy = BuildStrategy()
 
         build_strategy.num_trainers = num_trainers
-        build_strategy.trainer_id = trainer_id
 
         main = main_program
         main = main if main else framework.default_main_program()
