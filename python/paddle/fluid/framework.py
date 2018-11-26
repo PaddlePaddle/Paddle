@@ -283,15 +283,11 @@ class Variable(core.VariableBase):
             name = unique_name.generate('_generated_var')
         is_new_var = False
         name = cpt.to_text(name)
-        desc = self.block.desc.find_var(cpt.to_bytes(name))
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
-        if desc is None:
-            # sys.stderr.write('desc is None\n')
+        if self.desc is None:
             self.desc = self.block.desc.var(cpt.to_bytes(name))
             is_new_var = True
-        else:
-            # sys.stderr.write('found var %s %s' % (name, self.desc))
-            self.desc = desc
 
         if is_new_var:
             self.desc.set_type(type)
