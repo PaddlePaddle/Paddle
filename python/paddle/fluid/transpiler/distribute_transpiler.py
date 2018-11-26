@@ -444,7 +444,7 @@ class DistributeTranspiler(object):
                 # connect deps to send op in async mode
                 recv_dep_in = self.grad_name_to_send_dummy_out[
                     self.param_name_to_grad_name[param_varname]]
-            all_recv_outputs.extend(splited_var)
+
             # get recv op_role_var, if not splited, the grad should have .trainer suffix
             # if splited, grad should be the original grad var name. ParallelExecutor
             # will use op_role_var to get expected device place to run this op.
@@ -460,6 +460,7 @@ class DistributeTranspiler(object):
                 self._update_remote_sparse_update_op(param_varname,
                                                      height_sections, eps)
             else:
+                all_recv_outputs.extend(splited_var)
                 program.global_block().append_op(
                     type="recv",
                     inputs={"X": [recv_dep_in]},
