@@ -1698,6 +1698,7 @@ class Program(object):
 
         p._copy_param_info_from(self)
         p._copy_data_info_from(self)
+        p._copy_dist_param_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -1937,6 +1938,25 @@ class Program(object):
             raise ValueError("_copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
+
+    def _copy_dist_param_info_from(self, other):
+        """
+        Copy the information of distributed information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("_copy_dist_param_info_from should be invoked with "
+                            "Program")
+        self._is_distributed = other._is_distributed
+        self._is_chief = other._is_chief
+        self._slice_vars_and_attrs = other._slice_vars_and_attrs
+        self._endpoints = other._endpoints
+        self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):
         """

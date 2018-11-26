@@ -23,6 +23,12 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
 endif(NOT WITH_DISTRIBUTE)
 
+if (NOT ${WITH_GPU})
+    LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+    LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -75,10 +81,12 @@ list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_dist_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
+list(REMOVE_ITEM TEST_OPS test_interpolate_op)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
+py_test_modules(test_interpolate_op MODULES test_interpolate_op SERIAL)
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
