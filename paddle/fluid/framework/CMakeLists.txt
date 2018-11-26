@@ -116,8 +116,14 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
+if (NOT WIN32)
+cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache)
+else()
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
+    shape_inference data_transform lod_tensor)
+endif(NOT WIN32)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
