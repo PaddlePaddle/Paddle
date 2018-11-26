@@ -137,13 +137,13 @@ void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
   model_prefix_ = model_prefix;
 }
 
-void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers, 
-    const int thread_num, DataFeedDesc& data_feed_desc, 
-    const std::vector<std::string>& filelist) {
+void PrepareReaders(const std::vector<std::shared_ptr<DataFeed> >& readers,
+                    const int thread_num, const DataFeedDesc& data_feed_desc,
+                    const std::vector<std::string>& filelist) {
   readers.resize(thread_num);
   for (size_t i = 0; i < readers.size(); ++i) {
     readers[i] = DataFeedFactory::CreateDataFeed(data_feed_desc.name());
-    readers[i]->Init(data_feed_desc); // set batch_size and queue_size here
+    readers[i]->Init(data_feed_desc);  // set batch_size and queue_size here
   }
   readers[0]->SetFileList(filelist);
 }
@@ -157,7 +157,8 @@ std::vector<float> AsyncExecutor::RunFromFile(
   std::vector<std::thread> threads;
 
   DataFeedDesc data_feed_desc;
-  google::protobuf::TextFormat::ParseFromString(data_feed_desc_str, &data_feed_desc);
+  google::protobuf::TextFormat::ParseFromString(
+      data_feed_desc_str, &data_feed_desc);
 
   int actual_thread_num = thread_num;
   int file_cnt = filelist.size();
