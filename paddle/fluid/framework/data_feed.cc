@@ -162,7 +162,7 @@ int PrivateQueueDataFeed<T>::Next(){
   return batch_size_;
 }
 
-void MultiSlotDataFeed::Init(paddle::framework::DataFeedDesc& data_feed_desc) {
+void MultiSlotDataFeed::Init(const paddle::framework::DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
   finish_set_filelist_ = false;
   finish_start_ = false;

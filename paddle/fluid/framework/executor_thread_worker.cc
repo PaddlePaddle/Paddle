@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <algorithm>
 #include "google/protobuf/message.h"
@@ -156,13 +157,66 @@ void ExecutorThreadWorker::SetDevice() {
       LOG(ERROR) << "WARNING: Failed to set thread affinity for thread " << i;
     } else {
       CPU_ZERO(&mask);
-      if ((0 == sched_getaffinity(0, sizeof(mask), &mask))
-          && CPU_ISSET(proc, &mask)) {
-        LOG(ERROR) << "TRACE: Thread " << i <<
-            " is running on processor " << proc << "...";
+      if ((0 != sched_getaffinity(0, sizeof(mask), &mask))
+          || (CPU_ISSET(proc, &mask) == 0)) {
+        LOG(INFO) << "WARNING: Failed to set thread affinity for thread " << i;
       }
     }
   }
+}
+
+template <typename T>
+void print_lod_tensor(std::string var_name, const LoDTensor& lod_tensor) {
+  auto inspect = lod_tensor.data<T>();
+  auto element_num = lod_tensor.numel();
+
+  std::ostringstream sstream;
+  sstream << var_name << " (element num " << element_num << "): [";
+  sstream << inspect[0];
+  for (int j = 1; j < element_num; ++j) {
+    sstream << " " << inspect[j];
+  }
+  sstream << "]";
+
+  std::cout << sstream.str() << std::endl;
+}
+
+void print_fetch_var(Scope* scope, std::string var_name) {
+  const LoDTensor& tensor = scope->FindVar(var_name)->Get<LoDTensor>();
+
+  if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(platform::float16))) {
+    print_lod_tensor<platform::float16>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(float))) {
+    print_lod_tensor<float>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(double))) {
+    print_lod_tensor<double>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(int))) {
+    print_lod_tensor<int>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(int64_t))) {
+    print_lod_tensor<int64_t>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(bool))) {
+    print_lod_tensor<bool>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(uint8_t))) {
+    print_lod_tensor<uint8_t>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(int16_t))) {
+    print_lod_tensor<int16_t>(var_name, tensor);
+  } else if (std::type_index(tensor.type()) ==
+      std::type_index(typeid(int8_t))) {
+    print_lod_tensor<int8_t>(var_name, tensor);
+  } else {
+    LOG(ERROR) << "print_fetch_var: unrecognized data type:"
+               << tensor.type().name();
+  }
+
+  return;
 }
 
 void ExecutorThreadWorker::TrainFiles() {
@@ -171,7 +225,7 @@ void ExecutorThreadWorker::TrainFiles() {
 
   int fetch_var_num = fetch_var_names_.size();
   fetch_values_.clear();
-  fetch_values_.resize(fetch_var_num, 0);
+  fetch_values_.resize(fetch_var_num);
 
   thread_reader_->Start();
 
@@ -183,25 +237,17 @@ void ExecutorThreadWorker::TrainFiles() {
       op->Run(*thread_scope_, place_);
     }
 
-    float avg_inspect = 0.0;
-    for (int i = 0; i < fetch_var_num; ++i) {
-      avg_inspect = thread_scope_->FindVar(fetch_var_names_[i])
-                                 ->GetMutable<LoDTensor>()
-                                 ->data<float>()[0];
-      fetch_values_[i] += avg_inspect;
-    }
-
     ++batch_cnt;
     thread_scope_->DropKids();
-  }
 
-  if (batch_cnt) {
-    // when the number of files is less than the number of threads
-    for (int i = 0; i < fetch_var_num; ++i) {
-      fetch_values_[i] = fetch_values_[i] / batch_cnt;
+    if (debug_ == false || thread_id_ != 0) {
+      continue;
     }
-  }
 
+    for (int i = 0; i < fetch_var_num; ++i) {
+      print_fetch_var(thread_scope_, fetch_var_names_[i]);
+    }   // end for (int i = 0...)
+  }     // end while ()
 }
 
 void ExecutorThreadWorker::SetThreadId(int tid) {

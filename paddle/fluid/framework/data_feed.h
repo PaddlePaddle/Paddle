@@ -155,7 +155,7 @@ class DataFeed {
  public:
   DataFeed() {}
   virtual ~DataFeed() {}
-  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   // for some datafeeds may not be able to implement this interface
   virtual bool CheckFile(const char* filename) {
     LOG(ERROR) << "error: The function CheckFile is not implemented";
@@ -214,7 +214,7 @@ class PrivateQueueDataFeed : public DataFeed {
  public:
   PrivateQueueDataFeed() {}
   virtual ~PrivateQueueDataFeed() {}
-  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual int Next(); // no buffer
   virtual void SetQueueSize(int queue_size);
@@ -318,7 +318,7 @@ class MultiSlotDataFeed : public PrivateQueueDataFeed<std::vector<MultiSlotType>
  public:
   MultiSlotDataFeed() {}
   virtual ~MultiSlotDataFeed() {}
-  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
  protected:
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>& vec_ins, 
