@@ -14,10 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#ifndef _WIN32
 #include <pthread.h>
 #include <sys/syscall.h>
-#include <sys/types.h>
 #include <unistd.h>
+#endif
+#include <sys/types.h>
 #include <map>
 #include <mutex>
 #include <random>

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
-#include <sys/time.h>
 #include <cmath>    // for exp
 #include <cstring>  // for memcpy
 #include <random>
@@ -22,6 +21,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/port.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"

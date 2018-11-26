@@ -349,10 +349,17 @@ function(cc_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if(WIN32)
+      list(APPEND win32_deps shlwapi)
+      if("${cc_test_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cc_test_DEPS python)
+        list(APPEND win32_deps ${PYTHON_LIBRARIES})
+      endif()
+    endif(WIN32)
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     if(WIN32)
-      target_link_libraries(${TARGET_NAME} shlwapi)
+      target_link_libraries(${TARGET_NAME} ${win32_deps})
     endif(WIN32)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
@@ -683,7 +690,7 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+             COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
              FLAGS_cpu_deterministic=true
              PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
