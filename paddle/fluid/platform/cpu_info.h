@@ -39,7 +39,7 @@ size_t CUDAPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t CUDAPinnedMaxChunkSize();
 
-namespace jit {
+namespace jit {  // remove this namespace
 typedef enum {
   isa_any,
   sse42,
