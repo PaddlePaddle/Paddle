@@ -137,7 +137,7 @@ void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
   model_prefix_ = model_prefix;
 }
 
-void PrepareReaders(const std::vector<std::shared_ptr<DataFeed> >& readers,
+void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers,
                     const int thread_num, const DataFeedDesc& data_feed_desc,
                     const std::vector<std::string>& filelist) {
   readers.resize(thread_num);
