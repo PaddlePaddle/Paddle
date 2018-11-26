@@ -21,6 +21,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#if defined(_WIN32)
+#define NOMINMAX
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
+#include <Windows.h>
+#endif
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -29,7 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+#ifndef _WIN32
 #include "paddle/fluid/framework/parallel_executor.h"
+#endif
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -37,7 +46,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -87,9 +95,6 @@ bool IsCompiledWithDIST() {
 }
 
 PYBIND11_PLUGIN(core) {
-  // Not used, just make sure cpu_info.cc is linked.
-  paddle::platform::CpuTotalPhysicalMemory();
-
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -354,16 +359,22 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<platform::Communicator>();
            },
            py::return_value_policy::reference)
+
 #endif
+#ifndef _WIN32
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+#endif
+      ;  // NOLINT
 
+#if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ResetAll);
+#endif
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
@@ -632,6 +643,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
+#ifndef _WIN32
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -652,6 +664,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
+#endif
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
@@ -680,6 +693,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("remove_pass",
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
+#ifndef _WIN32
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
@@ -861,6 +875,24 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
+          "num_trainers",
+          [](const BuildStrategy &self) { return self.num_trainers_; },
+          [](BuildStrategy &self, int num_trainers) {
+            self.num_trainers_ = num_trainers;
+          })
+      .def_property(
+          "trainers_end_points",
+          [](const BuildStrategy &self) { return self.trainers_end_points_; },
+          [](BuildStrategy &self,
+             const std::vector<std::string> &trainers_end_points) {
+            self.trainers_end_points_ = trainers_end_points;
+          })
+      .def_property("trainer_id",
+                    [](const BuildStrategy &self) { return self.trainer_id_; },
+                    [](BuildStrategy &self, int trainer_id) {
+                      self.trainer_id_ = trainer_id;
+                    })
+      .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
@@ -907,6 +939,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
+#endif
   return m.ptr();
 }
 }  // namespace pybind

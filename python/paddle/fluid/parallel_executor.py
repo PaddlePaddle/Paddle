@@ -91,7 +91,8 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
-                 scope=None):
+                 scope=None,
+                 trainers_end_points=None):
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -124,15 +125,16 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
-        # Set 1 thread num under nccl2 distribute 
-        #   env to make sure all gpus run ops in same order.
-        if num_trainers > 1:
-            assert (use_cuda)
-            # FIXME(gongwb): avoid this set.
-            exec_strategy.num_threads = 1
-
         if build_strategy is None:
             build_strategy = BuildStrategy()
+
+        build_strategy.num_trainers = num_trainers
+        build_strategy.trainer_id = trainer_id
+
+        if num_trainers > 1 and trainers_end_points:
+            assert num_trainers == len(
+                trainers_end_points), "num_trainers == len(end_points)"
+            build_strategy.trainers_end_points = trainers_end_points
 
         main = main_program
         main = main if main else framework.default_main_program()

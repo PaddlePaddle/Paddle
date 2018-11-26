@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -23,6 +24,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace details {
+
+static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
+  return (!strategy.enable_sequential_execution_ && strategy.num_trainers_ > 1);
+}
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
@@ -53,6 +58,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 
+    CollectiveContext *context = CollectiveContext::GetInstance();
+    context->end_points_ = strategy_.trainers_end_points_;
+    context->rank_id_ = strategy_.trainer_id_;
+    PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
+    if (strategy_.trainer_id_ > 0) {
+      PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
+                         strategy_.trainers_end_points_.size(),
+                     "trainer_id_ < end_points_ size");
+    }
+    VLOG(1) << "CollectiveContext:" << context->String();
+
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -69,6 +85,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
+
+    if (SeqOnlyAllReduceOps(strategy)) {
+      AppendPass("all_reduce_deps_pass");
+    }
 
     if (strategy_.remove_unnecessary_lock_) {
       AppendPass("modify_op_lock_and_record_event_pass");
@@ -123,7 +143,14 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-    } else if (pass->Type() == "sequential_execution_pass") {
+    } else if (pass->Type() == "all_reduce_deps_pass" ||
+               pass->Type() == "sequential_execution_pass") {
+      VLOG(1) << "set enable_sequential_execution:"
+              << enable_sequential_execution_
+              << ", SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_
+              << ", trainer_id:" << trainer_id_;
+
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
@@ -144,4 +171,5 @@ USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(sequential_execution_pass);
+USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
