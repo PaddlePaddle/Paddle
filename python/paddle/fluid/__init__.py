@@ -115,9 +115,8 @@ def __bootstrap__():
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'eager_delete_scope',
         'use_mkldnn', 'use_ngraph', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        "dist_threadpool_size", 'cpu_deterministic', 'eager_delete_tensor_gb',
-        'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir'
+        "dist_threadpool_size", 'eager_delete_tensor_gb', 'allocator_strategy',
+        'reader_queue_speed_test_mode', 'print_sub_graph_dir'
     ]
     if os.name != 'nt':
         read_env_flags.append('warpctc_dir')
@@ -130,11 +129,13 @@ def __bootstrap__():
         read_env_flags.append('rpc_send_thread_num')
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
+        read_env_flags.append('rpc_disable_reuse_port')
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
-            'conv_workspace_size_limit', 'cudnn_exhaustive_search'
+            'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
+            'cudnn_exhaustive_search'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
