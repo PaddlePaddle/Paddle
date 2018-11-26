@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -107,34 +108,41 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 }
 
 #ifdef PADDLE_WITH_CUDA
+struct GPUBuddyAllocatorList {
+  GPUBuddyAllocatorList()
+      : gpu_num_(platform::GetCUDADeviceCount()),
+        allocators_(gpu_num_),
+        init_flags_(gpu_num_) {}
+
+  BuddyAllocator *Get(int gpu_id) {
+    PADDLE_ENFORCE(gpu_id < gpu_num_, "gpu_id:%d should < gpu_num:%d", gpu_id,
+                   gpu_num_);
+    std::call_once(init_flags_[gpu_id], [gpu_id, this]() {
+      platform::SetDeviceId(gpu_id);
+      allocators_[gpu_id].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(gpu_id)),
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+      VLOG(10) << "\n\nNOTE: each GPU device use "
+               << FLAGS_fraction_of_gpu_memory_to_use * 100
+               << "% of GPU memory.\n"
+               << "You can set GFlags environment variable '"
+               << "FLAGS_fraction_of_gpu_memory_to_use"
+               << "' to change the fraction of GPU usage.\n\n";
+    });
+    return allocators_[gpu_id].get();
+  }
+
+ private:
+  int gpu_num_;
+  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
+  std::vector<std::once_flag> init_flags_;
+};
+
 BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
-  static std::once_flag init_flag;
-  static detail::BuddyAllocator **a_arr = nullptr;
-
-  std::call_once(init_flag, [gpu_id]() {
-    int gpu_num = platform::GetCUDADeviceCount();
-    PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
-                   gpu_num);
-
-    a_arr = new BuddyAllocator *[gpu_num];
-    for (int i = 0; i < gpu_num; i++) {
-      a_arr[i] = nullptr;
-      platform::SetDeviceId(i);
-      a_arr[i] = new BuddyAllocator(
-          std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
-          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
-
-      VLOG(100) << "\n\nNOTE: each GPU device use "
-                << FLAGS_fraction_of_gpu_memory_to_use * 100
-                << "% of GPU memory.\n"
-                << "You can set GFlags environment variable '"
-                << "FLAGS_fraction_of_gpu_memory_to_use"
-                << "' to change the fraction of GPU usage.\n\n";
-    }
-  });
-
+  static GPUBuddyAllocatorList gpu_buddy_allocators;
   platform::SetDeviceId(gpu_id);
-  return a_arr[gpu_id];
+  return gpu_buddy_allocators.Get(gpu_id);
 }
 #endif
 
