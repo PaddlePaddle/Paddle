@@ -75,7 +75,6 @@ struct BuildStrategy {
 
   int num_trainers_{1};
   int trainer_id_{0};
-  std::vector<std::string> trainers_end_points_;
   bool remove_unnecessary_lock_{false};
 
   // NOTE:
