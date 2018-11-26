@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -138,7 +139,6 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   Timer timer;
   timer.tic();
   // set feed variable
-  std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
@@ -194,17 +194,30 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<float>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                inputs[i].data.length());
+    if (platform::is_cpu_place(place_)) {
+      // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+                  inputs[i].data.length());
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
+      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
+                   platform::CPUPlace(), inputs[i].data.data(),
+                   inputs[i].data.length(),
+                   0);  // stream 0 for sync copy
+#else
+      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+#endif
+    }
+
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
     for (auto &level : inputs[i].lod) {
