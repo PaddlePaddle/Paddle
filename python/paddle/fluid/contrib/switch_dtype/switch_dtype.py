@@ -17,10 +17,10 @@ from __future__ import print_function
 import numpy as np
 import contextlib
 
-import recommend_fp16
+from . import recommend_fp16
 
-from paddle.fluid import framework
-from paddle.fluid.framework import unique_name
+from ... import framework
+from ... import unique_name
 
 __all__ = ['switch_to_fp16', ]
 

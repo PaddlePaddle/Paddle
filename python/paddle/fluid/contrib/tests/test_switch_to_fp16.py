@@ -25,11 +25,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
-from paddle.fluid.layers.device import get_places
-from paddle.fluid.layers.control_flow import ParallelDo
-
-BATCH_SIZE = 64
-
 
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
@@ -42,7 +37,6 @@ def loss_net(hidden, label):
 def mlp(img, label):
     hidden = fluid.layers.fc(input=img, size=200, act='tanh')
     hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
-    # return loss_net(hidden, label)
     return hidden, label
 
 
@@ -62,11 +56,10 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         act="relu")
-    # return loss_net(conv_pool_2, label)
     return conv_pool_2, label
 
 
-def train(nn_type, parallel):
+def train(nn_type):
 
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -87,7 +80,7 @@ def train(nn_type, parallel):
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.mnist.train(), buf_size=500),
-        batch_size=BATCH_SIZE)
+        batch_size=64)
 
     feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
@@ -105,24 +98,24 @@ def train(nn_type, parallel):
     train_loop(fluid.default_main_program())
 
 
-def main(parallel, nn_type):
-    train(nn_type=nn_type, parallel=parallel)
+def main(nn_type):
+    train(nn_type=nn_type)
 
 
 class TestRecognizeDigits(unittest.TestCase):
     pass
 
 
-def inject_test_method(parallel, nn_type):
+def inject_test_method(nn_type):
     def __impl__(self):
         prog = fluid.Program()
         startup_prog = fluid.Program()
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                main(parallel, nn_type)
+                main(nn_type)
 
-    fn = 'test_{0}_{1}'.format(nn_type, 'parallel' if parallel else 'normal')
+    fn = 'test_{0}'.format(nn_type)
 
     setattr(TestRecognizeDigits, fn, __impl__)
 
@@ -130,10 +123,8 @@ def inject_test_method(parallel, nn_type):
 def inject_all_tests():
     if not core.is_compiled_with_cuda():
         return
-
-    for parallel in (False, ):
-        for nn_type in ('mlp', 'conv'):
-            inject_test_method(parallel, nn_type)
+    for nn_type in ('mlp', 'conv'):
+        inject_test_method(nn_type)
 
 
 inject_all_tests()

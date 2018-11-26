@@ -33,8 +33,8 @@ white_list = [
     'matmul',
 ]
 
-# black_list is the collection of operators which may be overflow or
-# underflow when using fp16 computation.
+# black_list is the collection of operators which may be overflows or
+# when using fp16 computation.
 black_list = [
     #
     'exp',
@@ -57,7 +57,7 @@ black_list = [
 # underflow when using fp16 computation.
 gray_list = [
     # because elementwise_x_grad maybe use reduce_sum operation
-    # which may cause overflow.
+    # which may cause overflows.
     "elementwise_add",
     "elementwise_sub",
     "elementwise_mul",
