@@ -116,6 +116,7 @@ void (*getActFunc(const std::string& type))(const T*, T*, int) {  // NOLINT
   return nullptr;
 }
 
+// compute ct and ht
 template <typename T>
 void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr) {
   T* gates = reinterpret_cast<T*>(step->gates);
@@ -199,6 +200,7 @@ void GRUH1(gru_t* step, const gru_attr_t* attr) {
   VMul(gates, gates + d2, ht, d);
 }
 
+// compute the first part of GRU: ht = act_gate(r) * ht_1
 template <typename T>
 void GRUHtPart1(gru_t* step, const gru_attr_t* attr) {
   // W: {W_update, W_reset; W_state}
@@ -210,6 +212,8 @@ void GRUHtPart1(gru_t* step, const gru_attr_t* attr) {
   VMul(ht_1, gates + attr->d, ht, attr->d);
 }
 
+// compute the second part of GRU:
+// ht = act_gate(u) * act_cand(s) + (1-act_gate(u)) * ht_1
 template <typename T>
 void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
   T* gates = reinterpret_cast<T*>(step->gates);

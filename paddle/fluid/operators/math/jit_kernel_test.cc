@@ -86,7 +86,7 @@ TEST(JitKernel, vrelu) {
         vrelu_intri8(d, x_data, zref_data);
       }
       auto si1 = GetCurrentUS();
-      VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+      VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat << " us";
     }
 #endif
     auto ttgts = GetCurrentUS();
@@ -96,7 +96,7 @@ TEST(JitKernel, vrelu) {
     auto ttgte = GetCurrentUS();
     VLOG(30) << "Vec size " << d
              << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+             << " us, tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -129,7 +129,7 @@ TEST(JitKernel, vaddbias) {
 
     VLOG(30) << "Vec size " << d
              << ": refer takes: " << (trefe - trefs) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+             << " us, tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -182,7 +182,7 @@ TEST(JitKernel, vexp) {
 #else
              << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+             << "tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -238,7 +238,7 @@ TEST(JitKernel, vsigmoid) {
     VLOG(30) << "Vec size " << d
              << ": refer takes: " << (trefe - trefs) / repeat
              << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+             << " us, tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -299,7 +299,7 @@ TEST(JitKernel, vtanh) {
     VLOG(30) << "Vec size " << d
              << ": refer takes: " << (trefe - trefs) / repeat
              << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+             << " us, tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -400,7 +400,7 @@ TEST(JitKernel, lstm) {
     VLOG(30) << "Vec size " << d
              << ": refer takes: " << (trefe - trefs) / repeat
              << " us, better(jit) takes: " << (tmkle - tmkls) / repeat
-             << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+             << " us, tgt takes: " << (ttgte - ttgts) / repeat << " us";
   }
 }
 
@@ -474,7 +474,7 @@ TEST(JitKernel, vscal) {
       }
       auto si3 = GetCurrentUS();
       VLOG(30) << "Vec size 8 intr takes: " << (si1 - si0) / repeat
-               << " us, inplace: " << (si3 - si2) / repeat;
+               << " us, inplace: " << (si3 - si2) / repeat << " us";
     }
 #endif
 
@@ -498,7 +498,8 @@ TEST(JitKernel, vscal) {
              << " us, "
 #endif
              << "tgt takes: " << (ttgte - ttgts) / repeat
-             << "us, tgt inplace takes: " << (ttgte1 - ttgts1) / repeat;
+             << "us, tgt inplace takes: " << (ttgte1 - ttgts1) / repeat
+             << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -573,7 +574,7 @@ TEST(JitKernel, vmul) {
 #else
              << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+             << "tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -648,7 +649,7 @@ TEST(JitKernel, vadd) {
 #else
              << " us, "
 #endif
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+             << "tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
@@ -701,7 +702,7 @@ TEST(JitKernel, vaddrelu) {
     VLOG(30) << "Vec size " << d
              << ": refer takes: " << (trefe - trefs) / repeat
              << " us, better takes: " << (tmkle - tmkls) / repeat << " us, "
-             << "tgt takes: " << (ttgte - ttgts) / repeat;
+             << "tgt takes: " << (ttgte - ttgts) / repeat << " us";
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
