@@ -1,5 +1,5 @@
 requests==2.9.2
-numpy>=1.12,<=1.14 #TODO:change to ">=1.12" when numpy fix bug in 1.15 and higher version
+numpy>=1.12
 protobuf==3.1
 recordio>=0.1.0
 matplotlib==2.2.3 # TODO: let python3 paddlepaddle package use latest matplotlib
