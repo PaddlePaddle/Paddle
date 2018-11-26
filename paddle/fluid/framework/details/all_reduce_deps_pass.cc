@@ -47,24 +47,26 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
-  // get vars level
-  int level = 0;
+  // get vars order
+  int order = 0;
   std::unordered_map<std::string, int> vars;
   // TODO(gongwb): use graph topology sort to find the order of operators.
+  //               Note that must assert topology sort is stable
   auto& ops = Get<const std::vector<OpDesc*>>(kAllOpDescs);
   for (auto* op_desc : ops) {
     auto outputs = op_desc->Outputs();
     for (auto& o_it : outputs) {
       for (auto& v : o_it.second) {  // values
-        vars[v] = level;
+        vars[v] = order;
       }
     }
-    level++;
+    order++;
   }
 
   std::vector<OpHandleBase*> dist_ops;
   // get allreduce ops.
   for (auto& op : graph_ops) {
+    // FIXME(gongwb):add broad cast.
     if (op->Name() == "all_reduce" || op->Name() == "reduce") {
       dist_ops.push_back(op);
     }
