@@ -4639,14 +4639,14 @@ def hsigmoid(input,
         if not is_costum:
             bias = helper.create_parameter(
                 attr=helper.bias_attr,
-                shape=[1, num_classes - 1],
+                shape=[num_classes - 1, 1],
                 is_bias=True,
                 dtype=input.dtype)
             inputs['Bias'] = bias
         else:
             bias = helper.create_parameter(
                 attr=helper.bias_attr,
-                shape=[1, non_leaf_num],
+                shape=[non_leaf_num, 1],
                 is_bias=True,
                 dtype=input.dtype)
             inputs['Bias'] = bias

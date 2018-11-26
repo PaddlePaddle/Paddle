@@ -107,8 +107,9 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
     AddInput("Bias",
-             "(LoDTensor, optional), The bias is a tensor with shape"
-             "[1, num_classes - 1].");
+             "(LoDTensor, optional), The bias is a tensor with shape or "
+             "[non_leaf_num, 1]"
+             "[num_classes - 1, 1].");
     AddOutput(
         "Out",
         "(LoDTensor, required) The output of hierarchical sigmoid operator."
@@ -148,11 +149,11 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
                    "Output(W@Grad should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X@Grad should not be null.");
-    if (ctx->HasOutput(framework::GradVarName("Bias"))) {
-      ctx->SetOutputDim(framework::GradVarName("Bias"),
-                        ctx->GetInputDim("Bias"));
-    }
     if (!ctx->Attrs().Get<bool>("is_sparse")) {
+      if (ctx->HasOutput(framework::GradVarName("Bias"))) {
+        ctx->SetOutputDim(framework::GradVarName("Bias"),
+                          ctx->GetInputDim("Bias"));
+      }
       ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
     }
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
@@ -172,20 +173,31 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
  public:
   void operator()(const framework::OpDesc& op_desc,
                   framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
+    auto out_W_var_name = op_desc.Output(framework::GradVarName("W")).front();
+    auto out_Bias_var_name =
+        op_desc.Output(framework::GradVarName("Bias")).front();
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      block->Var(out_var_name)
+      block->Var(out_W_var_name)
+          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      VLOG(3) << "hierarchical_sigmoid_grad op "
+              << framework::GradVarName("Bias") << " is set to SelectedRows";
+      block->Var(out_Bias_var_name)
           ->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
+      block->Var(out_W_var_name)
+          ->SetType(framework::proto::VarType::LOD_TENSOR);
+      VLOG(3) << "hierarchical_sigmoid_grad op "
+              << framework::GradVarName("Bias") << " is set to SelectedRows";
+      block->Var(out_Bias_var_name)
+          ->SetType(framework::proto::VarType::LOD_TENSOR);
     }
-    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
+    block->Var(out_W_var_name)->SetDataType(block->Var("W")->GetDataType());
   }
 };
 
