@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include "paddle/fluid/framework/details/early_delete_op_handle.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -21,7 +21,9 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class SequentialExecutionPass : public ir::Pass {
+constexpr char kGarbageCollector[] = "garbage_collector";
+
+class MemoryEarlyDeletePass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;

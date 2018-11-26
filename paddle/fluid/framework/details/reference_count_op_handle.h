@@ -15,12 +15,16 @@
 #pragma once
 
 #include <atomic>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -39,6 +43,8 @@ using AtomicDeviceReferenceCountMap =
 using DeviceGarbageCollectorMap =
     std::unordered_map<int,
                        std::unique_ptr<GarbageCollector<framework::Tensor>>>;
+constexpr int kDefaultCPUGarbageCollectorId =
+    1 << 8;  // avoid conflict with gpus.
 
 class ReferenceCountOpHandle : public OpHandleBase {
  public:
@@ -97,6 +103,13 @@ class ReferenceCountOpHandle : public OpHandleBase {
           tensors.emplace_back(
               var->GetMutable<SelectedRows>()->mutable_value());
         }
+      } else if (var->IsType<LoDTensorArray>()) {
+        if (it->second.fetch_sub(pair.second) <= pair.second) {
+          LoDTensorArray *tensor_array = var->GetMutable<LoDTensorArray>();
+          for (auto &tensor : *tensor_array) {
+            tensors.emplace_back(static_cast<Tensor *>(&tensor));
+          }
+        }
       }
     }
 
@@ -132,6 +145,25 @@ class ReferenceCountOpHandle : public OpHandleBase {
   AtomicReferenceCountMap *ref_cnts_;  // not own
   cudaEvent_t event_;
 };
+
+static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
+  std::queue<VarHandleBase *> queue;
+  queue.push(var_in);
+  do {
+    auto *var = queue.front();
+    queue.pop();
+    for (auto *op : var->PendingOps()) {
+      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
+      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
+        return compute_op;
+      }
+      for (auto *out_var : op->Outputs()) {
+        queue.push(out_var);
+      }
+    }
+  } while (!queue.empty());
+  return nullptr;
+}
 
 }  // namespace details
 }  // namespace framework

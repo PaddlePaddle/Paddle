@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+#include <algorithm>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -131,15 +132,28 @@ ParallelExecutor::ParallelExecutor(
 
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
-    for (auto &place : member_->places_) {
-      if (!platform::is_gpu_place(place)) continue;
-      auto gpu_place = boost::get<platform::CUDAPlace>(place);
-      if (gcs_[gpu_place.device] == nullptr) {
-        ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
-        cur_ref_cnts_[gpu_place.device].reset(
-            new details::AtomicReferenceCountMap());
-        gcs_[gpu_place.device].reset(
-            new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
+    bool gpu_mode =
+        std::any_of(member_->places_.begin(), member_->places_.end(),
+                    [&](const platform::Place &place) {
+                      return platform::is_gpu_place(place);
+                    });
+    if (gpu_mode) {
+      for (auto &place : member_->places_) {
+        auto gpu_place = boost::get<platform::CUDAPlace>(place);
+        if (gcs_[gpu_place.device] == nullptr) {
+          ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
+          cur_ref_cnts_[gpu_place.device].reset(
+              new details::AtomicReferenceCountMap());
+          gcs_[gpu_place.device].reset(
+              new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
+        }
+      }
+    } else {
+      // not enabled. Need to narrow down the paddle_with_cuda macro.
+      auto cpu_place = boost::get<platform::CPUPlace>(member_->places_.front());
+      if (gcs_[details::kDefaultCPUGarbageCollectorId] == nullptr) {
+        gcs_[details::kDefaultCPUGarbageCollectorId].reset(
+            new CPUGarbageCollector<Tensor>(cpu_place, max_memory_size));
       }
     }
     if (!gcs_.empty()) {
@@ -150,6 +164,14 @@ ParallelExecutor::ParallelExecutor(
       ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
       graph = ref_cnt_pass->Apply(std::move(graph));
       graph->SetNotOwned("garbage_collector", &gcs_);
+
+      if (build_strategy.memory_early_delete_) {
+        // early delete pass also use gc
+        auto early_delete_pass =
+            ir::PassRegistry::Instance().Get("memory_early_delete_pass");
+        early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+        graph = early_delete_pass->Apply(std::move(graph));
+      }
     }
   }
 #else
@@ -157,7 +179,6 @@ ParallelExecutor::ParallelExecutor(
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
-
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
@@ -186,10 +207,12 @@ ParallelExecutor::ParallelExecutor(
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graph)));
   } else {
     member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graph)));
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
@@ -333,6 +356,8 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
+
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 #endif
+USE_PASS(memory_early_delete_pass);

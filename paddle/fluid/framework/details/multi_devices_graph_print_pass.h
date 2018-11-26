@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <fstream>
 #include <iosfwd>
 #include <ostream>
@@ -23,6 +24,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+constexpr char kGraphvizPath[] = "debug_graphviz_path";
 
 class SSAGraphPrinter {
  public:
@@ -40,7 +43,7 @@ class SSAGraghBuilderWithPrinter : public ir::Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     std::unique_ptr<std::ostream> fout(
-        new std::ofstream(Get<const std::string>("debug_graphviz_path")));
+        new std::ofstream(Get<std::string>(kGraphvizPath)));
     PADDLE_ENFORCE(fout->good());
     Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
     return graph;

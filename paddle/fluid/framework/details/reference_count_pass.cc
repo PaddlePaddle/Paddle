@@ -25,32 +25,12 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
-  std::queue<VarHandleBase *> queue;
-  queue.push(var_in);
-  do {
-    auto *var = queue.front();
-    queue.pop();
-    for (auto *op : var->PendingOps()) {
-      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
-      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
-        return compute_op;
-      }
-      for (auto *out_var : op->Outputs()) {
-        queue.push(out_var);
-      }
-    }
-  } while (!queue.empty());
-  return nullptr;
-}
-
 static void AddDependencyBetween(OpHandleBase *in, OpHandleBase *out,
                                  ir::Graph *graph) {
   auto it = std::find_if(
       in->Outputs().begin(), in->Outputs().end(), [](VarHandleBase *var) {
         return dynamic_cast<DummyVarHandle *>(var) != nullptr;
       });
-
   if (it != in->Outputs().end()) {
     out->AddInput(*it);
   } else {

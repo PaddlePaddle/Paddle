@@ -28,6 +28,14 @@ std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type) {
   return std::unique_ptr<Node>(new Node(name, type));
 }
+
+std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc) {
+  return std::unique_ptr<Node>(new Node(var_desc));
+}
+
+std::unique_ptr<Node> CreateDummyNode(OpDesc* op_desc) {
+  return std::unique_ptr<Node>(new Node(op_desc));
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
