@@ -52,6 +52,7 @@ class TestMKLDNNWithPad(TestWithPad):
     def test_check_grad_no_filter(self):
         return
 
+
 class TestMKLDNNWithStride(TestWithStride):
     def init_op_type(self):
         self.is_test = True
