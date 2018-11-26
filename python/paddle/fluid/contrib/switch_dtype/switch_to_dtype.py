@@ -18,7 +18,7 @@ import numpy as np
 import contextlib
 
 from . import recommend_fp16
-
+from ... import core
 from ... import framework
 from ... import unique_name
 
@@ -72,7 +72,7 @@ def _numerical_overflow_check_(op_type):
 
 
 @contextlib.contextmanager
-def switch_to_fp16(main_program, verbose=True):
+def switch_to_fp16(main_program, verbose=False):
     """
     switch_to_fp16 is used to change the dtype of input and output to fp16.
 
@@ -90,6 +90,10 @@ def switch_to_fp16(main_program, verbose=True):
         >>>    prediction = fluid.layers.fc(input=img, size=200, act='tanh')
         >>> prediction = fluid.layers.cast(prediction, np.float32)
         >>> loss = fluid.layers.cross_entropy(input=prediction, label=label)
+
+    NOTES:
+        Currently, switch_to_fp16 only supports no sub-block Program and the program
+        is executed by Executor.
     """
     dtype = np.float16
 
@@ -111,8 +115,7 @@ def switch_to_fp16(main_program, verbose=True):
     inner_inputs = set()
     inner_outputs = set()
     for op in ops:
-        if verbose:
-            _numerical_overflow_check_(op.type)
+        _numerical_overflow_check_(op.type)
 
         for iname in op.input_names:
             for in_var_name in op.input(iname):
@@ -133,6 +136,8 @@ def switch_to_fp16(main_program, verbose=True):
             continue
         in_var = cur_block.var(in_var_name)
         if in_var.dtype == cast_to_dtype:
+            continue
+        if in_var.dtype not in [core.VarDesc.VarType.FP32]:
             continue
 
         out_var = _create_tmp_variable_(

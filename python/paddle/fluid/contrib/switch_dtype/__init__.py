@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from . import switch_dtype
-from .switch_dtype import *
+from . import switch_to_dtype
+from .switch_to_dtype import *
 
-__all__ = switch_dtype.__all__
+__all__ = switch_to_dtype.__all__
