@@ -110,7 +110,7 @@ void CheckIsUnorderedSame(const std::vector<std::set<int64_t>>& s1,
     auto it1 = s1[i].begin();
     auto it2 = s2[i].begin();
     while (it1 != s1[i].end()) {
-      EXPECT_EQ(*it1, *it1);
+      EXPECT_EQ(*it1, *it2);
       ++it1;
       ++it2;
     }
