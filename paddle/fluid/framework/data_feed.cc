@@ -58,9 +58,8 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
 }
 
 bool DataFeed::SetFileList(const std::vector<std::string>& files) {
-  // Pay attention: init all readers in multithreading, and then
-  // call this function. Otherwise, Init() function will init
-  // finish_set_filelist_ flag.
+  // Pay attention: init all readers before call this function. 
+  // Otherwise, Init() function will init finish_set_filelist_ flag.
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   CheckInit();
   if (finish_set_filelist_) {
