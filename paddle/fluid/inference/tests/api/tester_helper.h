@@ -42,6 +42,7 @@ DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
 
 DECLARE_bool(profile);
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
@@ -204,22 +205,23 @@ void TestMultiThreadPrediction(
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
-  for (int tid = 1; tid < num_threads; ++tid) {
-    predictors.emplace_back(predictors.front()->Clone());
-  }
+  auto main_predictor = CreateTestPredictor(config, use_analysis);
 
   size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
-#ifdef PADDLE_WITH_MKLDNN
-      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
-#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
-      auto &predictor = predictors[tid];
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = main_predictor->Clone();
+#ifdef PADDLE_WITH_MKLDNN
+      if (use_analysis) {
+        static_cast<AnalysisPredictor *>(predictor.get())
+            ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
+      }
+#endif
 
       // warmup run
       LOG(INFO) << "Running thread " << tid << ", warm up run...";

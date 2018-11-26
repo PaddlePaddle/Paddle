@@ -53,6 +53,8 @@ std::ostream &operator<<(std::ostream &os, const NativeConfig &config) {
   os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
   os << GenSpaces(num_spaces)
      << "specify_input_name: " << config.specify_input_name << "\n";
+  os << GenSpaces(num_spaces)
+     << "cpu_num_threads: " << config.cpu_math_library_num_threads() << "\n";
   num_spaces--;
   os << GenSpaces(num_spaces) << "}\n";
   return os;
