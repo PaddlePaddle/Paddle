@@ -257,10 +257,6 @@ class AsyncExecutor(object):
             debug(bool): When set to True, fetch vars will be printed to
                          standard output after each minibatch
 
-        Returns:
-
-            list(numpy.array): fetch result according to fetch_list.
-
         Note:
             the executor will run all operators in the program but not only
             the operators dependent by the fetch_list.
