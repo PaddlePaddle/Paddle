@@ -42,7 +42,8 @@ static void SerializeDestroyCallback(void* payload) {
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,
-                           const int trainer_id) {
+                           const int trainer_id,
+                           const std::string& table_name) {
   platform::RecordRPCEvent record_event("serial", &ctx);
   VarMsg request;
   TensorPayload* payload = nullptr;
@@ -62,6 +63,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
   if (!out_name.empty()) {
     request.set_out_varname(out_name);
+  }
+  if (!table_name.empty()) {
+    request.set_table_name(table_name);
   }
   if (var->IsType<framework::LoDTensor>()) {
     request.set_type(::sendrecv::LOD_TENSOR);

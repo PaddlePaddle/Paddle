@@ -84,7 +84,7 @@ inline void SplitIdsIntoMultipleVarsBySection(
     const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     framework::Scope* scope) {
-  PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size() + 1, "");
+  PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size(), "");
 
   auto place = platform::CPUPlace();
 
@@ -184,7 +184,8 @@ void prefetch(const std::string& id_name, const std::string& out_name,
       VLOG(30) << "sending " << in_var_names[i] << " to " << epmap[i]
                << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
-          epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i]));
+          epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i],
+          table_name));
     } else {
       VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
     }

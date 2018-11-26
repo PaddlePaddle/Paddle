@@ -120,12 +120,13 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     const std::string& table_name) {
   VLOG(40) << "RequestPrefetchHandler " << varname;
 
-  auto var_desc = program_->Block(0).FindVar(out_var_name);
-  InitializeVariable(*outvar, var_desc->GetType());
   if (table_name.empty()) {
+    auto var_desc = program_->Block(0).FindVar(out_var_name);
+    InitializeVariable(*outvar, var_desc->GetType());
     executor_->RunPreparedContext(
         (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
   } else {
+    (*outvar)->GetMutable<framework::LoDTensor>();
     auto lookup_table_op =
         BuildLookupTableOp(table_name, varname, out_var_name);
     paddle::platform::CPUPlace cpu_place;
