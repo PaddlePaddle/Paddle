@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/operators/reader/blocking_queue.h"
 
 namespace paddle {
 namespace framework {
@@ -70,6 +71,10 @@ class MixTensor {
   Tensor* tensor_;
 };
 
+// There are some bugs in the implementation of the two lock 
+// blocking queue(using 36 thread will meet bad_malloc bug). 
+// Now use the lock blocking queue for the time being.
+/*
 template<typename T>
 class BlockingQueue {
  public:
@@ -82,7 +87,7 @@ class BlockingQueue {
     capacity_ = capacity;
   }
 
-  bool Send(const T& elem) {
+  bool Send(T& elem) {
     int c = -1;
     {
       std::unique_lock<std::mutex> lock(send_mutex_);
@@ -107,7 +112,7 @@ class BlockingQueue {
     return true;
   }
 
-  bool Receive(T* elem) {
+  bool Receive(T* elem, int n) {
     int c = -1;
     {
       std::unique_lock<std::mutex> lock(receive_mutex_);
@@ -149,13 +154,13 @@ class BlockingQueue {
   mutable std::mutex receive_mutex_;
   mutable std::condition_variable send_cv_;
   mutable std::condition_variable receive_cv_;
-};
+};*/
 
 class DataFeed {
  public:
   DataFeed() {}
   virtual ~DataFeed() {}
-  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   // for some datafeeds may not be able to implement this interface
   virtual bool CheckFile(const char* filename) {
     LOG(ERROR) << "error: The function CheckFile is not implemented";
@@ -187,7 +192,7 @@ class DataFeed {
   virtual void CheckSetFileList();
   virtual void CheckStart();
   virtual bool PickOneFile(std::string& filename);
-  
+
   static std::vector<std::string> filelist_;
   static size_t file_idx_;
   static std::mutex mutex_for_pick_file_;
@@ -214,33 +219,33 @@ class PrivateQueueDataFeed : public DataFeed {
  public:
   PrivateQueueDataFeed() {}
   virtual ~PrivateQueueDataFeed() {}
-  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
-  virtual int Next(); // no buffer
+  virtual int Next();
   virtual void SetQueueSize(int queue_size);
 
  protected:
   virtual void ReadThread();
   virtual bool ParseOneInstance(T& instance) = 0;
-  virtual void AddInstanceToInsVec(T& vec_ins, T& instance, int index) = 0;
-  virtual void PutToFeedVec(T& ins_vec) = 0;
+  virtual void AddInstanceToInsVec(T& vec_ins,const T& instance, int index) = 0;
+  virtual void PutToFeedVec(const T& ins_vec) = 0;
 
   std::thread read_thread_; // the thread for read files
   /* using ifstream one line and one line parse is faster 
    * than using fread one buffer and one buffer parse.
-   *   for 601M JingPai data:
+   *   for a 601M real data:
    *     ifstream one line and one line parse: 6034 ms
    *     fread one buffer and one buffer parse: 7097 ms */
   std::ifstream file_;
   size_t queue_size_;
-  BlockingQueue<T> queue_;
+  std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };
 
 class MultiSlotType {
  public:
   MultiSlotType() {}
   ~MultiSlotType() {}
-  void Init(std::string& type) {
+  void Init(const std::string& type) {
     CheckType(type);
     if (type_[0] == 'f') {
       float_feasign_.clear();
@@ -255,18 +260,18 @@ class MultiSlotType {
     // is one size larger than the size of data.
     offset_[0] = 0;
   }
-  std::vector<size_t>& GetOffset() {
+  const std::vector<size_t>& GetOffset() const {
     return offset_;
   }
-  void AddValue(float v) {
+  void AddValue(const float v) {
     CheckFloat();
     float_feasign_.push_back(v);
   }
-  void AddValue(uint64_t v) {
+  void AddValue(const uint64_t v) {
     CheckUint64();
     uint64_feasign_.push_back(v);
   }
-  void AddIns(MultiSlotType& ins) {
+  void AddIns(const MultiSlotType& ins) {
     if (ins.GetType()[0] == 'f') { //float
       CheckFloat();
       auto& vec = ins.GetFloatData();
@@ -279,30 +284,30 @@ class MultiSlotType {
       uint64_feasign_.insert(uint64_feasign_.end(), vec.begin(), vec.end());
     }
   }
-  std::vector<float>& GetFloatData() {
+  const std::vector<float>& GetFloatData() const {
     return float_feasign_;
   }
-  std::vector<uint64_t>& GetUint64Data() {
+  const std::vector<uint64_t>& GetUint64Data() const {
     return uint64_feasign_;
   }
-  std::string& GetType() {
+  const std::string& GetType() const {
     return type_;
   }
  private:
-  void CheckType(std::string& type) {
+  void CheckType(const std::string& type) const {
     if (type != "uint64" && type != "float") {
       // check in here
       LOG(ERROR) << "error: there is no this type<" << type << ">.";
       exit(-1);
     }
   }
-  void CheckFloat() {
+  void CheckFloat() const {
     if (type_[0] != 'f') { //float
       LOG(ERROR) << "error: add " << type_ << " value to float slot";
       exit(-1);
     }
   }
-  void CheckUint64() {
+  void CheckUint64() const {
     if (type_[0] != 'u') { //uint64
       LOG(ERROR) << "error: add " << type_ << " value to uint64 slot";
       exit(-1);
@@ -318,13 +323,13 @@ class MultiSlotDataFeed : public PrivateQueueDataFeed<std::vector<MultiSlotType>
  public:
   MultiSlotDataFeed() {}
   virtual ~MultiSlotDataFeed() {}
-  virtual void Init(paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
  protected:
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>& vec_ins, 
-      std::vector<MultiSlotType>& instance, int index);
+      const std::vector<MultiSlotType>& instance, int index);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>& instance);
-  virtual void PutToFeedVec(std::vector<MultiSlotType>& ins_vec);
+  virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 };
 
 }   // namespace framework
