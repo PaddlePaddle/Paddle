@@ -112,7 +112,8 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
     exit(-1);
   }
   queue_size_ = queue_size;
-  queue_.ReCap(queue_size_);
+  queue_ = std::unique_ptr<paddle::operators::reader::BlockingQueue<T>>
+    (new paddle::operators::reader::BlockingQueue<T>(queue_size_));
 }
 
 template<typename T>
@@ -136,11 +137,11 @@ void PrivateQueueDataFeed<T>::ReadThread(){
     }
     T instance;
     while (ParseOneInstance(instance)) {
-      queue_.Send(instance);
+      queue_->Send(instance);
     }
     file_.close();
   }
-  queue_.Close();
+  queue_->Close();
 }
 
 template<typename T>
@@ -150,7 +151,7 @@ int PrivateQueueDataFeed<T>::Next(){
   T instance;
   T ins_vec;
   while (index < default_batch_size_) {
-    if (!queue_.Receive(&instance)) {
+    if (!queue_->Receive(&instance)) {
       break;
     }
     AddInstanceToInsVec(ins_vec, instance, index++);
@@ -181,7 +182,7 @@ void MultiSlotDataFeed::Init(const paddle::framework::DataFeedDesc& data_feed_de
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
-    auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.use() ? use_slots_.size() : -1;
@@ -205,11 +206,11 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   std::string line;
   int instance_cout = 0;
   std::string all_slots_alias = "";
-  for (auto& alias : all_slots_) {
+  for (const auto& alias : all_slots_) {
     all_slots_alias += alias + " ";
   }
   std::string use_slots_alias = "";
-  for (auto& alias : use_slots_) {
+  for (const auto& alias : use_slots_) {
     use_slots_alias += alias + " ";
   }
   LOG(INFO) << "total slots num: " << all_slots_.size();
@@ -328,7 +329,7 @@ this error line: " << line;
 }
 
 void MultiSlotDataFeed::AddInstanceToInsVec(std::vector<MultiSlotType>& ins_vec,
-   std::vector<MultiSlotType>& instance, int index) {
+   const std::vector<MultiSlotType>& instance, int index) {
   if (index == 0) {
     ins_vec.resize(instance.size());
     for (size_t i = 0; i < instance.size(); ++i) {
@@ -341,13 +342,13 @@ void MultiSlotDataFeed::AddInstanceToInsVec(std::vector<MultiSlotType>& ins_vec,
   }
 }
 
-void MultiSlotDataFeed::PutToFeedVec(std::vector<MultiSlotType>& ins_vec) {
+void MultiSlotDataFeed::PutToFeedVec(const std::vector<MultiSlotType>& ins_vec) {
   for (size_t i = 0; i < use_slots_.size(); ++i) {
-    auto& type = ins_vec[i].GetType();
-    auto& offset = ins_vec[i].GetOffset();
+    const auto& type = ins_vec[i].GetType();
+    const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
     if (type[0] == 'f') { // float
-      auto& feasign = ins_vec[i].GetFloatData();
+      const auto& feasign = ins_vec[i].GetFloatData();
       if (feed_vec_[i].IsDense()) {
         int size_in_each_batch = total_instance / batch_size_;
         float* tensor_ptr = feed_vec_[i].GetTensor()->
@@ -361,8 +362,8 @@ void MultiSlotDataFeed::PutToFeedVec(std::vector<MultiSlotType>& ins_vec) {
         feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
       }
     } else if (type[0] == 'u') { // uint64
-      // no uint64_t type in paddle
-      auto& feasign = ins_vec[i].GetUint64Data();
+      // no uint64_t type in paddlepaddle
+      const auto& feasign = ins_vec[i].GetUint64Data();
       if (feed_vec_[i].IsDense()) {
         int size_in_each_batch = total_instance / batch_size_;
         int64_t* tensor_ptr = feed_vec_[i].GetTensor()->
