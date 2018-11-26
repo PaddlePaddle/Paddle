@@ -120,7 +120,6 @@ def __bootstrap__():
         'reader_queue_speed_test_mode', 'print_sub_graph_dir'
     ]
     if 'Darwin' not in sysstr:
-        print("aaaaa")
         read_env_flags.append('use_pinned_memory')
 
     if os.name != 'nt':
