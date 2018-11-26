@@ -16,6 +16,7 @@ add_subdirectory(metrics)
 add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
+add_subdirectory(jitkernels)
 
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
