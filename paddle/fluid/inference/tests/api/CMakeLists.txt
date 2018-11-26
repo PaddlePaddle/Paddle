@@ -74,7 +74,7 @@ inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} ana
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
-  inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
+    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
@@ -88,31 +88,31 @@ inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet
 
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
-   # anakin rnn1
-   set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
-   set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
-   inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn.anakin2.model.bin")
-   inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn_data.txt")
-   cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc
-           ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
-                --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
-           DEPS inference_anakin_api_shared SERIAL)
-   # anakin mobilenet
-   if(WITH_GPU)
-       set(ANAKIN_MOBILENET_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/mobilenet")
-       inference_download(${ANAKIN_MOBILENET_INSTALL_DIR} ${INFERENCE_URL} "mobilenet_v2.anakin.bin")
-       cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc
-               ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
-               DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-   endif()
+    # anakin rnn1
+    set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
+    set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
+    inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn.anakin2.model.bin")
+    inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn_data.txt")
+    cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc
+            ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
+                 --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
+            DEPS inference_anakin_api_shared SERIAL)
+    # anakin mobilenet
+    if(WITH_GPU)
+        set(ANAKIN_MOBILENET_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/mobilenet")
+        inference_download(${ANAKIN_MOBILENET_INSTALL_DIR} ${INFERENCE_URL} "mobilenet_v2.anakin.bin")
+        cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc
+                ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+    endif()
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-   set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
-   if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
-       inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
-   endif()
-   inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
-      EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
+    set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
+    if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
+        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
+    endif()
+    inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
 endif()
