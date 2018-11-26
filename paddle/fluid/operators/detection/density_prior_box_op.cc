@@ -39,24 +39,27 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     auto fixed_sizes = ctx->Attrs().Get<std::vector<float>>("fixed_sizes");
     auto fixed_ratios = ctx->Attrs().Get<std::vector<float>>("fixed_ratios");
     auto densities = ctx->Attrs().Get<std::vector<int>>("densities");
+    bool flatten = ctx->Attrs().Get<bool>("flatten_to_2d");
 
     PADDLE_ENFORCE_EQ(fixed_sizes.size(), densities.size(),
                       "The number of fixed_sizes and densities must be equal.");
     size_t num_priors = 0;
-    if ((fixed_sizes.size() > 0) && (densities.size() > 0)) {
-      for (size_t i = 0; i < densities.size(); ++i) {
-        if (fixed_ratios.size() > 0) {
-          num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
-        }
-      }
+    for (size_t i = 0; i < densities.size(); ++i) {
+      num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
     }
-    std::vector<int64_t> dim_vec(4);
-    dim_vec[0] = input_dims[2];
-    dim_vec[1] = input_dims[3];
-    dim_vec[2] = num_priors;
-    dim_vec[3] = 4;
-    ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
-    ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
+    if (!flatten) {
+      std::vector<int64_t> dim_vec(4);
+      dim_vec[0] = input_dims[2];
+      dim_vec[1] = input_dims[3];
+      dim_vec[2] = num_priors;
+      dim_vec[3] = 4;
+      ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
+      ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
+    } else {
+      int64_t dim0 = input_dims[2] * input_dims[3] * num_priors;
+      ctx->SetOutputDim("Boxes", {dim0, 4});
+      ctx->SetOutputDim("Variances", {dim0, 4});
+    }
   }
 
  protected:
@@ -64,7 +67,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
-        platform::CPUPlace());
+        ctx.GetPlace());
   }
 };
 
@@ -101,7 +104,10 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<bool>("clip", "(bool) Whether to clip out-of-boundary boxes.")
         .SetDefault(true);
-
+    AddAttr<bool>("flatten_to_2d",
+                  "(bool) Whether to flatten to 2D and "
+                  "the second dim is 4.")
+        .SetDefault(false);
     AddAttr<float>(
         "step_w",
         "Density prior boxes step across width, 0.0 for auto calculation.")
