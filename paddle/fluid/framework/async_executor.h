@@ -53,11 +53,12 @@ class AsyncExecutor {
 
   void SetModelPrefix(const std::string& model_prefix);
   void RunStartupProgram(const ProgramDesc& program, Scope* scope);
-  std::vector<float> RunFromFile(const ProgramDesc& main_program,
-                                  const std::string& data_feed_desc_str,
-                                  const std::vector<std::string>& filelist,
-                                  const int thread_num,
-                                  const std::vector<std::string>& fetch_names);
+  void RunFromFile(const ProgramDesc& main_program,
+                   const std::string& data_feed_desc_str,
+                   const std::vector<std::string>& filelist,
+                   const int thread_num,
+                   const std::vector<std::string>& fetch_names,
+                   const bool debug = false);
 
   void CheckFiles(const std::vector<std::string>& files);
   void LoadInitModel();
@@ -68,7 +69,8 @@ class AsyncExecutor {
                      const std::shared_ptr<DataFeed>& reader,
                      const std::vector<std::string>& fetch_var_names,
                      Scope& root_scope,   // NOLINT
-                     const int thread_index);
+                     const int thread_index,
+                     const bool debug);
 
 
  public:

@@ -33,18 +33,22 @@ void CreateTensor(Variable* var, proto::VarType::Type var_type);
 
 class ExecutorThreadWorker {
  public:
-  ExecutorThreadWorker() {}
+  ExecutorThreadWorker()
+      : thread_id_(-1),
+        root_scope_(NULL),
+        thread_scope_(NULL),
+        debug_(false) {}
   ~ExecutorThreadWorker() {}
   void CreateThreadResource(const framework::ProgramDesc& program,
                             const paddle::platform::Place& place);
   void SetThreadId(int tid);
+  void SetDebug(const bool debug) {debug_ = debug;}
   void SetRootScope(Scope* g_scope);
   void SetDevice();
   void BindingDataFeedMemory();
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
   void TrainFiles();
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
-  std::vector<float>& GetFetchValues() {return fetch_values_;}
 
  private:
   void CreateThreadScope(const framework::ProgramDesc& program);
@@ -71,7 +75,8 @@ class ExecutorThreadWorker {
 
  private:
   std::vector<std::string> fetch_var_names_;
-  std::vector<float> fetch_values_;
+  std::vector<std::vector<float>> fetch_values_;
+  bool debug_;
 };
 
 }  // namespace framework

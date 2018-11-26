@@ -118,8 +118,10 @@ void AsyncExecutor::CreateThreads(
     const std::shared_ptr<DataFeed>& reader,
     const std::vector<std::string>& fetch_var_names,
     Scope& root_scope,
-    const int thread_index) {
+    const int thread_index,
+    const bool debug) {
   worker->SetThreadId(thread_index);
+  worker->SetDebug(debug);
   worker->SetRootScope(&root_scope);
   worker->CreateThreadResource(main_program, place_);
   worker->SetDataFeed(reader);
@@ -137,7 +139,7 @@ void AsyncExecutor::SetModelPrefix(const std::string& model_prefix) {
   model_prefix_ = model_prefix;
 }
 
-void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers,
+void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers,   // NOLINT
                     const int thread_num, const DataFeedDesc& data_feed_desc,
                     const std::vector<std::string>& filelist) {
   readers.resize(thread_num);
@@ -148,13 +150,24 @@ void PrepareReaders(std::vector<std::shared_ptr<DataFeed> >& readers,
   readers[0]->SetFileList(filelist);
 }
 
-std::vector<float> AsyncExecutor::RunFromFile(
+void AsyncExecutor::RunFromFile(
     const ProgramDesc& main_program,
     const std::string& data_feed_desc_str,
     const std::vector<std::string>& filelist,
     const int thread_num,
-    const std::vector<std::string>& fetch_var_names) {
+    const std::vector<std::string>& fetch_var_names,
+    const bool debug) {
   std::vector<std::thread> threads;
+
+  auto& block = main_program.Block(0);
+  for (auto var_name : fetch_var_names) {
+    auto var_desc = block.FindVar(var_name);
+    auto shapes = var_desc->GetShape();
+    PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
+                   "var %s: Fetched var has wrong shape, "
+                   "only variables with the last dimension size 1 supported",
+                   var_name);
+  }
 
   DataFeedDesc data_feed_desc;
   google::protobuf::TextFormat::ParseFromString(
@@ -183,7 +196,7 @@ std::vector<float> AsyncExecutor::RunFromFile(
   // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed> > readers;
   PrepareReaders(readers, actual_thread_num, data_feed_desc, filelist);
-  
+
   std::vector<std::shared_ptr<ExecutorThreadWorker> > workers;
   workers.resize(actual_thread_num);
   for (auto& worker : workers) {
@@ -193,7 +206,7 @@ std::vector<float> AsyncExecutor::RunFromFile(
   // prepare thread resource here
   for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
     CreateThreads(workers[thidx].get(), main_program,
-                  readers[thidx], fetch_var_names, root_scope_, thidx);
+                  readers[thidx], fetch_var_names, root_scope_, thidx, debug);
   }
 
   // start executing ops in multiple threads
@@ -208,16 +221,7 @@ std::vector<float> AsyncExecutor::RunFromFile(
 
   root_scope_.DropKids();
 
-  std::vector<float> fetch_values;
-  fetch_values.resize(fetch_var_names.size(), 0);
-
-  std::vector<float>& fetch_value_vectors = workers[0]->GetFetchValues();
-
-  for (unsigned int i = 0; i < fetch_var_names.size(); ++i) {
-    fetch_values[i] = fetch_value_vectors[i];
-  }
-
-  return fetch_values;
+  return;
 }
 
 void AsyncExecutor::LoadInitModel() {

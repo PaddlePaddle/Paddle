@@ -89,7 +89,7 @@ class AsyncExecutor(object):
         executor = Executor(place)
         executor.run(program)
 
-    def run(self, program, data_feed, filelist, thread_num, fetch):
+    def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -152,7 +152,20 @@ class AsyncExecutor(object):
             if isinstance(fetch, Variable):
                 fetch = [fetch]
             fetch_var_names = [var.name for var in fetch]
+            for fetch_var in fetch:
+                shape = fetch_var.shape
+                if shape[len(shape) - 1] != 1:
+                    raise AssertionError(
+                        "%s: Fetch variable has wrong shape. Only varibles "
+                        "with the last dimension size 1 supported."
+                        % (fetch_var.name))
 
-        evaluation = self.executor.run_from_files(program_desc, data_feed.desc(), filelist, thread_num, fetch_var_names)
+        evaluation = self.executor.run_from_files(
+                program_desc,
+                data_feed.desc(),
+                filelist,
+                thread_num,
+                fetch_var_names,
+                debug)
         return evaluation
 
