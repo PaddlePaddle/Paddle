@@ -24,7 +24,7 @@ namespace operators {
 namespace distributed {
 
 void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& table_name,
+              const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context);

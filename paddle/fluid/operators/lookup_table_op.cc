@@ -99,6 +99,12 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "table_names",
+        "(string vector, the splited table names that will be fetched from "
+        "parameter server)"
+        "in the order of input variables for mapping")
+        .SetDefault({});
 
     AddComment(R"DOC(
 Lookup Table Operator.

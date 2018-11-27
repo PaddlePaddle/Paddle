@@ -154,7 +154,7 @@ inline void MergeMultipleVarsIntoOneBySection(
 }
 
 void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& table_name,
+              const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context) {
@@ -190,7 +190,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
                << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
           epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i],
-          table_name + ".block" + std::to_string(i)));
+          table_names[i]));
     } else {
       VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
     }
