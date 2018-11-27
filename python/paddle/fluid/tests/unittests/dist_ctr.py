@@ -59,7 +59,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=IS_SPARSE)
+            is_sparse=IS_SPARSE,
+            remote_prefetch=True)
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum")
         dnn_out = dnn_pool
@@ -81,7 +82,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=IS_SPARSE)
+            is_sparse=IS_SPARSE,
+            remote_prefetch=True)
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
