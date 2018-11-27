@@ -43,9 +43,9 @@ class CodeTable(object):
 
 
 class CodeTableWithCustomTree(object):
-    def __init__(self, ptable, pcode, index):
-        self.ptable_ = ptable
-        self.pcode_ = pcode
+    def __init__(self, path_table, path_code, index):
+        self.ptable_ = path_table
+        self.pcode_ = path_code
         self.index_ = index
 
     def cal_index(self, bit):
@@ -102,9 +102,10 @@ def hsigmoid(x, w, label, bias, num_classes):
     return pre_output, out
 
 
-def hsigmoidWithCustomTree(x, w, ptable, pcode, label, bias, num_classes):
+def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
+                           num_classes):
     batch_size = x.shape[0]
-    code_length = len(ptable[0])
+    code_length = len(path_table[0])
     code_table = [0 for _ in range(code_length)]
     # init pre_out with shape [N, code_length]
     pre_output = np.zeros((batch_size, code_length))
@@ -112,13 +113,13 @@ def hsigmoidWithCustomTree(x, w, ptable, pcode, label, bias, num_classes):
     out = np.zeros((batch_size, 1)).astype("float32")
     if isinstance(bias, np.ndarray):
         for i in range(batch_size):
-            code_table = CodeTableWithCustomTree(ptable, pcode, i)
+            code_table = CodeTableWithCustomTree(path_table, path_code, i)
             length = code_table.get_length()
             for j in range(length):
                 idx = code_table.cal_index(j)
                 pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
-        code_table = CodeTableWithCustomTree(ptable, pcode, i)
+        code_table = CodeTableWithCustomTree(path_table, path_code, i)
         length = code_table.get_length()
         for j in range(length):
             idx = code_table.cal_index(j)
@@ -127,7 +128,7 @@ def hsigmoidWithCustomTree(x, w, ptable, pcode, label, bias, num_classes):
     pre_output = np.clip(pre_output, -40.0, 40.0)
     # out(i, 0) = \sum_j  bit(i, j) * preout(i, j)
     for i in range(batch_size):
-        code_table = CodeTableWithCustomTree(ptable, pcode, i)
+        code_table = CodeTableWithCustomTree(path_table, path_code, i)
         length = code_table.get_length()
         sum = 0.0
         for j in range(length):
@@ -173,24 +174,24 @@ class TestHSigmoidOpSparse(OpTest):
         x = np.random.random((batch_size, feature_size)).astype("float32")
         w = np.random.random((num_classes - 1, feature_size)).astype("float32")
         label = np.array([0, 1, 4, 5])
-        ptable = np.array(
+        path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
              (0, 2, -1, -1,
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
+        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
             'X': x,
             'W': w,
-            'PTable': ptable,
-            'PathCode': pcode,
+            'PTable': path_table,
+            'PathCode': path_code,
             'Label': label,
             'Bias': bias
         }
-        pre_output, out = hsigmoidWithCustomTree(x, w, ptable, pcode, label,
-                                                 bias, num_classes)
+        pre_output, out = hsigmoidWithCustomTree(x, w, path_table, path_code,
+                                                 label, bias, num_classes)
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
@@ -200,11 +201,13 @@ class TestHSigmoidOpSparse(OpTest):
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
     def hs_net_conf(self, is_sparse):
         input_word = fluid.layers.data(name="x", shape=[1], dtype='int64')
-        ptable = fluid.layers.data(name='ptable', shape=[3], dtype='int64')
-        pcode = fluid.layers.data(name='pcode', shape=[3], dtype='int64')
+        path_table = fluid.layers.data(
+            name='path_table', shape=[3], dtype='int64')
+        path_code = fluid.layers.data(
+            name='path_code', shape=[3], dtype='int64')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-        data_list = [input_word, ptable, pcode, label]
+        data_list = [input_word, path_table, path_code, label]
 
         emb = fluid.layers.embedding(
             input=input_word,
@@ -218,9 +221,9 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             label=label,
             bias_attr=True,
             non_leaf_num=3,
-            ptable=ptable,
-            pcode=pcode,
-            is_costum=True,
+            path_table=path_table,
+            path_code=path_code,
+            is_custom=True,
             is_sparse=is_sparse)
 
         avg_cost = fluid.layers.reduce_mean(cost)
@@ -232,8 +235,8 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             start_up = fluid.default_startup_program()
             start_up.random_seed = 1  # Fix random seed
             x = np.arange(6).reshape(6)
-            ptable = np.array([(1, 2, -1), (1, 2, -1)])
-            pcode = np.array([(1, 0, -1), (0, 0, -1)])
+            path_table = np.array([(1, 2, -1), (1, 2, -1)])
+            path_code = np.array([(1, 0, -1), (0, 0, -1)])
             label = np.array([1, 4])
 
             loss, data_list = self.hs_net_conf(is_sparse)
@@ -248,8 +251,8 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             exe.run(start_up)
             result = list()
             for i in range(10):
-                data = [([[x[i % 2]]], [list(ptable[i % 2])],
-                         [list(pcode[i % 2])], [label[i % 2]])]
+                data = [([[x[i % 2]]], [list(path_table[i % 2])],
+                         [list(path_code[i % 2])], [label[i % 2]])]
 
                 loss_val = exe.run(main_program,
                                    feed=feeder.feed(data),
@@ -273,24 +276,24 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
         label = np.array([0, 1, 4, 5])
-        ptable = np.array(
+        path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
              (0, 2, -1, -1,
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
+        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
             'X': x,
             'W': w,
-            'PTable': ptable,
-            'PathCode': pcode,
+            'PTable': path_table,
+            'PathCode': path_code,
             'Label': label,
             'Bias': bias
         }
-        pre_output, out = hsigmoidWithCustomTree(x, w, ptable, pcode, label,
-                                                 bias, num_classes)
+        pre_output, out = hsigmoidWithCustomTree(x, w, path_table, path_code,
+                                                 label, bias, num_classes)
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
@@ -310,26 +313,26 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
         label = np.array([0, 1, 4, 5])
-        ptable = np.array(
+        path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
              (0, 2, -1, -1,
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        pcode = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
+        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
         # bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
             'X': x,
             'W': w,
-            'PTable': ptable,
-            'PathCode': pcode,
+            'PTable': path_table,
+            'PathCode': path_code,
             'Label': label,
         }
         pre_output, out = hsigmoidWithCustomTree(
             x=x,
             w=w,
-            ptable=ptable,
-            pcode=pcode,
+            path_table=path_table,
+            path_code=path_code,
             label=label,
             bias=None,
             num_classes=num_classes)

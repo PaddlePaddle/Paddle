@@ -47,11 +47,11 @@ template <typename DeviceContext, typename T>
 class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
-    auto w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
+    auto& in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
+    auto& w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
     auto* path = ctx.Input<framework::LoDTensor>("PTable");
     auto* code = ctx.Input<framework::LoDTensor>("PathCode");
-    auto label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
+    auto& label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
     auto* bias = ctx.Input<framework::LoDTensor>("Bias");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* pre_out = ctx.Output<framework::LoDTensor>("PreOut");
@@ -114,8 +114,8 @@ template <typename DeviceContext, typename T>
 class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
-    auto w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
+    auto& in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
+    auto& w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
     auto* path = ctx.Input<framework::LoDTensor>("PTable");
     auto* code = ctx.Input<framework::LoDTensor>("PathCode");
     auto* bias = ctx.Input<framework::LoDTensor>("Bias");
@@ -124,9 +124,9 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> zero;
-    auto label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
-    auto pre_out = detail::Ref(ctx.Input<framework::LoDTensor>("PreOut"));
-    auto out_grad = detail::Ref(
+    auto& label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
+    auto& pre_out = detail::Ref(ctx.Input<framework::LoDTensor>("PreOut"));
+    auto& out_grad = detail::Ref(
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out")));
     framework::LoDTensor pre_out_grad;
 

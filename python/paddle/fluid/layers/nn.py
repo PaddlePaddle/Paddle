@@ -4589,22 +4589,32 @@ def hsigmoid(input,
              bias_attr=None,
              name=None,
              non_leaf_num=None,
-             ptable=None,
-             pcode=None,
-             is_costum=False,
+             path_table=None,
+             path_code=None,
+             is_custom=False,
              is_sparse=False):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, each leaf node represents a class(a word) and each
+    complete binary tree, or you can use is_custom to pass your own tree to 
+    implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
     internal node on the path, and sum them to get a total cost. hsigmoid can
     achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the size of word dict.
 
-    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    Using default tree you can Refer to `Hierarchical Probabilistic Neural Network Language Model
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+
+    And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
+        1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
+        2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
+        3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
+         means label of each binary classification, using 1 indicate true, 0 indicate false.
+        4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+        related to the same batch of inputs.
+
 
     Args:
         input (Variable): The input tensor variable with shape
@@ -4613,13 +4623,6 @@ def hsigmoid(input,
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
         num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set
-        non_leaf_num: this defines the number of non-leaf nodes in costumed tree
-        ptable: (Variable|None) this variable can store each batch of samples' path to root, 
-            it should be in leaf -> root order
-            ptable should have the same shape with pcode, and for each sample i ptable[i] indicates a np.array like 
-            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
-        pcode:  (Variable|None) this variable can store each batch of samples' code, 
-            each code consist with every code of parent nodes. it should be in leaf -> root order
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -4631,8 +4634,15 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        is_costum: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
-             set you need to set ptable/pcode/non_leaf_num, otherwise num_classes should be set
+        non_leaf_num: this defines the number of non-leaf nodes in costumed tree
+        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+            it should be in leaf -> root order
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
+            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
+        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            each code consist with every code of parent nodes. it should be in leaf -> root order
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+             set you need to set path_table/path_code/non_leaf_num, otherwise num_classes should be set
         is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
              of W and input will be sparse.
 
@@ -4653,22 +4663,22 @@ def hsigmoid(input,
     out = helper.create_variable_for_type_inference(dtype)
     pre_out = helper.create_variable_for_type_inference(dtype)
     dim = input.shape[1]
-    if ((num_classes is None) or (num_classes < 2)) and (not is_costum):
+    if ((num_classes is None) or (num_classes < 2)) and (not is_custom):
         raise ValueError(
             "num_classes must not be less than 2 with default tree")
 
-    if (is_costum) and (pcode is None):
-        raise ValueError("pcode should not be None with costum tree")
-    elif (is_costum) and (ptable is None):
-        raise ValueError("ptable should not be None with costum tree")
-    elif (is_costum) and (non_leaf_num is None):
+    if (is_custom) and (path_code is None):
+        raise ValueError("path_code should not be None with costum tree")
+    elif (is_custom) and (path_table is None):
+        raise ValueError("path_table should not be None with costum tree")
+    elif (is_custom) and (non_leaf_num is None):
         raise ValueError("non_leaf_num should not be None with costum tree")
     else:
         pass
 
     weights = None
 
-    if not is_costum:
+    if not is_custom:
         weights = helper.create_parameter(
             attr=helper.param_attr,
             shape=[num_classes - 1, dim],
@@ -4683,12 +4693,12 @@ def hsigmoid(input,
     inputs = {
         "X": input,
         "W": weights,
-        "PTable": ptable,
-        "PathCode": pcode,
+        "PTable": path_table,
+        "PathCode": path_code,
         "Label": label
     }
     if helper.bias_attr:
-        if not is_costum:
+        if not is_custom:
             bias = helper.create_parameter(
                 attr=helper.bias_attr,
                 shape=[num_classes - 1, 1],
