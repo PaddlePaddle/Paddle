@@ -86,7 +86,11 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
     munlock(p, size);
 #endif
   }
+#ifdef _WIN32
+  _aligned_free(p);
+#else
   free(p);
+#endif
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
