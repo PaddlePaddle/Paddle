@@ -55,6 +55,30 @@ const std::vector<std::string> load_filelist_from_file(const char* filename) {
   return filelist;
 }
 
+void GenerateFileForTest(const char* protofile, const char* filelist) {
+  std::ofstream w_protofile(protofile);
+  w_protofile << "name: \"MultiSlotDataFeed\"\nbatch: 128\nmulti_slot_desc {\n\
+    slots {\n        name: \"uint64_data\"\n    \
+    type: \"uint64\"\n        use: true\n    }\n\
+    slots {\n        name: \"float_data\"\n    \
+    type: \"float\"\n        use: true\n    }\n}";
+  w_protofile.close();
+  std::ofstream w_filelist(filelist);
+  int total_file = 4;
+  for (int i = 0; i < total_file; ++i) {
+    std::string filename = "TestMultiSlotDataFeed.data." + std::to_string(i);
+    w_filelist << filename;
+    if (i + 1 != total_file) {
+      w_filelist << std::endl;
+    }
+    std::ofstream w_datafile(filename.c_str());
+    w_datafile << "9 3 9 7 8 6 2 0 8 2 5 0.1 0.2 0.3 0.4 0.5\n\
+3 0 100 200 1 99.9\n1 19260817 3 123.123 556.556 985.211\n";
+    w_datafile.close();
+  }
+  w_filelist.close();
+}
+
 class MultiTypeSet {
  public:
   MultiTypeSet() {uint64_set_.clear(); float_set_.clear();}
@@ -166,7 +190,7 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>& file_elem_set,
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
     if (!fin.good()) {
-      LOG(ERROR) << "FATAL: cant open " << file << std::endl;
+      LOG(ERROR) << "error: cant open " << file << std::endl;
       exit(-1);
     }
     while (1) {
@@ -207,11 +231,12 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>& file_elem_set,
 TEST(DataFeed, MultiSlotUnitTest) {
   const char* protofile = "data_feed_desc.prototxt";
   const char* filelist_name = "filelist.txt";
+  GenerateFileForTest(protofile, filelist_name);
   const std::vector<std::string> filelist = load_filelist_from_file(filelist_name);
   paddle::framework::DataFeedDesc data_feed_desc = load_datafeed_param_from_file(protofile);
   std::vector<MultiTypeSet> reader_elem_set;
   std::vector<MultiTypeSet> file_elem_set;
-  GetElemSetFromReader(reader_elem_set, data_feed_desc, filelist, 12);
+  GetElemSetFromReader(reader_elem_set, data_feed_desc, filelist, 4);
   GetElemSetFromFile(file_elem_set, data_feed_desc, filelist);
   CheckIsUnorderedSame(reader_elem_set, file_elem_set);
 }
