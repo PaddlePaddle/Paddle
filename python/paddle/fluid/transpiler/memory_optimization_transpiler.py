@@ -121,6 +121,7 @@ class ControlFlowGraph(object):
         self._defs = defaultdict(OrderedSet)
         self._live_in = defaultdict(OrderedSet)
         self._live_out = defaultdict(OrderedSet)
+
         self._skip_opt = skip_opt
         self.pool = []
 
@@ -144,7 +145,6 @@ class ControlFlowGraph(object):
         for i in range(self.op_size):
             self._uses[i].update(self._ops[i].input_arg_names())
             self._defs[i].update(self._ops[i].output_arg_names())
-            self._live_in[i] = self._uses[i]
 
     def _update_graph(self, old_name, new_name, begin_idx=0):
         for i in range(begin_idx, self.op_size):
@@ -223,8 +223,6 @@ class ControlFlowGraph(object):
                         elif mysize != -1 and cache_size == -1:
                             break
                     self.pool.insert(i, cache)
-                    # self.pool.append(cache)
-                    # self.pool.sort(cmp=comparator)
 
     def _get_diff(self, a, b):
         u = a & b

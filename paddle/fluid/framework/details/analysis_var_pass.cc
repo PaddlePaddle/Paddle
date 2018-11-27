@@ -83,36 +83,63 @@ std::unordered_set<std::string> AnalysisVarPass::GetSubBlockVars(
   return vars;
 }
 
-void AnalysisVarPass::RenameVarInGraphDesc(ir::Node* var, ir::Node* cache_var,
+void AnalysisVarPass::RenameVarInGraphDesc(const std::string& var,
+                                           const std::string& cache_var,
                                            size_t idx) const {
   for (size_t i = idx; i < cfg_.Ops().size(); ++i) {
     auto* op = cfg_.Ops()[i];
     auto* op_desc = op->Op();
-    op_desc->Rename(var->Name(), cache_var->Name());
-    if (op_desc->Block()->HasVar(var->Name())) {
-      op_desc->Block()->RemoveVar(var->Name());
+    op_desc->Rename(var, cache_var);
+    if (op_desc->Block()->HasVar(var)) {
+      op_desc->Block()->RemoveVar(var);
     }
+
+    FilterVariables(op->inputs, [&](ir::Node* node) {
+      if (node->Name() == var) {
+        node->Var()->SetName(cache_var);
+      }
+    });
+
+    FilterVariables(op->outputs, [&](ir::Node* node) {
+      if (node->Name() == var) {
+        node->Var()->SetName(cache_var);
+      }
+    });
   }
 }
 
-void AnalysisVarPass::RenameVarInGraphNode(ir::Node* var, ir::Node* cache_var,
+void AnalysisVarPass::RenameVarInGraphNode(const std::string& var,
+                                           const std::string& cache_var,
                                            size_t idx) const {
-  std::string old_name = var->Name();
-  std::string new_name = cache_var->Name();
   for (size_t i = idx; i < cfg_.Ops().size(); ++i) {
     auto* op = cfg_.Ops()[i];
-    for (auto it = op->inputs.begin(); it != op->inputs.end(); ++it) {
-      if ((*it)->Name() == old_name) {
-        (*it)->Var()->SetName(new_name);
-        (*it)->SetName(new_name);
+
+    FilterVariables(op->inputs, [&](ir::Node* node) {
+      if (node->Name() == var) {
+        // ReplaceNode(graph, node, node->Var());
+        node->SetName(cache_var);
       }
-    }
-    for (auto it = op->outputs.begin(); it != op->outputs.end(); ++it) {
-      if ((*it)->Name() == old_name) {
-        (*it)->Var()->SetName(new_name);
-        (*it)->SetName(new_name);
+    });
+
+    FilterVariables(op->outputs, [&](ir::Node* node) {
+      if (node->Name() == var) {
+        // ReplaceNode(graph, node, node->Var());
+        node->SetName(cache_var);
       }
-    }
+    });
+
+    // for (auto it = op->inputs.begin(); it != op->inputs.end(); ++it) {
+    //   if ((*it)->Name() == var) {
+    //     (*it)->Var()->SetName(cache_var);
+    //     (*it)->SetName(cache_var);
+    //   }
+    // }
+    // for (auto it = op->outputs.begin(); it != op->outputs.end(); ++it) {
+    //   if ((*it)->Name() == var) {
+    //     (*it)->Var()->SetName(cache_var);
+    //     (*it)->SetName(cache_var);
+    //   }
+    // }
   }
 }
 
@@ -156,6 +183,7 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   auto subblock_output_vars = GetSubBlockOutputVars(nodes);
   auto subblock_vars = GetSubBlockVars(nodes);
   skip_set_.insert(subblock_vars.begin(), subblock_vars.end());
+
   cfg_ = details::ControlFlowGraph(*graph.get());
   cfg_.LiveVariableAnalysis();
   int counter = 0;
@@ -173,7 +201,7 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
         for (auto& sub_op_output_var_pair : sub_op_desc->Outputs()) {
           for (auto& sub_op_output_var : sub_op_output_var_pair.second) {
             auto* var_desc = sub_block_desc->FindVar(sub_op_output_var);
-            ir::Node* var = ir::CreateDummyNode(var_desc).get();
+            ir::Node* var = ir::CreateNodeForTest(var_desc).get();
             if (NodeCanReused(var)) {
               ir::Node* cache = pool_.NodeMatch(var);
               if (cache != nullptr) {
@@ -202,8 +230,8 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
       }
     } else {
       if (OpHasSubBlock(op_desc)) {
-        VLOG(3) << op->Name()
-                << " has subblock, but disable subgraph optimize. skipped.";
+        // VLOG(3) << op->Name()
+        //         << " has subblock, but disable subgraph optimize. skipped.";
       }
     }
 
@@ -235,8 +263,8 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
           counter += 1;
 
           cfg_.RenameVarInCFGGraph(var->Name(), cache->Name(), idx);
-          RenameVarInGraphDesc(var, cache, idx);
-          RenameVarInGraphNode(var, cache, idx);
+          RenameVarInGraphDesc(var->Name(), cache->Name(), idx);
+          RenameVarInGraphNode(var->Name(), cache->Name(), idx);
           pool_.Erase(cache);
         }
       }
@@ -248,6 +276,12 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
         if (var_node == nullptr) continue;
         if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
           pool_.Insert(var_node, op);
+          if (var_node->Name() == "top_k_0.tmp_0") {
+            VLOG(3) << "first " << pool_.ToString();
+          }
+          if (var_node->Name() == "top_k_0.tmp_1") {
+            VLOG(3) << "second " << pool_.ToString();
+          }
         }
       }
     }

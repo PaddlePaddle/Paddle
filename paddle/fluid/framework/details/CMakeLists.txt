@@ -50,7 +50,7 @@ if (WITH_GPU)
   list(APPEND SSA_GRAPH_EXECUTOR_DEPS reference_count_pass)
 endif()
 cc_test(memory_reuse_types_test SRCS memory_reuse_types_test.cc DEPS framework_proto graph)
-cc_test(cfg_graph_test SRCS cfg_graph_test.cc DEPS framework_proto graph)
+cc_test(cfg_graph_test SRCS cfg_graph_test.cc cfg_graph.cc DEPS framework_proto graph graph_helper op_registry )
 
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 

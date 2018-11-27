@@ -65,7 +65,7 @@ class Node {
 
   std::string Name() const { return name_; }
 
-  void SetName(std::string name) { name_ = name; }
+  void SetName(const std::string name) { name_ = name; }
 
   VarDesc* Var() {
     PADDLE_ENFORCE(IsVar());
@@ -127,10 +127,8 @@ class Node {
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                                  Node::Type type);
-  // Subblock can not construct as an IR Graph.
-  // Create DummyNode, need to note that the counter also increase.
-  friend std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc);
-  friend std::unique_ptr<Node> CreateDummyNode(OpDesc* op_desc);
+  friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
+  friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
   explicit Node(const std::string& name, Type type)
       : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
@@ -158,9 +156,9 @@ class Node {
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);
-std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc);
+std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
 
-std::unique_ptr<Node> CreateDummyNode(OpDesc* op_desc);
+std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

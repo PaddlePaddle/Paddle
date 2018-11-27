@@ -68,6 +68,15 @@ class ControlFlowGraph {
   std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
 
+template <typename Callback>
+void FilterVariables(const std::vector<ir::Node*>& nodes, Callback callback) {
+  for (auto* var : nodes) {
+    if (var->IsVar() && !var->IsCtrlVar()) {
+      callback(var);
+    }
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

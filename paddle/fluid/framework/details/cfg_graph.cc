@@ -62,28 +62,22 @@ void ControlFlowGraph::BuildCFGGraph() {
   }
 }
 
-template <typename Callback>
-void FilterVariables(const std::vector<ir::Node*>& nodes, Callback callback) {
-  for (auto* var : nodes) {
-    if (var->IsVar() && !var->IsCtrlVar()) {
-      callback(var);
-    }
-  }
-}
-
 void ControlFlowGraph::ConnectNodes() {
   for (size_t i = 0; i < ops_.size(); ++i) {
     auto& op = ops_[i];
     try {
-      auto& next_op = ops_.at(i + 1) : successors_[op].insert(next_op);
+      auto& next_op = ops_.at(i + 1);
+      successors_[op].insert(next_op);
       predecessors_[next_op].insert(op);
     } catch (...) {
       // do nothing
     }
 
-    FilterVariables(op->inputs, [&](ir::Node* var) { uses_[op].emplace(var); });
+    FilterVariables(op->inputs,
+                    [&](ir::Node* var) { uses_[op].emplace(var->Name()); });
 
-    FilterVariables(op->inputs, [&](ir::Node* var) { defs_[op].emplace(var); });
+    FilterVariables(op->outputs,
+                    [&](ir::Node* var) { defs_[op].emplace(var->Name()); });
   }
 }
 
@@ -116,10 +110,10 @@ void ControlFlowGraph::LiveVariableAnalysis() {
         live_out_[op].insert(var);
       }
     }
-    for (auto& var : live_out_[op]) {
+    for (auto& var : uses_[op]) {
       live_in_[op].insert(var);
     }
-    for (auto& var : uses_[op]) {
+    for (auto& var : live_out_[op]) {
       live_in_[op].insert(var);
     }
     for (auto& var : defs_[op]) {

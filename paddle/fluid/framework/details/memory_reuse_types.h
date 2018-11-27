@@ -30,8 +30,12 @@ namespace details {
 constexpr char kFetchedVars[] = "fetched_vars";
 constexpr char kGraphNodePool[] = "graph_node_pool";
 
-using GraphNodePool =
-    std::vector<std::pair<std::string, std::unordered_set<OpDesc*>>>;
+// NOTE(dzh): Variable and the operators use the var.
+// for early delete pass.
+// Because analysis var pass build base on ir::Node, which maybe released
+// or modified between passes, so we use OpDesc* to mark ops.
+using GraphNodePool = std::vector<
+    std::pair<std::string /*var node*/, std::unordered_set<OpDesc*> /* ops */>>;
 
 // NOTE(dzh): by default, it sort node in ascend order(by node bytes size).
 // in fluid, -1 means the batch_size is determined in runtime.

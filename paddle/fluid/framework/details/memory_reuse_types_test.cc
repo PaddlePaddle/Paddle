@@ -49,7 +49,7 @@ TEST(OrderedNodePairPool, Normal) {
     descs.emplace_back(new VarDesc(std::to_string(i)));  // "1"
     auto& v = descs.back();
     v->SetShape(shapes[i - 1]);
-    std::unique_ptr<ir::Node> node = ir::CreateDummyNode(v.get());
+    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(v.get());
     nodes.emplace_back(std::move(node));
   }
 
@@ -68,21 +68,21 @@ TEST(OrderedNodePairPool, Normal) {
   {
     VarDesc v1("11");
     v1.SetShape({-1, 256, 56, 56});
-    std::unique_ptr<ir::Node> node1 = ir::CreateDummyNode(&v1);
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(&v1);
     auto* cache = pool.NodeMatch(node1.get());
     ASSERT_EQ(cache, nullptr);
   }
   {
     VarDesc v2("12");
     v2.SetShape({-1, 2, 5});
-    std::unique_ptr<ir::Node> node1 = ir::CreateDummyNode(&v2);
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(&v2);
     auto* cache = pool.NodeMatch(node1.get());
     ASSERT_EQ(pool.GetPosition(cache), 2);  // match 6:[-1,2,5]
   }
   {
     VarDesc v2("13");
     v2.SetShape({2, 5});
-    std::unique_ptr<ir::Node> node1 = ir::CreateDummyNode(&v2);
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(&v2);
     auto* cache = pool.NodeMatch(node1.get());
     ASSERT_EQ(pool.GetPosition(cache), 5);  // match  4:[5,2]
   }

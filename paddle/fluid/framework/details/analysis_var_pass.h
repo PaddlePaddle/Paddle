@@ -32,11 +32,11 @@ class AnalysisVarPass : public ir::Pass {
 
  private:
   // update program descs
-  void RenameVarInGraphDesc(ir::Node* var, ir::Node* cache_var,
-                            size_t idx) const;
+  void RenameVarInGraphDesc(const std::string& var,
+                            const std::string& cache_var, size_t idx) const;
   // update ir nodes
-  void RenameVarInGraphNode(ir::Node* var, ir::Node* cache_var,
-                            size_t idx) const;
+  void RenameVarInGraphNode(const std::string& var,
+                            const std::string& cache_var, size_t idx) const;
   // valid a tensor can be reuse or not
   bool NodeCanReused(ir::Node* node) const;
   // scan subblock and collect the output variables.

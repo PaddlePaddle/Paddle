@@ -29,11 +29,11 @@ std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
   return std::unique_ptr<Node>(new Node(name, type));
 }
 
-std::unique_ptr<Node> CreateDummyNode(VarDesc* var_desc) {
+std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc) {
   return std::unique_ptr<Node>(new Node(var_desc));
 }
 
-std::unique_ptr<Node> CreateDummyNode(OpDesc* op_desc) {
+std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc) {
   return std::unique_ptr<Node>(new Node(op_desc));
 }
 }  // namespace ir
