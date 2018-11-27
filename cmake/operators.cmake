@@ -84,9 +84,7 @@ function(op_library TARGET)
     endif()
     if (WIN32)
     # remove windows unsupported op, because windows has no nccl, no warpctc such ops.
-    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
-     "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "fusion_gru_op" "lstm_op" "fusion_lstm_op" "cumsum_op"
-      "fusion_seqconv_eltadd_relu_op" "channel_send_op" "channel_create_op" "channel_close_op" "channel_recv_op")
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -111,7 +109,8 @@ function(op_library TARGET)
 
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
-"tensor_array_read_write_op" "tensorrt_engine_op")
+"tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
+"fusion_transpose_flatten_concat_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -196,7 +195,7 @@ endfunction()
 function(register_operators)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs EXCLUDES)
+    set(multiValueArgs EXCLUDES DEPS)
     cmake_parse_arguments(register_operators "${options}" "${oneValueArgs}"
             "${multiValueArgs}" ${ARGN})
 
@@ -204,11 +203,16 @@ function(register_operators)
     string(REPLACE "_mkldnn" "" OPS "${OPS}")
     string(REPLACE ".cc" "" OPS "${OPS}")
     list(REMOVE_DUPLICATES OPS)
+    list(LENGTH register_operators_DEPS register_operators_DEPS_len)
 
     foreach(src ${OPS})
         list(FIND register_operators_EXCLUDES ${src} _index)
         if (${_index} EQUAL -1)
-            op_library(${src})
+            if (${register_operators_DEPS_len} GREATER 0)
+                op_library(${src} DEPS ${register_operators_DEPS})
+            else()
+                op_library(${src})
+            endif()
         endif()
     endforeach()
 endfunction()

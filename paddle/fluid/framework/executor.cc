@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -391,8 +392,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector<Tensor>> gc;
-  // WhileOp would set keep_kids to false
-  // WhileGradOp would need the scopes created in WhileOp
+  // WhileOp would set keep_kids to true,
+  // because WhileGradOp needs the scopes created in WhileOp.
   // Perhaps, we should not perform eager deletion in WhileOp
   // The scopes and variables created by WhileOp would be deleted
   // in WhileGradOp.
@@ -418,11 +419,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
                           &(ctx->cur_ref_cnts_));
     }
-
-    if (FLAGS_benchmark) {
-      VLOG(20) << "Memory used after operator " + op->Type() + " running: "
-               << memory::memory_usage(place_);
-    }
   }
 
   if (gc != nullptr) {
@@ -443,13 +439,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
     }
-  }
-
-  if (FLAGS_benchmark) {
-    VLOG(20) << "-------------------------------------------------------";
-    VLOG(20) << "Memory used after deleting local scope: "
-             << memory::memory_usage(place_);
-    VLOG(20) << "-------------------------------------------------------";
   }
 }
 
