@@ -33,7 +33,6 @@ using platform::Transform;
 std::vector<int64_t> cal_rows(const framework::LoDTensor& path) {
   std::set<int64_t> tmp;
   std::vector<int64_t> rows;
-  rows.clear();
   for (size_t i = 0; i < static_cast<size_t>(path.dims()[0]); i++) {
     for (size_t j = 0; j < static_cast<size_t>(path.dims()[1]); j++) {
       int64_t temp =
@@ -63,8 +62,6 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     bool is_custom = false;
     if (path) {
       is_custom = true;
-    } else {
-      is_custom = false;
     }
     int64_t code_length =
         path ? path->dims()[1] : math::FindLastSet(num_classes - 1);
@@ -96,7 +93,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     auto out_mat = framework::EigenVector<T>::Flatten(*out);
     if (bias) {
-      bit_code->Add(pre_out, *bias);
+      bit_code->Add(*bias, pre_out);
     }
     bit_code->Mul(pre_out, *w, *in);
     // clip to [-40, 40]
@@ -145,8 +142,6 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     bool is_custom = false;
     if (path) {
       is_custom = true;
-    } else {
-      is_custom = false;
     }
 
     std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
@@ -192,7 +187,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
       w_grad->set_rows(real_rows);
-      // build ids -> rows index map
+      // Build a map of id -> row_index to speed up finding the index of one id
       w_grad->SyncIndex();
       w_grad->set_height(w->dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();

@@ -19,8 +19,8 @@ namespace operators {
 namespace math {
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::Add(framework::LoDTensor* tmat,
-                                  const framework::LoDTensor& vec) {
+void MatrixBitCodeFunctor<T>::Add(const framework::LoDTensor& vec,
+                                  framework::LoDTensor* tmat) {
   size_t batch_size = tmat->dims()[0];
   size_t width = tmat->dims()[1];
   for (size_t i = 0; i < batch_size; ++i) {
