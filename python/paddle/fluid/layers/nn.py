@@ -4426,7 +4426,7 @@ def nce(input,
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
         seed (int): The seed used in sampler. default: 0.
-        is_sparse(bool): The flag indicating whether to use sparse update.
+        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
 
     Returns:
         Variable: The output nce loss.

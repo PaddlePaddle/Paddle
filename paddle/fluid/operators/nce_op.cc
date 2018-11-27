@@ -237,7 +237,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
       block->Var(bias_grad)->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(30) << "nce_op_grad op " << weight_grad << " and " << bias_grad
-               << " is set to SelectedRows";
+               << " is set to LoDTensor";
       block->Var(weight_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
       block->Var(bias_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
