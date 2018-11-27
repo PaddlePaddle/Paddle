@@ -137,9 +137,9 @@ inline pid_t gettid() {
 #define __NR_gettid 224
 #endif
   pid_t tid = syscall(__NR_gettid);
-#else // _WIN32
+#else   // _WIN32
   pid_t tid = _getpid();
-#endif // _WIN32
+#endif  // _WIN32
 #endif
   CHECK_NE((int)tid, -1);
   return tid;
