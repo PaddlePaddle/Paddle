@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#ifndef _WIN32
 #include <sys/syscall.h>  // for syscall()
+#endif
 #include <sys/types.h>
 #include <algorithm>
 #include <cmath>
@@ -38,6 +40,31 @@ inline int rand_r(unsigned int* seedp) {
   (void)seedp;
   return rand();
 }
+#endif
+
+#ifdef _WIN32
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#include <windows.h>
+
+template <typename T>
+inline int __builtin_clz(const T& value) {
+  DWORD leadning_zero = 0;
+  if (_BitScanReverse(&leadning_zero, value)) {
+    return static_cast<int>(sizeof(T) * 8 - leadning_zero);
+  } else {
+    return static_cast<int>(0);
+  }
+}
+
+inline int __builtin_clzl(const unsigned long& value) {
+  return __builtin_clz(value);
+}
+
+inline int __builtin_clzll(const unsigned long long& value) {
+  return __builtin_clz(value);
+}
+
+#define pid_t int
 #endif
 
 /**
