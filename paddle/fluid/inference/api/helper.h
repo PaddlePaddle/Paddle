@@ -175,7 +175,8 @@ static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
   return true;
 }
 
-static std::string DescribeTensor(const PaddleTensor &tensor) {
+static std::string DescribeTensor(const PaddleTensor &tensor,
+                                  int max_num_of_data = 15) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";
@@ -200,7 +201,7 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
   os << " - data: ";
 
   int dim = VecReduceToInt(tensor.shape);
-  for (int i = 0; i < dim; i++) {
+  for (int i = 0; i < std::min(dim, max_num_of_data); i++) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
   os << '\n';

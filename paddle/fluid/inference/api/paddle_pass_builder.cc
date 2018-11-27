@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
-#include "paddle_pass_builder.h"
 
 #include <glog/logging.h>
 

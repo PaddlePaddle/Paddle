@@ -190,7 +190,7 @@ TEST(AnalysisPredictor, Clone) {
 TEST(AnalysisPredictor, memory_optim) {
   AnalysisConfig config(false);
   config.fraction_of_gpu_memory = 0.1;
-  config.pass_builder()->AppendPass("memory_optim_pass");
+  config.EnableMemoryOptim();
   config.pass_builder()->TurnOnDebug();
   config.model_dir = FLAGS_dirname;
 
