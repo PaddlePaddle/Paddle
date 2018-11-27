@@ -4394,7 +4394,8 @@ def nce(input,
         name=None,
         sampler="uniform",
         custom_dist=None,
-        seed=0):
+        seed=0,
+        is_sparse=False):
     """
     ${comment}
 
@@ -4420,11 +4421,12 @@ def nce(input,
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (Variable): A tensor with shape [num_total_classes].
+        custom_dist (float[]): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
         seed (int): The seed used in sampler. default: 0.
+        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
 
     Returns:
         Variable: The output nce loss.
@@ -4476,12 +4478,7 @@ def nce(input,
         shape=[num_total_classes, dim],
         is_bias=False,
         dtype=input.dtype)
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
+    inputs = {}
     if helper.bias_attr:
         b = helper.create_parameter(
             attr=helper.bias_attr,
@@ -4493,18 +4490,10 @@ def nce(input,
     sample_logits = helper.create_variable_for_type_inference(dtype=input.dtype)
     sample_labels = helper.create_variable_for_type_inference(dtype=label.dtype)
 
-    if num_neg_samples is None:
-        num_neg_samples = 10
-    else:
-        num_neg_samples = int(num_neg_samples)
-
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'Bias': b,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
+    inputs['Input'] = input
+    inputs['Label'] = label
+    inputs['Weight'] = w
+    inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
 
     if sampler == "uniform":
         sampler = 0
@@ -4512,17 +4501,73 @@ def nce(input,
         sampler = 1
     elif sampler == "custom_dist":
         assert custom_dist is not None
-        assert isinstance(custom_dist, Variable)
-        inputs['CustomDistribution'] = custom_dist
+        # assert isinstance(custom_dist, Variable)
+
+        custom_dist_len = len(custom_dist)
+        alias_probs_ = [0] * custom_dist_len
+        alias_ = [0] * custom_dist_len
+        bigs = []
+        littles = []
+        for i in range(custom_dist_len):
+            normal_prob = custom_dist[i] * custom_dist_len
+            if normal_prob - 1.0 > 1e-4:
+                bigs.append((i, normal_prob))
+            elif 1.0 - normal_prob > 1e-4:
+                littles.append((i, normal_prob))
+            else:
+                alias_probs_[i] = normal_prob
+                alias_[i] = -1
+
+        while len(bigs) and len(littles):
+            big = bigs.pop(0)
+            little = littles.pop(0)
+
+            big_idx = big[0]
+            big_prob = big[1]
+
+            alias_probs_[little[0]] = little[1]
+            alias_[little[0]] = big_idx
+            big_left = big[1] + little[1] - 1
+            if big_left - 1.0 > 1e-4:
+                bigs.append((big_idx, big_left))
+            elif 1.0 - big_left > 1e-4:
+                littles.append((big_idx, big_left))
+            else:
+                alias_probs_[big_idx] = big_left
+                alias_[big_idx] = -1
+
+        if len(bigs):
+            big = bigs.pop(0)
+            alias_probs_[big[0]] = 1.0
+            alias_[big[0]] = -1
+        if len(littles):
+            little = littles.pop(0)
+            alias_probs_[little[0]] = 1.0
+            alias_[little[0]] = -1
+
+        probs = assign(input=np.array(custom_dist).astype('float32'))
+        custom_alias = assign(input=np.array(alias_).astype('int32'))
+        custom_alias_probs = assign(
+            input=np.array(alias_probs_).astype('float32'))
+
+        inputs['CustomDistProbs'] = probs
+        inputs['CustomDistAlias'] = custom_alias
+        inputs['CustomDistAliasProbs'] = custom_alias_probs
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
+
+    if num_neg_samples is None:
+        num_neg_samples = 10
+    else:
+        num_neg_samples = int(num_neg_samples)
 
     attrs = {
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
-        'sampler': sampler
+        'sampler': sampler,
+        'is_sparse': is_sparse
     }
 
     helper.append_op(
@@ -6474,7 +6519,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-                    isinstance(shape, Variable)):
+            isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
@@ -6596,7 +6641,7 @@ def affine_grid(theta, out_shape, name=None):
     helper = LayerHelper('affine_grid')
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
-        isinstance(out_shape, Variable)):
+            isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Variable.")
 
     if not isinstance(theta, Variable):
@@ -6837,6 +6882,13 @@ def elu(x, alpha=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.elu(x, alpha=0.2)
     """
     helper = LayerHelper('elu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6860,6 +6912,13 @@ def relu6(x, threshold=6.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.relu6(x, threshold=6.0)
     """
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6883,6 +6942,13 @@ def pow(x, factor=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.pow(x, factor=2.0)
     """
     helper = LayerHelper('pow', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6907,6 +6973,13 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6932,6 +7005,13 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6956,6 +7036,13 @@ def swish(x, beta=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.swish(x, beta=2.0)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
