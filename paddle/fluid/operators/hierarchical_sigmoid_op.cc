@@ -101,7 +101,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
              "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
     AddInput(
-        "PCode",
+        "PathCode",
         "(LoDTensor, optional), The Code on each Node of the Path from root "
         "to current word"
         "it should have shape like [N, L], L is the length of the Path")

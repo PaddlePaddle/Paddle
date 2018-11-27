@@ -19,9 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/fluid/platform/transform.h"
+
 namespace paddle {
 namespace operators {
 
@@ -30,31 +32,26 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 using platform::Transform;
 
-std::vector<int64_t> cal_rows(const framework::LoDTensor& path) {
-  std::set<int64_t> tmp;
-  std::vector<int64_t> rows;
-  for (size_t i = 0; i < static_cast<size_t>(path.dims()[0]); i++) {
-    for (size_t j = 0; j < static_cast<size_t>(path.dims()[1]); j++) {
-      int64_t temp =
-          path.data<int64_t>()[i * static_cast<size_t>(path.dims()[1]) + j];
-      if (temp >= 0) {
-        tmp.insert(temp);
-      }
+static std::vector<int64_t> PathToRows(const framework::LoDTensor& path) {
+  std::set<int64_t> rows;
+  for (int64_t i = 0; i < path.numel(); ++i) {
+    int64_t row = path.data<int64_t>()[i];
+    if (row < 0) {
+      continue;
     }
+    rows.emplace(row);
   }
-  rows.assign(tmp.begin(), tmp.end());
-  return rows;
+  return std::vector<int64_t>(rows.begin(), rows.end());
 }
-
 template <typename DeviceContext, typename T>
 class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto* w = ctx.Input<framework::LoDTensor>("W");
+    auto in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
+    auto w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
     auto* path = ctx.Input<framework::LoDTensor>("PTable");
-    auto* code = ctx.Input<framework::LoDTensor>("PCode");
-    auto* label = ctx.Input<framework::LoDTensor>("Label");
+    auto* code = ctx.Input<framework::LoDTensor>("PathCode");
+    auto label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
     auto* bias = ctx.Input<framework::LoDTensor>("Bias");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* pre_out = ctx.Output<framework::LoDTensor>("PreOut");
@@ -65,7 +62,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     }
     int64_t code_length =
         path ? path->dims()[1] : math::FindLastSet(num_classes - 1);
-    int64_t batch_size = in->dims()[0];
+    int64_t batch_size = in.dims()[0];
     framework::LoDTensor sum;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto* pre_out_data = pre_out->mutable_data<T>(
@@ -81,10 +78,10 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
     if (!is_custom) {
       bit_code.reset(new math::MatrixBitCodeFunctor<T>(num_classes,
-                                                       label->data<int64_t>()));
+                                                       label.data<int64_t>()));
     } else {
-      bit_code.reset(new math::MatrixBitCodeFunctor<T>(path, code,
-                                                       label->data<int64_t>()));
+      bit_code.reset(new math::MatrixBitCodeFunctor<T>(*path, *code,
+                                                       label.data<int64_t>()));
     }
 
     std::vector<int64_t> sum_dims({batch_size, 1UL});
@@ -95,7 +92,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     if (bias) {
       bit_code->Add(*bias, pre_out);
     }
-    bit_code->Mul(pre_out, *w, *in);
+    bit_code->Mul(pre_out, w, in);
     // clip to [-40, 40]
     Transform<DeviceContext> trans;
     trans(ctx.template device_context<DeviceContext>(), pre_out_data,
@@ -117,23 +114,23 @@ template <typename DeviceContext, typename T>
 class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto* w = ctx.Input<framework::LoDTensor>("W");
+    auto in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
+    auto w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
     auto* path = ctx.Input<framework::LoDTensor>("PTable");
-    auto* code = ctx.Input<framework::LoDTensor>("PCode");
+    auto* code = ctx.Input<framework::LoDTensor>("PathCode");
     auto* bias = ctx.Input<framework::LoDTensor>("Bias");
     auto* in_grad =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> zero;
-    auto* label = ctx.Input<framework::LoDTensor>("Label");
-    auto* pre_out = ctx.Input<framework::LoDTensor>("PreOut");
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
+    auto pre_out = detail::Ref(ctx.Input<framework::LoDTensor>("PreOut"));
+    auto out_grad = detail::Ref(
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out")));
     framework::LoDTensor pre_out_grad;
 
-    pre_out_grad.mutable_data<T>(pre_out->dims(), ctx.GetPlace());
+    pre_out_grad.mutable_data<T>(pre_out.dims(), ctx.GetPlace());
     in_grad->mutable_data<T>(ctx.GetPlace());
     zero(dev_ctx, in_grad, static_cast<T>(0.0));
 
@@ -147,16 +144,16 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
     if (!is_custom) {
       bit_code.reset(new math::MatrixBitCodeFunctor<T>(num_classes,
-                                                       label->data<int64_t>()));
+                                                       label.data<int64_t>()));
     } else {
-      bit_code.reset(new math::MatrixBitCodeFunctor<T>(path, code,
-                                                       label->data<int64_t>()));
+      bit_code.reset(new math::MatrixBitCodeFunctor<T>(*path, *code,
+                                                       label.data<int64_t>()));
     }
 
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
+    auto pre_out_mat = EigenMatrix<T>::From(pre_out);
     auto pre_out_grad_mat = EigenMatrix<T>::From(pre_out_grad);
-    auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
+    auto out_grad_mat = EigenMatrix<T>::From(out_grad);
 
     Eigen::array<int, 2> bcast{1, static_cast<int>(pre_out_grad.dims()[1])};
 
@@ -181,17 +178,17 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
           ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
       w_grad->mutable_data<T>(ctx.GetPlace());
       zero(dev_ctx, w_grad, static_cast<T>(0.0));
-      bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
+      bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     } else {
-      framework::Vector<int64_t> real_rows = cal_rows(*path);
+      framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
       w_grad->set_rows(real_rows);
       // Build a map of id -> row_index to speed up finding the index of one id
       w_grad->SyncIndex();
-      w_grad->set_height(w->dims()[0]);
+      w_grad->set_height(w.dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
-      framework::DDim temp_dim(w->dims());
+      framework::DDim temp_dim(w.dims());
       set(temp_dim, 0, real_rows.size());
 
       w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
@@ -211,9 +208,9 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
         zero(dev_ctx, bias_grad_value, static_cast<T>(0.0));
         bit_code->AddGrad(pre_out_grad, bias_grad);
       }
-      bit_code->MulGradWeight(pre_out_grad, w_grad, *in);
+      bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     }
-    bit_code->MulGradError(pre_out_grad, *w, in_grad);
+    bit_code->MulGradError(pre_out_grad, w, in_grad);
   }
 };
 

@@ -132,13 +132,15 @@ class SimpleCode : public Code {
   size_t c_;
 };
 
-template <typename R>
+template <typename T>
 class CustomCode : public Code {
  public:
-  CustomCode(const framework::LoDTensor* ptable,
-             const framework::LoDTensor* pcode, const int64_t* ids,
-             const int index)
-      : ptable_(ptable), pcode_(pcode), ids_(ids), index_(index) {}
+  CustomCode(const framework::Tensor& ptable, const framework::Tensor& pcode,
+             const int64_t* ids, int index)
+      : ids_(ids), index_(index) {
+    ptable_ = ptable.Slice(index, index + 1);
+    pcode_ = pcode.Slice(index, index + 1);
+  }
   /**
    * Here the id of root shoud be 1 rather than 0, thus the encoding of class c
    * is `c + num_classes` and all siblings can get the same weight indice using
@@ -148,20 +150,13 @@ class CustomCode : public Code {
    * Binary classification path is the suffixes of encoding, thus leave out the
    * left most bit in calc_bit.
    */
-  size_t calc_index(int bit) const {
-    return ptable_
-        ->data<R>()[index_ * static_cast<int>(ptable_->dims()[1]) + bit];
-  }
-  bool calc_bit(int bit) const {
-    return pcode_
-        ->data<R>()[index_ * static_cast<int>(ptable_->dims()[1]) + bit];
-  }
+  size_t calc_index(int bit) const { return ptable_.data<T>()[bit]; }
+  bool calc_bit(int bit) const { return pcode_.data<T>()[bit]; }
   int get_length() const {
     int length = 0;
 
-    for (int i = 0; i < static_cast<int>(ptable_->dims()[1]); i++) {
-      if (ptable_->data<R>()[index_ * static_cast<int>(ptable_->dims()[1]) +
-                             i] >= 0) {
+    for (int i = 0; i < static_cast<int>(ptable_.dims()[1]); i++) {
+      if (ptable_.data<T>()[i] >= 0) {
         length++;
       } else {
         return length;
@@ -171,15 +166,15 @@ class CustomCode : public Code {
   }
 
  private:
-  const framework::LoDTensor* ptable_;
-  const framework::LoDTensor* pcode_;
+  framework::Tensor ptable_;
+  framework::Tensor pcode_;
   const int64_t* ids_;
   const int index_;
 };
 
 class SimpleCodeTable : public CodeTable {
  public:
-  explicit SimpleCodeTable(size_t num_classes, const int64_t* ids)
+  SimpleCodeTable(size_t num_classes, const int64_t* ids)
       : num_classes_(num_classes), ids_(ids) {}
   std::unique_ptr<Code> get_code(int64_t code) const {
     std::unique_ptr<Code> coder(new SimpleCode(code, num_classes_, ids_));
@@ -193,97 +188,92 @@ class SimpleCodeTable : public CodeTable {
   const int64_t* ids_;
 };
 
-template <typename R>
+template <typename T>
 class CustomCodeTable : public CodeTable {
  public:
-  explicit CustomCodeTable(const framework::LoDTensor* ptable,
-                           const framework::LoDTensor* pcode,
-                           const int64_t* ids)
+  CustomCodeTable(const framework::Tensor& ptable,
+                  const framework::Tensor& pcode, const int64_t* ids)
       : ptable_(ptable), pcode_(pcode), ids_(ids) {}
 
   std::unique_ptr<Code> get_code(int64_t code) const {
-    std::unique_ptr<Code> coder(new CustomCode<R>(ptable_, pcode_, ids_, code));
+    std::unique_ptr<Code> coder(new CustomCode<T>(ptable_, pcode_, ids_, code));
     return coder;
   }
 
-  size_t size() const { return static_cast<size_t>(ptable_->dims()[1]); }
+  size_t size() const { return static_cast<size_t>(ptable_.dims()[1]); }
   int get_max_code_length() const {
-    return static_cast<size_t>(ptable_->dims()[1]);
+    return static_cast<size_t>(ptable_.dims()[1]);
   }
 
  private:
-  const framework::LoDTensor* ptable_;
-  const framework::LoDTensor* pcode_;
+  const framework::Tensor& ptable_;
+  const framework::Tensor& pcode_;
   const int64_t* ids_;
 };
 
 template <typename T>
 class MatrixBitCodeFunctor {
  public:
-  explicit MatrixBitCodeFunctor(size_t num_classes, const int64_t* ids)
+  MatrixBitCodeFunctor(size_t num_classes, const int64_t* ids)
       : num_classes_(num_classes),
         ids_(ids),
-        code_table(new SimpleCodeTable(num_classes, ids)) {}
+        code_table_(new SimpleCodeTable(num_classes, ids)) {}
 
-  explicit MatrixBitCodeFunctor(const framework::LoDTensor* ptable,
-                                const framework::LoDTensor* pcode,
-                                const int64_t* ids)
-      : num_classes_(static_cast<size_t>(ptable->dims()[1])),
+  MatrixBitCodeFunctor(const framework::Tensor& ptable,
+                       const framework::Tensor& pcode, const int64_t* ids)
+      : num_classes_(static_cast<size_t>(ptable.dims()[1])),
         ids_(ids),
-        code_table(new CustomCodeTable<int64_t>(ptable, pcode, ids)) {}
+        code_table_(new CustomCodeTable<int64_t>(ptable, pcode, ids)) {}
   /* For j < code_length
        tmat(i, j) += vec(0, index(i, j))
   */
-  void Add(const framework::LoDTensor& vec, framework::LoDTensor* tmat);
+  void Add(const framework::Tensor& vec, framework::Tensor* tmat);
 
   /* For j < code_length
        vec(0, index(i, j)) += tmat(i, j)
   */
-  void AddGrad(const framework::LoDTensor& tmat, framework::LoDTensor* vec);
+  void AddGrad(const framework::Tensor& tmat, framework::Tensor* vec);
 
   /* For selected rows For j < code_length
        vec(0, index(i, j)) += tmat(i, j)
   */
-  void AddGrad(const framework::LoDTensor& tmat, framework::SelectedRows* vec);
+  void AddGrad(const framework::Tensor& tmat, framework::SelectedRows* vec);
 
   /* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
   */
-  void Sum(const framework::LoDTensor& tmat, framework::LoDTensor* sum,
-           T scale_sum);
+  void Sum(const framework::Tensor& tmat, framework::Tensor* sum, T scale_sum);
 
   /* For j < code_length
        tmat(i, j) -= bit(i, j)
   */
-  void Sub(framework::LoDTensor* tmat);
+  void Sub(framework::Tensor* tmat);
   /* For j < code_length
        input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void Mul(framework::LoDTensor* tmat, const framework::LoDTensor& weight,
-           const framework::LoDTensor& input);
+  void Mul(framework::Tensor* tmat, const framework::Tensor& weight,
+           const framework::Tensor& input);
 
   /* For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::LoDTensor& tmat,
-                     framework::LoDTensor* weight,
-                     const framework::LoDTensor& input);
+  void MulGradWeight(const framework::Tensor& tmat, framework::Tensor* weight,
+                     const framework::Tensor& input);
   /* For SelectedRows Weight, For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::LoDTensor& tmat,
+  void MulGradWeight(const framework::Tensor& tmat,
                      framework::SelectedRows* weight,
-                     const framework::LoDTensor& input);
+                     const framework::Tensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void MulGradError(const framework::LoDTensor& tmat,
-                    const framework::LoDTensor& weight,
-                    framework::LoDTensor* input);
+  void MulGradError(const framework::Tensor& tmat,
+                    const framework::Tensor& weight, framework::Tensor* input);
 
   size_t num_classes_;
   const int64_t* ids_;
-  std::unique_ptr<CodeTable> code_table;
+  std::unique_ptr<CodeTable> code_table_;
 };
 }  // namespace math
 }  // namespace operators

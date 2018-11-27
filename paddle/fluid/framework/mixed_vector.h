@@ -488,12 +488,6 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
     return os;
   }
 
-  size_t size() const noexcept {
-    size_t size =
-        static_cast<size_t>(std::vector<T, std::allocator<T>>::size());
-    return size;
-  }
-
   T &operator[](size_t id) { return this->at(id); }
 
   const T &operator[](size_t id) const { return this->at(id); }

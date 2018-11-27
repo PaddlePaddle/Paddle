@@ -185,7 +185,7 @@ class TestHSigmoidOpSparse(OpTest):
             'X': x,
             'W': w,
             'PTable': ptable,
-            'PCode': pcode,
+            'PathCode': pcode,
             'Label': label,
             'Bias': bias
         }
@@ -285,7 +285,7 @@ class TestHSigmoidOpWithCostumTree(OpTest):
             'X': x,
             'W': w,
             'PTable': ptable,
-            'PCode': pcode,
+            'PathCode': pcode,
             'Label': label,
             'Bias': bias
         }
@@ -322,7 +322,7 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
             'X': x,
             'W': w,
             'PTable': ptable,
-            'PCode': pcode,
+            'PathCode': pcode,
             'Label': label,
         }
         pre_output, out = hsigmoidWithCustomTree(
