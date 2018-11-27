@@ -27,7 +27,8 @@ namespace operators {
 void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
                             const framework::LoDTensor &pre_scores,
                             framework::LoDTensor *selected_ids,
-                            framework::LoDTensor *selected_scores) {
+                            framework::LoDTensor *selected_scores,
+                            framework::LoDTensor *parent_idx) {
   auto abs_lod = framework::ToAbsOffset(ids_->lod());
   auto &high_level = abs_lod[lod_level_];
 
@@ -51,12 +52,13 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
       std::vector<int64_t>({static_cast<int>(num_instances), 1}));
   selected_ids->Resize(dims);
   selected_scores->Resize(dims);
+  parent_idx->Resize({static_cast<int>(num_instances)});
 
-  std::map<size_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
   auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
   auto *scores_data =
       selected_scores->mutable_data<float>(platform::CPUPlace());
+  auto *parent_idx_data = parent_idx->mutable_data<int>(platform::CPUPlace());
 
   // fill in data
   std::vector<size_t> low_level;
@@ -64,6 +66,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   for (auto &items : selected_items) {
     low_level.push_back(low_offset);
     for (auto &item : items) {
+      parent_idx_data[low_offset] = static_cast<int>(low_level.size() - 1);
       ids_data[low_offset] = item.id;
       scores_data[low_offset] = item.score;
       low_offset++;
@@ -236,6 +239,9 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("selected_scores",
               "A LoDTensor containing the accumulated scores corresponding to "
               "Output(selected_ids).");
+    AddOutput(
+        "parent_idx",
+        "A Tensor preserving the selected_ids' parent indice in pre_ids.");
 
     // Attributes stored in AttributeMap
     AddAttr<int>("level", "the level of LoDTensor");

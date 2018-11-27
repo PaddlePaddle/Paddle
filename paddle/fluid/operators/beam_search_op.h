@@ -134,7 +134,8 @@ class BeamSearch {
   void operator()(const framework::LoDTensor& pre_ids,
                   const framework::LoDTensor& pre_scores,
                   framework::LoDTensor* selected_ids,
-                  framework::LoDTensor* selected_scores);
+                  framework::LoDTensor* selected_scores,
+                  framework::LoDTensor* parent_idx);
   /*
    * The basic items help to sort.
    */
@@ -215,9 +216,11 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
     auto selected_scores =
         context.Output<framework::LoDTensor>("selected_scores");
+    auto parent_idx = context.Output<framework::LoDTensor>("parent_idx");
     PADDLE_ENFORCE_NOT_NULL(selected_ids);
     PADDLE_ENFORCE_NOT_NULL(selected_scores);
-    alg(*pre_ids, *pre_scores, selected_ids, selected_scores);
+    PADDLE_ENFORCE_NOT_NULL(parent_idx);
+    alg(*pre_ids, *pre_scores, selected_ids, selected_scores, parent_idx);
   }
 };
 }  // namespace operators
