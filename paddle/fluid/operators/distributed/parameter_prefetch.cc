@@ -37,9 +37,7 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-constexpr int64_t kNoPadding = -1;
-
-inline size_t GetSectionIndex(int64_t id,
+static size_t GetSectionIndex(int64_t id,
                               const std::vector<int64_t>& abs_sections) {
   for (size_t i = 1; i < abs_sections.size(); ++i) {
     if (id < abs_sections[i]) {
@@ -49,7 +47,7 @@ inline size_t GetSectionIndex(int64_t id,
   return abs_sections.size() - 1;
 }
 
-inline std::vector<int64_t> ToAbsoluteSection(
+static std::vector<int64_t> ToAbsoluteSection(
     const std::vector<int64_t>& height_sections) {
   std::vector<int64_t> abs_sections;
   abs_sections.resize(height_sections.size());
@@ -60,7 +58,7 @@ inline std::vector<int64_t> ToAbsoluteSection(
   return abs_sections;
 }
 
-inline std::vector<std::vector<int64_t>> SplitIds(
+static std::vector<std::vector<int64_t>> SplitIds(
     const std::string& id_name, const std::vector<int64_t>& height_section,
     framework::Scope* scope) {
   auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
@@ -79,7 +77,7 @@ inline std::vector<std::vector<int64_t>> SplitIds(
   return splited_ids;
 }
 
-inline void SplitIdsIntoMultipleVarsBySection(
+static void SplitIdsIntoMultipleVarsBySection(
     const std::string& id_name, const std::vector<std::string>& in_var_names,
     const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
@@ -100,7 +98,7 @@ inline void SplitIdsIntoMultipleVarsBySection(
   }
 }
 
-inline void MergeMultipleVarsIntoOneBySection(
+static void MergeMultipleVarsIntoOneBySection(
     const std::string& id_name, const std::string& out_name,
     const std::vector<std::string>& out_var_names,
     const std::vector<int64_t>& height_section,
