@@ -39,12 +39,6 @@ DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libcublas, "
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
-#ifdef PADDLE_WITH_HIP
-DEFINE_string(rccl_dir, "",
-              "Specify path for loading nccl library, such as libcublas, "
-              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
-              "dlopen will search cuda from LD_LIBRARY_PATH");
-#endif
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
@@ -53,6 +47,11 @@ DEFINE_string(
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+
+DEFINE_string(miopen_dir, "", "Specify path for loading libMIOpen.so.");
+DEFINE_string(hipblas_dir, "", "Specify path for loading libhipblas.so.");
+DEFINE_string(hiprand_dir, "", "Specify path for loading libhiprand.so.");
+DEFINE_string(rccl_dir, "", "Specify path for loading librccl.so.");
 
 namespace paddle {
 namespace platform {
@@ -172,11 +171,7 @@ void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #else
-#ifdef PADDLE_WITH_HIP
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhipblas.so");
-#else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
-#endif
 #endif
 }
 
@@ -184,11 +179,7 @@ void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
 #else
-#ifdef PADDLE_WITH_HIP
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libMIOpen.so", false);
-#else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcudnn.so");
-#endif
 #endif
 }
 
@@ -208,11 +199,7 @@ void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #else
-#ifdef PADDLE_WITH_HIP
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhiprand.so");
-#else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
-#endif
 #endif
 }
 
@@ -232,12 +219,6 @@ void* GetNCCLDsoHandle() {
 #endif
 }
 
-#ifdef PADDLE_WITH_HIP
-void* GetRCCLDsoHandle() {
-  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so");
-}
-#endif
-
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
@@ -251,6 +232,37 @@ void* GetMKLMLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
+#endif
+}
+
+void* GetMiopenDsoHandle(){
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so");
+#endif
+}
+
+void* GetHipblasDsoHandle(){
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_hipblas_dir, "libhipblas.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_hipblas_dir, "libhipblas.so");
+#endif
+}
+void* GetHiprandDsoHandle(){
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_hiprand_dir, "libhiprand.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_hiprand_dir, "libhiprand.so");
+#endif
+}
+
+void* GetRCCLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so");
 #endif
 }
 

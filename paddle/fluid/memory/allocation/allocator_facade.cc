@@ -31,7 +31,7 @@
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -137,7 +137,7 @@ class ChunkedAllocator : public Allocator {
   std::shared_ptr<Allocator> default_allocator_;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 class CUDAChunkedAllocator : public ChunkedAllocator {
  public:
@@ -201,7 +201,7 @@ class AllocatorFacadePrivate {
  private:
   void InitLegacyAllocator() {
     std::vector<platform::Place> places{platform::CPUPlace()};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
       places.emplace_back(platform::CUDAPlace(dev_id));
     }
@@ -217,7 +217,7 @@ class AllocatorFacadePrivate {
   }
 
   void InitCUDAAllocator() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int device_count = platform::GetCUDADeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       allocators_[platform::CUDAPlace(dev_id)] =
@@ -227,7 +227,7 @@ class AllocatorFacadePrivate {
   }
 
   void InitCUDAPinnedAllocator() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     allocators_[platform::CUDAPinnedPlace()] =
         std::make_shared<CUDAPinnedChunkedAllocator>();
 #endif

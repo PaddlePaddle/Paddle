@@ -18,39 +18,22 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace dynload {
-std::once_flag cudnn_dso_flag;
-void* cudnn_dso_handle = nullptr;
+std::once_flag miopen_dso_flag;
+void* miopen_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-CUDNN_DNN_ROUTINE_EACH(DEFINE_WRAP);
-CUDNN_DNN_ROUTINE_EACH_R2(DEFINE_WRAP);
-
-#ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_R3
-CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DEFINE_WRAP);
-#endif
-
-#ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_R4
-CUDNN_DNN_ROUTINE_EACH_AFTER_R4(DEFINE_WRAP);
-#endif
-
-#ifdef CUDNN_DNN_ROUTINE_EACH_R5
-CUDNN_DNN_ROUTINE_EACH_R5(DEFINE_WRAP);
-#endif
-
-#ifdef CUDNN_DNN_ROUTINE_EACH_R7
-CUDNN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
-#endif
+MIOPEN_DNN_ROUTINE_EACH(DEFINE_WRAP);
 
 #ifdef PADDLE_USE_DSO
 bool HasMIOpen() {
-  std::call_once(cudnn_dso_flag,
-               []() { cudnn_dso_handle = GetCUDNNDsoHandle(); });
-  return cudnn_dso_handle != nullptr;
+  std::call_once(miopen_dso_flag,
+               []() { miopen_dso_handle = GetMIOpenDsoHandle(); });
+  return miopen_dso_handle != nullptr;
 }
 
-void EnforceCUDNNLoaded(const char* fn_name) {
-  PADDLE_ENFORCE(cudnn_dso_handle != nullptr,
+void EnforceMIOPENLoaded(const char* fn_name) {
+  PADDLE_ENFORCE(miopen_dso_handle != nullptr,
                  "Cannot load cudnn shared library. Cannot invoke method %s",
                  fn_name);
 }

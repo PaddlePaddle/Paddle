@@ -18,12 +18,12 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag curand_dso_flag;
-void *curand_dso_handle;
+std::once_flag hiprand_dso_flag;
+void *hiprand_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-CURAND_RAND_ROUTINE_EACH(DEFINE_WRAP);
+HIPRAND_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
 }  // namespace platform

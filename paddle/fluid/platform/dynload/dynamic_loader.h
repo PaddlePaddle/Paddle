@@ -24,11 +24,12 @@ void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
-#ifdef PADDLE_WITH_HIP
-void* GetRCCLDsoHandle();
-#endif
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+void* GetMiopenDsoHandle();
+void* GetHipblasDsoHandle();
+void* GetHiprandDsoHandle();
+void* GetRCCLDsoHandle();
 
 }  // namespace dynload
 }  // namespace platform

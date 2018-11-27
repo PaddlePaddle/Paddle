@@ -13,8 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 #include <string>
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -29,18 +34,33 @@ void CUDAAllocator::Free(Allocation* allocation) {
   PADDLE_ENFORCE_NOT_NULL(cuda_allocation);
   PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(cuda_allocation->place()),
                     place_);
+#ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE(cudaFree(allocation->ptr()));
+#endif
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE(hipFree(allocation->ptr()));
+#endif
   delete allocation;
 }
 Allocation* CUDAAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   platform::CUDADeviceGuard guard(place_.device);
   void* ptr;
+#ifdef PADDLE_WITH_CUDA
   auto status = cudaMalloc(&ptr, size);
   if (UNLIKELY(status != cudaSuccess)) {
     throw BadAlloc(string::Sprintf(
         "Cannot allocate %d on GPU %d, cuda status %d, %s", size, place_.device,
         status, cudaGetErrorString(status)));
   }
+#endif
+#ifdef PADDLE_WITH_HIP
+  auto status = hipMalloc(&ptr, size);
+  if (UNLIKELY(status != hipSuccess)) {
+    throw BadAlloc(string::Sprintf(
+        "Cannot allocate %d on GPU %d, hip status %d, %s", size, place_.device,
+        status, hipGetErrorString(status)));
+  }
+#endif
   return new CUDAAllocation(ptr, size, platform::Place(place_));
 }
 }  // namespace allocation

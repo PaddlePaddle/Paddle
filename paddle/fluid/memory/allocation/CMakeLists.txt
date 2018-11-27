@@ -8,12 +8,24 @@ cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS best_fit_al
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
+elseif(WITH_AMD_GPU)
+  hip_library(hip_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 if (WITH_GPU)
     nv_test(best_fit_allocator_test
+            SRCS best_fit_allocator_test.cc
+                 best_fit_allocator_test.cu
+            DEPS best_fit_allocator
+                 locked_allocator
+                 cpu_allocator
+                 cuda_allocator
+                 device_context
+                 memcpy)
+elseif(WITH_AMD_GPU)
+    hip_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc
                  best_fit_allocator_test.cu
             DEPS best_fit_allocator
@@ -31,8 +43,11 @@ else()
 endif()
 
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
+hip_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
 if (WITH_GPU)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard)
+elseif(WITH_AMD_GPU)
+    set(AllocatorFacadeDeps gpu_info hip_allocator pinned_allocator cuda_device_guard)
 else ()
     set(AllocatorFacadeDeps)
 endif()
@@ -58,6 +73,7 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         )
 
 nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
+hip_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator best_fit_allocator locked_allocator cpu_allocator)
 

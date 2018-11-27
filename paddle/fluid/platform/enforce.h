@@ -293,19 +293,19 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   if (stat == HIPBLAS_STATUS_SUCCESS) {
     return;
   } else if (stat == HIPBLAS_STATUS_NOT_INITIALIZED) {
-    err = "CUBLAS: not initialized, ";
+    err = "HIPBLAS: not initialized, ";
   } else if (stat == HIPBLAS_STATUS_ALLOC_FAILED) {
-    err = "CUBLAS: alloc failed, ";
+    err = "HIPBLAS: alloc failed, ";
   } else if (stat == HIPBLAS_STATUS_INVALID_VALUE) {
-    err = "CUBLAS: invalid value, ";
+    err = "HIPBLAS: invalid value, ";
   } else if (stat == HIPBLAS_STATUS_MAPPING_ERROR) {
-    err = "CUBLAS: mapping error, ";
+    err = "HIPBLAS: mapping error, ";
   } else if (stat == HIPBLAS_STATUS_EXECUTION_FAILED) {
-    err = "CUBLAS: execution failed, ";
+    err = "HIPBLAS: execution failed, ";
   } else if (stat == HIPBLAS_STATUS_INTERNAL_ERROR) {
-    err = "CUBLAS: internal error, ";
+    err = "HIPBLAS: internal error, ";
   } else if (stat == HIPBLAS_STATUS_NOT_SUPPORTED) {
-    err = "CUBLAS: not supported, ";
+    err = "HIPBLAS: not supported, ";
   }
   throw std::runtime_error(err + string::Sprintf(args...));
 }

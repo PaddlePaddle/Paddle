@@ -24,8 +24,8 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag cublas_dso_flag;
-extern void *cublas_dso_handle;
+extern std::once_flag hipblas_dso_flag;
+extern void *hipblas_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -35,21 +35,21 @@ extern void *cublas_dso_handle;
  * note: default dynamic linked libs
  */
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
+#define DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
     using FUNC_TYPE = decltype(&::__name);                                   \
     template <typename... Args>                                              \
     inline hipblasStatus_t operator()(Args... args) {                         \
-      std::call_once(cublas_dso_flag, []() {                                 \
-        cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
+      std::call_once(hipblas_dso_flag, []() {                                 \
+        hipblas_dso_handle = paddle::platform::dynload::GetHipblasDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(cublas_dso_handle, #__name);                  \
+      void *p_##__name = dlsym(hipblas_dso_handle, #__name);                  \
       return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
 #else
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
+#define DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP(__name)     \
   struct DynLoad__##__name {                         \
     template <typename... Args>                      \
     inline hipblasStatus_t operator()(Args... args) { \
@@ -59,10 +59,7 @@ extern void *cublas_dso_handle;
   extern DynLoad__##__name __name
 #endif
 
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) \
-  DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
-
-#define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
+#define HIPBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(hipblasSaxpy);                \
   __macro(hipblasDaxpy);                \
   __macro(hipblasSgemv);                \
@@ -82,9 +79,9 @@ extern void *cublas_dso_handle;
   __macro(hipblasSgemmStridedBatched);     \
   __macro(hipblasDgemmStridedBatched);
 
-CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
+HIPBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP);
 
-#undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP
+#undef DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
