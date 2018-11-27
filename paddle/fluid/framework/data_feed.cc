@@ -58,8 +58,6 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
 }
 
 bool DataFeed::SetFileList(const std::vector<std::string>& files) {
-  // Pay attention: init all readers before call this function. 
-  // Otherwise, Init() function will init finish_set_filelist_ flag.
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   CheckInit();
   if (finish_set_filelist_) {
@@ -119,7 +117,6 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
     exit(-1);
   }
   queue_size_ = queue_size;
-  //queue_ = std::unique_ptr<BlockingQueue<T>>(new BlockingQueue<T>(queue_size_));
   queue_ = std::unique_ptr<paddle::operators::reader::BlockingQueue<T>>
     (new paddle::operators::reader::BlockingQueue<T>(queue_size_));
 }
