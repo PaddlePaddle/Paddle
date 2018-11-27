@@ -6022,9 +6022,10 @@ def image_resize(input,
         raise ValueError(
             "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
         )
+    resample_type = resample_methods[resample]
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
-    helper = LayerHelper('interpolate', **locals())
+    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -6058,18 +6059,16 @@ def image_resize(input,
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='interpolate',
+        type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={
-            "out_h": out_h,
-            "out_w": out_w,
-            "interp_method": resample_methods[resample]
-        })
+        attrs={"out_h": out_h,
+               "out_w": out_w,
+               "interp_method": resample_type})
     return out
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input,
                     out_shape=None,
                     scale=None,
@@ -6125,7 +6124,7 @@ def resize_bilinear(input,
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="nearest_interp")
 def resize_nearest(input,
                    out_shape=None,
                    scale=None,
@@ -6990,6 +6989,13 @@ def elu(x, alpha=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.elu(x, alpha=0.2)
     """
     helper = LayerHelper('elu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7013,6 +7019,13 @@ def relu6(x, threshold=6.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.relu6(x, threshold=6.0)
     """
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7036,6 +7049,13 @@ def pow(x, factor=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.pow(x, factor=2.0)
     """
     helper = LayerHelper('pow', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7060,6 +7080,13 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7085,6 +7112,13 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7109,6 +7143,13 @@ def swish(x, beta=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.swish(x, beta=2.0)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
