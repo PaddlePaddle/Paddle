@@ -11,10 +11,11 @@ endif()
 
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 
+cc_library(inference_io SRCS io.cc DEPS op_registry load_combine_impl proto_desc)
+
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
-    SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} inference_io)
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
@@ -37,7 +38,7 @@ add_subdirectory(api)
 
 set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
 set(SHARED_INFERENCE_SRCS
-    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
 
@@ -61,7 +62,7 @@ endif()
 # Create shared library
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
+          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder inference_io)
   target_link_libraries(paddle_fluid_shared shlwapi)
   if(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_fluid_origin ${cuda_modules})
