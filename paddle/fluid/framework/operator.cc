@@ -159,10 +159,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } else {
     RunImpl(scope, place);
   }
-#else
-  RunImpl(scope, place);
-#endif
-
   VLOG(30) << place << " " << DebugStringEx(&scope);
 }
 
