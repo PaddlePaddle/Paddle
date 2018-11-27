@@ -25,6 +25,7 @@ class TestMKLDNN(TestConv2dTransposeOp):
         self.use_mkldnn = True
         self.data_format = "NCHW"
         self.op_type = "conv2d_transpose"
+        self._cpu_only = True
 
     def test_check_grad(self):
         return
@@ -42,6 +43,7 @@ class TestMKLDNNWithPad(TestWithPad):
         self.use_mkldnn = True
         self.data_format = "NCHW"
         self.op_type = "conv2d_transpose"
+        self._cpu_only = True
 
     def test_check_grad(self):
         return
@@ -59,6 +61,7 @@ class TestMKLDNNWithStride(TestWithStride):
         self.use_mkldnn = True
         self.data_format = "NCHW"
         self.op_type = "conv2d_transpose"
+        self._cpu_only = True
 
     def test_check_grad(self):
         return
