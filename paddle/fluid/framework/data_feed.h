@@ -12,20 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
-#define PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
+#ifndef ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
+#define ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
 
-#include <memory>
-#include <string>
-#include <thread>               // NOLINT
-#include <vector>
-#include <mutex>                // NOLINT
 #include <fstream>
+#include <memory>
+#include <mutex>  // NOLINT
+#include <string>
+#include <thread>  // NOLINT
+#include <vector>
 
+#include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
 namespace paddle {
@@ -35,43 +35,46 @@ namespace framework {
 // to record either Tensor or LoDTensor information at the same time.
 class MixTensor {
  public:
-  MixTensor(){}
-  MixTensor(LoDTensor* lodtensor) {
+  MixTensor() {}
+  explicit MixTensor(LoDTensor* lodtensor) {
     is_dense_ = false;
     lodtensor_ = lodtensor;
   }
-  MixTensor(Tensor* tensor) {
+  explicit MixTensor(Tensor* tensor) {
     is_dense_ = true;
     tensor_ = tensor;
   }
-  bool IsDense() {return is_dense_;}
-  LoDTensor* GetLoDTensor(){
+  bool IsDense() { return is_dense_; }
+  LoDTensor* GetLoDTensor() {
     if (is_dense_) {
       LOG(ERROR) << "error: let a dense var return a LoDTensor ptr";
       exit(-1);
     }
     return lodtensor_;
   }
-  Tensor* GetTensor(){
+  Tensor* GetTensor() {
     if (!is_dense_) {
       LOG(ERROR) << "error: let a sparse var return a Tensor ptr";
       exit(-1);
     }
     return tensor_;
   }
+
  private:
   bool is_dense_;
   LoDTensor* lodtensor_;
   Tensor* tensor_;
 };
 
-// DataFeed is the base virtual class for all ohther DataFeeds. 
+// DataFeed is the base virtual class for all ohther DataFeeds.
 // It is used to read files and parse the data for subsequent trainer.
 // Example:
-//   DataFeed* reader = paddle::framework::DataFeedFactory::CreateDataFeed(data_feed_name);
+//   DataFeed* reader =
+//   paddle::framework::DataFeedFactory::CreateDataFeed(data_feed_name);
 //   reader->Init(data_feed_desc); // data_feed_desc is a protobuf object
 //   reader->SetFileList(filelist);
-//   const std::vector<std::string> & use_slot_alias = reader->GetUseSlotAlias();
+//   const std::vector<std::string> & use_slot_alias =
+//   reader->GetUseSlotAlias();
 //   for (auto name: use_slot_alias){ // for binding memory
 //     reader->AddFeedVar(scope->Var(name), name);
 //   }
@@ -98,37 +101,48 @@ class DataFeed {
   // size of the current batch.
   virtual int Next() = 0;
   // Get all slots' alias which defined in protofile
-  virtual const std::vector<std::string>& GetAllSlotAlias() {return all_slots_;}
+  virtual const std::vector<std::string>& GetAllSlotAlias() {
+    return all_slots_;
+  }
   // Get used slots' alias which defined in protofile
-  virtual const std::vector<std::string>& GetUseSlotAlias() {return use_slots_;}
+  virtual const std::vector<std::string>& GetUseSlotAlias() {
+    return use_slots_;
+  }
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
+
  protected:
-  // The following three functions are used to check if it is executed in this order:
+  // The following three functions are used to check if it is executed in this
+  // order:
   //   Init() -> SetFileList() -> Start() -> Next()
   virtual void CheckInit();
   virtual void CheckSetFileList();
   virtual void CheckStart();
-  virtual void SetBatchSize(int batch); // batch size will be set in Init() function
-  // This function is used to pick one file from the global filelist(thread safe).
-  virtual bool PickOneFile(std::string& filename);
+  virtual void SetBatchSize(
+      int batch);  // batch size will be set in Init() function
+  // This function is used to pick one file from the global filelist(thread
+  // safe).
+  virtual bool PickOneFile(std::string* filename);
 
   static std::vector<std::string> filelist_;
   static size_t file_idx_;
   static std::mutex mutex_for_pick_file_;
-  
-  // the alias of used slots, and its order is determined by data_feed_desc(proto object)
+
+  // the alias of used slots, and its order is determined by
+  // data_feed_desc(proto object)
   std::vector<std::string> use_slots_;
   std::vector<bool> use_slots_is_dense_;
 
-  // the alias of all slots, and its order is determined by data_feed_desc(proto object)
+  // the alias of all slots, and its order is determined by data_feed_desc(proto
+  // object)
   std::vector<std::string> all_slots_;
   std::vector<std::string> all_slots_type_;
-  std::vector<int> use_slots_index_; // -1: not used; >=0: the index of use_slots_
-  
+  std::vector<int>
+      use_slots_index_;  // -1: not used; >=0: the index of use_slots_
+
   // The data read by DataFeed will be stored here
   std::vector<MixTensor> feed_vec_;
-  
+
   // the batch size defined by user
   int default_batch_size_;
   // current batch size
@@ -139,10 +153,10 @@ class DataFeed {
   bool finish_start_;
 };
 
-// PrivateQueueDataFeed is the base virtual class for ohther DataFeeds. 
+// PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
 // It use a read-thread to read file and parse data to a private-queue
 // (thread level), and get data from this queue when trainer call Next().
-template<typename T>
+template <typename T>
 class PrivateQueueDataFeed : public DataFeed {
  public:
   PrivateQueueDataFeed() {}
@@ -154,19 +168,20 @@ class PrivateQueueDataFeed : public DataFeed {
  protected:
   // The thread implementation function for reading file and parse.
   virtual void ReadThread();
-  // This function is used to set private-queue size, and the most 
+  // This function is used to set private-queue size, and the most
   // efficient when the queue size is close to the batch size.
   virtual void SetQueueSize(int queue_size);
   // The reading and parsing method called in the ReadThread.
-  virtual bool ParseOneInstance(T& instance) = 0;
+  virtual bool ParseOneInstance(T* instance) = 0;
   // This function is used to put instance to vec_ins
-  virtual void AddInstanceToInsVec(T& vec_ins,const T& instance, int index) = 0;
+  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
+                                   int index) = 0;
   // This function is used to put ins_vec to feed_vec
   virtual void PutToFeedVec(const T& ins_vec) = 0;
 
   // The thread for read files
   std::thread read_thread_;
-  // using ifstream one line and one line parse is faster 
+  // using ifstream one line and one line parse is faster
   // than using fread one buffer and one buffer parse.
   //   for a 601M real data:
   //     ifstream one line and one line parse: 6034 ms
@@ -193,13 +208,11 @@ class MultiSlotType {
   }
   void InitOffset() {
     offset_.resize(1);
-    // LoDTensor' lod is counted from 0, the size of lod 
+    // LoDTensor' lod is counted from 0, the size of lod
     // is one size larger than the size of data.
     offset_[0] = 0;
   }
-  const std::vector<size_t>& GetOffset() const {
-    return offset_;
-  }
+  const std::vector<size_t>& GetOffset() const { return offset_; }
   void AddValue(const float v) {
     CheckFloat();
     float_feasign_.push_back(v);
@@ -209,27 +222,22 @@ class MultiSlotType {
     uint64_feasign_.push_back(v);
   }
   void AddIns(const MultiSlotType& ins) {
-    if (ins.GetType()[0] == 'f') { //float
+    if (ins.GetType()[0] == 'f') {  // float
       CheckFloat();
       auto& vec = ins.GetFloatData();
       offset_.push_back(offset_.back() + vec.size());
       float_feasign_.insert(float_feasign_.end(), vec.begin(), vec.end());
-    } else if (ins.GetType()[0] == 'u') { //uint64
+    } else if (ins.GetType()[0] == 'u') {  // uint64
       CheckUint64();
       auto& vec = ins.GetUint64Data();
       offset_.push_back(offset_.back() + vec.size());
       uint64_feasign_.insert(uint64_feasign_.end(), vec.begin(), vec.end());
     }
   }
-  const std::vector<float>& GetFloatData() const {
-    return float_feasign_;
-  }
-  const std::vector<uint64_t>& GetUint64Data() const {
-    return uint64_feasign_;
-  }
-  const std::string& GetType() const {
-    return type_;
-  }
+  const std::vector<float>& GetFloatData() const { return float_feasign_; }
+  const std::vector<uint64_t>& GetUint64Data() const { return uint64_feasign_; }
+  const std::string& GetType() const { return type_; }
+
  private:
   void CheckType(const std::string& type) const {
     if (type != "uint64" && type != "float") {
@@ -238,13 +246,13 @@ class MultiSlotType {
     }
   }
   void CheckFloat() const {
-    if (type_[0] != 'f') { //float
+    if (type_[0] != 'f') {  // float
       LOG(ERROR) << "error: add " << type_ << " value to float slot";
       exit(-1);
     }
   }
   void CheckUint64() const {
-    if (type_[0] != 'u') { //uint64
+    if (type_[0] != 'u') {  // uint64
       LOG(ERROR) << "error: add " << type_ << " value to uint64 slot";
       exit(-1);
     }
@@ -258,21 +266,23 @@ class MultiSlotType {
 // This DataFeed is used to feed multi-slot type data.
 // The format of multi-slot type data:
 //   [n feasign_0 feasign_1 ... feasign_n]*
-class MultiSlotDataFeed : public PrivateQueueDataFeed<std::vector<MultiSlotType>> {
+class MultiSlotDataFeed
+    : public PrivateQueueDataFeed<std::vector<MultiSlotType>> {
  public:
   MultiSlotDataFeed() {}
   virtual ~MultiSlotDataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
+
  protected:
-  virtual void AddInstanceToInsVec(std::vector<MultiSlotType>& vec_ins, 
-      const std::vector<MultiSlotType>& instance, int index);
-  virtual bool ParseOneInstance(std::vector<MultiSlotType>& instance);
+  virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
+                                   const std::vector<MultiSlotType>& instance,
+                                   int index);
+  virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 };
+}  // namespace framework
+}  // namespace paddle
 
-}   // namespace framework
-}   // namespace paddle
-
-#endif  // PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
+#endif  // ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */

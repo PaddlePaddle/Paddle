@@ -82,12 +82,12 @@ void DataFeed::SetBatchSize(int batch_size) {
   default_batch_size_ = batch_size;
 }
 
-bool DataFeed::PickOneFile(std::string& filename) {
+bool DataFeed::PickOneFile(std::string* filename) {
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   if (file_idx_ == filelist_.size()) {
     return false;
   }
-  filename = filelist_[file_idx_++];
+  *filename = filelist_[file_idx_++];
   return true;
 }
 
@@ -139,14 +139,14 @@ bool PrivateQueueDataFeed<T>::Start() {
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
   std::string filename;
-  while (PickOneFile(filename)) {
+  while (PickOneFile(&filename)) {
     file_.open(filename.c_str());  // is_text_feed
     if (!file_.good()) {
       LOG(ERROR) << "error: open file<" << filename << "> fail";
       exit(-1);
     }
     T instance;
-    while (ParseOneInstance(instance)) {
+    while (ParseOneInstance(&instance)) {
       queue_->Send(instance);
     }
     file_.close();
@@ -164,7 +164,7 @@ int PrivateQueueDataFeed<T>::Next() {
     if (!queue_->Receive(&instance)) {
       break;
     }
-    AddInstanceToInsVec(ins_vec, instance, index++);
+    AddInstanceToInsVec(&ins_vec, instance, index++);
   }
   batch_size_ = index;
   if (batch_size_ != 0) {
@@ -231,7 +231,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   while (getline(fin, line)) {
     ++instance_cout;
     const char* str = line.c_str();
-    char* endptr = reinterpret_cast<char*>(str);
+    char* endptr = const_cast<char*>(str);
     int len = line.length();
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       int num = strtol(endptr, &endptr, 10);
@@ -241,11 +241,11 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                    << filename << ">";
         return false;
       } else if (num == 0) {
-        LOG(ERROR) << "error: the number of ids can not be zero, you need " +
-                          "padding it in data generator; or if there is "
-                          "something wrong " +
-                          "with the data, please check if the data contains "
-                          "unresolvable characters.";
+        LOG(ERROR)
+            << "error: the number of ids can not be zero, you need "
+               "padding it in data generator; or if there is something wrong"
+               " with the data, please check if the data contains unresolvable "
+               "characters.";
         LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
                    << filename << ">";
         return false;
@@ -307,40 +307,38 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   return true;
 }
 
-bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
+bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
   std::string line;
   if (getline(file_, line)) {
     int use_slots_num = use_slots_.size();
-    instance.resize(use_slots_num);
+    instance->resize(use_slots_num);
     // parse line
     const char* str = line.c_str();
-    char* endptr = reinterpret_cast<char*>(str);
+    char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
       if (num == 0) {
         LOG(ERROR)
-            << "error: the number of ids can not be zero, you need padding " +
-                   "it in data generator; or if there is something wrong with "
-                   "the data, " +
-                   "please check if the data contains unresolvable "
-                   "characters.\nplease check " +
-                   "this error line: "
+            << "error: the number of ids can not be zero, you need padding "
+               "it in data generator; or if there is something wrong with "
+               "the data, please check if the data contains unresolvable "
+               "characters.\nplease check this error line: "
             << line;
         exit(-1);
       }
       if (idx != -1) {
-        instance[idx].Init(all_slots_type_[i]);
-        if (instance[idx].GetType()[0] == 'f') {  // float
+        (*instance)[idx].Init(all_slots_type_[i]);
+        if ((*instance)[idx].GetType()[0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
-            float feasign = reinterpret_cast<float>(strtof(endptr, &endptr));
-            instance[idx].AddValue(feasign);
+            float feasign = strtof(endptr, &endptr);
+            (*instance)[idx].AddValue(feasign);
           }
-        } else if (instance[idx].GetType()[0] == 'u') {  // uint64
+        } else if ((*instance)[idx].GetType()[0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-            instance[idx].AddValue(feasign);
+            (*instance)[idx].AddValue(feasign);
           }
         }
         pos = endptr - str;
@@ -357,17 +355,17 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>& instance) {
 }
 
 void MultiSlotDataFeed::AddInstanceToInsVec(
-    std::vector<MultiSlotType>& ins_vec,
+    std::vector<MultiSlotType>* ins_vec,
     const std::vector<MultiSlotType>& instance, int index) {
   if (index == 0) {
-    ins_vec.resize(instance.size());
+    ins_vec->resize(instance.size());
     for (size_t i = 0; i < instance.size(); ++i) {
-      ins_vec[i].Init(instance[i].GetType());
-      ins_vec[i].InitOffset();
+      (*ins_vec)[i].Init(instance[i].GetType());
+      (*ins_vec)[i].InitOffset();
     }
   }
   for (size_t i = 0; i < instance.size(); ++i) {
-    ins_vec[i].AddIns(instance[i]);
+    (*ins_vec)[i].AddIns(instance[i]);
   }
 }
 
