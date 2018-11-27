@@ -16,19 +16,11 @@ limitations under the License. */
 #define PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
 
 #include <memory>
-#include <set>
-#include <map>
 #include <string>
 #include <thread>               // NOLINT
 #include <vector>
-#include <queue>
 #include <mutex>                // NOLINT
-#include <unordered_map>
-#include <unordered_set>
-#include <condition_variable>   // NOLINT
 #include <fstream>
-#include <deque>
-#include <atomic>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -39,6 +31,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// Pack Tensor type and LoDTensor type into MixTensor type, in order
+// to record either Tensor or LoDTensor information at the same time.
 class MixTensor {
  public:
   MixTensor(){}
@@ -71,138 +65,73 @@ class MixTensor {
   Tensor* tensor_;
 };
 
-// There are some bugs in the implementation of the two lock 
-// blocking queue(using 36 thread will meet bad_malloc bug). 
-// Now use the lock blocking queue for the time being.
-/*
-template<typename T>
-class BlockingQueue {
- public:
-  explicit BlockingQueue(size_t capacity = 32)
-      : capacity_(capacity), closed_(false) {
-    size_.store(0);
-  }
-  
-  bool Send(T& elem) {
-    int c = -1;
-    {
-      std::unique_lock<std::mutex> lock(send_mutex_);
-      send_cv_.wait(lock, [&] {return size_.load() < capacity_ || closed_;});
-      if (closed_) {
-        VLOG(5)
-            << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
-        return false;
-      }
-      queue_.push_back(elem);
-      c = size_.load();
-      size_.fetch_add(1);
-      if (c + 1 < capacity_) {
-        send_cv_.notify_one();
-      }
-    }
-
-    if (c == 0) {
-      std::unique_lock<std::mutex> lock(receive_mutex_);
-      receive_cv_.notify_one();
-    }
-    return true;
-  }
-
-  bool Receive(T* elem) {
-    int c = -1;
-    {
-      std::unique_lock<std::mutex> lock(receive_mutex_);
-      receive_cv_.wait(lock, [&] {return size_.load() != 0 || closed_;});
-      if (size_.load() != 0) {
-        *elem = queue_.front();
-        queue_.pop_front();
-        c = size_.load();
-        size_.fetch_sub(1);
-        if (c > 1) {
-          receive_cv_.notify_one();
-        }
-      } else {
-        return false;
-      }
-    }
-    if (c == capacity_) {
-      std::unique_lock<std::mutex> lock(send_mutex_);
-      send_cv_.notify_one();
-    }
-    return true;
-  }
-
-  void Close() {
-    std::lock_guard<std::mutex> lock1(send_mutex_);
-    std::lock_guard<std::mutex> lock2(receive_mutex_);
-    closed_ = true;
-    send_cv_.notify_all();
-    receive_cv_.notify_all();
-  }
-
- private:
-  size_t capacity_;
-  std::atomic_size_t size_;
-  bool closed_;
-  std::deque<T> queue_;
-
-  mutable std::mutex send_mutex_;
-  mutable std::mutex receive_mutex_;
-  mutable std::condition_variable send_cv_;
-  mutable std::condition_variable receive_cv_;
-};*/
-
+// DataFeed is the base virtual class for all ohther DataFeeds. 
+// It is used to read files and parse the data for subsequent trainer.
+// Example:
+//   DataFeed* reader = paddle::framework::DataFeedFactory::CreateDataFeed(data_feed_name);
+//   reader->Init(data_feed_desc); // data_feed_desc is a protobuf object
+//   reader->SetFileList(filelist);
+//   const std::vector<std::string> & use_slot_alias = reader->GetUseSlotAlias();
+//   for (auto name: use_slot_alias){ // for binding memory
+//     reader->AddFeedVar(scope->Var(name), name);
+//   }
+//   reader->Start();
+//   while (reader->Next()) {
+//      // trainer do something
+//   }
 class DataFeed {
  public:
   DataFeed() {}
   virtual ~DataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
-  // for some datafeeds may not be able to implement this interface
   virtual bool CheckFile(const char* filename) {
     LOG(ERROR) << "error: The function CheckFile is not implemented";
     return false;
   }
-  virtual bool SetFileList(const std::vector<std::string>& files); 
+  // Set filelist for DataFeed.
+  // Pay attention that it must init all readers before call this function.
+  // Otherwise, Init() function will init finish_set_filelist_ flag.
+  virtual bool SetFileList(const std::vector<std::string>& files);
   virtual bool Start() = 0;
+  // The trainer calls the Next() function, and the DataFeed will load a new
+  // batch to the feed_vec. The return value of this function is the batch
+  // size of the current batch.
   virtual int Next() = 0;
-  virtual void SetBatchSize(int batch);
-  virtual int GetBatchSize() { return batch_size_; }
-  // for subclass with queue
-  virtual void SetQueueSize(int queue_size) {
-    LOG(ERROR) << "error: The function SetQueueSize is not implemented";
-    exit(-1);
-  }
-  // for subclass with buffer
-  virtual void SetBufferSize(int buffer_size) {
-    LOG(ERROR) << "error: The function SetBufferSize is not implemented";
-    exit(-1);
-  }
+  // Get all slots' alias which defined in protofile
   virtual const std::vector<std::string>& GetAllSlotAlias() {return all_slots_;}
+  // Get used slots' alias which defined in protofile
   virtual const std::vector<std::string>& GetUseSlotAlias() {return use_slots_;}
-  std::vector<MixTensor>& GetFeedVec() {return feed_vec_;}
+  // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
  protected:
-  // Check if it is executed in this order:
-  //   Init -> SetFileList(BindingMemory) -> Start -> Next
+  // The following three functions are used to check if it is executed in this order:
+  //   Init() -> SetFileList() -> Start() -> Next()
   virtual void CheckInit();
   virtual void CheckSetFileList();
   virtual void CheckStart();
+  virtual void SetBatchSize(int batch); // batch size will be set in Init() function
+  // This function is used to pick one file from the global filelist(thread safe).
   virtual bool PickOneFile(std::string& filename);
 
   static std::vector<std::string> filelist_;
   static size_t file_idx_;
   static std::mutex mutex_for_pick_file_;
   
+  // the alias of used slots, and its order is determined by data_feed_desc(proto object)
   std::vector<std::string> use_slots_;
   std::vector<bool> use_slots_is_dense_;
 
+  // the alias of all slots, and its order is determined by data_feed_desc(proto object)
   std::vector<std::string> all_slots_;
   std::vector<std::string> all_slots_type_;
   std::vector<int> use_slots_index_; // -1: not used; >=0: the index of use_slots_
   
+  // The data read by DataFeed will be stored here
   std::vector<MixTensor> feed_vec_;
   
+  // the batch size defined by user
   int default_batch_size_;
+  // current batch size
   int batch_size_;
 
   bool finish_init_;
@@ -210,6 +139,9 @@ class DataFeed {
   bool finish_start_;
 };
 
+// PrivateQueueDataFeed is the base virtual class for ohther DataFeeds. 
+// It use a read-thread to read file and parse data to a private-queue
+// (thread level), and get data from this queue when trainer call Next().
 template<typename T>
 class PrivateQueueDataFeed : public DataFeed {
  public:
@@ -218,26 +150,34 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual int Next();
-  virtual void SetQueueSize(int queue_size);
 
  protected:
+  // The thread implementation function for reading file and parse.
   virtual void ReadThread();
+  // This function is used to set private-queue size, and the most 
+  // efficient when the queue size is close to the batch size.
+  virtual void SetQueueSize(int queue_size);
+  // The reading and parsing method called in the ReadThread.
   virtual bool ParseOneInstance(T& instance) = 0;
+  // This function is used to put instance to vec_ins
   virtual void AddInstanceToInsVec(T& vec_ins,const T& instance, int index) = 0;
+  // This function is used to put ins_vec to feed_vec
   virtual void PutToFeedVec(const T& ins_vec) = 0;
 
-  std::thread read_thread_; // the thread for read files
-  /* using ifstream one line and one line parse is faster 
-   * than using fread one buffer and one buffer parse.
-   *   for a 601M real data:
-   *     ifstream one line and one line parse: 6034 ms
-   *     fread one buffer and one buffer parse: 7097 ms */
+  // The thread for read files
+  std::thread read_thread_;
+  // using ifstream one line and one line parse is faster 
+  // than using fread one buffer and one buffer parse.
+  //   for a 601M real data:
+  //     ifstream one line and one line parse: 6034 ms
+  //     fread one buffer and one buffer parse: 7097 ms
   std::ifstream file_;
   size_t queue_size_;
-  //std::unique_ptr<BlockingQueue<T>> queue_;
+  // The queue for store parsed data
   std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };
 
+// This class define the data type of instance(ins_vec) in MultiSlotDataFeed
 class MultiSlotType {
  public:
   MultiSlotType() {}
@@ -293,7 +233,6 @@ class MultiSlotType {
  private:
   void CheckType(const std::string& type) const {
     if (type != "uint64" && type != "float") {
-      // check in here
       LOG(ERROR) << "error: there is no this type<" << type << ">.";
       exit(-1);
     }
@@ -316,6 +255,9 @@ class MultiSlotType {
   std::vector<size_t> offset_;
 };
 
+// This DataFeed is used to feed multi-slot type data.
+// The format of multi-slot type data:
+//   [n feasign_0 feasign_1 ... feasign_n]*
 class MultiSlotDataFeed : public PrivateQueueDataFeed<std::vector<MultiSlotType>> {
  public:
   MultiSlotDataFeed() {}
