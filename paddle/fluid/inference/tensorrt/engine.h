@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -39,6 +40,7 @@ class TensorRTEngine : public EngineBase {
   // Weight is model parameter.
   class Weight {
    public:
+    Weight() = default;
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
@@ -91,6 +93,8 @@ class TensorRTEngine : public EngineBase {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Check if the ITensor has been declared
+  bool HasDeclared(const std::string& name);
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
@@ -123,6 +127,8 @@ class TensorRTEngine : public EngineBase {
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
   int GetDevice() { return device_; }
+  nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
+                                    int num_inputs, plugin::PluginTensorRT*);
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -131,6 +137,16 @@ class TensorRTEngine : public EngineBase {
   // in advance, which affecting the construction of TRT Op.
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
+
+  // TODO(NHZLX)
+  // In the normal case, the paddle-trt exists bug when runing the googlenet.
+  // When there are more than two convolutions of 1 * 1 with the same input, the
+  // paddle-tensorrt will do the merging optimization, which fuse those conv
+  // into
+  // one conv, and then trigger bug. So,  We should use strategy to avoid this
+  // optimization for the time being. This bug will be fixed in the future.
+  std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
+      itensor_quote_num;
 
  private:
   // the max batch size
@@ -152,8 +168,10 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
+
   // The specific GPU id that the TensorRTEngine bounded to.
   int device_;
+  std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
 
   // TensorRT related internal members
   template <typename T>

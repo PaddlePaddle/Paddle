@@ -23,7 +23,7 @@ class BatchNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    LOG(INFO) << "convert a fluid batch norm op to tensorrt batch_norm";
+    VLOG(3) << "convert a fluid batch norm op to tensorrt batch_norm";
 
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);

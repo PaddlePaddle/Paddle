@@ -36,21 +36,21 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
                                 framework::Variable* invar,
                                 framework::Variable** outvar,
+                                const int trainer_id,
                                 const std::string& out_var_name) {
-  VLOG(4) << "RequestSendHandler:" << varname;
+  VLOG(40) << "RequestSendHandler:" << varname;
 
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
+    VLOG(30) << "sync: recv BATCH_BARRIER_MESSAGE";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
-    VLOG(3) << "sync: recv complete message";
+    VLOG(30) << "sync: recv complete message";
     rpc_server_->Complete();
   } else {
     // Async
     if (!sync_mode_) {
-      VLOG(3) << "async process var: " << varname;
-      rpc_server_->Profiler().OneStep();
+      VLOG(30) << "async process var: " << varname;
       try {
         executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                       scope);
@@ -61,7 +61,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
       return true;
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);
-      VLOG(3) << "sync: processing received var: " << varname;
+      VLOG(30) << "sync: processing received var: " << varname;
 
       if (invar == nullptr) {
         LOG(FATAL) << "sync: Can not find server side var: " << varname;
@@ -76,11 +76,12 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Scope* scope,
                                framework::Variable* invar,
                                framework::Variable** outvar,
+                               const int trainer_id,
                                const std::string& out_var_name) {
-  VLOG(4) << "RequestGetHandler:" << varname;
+  VLOG(40) << "RequestGetHandler:" << varname;
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
-      VLOG(3) << "sync: recv fetch barrier message";
+      VLOG(30) << "sync: recv fetch barrier message";
       rpc_server_->IncreaseBatchBarrier(kRequestGet);
     } else {
       rpc_server_->WaitCond(kRequestGet);
@@ -88,6 +89,20 @@ bool RequestGetHandler::Handle(const std::string& varname,
     }
   } else {
     if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
+      if (enable_dc_asgd_) {
+        // NOTE: the format is determined by distributed_transpiler.py
+        std::string param_bak_name =
+            string::Sprintf("%s.trainer_%d_bak", varname, trainer_id);
+        VLOG(30) << "getting " << param_bak_name << " trainer_id "
+                 << trainer_id;
+        auto var = scope_->FindVar(varname);
+        auto t_orig = var->Get<framework::LoDTensor>();
+        auto param_bak = scope_->Var(param_bak_name);
+        auto t = param_bak->GetMutable<framework::LoDTensor>();
+        t->mutable_data(dev_ctx_->GetPlace(), t_orig.type());
+        VLOG(30) << "copying " << varname << " to " << param_bak_name;
+        framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
+      }
       *outvar = scope_->FindVar(varname);
     }
   }
@@ -98,8 +113,9 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     framework::Scope* scope,
                                     framework::Variable* invar,
                                     framework::Variable** outvar,
+                                    const int trainer_id,
                                     const std::string& out_var_name) {
-  VLOG(4) << "RequestPrefetchHandler " << varname;
+  VLOG(40) << "RequestPrefetchHandler " << varname;
 
   auto var_desc = program_->Block(0).FindVar(out_var_name);
   InitializeVariable(*outvar, var_desc->GetType());
@@ -113,6 +129,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Scope* scope,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
+                                      const int trainer_id,
                                       const std::string& out_var_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
@@ -122,8 +139,8 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
   auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
-          << out_var_name;
+  VLOG(40) << "RequestCheckpointHandler update var kLookupTablePath to: "
+           << out_var_name;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
   return true;
 }

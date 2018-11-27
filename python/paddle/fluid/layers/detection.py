@@ -31,6 +31,7 @@ from functools import reduce
 
 __all__ = [
     'prior_box',
+    'density_prior_box',
     'multi_box_head',
     'bipartite_match',
     'target_assign',
@@ -116,8 +117,8 @@ def rpn_target_assign(bbox_pred,
     Returns:
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox) is returned. The predicted_scores and
-               predicted_location is the predicted result of the RPN.
+               target_bbox, bbox_inside_weight) is returned. The predicted_scores 
+               and predicted_location is the predicted result of the RPN.
                The target_label and target_bbox is the ground truth,
                respectively. The predicted_location is a 2D Tensor with shape
                [F, 4], and the shape of target_bbox is same as the shape of
@@ -126,6 +127,8 @@ def rpn_target_assign(bbox_pred,
                [F + B, 1], and the shape of target_label is same as the shape
                of the predicted_scores, B is the number of the background
                anchors, the F and B is depends on the input of this operator.
+               Bbox_inside_weight represents whether the predicted loc is fake_fg
+               or not and the shape is [F, 4].
 
     Examples:
         .. code-block:: python
@@ -138,7 +141,7 @@ def rpn_target_assign(bbox_pred,
                           append_batch_size=False, dtype='float32')
         gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-        loc_pred, score_pred, loc_target, score_target =
+        loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
             fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
                                           cls_logits=cls_logits,
                                           anchor_box=anchor_box,
@@ -147,10 +150,13 @@ def rpn_target_assign(bbox_pred,
 
     helper = LayerHelper('rpn_target_assign', **locals())
     # Assign target label to anchors
-    loc_index = helper.create_tmp_variable(dtype='int32')
-    score_index = helper.create_tmp_variable(dtype='int32')
-    target_label = helper.create_tmp_variable(dtype='int32')
-    target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    loc_index = helper.create_variable_for_type_inference(dtype='int32')
+    score_index = helper.create_variable_for_type_inference(dtype='int32')
+    target_label = helper.create_variable_for_type_inference(dtype='int32')
+    target_bbox = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
+    bbox_inside_weight = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
         inputs={
@@ -163,7 +169,8 @@ def rpn_target_assign(bbox_pred,
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
             'TargetLabel': target_label,
-            'TargetBBox': target_bbox
+            'TargetBBox': target_bbox,
+            'BBoxInsideWeight': bbox_inside_weight
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
@@ -178,13 +185,14 @@ def rpn_target_assign(bbox_pred,
     score_index.stop_gradient = True
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
+    bbox_inside_weight.stop_gradient = True
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
     predicted_cls_logits = nn.gather(cls_logits, score_index)
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
 def detection_output(loc,
@@ -275,14 +283,11 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    compile_shape = scores.shape
-    run_shape = nn.shape(scores)
-    scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
-    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    nmsed_outs = helper.create_variable_for_type_inference(
+        dtype=decoded_box.dtype)
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -314,7 +319,7 @@ def iou_similarity(x, y, name=None):
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -351,7 +356,8 @@ def box_coder(prior_box,
     helper = LayerHelper("box_coder", **locals())
 
     if name is None:
-        output_box = helper.create_tmp_variable(dtype=prior_box.dtype)
+        output_box = helper.create_variable_for_type_inference(
+            dtype=prior_box.dtype)
     else:
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
@@ -382,7 +388,7 @@ def polygon_box_transform(input, name=None):
     """
     helper = LayerHelper("polygon_box_transform", **locals())
     if name is None:
-        output = helper.create_tmp_variable(dtype=input.dtype)
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     else:
         output = helper.create_variable(
             name=name, dtype=prior_box.input, persistable=False)
@@ -450,7 +456,7 @@ def detection_map(detect_res,
     helper = LayerHelper("detection_map", **locals())
 
     def __create_var(type):
-        return helper.create_tmp_variable(dtype=type)
+        return helper.create_variable_for_type_inference(dtype=type)
 
     map_out = __create_var('float32')
     accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
@@ -557,8 +563,9 @@ def bipartite_match(dist_matrix,
         >>> matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
     """
     helper = LayerHelper('bipartite_match', **locals())
-    match_indices = helper.create_tmp_variable(dtype='int32')
-    match_distance = helper.create_tmp_variable(dtype=dist_matrix.dtype)
+    match_indices = helper.create_variable_for_type_inference(dtype='int32')
+    match_distance = helper.create_variable_for_type_inference(
+        dtype=dist_matrix.dtype)
     helper.append_op(
         type='bipartite_match',
         inputs={'DistMat': dist_matrix},
@@ -644,8 +651,8 @@ def target_assign(input,
                             gt, matched_indices, mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
-    out_weight = helper.create_tmp_variable(dtype='float32')
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out_weight = helper.create_variable_for_type_inference(dtype='float32')
     helper.append_op(
         type='target_assign',
         inputs={
@@ -816,9 +823,10 @@ def ssd_loss(location,
     conf_loss = nn.reshape(
         x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
-    neg_indices = helper.create_tmp_variable(dtype='int32')
+    neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
-    updated_matched_indices = helper.create_tmp_variable(dtype=dtype)
+    updated_matched_indices = helper.create_variable_for_type_inference(
+        dtype=dtype)
     helper.append_op(
         type='mine_hard_examples',
         inputs={
@@ -998,10 +1006,136 @@ def prior_box(input,
             max_sizes = [max_sizes]
         attrs['max_sizes'] = max_sizes
 
-    box = helper.create_tmp_variable(dtype)
-    var = helper.create_tmp_variable(dtype)
+    box = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="prior_box",
+        inputs={"Input": input,
+                "Image": image},
+        outputs={"Boxes": box,
+                 "Variances": var},
+        attrs=attrs, )
+    box.stop_gradient = True
+    var.stop_gradient = True
+    return box, var
+
+
+def density_prior_box(input,
+                      image,
+                      densities=None,
+                      fixed_sizes=None,
+                      fixed_ratios=None,
+                      variance=[0.1, 0.1, 0.2, 0.2],
+                      clip=False,
+                      steps=[0.0, 0.0],
+                      offset=0.5,
+                      flatten_to_2d=False,
+                      name=None):
+    """
+    **Density Prior Box Operator**
+
+    Generate density prior boxes for SSD(Single Shot MultiBox Detector) 
+    algorithm. Each position of the input produce N prior boxes, N is 
+    determined by the count of densities, fixed_sizes and fixed_ratios. 
+    Boxes center at grid points around each input position is generated by 
+    this operator, and the grid points is determined by densities and 
+    the count of density prior box is determined by fixed_sizes and fixed_ratios. 
+    Obviously, the number of fixed_sizes is equal to the number of densities.
+    For densities_i in densities:
+    N_density_prior_box =sum(N_fixed_ratios * densities_i^2),
+
+    Args:
+       input(Variable): The Input Variables, the format is NCHW.
+       image(Variable): The input image data of PriorBoxOp,
+            the layout is NCHW.
+       densities(list|tuple|None): the densities of generated density prior 
+            boxes, this attribute should be a list or tuple of integers. 
+            Default: None.
+       fixed_sizes(list|tuple|None): the fixed sizes of generated density
+            prior boxes, this attribute should a list or tuple of same 
+            length with :attr:`densities`. Default: None.
+       fixed_ratios(list|tuple|None): the fixed ratios of generated density
+            prior boxes, if this attribute is not set and :attr:`densities`
+            and :attr:`fix_sizes` is set, :attr:`aspect_ratios` will be used
+            to generate density prior boxes.
+       variance(list|tuple): the variances to be encoded in density prior boxes.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
+       step(list|turple): Prior boxes step across width and height, If
+            step[0] == 0.0/step[1] == 0.0, the density prior boxes step across
+            height/weight of the input will be automatically calculated.
+            Default: [0., 0.]
+       offset(float): Prior boxes center offset. Default: 0.5
+       flatten_to_2d(bool): Whether to flatten output prior boxes and variance
+           to 2D shape, the second dim is 4. Default: False.
+       name(str): Name of the density prior box op. Default: None.
+
+    Returns:
+        tuple: A tuple with two Variable (boxes, variances)
+
+        boxes: the output density prior boxes of PriorBox.
+            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input,
+            num_priors is the total box count of each position of input.
+
+        variances: the expanded variances of PriorBox.
+            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input
+            num_priors is the total box count of each position of input.
+
+
+    Examples:
+        .. code-block:: python
+
+            box, var = fluid.layers.density_prior_box(
+                input=conv1,
+                image=images,
+                densities=[4, 2, 1],
+                fixed_sizes=[32.0, 64.0, 128.0],
+                fixed_ratios=[1.],
+                clip=True,
+                flatten_to_2d=True)
+    """
+    helper = LayerHelper("density_prior_box", **locals())
+    dtype = helper.input_dtype()
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(densities):
+        raise TypeError('densities should be a list or a tuple or None.')
+    if not _is_list_or_tuple_(fixed_sizes):
+        raise TypeError('fixed_sizes should be a list or a tuple or None.')
+    if not _is_list_or_tuple_(fixed_ratios):
+        raise TypeError('fixed_ratios should be a list or a tuple or None.')
+    if len(densities) != len(fixed_sizes):
+        raise ValueError('densities and fixed_sizes length should be euqal.')
+    if not (_is_list_or_tuple_(steps) and len(steps) == 2):
+        raise ValueError('steps should be a list or tuple ',
+                         'with length 2, (step_width, step_height).')
+
+    densities = list(map(int, densities))
+    fixed_sizes = list(map(float, fixed_sizes))
+    fixed_ratios = list(map(float, fixed_ratios))
+    steps = list(map(float, steps))
+
+    attrs = {
+        'variances': variance,
+        'clip': clip,
+        'step_w': steps[0],
+        'step_h': steps[1],
+        'offset': offset,
+        'densities': densities,
+        'fixed_sizes': fixed_sizes,
+        'fixed_ratios': fixed_ratios,
+        'flatten_to_2d': flatten_to_2d,
+    }
+    box = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="density_prior_box",
         inputs={"Input": input,
                 "Image": image},
         outputs={"Boxes": box,
@@ -1337,8 +1471,8 @@ def anchor_generator(input,
         'offset': offset
     }
 
-    anchor = helper.create_tmp_variable(dtype)
-    var = helper.create_tmp_variable(dtype)
+    anchor = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="anchor_generator",
         inputs={"Input": input},
@@ -1384,7 +1518,7 @@ def roi_perspective_transform(input,
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
-    out = helper.create_tmp_variable(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="roi_perspective_transform",
         inputs={"X": input,
@@ -1413,16 +1547,49 @@ def generate_proposal_labels(rpn_rois,
                              use_random=True):
     """
     ** Generate proposal labels Faster-RCNN **
-    TODO(buxingyuan): Add Document
+    This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
+    to sample foreground boxes and background boxes, and compute loss target.
+
+    RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
+    were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
+    If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
+    If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
+    then it was considered as a background sample.
+    After all foreground and background boxes are chosen (so called Rois),
+    then we apply random sampling to make sure
+    the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
+
+    For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
+    Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+
+    Args:
+        rpn_rois(Variable): A 2-D LoDTensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth.
+        is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd.
+        gt_boxes(Variable): A 2-D LoDTensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
+
+        batch_size_per_im(int): Batch size of rois per images.
+        fg_fraction(float): Foreground fraction in total batch_size_per_im.
+        fg_thresh(float): Overlap threshold which is used to chose foreground sample.
+        bg_thresh_hi(float): Overlap threshold upper bound which is used to chose background sample.
+        bg_thresh_lo(float): Overlap threshold lower bound which is used to chose background sample.
+        bbox_reg_weights(list|tuple): Box regression weights.
+        class_nums(int): Class number.
+        use_random(bool): Use random sampling to choose foreground and background boxes.
     """
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
-    rois = helper.create_tmp_variable(dtype=rpn_rois.dtype)
-    labels_int32 = helper.create_tmp_variable(dtype=gt_classes.dtype)
-    bbox_targets = helper.create_tmp_variable(dtype=rpn_rois.dtype)
-    bbox_inside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
-    bbox_outside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
+    labels_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+    bbox_targets = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
+    bbox_inside_weights = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
+    bbox_outside_weights = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
 
     helper.append_op(
         type="generate_proposal_labels",
@@ -1472,7 +1639,7 @@ def generate_proposals(scores,
                        eta=1.0,
                        name=None):
     """
-    ** Generate proposal labels Faster-RCNN **
+    ** Generate proposal Faster-RCNN **
 	
 	This operation proposes RoIs according to each box with their probability to be a foreground object and 
 	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
@@ -1504,8 +1671,10 @@ def generate_proposals(scores,
     """
     helper = LayerHelper('generate_proposals', **locals())
 
-    rpn_rois = helper.create_tmp_variable(dtype=bbox_deltas.dtype)
-    rpn_roi_probs = helper.create_tmp_variable(dtype=scores.dtype)
+    rpn_rois = helper.create_variable_for_type_inference(
+        dtype=bbox_deltas.dtype)
+    rpn_roi_probs = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
     helper.append_op(
         type="generate_proposals",
         inputs={

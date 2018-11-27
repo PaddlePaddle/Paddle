@@ -54,14 +54,6 @@ def get_numeric_gradient(place,
     def product(dim):
         return six.moves.reduce(lambda a, b: a * b, dim, 1)
 
-    def get_output():
-        sum = []
-        op.run(scope, place)
-        for output_name in output_names:
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).sum() / len(output_names)
-
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
@@ -76,6 +68,15 @@ def get_numeric_gradient(place,
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
+
+    def get_output():
+        sum = []
+        op.run(scope, place)
+        for output_name in output_names:
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).astype(
+                    tensor_to_check_dtype).mean())
+        return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 
@@ -361,7 +362,9 @@ class OpTest(unittest.TestCase):
             else:
                 return []
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+        cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
+           and not cpu_only:
             places.append(core.CUDAPlace(0))
         return places
 
@@ -378,8 +381,8 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
 
-    def __assert_is_close(self, numeric_grads, analytic_grads, names,
-                          max_relative_error, msg_prefix):
+    def _assert_is_close(self, numeric_grads, analytic_grads, names,
+                         max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
@@ -448,9 +451,9 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
 
-        self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
-                               max_relative_error,
-                               "Gradient Check On %s" % str(place))
+        self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
+                              max_relative_error,
+                              "Gradient Check On %s" % str(place))
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

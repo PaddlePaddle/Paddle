@@ -14,17 +14,15 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <functional>
 #include <memory>
-#include "ThreadPool.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
-
-using StreamCallback = std::function<void(cudaStream_t, cudaError_t)>;
 
 class StreamCallbackManager;
 
@@ -35,7 +33,7 @@ struct StreamCallbackContext {
       : manager_(manager), callback_(callback) {}
 
   const StreamCallbackManager *manager_;  // do not own
-  StreamCallback callback_;
+  std::function<void()> callback_;
 };
 
 class StreamCallbackManager {
@@ -45,16 +43,17 @@ class StreamCallbackManager {
 
   template <typename Callback>
   inline void AddCallback(Callback &&callback) const {
-    AddCallbackWithStreamAndErrorInfo(
-        [=](cudaStream_t, cudaError_t) { callback(); });
-  }
-
-  template <typename Callback>
-  inline void AddCallbackWithStreamAndErrorInfo(Callback &&callback) const {
-    auto *stream_callback_context = new StreamCallbackContext(this, callback);
+    auto *stream_callback_context =
+        new StreamCallbackContext(this, std::forward<Callback>(callback));
+#if CUDA_VERSION >= 10000
+    PADDLE_ENFORCE(cudaLaunchHostFunc(stream_,
+                                      StreamCallbackManager::StreamCallbackFunc,
+                                      stream_callback_context));  // NOLINT
+#else
     PADDLE_ENFORCE(cudaStreamAddCallback(
         stream_, StreamCallbackManager::StreamCallbackFunc,
-        stream_callback_context, 0));
+        stream_callback_context, 0));  // NOLINT
+#endif
   }
 
   void Wait() const { thread_pool_.reset(new ThreadPool(1)); }
@@ -63,17 +62,21 @@ class StreamCallbackManager {
   const cudaStream_t stream_;
   mutable std::unique_ptr<ThreadPool> thread_pool_;
 
-  // cudaStreamCallback cannot call CUDA API inside, so we have to use
-  // thread_pool here
+// cudaStreamCallback cannot call CUDA API inside, so we have to use
+// thread_pool here
+#if CUDA_VERSION >= 10000
+  static void CUDART_CB StreamCallbackFunc(void *user_data)
+#else
   static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
-                                           cudaError_t status,
-                                           void *user_data) {
+                                           cudaError_t status, void *user_data)
+#endif
+  {
     auto *callback_context_ptr =
         reinterpret_cast<StreamCallbackContext *>(user_data);
     callback_context_ptr->manager_->thread_pool_->enqueue([=]() {
       std::unique_ptr<StreamCallbackContext> callback_context(
           callback_context_ptr);
-      callback_context->callback_(stream, status);
+      callback_context->callback_();
     });
   }
 };

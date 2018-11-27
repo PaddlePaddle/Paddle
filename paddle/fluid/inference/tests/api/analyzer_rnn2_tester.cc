@@ -18,12 +18,12 @@ namespace paddle {
 namespace inference {
 
 using namespace framework;  // NOLINT
+static std::vector<float> result_data;
 
 struct DataRecord {
   std::vector<std::vector<std::vector<float>>> link_step_data_all;
   std::vector<size_t> lod;
   std::vector<std::vector<float>> rnn_link_data;
-  std::vector<float> result_data;
   size_t num_samples;  // total number of samples
   size_t batch_iter{0};
   size_t batch_size{1};
@@ -57,6 +57,7 @@ struct DataRecord {
     std::ifstream file(path);
     std::string line;
     int num_lines = 0;
+    result_data.clear();
     while (std::getline(file, line)) {
       num_lines++;
       std::vector<std::string> data;
@@ -131,17 +132,17 @@ TEST(Analyzer_rnn2, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
     PADDLE_ENFORCE_GT(outputs.size(), 0);
     size_t size = GetSize(outputs[0]);
     PADDLE_ENFORCE_GT(size, 0);
     float *result = static_cast<float *>(outputs[0].data.data());
     for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(result[i], data.result_data[i], 1e-3);
+      EXPECT_NEAR(result[i], result_data[i], 1e-3);
     }
   }
 }
@@ -153,7 +154,8 @@ TEST(Analyzer_rnn2, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 }  // namespace inference

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/time.h>
 #include <cmath>
 #include <cstring>
 #include <random>
@@ -22,6 +21,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/fluid/platform/port.h"
 
 inline double GetCurrentUS() {
   struct timeval time;
@@ -96,8 +96,8 @@ void TestAndBench(const int n, std::function<void(const int, const T*, T*)> tgt,
   }
   auto et = GetCurrentUS();
 
-  VLOG(3) << "Vec size " << n << ": refer takes: " << (et - mt) / repeat
-          << " us, tgt takes: " << (mt - st) / repeat;
+  VLOG(30) << "Vec size " << n << ": refer takes: " << (et - mt) / repeat
+           << " us, tgt takes: " << (mt - st) / repeat;
   for (int i = 0; i < n; ++i) {
     EXPECT_NEAR(ytgt_data[i], yref_data[i], 1e-3);
   }

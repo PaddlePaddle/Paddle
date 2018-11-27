@@ -45,6 +45,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto out_var = scope.FindVar(Output("Out"));
     auto w_var = scope.FindVar(Input("W"));
     auto ids_var = scope.FindVar(Input("Ids"));
+    auto is_test = Attr<bool>("is_test");
 
     PADDLE_ENFORCE(out_var->IsType<framework::LoDTensor>(),
                    "The type of Out var should be LodTensor.");
@@ -65,7 +66,8 @@ class LookupSparseTableOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(framework::ToDataType(w_t->value().type()),
                       framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
-    w_t->Get(ids_t, out_t, true);
+    w_t->Get(ids_t, out_t, true, is_test);
+    out_t->set_lod(ids_t.lod());
   }
 };
 
@@ -91,6 +93,10 @@ class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool default false)"
                   "Whether create new value if for nonexistent key.")
         .SetDefault(true);
+    AddAttr<bool>("is_test",
+                  "In test mode, lookup_sparse_table will "
+                  "return a 0 for unknown id")
+        .SetDefault(false);
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.
 
