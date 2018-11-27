@@ -118,7 +118,8 @@ class SelectedRows {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false) {
+  inline int64_t AutoGrownIndex(int64_t key, bool auto_grown,
+                                bool is_test = false) {
     if (is_test) {
       auto iter = id_to_index_.find(key);
       if (iter == id_to_index_.end()) {

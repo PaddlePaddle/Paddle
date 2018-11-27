@@ -234,7 +234,7 @@ class MatrixBitCodeFunctor {
   /* For j < code_length
        tmat(i, j) += vec(0, index(i, j))
   */
-  void Add(framework::LoDTensor* tmat, const framework::LoDTensor& vec);
+  void Add(const framework::LoDTensor& vec, framework::LoDTensor* tmat);
 
   /* For j < code_length
        vec(0, index(i, j)) += tmat(i, j)

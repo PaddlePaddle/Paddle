@@ -4535,12 +4535,12 @@ def nce(input,
 def hsigmoid(input,
              label,
              num_classes=None,
-             non_leaf_num=None,
-             ptable=None,
-             pcode=None,
              param_attr=None,
              bias_attr=None,
              name=None,
+             non_leaf_num=None,
+             ptable=None,
+             pcode=None,
              is_costum=False,
              is_sparse=False):
     """
@@ -4583,7 +4583,8 @@ def hsigmoid(input,
              will be named automatically. Default: None.
         is_costum: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
              set you need to set ptable/pcode/non_leaf_num, otherwise num_classes should be set
-        is_sparse: (bool|False)using sparse update instead of dense update
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+             of W and input will be sparse.
 
     Returns:
         Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
