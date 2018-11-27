@@ -35,6 +35,7 @@ using paddle::framework::LoDTensor;
 using paddle::framework::LoD;
 using paddle::framework::DDim;
 using paddle::platform::CPUPlace;
+using paddle::framework::make_ddim;
 
 static void generatedata(const std::vector<std::string>& data,
                          const std::string& file_name) {
@@ -105,16 +106,21 @@ TEST(CTR_READER, read_data) {
 
   std::vector<int64_t> label_value = {0, 0, 1, 0, 1, 1, 0, 1, 1, 1};
 
-  std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6002{
-      {{{0, 1, 2, 7}}, {0, 0, 10, 11, 12, 13, 14}},
-      {{{0, 1, 2, 3}}, {0, 0, 0}},
-      {{{0, 1, 2, 3}}, {30, 0, 40}},
-      {{{0, 1}}, {0}}};
-  std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6003{
-      {{{0, 1, 4, 5}}, {1, 5, 6, 7, 0}},
-      {{{0, 4, 5, 6}}, {15, 16, 17, 18, 0, 0}},
-      {{{0, 1, 3, 4}}, {31, 35, 36, 41}},
-      {{{0, 3}}, {47, 48, 49}}};
+  std::tuple<LoD, std::vector<int64_t>> a1({{0, 1, 2, 7}},
+                                           {0, 0, 10, 11, 12, 13, 14});
+  std::tuple<LoD, std::vector<int64_t>> a2({{{0, 1, 2, 3}}, {0, 0, 0}});
+  std::tuple<LoD, std::vector<int64_t>> a3({{{0, 1, 2, 3}}, {30, 0, 40}});
+  std::tuple<LoD, std::vector<int64_t>> a4({{{0, 1}}, {0}});
+  std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6002{a1, a2, a3,
+                                                                    a4};
+
+  std::tuple<LoD, std::vector<int64_t>> b1({{0, 1, 4, 5}}, {1, 5, 6, 7, 0});
+  std::tuple<LoD, std::vector<int64_t>> b2({{0, 4, 5, 6}},
+                                           {15, 16, 17, 18, 0, 0});
+  std::tuple<LoD, std::vector<int64_t>> b3({{0, 1, 3, 4}}, {31, 35, 36, 41});
+  std::tuple<LoD, std::vector<int64_t>> b4({{0, 3}}, {47, 48, 49});
+  std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6003{b1, b2, b3,
+                                                                    b4};
 
   std::vector<DDim> label_dims = {{1, 3}, {1, 3}, {1, 3}, {1, 1}};
 
