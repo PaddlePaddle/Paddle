@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/fluid/operators/impl/load_combine.h"
 #include <fstream>
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -42,45 +43,8 @@ class LoadCombineOp : public framework::OperatorBase {
         static_cast<int>(out_var_names.size()), 0,
         "The number of output variables should be greater than 0.");
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-
-    for (size_t i = 0; i < out_var_names.size(); i++) {
-      auto *out_var = scope.FindVar(out_var_names[i]);
-
-      PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                     out_var_names[i]);
-
-      auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-
-      // Error checking
-      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
-                     filename);
-
-      // Get data from fin to tensor
-      DeserializeFromStream(fin, tensor, dev_ctx);
-
-      auto in_dtype = framework::ToDataType(tensor->type());
-      auto out_dtype =
-          load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
-
-      if (in_dtype != out_dtype) {
-        // convert to float16 tensor
-        auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-        auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-        framework::LoDTensor fp16_tensor;
-        // copy LoD info to the new tensor
-        fp16_tensor.set_lod(tensor->lod());
-        framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
-                                 &fp16_tensor);
-
-        // reset output tensor
-        out_var->Clear();
-        tensor = out_var->GetMutable<framework::LoDTensor>();
-        tensor->set_lod(fp16_tensor.lod());
-        tensor->ShareDataWith(fp16_tensor);
-      }
-    }
+    impl::LoadParamsFromStream(out_var_names, place, load_as_fp16, &fin,
+                               &scope);
   }
 };
 

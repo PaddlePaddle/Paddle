@@ -41,6 +41,14 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              const std::string& prog_filename,
                                              const std::string& param_filename);
 
+std::unique_ptr<framework::ProgramDesc> LoadProgramFromBuffer(
+    const char* buffer, size_t size);
+
+void LoadParamsFromBuffer(const char* buffer, size_t size,
+                          const std::vector<std::string>& params,
+                          const platform::Place& place,
+                          framework::Scope* scope);
+
 // Save the variables from a scope to disk.
 void SaveVars(const framework::Scope& scope,
               const std::vector<std::string>& vars, const std::string& dirname,

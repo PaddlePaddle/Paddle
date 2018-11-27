@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/operators/impl/load_combine.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/pybind/pybind.h"
 
@@ -165,6 +166,23 @@ void SaveVars(const framework::Scope& scope,
   platform::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
+}
+
+std::unique_ptr<framework::ProgramDesc> LoadProgramFromBuffer(
+    const char* buffer, size_t size) {
+  std::string buffer_str(buffer, buffer + size);
+  return std::unique_ptr<framework::ProgramDesc>(
+      new framework::ProgramDesc(buffer_str));
+}
+
+void LoadParamsFromBuffer(const char* buffer, size_t size,
+                          const std::vector<std::string>& params,
+                          const platform::Place& place,
+                          framework::Scope* scope) {
+  std::string buffer_str(buffer, buffer + size);
+  std::stringstream ss(buffer_str);
+  operators::impl::LoadParamsFromStream(params, place, false /*load as fp16*/,
+                                        &ss, scope);
 }
 
 }  // namespace inference

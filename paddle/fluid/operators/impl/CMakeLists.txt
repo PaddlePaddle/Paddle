@@ -1,0 +1,1 @@
+cc_library(load_combine_impl SRCS load_combine.cc DEPS scope lod_tensor device_context op_registry data_type_transform)
