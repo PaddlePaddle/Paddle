@@ -409,7 +409,7 @@ All parameter, weight, gradient are variables in Paddle.
 
     You can create var in a scope and get it from the scope.
 
-  For example:
+    Example:
 
       # create tensor from a scope and set value to it.
       param = scope.var('Param').get_tensor()
