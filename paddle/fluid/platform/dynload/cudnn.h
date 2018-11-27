@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 #include <glog/logging.h>
 
 #include <cudnn.h>
@@ -50,13 +48,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)     \
-  struct DynLoad__##__name {                        \
-    template <typename... Args>                     \
-    inline cudnnStatus_t operator()(Args... args) { \
-      return ::__name(args...);                     \
-    }                                               \
-  };                                                \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name) \
+  struct DynLoad__##__name {                    \
+    template <typename... Args>                 \
+    inline auto operator()(Args... args) {      \
+      return ::__name(args...);                 \
+    }                                           \
+  };                                            \
   extern DynLoad__##__name __name
 
 #endif
@@ -152,14 +150,15 @@ CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7001
-#define CUDNN_DNN_ROUTINE_EACH_R7(__macro) \
-  __macro(cudnnSetConvolutionGroupCount);  \
-  __macro(cudnnSetConvolutionMathType);    \
-  __macro(cudnnCreateCTCLossDescriptor);   \
-  __macro(cudnnDestroyCTCLossDescriptor);  \
-  __macro(cudnnGetCTCLossDescriptor);      \
-  __macro(cudnnSetCTCLossDescriptor);      \
-  __macro(cudnnGetCTCLossWorkspaceSize);   \
+#define CUDNN_DNN_ROUTINE_EACH_R7(__macro)        \
+  __macro(cudnnSetConvolutionGroupCount);         \
+  __macro(cudnnSetConvolutionMathType);           \
+  __macro(cudnnConvolutionBiasActivationForward); \
+  __macro(cudnnCreateCTCLossDescriptor);          \
+  __macro(cudnnDestroyCTCLossDescriptor);         \
+  __macro(cudnnGetCTCLossDescriptor);             \
+  __macro(cudnnSetCTCLossDescriptor);             \
+  __macro(cudnnGetCTCLossWorkspaceSize);          \
   __macro(cudnnCTCLoss);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif

@@ -1,4 +1,3 @@
-if (NOT WIN32)
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto)
 py_proto_compile(profiler_py_proto SRCS profiler.proto)
 
@@ -6,9 +5,17 @@ add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch _
 
 add_dependencies(profiler_py_proto profiler_py_proto_init)
 
+if (NOT WIN32)
 add_custom_command(TARGET profiler_py_proto POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
         COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
+        COMMENT "Copy generated python proto into directory paddle/fluid/proto/profiler."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+else(NOT WIN32)
+string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler/")
+add_custom_command(TARGET profiler_py_proto POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
+        COMMAND copy /Y *.py ${proto_dstpath}
         COMMENT "Copy generated python proto into directory paddle/fluid/proto/profiler."
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif(NOT WIN32)
@@ -60,12 +67,9 @@ cc_test(init_test SRCS init_test.cc DEPS device_context)
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 
-
-if (NOT WIN32)
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
-endif(NOT WIN32)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
@@ -73,3 +77,4 @@ cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 IF(WITH_GPU)
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
 ENDIF()
+nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
