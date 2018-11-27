@@ -284,6 +284,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
+    output->name = fetchs_[idx]->Input("X")[0];
     if (type == typeid(float)) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
