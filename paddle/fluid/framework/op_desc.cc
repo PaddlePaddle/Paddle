@@ -252,6 +252,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
         this->attrs_[name] = std::vector<int>();
         break;
       }
+      case proto::AttrType::LONGS: {
+        VLOG(110) << "SetAttr: " << Type() << ", " << name
+                  << " from LONGS to LONGS";
+        this->attrs_[name] = std::vector<int64_t>();
+        break;
+      }
       case proto::AttrType::FLOATS: {
         VLOG(110) << "SetAttr: " << Type() << ", " << name
                   << " from INTS to FLOATS";
