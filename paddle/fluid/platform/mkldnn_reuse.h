@@ -84,6 +84,24 @@ class MKLDNNHandler {
     return mem_p;
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      mkldnn::memory::primitive_desc mdp, const std::string& suffix) {
+    auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   "Fail to find mem primitive in device context");
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(mdp);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      // Mark that reusing happenned. All primitives from operator instance
+      // should be reused or none of them. So we check consistency
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
+
   // This incarnation of AcquireMemory can call user function eg. custom reorder
   // or preprocessing routine if needed
   std::shared_ptr<mkldnn::memory> AcquireMemory(
@@ -299,6 +317,16 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                "@residual_data_mem_p", pipeline);
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireUserDstMemoryFromDstMemory(
+      void* user_dst_ptr,  // NOLINT
+      const std::shared_ptr<mkldnn::memory>& dst_memory_p,
+      const mkldnn::memory::desc& user_dst_md,
+      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+    return this->AcquireMemory(
+        dst_memory_p, this->AcquireDstMemory(user_dst_md, user_dst_ptr),
+        "@user_dst_mem_p", pipeline);
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromDataPrimitive(
       void* ptr) {
     return this->AcquireMemoryFromPrimitive(
@@ -307,6 +335,11 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
     return this->AcquireMemoryFromPrimitive(conv_pd_->dst_primitive_desc(), ptr,
+                                            "@dst_mem_p");
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive() {
+    return this->AcquireMemoryFromPrimitive(conv_pd_->dst_primitive_desc(),
                                             "@dst_mem_p");
   }
 

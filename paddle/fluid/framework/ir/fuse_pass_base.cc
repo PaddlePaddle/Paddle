@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <string>
 
 namespace paddle {
 namespace framework {
@@ -39,23 +40,34 @@ void FusePassBase::AddStatis(int count_of_fused) const {
   info[repr_] = count_of_fused;
 }
 
+/*
+ * 0  0   NATIVE
+ * 0  1   DON'T
+ * 1  0   DON'T
+ * 1  1   MKLDNN
+ * X  0   NATIVE
+ * X  1   MKLDNN
+ * 0  X   NATIVE
+ * 1  X   MKLDNN
+ * X  X   NATIVE
+ */
 FuseOptions FusePassBase::FindFuseOption(const Node& node1,
                                          const Node& node2) const {
 #ifdef PADDLE_WITH_MKLDNN
-  bool node1_mkldnn = node1.Op()->HasAttr("use_mkldnn") &&
-                      boost::get<bool>(node1.Op()->GetAttr("use_mkldnn"));
-  bool node2_mkldnn = node2.Op()->HasAttr("use_mkldnn") &&
-                      boost::get<bool>(node2.Op()->GetAttr("use_mkldnn"));
-  if (node1_mkldnn && node2_mkldnn)
-    return FUSE_MKLDNN;
-  else if (!node1_mkldnn && !node2_mkldnn)
-    return FUSE_NATIVE;
-  else
-    return DO_NOT_FUSE;
+  bool has1 = node1.Op()->HasAttr("use_mkldnn");
+  bool has2 = node2.Op()->HasAttr("use_mkldnn");
+  bool mkldnn1 = has1 && boost::get<bool>(node1.Op()->GetAttr("use_mkldnn"));
+  bool mkldnn2 = has2 && boost::get<bool>(node2.Op()->GetAttr("use_mkldnn"));
+
+  if (has1 && has2 && mkldnn1 != mkldnn2) return DO_NOT_FUSE;
+
+  if (mkldnn1 || mkldnn2) return FUSE_MKLDNN;
+
+  return FUSE_NATIVE;
 #else
   return FUSE_NATIVE;
 #endif
-};
+}
 
 }  // namespace ir
 }  // namespace framework

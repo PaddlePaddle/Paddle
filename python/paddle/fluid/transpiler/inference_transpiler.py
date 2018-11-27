@@ -72,8 +72,29 @@ class InferenceTranspiler(object):
             self._fuse_conv_relu_mkldnn(
                 program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
+            self._fuse_conv_transpose_mkldnn(program)
 
         self._is_test_pass(program)
+
+    def _fuse_conv_transpose_mkldnn(self, program):
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type == 'conv2d':
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'transpose2':
+                    # Only NCHW->NHWC supported now
+                    if next_op.desc.attr("axis") == [0, 2, 3, 1]:
+                        current_op.desc._set_attr("reorder_output_format",
+                                                  "NHWC")
+                        self.block._remove_op(i + 1)
+            i = i + 1
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
 
     def _is_test_pass(self, program):
         '''

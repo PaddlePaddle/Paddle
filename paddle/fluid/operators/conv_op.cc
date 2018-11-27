@@ -178,11 +178,17 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
-      "(string, default NCHW) Only used in "
-      "An optional string from: \"NHWC\", \"NCHW\". "
-      "Defaults to \"NHWC\". Specify the data format of the output data, "
-      "the input will be transformed automatically. ")
+      "(string, default \"AnyLayout\"). "
+      "An optional string from: \"NHWC\", \"NCHW\" \"AnyLayout\". "
+      "Specify the data format of the output data, "
+      "the input will be transformed automatically.")
       .SetDefault("AnyLayout");
+  AddAttr<std::string>("reorder_output_format",
+                       "(string, default  \"\"). Only used in MKL-DNN kernel. "
+                       "An optional string from: \"NHWC\", \""
+                       "\". "
+                       "Specify format of output reordering.")
+      .SetDefault("");
   // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. Need set use_cudnn to true."
@@ -279,11 +285,17 @@ void Conv3DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
-      "(string, default NCHW) Only used in "
-      "An optional string from: \"NHWC\", \"NCHW\". "
-      "Defaults to \"NHWC\". Specify the data format of the output data, "
-      "the input will be transformed automatically. ")
+      "(string, default \"AnyLayout\"). "
+      "An optional string from: \"NHWC\", \"NCHW\" \"AnyLayout\". "
+      "Specify the data format of the output data, "
+      "the input will be transformed automatically.")
       .SetDefault("AnyLayout");
+  AddAttr<std::string>("reorder_output_format",
+                       "(string, default  \"\"). Only used in MKL-DNN kernel. "
+                       "An optional string from: \"NHWC\", \""
+                       "\". "
+                       "Specify format of output reordering.")
+      .SetDefault("");
   // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. workspace size for cudnn, in MB, "

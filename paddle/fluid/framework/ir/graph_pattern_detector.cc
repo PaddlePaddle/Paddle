@@ -779,6 +779,37 @@ PDNode *patterns::ConvReLU::operator()(
   return relu_out_var;
 }
 
+PDNode *patterns::ConvTranspose2::operator()(
+    paddle::framework::ir::PDNode *conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_repr())
+          ->assert_is_op("transpose2")
+          // Only NCHW->NHWC supported now
+          ->assert_op_attr("axis", std::vector<int>{0, 2, 3, 1});
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("transpose2");
+  // output
+  auto *transpose2_out_var = pattern->NewNode(transpose2_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output("transpose2");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  transpose2_op->LinksFrom({conv_out_var}).LinksTo({transpose2_out_var});
+  return transpose2_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators

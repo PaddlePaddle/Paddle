@@ -47,6 +47,7 @@ if(WITH_MKLDNN)
     pass_library(depthwise_conv_mkldnn_pass base)
     pass_library(conv_bias_mkldnn_fuse_pass inference)
     pass_library(conv_relu_mkldnn_fuse_pass inference)
+    pass_library(conv_transpose2_mkldnn_fuse_pass inference)
     pass_library(conv_elementwise_add_mkldnn_fuse_pass inference)
 endif()
 

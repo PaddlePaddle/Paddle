@@ -197,11 +197,17 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
     } else {
-      auto output_data = output->mutable_data<T>(
-          ctx.GetPlace(), paddle::memory::Allocator::kDefault,
-          handler.GetDstMemorySize());
-      dst_memory_p =
-          handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
+      auto layout_string = ctx.Attr<std::string>("reorder_output_format");
+      if (!layout_string.empty() &&
+          framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
+        dst_memory_p = handler.AcquireDstMemoryFromPrimitive();
+      } else {
+        auto output_data = output->mutable_data<T>(
+            ctx.GetPlace(), paddle::memory::Allocator::kDefault,
+            handler.GetDstMemorySize());
+        dst_memory_p =
+            handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
+      }
     }
 
     // create convolution op primitive
@@ -224,10 +230,35 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // push primitive to stream and wait until it's executed
     pipeline.push_back(*conv_p);
-    stream(stream::kind::eager).submit(pipeline).wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory_p));
+    // create reorder primitive if the output reorder format is specified to
+    // "NHWC" for example by a fuse conv + transpose
+    auto layout_string = ctx.Attr<std::string>("reorder_output_format");
+    if (!layout_string.empty() &&
+        framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
+      auto output_data = output->mutable_data<T>(
+          ctx.GetPlace(), paddle::memory::Allocator::kDefault,
+          handler.GetDstMemorySize());
+      // create user dst memory primitive in that format,
+      auto user_dst_md = platform::MKLDNNMemDesc(
+          {dst_tz}, platform::MKLDNNGetDataType<T>(),
+          platform::data_format_to_memory_format(layout_string));
+
+      auto user_dst_memory_p = handler.AcquireUserDstMemoryFromDstMemory(
+          to_void_cast<T>(output_data), dst_memory_p, user_dst_md, pipeline);
+
+      stream(stream::kind::eager).submit(pipeline).wait();
+
+      // set output layout to mkldnn and format to NHWC
+      output->set_layout(DataLayout::kMKLDNN);
+      output->set_format(GetMKLDNNFormat(*user_dst_memory_p));
+
+    } else {
+      stream(stream::kind::eager).submit(pipeline).wait();
+
+      output->set_layout(DataLayout::kMKLDNN);
+      output->set_format(GetMKLDNNFormat(*dst_memory_p));
+    }
   }
 
  private:
