@@ -5870,9 +5870,10 @@ def image_resize(input,
         raise ValueError(
             "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
         )
+    resample_type = resample_methods[resample]
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
-    helper = LayerHelper('interpolate', **locals())
+    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -5906,18 +5907,16 @@ def image_resize(input,
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='interpolate',
+        type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={
-            "out_h": out_h,
-            "out_w": out_w,
-            "interp_method": resample_methods[resample]
-        })
+        attrs={"out_h": out_h,
+               "out_w": out_w,
+               "interp_method": resample_type})
     return out
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input,
                     out_shape=None,
                     scale=None,
@@ -5973,7 +5972,7 @@ def resize_bilinear(input,
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="nearest_interp")
 def resize_nearest(input,
                    out_shape=None,
                    scale=None,
@@ -6972,18 +6971,18 @@ def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
 
-        y = \max(0, x) + alpha \min(0, x)
+        y = \max(0, x) + alpha * \min(0, x)
 
     Args:
         x (Variable): The input tensor.
-	  param_attr(ParamAttr|None): The parameter attribute for the learnable
-                                    weight (alpha).
-        mode (string): The mode for weight sharing
-		       all: all elements share same weight
- 		       channel:elements in a channel share same weight
- 		       element:each element has a weight
-	name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                       weight (alpha).
+        mode (string): The mode for weight sharing. It supports all, channel
+                       and element. all: all elements share same weight
+                       channel:elements in a channel share same weight
+                       element:each element has a weight
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -6992,7 +6991,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
             mode = 'channel'
             output = fluid.layers.prelu(x,mode)
     """
