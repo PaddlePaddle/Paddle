@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
 #include <algorithm>
@@ -205,10 +204,8 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   }
 
   // traverse the graph
-  int num_times = 1000;
   int num_ops = op_queue.size();
   while (num_ops) {
-    if (--num_times < 0) break;
     for (auto it = op_queue.begin(); it != op_queue.end(); it++) {
       auto *&cur_op = *it;
       if (!cur_op || in_degree[cur_op] > 0) continue;

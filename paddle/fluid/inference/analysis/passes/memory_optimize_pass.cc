@@ -143,14 +143,15 @@ void MemoryOptimizePass::CollectShapes(
 // true if found some existing tensor to reuse.
 // false if no sutable tensor to reuse, one need to allocate a new tensor for
 // this requirement.
-__attribute__((warn_unused_result)) //
-bool FindSuitableTensorToReuse(const std::string &tensor,
-                               int space_required,
-                               const std::unordered_map<std::string, Node *> &tensor_nodes,
-                               std::unordered_set<std::string> *free_existing_tensors,
-                               const std::unordered_map<std::string, int> &space_table,
-                               const std::vector<std::unordered_set<std::string>> &var_clusters,
-                               std::string *tensor2use) {
+bool FindSuitableTensorToReuse(
+    const std::string& tensor, int space_required,
+    const std::unordered_map<std::string, Node*>& tensor_nodes,
+    std::unordered_set<std::string>* free_existing_tensors,
+    const std::unordered_map<std::string, int>& space_table,
+    const std::vector<std::unordered_set<std::string>>& var_clusters,
+    std::string* tensor2use)             //
+    __attribute__((warn_unused_result))  //
+{
   std::pair<std::string, int> best_fit;
   best_fit.second = std::numeric_limits<int>::max();
   VLOG(3) << "Split Tensors to " << var_clusters.size() << " clusters";
