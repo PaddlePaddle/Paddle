@@ -35,7 +35,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/framework/data_feed.h"
 
-
 namespace paddle {
 namespace framework {
 
