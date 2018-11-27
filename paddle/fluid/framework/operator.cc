@@ -355,7 +355,7 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
-static bool VarIsTensor(const Variable& var) {
+bool VarIsTensor(const Variable& var) {
   return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
 }
 
@@ -693,6 +693,12 @@ static void CheckTensorNANOrInf(const std::string& name,
                  "Tensor %s contains Inf", name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
                  "Tensor %s contains NAN", name);
+}
+
+void OperatorWithKernel::RunInferShape(const Scope& scope,
+                                       const platform::Place& place) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,

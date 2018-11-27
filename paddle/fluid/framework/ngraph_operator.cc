@@ -278,39 +278,22 @@ std::shared_ptr<ngraph::runtime::Backend> NgraphOperator::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
 void NgraphOperator::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
-  RuntimeInferShapeContext infer_shape_ctx(*op, scope_);
-  std::shared_ptr<OperatorWithKernel> op_k =
-      std::dynamic_pointer_cast<OperatorWithKernel>(op);
-  op_k->InferShape(&infer_shape_ctx);
-
+  op->RunInferShape(scope_, place_);
   for (auto& var_name_item : op->Inputs()) {
-    std::vector<ngraph::Shape> vshape;
-    auto& var_prm_name = var_name_item.first;
-    auto var_name_size = var_name_item.second.size();
-    if (var_name_size == 1) {
-      auto dim = infer_shape_ctx.GetInputDim(var_prm_name);
-      vshape.push_back(Ddim2Shape(dim));
-    } else if (var_name_item.second.size() > 1) {
-      auto vdim = infer_shape_ctx.GetInputsDim(var_prm_name);
-      PADDLE_ENFORCE_EQ(vdim.size(), var_name_item.second.size(),
-                        "Need dim info for each var");
-      for (auto& dim : vdim) {
-        vshape.push_back(Ddim2Shape(dim));
-      }
-    } else {
-      // 0 size : conv2d Bias
-    }
-
-    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
-      auto var_name = var_name_item.second.at(i);
-      if (std::find(var_in_.begin(), var_in_.end(), var_name) !=
-          var_in_.end()) {
-        if (var_node_map_->find(var_name) == var_node_map_->end()) {
-          auto ng_type = var_type_map_.at(var_name);
-          auto prm = std::make_shared<ngraph::op::Parameter>(
-              ng_type, vshape.at(i), true);
-          (*var_node_map_)[var_name] = prm;
-          (*var_in_node_map_)[var_name] = prm;
+    for (auto& var_name : var_name_item.second) {
+      auto* var = scope_.FindVar(var_name);
+      if (var && VarIsTensor(*var)) {
+        auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+        auto sp = Ddim2Shape(tensor_pd->dims());
+        if (std::find(var_in_.begin(), var_in_.end(), var_name) !=
+            var_in_.end()) {
+          if (var_node_map_->find(var_name) == var_node_map_->end()) {
+            auto ng_type = var_type_map_.at(var_name);
+            auto prm =
+                std::make_shared<ngraph::op::Parameter>(ng_type, sp, true);
+            (*var_node_map_)[var_name] = prm;
+            (*var_in_node_map_)[var_name] = prm;
+          }
         }
       }
     }
