@@ -15,7 +15,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include <sys/time.h>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
