@@ -11,8 +11,6 @@ endif()
 
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 
-cc_library(inference_io SRCS io.cc)
-
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc

@@ -33,36 +33,14 @@ namespace paddle {
 namespace framework {
 class AsyncExecutor {
  public:
-  explicit AsyncExecutor(Scope& scope, const platform::Place& place);   // NOLINT
+  AsyncExecutor(Scope& scope, const platform::Place& place);
   virtual ~AsyncExecutor() {}
-  static std::unique_ptr<ProgramDesc> LoadDescFromFile(
-                                          const std::string& filename);
-  Scope* GetRootScope() { return &root_scope_; }
-
-  void SetModelPath(const std::string& model_path) {
-    model_path_ = model_path;
-  }
-
-  void SetInitProgFile(const std::string& init_prog_file) {
-    init_prog_file_ = init_prog_file;
-  }
-
-  void SetInitModelFile(const std::string& init_model_file) {
-    init_model_file_ = init_model_file;
-  }
-
-  void SetModelPrefix(const std::string& model_prefix);
-  void RunStartupProgram(const ProgramDesc& program, Scope* scope);
   void RunFromFile(const ProgramDesc& main_program,
                    const std::string& data_feed_desc_str,
                    const std::vector<std::string>& filelist,
                    const int thread_num,
                    const std::vector<std::string>& fetch_names,
                    const bool debug = false);
-
-  void CheckFiles(const std::vector<std::string>& files);
-  void LoadInitModel();
-
  private:
   void CreateThreads(ExecutorThreadWorker* worker,
                      const ProgramDesc& main_program,
@@ -74,10 +52,6 @@ class AsyncExecutor {
 
 
  public:
-  std::string model_prefix_;
-  std::string model_path_;
-  std::string init_prog_file_;
-  std::string init_model_file_;
   Scope& root_scope_;
   platform::Place place_;
 };
