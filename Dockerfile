@@ -43,6 +43,8 @@ RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null
 
+RUN rm -r /root/python_build
+
 RUN apt-get update && \
     apt-get install -y --allow-downgrades patchelf \
     python3 python3-dev python3-pip \
