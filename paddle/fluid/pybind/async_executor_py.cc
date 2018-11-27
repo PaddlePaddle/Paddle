@@ -43,8 +43,7 @@ using set_name_func = void (pd::DataFeedDesc::*)(const std::string&);
 void BindAsyncExecutor(py::module* m) {
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
     .def(py::init<pd::Scope&, const platform::Place&>())
-    .def("run_from_files", &framework::AsyncExecutor::RunFromFile)
-    .def("check_file", &framework::AsyncExecutor::CheckFiles);
+    .def("run_from_files", &framework::AsyncExecutor::RunFromFile);
 }   // end BindAsyncExecutor
 }   // end namespace pybind
 }   // end namespace paddle

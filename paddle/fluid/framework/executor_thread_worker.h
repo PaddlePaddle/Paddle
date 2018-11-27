@@ -39,15 +39,24 @@ class ExecutorThreadWorker {
         thread_scope_(NULL),
         debug_(false) {}
   ~ExecutorThreadWorker() {}
+
   void CreateThreadResource(const framework::ProgramDesc& program,
                             const paddle::platform::Place& place);
   void SetThreadId(int tid);
   void SetDebug(const bool debug) {debug_ = debug;}
   void SetRootScope(Scope* g_scope);
+  // set cpu device in this function
+  // cpu binding is used by default
   void SetDevice();
+  // since we read data into memory that can not be accessed by program
+  // we need to bind memory of data with corresponding variables in program
+  // this function should be called after data feed is set
   void BindingDataFeedMemory();
+  // set data feed declared in executor
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
+  // A multi-thread training function
   void TrainFiles();
+  // set fetch variable names from python interface assigned by users
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
 
  private:
