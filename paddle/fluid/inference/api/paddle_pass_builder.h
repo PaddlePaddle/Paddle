@@ -61,7 +61,7 @@ class PassStrategy : public PaddlePassBuilder {
  public:
   // The MKLDNN control exists in both CPU and GPU mode, because there can be
   // still some CPU kernels running in CPU mode.
-  virtual void EnableMKLDNN() = 0;
+  virtual void EnableMKLDNN() {}
 
   virtual ~PassStrategy() = default;
 };

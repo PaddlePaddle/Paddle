@@ -174,8 +174,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_dam, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.EnableMemoryOptim();
-  cfg.Build();
 
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -210,6 +208,20 @@ TEST(Analyzer_dam, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_dam, compare) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
+  cfg.Build();
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare result of NativeConfig and AnalysisConfig with memory optimization.
+TEST(Analyzer_dam, compare_with_memory_optim) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.EnableMemoryOptim();
