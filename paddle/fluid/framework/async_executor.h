@@ -33,7 +33,7 @@ namespace paddle {
 namespace framework {
 class AsyncExecutor {
  public:
-  AsyncExecutor(Scope& scope, const platform::Place& place);
+  AsyncExecutor(Scope& scope, const platform::Place& place);  // NOLINT
   virtual ~AsyncExecutor() {}
   void RunFromFile(const ProgramDesc& main_program,
                    const std::string& data_feed_desc_str,
