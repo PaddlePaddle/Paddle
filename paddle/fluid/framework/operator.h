@@ -174,6 +174,14 @@ class ExecutionContext {
     return op_.Inputs(name).size();
   }
 
+  const std::string InputVarName(const std::string& name) const {
+    return op_.Input(name);
+  }
+
+  const std::string OutputVarName(const std::string& name) const {
+    return op_.Output(name);
+  }
+
   size_t OutputSize(const std::string& name) const {
     return op_.Outputs(name).size();
   }
