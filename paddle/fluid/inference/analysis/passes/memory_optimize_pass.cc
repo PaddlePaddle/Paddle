@@ -101,7 +101,7 @@ int DataTypeToSpace(framework::proto::VarType_Type type) {
 }
 
 // A tensor's shape with its data type to memory size.
-int ShapeToSpace(const std::vector<long>& shape,
+int ShapeToSpace(const std::vector<int64_t>& shape,
                  framework::proto::VarType_Type data_type) {
   auto total_dim =
       std::accumulate(shape.begin(), shape.end(), 1, [](long a, long b) {

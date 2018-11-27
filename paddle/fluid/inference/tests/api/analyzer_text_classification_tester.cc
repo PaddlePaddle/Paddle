@@ -111,7 +111,7 @@ TEST(Analyzer_Text_Classification, compare_with_memory_optim) {
   AnalysisConfig cfg, cfg1;
   // Run the first time to force to update memory cache
   SetConfig(&cfg);
-  cfg.EnableMemoryOptim(true);  
+  cfg.EnableMemoryOptim(true);
   cfg.Build();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
