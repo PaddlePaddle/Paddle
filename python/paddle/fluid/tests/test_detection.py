@@ -31,7 +31,7 @@ class TestDetection(unittest.TestCase):
                 dtype='float32')
             pbv = layers.data(
                 name='prior_box_var',
-                shape=[10, 4],
+                shape=[4],
                 append_batch_size=False,
                 dtype='float32')
             loc = layers.data(
@@ -41,11 +41,17 @@ class TestDetection(unittest.TestCase):
                 dtype='float32')
             scores = layers.data(
                 name='scores',
-                shape=[2, 10, 20],
+                shape=[10, 2],
                 append_batch_size=False,
                 dtype='float32')
+            im_info = layers.data(name='im_info', shape=[3], dtype='float32')
             out = layers.detection_output(
-                scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
+                scores=scores,
+                loc=loc,
+                prior_box=pb,
+                prior_box_var=pbv,
+                im_info=im_info,
+                shared=False)
             self.assertIsNotNone(out)
             self.assertEqual(out.shape[-1], 6)
         print(str(program))

@@ -75,10 +75,17 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         output[offset + 3] =
             std::log(std::fabs(target_box_height / prior_box_height));
         if (prior_box_var) {
-          output[offset] /= prior_box_var_data[j * len];
-          output[offset + 1] /= prior_box_var_data[j * len + 1];
-          output[offset + 2] /= prior_box_var_data[j * len + 2];
-          output[offset + 3] /= prior_box_var_data[j * len + 3];
+          if (prior_box_var->dims().size() == 1) {
+            output[offset] /= prior_box_var_data[0];
+            output[offset + 1] /= prior_box_var_data[1];
+            output[offset + 2] /= prior_box_var_data[2];
+            output[offset + 3] /= prior_box_var_data[3];
+          } else {
+            output[offset] /= prior_box_var_data[j * len];
+            output[offset + 1] /= prior_box_var_data[j * len + 1];
+            output[offset + 2] /= prior_box_var_data[j * len + 2];
+            output[offset + 3] /= prior_box_var_data[j * len + 3];
+          }
         }
       }
     }

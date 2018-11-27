@@ -199,12 +199,14 @@ def detection_output(loc,
                      scores,
                      prior_box,
                      prior_box_var,
+                     im_info,
                      background_label=0,
                      nms_threshold=0.3,
                      nms_top_k=400,
                      keep_top_k=200,
                      score_threshold=0.01,
-                     nms_eta=1.0):
+                     nms_eta=1.0,
+                     shared=False):
     """
     **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
@@ -283,15 +285,21 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    scores = nn.softmax(input=scores)
-    scores = nn.transpose(scores, perm=[0, 2, 1])
-    scores.stop_gradient = True
+    if shared:
+        scores = nn.softmax(input=scores)
+        scores = nn.transpose(scores, perm=[0, 2, 1])
+        scores.stop_gradient = True
+    else:
+        decoded_box = nn.transpose(decoded_box, perm=[1, 0, 2])
+        new_shape = decoded_box.shape[1] * decoded_box.shape[2]
+        decoded_box = nn.reshape(decoded_box, [-1, new_shape])
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
-                'BBoxes': decoded_box},
+                'BBoxes': decoded_box,
+                'ImInfo': im_info},
         outputs={'Out': nmsed_outs},
         attrs={
             'background_label': 0,
@@ -299,7 +307,9 @@ def detection_output(loc,
             'nms_top_k': nms_top_k,
             'keep_top_k': keep_top_k,
             'score_threshold': score_threshold,
-            'nms_eta': 1.0
+            'nms_eta': 1.0,
+            'use_clip': (shared == False),
+            'normalized': shared
         })
     nmsed_outs.stop_gradient = True
     return nmsed_outs

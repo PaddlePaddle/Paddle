@@ -93,5 +93,46 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
   }
 }
 
+template <class T>
+void ClipTiledBoxes(const platform::DeviceContext& ctx,
+                    const framework::Tensor& im_info,
+                    framework::Tensor* boxes) {
+  T* boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
+  const T* im_info_data = im_info.data<T>();
+  T zero(0);
+  for (int64_t i = 0; i < boxes->numel(); ++i) {
+    if (i % 4 == 0) {
+      boxes_data[i] =
+          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
+    } else if (i % 4 == 1) {
+      boxes_data[i] =
+          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
+    } else if (i % 4 == 2) {
+      boxes_data[i] =
+          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
+    } else {
+      boxes_data[i] =
+          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
+    }
+  }
+}
+
+template <class T>
+void SliceOneClass(const platform::DeviceContext& ctx,
+                   const framework::Tensor& items, const int class_num,
+                   const int class_id, framework::Tensor* one_class_item) {
+  T* item_data = one_class_item->mutable_data<T>(ctx.GetPlace());
+  const T* items_data = items.data<T>();
+  const int64_t num_item = items.dims()[0];
+  const int items_dim = items.dims()[1];
+  const int item_size = items_dim / class_num;
+  for (int i = 0; i < num_item; ++i) {
+    for (int j = 0; j < item_size; ++j) {
+      item_data[i * item_size + j] =
+          items_data[i * items_dim + class_id * item_size + j];
+    }
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

@@ -37,7 +37,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                         "The shape of PriorBox is [N, 4]");
       if (ctx->HasInput("PriorBoxVar")) {
         auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
-        PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+        // PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
       }
 
       auto code_type =
