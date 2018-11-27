@@ -18,10 +18,7 @@ function(reader_library TARGET_NAME)
 endfunction()
 
 cc_library(buffered_reader SRCS buffered_reader.cc DEPS reader simple_threadpool)
-cc_library(ctr_reader SRCS ctr_reader.cc DEPS gzstream reader zlib)
-cc_test(ctr_reader_test SRCS ctr_reader_test.cc DEPS ctr_reader)
 reader_library(open_files_op SRCS open_files_op.cc DEPS buffered_reader)
-reader_library(create_ctr_reader_op SRCS create_ctr_reader_op.cc DEPS ctr_reader)
 reader_library(create_random_data_generator_op SRCS create_random_data_generator_op.cc)
 reader_library(create_shuffle_reader_op SRCS create_shuffle_reader_op.cc)
 reader_library(create_batch_reader_op SRCS create_batch_reader_op.cc)
@@ -30,6 +27,12 @@ reader_library(create_double_buffer_reader_op SRCS create_double_buffer_reader_o
 reader_library(create_multi_pass_reader_op SRCS create_multi_pass_reader_op.cc)
 reader_library(create_custom_reader_op SRCS create_custom_reader_op.cc)
 reader_library(create_py_reader_op SRCS create_py_reader_op.cc)
+
+if (NOT WIN32)
+    cc_library(ctr_reader SRCS ctr_reader.cc DEPS gzstream reader zlib)
+    cc_test(ctr_reader_test SRCS ctr_reader_test.cc DEPS ctr_reader)
+    reader_library(create_ctr_reader_op SRCS create_ctr_reader_op.cc DEPS ctr_reader)
+endif (NOT WIN32)
 
 cc_test(reader_blocking_queue_test SRCS reader_blocking_queue_test.cc)
 # Export local libraries to parent
