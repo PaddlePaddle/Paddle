@@ -31,11 +31,11 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(profile);
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 
@@ -56,7 +56,6 @@ bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(30) << "Predictor::init()";
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -64,10 +63,9 @@ bool AnalysisPredictor::Init(
                                            : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   }
-#endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (!PrepareScope(parent_scope)) {
     return false;
@@ -160,6 +158,14 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
+void AnalysisPredictor::SetMkldnnThreadID(int tid) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::set_cur_thread_id(tid);
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+#endif
+}
+
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
@@ -167,7 +173,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   inference::Timer timer;
   timer.tic();
   // set feed variable
-  std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
@@ -208,17 +213,29 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<float>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                inputs[i].data.length());
+    if (platform::is_cpu_place(place_)) {
+      // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+                  inputs[i].data.length());
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
+      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
+                   platform::CPUPlace(), inputs[i].data.data(),
+                   inputs[i].data.length(),
+                   0);  // stream 0 for sync copy
+#else
+      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+#endif
+    }
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
     for (auto &level : inputs[i].lod) {
@@ -501,12 +518,10 @@ bool AnalysisPredictor::LoadParameters() {
 }
 
 AnalysisPredictor::~AnalysisPredictor() {
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
-#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
