@@ -132,11 +132,15 @@ inline pid_t gettid() {
   uint64_t tid;
   pthread_threadid_np(NULL, &tid);
 #else
+#ifndef _WIN32
 #ifndef __NR_gettid
 #define __NR_gettid 224
 #endif
   pid_t tid = syscall(__NR_gettid);
 #endif
+#else   // _WIN32
+  pid_t tid = _getpid();
+#endif  // _WIN32
   CHECK_NE((int)tid, -1);
   return tid;
 }
