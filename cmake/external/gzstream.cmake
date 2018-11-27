@@ -27,7 +27,7 @@ SET(GZSTREAM_INCLUDE_DIR "${GZSTREAM_INSTALL_DIR}/include/" CACHE PATH "gzstream
 
 ExternalProject_Add(
         extern_gzstream
-        GIT_REPOSITORY "https://github.com/kanedo/gzstream.git"
+        GIT_REPOSITORY "https://github.com/jacquesqiao/gzstream.git"
         GIT_TAG ""
         PREFIX          ${GZSTREAM_SOURCES_DIR}
         UPDATE_COMMAND  ""
