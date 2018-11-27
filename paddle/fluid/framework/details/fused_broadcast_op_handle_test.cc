@@ -46,8 +46,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
       op_handle_ = new FusedBroadcastOpHandle(
-          nodes_.back().get(), local_scopes_, place_list_,
-          &platform::NCCLContextMap::Instance());
+          nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
       PADDLE_THROW("CUDA is not supported.");
 #endif
