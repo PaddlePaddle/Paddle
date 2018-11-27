@@ -125,28 +125,27 @@ void AnalysisVarPass::RenameVarInGraphNode(const std::string& var,
         node->SetName(cache_var);
       }
     });
-
   }
 }
 
 bool AnalysisVarPass::NodeCanReused(ir::Node* node) const {
-  if (!(node->IsVar() && !node->IsCtrlVar())) return false;
+  if (!node->IsVar() || node->IsCtrlVar()) return false;
   auto* desc = node->Var();
-  proto::VarType::Type type = desc->GetType();
-  if (desc->Persistable() == true || type != proto::VarType::LOD_TENSOR ||
-      desc->GetShape().size() == 0) {
+  auto type = desc->GetType();
+  if (desc->Persistable() || type != proto::VarType::LOD_TENSOR ||
+      desc->GetShape().empty()) {
     return false;
   }
   // vars can be @EMPTY@, @LR_DECAY_COUNTER@. For example, while_grad
   std::string name = node->Name();
-  if (name.size() > 0 && name[0] == '@' && name[name.size() - 1] == '@')
+  if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
     return false;
   if (skip_set_.count(name)) return false;
   for (auto* op : node->inputs) {
     if (op->Op()->HasAttr("force_cpu")) {
       // op output force generated in cpu, can not be reused.
       return framework::AttrReader(op->Op()->GetAttrMap())
-                 .Get<bool>("force_cpu") != true;
+                 .Get<bool>("force_cpu") == 0;
     }
   }
   return true;

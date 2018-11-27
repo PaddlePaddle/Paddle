@@ -82,18 +82,18 @@ void ControlFlowGraph::ConnectNodes() {
 }
 
 void ControlFlowGraph::LiveVariableAnalysis() {
-  // NOTE(dzh): variable liveless analysis (a.k.a worklist algorithm)
-  // compute the liveness of for each variable though worklist algorithm.
+  // NOTE(dzh): variable liveless analysis (a.k.a reversed_ops algorithm)
+  // compute the liveness of for each variable though reversed_ops algorithm.
   // It iterates the operators from end to begin, compute the live in/live out
   // variable set for each op, then the diff between in/out will be used for
   // the variable reuse. For detail refer to
   // http://www.cs.cornell.edu/courses/cs4120/2013fa/lectures/lec26-fa13.pdf
-  std::set<std::string> node_live_in;
-  std::list<ir::Node*> worklist(ops_.rbegin(), ops_.rend());
-  while (!worklist.empty()) {
-    ir::Node* op = worklist.front();
-    worklist.pop_front();
-    node_live_in = std::move(live_in_[op]);
+  std::list<ir::Node*> work_list(ops_.rbegin(), ops_.rend());
+  while (!work_list.empty()) {
+    ir::Node* op = work_list.front();
+    work_list.pop_front();
+    // get the live_in calculated before. Empty if first.
+    auto prev_live_in = std::move(live_in_[op]);
     for (auto& s : successors_[op]) {
       for (auto& var : live_in_[s]) {
         live_out_[op].insert(var);
@@ -108,9 +108,14 @@ void ControlFlowGraph::LiveVariableAnalysis() {
     for (auto& var : defs_[op]) {
       live_in_[op].erase(var);
     }
-    if (live_in_[op] != node_live_in) {
+
+    // If the live_in is not changed, then the liveness analysis of
+    // predecessors is completed.
+    //
+    // Otherwise, recalculate the predecessors liveness
+    if (live_in_[op] != prev_live_in) {
       for (auto& pre : predecessors_[op]) {
-        worklist.push_back(pre);
+        work_list.push_back(pre);
       }
     }
   }
