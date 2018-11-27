@@ -108,9 +108,9 @@ TEST(CTR_READER, read_data) {
 
   std::tuple<LoD, std::vector<int64_t>> a1({{0, 1, 2, 7}},
                                            {0, 0, 10, 11, 12, 13, 14});
-  std::tuple<LoD, std::vector<int64_t>> a2({{{0, 1, 2, 3}}, {0, 0, 0}});
-  std::tuple<LoD, std::vector<int64_t>> a3({{{0, 1, 2, 3}}, {30, 0, 40}});
-  std::tuple<LoD, std::vector<int64_t>> a4({{{0, 1}}, {0}});
+  std::tuple<LoD, std::vector<int64_t>> a2({{0, 1, 2, 3}}, {0, 0, 0});
+  std::tuple<LoD, std::vector<int64_t>> a3({{0, 1, 2, 3}}, {30, 0, 40});
+  std::tuple<LoD, std::vector<int64_t>> a4({{0, 1}}, {0});
   std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6002{a1, a2, a3,
                                                                     a4};
 
