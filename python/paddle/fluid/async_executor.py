@@ -129,7 +129,9 @@ class DataFeedDesc(object):
 
         Args:
             use_slots_name: a list of slot names which will be used in training
-            
+
+        Note:
+            Default is not used for all slots
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError("Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto")
