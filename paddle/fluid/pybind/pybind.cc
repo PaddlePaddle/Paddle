@@ -909,7 +909,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
-  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle
