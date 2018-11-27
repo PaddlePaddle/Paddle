@@ -15,12 +15,14 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include <sys/time.h>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
+#include "paddle/fluid/platform/port.h"
+
+DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
 
 namespace paddle {
 namespace operators {

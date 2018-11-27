@@ -219,6 +219,17 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
         print(str(program))
 
+    def test_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.pool2d(
+                    x,
+                    pool_size=[5, 3],
+                    pool_stride=[1, 2],
+                    pool_padding=(2, 1)))
+
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
