@@ -28,6 +28,7 @@ __all__ = ['DataFeedDesc', 'AsyncExecutor']
 
 g_scope = core.Scope()
 
+
 class DataFeedDesc(object):
     """
     Datafeed descriptor, describing input training data format. This class is
@@ -75,12 +76,16 @@ class DataFeedDesc(object):
         proto_file(string): Disk file containing a data feed description.
     
     """
+
     def __init__(self, proto_file):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         if self.proto_desc.name == "MultiSlotDataFeed":
-            self.__name_to_index = {slot.name: i for i, slot in enumerate(self.proto_desc.multi_slot_desc.slots)}
+            self.__name_to_index = {
+                slot.name: i
+                for i, slot in enumerate(self.proto_desc.multi_slot_desc.slots)
+            }
 
     def set_batch_size(self, batch_size):
         """
@@ -113,9 +118,12 @@ class DataFeedDesc(object):
             Default is sparse for all slots
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
-            raise ValueError("Only MultiSlotDataFeed need set_dense_slots, pls check your datafeed.proto")
+            raise ValueError(
+                "Only MultiSlotDataFeed need set_dense_slots, pls check your datafeed.proto"
+            )
         for name in dense_slots_name:
-            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].dense = True
+            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
+                name]].dense = True
 
     def set_use_slots(self, use_slots_name):
         """
@@ -134,9 +142,12 @@ class DataFeedDesc(object):
             Default is not used for all slots
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
-            raise ValueError("Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto")
+            raise ValueError(
+                "Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto"
+            )
         for name in use_slots_name:
-            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[name]].use = True
+            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
+                name]].use = True
 
     def desc(self):
         """
@@ -150,6 +161,7 @@ class DataFeedDesc(object):
             A string message
         """
         return text_format.MessageToString(self.proto_desc)
+
 
 class AsyncExecutor(object):
     """
@@ -193,7 +205,7 @@ class AsyncExecutor(object):
 
     Note: Only running on CPUPlace supported.
     """
-
+    """
     def __init__(self, place=None):
         if place is None:
             place = core.CPUPlace()
@@ -205,6 +217,7 @@ class AsyncExecutor(object):
 
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
+    """
 
     def run_startup_program(self, program=None, place=None):
         """
@@ -295,11 +308,12 @@ class AsyncExecutor(object):
                 if shape[len(shape) - 1] != 1:
                     raise AssertionError(
                         "%s: Fetch variable has wrong shape. Only varibles "
-                        "with the last dimension size 1 supported."
-                        % (fetch_var.name))
+                        "with the last dimension size 1 supported." %
+                        (fetch_var.name))
 
-        self.executor.run_from_files(program_desc, data_feed.desc(), filelist,
-                thread_num, fetch_var_names, debug)
+        self.executor.run_from_files(program_desc,
+                                     data_feed.desc(), filelist, thread_num,
+                                     fetch_var_names, debug)
 
     def save_model(self,
                    dir_name,
