@@ -32,6 +32,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
@@ -195,7 +196,8 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
   tensor_array_batch_cleaner_.ResetTensorArray();
 
-  if (config_.enable_memory_optim()) {
+  // Collect variable shapes for memory optimization.
+  if (need_collect_var_shapes_for_memory_optim()) {
     CollectVarShapes();
   }
 
@@ -537,8 +539,8 @@ AnalysisPredictor::~AnalysisPredictor() {
   // TODO(Superjomn) deduce the directory path.
   std::string out_path = inference::analysis::GetMemoryCachePath(
       config_.model_dir, config_.prog_file);
-  if (config_.enable_memory_optim() && !inference::IsFileExists(out_path)) {
-    SerizlizeBatchVarShapes(out_path);
+  if (need_collect_var_shapes_for_memory_optim()) {
+    SerializeBatchVarShapes(out_path);
   }
 }
 
@@ -546,6 +548,63 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
   return std::unique_ptr<PaddlePredictor>(x);
+}
+
+void AnalysisPredictor::CollectVarShapes() {
+  if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
+  std::map<std::string, std::vector<int>> var_shapes;
+  for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
+    auto *var = sub_scope_->FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var);
+    if (var->Type() == typeid(framework::LoDTensor) ||
+        var->Type() == typeid(framework::Tensor)) {
+      auto &tensor = var->Get<framework::LoDTensor>();
+      auto shape = framework::vectorize(tensor.dims());
+      var_shapes[var_name].assign(shape.begin(), shape.end());
+    }
+  }
+  batch_var_shapes_.push_back(var_shapes);
+  LOG_FIRST_N(INFO, 1) << "Collected " << batch_var_shapes_.size()
+                       << " batch of var shapes for analysis";
+}
+
+void AnalysisPredictor::SerializeBatchVarShapes(const std::string &path) {
+  LOG(INFO) << "serialize batch var shapes to " << path;
+  std::ofstream file(path);
+  if (!file.is_open()) {
+    LOG(ERROR) << "failed to serialize the var shapes to " << path;
+    return;
+  }
+
+  for (auto &batch : batch_var_shapes_) {
+    for (auto &ele : batch) {
+      file << ele.first << ":";
+      for (size_t i = 0; i < ele.second.size() - 1; i++) {
+        file << ele.second[i] << ",";
+      }
+      file << ele.second.back() << ";";
+    }
+    file << "\n";
+  }
+}
+
+bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
+  if (need_collect_var_shapes_ >= 0) return need_collect_var_shapes_;
+  bool need = false;
+  // check if the cache exists
+  if (!config_.enable_memory_optim()) {
+    need = false;
+  } else if (config_.enable_memory_optim() &&
+             !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
+                 config_.model_dir, config_.prog_file))) {
+    need = true;
+  } else if (config_.enable_memory_optim() &&
+             config_.memory_optim_force_update_) {
+    need = true;
+  }
+
+  need_collect_var_shapes_ = need ? 1 : 0;
+  return need;
 }
 
 template <>

@@ -210,8 +210,6 @@ TEST(Analyzer_dam, fuse_statis) {
 TEST(Analyzer_dam, compare) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.EnableMemoryOptim();
-  cfg.Build();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -222,9 +220,10 @@ TEST(Analyzer_dam, compare) {
 
 // Compare result of NativeConfig and AnalysisConfig with memory optimization.
 TEST(Analyzer_dam, compare_with_memory_optim) {
-  contrib::AnalysisConfig cfg;
+  contrib::AnalysisConfig cfg, cfg1;
+  // Run the first time to force to update memory cache
   SetConfig(&cfg);
-  cfg.EnableMemoryOptim();
+  cfg.EnableMemoryOptim(true);
   cfg.Build();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -232,6 +231,14 @@ TEST(Analyzer_dam, compare_with_memory_optim) {
 
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+
+  // Run second time to use the memory cache and perform memory optimaztion.
+  SetConfig(&cfg1);
+  cfg1.EnableMemoryOptim(false);
+  cfg1.Build();
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg1),
+      input_slots_all);
 }
 
 }  // namespace inference

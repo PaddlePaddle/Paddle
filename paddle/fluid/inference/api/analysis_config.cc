@@ -54,6 +54,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
   enable_memory_optim_ = other.enable_memory_optim_;
+  memory_optim_force_update_ = other.memory_optim_force_update_;
 
   if (use_gpu) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -83,8 +84,9 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
 }
 
-void contrib::AnalysisConfig::EnableMemoryOptim() {
+void contrib::AnalysisConfig::EnableMemoryOptim(bool force_update_cache) {
   enable_memory_optim_ = true;
+  memory_optim_force_update_ = force_update_cache;
 }
 
 bool contrib::AnalysisConfig::enable_memory_optim() const {

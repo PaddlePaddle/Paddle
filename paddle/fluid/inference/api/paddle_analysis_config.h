@@ -55,7 +55,7 @@ struct AnalysisConfig : public NativeConfig {
   // NOT stable yet.
   bool use_mkldnn() const { return use_mkldnn_; }
 
-  void EnableMemoryOptim();
+  void EnableMemoryOptim(bool force_update_cache = false);
   bool enable_memory_optim() const;
 
   friend class ::paddle::AnalysisPredictor;
@@ -66,6 +66,7 @@ struct AnalysisConfig : public NativeConfig {
   bool use_tensorrt_{false};
   bool use_mkldnn_{false};
   bool enable_memory_optim_{false};
+  bool memory_optim_force_update_{false};
   int tensorrt_workspace_size_;
   int tensorrt_max_batchsize_;
   std::unique_ptr<PassStrategy> pass_builder_;
