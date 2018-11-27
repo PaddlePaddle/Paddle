@@ -86,12 +86,12 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
+PYBIND11_MODULE(core, m) {
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
-  py::module m("core", "C++ core of PaddlePaddle");
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -861,6 +861,12 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
+          "num_trainers",
+          [](const BuildStrategy &self) { return self.num_trainers_; },
+          [](BuildStrategy &self, int num_trainers) {
+            self.num_trainers_ = num_trainers;
+          })
+      .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
@@ -907,7 +913,6 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle
