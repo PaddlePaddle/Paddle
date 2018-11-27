@@ -49,14 +49,14 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
     auto id_name = context.Inputs("Ids").front();
     auto out_name = context.Outputs("Out").front();
-    auto table_name = context.Inputs("W").front();
+
+    // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto remote_prefetch = context.Attr<bool>("remote_prefetch");
     auto height_sections =
         context.Attr<std::vector<int64_t>>("height_sections");
     auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
-    if (remote_prefetch) {
+    if (!height_sections.empty()) {
 // if emap is not empty, then the parameter will be fetched from remote
 // parameter
 // server

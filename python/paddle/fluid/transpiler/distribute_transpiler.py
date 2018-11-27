@@ -369,7 +369,7 @@ class DistributeTranspiler(object):
                     program.global_block(), splited_grad_varname, reverse=True)
                 if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
                     sparse_param_name = self.grad_name_to_param_name[
-                        splited_grad_varname]
+                        grad_varname]
                     if self._is_input_of_remote_sparse_update_op(
                             sparse_param_name):
                         self.sparse_param_to_height_sections[
