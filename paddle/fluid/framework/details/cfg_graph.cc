@@ -161,13 +161,6 @@ const std::set<std::string>& ControlFlowGraph::LiveOut(ir::Node* op) const {
       string::Sprintf("Expect %s in live_out, but Not Found.", op->Name()));
   return it->second;
 }
-const std::set<std::string>& ControlFlowGraph::Def(ir::Node* op) const {
-  auto it = defs_.find(op);
-  PADDLE_ENFORCE(
-      it != defs_.end(),
-      string::Sprintf("Expect %s in defs, but Not Found.", op->Name()));
-  return it->second;
-}
 
 const std::set<std::string>& ControlFlowGraph::Use(ir::Node* op) const {
   auto it = uses_.find(op);
