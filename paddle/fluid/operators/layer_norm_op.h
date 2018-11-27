@@ -15,8 +15,12 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
+#if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__)
+#include "paddle/fluid/operators/math/jit_kernel.h"
+#endif
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -191,6 +195,8 @@ class LayerNormKernel : public framework::OpKernel<T> {
     out.ShareDataWith(*y);
     out.Resize(matrix_shape);
 
+#if defined(PADDLE_WITH_CUDA) || defined(_WIN32) || defined(__APPLE__) || \
+    defined(__OSX__)
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     RowwiseMean2D<DeviceContext, T> row_mean(left, right, ctx.device_context());
 
@@ -217,6 +223,19 @@ class LayerNormKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
           ctx, &out, bias, /*axis*/ 1, AddFunctor<T>(), &out);
     }
+#else
+    PADDLE_ENFORCE_EQ(mean->numel(), left);
+    PADDLE_ENFORCE_EQ(var->numel(), left);
+    PADDLE_ENFORCE_EQ(scale->numel(), right);
+    PADDLE_ENFORCE_EQ(bias->numel(), right);
+
+    const auto& ker = math::jitkernel::KernelPool::Instance()
+                          .template Get<math::jitkernel::LayerNormKernel<T>>(
+                              static_cast<int>(right));
+    ker->Compute(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
+                 scale->data<T>(), bias->data<T>(), static_cast<int>(left),
+                 static_cast<const float>(epsilon));
+#endif
   }
 };
 

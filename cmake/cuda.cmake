@@ -157,6 +157,9 @@ list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
 if(NOT WITH_DSO)
     # TODO(panyx0718): CUPTI only allows DSO?
     list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUPTI_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
+    if(WIN32)
+      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    endif(WIN32)
 endif(NOT WITH_DSO)
 
 # setting nvcc arch flags
@@ -196,10 +199,15 @@ elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
     list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
 endif()
 else(NOT WIN32)
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+list(APPEND CUDA_NVCC_FLAGS  "--compiler-options;/bigobj")
+if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
+  list(APPEND CUDA_NVCC_FLAGS  "-g -G")
+  # match the cl's _ITERATOR_DEBUG_LEVEL
+  list(APPEND CUDA_NVCC_FLAGS  "-D_DEBUG")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
   list(APPEND CUDA_NVCC_FLAGS "-O3 -DNDEBUG")
 else()
-  message(FATAL "Windows only support Release build now. Please set visual studio build type to Release, x64 build.")
+  message(FATAL "Windows only support Release or Debug build now. Please set visual studio build type to Release/Debug, x64 build.")
 endif()
 endif(NOT WIN32)
 
