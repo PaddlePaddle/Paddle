@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef _WIN32
 #ifndef HL_WARPCTC_WRAP_H_
 #define HL_WARPCTC_WRAP_H_
-
 #include "ctc.h"
 #include "hl_base.h"
 
@@ -91,3 +91,4 @@ extern void hl_warpctc_get_workspace_size(const int* cpuLabelLengths,
                                           size_t* bytes);
 
 #endif  // HL_WARPCTC_WRAP_H_
+#endif

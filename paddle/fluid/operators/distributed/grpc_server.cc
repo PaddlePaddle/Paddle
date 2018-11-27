@@ -20,6 +20,8 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
+DECLARE_bool(rpc_disable_reuse_port);
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -253,6 +255,20 @@ void AsyncGRPCServer::WaitServerReady() {
   VLOG(40) << "AsyncGRPCServer WaitSeverReady";
 }
 
+// Define an option subclass in order to disable SO_REUSEPORT for the
+// server socket.
+// Come from:
+// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc
+class NoReusePortOption : public ::grpc::ServerBuilderOption {
+ public:
+  void UpdateArguments(::grpc::ChannelArguments* args) override {
+    args->SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
+
+  void UpdatePlugins(std::vector<std::unique_ptr<::grpc::ServerBuilderPlugin>>*
+                         plugins) override {}
+};
+
 void AsyncGRPCServer::StartServer() {
   ::grpc::ServerBuilder builder;
   builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
@@ -260,6 +276,10 @@ void AsyncGRPCServer::StartServer() {
 
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
+  if (FLAGS_rpc_disable_reuse_port) {
+    builder.SetOption(
+        std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+  }
   builder.RegisterService(&service_);
 
   for (auto t : rpc_call_map_) {

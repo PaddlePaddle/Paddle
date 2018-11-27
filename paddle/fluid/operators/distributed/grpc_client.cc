@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/time.h>
 #include <limits>
 
 #include "glog/logging.h"  // For VLOG
@@ -20,7 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(rpc_disable_reuse_port);
 
 namespace paddle {
 namespace operators {
@@ -386,6 +388,9 @@ std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
   // Channel configurations:
   grpc::ChannelArguments args;
   args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 2000);
+  if (FLAGS_rpc_disable_reuse_port) {
+    args.SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
