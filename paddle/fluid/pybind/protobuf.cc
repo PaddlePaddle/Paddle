@@ -29,8 +29,16 @@ limitations under the License. */
 namespace pybind11 {
 namespace detail {
 
+#if !defined(PYBIND11_HIDDEN)
+#if defined(WIN32) || defined(_WIN32)
+#define PYBIND11_HIDDEN __declspec(dllexport)
+#else
+#define PYBIND11_HIDDEN __attribute__((visibility("hidden")))
+#endif
+#endif
+
 // Can be replaced by a generic lambda in C++14
-struct __attribute__((visibility("hidden"))) paddle_variant_caster_visitor
+struct PYBIND11_HIDDEN paddle_variant_caster_visitor
     : public boost::static_visitor<handle> {
   return_value_policy policy;
   handle parent;
