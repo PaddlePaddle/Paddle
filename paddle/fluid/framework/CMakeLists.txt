@@ -31,9 +31,7 @@ function(windows_symbolic TARGET)
 endfunction()
 
 add_subdirectory(ir)
-if (NOT WIN32)
 add_subdirectory(details)
-endif (NOT WIN32)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -68,11 +66,7 @@ if(WITH_GPU)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
-if (NOT WIN32)
-  cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
-else()
-  cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
-endif (NOT WIN32)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -122,13 +116,9 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
-if (NOT WIN32)
+cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler)
-else()
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor)
-endif(NOT WIN32)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -183,12 +173,10 @@ else()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
-if (NOT WIN32)
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
         graph build_strategy
         fast_threaded_ssa_graph_executor)
-endif() # NOT WIN32
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
@@ -205,3 +193,6 @@ cc_test(tuple_test SRCS tuple_test.cc )
 if (NOT WIN32)
 cc_test(rw_lock_test SRCS rw_lock_test.cc)
 endif (NOT WIN32)
+
+cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
+cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)

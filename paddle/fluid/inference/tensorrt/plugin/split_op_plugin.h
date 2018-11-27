@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <thrust/device_vector.h>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
@@ -25,7 +26,7 @@ namespace plugin {
 class SplitPlugin : public PluginTensorRT {
  public:
   SplitPlugin(int axis, std::vector<int> const &output_lengths)
-      : axis_(axis), output_length_(output_lengths) {}
+      : axis_(axis), same_shape_(true), output_length_(output_lengths) {}
 
   SplitPlugin(void const *serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
@@ -60,9 +61,13 @@ class SplitPlugin : public PluginTensorRT {
   }
 
   int axis_;
+  int outer_rows_;
+  int inner_cols_;
+  bool same_shape_;
   std::vector<int> output_length_;
-  int nx_, ny_, nz_;
   std::vector<int> segment_offsets_;
+  thrust::device_vector<int> d_segment_offsets_;
+  thrust::device_vector<float *> d_output_ptrs_;
 };
 
 }  // namespace plugin
