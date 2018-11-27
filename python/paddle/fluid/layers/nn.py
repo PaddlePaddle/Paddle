@@ -169,6 +169,7 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
+    'cudnn_lstm',
 ]
 
 
@@ -464,6 +465,157 @@ def dynamic_lstm(input,
             'candidate_activation': candidate_activation
         })
     return hidden, cell
+
+
+def cudnn_lstm(input,
+               init_h,
+               init_c,
+               batch_size,
+               max_len,
+               dropout_prob,
+               input_size,
+               hidden_size,
+               num_layers,
+               is_bidirec=False,
+               dtype='float32',
+               is_test=False,
+               name=None,
+               default_initializer=None,
+               fix_seed=False,
+               seed=0):
+    """
+    CUDNN LSTM implementation
+
+    A four-gate Long Short-Term Memory network with no peephole connections.
+    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
+    the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
+
+    it = sigmoid(Wi X xt + Ri X ht-1 + bWi + bRi)
+    ft = sigmoid(Wf X xt + Rf X ht-1 + bWf + bRf)
+    ot = sigmoid(Wo X xt + Ro X ht-1 + bWo + bRo)
+    c't = tanh(Wc X xt + Rc X ht-1 + bWc + bRc)
+    ct = ft * ct-1 + it * c't
+    ht = ot * tanh(ct)
+
+    Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
+    X represensts a matrix multiplication
+    and tanh is the hyperbolic tangent function. it, ft, ot, c't represent the input, forget, output and new gates respectively.
+
+
+    Args:
+        input (Variable): LSTM input tensor, shape MUST be ( seq_len x batch_size x input_size )
+        init_h(Variable): The initial hidden state of the LSTM                       
+                       This is a tensor with shape ( num_layers x batch_size x hidden_size)
+                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+        init_c(Variable): The initial cell state of the LSTM.
+                       This is a tensor with shape ( num_layers x batch_size x hidden_size )
+                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+        batch_size (int): total distance numer of the batch
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len 
+        dropout_prob(float): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers
+        input_size (int): hidden size of the input tensor
+        hidden_size (int): hidden size of the LSTM
+        num_layers (int): total layers number of the LSTM
+        is_bidirec (bool): If it is bidirectional
+        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
+        is_test (bool): If it is in test phrase
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
+        default_initializer(Initialize|None): Where use initializer to initialize the Weight
+                         If set None, defaule initializer will be used
+
+
+    Returns:
+        rnn_out(Tensor): result of LSTM hidden, shape is (seq_len x batch_size x hidden_size)
+                         if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+        last_h(Tensor): the hidden state of the last step of LSTM
+                        shape is ( num_layers x batch_size x hidden_size )
+                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+        last_c(Tensor): the cell state of the last step of LSTM
+                        shape is ( num_layers x batch_size x hidden_size )
+                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+
+
+    Examples:
+        .. code-block:: python
+
+            input = embedding
+            batch_size = 20
+            max_len = 100
+            dropout_prob = 0.2
+            input_size = 100
+            hidden_size = 150
+            num_layers = 1
+            init_hidden1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
+            init_cell1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
+
+            rnn_out, last_h, last_c = layers.cudnn_lstm( input, init_h, init_c, batch_size, \
+                    max_len, dropout_prob, input_size, hidden_size, \
+                    num_layers)
+    """
+
+    helper = LayerHelper('cudnn_lstm', **locals())
+
+    weight_size = 0
+    for i in range(num_layers):
+        if i == 0:
+            input_weight_size = (input_size * hidden_size) * 4
+        else:
+            if is_bidirec:
+                input_weight_size = (hidden_size * 2 * hidden_size) * 4
+            else:
+                input_weight_size = (hidden_size * hidden_size) * 4
+
+        hidden_weight_size = (hidden_size * hidden_size) * 4
+
+        if is_bidirec:
+            weight_size += (input_weight_size + hidden_weight_size) * 2
+            weight_size += hidden_size * 8 * 2
+        else:
+            weight_size += input_weight_size + hidden_weight_size
+            weight_size += hidden_size * 8
+
+    weight = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[weight_size],
+        dtype=dtype,
+        default_initializer=default_initializer)
+
+    out = helper.create_variable_for_type_inference(dtype)
+    last_h = helper.create_variable_for_type_inference(dtype)
+    last_c = helper.create_variable_for_type_inference(dtype)
+
+    cache = helper.create_variable(
+        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+
+    helper.append_op(
+        type='cudnn_lstm',
+        inputs={
+            'Input': input,
+            'InitH': init_h,
+            'InitC': init_c,
+            'W': weight,
+            'Cache': cache,
+        },
+        outputs={
+            'Out': out,
+            'last_h': last_h,
+            'last_c': last_c,
+        },
+        attrs={
+            'max_len': max_len,
+            'is_bidirec': is_bidirec,
+            'input_size': input_size,
+            'batch_size': batch_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'is_test': is_test,
+            'dropout_prob': dropout_prob,
+            'fix_seed': fix_seed,
+            'seed': seed,
+        })
+    return out, last_h, last_c
 
 
 def dynamic_lstmp(input,
