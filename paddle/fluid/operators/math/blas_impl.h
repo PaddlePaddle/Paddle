@@ -493,7 +493,7 @@ template <typename T>
 T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
   auto sum = static_cast<T>(0.0);
 #ifdef PADDLE_WITH_MKLML
-  sum = Blas<T>::ASUM(n, x, inc);
+  sum = CBlas<T>::ASUM(n, x, inc);
 #else
   //TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
   for (int c = 0; c < n; ++c) {
