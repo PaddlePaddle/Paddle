@@ -19,7 +19,6 @@
 #if !defined(_WIN32)
 #include <sys/time.h>
 #endif
-
 #include <algorithm>
 #include <chrono>  // NOLINT
 #include <iterator>
@@ -28,6 +27,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
