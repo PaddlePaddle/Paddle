@@ -285,10 +285,10 @@ def embedding(input,
               size,
               is_sparse=False,
               is_distributed=False,
-              remote_prefetch=False,
               padding_idx=None,
               param_attr=None,
-              dtype='float32'):
+              dtype='float32',
+              remote_prefetch=False):
     """
     **Embedding Layer**
 
