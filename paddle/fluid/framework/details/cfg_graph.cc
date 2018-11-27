@@ -88,17 +88,6 @@ void ControlFlowGraph::LiveVariableAnalysis() {
   // variable set for each op, then the diff between in/out will be used for
   // the variable reuse. For detail refer to
   // http://www.cs.cornell.edu/courses/cs4120/2013fa/lectures/lec26-fa13.pdf
-  auto set_equal = [](const std::set<std::string>& lhs,
-                      const std::set<std::string>& rhs) {
-    if (lhs.size() != rhs.size()) return false;
-    for (auto& item : lhs) {
-      if (rhs.find(item) == rhs.end()) {
-        return false;
-      }
-    }
-    return true;
-  };
-
   std::set<std::string> node_live_in;
   std::list<ir::Node*> worklist(ops_.rbegin(), ops_.rend());
   while (!worklist.empty()) {
@@ -119,7 +108,7 @@ void ControlFlowGraph::LiveVariableAnalysis() {
     for (auto& var : defs_[op]) {
       live_in_[op].erase(var);
     }
-    if (!set_equal(live_in_[op], node_live_in)) {
+    if (live_in_[op] != node_live_in) {
       for (auto& pre : predecessors_[op]) {
         worklist.push_back(pre);
       }
