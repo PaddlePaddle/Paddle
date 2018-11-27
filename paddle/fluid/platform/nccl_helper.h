@@ -91,9 +91,7 @@ class NCCLContextMap {
   static NCCLContextMap *Init(const std::vector<platform::Place> &places,
                               ncclUniqueId *nccl_id = nullptr,
                               size_t num_trainers = 1, size_t trainer_id = 0) {
-    VLOG(10) << "init NCCLContextMap instance...";
     if (ctx_map_ptr_ == nullptr) {
-      VLOG(10) << "first time initialize.";
       ctx_map_ptr_ =
           new NCCLContextMap(places, nccl_id, num_trainers, trainer_id);
     }

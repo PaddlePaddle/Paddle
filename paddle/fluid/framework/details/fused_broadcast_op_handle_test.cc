@@ -54,7 +54,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     } else {
 #ifdef PADDLE_WITH_CUDA
       op_handle_ = new FusedBroadcastOpHandle(
-          nodes_.back().get(), local_scopes_, place_list_, nullptr);
+          nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
       op_handle_ = new FusedBroadcastOpHandle(nodes_.back().get(),
                                               local_scopes_, place_list_);
