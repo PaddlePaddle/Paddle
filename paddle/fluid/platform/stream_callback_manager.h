@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -22,7 +23,6 @@
 #endif
 #include <functional>
 #include <memory>
-#include "ThreadPool.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

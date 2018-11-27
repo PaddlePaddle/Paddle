@@ -41,7 +41,7 @@ TEST(RetryAllocator, RetryAllocator) {
 
   size_t thread_num = 32;
   size_t sleep_time = 40;
-  size_t extra_time = 2;
+  size_t extra_time = 10;
 
   // Reserve to perform more tests in the future
   std::vector<std::shared_ptr<Allocator>> allocators;

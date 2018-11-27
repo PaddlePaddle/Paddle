@@ -15,10 +15,6 @@
 #pragma once
 
 #include <glog/logging.h>
-#if !defined(_WIN32)
-#include <sys/time.h>
-#else
-#endif
 
 #include <algorithm>
 #include <chrono>  // NOLINT
@@ -28,6 +24,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
