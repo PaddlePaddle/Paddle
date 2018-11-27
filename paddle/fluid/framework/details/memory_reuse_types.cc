@@ -36,20 +36,20 @@ size_t GetNodeSize(ir::Node* n) {
 std::string DebugStringImpl(VarDesc* var) {
   std::stringstream ss;
   ss << var->Name();
-  // ss << "[";
-  // try {
-  //   auto shape = var->GetShape();
-  //   for (size_t i = 0; i < shape.size(); ++i) {
-  //     if (i != shape.size() - 1) {
-  //       ss << shape[i] << ",";
-  //     } else {
-  //       ss << shape[i];
-  //     }
-  //   }
-  //   ss << "]";
-  // } catch (...) {
-  //   ss << "Var has no VarDesc !!! Name:" << var->Name();
-  // }
+  ss << "[";
+  try {
+    auto shape = var->GetShape();
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (i != shape.size() - 1) {
+        ss << shape[i] << ",";
+      } else {
+        ss << shape[i];
+      }
+    }
+    ss << "]";
+  } catch (...) {
+    ss << "Var has no VarDesc !!! Name:" << var->Name();
+  }
   return ss.str();
 }
 

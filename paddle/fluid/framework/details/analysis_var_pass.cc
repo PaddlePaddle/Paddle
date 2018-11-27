@@ -116,30 +116,16 @@ void AnalysisVarPass::RenameVarInGraphNode(const std::string& var,
 
     FilterVariables(op->inputs, [&](ir::Node* node) {
       if (node->Name() == var) {
-        // ReplaceNode(graph, node, node->Var());
         node->SetName(cache_var);
       }
     });
 
     FilterVariables(op->outputs, [&](ir::Node* node) {
       if (node->Name() == var) {
-        // ReplaceNode(graph, node, node->Var());
         node->SetName(cache_var);
       }
     });
 
-    // for (auto it = op->inputs.begin(); it != op->inputs.end(); ++it) {
-    //   if ((*it)->Name() == var) {
-    //     (*it)->Var()->SetName(cache_var);
-    //     (*it)->SetName(cache_var);
-    //   }
-    // }
-    // for (auto it = op->outputs.begin(); it != op->outputs.end(); ++it) {
-    //   if ((*it)->Name() == var) {
-    //     (*it)->Var()->SetName(cache_var);
-    //     (*it)->SetName(cache_var);
-    //   }
-    // }
   }
 }
 
@@ -230,8 +216,8 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
       }
     } else {
       if (OpHasSubBlock(op_desc)) {
-        // VLOG(3) << op->Name()
-        //         << " has subblock, but disable subgraph optimize. skipped.";
+        VLOG(3) << op->Name()
+                << " has subblock, but disable subgraph optimize. skipped.";
       }
     }
 
@@ -276,12 +262,6 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
         if (var_node == nullptr) continue;
         if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
           pool_.Insert(var_node, op);
-          if (var_node->Name() == "top_k_0.tmp_0") {
-            VLOG(3) << "first " << pool_.ToString();
-          }
-          if (var_node->Name() == "top_k_0.tmp_1") {
-            VLOG(3) << "second " << pool_.ToString();
-          }
         }
       }
     }
