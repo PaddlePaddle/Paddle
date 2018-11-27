@@ -2300,7 +2300,8 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False,
-               fuse_with_relu=False):
+               fuse_with_relu=False,
+               use_global_stats=False):
     """
     **Batch Normalization Layer**
 
@@ -2349,6 +2350,12 @@ def batch_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train time,
+            the BN acts as scaling and shiffting.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2381,9 +2388,15 @@ def batch_norm(input,
         shape=param_shape,
         dtype=dtype,
         default_initializer=Constant(1.0))
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.param_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.bias_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -2439,7 +2452,8 @@ def batch_norm(input,
             "epsilon": epsilon,
             "is_test": is_test,
             "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu
+            "fuse_with_relu": fuse_with_relu,
+            "use_global_stats": use_global_stats
         })
 
     return helper.append_activation(batch_norm_out)
