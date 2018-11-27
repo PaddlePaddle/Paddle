@@ -198,7 +198,7 @@ class TestBook(unittest.TestCase):
                 layers.hsigmoid(
                     input=x2,
                     label=y2,
-                    non_leaf_num=6,
+                    num_classes=6,
                     path_table=path_table,
                     path_code=path_code,
                     is_custom=True))
