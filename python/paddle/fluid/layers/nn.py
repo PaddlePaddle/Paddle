@@ -4639,7 +4639,7 @@ def hsigmoid(input,
         "X": input,
         "W": weights,
         "PTable": ptable,
-        "PCode": pcode,
+        "PathCode": pcode,
         "Label": label
     }
     if helper.bias_attr:
