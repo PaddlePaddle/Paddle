@@ -256,6 +256,9 @@ void Conv3DTransposeOpMaker::Make() {
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
