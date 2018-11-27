@@ -525,6 +525,9 @@ def cudnn_lstm(input,
         default_initializer(Initialize|None): Where use initializer to initialize the Weight
                          If set None, defaule initializer will be used
 
+        fix_seed(bool): If it's True, fix seed will used for dropout in LSTM
+        seed(int): If fix_seed is True, dropout seed in LSTM will use this seed 
+
 
     Returns:
         rnn_out(Tensor): result of LSTM hidden, shape is (seq_len x batch_size x hidden_size)
