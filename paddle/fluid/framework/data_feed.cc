@@ -134,7 +134,7 @@ template<typename T>
 void PrivateQueueDataFeed<T>::ReadThread(){
   std::string filename;
   while (PickOneFile(filename)) {
-    file_.open(filename.c_str()); // is_text_feed
+    file_.open(filename.c_str()); // text_feed
     if (!file_.good()) {
       LOG(ERROR) << "error: open file<" << filename << "> fail";
       exit(-1);
