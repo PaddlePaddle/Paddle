@@ -108,7 +108,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("Bias",
              "(LoDTensor, optional), The bias is a tensor with shape or "
-             "[non_leaf_num, 1]"
+             "[num_classes, 1]"
              "[num_classes - 1, 1].")
         .AsDispensable();
     AddOutput(

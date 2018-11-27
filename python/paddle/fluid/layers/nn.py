@@ -4584,11 +4584,10 @@ def nce(input,
 
 def hsigmoid(input,
              label,
-             num_classes=None,
+             num_classes,
              param_attr=None,
              bias_attr=None,
              name=None,
-             non_leaf_num=None,
              path_table=None,
              path_code=None,
              is_custom=False,
@@ -4622,7 +4621,9 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+            which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -4634,7 +4635,6 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        non_leaf_num: this defines the number of non-leaf nodes in costumed tree
         path_table: (Variable|None) this variable can store each batch of samples' path to root, 
             it should be in leaf -> root order
             path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
@@ -4642,7 +4642,7 @@ def hsigmoid(input,
         path_code:  (Variable|None) this variable can store each batch of samples' code, 
             each code consist with every code of parent nodes. it should be in leaf -> root order
         is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
-             set you need to set path_table/path_code/non_leaf_num, otherwise num_classes should be set
+             set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
         is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
              of W and input will be sparse.
 
@@ -4671,8 +4671,8 @@ def hsigmoid(input,
         raise ValueError("path_code should not be None with costum tree")
     elif (is_custom) and (path_table is None):
         raise ValueError("path_table should not be None with costum tree")
-    elif (is_custom) and (non_leaf_num is None):
-        raise ValueError("non_leaf_num should not be None with costum tree")
+    elif (is_custom) and (num_classes is None):
+        raise ValueError("num_classes should not be None with costum tree")
     else:
         pass
 
@@ -4687,7 +4687,7 @@ def hsigmoid(input,
     else:
         weights = helper.create_parameter(
             attr=helper.param_attr,
-            shape=[non_leaf_num, dim],
+            shape=[num_classes, dim],
             is_bias=False,
             dtype=input.dtype)
     inputs = {
@@ -4708,7 +4708,7 @@ def hsigmoid(input,
         else:
             bias = helper.create_parameter(
                 attr=helper.bias_attr,
-                shape=[non_leaf_num, 1],
+                shape=[num_classes, 1],
                 is_bias=True,
                 dtype=input.dtype)
             inputs['Bias'] = bias

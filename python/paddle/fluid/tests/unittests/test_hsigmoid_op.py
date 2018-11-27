@@ -220,7 +220,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             input=emb,
             label=label,
             bias_attr=True,
-            non_leaf_num=3,
+            num_classes=3,
             path_table=path_table,
             path_code=path_code,
             is_custom=True,
