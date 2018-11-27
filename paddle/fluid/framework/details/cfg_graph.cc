@@ -75,7 +75,8 @@ void ControlFlowGraph::ConnectNodes() {
   for (size_t i = 0; i < ops_.size(); ++i) {
     auto& op = ops_[i];
     try {
-      auto& next_op = ops_.at(i + 1) : successors_[op].insert(next_op);
+      auto& next_op = ops_.at(i + 1);
+      successors_[op].insert(next_op);
       predecessors_[next_op].insert(op);
     } catch (...) {
       // do nothing
