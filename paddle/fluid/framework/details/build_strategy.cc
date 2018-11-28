@@ -59,14 +59,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     CollectiveContext *context = CollectiveContext::GetInstance();
-    context->end_points_ = strategy_.trainers_end_points_;
-    context->rank_id_ = strategy_.trainer_id_;
+    context->endpoints_ = strategy_.trainer_endpoints_;
+    context->trainer_id_ = strategy_.trainer_id_;
     PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
     if (strategy_.trainer_id_ > 0) {
       PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
-                         strategy_.trainers_end_points_.size(),
-                     "trainer_id_ < end_points_ size");
+                         strategy_.trainer_endpoints_.size(),
+                     "trainer_id_ < endpoints_ size");
     }
+    VLOG(1) << "CollectiveContext:" << context->String();
 
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
@@ -115,7 +116,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &param_names,
     const std::vector<Scope *> &local_scopes,
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
 #else
     const bool use_cuda) const {
@@ -137,18 +138,22 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("local_scopes");
       pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
                                                     &local_scopes);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-    } else if (pass->Type() == "all_reduce_deps_pass" ||
-               pass->Type() == "sequential_execution_pass") {
-      VLOG(1) << "set enable_sequential_execution:"
-              << enable_sequential_execution_
-              << ", SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-              << ", num_trainers:" << num_trainers_
-              << ", trainer_id:" << trainer_id_;
+    } else if (pass->Type() == "sequential_execution_pass") {
+      LOG(INFO) << "set enable_sequential_execution:"
+                << enable_sequential_execution_;
+
+      pass->Erase(kAllOpDescs);
+      pass->Set<const std::vector<OpDesc *>>(
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+    } else if (pass->Type() == "all_reduce_deps_pass") {
+      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+                << ", num_trainers:" << num_trainers_;
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(

@@ -121,30 +121,26 @@ class SelectedRows {
    */
   int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
-  void SyncIndex();
+  /*
+   * @brief Get the index of the key from id_to_index_ map.
+   */
+  inline int64_t GetIndexFromId(int64_t key) {
+    auto iter = id_to_index_.find(key);
+    if (iter == id_to_index_.end()) {
+      return -1;
+    } else {
+      return iter->second;
+    }
+  }
 
+  void SyncIndex();
+  /*
+   * @brief Get complete Dims before
+   */
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
     return make_ddim(dims);
-  }
-
-  std::string Info() const {
-    std::stringstream ss;
-    ss << "height:" << height_ << ", rows:[";
-    for (unsigned int i = 0; i < rows_.size(); i++) {
-      if (i != rows_.size() - 1) {
-        ss << rows_[i] << ",";
-      } else {
-        ss << rows_[i];
-      }
-    }
-    ss << "], dims:" << value_->dims();
-    // can't print?
-    // << ", value.IsInitialized:" << value().IsInitialized()
-    // << ", value.place:" << value().place();
-
-    return ss.str();
   }
 
  private:
@@ -152,9 +148,10 @@ class SelectedRows {
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
-  std::unordered_map<int64_t, int64_t> id_to_index_;
+  std::unordered_map<int64_t, int64_t>
+      id_to_index_;  // should not be used when rows_ has duplicate member
   std::unique_ptr<Tensor> value_{nullptr};
-  int64_t height_;
+  int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 

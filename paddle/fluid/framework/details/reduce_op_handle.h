@@ -23,46 +23,19 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
 namespace framework {
 namespace details {
-struct CollectiveContext {
-  std::vector<std::string> end_points_;
-  int rank_id_{0};
-
-  std::string String() const {
-    std::stringstream ss;
-    ss << "end_points_:";
-    for (auto e : end_points_) {
-      ss << e << ",";
-    }
-
-    ss << "rank_id_:" << rank_id_;
-
-    return ss.str();
-  }
-
-  static CollectiveContext *GetInstance() {
-    std::call_once(init_flag_,
-                   [&]() { context_.reset(new CollectiveContext()); });
-    return context_.get();
-  }
-
- private:
-  static std::once_flag init_flag_;
-  static std::unique_ptr<CollectiveContext> context_;
-};
 
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-// CollectiveContext collective_context_;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
@@ -99,14 +72,6 @@ struct ReduceOpHandle : public OpHandleBase {
 
   void WaitLocalSelectedRows(
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
-
-  /*
-  void GatherRemoteSelectedRows(
-      const CollectiveContext& CollectiveContext,
-      platform::DeviceContext *dev_ctx, Scope *scope,
-      const std::string &var_name,
-                                std::vector<const SelectedRows *> *remote);
-                                */
 
   template <typename T>
   std::vector<const T *> GetInputValues(

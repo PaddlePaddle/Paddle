@@ -52,20 +52,10 @@ void ReduceOpHandle::GatherSelectedRows(
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     VarHandle *out_var_handle, const platform::Place &out_place,
     SelectedRows *dst_selected_rows) {
-  VLOG(100) << "GatherSelectedRows outplace:" << out_place;
-  for (unsigned int i = 0; i < src_selected_rows.size(); i++) {
-    VLOG(100) << "loop place:" << in_places[i]
-              << ", dev_ctxes place:" << dev_ctxes.at(in_places[i])->GetPlace();
-    VLOG(100) << "loop src_selected_rows:"
-              << ", info:" << src_selected_rows[i]->Info();
-  }
-
   const CollectiveContext &collective_context =
       *CollectiveContext::GetInstance();
-  VLOG(100) << "Enter GatherSelectedRows" << collective_context.String();
-  VLOG(100) << "GatherSelectedRows place(0) is_cpu_place:"
-            << is_cpu_place(in_places[0]);
-
+  VLOG(100) << "GatherSelectedRows CollectiveContext:"
+            << collective_context.String();
   if (collective_context.end_points_.size() <= 1 ||
       is_cpu_place(in_places[0]) ||
       is_cpu_place(out_place)) {  // TODO(gongwb): add cpu support
@@ -92,8 +82,6 @@ void ReduceOpHandle::GatherSelectedRows(
   auto merged_select_rows =
       scope->Var(merged_var_name)->GetMutable<SelectedRows>();
   // FIXME(gongwb):get type?
-  // operators::math::scatter::MergeAdd<platform::DeviceContext,
-  // gather_select_rows->value().type()> merge_func;
   operators::math::scatter::MergeAdd<platform::CUDADeviceContext, float>
       merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
@@ -103,12 +91,6 @@ void ReduceOpHandle::GatherSelectedRows(
       operators::distributed::CollectiveServer::GetInstance(
           collective_context.end_points_[collective_context.rank_id_],
           collective_context.end_points_.size() - 1);
-
-  WaitLocalSelectedRows(dev_ctxes);
-  VLOG(40) << "gathered_select_rows :" << gathered_select_rows->Info();
-  VLOG(40) << "gathered_select_rows place:" << gathered_select_rows->place();
-  VLOG(40) << "merged_select_rows :" << merged_select_rows->Info();
-  VLOG(40) << "merged_select_rows :" << merged_select_rows->place();
 
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar(merged_var_name,
@@ -130,7 +112,7 @@ void ReduceOpHandle::GatherSelectedRows(
     var.ep_ = collective_context.end_points_[i];
 
     vars.push_back(var);
-    VLOG(100) << "gather from:" << var.String();
+    VLOG(40) << "gather from:" << var.String();
   }
 
   PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
@@ -145,7 +127,6 @@ void ReduceOpHandle::GatherSelectedRows(
   all[collective_context.rank_id_] = merged_select_rows;
 
   merge_func(*merged_dev_ctx, all, dst_selected_rows);
-  // VLOG(40) << "dst_select_rows :" << dst_selected_rows->Info();
 
   rpc_server->WaitVarBarrier(merged_var_name);
   rpc_server->ClearVar(merged_var_name);
@@ -259,7 +240,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(

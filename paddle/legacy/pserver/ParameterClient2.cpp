@@ -224,14 +224,14 @@ void ParameterClient2::prepareSendData(
     request.set_cost(cost);
     request.set_batch_status(batchStatus);
     CHECK_EQ(request.blocks_size(), 0);
-    VLOG(10) << "request: trainer_id: " << request.trainer_id()
-             << " update_mode" << request.update_mode()
-             << " send_back_parameter: " << request.send_back_parameter()
-             << " send_back_parameter_type: "
-             << request.send_back_parameter_type()
-             << " num_samples: " << request.num_samples()
-             << " cost: " << request.cost()
-             << " batch_status: " << request.batch_status();
+    VLOG(1) << "request: trainer_id: " << request.trainer_id() << " update_mode"
+            << request.update_mode()
+            << " send_back_parameter: " << request.send_back_parameter()
+            << " send_back_parameter_type: "
+            << request.send_back_parameter_type()
+            << " num_samples: " << request.num_samples()
+            << " cost: " << request.cost()
+            << " batch_status: " << request.batch_status();
   }
   for (const auto& segments : parameterSegments) {
     const auto it = parameterMap_.find(segments.id);

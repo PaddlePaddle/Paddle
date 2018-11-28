@@ -31,6 +31,11 @@ int main(int argc, char** argv) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,allocator_strategy"));
+#elif __clang__
+  new_argv.push_back(
+      strdup("--tryfromenv=use_mkldnn,initial_cpu_memory_in_"
+             "mb,allocator_strategy"));
+  new_argv.push_back(strdup("--undefok=use_mkldnn,initial_cpu_memory_in_mb"));
 #else
   new_argv.push_back(
       strdup("--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_"
