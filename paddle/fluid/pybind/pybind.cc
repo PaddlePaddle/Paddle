@@ -42,13 +42,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/pybind/async_executor_py.h"
 
 #include "paddle/fluid/string/to_string.h"
 
