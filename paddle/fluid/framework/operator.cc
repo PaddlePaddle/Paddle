@@ -623,6 +623,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
+  void DecreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  }
+
   bool IsRuntime() const override { return true; }
 
  protected:
