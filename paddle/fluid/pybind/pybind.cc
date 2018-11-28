@@ -101,13 +101,22 @@ PYBIND11_MODULE(core, m) {
 
   BindException(&m);
 
-  py::class_<imperative::VariableBase>(m, "VariableBase",
-                                       R"DOC()DOC")
+  py::class_<imperative::VarBase>(m, "VarBase",
+                                  R"DOC()DOC")
       .def_property(
           "desc",
-          [](const imperative::VariableBase &self) { return self.var_desc_; },
-          [](imperative::VariableBase &self, framework::VarDesc *var_desc) {
+          [](const imperative::VarBase &self) { return self.var_desc_; },
+          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
             self.var_desc_ = var_desc;
+          },
+          py::return_value_policy::reference);
+
+  py::class_<imperative::OpBase>(m, "OpBase",
+                                 R"DOC()DOC")
+      .def_property(
+          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
+          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
+            self.op_desc_ = op_desc;
           },
           py::return_value_policy::reference);
 
@@ -115,7 +124,7 @@ PYBIND11_MODULE(core, m) {
   layer.def(py::init<>())
       .def("forward",
            [](imperative::Layer &self,
-              const std::vector<imperative::VariableBase> &inputs) {
+              const std::vector<imperative::VarBase> &inputs) {
              return self.Forward(inputs);
            })
       .def("backward", &imperative::Layer::Backward);

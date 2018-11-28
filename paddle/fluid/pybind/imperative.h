@@ -26,9 +26,9 @@ class PyLayer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
 
-  std::vector<imperative::VariableBase> Forward(
-      const std::vector<imperative::VariableBase>& inputs) override {
-    PYBIND11_OVERLOAD(std::vector<imperative::VariableBase>, Layer, Forward,
+  std::vector<imperative::VarBase> Forward(
+      const std::vector<imperative::VarBase>& inputs) override {
+    PYBIND11_OVERLOAD(std::vector<imperative::VarBase>, Layer, Forward,
                       inputs);  // NOLINT
   }
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -22,21 +23,28 @@
 namespace paddle {
 namespace imperative {
 
-class VariableBase {
+class VarBase {
  public:
-  VariableBase() {}
-  virtual ~VariableBase() {}
+  VarBase() {}
+  virtual ~VarBase() {}
 
   framework::VarDesc* var_desc_;
+};
+
+class OpBase {
+ public:
+  OpBase() {}
+  virtual ~OpBase() {}
+
+  framework::OpDesc* op_desc_;
 };
 
 class Layer {
  public:
   virtual ~Layer() {}
 
-  virtual std::vector<VariableBase> Forward(
-      const std::vector<VariableBase>& inputs) {
-    std::vector<VariableBase> vars;
+  virtual std::vector<VarBase> Forward(const std::vector<VarBase>& inputs) {
+    std::vector<VarBase> vars;
     return vars;
   }
 
