@@ -4394,7 +4394,8 @@ def nce(input,
         name=None,
         sampler="uniform",
         custom_dist=None,
-        seed=0):
+        seed=0,
+        is_sparse=False):
     """
     ${comment}
 
@@ -4420,11 +4421,12 @@ def nce(input,
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (Variable): A tensor with shape [num_total_classes].
+        custom_dist (float[]): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
         seed (int): The seed used in sampler. default: 0.
+        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
 
     Returns:
         Variable: The output nce loss.
@@ -4476,12 +4478,7 @@ def nce(input,
         shape=[num_total_classes, dim],
         is_bias=False,
         dtype=input.dtype)
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
+    inputs = {}
     if helper.bias_attr:
         b = helper.create_parameter(
             attr=helper.bias_attr,
@@ -4493,18 +4490,10 @@ def nce(input,
     sample_logits = helper.create_variable_for_type_inference(dtype=input.dtype)
     sample_labels = helper.create_variable_for_type_inference(dtype=label.dtype)
 
-    if num_neg_samples is None:
-        num_neg_samples = 10
-    else:
-        num_neg_samples = int(num_neg_samples)
-
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'Bias': b,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
+    inputs['Input'] = input
+    inputs['Label'] = label
+    inputs['Weight'] = w
+    inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
 
     if sampler == "uniform":
         sampler = 0
@@ -4512,17 +4501,73 @@ def nce(input,
         sampler = 1
     elif sampler == "custom_dist":
         assert custom_dist is not None
-        assert isinstance(custom_dist, Variable)
-        inputs['CustomDistribution'] = custom_dist
+        # assert isinstance(custom_dist, Variable)
+
+        custom_dist_len = len(custom_dist)
+        alias_probs_ = [0] * custom_dist_len
+        alias_ = [0] * custom_dist_len
+        bigs = []
+        littles = []
+        for i in range(custom_dist_len):
+            normal_prob = custom_dist[i] * custom_dist_len
+            if normal_prob - 1.0 > 1e-4:
+                bigs.append((i, normal_prob))
+            elif 1.0 - normal_prob > 1e-4:
+                littles.append((i, normal_prob))
+            else:
+                alias_probs_[i] = normal_prob
+                alias_[i] = -1
+
+        while len(bigs) and len(littles):
+            big = bigs.pop(0)
+            little = littles.pop(0)
+
+            big_idx = big[0]
+            big_prob = big[1]
+
+            alias_probs_[little[0]] = little[1]
+            alias_[little[0]] = big_idx
+            big_left = big[1] + little[1] - 1
+            if big_left - 1.0 > 1e-4:
+                bigs.append((big_idx, big_left))
+            elif 1.0 - big_left > 1e-4:
+                littles.append((big_idx, big_left))
+            else:
+                alias_probs_[big_idx] = big_left
+                alias_[big_idx] = -1
+
+        if len(bigs):
+            big = bigs.pop(0)
+            alias_probs_[big[0]] = 1.0
+            alias_[big[0]] = -1
+        if len(littles):
+            little = littles.pop(0)
+            alias_probs_[little[0]] = 1.0
+            alias_[little[0]] = -1
+
+        probs = assign(input=np.array(custom_dist).astype('float32'))
+        custom_alias = assign(input=np.array(alias_).astype('int32'))
+        custom_alias_probs = assign(
+            input=np.array(alias_probs_).astype('float32'))
+
+        inputs['CustomDistProbs'] = probs
+        inputs['CustomDistAlias'] = custom_alias
+        inputs['CustomDistAliasProbs'] = custom_alias_probs
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
+
+    if num_neg_samples is None:
+        num_neg_samples = 10
+    else:
+        num_neg_samples = int(num_neg_samples)
 
     attrs = {
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
-        'sampler': sampler
+        'sampler': sampler,
+        'is_sparse': is_sparse
     }
 
     helper.append_op(
@@ -4542,19 +4587,33 @@ def hsigmoid(input,
              num_classes,
              param_attr=None,
              bias_attr=None,
-             name=None):
+             name=None,
+             path_table=None,
+             path_code=None,
+             is_custom=False,
+             is_sparse=False):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, each leaf node represents a class(a word) and each
+    complete binary tree, or you can use is_custom to pass your own tree to 
+    implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
     internal node on the path, and sum them to get a total cost. hsigmoid can
     achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the size of word dict.
 
-    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    Using default tree you can Refer to `Hierarchical Probabilistic Neural Network Language Model
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+
+    And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
+        1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
+        2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
+        3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
+         means label of each binary classification, using 1 indicate true, 0 indicate false.
+        4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+        related to the same batch of inputs.
+
 
     Args:
         input (Variable): The input tensor variable with shape
@@ -4562,7 +4621,9 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2.
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+            which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -4574,9 +4635,19 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+            it should be in leaf -> root order
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
+            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
+        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            each code consist with every code of parent nodes. it should be in leaf -> root order
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+             set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+             of W and input will be sparse.
 
     Returns:
-        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+        Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
 
     Examples:
 
@@ -4592,27 +4663,62 @@ def hsigmoid(input,
     out = helper.create_variable_for_type_inference(dtype)
     pre_out = helper.create_variable_for_type_inference(dtype)
     dim = input.shape[1]
-    if num_classes < 2:
-        raise ValueError("num_classes must not be less than 2.")
-    weights = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[num_classes - 1, dim],
-        is_bias=False,
-        dtype=input.dtype)
-    inputs = {"X": input, "W": weights, "Label": label}
-    if helper.bias_attr:
-        bias = helper.create_parameter(
-            attr=helper.bias_attr,
-            shape=[1, num_classes - 1],
-            is_bias=True,
+    if ((num_classes is None) or (num_classes < 2)) and (not is_custom):
+        raise ValueError(
+            "num_classes must not be less than 2 with default tree")
+
+    if (is_custom) and (path_code is None):
+        raise ValueError("path_code should not be None with costum tree")
+    elif (is_custom) and (path_table is None):
+        raise ValueError("path_table should not be None with costum tree")
+    elif (is_custom) and (num_classes is None):
+        raise ValueError("num_classes should not be None with costum tree")
+    else:
+        pass
+
+    weights = None
+
+    if not is_custom:
+        weights = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=[num_classes - 1, dim],
+            is_bias=False,
             dtype=input.dtype)
-        inputs['Bias'] = bias
+    else:
+        weights = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=[num_classes, dim],
+            is_bias=False,
+            dtype=input.dtype)
+    inputs = {
+        "X": input,
+        "W": weights,
+        "PTable": path_table,
+        "PathCode": path_code,
+        "Label": label
+    }
+    if helper.bias_attr:
+        if not is_custom:
+            bias = helper.create_parameter(
+                attr=helper.bias_attr,
+                shape=[num_classes - 1, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            inputs['Bias'] = bias
+        else:
+            bias = helper.create_parameter(
+                attr=helper.bias_attr,
+                shape=[num_classes, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            inputs['Bias'] = bias
     helper.append_op(
         type="hierarchical_sigmoid",
         inputs=inputs,
         outputs={"Out": out,
                  "PreOut": pre_out},
-        attrs={"num_classes": num_classes})
+        attrs={"num_classes": num_classes,
+               "is_sparse": is_sparse})
     return out
 
 
@@ -5870,9 +5976,10 @@ def image_resize(input,
         raise ValueError(
             "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
         )
+    resample_type = resample_methods[resample]
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
-    helper = LayerHelper('interpolate', **locals())
+    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -5906,18 +6013,16 @@ def image_resize(input,
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='interpolate',
+        type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={
-            "out_h": out_h,
-            "out_w": out_w,
-            "interp_method": resample_methods[resample]
-        })
+        attrs={"out_h": out_h,
+               "out_w": out_w,
+               "interp_method": resample_type})
     return out
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input,
                     out_shape=None,
                     scale=None,
@@ -5973,7 +6078,7 @@ def resize_bilinear(input,
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="nearest_interp")
 def resize_nearest(input,
                    out_shape=None,
                    scale=None,
@@ -6475,7 +6580,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-                    isinstance(shape, Variable)):
+            isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
@@ -6597,7 +6702,7 @@ def affine_grid(theta, out_shape, name=None):
     helper = LayerHelper('affine_grid')
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
-        isinstance(out_shape, Variable)):
+            isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Variable.")
 
     if not isinstance(theta, Variable):
@@ -6838,6 +6943,13 @@ def elu(x, alpha=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.elu(x, alpha=0.2)
     """
     helper = LayerHelper('elu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6861,6 +6973,13 @@ def relu6(x, threshold=6.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.relu6(x, threshold=6.0)
     """
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6884,6 +7003,13 @@ def pow(x, factor=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.pow(x, factor=2.0)
     """
     helper = LayerHelper('pow', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6908,6 +7034,13 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6933,6 +7066,13 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6957,6 +7097,13 @@ def swish(x, beta=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.swish(x, beta=2.0)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

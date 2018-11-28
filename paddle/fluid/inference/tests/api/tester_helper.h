@@ -178,11 +178,9 @@ void TestOneThreadPrediction(
     warmup_timer.tic();
     predictor->Run(inputs[0], outputs, batch_size);
     PrintTime(batch_size, 1, 1, 0, warmup_timer.toc(), 1);
-#if !defined(_WIN32)
     if (FLAGS_profile) {
       paddle::platform::ResetProfiler();
     }
-#endif
   }
 
   LOG(INFO) << "Run " << num_times << " times...";
@@ -232,11 +230,9 @@ void TestMultiThreadPrediction(
         warmup_timer.tic();
         predictor->Run(inputs[0], outputs, batch_size);
         PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
-#if !defined(_WIN32)
         if (FLAGS_profile) {
           paddle::platform::ResetProfiler();
         }
-#endif
       }
 
       LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
