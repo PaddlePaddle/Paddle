@@ -168,9 +168,9 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor util)
 
-cc_library(data_feed_factory SRCS data_feed_factory.cc)
-cc_library(data_feed SRCS data_feed.cc)
-cc_library(executor_thread_worker SRCS executor_thread_worker.cc)
+cc_library(data_feed_factory SRCS data_feed_factory.cc DEPS async_executor_proto)
+cc_library(data_feed SRCS data_feed.cc DEEPS async_executor_proto)
+cc_library(executor_thread_worker SRCS executor_thread_worker.cc DEPS async_executor_proto)
 cc_library(async_executor SRCS async_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto util data_feed_factory data_feed executor_thread_worker)
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
