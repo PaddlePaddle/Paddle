@@ -48,7 +48,7 @@ static size_t GetSectionIndex(int64_t id,
 }
 
 static std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int64_t>& height_sections) {
+    const std::vector<int>& height_sections) {
   std::vector<int64_t> abs_sections;
   abs_sections.resize(height_sections.size());
   abs_sections[0] = 0;
@@ -59,7 +59,7 @@ static std::vector<int64_t> ToAbsoluteSection(
 }
 
 static std::vector<std::vector<int64_t>> SplitIds(
-    const std::string& id_name, const std::vector<int64_t>& height_section,
+    const std::string& id_name, const std::vector<int>& height_section,
     framework::Scope* scope) {
   auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
   auto* id_data = id_tensor.data<int64_t>();
@@ -79,7 +79,7 @@ static std::vector<std::vector<int64_t>> SplitIds(
 
 static void SplitIdsIntoMultipleVarsBySection(
     const std::string& id_name, const std::vector<std::string>& in_var_names,
-    const std::vector<int64_t>& height_section,
+    const std::vector<int>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size(), "");
@@ -101,7 +101,7 @@ static void SplitIdsIntoMultipleVarsBySection(
 static void MergeMultipleVarsIntoOneBySection(
     const std::string& id_name, const std::string& out_name,
     const std::vector<std::string>& out_var_names,
-    const std::vector<int64_t>& height_section,
+    const std::vector<int>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     const framework::ExecutionContext& context, framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(out_var_names.size(), height_section.size(), "");
@@ -154,7 +154,7 @@ static void MergeMultipleVarsIntoOneBySection(
 void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
-              const std::vector<int64_t>& height_sections,
+              const std::vector<int>& height_sections,
               const framework::ExecutionContext& context) {
   auto& local_scope = context.scope().NewScope();
 
