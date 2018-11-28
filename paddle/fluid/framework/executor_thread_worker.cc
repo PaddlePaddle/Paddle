@@ -35,41 +35,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/util.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
 namespace paddle {
 namespace framework {
-
-void CreateTensor(Variable* var, proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<Scope>>();
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarType::READER) {
-    var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::RAW) {
-    // GetMutable will be called in operator
-  } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
-        var_type);
-  }
-}
 
 void ExecutorThreadWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
@@ -102,10 +73,10 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
       auto* ptr = root_scope_->Var(var->Name());
-      CreateTensor(ptr, var->GetType());
+      InitializeVariable(ptr, var->GetType());
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
-      CreateTensor(ptr, var->GetType());
+      InitializeVariable(ptr, var->GetType());
     }
   }
 }
@@ -131,31 +102,33 @@ void ExecutorThreadWorker::SetFetchVarNames(
 }
 
 void ExecutorThreadWorker::SetDevice() {
-  // at most 48 threads binding currently
-  static unsigned priority[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                                12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
-                                36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47};
+#ifndef _WIN32
+  static unsigned concurrency_cap = std::thread::hardware_concurrency();
+  int thread_id = this->thread_id_;
 
-  unsigned int i = this->thread_id_;
-
-  if (i < sizeof(priority) / sizeof(unsigned)) {
-    unsigned proc = priority[i];
+  if (thread_id < concurrency_cap) {
+    unsigned proc = thread_id;
 
     cpu_set_t mask;
     CPU_ZERO(&mask);
     CPU_SET(proc, &mask);
 
     if (-1 == sched_setaffinity(0, sizeof(mask), &mask)) {
-      LOG(ERROR) << "WARNING: Failed to set thread affinity for thread " << i;
+      LOG(ERROR) << "WARNING: Failed to set thread affinity for thread "
+                 << thread_id;
     } else {
       CPU_ZERO(&mask);
       if ((0 != sched_getaffinity(0, sizeof(mask), &mask)) ||
           (CPU_ISSET(proc, &mask) == 0)) {
-        LOG(INFO) << "WARNING: Failed to set thread affinity for thread " << i;
+        LOG(INFO) << "WARNING: Failed to set thread affinity for thread "
+                  << thread_id;
       }
     }
+  } else {
+    LOG(ERROR) << "WARNING: Failed to set thread affinity for thread "
+               << thread_id;
   }
+#endif
 }
 
 template <typename T>

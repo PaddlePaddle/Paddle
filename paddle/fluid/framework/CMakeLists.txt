@@ -36,6 +36,7 @@ add_subdirectory(details)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
 
+cc_library(util SRCS util.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
@@ -151,28 +152,25 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 
-cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass util)
 
 if(WITH_DISTRIBUTE)
-  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr graph_to_program_pass)
+  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr graph_to_program_pass util)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
-  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator)
+  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator util)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
         graph build_strategy
-        fast_threaded_ssa_graph_executor)
+        fast_threaded_ssa_graph_executor util)
 
 cc_library(async_executor
-          SRCS async_executor.cc data_feed.cc data_feed_factory.cc
-              executor_thread_worker.cc
-          DEPS op_registry device_context scope framework_proto glog
-              lod_rank_table feed_fetch_method graph_to_program_pass
-              async_executor_proto)
+          SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc
+          DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto util)
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)

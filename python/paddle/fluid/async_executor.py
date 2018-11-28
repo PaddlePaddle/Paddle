@@ -26,8 +26,6 @@ from . import io
 
 __all__ = ['DataFeedDesc', 'AsyncExecutor']
 
-g_scope = core.Scope()
-
 
 class DataFeedDesc(object):
     """
@@ -149,7 +147,7 @@ class DataFeedDesc(object):
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].use = True
 
-    def desc(self):
+    def _desc(self):
         """
         Returns a protobuf message for this DataFeedDesc
 
@@ -282,5 +280,5 @@ class AsyncExecutor(object):
                         (fetch_var.name))
 
         self.executor.run_from_files(program_desc,
-                                     data_feed.desc(), filelist, thread_num,
+                                     data_feed._desc(), filelist, thread_num,
                                      fetch_var_names, debug)
