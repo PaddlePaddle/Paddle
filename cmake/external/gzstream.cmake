@@ -27,13 +27,14 @@ SET(GZSTREAM_INCLUDE_DIR "${GZSTREAM_INSTALL_DIR}/include/" CACHE PATH "gzstream
 
 ExternalProject_Add(
         extern_gzstream
+        DEPENDS zlib
         GIT_REPOSITORY "https://github.com/jacquesqiao/gzstream.git"
         GIT_TAG ""
         PREFIX          ${GZSTREAM_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_IN_SOURCE 1
-        BUILD_COMMAND   make -j8
+        BUILD_COMMAND   make EXTERN_CPPFLAGS="-I${THIRD_PARTY_PATH}/install/zlib/include" EXTERM_LDFLAGS="-L${THIRD_PARTY_PATH}/install/zlib/lib" -j8
         INSTALL_COMMAND mkdir -p ${GZSTREAM_INSTALL_DIR}/lib/ && mkdir -p ${GZSTREAM_INSTALL_DIR}/include/
         && cp ${GZSTREAM_SOURCES_DIR}/src/extern_gzstream/libgzstream.a ${GZSTREAM_INSTALL_DIR}/lib
         && cp -r ${GZSTREAM_SOURCES_DIR}/src/extern_gzstream/gzstream.h ${GZSTREAM_INSTALL_DIR}/include
