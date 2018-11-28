@@ -61,6 +61,7 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
 void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
   std::vector<std::string> passes({
       "ir_graph_build_pass", "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
   });
   for (const auto &pass : passes) {
     VLOG(2) << "Run pass " << pass;
