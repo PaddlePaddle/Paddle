@@ -146,7 +146,7 @@ static void MergeMultipleVarsIntoOneBySection(
         }
       }
     } else {
-      VLOG(30) << "ids in this section is empty";
+      VLOG(3) << "ids in this section is empty";
     }
   }
 }
@@ -184,13 +184,13 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < in_var_names.size(); i++) {
     if (NeedSend(local_scope, in_var_names[i])) {
-      VLOG(30) << "sending " << in_var_names[i] << " to " << epmap[i]
+      VLOG(3) << "sending " << in_var_names[i] << " to " << epmap[i]
                << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
           epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i],
           table_names[i]));
     } else {
-      VLOG(30) << "don't send no-initialied variable: " << out_var_names[i];
+      VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
   }
 
