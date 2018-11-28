@@ -1040,6 +1040,11 @@ HOSTDEVICE inline float16 exp(const float16& a) {
 }
 
 template <>
+HOSTDEVICE inline float16 erf(const float16& a) {
+  return float16(::erff(static_cast<float>(a)));
+}
+
+template <>
 HOSTDEVICE inline float16 log(const float16& a) {
   return float16(::logf(static_cast<float>(a)));
 }

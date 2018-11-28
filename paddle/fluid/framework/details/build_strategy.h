@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -73,6 +73,7 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  int num_trainers_{1};
   bool remove_unnecessary_lock_{false};
 
   bool inplace_optimize_{false};
@@ -100,7 +101,7 @@ struct BuildStrategy {
       const std::string &loss_var_name,
       const std::unordered_set<std::string> &param_names,
       const std::vector<Scope *> &local_scopes,
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
 #else
       const bool use_cuda) const;

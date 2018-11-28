@@ -22,6 +22,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/details/reference_count_pass.h"
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -65,7 +68,7 @@ class ParallelExecutorPrivate {
   Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 
   // ref_cnts_ is only initialized when ParallelExecutor constructs, and then
@@ -122,7 +125,7 @@ ParallelExecutor::ParallelExecutor(
 
   if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     ncclUniqueId *nccl_id = nullptr;
     if (nccl_id_var != nullptr) {
@@ -142,7 +145,7 @@ ParallelExecutor::ParallelExecutor(
 
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
@@ -229,12 +232,12 @@ void ParallelExecutor::BCastParamsToDevices(
 
     auto &main_tensor = main_var->Get<LoDTensor>();
     if (!main_tensor.IsInitialized()) {
-      VLOG(30) << "one in var not inited, return!";
+      VLOG(3) << "one in var not inited, return!";
       continue;
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       std::vector<void *> buffers;
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());

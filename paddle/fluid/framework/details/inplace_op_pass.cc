@@ -214,7 +214,16 @@ std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
         continue;
       }
 
-      inplace_ctx->UpdateModified(var_pair.first, var_pair.second);
+      bool has_multiple_out_var = std::any_of(
+        compute_op->Outputs().begin(), compute_op->Outputs().end(),
+        [out_var] (VarHandleBase *var_base) {
+          auto var = dynamic_cast<VarHandle *>(var_base);
+          return var != nullptr && var != out_var && VarHandleComparator::IsEqual(var, out_var);
+        });
+
+      if (!has_multiple_out_var) {
+        inplace_ctx->UpdateModified(var_pair.first, var_pair.second);
+      }
     }
   }
 

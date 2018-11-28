@@ -214,6 +214,7 @@ if (NOT WIN32)
 # there is no official support of warpctc, nccl, cupti in windows
 include(external/warpctc)   # download, build, install warpctc
 include(cupti)
+include(external/gzstream)
 endif (NOT WIN32)
 
 if(WITH_DISTRIBUTE)

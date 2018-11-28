@@ -122,7 +122,7 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
 
-  /*! The internal of two tensors share the same memory block, buf dims are
+  /*! The internal of two tensors share the same memory block, but dims are
    * different. */
   Tensor& ShareBufferWith(const Tensor& src);
 
