@@ -686,7 +686,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.reset(new ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
 
         // create mkldnn memory from input tensors (data/weights)
-        auto user_src_memory_p =
+        user_src_memory_p =
             handler->AcquireSrcMemory(user_src_md, to_void_cast<T>(input_data));
         auto user_weights_memory_p = handler->AcquireWeightsMemory(
             user_weights_md, to_void_cast<float>(filter_data));
@@ -773,6 +773,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         output->set_layout(DataLayout::kMKLDNN);
         output->set_format(GetMKLDNNFormat(*dst_memory_p));
       } else {
+        if(src_memory_reorder_p){
+          pipeline.push_back(*src_memory_reorder_p);
+        }
         pipeline.push_back(*conv_p);
         stream(stream::kind::eager).submit(pipeline).wait();
       
