@@ -143,21 +143,6 @@ class SelectedRows {
     return make_ddim(dims);
   }
 
-  std::string Info() const {
-    std::stringstream ss;
-    ss << "height:" << height_ << ", rows:[";
-    for (unsigned int i = 0; i < rows_.size(); i++) {
-      if (i != rows_.size() - 1) {
-        ss << rows_[i] << ",";
-      } else {
-        ss << rows_[i];
-      }
-    }
-    ss << "], dims:" << value_->dims();
-
-    return ss.str();
-  }
-
  private:
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
   // SelectedRows are simply concated when adding together. Until a
