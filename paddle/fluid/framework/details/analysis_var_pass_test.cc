@@ -149,7 +149,7 @@ TEST(CFGGraph, IRGraph) {
   ir::Graph graph(prog);
   std::vector<OpDesc*>* all_op_descs =
       new std::vector<OpDesc*>(prog.Block(0).AllOps());
-  graph.Set(ir::kAllOpDescs, all_op_descs);  // take ownership
+  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
 
   ControlFlowGraph cfg(graph);
   cfg.LiveVariableAnalysis();

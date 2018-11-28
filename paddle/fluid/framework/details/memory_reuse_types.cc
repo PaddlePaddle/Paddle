@@ -24,8 +24,7 @@ namespace details {
 size_t GetNodeSize(ir::Node* n) {
   auto* desc = FindVarDescInBlock(n);
   auto shape = desc->GetShape();
-  size_t type_size =
-      framework::SizeOfType(framework::ToTypeIndex(desc->GetDataType()));
+  size_t type_size = SizeOfType(ToTypeIndex(desc->GetDataType()));
   int size = 1;
   for (auto& s : shape) {
     size *= s;

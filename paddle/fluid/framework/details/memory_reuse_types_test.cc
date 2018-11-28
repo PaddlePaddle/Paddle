@@ -29,7 +29,6 @@ namespace details {
 
 TEST(OrderedNodePairPool, Normal) {
   OrderedNodePairPool pool;
-  std::vector<std::unique_ptr<VarDesc>> descs;
   std::vector<std::unique_ptr<ir::Node>> nodes;
 
   // clang-format off
@@ -43,13 +42,17 @@ TEST(OrderedNodePairPool, Normal) {
                                               {-1, 1}};
   // clang-format on
   const int COUNT = shapes.size();
-  std::unique_ptr<ir::Node> op =
-      ir::CreateNodeForTest("op", ir::Node::Type::kOperation);
-  for (int i = 1; i <= COUNT; ++i) {
-    descs.emplace_back(new VarDesc(std::to_string(i)));  // "1"
-    auto& v = descs.back();
-    v->SetShape(shapes[i - 1]);
-    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(v.get());
+  ProgramDesc prog;
+  BlockDesc* block_desc = prog.MutableBlock(0);
+  auto* op_desc = block_desc->AppendOp();
+  op_desc->SetType("dummy");
+  std::unique_ptr<ir::Node> op = ir::CreateNodeForTest(op_desc);
+
+  for (int i = 0; i < COUNT; ++i) {
+    auto desc = block_desc->Var(std::to_string(i));
+    desc->SetShape(shapes[i]);
+    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(desc);
+    node->inputs.emplace_back(op.get());
     nodes.emplace_back(std::move(node));
   }
 
@@ -66,23 +69,26 @@ TEST(OrderedNodePairPool, Normal) {
   ASSERT_EQ(pool.GetPosition(nodes.back().get()), 0);
 
   {
-    VarDesc v1("11");
-    v1.SetShape({-1, 256, 56, 56});
-    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(&v1);
+    auto v1 = block_desc->Var("11");
+    v1->SetShape({-1, 256, 56, 56});
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v1);
+    node1->inputs.emplace_back(op.get());
     auto* cache = pool.NodeMatch(node1.get());
     ASSERT_EQ(cache, nullptr);
   }
   {
-    VarDesc v2("12");
-    v2.SetShape({-1, 2, 5});
-    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(&v2);
+    auto v2 = block_desc->Var("12");
+    v2->SetShape({-1, 2, 5});
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v2);
+    node1->inputs.emplace_back(op.get());
     auto* cache = pool.NodeMatch(node1.get());
     ASSERT_EQ(pool.GetPosition(cache), 2);  // match 6:[-1,2,5]
   }
   {
-    VarDesc v2("13");
-    v2.SetShape({2, 5});
-    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(&v2);
+    auto v3 = block_desc->Var("13");
+    v3->SetShape({2, 5});
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v3);
+    node1->inputs.emplace_back(op.get());
     auto* cache = pool.NodeMatch(node1.get());
     ASSERT_EQ(pool.GetPosition(cache), 5);  // match  4:[5,2]
   }
