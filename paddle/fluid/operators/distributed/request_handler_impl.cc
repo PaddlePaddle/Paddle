@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/framework/util.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/printf.h"
 
