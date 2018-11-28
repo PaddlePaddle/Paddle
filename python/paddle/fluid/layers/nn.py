@@ -7658,13 +7658,13 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
-        x = layers.data(
+            x = layers.data(
                 name="X",
                 shape=[13, 11],
                 dtype='float32',
                 append_batch_size=False)
 
-        out = layers.sampling_id(x)
+            out = layers.sampling_id(x)
     """
 
     helper = LayerHelper('sampling_id', **locals())
@@ -7708,9 +7708,9 @@ def gaussian_random_batch_size_like(input,
     Examples:
         .. code-block:: python
 
-        input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
 
-        out = layers.gaussian_random_batch_size_like(
+            out = layers.gaussian_random_batch_size_like(
                 input, shape=[-1, 11], mean=1.0, std=2.0)
     """
 
