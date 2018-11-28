@@ -26,7 +26,7 @@ void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
-void* GetMiopenDsoHandle();
+void* GetMIOpenDsoHandle();
 void* GetHipblasDsoHandle();
 void* GetHiprandDsoHandle();
 void* GetRCCLDsoHandle();

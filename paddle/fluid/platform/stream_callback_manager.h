@@ -95,8 +95,11 @@ class StreamCallbackManager {
 
   template <typename Callback>
   inline void AddCallback(Callback &&callback) const {
-    AddCallbackWithStreamAndErrorInfo(
-        [=](hipStream_t, hipError_t) { callback(); });
+    auto *stream_callback_context =
+        new StreamCallbackContext(this, std::forward<Callback>(callback));
+    PADDLE_ENFORCE(hipStreamAddCallback(
+        stream_, StreamCallbackManager::StreamCallbackFunc,
+        stream_callback_context, 0));
   }
 
   template <typename Callback>
@@ -123,7 +126,7 @@ class StreamCallbackManager {
     callback_context_ptr->manager_->thread_pool_->enqueue([=]() {
       std::unique_ptr<StreamCallbackContext> callback_context(
           callback_context_ptr);
-      callback_context->callback_(stream, status);
+      callback_context->callback_();
     });
   }
 };

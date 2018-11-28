@@ -235,7 +235,7 @@ void* GetMKLMLDsoHandle() {
 #endif
 }
 
-void* GetMiopenDsoHandle(){
+void* GetMIOpenDsoHandle(){
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.dylib");
 #else

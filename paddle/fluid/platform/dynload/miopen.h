@@ -58,7 +58,7 @@ extern void EnforceMIOPENLoaded(const char* fn_name);
     auto operator()(Args... args) -> decltype(__name(args...)) {           \
       using miopen_func = decltype(&::__name);                              \
       std::call_once(miopen_dso_flag, []() {                                \
-        miopen_dso_handle = paddle::platform::dynload::GetMIOPenDsoHandle(); \
+        miopen_dso_handle = paddle::platform::dynload::GetMIOpenDsoHandle(); \
       });                                                                  \
       EnforceMIOPENLoaded(#__name);                                         \
       void* p_##__name = dlsym(miopen_dso_handle, #__name);                 \

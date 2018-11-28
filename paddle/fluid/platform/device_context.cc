@@ -294,11 +294,15 @@ class EigenHipStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    return paddle::memory::Alloc(place_, num_bytes);
+    auto buf = paddle::memory::Alloc(place_, num_bytes,
+                                     memory::Allocator::kScratchpad);
+    void* retv = buf->ptr();
+    allocations_[buf->ptr()] = std::move(buf);
+    return retv;
   }
 
   void deallocate(void* buffer) const override {
-    paddle::memory::Free(place_, buffer);
+    allocations_.erase(allocations_.find(buffer));
   }
 
   void* scratchpad() const override {
@@ -321,10 +325,11 @@ class EigenHipStreamDevice : public Eigen::StreamInterface {
 
  private:
   CUDAPlace place_;
-  const hipStream_t* stream_;         // not owned;
+  const hipStream_t* stream_;           // not owned;
   const hipDeviceProp_t* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
+  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {

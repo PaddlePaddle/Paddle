@@ -13,8 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 
 namespace paddle {
 namespace memory {
@@ -22,7 +27,12 @@ namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::Free(Allocation *allocation) {
   PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUPinnedAllocation *>(allocation));
+#ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
+#endif
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE(hipHostFree(allocation->ptr()));
+#endif
   delete allocation;
 }
 Allocation *CPUPinnedAllocator::AllocateImpl(size_t size,
@@ -32,7 +42,12 @@ Allocation *CPUPinnedAllocator::AllocateImpl(size_t size,
   //    "CPUPinnedAllocator should be used for Cross-Device Communication");
 
   void *ptr;
+#ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE(cudaMallocHost(&ptr, size));
+#endif
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE(hipHostMalloc(&ptr, size));
+#endif
   return new CPUPinnedAllocation(ptr, size);
 }
 }  // namespace allocation
