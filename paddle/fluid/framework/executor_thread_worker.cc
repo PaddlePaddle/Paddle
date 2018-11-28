@@ -13,17 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <sstream>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -102,7 +91,9 @@ void ExecutorThreadWorker::SetFetchVarNames(
 }
 
 void ExecutorThreadWorker::SetDevice() {
-#ifndef _WIN32
+#if defined _WIN32 || defined __APPLE__
+  return;
+#else
   static unsigned concurrency_cap = std::thread::hardware_concurrency();
   int thread_id = this->thread_id_;
 
