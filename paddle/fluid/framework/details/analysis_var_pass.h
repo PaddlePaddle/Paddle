@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -36,7 +38,8 @@ class AnalysisVarPass : public ir::Pass {
                             const std::string& cache_var, size_t idx) const;
   // update ir nodes
   void RenameVarInGraphNode(const std::string& var,
-                            const std::string& cache_var, size_t idx) const;
+                            const std::string& cache_var, size_t idx,
+                            ir::Graph* graph) const;
   // valid a tensor can be reuse or not
   bool NodeCanReused(ir::Node* node) const;
   // scan subblock and collect the output variables.
@@ -54,6 +57,8 @@ class AnalysisVarPass : public ir::Pass {
   mutable details::ControlFlowGraph cfg_;
   // skip set
   mutable std::unordered_set<std::string> skip_set_;
+  // var nodes
+  mutable std::map<std::string, std::vector<ir::Node*>> var_nodes_;
 };
 
 }  // namespace details
