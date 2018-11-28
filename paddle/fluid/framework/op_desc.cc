@@ -237,6 +237,17 @@ void OpDesc::SetOutput(const std::string &param_name,
   this->outputs_[param_name] = args;
 }
 
+bool OpDesc::HasAttr(const std::string &name) const {
+  const proto::OpProto &proto = OpInfoMap::Instance().Get(desc_.type()).Proto();
+  for (int i = 0; i != proto.attrs_size(); ++i) {
+    const proto::OpProto::Attr &attr = proto.attrs(i);
+    if (attr.name() == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
