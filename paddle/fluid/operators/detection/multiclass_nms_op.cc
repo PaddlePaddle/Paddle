@@ -360,6 +360,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* scores = ctx.Input<LoDTensor>("Scores");
     auto* im_info = ctx.Input<LoDTensor>("ImInfo");
     auto* outs = ctx.Output<LoDTensor>("Out");
+    bool use_scale = ctx.Attr<bool>("use_scale");
     bool use_clip = ctx.Attr<bool>("use_clip");
 
     auto score_dims = scores->dims();
@@ -397,6 +398,9 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         Tensor im_info_slice = im_info->Slice(i, i + 1);
         Tensor boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
         Tensor scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
+        if (use_scale) {
+          ScaleBoxes<T>(dev_ctx, im_info_slice, &boxes_slice);
+        }
         if (use_clip) {
           ClipTiledBoxes<T>(dev_ctx, im_info_slice, &boxes_slice);
         }
@@ -504,6 +508,10 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Whether detections are normalized.")
         .SetDefault(true);
+    AddAttr<bool>("use_scale",
+                  "(bool, default false) "
+                  "Whether detections are scaled to images.")
+        .SetDefault(false);
     AddAttr<bool>("use_clip",
                   "(bool, default false) "
                   "Whether detections are cliped to images.")

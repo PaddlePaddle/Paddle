@@ -119,19 +119,37 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         T target_box_center_x = 0, target_box_center_y = 0;
         T target_box_width = 0, target_box_height = 0;
         if (prior_box_var) {
-          target_box_center_x = prior_box_var_data[j * len] *
-                                    target_box_data[offset] * prior_box_width +
-                                prior_box_center_x;
-          target_box_center_y = prior_box_var_data[j * len + 1] *
-                                    target_box_data[offset + 1] *
-                                    prior_box_height +
-                                prior_box_center_y;
-          target_box_width = std::exp(prior_box_var_data[j * len + 2] *
-                                      target_box_data[offset + 2]) *
-                             prior_box_width;
-          target_box_height = std::exp(prior_box_var_data[j * len + 3] *
-                                       target_box_data[offset + 3]) *
-                              prior_box_height;
+          if (prior_box_var->dims().size() == 1) {
+            target_box_center_x = prior_box_var_data[0] *
+                                      target_box_data[offset] *
+                                      prior_box_width +
+                                  prior_box_center_x;
+            target_box_center_y = prior_box_var_data[1] *
+                                      target_box_data[offset + 1] *
+                                      prior_box_height +
+                                  prior_box_center_y;
+            target_box_width =
+                std::exp(prior_box_var_data[2] * target_box_data[offset + 2]) *
+                prior_box_width;
+            target_box_height =
+                std::exp(prior_box_var_data[3] * target_box_data[offset + 3]) *
+                prior_box_height;
+          } else {
+            target_box_center_x = prior_box_var_data[j * len] *
+                                      target_box_data[offset] *
+                                      prior_box_width +
+                                  prior_box_center_x;
+            target_box_center_y = prior_box_var_data[j * len + 1] *
+                                      target_box_data[offset + 1] *
+                                      prior_box_height +
+                                  prior_box_center_y;
+            target_box_width = std::exp(prior_box_var_data[j * len + 2] *
+                                        target_box_data[offset + 2]) *
+                               prior_box_width;
+            target_box_height = std::exp(prior_box_var_data[j * len + 3] *
+                                         target_box_data[offset + 3]) *
+                                prior_box_height;
+          }
         } else {
           target_box_center_x =
               target_box_data[offset] * prior_box_width + prior_box_center_x;

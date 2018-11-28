@@ -94,6 +94,16 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
 }
 
 template <class T>
+void ScaleBoxes(const platform::DeviceContext& ctx,
+                const framework::Tensor& im_info, framework::Tensor* boxes) {
+  T* boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
+  const T* im_info_data = im_info.data<T>();
+  for (int64_t i = 0; i < boxes->numel(); ++i) {
+    boxes_data[i] = boxes_data[i] / im_info_data[2];
+  }
+}
+
+template <class T>
 void ClipTiledBoxes(const platform::DeviceContext& ctx,
                     const framework::Tensor& im_info,
                     framework::Tensor* boxes) {

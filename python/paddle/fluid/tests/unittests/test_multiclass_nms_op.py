@@ -178,6 +178,7 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
         score = scores[head:head + box_lod[0][n]]
         im_shape = im_info[n][:2]
         head = head + box_lod[0][n]
+        box = box / im_info[n][2]
         box = clip_tiled_boxes(box, im_shape)
         nmsed_outs, nmsed_num = multiclass_nms(
             box,
@@ -350,6 +351,7 @@ class TestMulticlassNMSLoDInput(OpTest):
             'score_threshold': score_threshold,
             'nms_eta': 1.0,
             'normalized': normalized,
+            'use_scale': True,
             'use_clip': True
         }
 
