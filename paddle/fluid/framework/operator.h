@@ -74,6 +74,31 @@ namespace details {
 class InplaceOpPass;
 }  // namespace details
 
+class OperatorInplaceContext {
+ public:
+  using NonModifiedInplaceVarMap =
+      std::unordered_map<std::string, std::unordered_set<std::string>>;
+
+  using ModifiedInplaceVarMap = std::unordered_map<std::string, std::string>;
+
+  bool CanNonModifiedInplace(const std::string& in_name,
+                             const std::string& out_name) const;
+
+  bool CanModifiedInplace(const std::string& in_name,
+                          const std::string& out_name) const;
+
+ private:
+  void ClearNonModified();
+  void ClearModified();
+  void UpdateNonModified(const std::string& in_name,
+                         const std::string& out_name);
+  void UpdateModified(const std::string& in_name, const std::string& out_name);
+
+  friend class details::InplaceOpPass;
+  NonModifiedInplaceVarMap non_modified_m_;
+  ModifiedInplaceVarMap modified_m_;
+};
+
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -149,14 +174,28 @@ class OperatorBase {
   bool run_by_executor_{true};
 
  public:
-  bool TryInplaceWithNoChange(const std::string& in, const Tensor& in_tensor,
-                              const std::string& out, Tensor* out_tensor) const;
-  using InplaceWithNoChangeMap =
-      std::unordered_map<std::string, std::vector<std::string>>;
+  // WARN(zjl): User should guarantee that `out` would not be modified inside op
+  // after calling this method
+  // Otherwise, numeric results are incorrect
+  // This method can be called inside reshape_op, flatten_op,
+  // elementwise_add_grad_op, etc...
+  bool TryNonModifiedInplaceTensor(const Scope& scope, const std::string& in,
+                                   const std::string& out) const;
+  // WARN(zjl): User should call this method if he wants to modify `out` after
+  // inplace sharing
+  // e.g.: some activation_ops (relu, scale, etc)tivation_ops (relu, scale, etc)
+  bool TryModifiedInplaceTensor(const Scope& scope, const std::string& in,
+                                const std::string& out) const;
 
  protected:
-  virtual InplaceWithNoChangeMap GetInplaceWithNoChangeMap() const {
-    return InplaceWithNoChangeMap();
+  using NonModifiedInplaceVarMap =
+      std::unordered_map<std::string, std::vector<std::string>>;
+  using ModifiedInplaceVarMap = std::unordered_map<std::string, std::string>;
+  virtual NonModifiedInplaceVarMap GetNonModifiedInplaceVarMap() const {
+    return NonModifiedInplaceVarMap();
+  }
+  virtual ModifiedInplaceVarMap GetModifiedInplaceVarMap() const {
+    return ModifiedInplaceVarMap();
   }
 
  private:
@@ -166,16 +205,9 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 
   // NOTE(zjl): the following members should not be visited except in
-  // details::InplaceOpPass
-  void ClearInplaceWithNoChangeMap();
-  void UpdateInplaceWithNoChangeMap(const std::string& in_name,
-                                    const std::string& out_name);
-  bool CanInplaceWithNoChange(const std::string& in_name,
-                              const std::string& out_name) const;
-
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      inplace_with_no_change_map_;
-
+  // details::InplaceOpPass. Never make them public or protected
+  OperatorInplaceContext inplace_context_;
+  OperatorInplaceContext* InplaceContext() { return &inplace_context_; }
   friend class details::InplaceOpPass;
 };
 
@@ -187,8 +219,11 @@ class ExecutionContext {
 
   const OperatorBase& op() const { return op_; }
 
-  bool TryInplaceWithNoChange(const std::string& in,
-                              const std::string& out) const;
+  bool TryNonModifiedInplaceTensor(const std::string& in,
+                                   const std::string& out) const;
+
+  bool TryModifiedInplaceTensor(const std::string& in,
+                                const std::string& out) const;
 
   const Scope& scope() const { return scope_; }
 

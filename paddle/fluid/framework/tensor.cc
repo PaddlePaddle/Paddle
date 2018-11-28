@@ -73,6 +73,7 @@ Tensor& Tensor::ShareBufferWith(const Tensor& src) {
   format_ = src.format_;
 #endif
   holder_ = src.holder_;
+  type_ = src.type_;
   layout_ = src.layout_;
   offset_ = src.offset_;
   return *this;

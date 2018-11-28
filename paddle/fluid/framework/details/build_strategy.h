@@ -75,6 +75,8 @@ struct BuildStrategy {
 
   bool remove_unnecessary_lock_{false};
 
+  bool inplace_optimize_{false};
+
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
   // with other strategy. If not, the strategy should be created through

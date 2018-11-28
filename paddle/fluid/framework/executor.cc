@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#include "paddle/fluid/framework/garbage_collector.h"
+
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
 DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
@@ -37,16 +39,53 @@ namespace {
 int kProgramId = -1;
 }  // namespace
 
+static std::unordered_map<std::string, int> GetNonPersistableReferenceCount(
+    const ProgramDesc& prog, size_t block_id) {
+  auto& block = prog.Block(block_id);
+  std::unordered_map<std::string, int> ref_cnts;
+
+  auto update_ref_cnts = [&](OpDesc* op_desc, const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto* var_desc = block.FindVar(name);
+        if (var_desc == nullptr || var_desc->Persistable()) continue;
+        auto type = var_desc->Proto()->type().type();
+        if (type != proto::VarType::LOD_TENSOR &&
+            type != proto::VarType::SELECTED_ROWS) {
+          continue;
+        }
+
+        auto it = ref_cnts.find(name);
+        if (it != ref_cnts.end()) {
+          ++it->second;
+        } else {
+          ref_cnts[name] = 1;
+        }
+      }
+    }
+  };
+
+  for (auto op_desc : block.AllOps()) {
+    update_ref_cnts(op_desc, op_desc->Inputs());
+    update_ref_cnts(op_desc, op_desc->Outputs());
+  }
+  return ref_cnts;
+}
+
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
     : prog_(prog), block_id_(block_id) {
   if (GetEagerDeletionThreshold() >= 0) {
-    ref_cnts_ = GetNonPersistableReferenceCount<int>(prog_, block_id_);
+    ref_cnts_ = GetNonPersistableReferenceCount(prog_, block_id_);
   }
 }
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(50) << "destroy ExecutorPrepareContext";
+}
+
+void ExecutorPrepareContext::ResetReferenceCount() {
+  cur_ref_cnts_ = ref_cnts_;
 }
 
 template <typename RefCntMap>

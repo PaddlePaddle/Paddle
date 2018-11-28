@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <memory>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -34,6 +34,9 @@ class OpGraphView {
 
   bool HasOp(OpHandleBase *op) const;
 
+  template <typename Callback>
+  void VisitAllPendingOps(OpHandleBase *op, Callback &&callback) const;
+
  private:
   void Build(const std::vector<OpHandleBase *> &ops);
   void EnforceHasOp(OpHandleBase *op) const;
@@ -43,6 +46,26 @@ class OpGraphView {
   std::unordered_map<OpHandleBase *, std::unordered_set<OpHandleBase *>>
       pending_ops_;
 };
+
+template <typename Callback>
+void OpGraphView::VisitAllPendingOps(OpHandleBase *op,
+                                     Callback &&callback) const {
+  EnforceHasOp(op);
+  std::queue<OpHandleBase *> q;
+  q.push(op);
+  std::unordered_set<OpHandleBase *> ret;
+  do {
+    op = q.front();
+    q.pop();
+    for (auto &pending_op : pending_ops_.at(op)) {
+      if (ret.count(pending_op) == 0) {
+        ret.insert(pending_op);
+        callback(pending_op);
+        q.push(op);
+      }
+    }
+  } while (!q.empty());
+}
 
 }  // namespace details
 }  // namespace framework

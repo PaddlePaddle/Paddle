@@ -157,9 +157,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::RecordEvent record_event(Type(), pool.Get(place));
     RunImpl(scope, place);
-  } else
+  } else  // NOLINT
 #endif
-  {
+  {  // NOLINT
     RunImpl(scope, place);
   }
   VLOG(30) << place << " " << DebugStringEx(&scope);
@@ -358,32 +358,80 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
-void OperatorBase::ClearInplaceWithNoChangeMap() {
-  inplace_with_no_change_map_.clear();
+void OperatorInplaceContext::ClearNonModified() { non_modified_m_.clear(); }
+
+void OperatorInplaceContext::ClearModified() { modified_m_.clear(); }
+
+void OperatorInplaceContext::UpdateNonModified(const std::string& in_name,
+                                               const std::string& out_name) {
+  non_modified_m_[in_name].insert(out_name);
 }
 
-void OperatorBase::UpdateInplaceWithNoChangeMap(const std::string& in_name,
-                                                const std::string& out_name) {
-  inplace_with_no_change_map_[in_name].insert(out_name);
+void OperatorInplaceContext::UpdateModified(const std::string& in_name,
+                                            const std::string& out_name) {
+  modified_m_[in_name] = out_name;
 }
 
-bool OperatorBase::CanInplaceWithNoChange(const std::string& in_name,
-                                          const std::string& out_name) const {
-  auto it = inplace_with_no_change_map_.find(in_name);
-  if (it != inplace_with_no_change_map_.end()) {
-    return it->second.count(out_name) != 0;
+bool OperatorInplaceContext::CanNonModifiedInplace(
+    const std::string& in_name, const std::string& out_name) const {
+  auto it = non_modified_m_.find(in_name);
+  return it != non_modified_m_.end() && it->second.count(out_name) != 0;
+}
+
+bool OperatorInplaceContext::CanModifiedInplace(
+    const std::string& in_name, const std::string& out_name) const {
+  auto it = modified_m_.find(in_name);
+  return it != modified_m_.end() && it->second == out_name;
+}
+
+static inline const Tensor* FindInputTensor(const OperatorBase& op,
+                                            const Scope& scope,
+                                            const std::string& in) {
+  auto ipt = op.Input(in);
+  if (ipt == kEmptyVarName) return nullptr;
+  auto* in_var = scope.FindVar(ipt);
+  if (in_var == nullptr) return nullptr;
+  return GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
+}
+
+static inline Tensor* FindOutputTensor(const OperatorBase& op,
+                                       const Scope& scope,
+                                       const std::string& out) {
+  auto opt = op.Output(out);
+  if (opt == kEmptyVarName) return nullptr;
+  auto* out_var = scope.FindVar(opt);
+  if (out_var == nullptr) return nullptr;
+  return GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
+}
+
+bool OperatorBase::TryNonModifiedInplaceTensor(const Scope& scope,
+                                               const std::string& in,
+                                               const std::string& out) const {
+  auto* in_tensor = FindInputTensor(*this, scope, in);
+  auto* out_tensor = FindOutputTensor(*this, scope, out);
+  if (in_tensor == nullptr || out_tensor == nullptr) return false;
+  if (inplace_context_.CanNonModifiedInplace(in, out) &&
+      in_tensor->numel() == out_tensor->numel()) {
+    out_tensor->ShareBufferWith(*in_tensor);
+    VLOG(10) << "Non-modified inplace share buffer between Input(" << in
+             << ") -> Output(" << out << ") inside operator: " << DebugString();
+    return true;
   } else {
     return false;
   }
 }
 
-bool OperatorBase::TryInplaceWithNoChange(const std::string& in,
-                                          const Tensor& in_tensor,
-                                          const std::string& out,
-                                          Tensor* out_tensor) const {
-  if (CanInplaceWithNoChange(in, out) &&
-      in_tensor.numel() == out_tensor->numel()) {
-    out_tensor->ShareBufferWith(in_tensor);
+bool OperatorBase::TryModifiedInplaceTensor(const Scope& scope,
+                                            const std::string& in,
+                                            const std::string& out) const {
+  auto* in_tensor = FindInputTensor(*this, scope, in);
+  auto* out_tensor = FindOutputTensor(*this, scope, out);
+  if (in_tensor == nullptr || out_tensor == nullptr) return false;
+  if (inplace_context_.CanModifiedInplace(in, out) &&
+      in_tensor->numel() == out_tensor->numel()) {
+    out_tensor->ShareBufferWith(*in_tensor);
+    VLOG(10) << "Modified inplace share buffer between Input(" << in
+             << ") -> Output(" << out << ") inside operator: " << DebugString();
     return true;
   } else {
     return false;
@@ -496,16 +544,14 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   return res;
 }
 
-bool ExecutionContext::TryInplaceWithChange(const std::string& in,
-                                            const std::string& out) const {
-  return op_.TryInplaceWithChange(in, *Input<Tensor>(in), out,
-                                  Output<Tensor>(out));
+bool ExecutionContext::TryModifiedInplaceTensor(const std::string& in,
+                                                const std::string& out) const {
+  return op_.TryModifiedInplaceTensor(scope_, in, out);
 }
 
-bool ExecutionContext::TryInplaceWithNoChange(const std::string& in,
-                                              const std::string& out) const {
-  return op_.TryInplaceWithNoChange(in, *Input<Tensor>(in), out,
-                                    Output<Tensor>(out));
+bool ExecutionContext::TryNonModifiedInplaceTensor(
+    const std::string& in, const std::string& out) const {
+  return op_.TryNonModifiedInplaceTensor(scope_, in, out);
 }
 
 bool OpSupportGPU(const std::string& op_type) {

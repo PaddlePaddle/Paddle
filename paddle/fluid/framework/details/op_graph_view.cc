@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/op_graph_view.h"
-#include <queue>
-#include <utility>
 
 namespace paddle {
 namespace framework {

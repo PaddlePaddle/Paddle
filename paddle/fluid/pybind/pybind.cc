@@ -849,7 +849,9 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
-          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, the execution order of ops 
+                would be the same as what is in the program. Default 
+                False.)DOC")
       .def_property(
           "remove_unnecessary_lock",
           [](const BuildStrategy &self) {
@@ -859,7 +861,19 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would 
+                be released and ParallelExecutor would run faster. Default 
+                False.)DOC")
+      .def_property(
+          "_inplace_optimize",
+          [](const BuildStrategy &self) { return self.inplace_optimize_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.inplace_optimize_ = b;
+          },
+          R"DOC(The type is BOOL. If set True, possible inplace operations in
+                some operators (e.g. reshape_op) would be enabled. Default
+                False.)DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

@@ -22,13 +22,12 @@ namespace framework {
 namespace details {
 
 /*
- * There are two kinds of in-place operation:
- * 1. In-place without modifying data: such as reshape_op
- * 2. In-place with modifying data: such as activation_ops when output
- *    shares data with input
+ * TODO(zjl): currently, we only consider two situation that output can
+ * share memory with input, that is:
+ *  - Input is never written after sharing, e.g. reshape_op, flatten_op
+ *  - Input never appear after sharing, e.g. activation_ops (relu, scale...)
  *
- * Currently, we only consider the 1st situtaion.
- * TODO(zjl): The 2nd situation should be considered too in the near future.
+ * In fact, more situations should be concerned, but more complicated.
  */
 class InplaceOpPass : public ir::Pass {
  protected:

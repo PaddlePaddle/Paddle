@@ -39,8 +39,6 @@ struct ComputationOpHandle : public OpHandleBase {
 
   size_t GetScopeIdx() const { return scope_idx_; }
 
-  const OperatorBase &GetOp() const { return *op_; }
-
   OperatorBase &GetOp() { return *op_; }
 
   void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }

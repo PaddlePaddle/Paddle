@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/inplace_op_pass.h"
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/op_handle_graph.h"
+#include "paddle/fluid/framework/details/op_graph_view.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +29,8 @@ namespace details {
 
 static VarHandle *FindUniqueInOutByVarName(ComputationOpHandle *op,
                                            const std::string &name,
-                                           bool is_input) {
+                                           bool is_input,
+                                           bool skip_persistable) {
   const std::string in_out_str = (is_input ? "inputs" : "outputs");
   std::string argument_name;
   if (is_input) {
@@ -62,140 +64,160 @@ static VarHandle *FindUniqueInOutByVarName(ComputationOpHandle *op,
   PADDLE_ENFORCE_NOT_NULL(
       ret, "Cannot find %s with name %s(%s) in op %s(%d): %s", in_out_str, name,
       argument_name, op->Name(), op->GetScopeIdx(), op->DebugString());
-  return ret->Node()->Var()->Persistable() ? nullptr : ret;
+  if (skip_persistable && ret->Node()->Var()->Persistable()) {
+    return nullptr;
+  } else {
+    return ret;
+  }
 }
 
 static VarHandle *FindUniqueInputByVarName(ComputationOpHandle *op,
-                                           const std::string &name) {
-  return FindUniqueInOutByVarName(op, name, true);
+                                           const std::string &name,
+                                           bool skip_persistable = false) {
+  return FindUniqueInOutByVarName(op, name, true, skip_persistable);
 }
 
 static VarHandle *FindUniqueOutputByVarName(ComputationOpHandle *op,
-                                            const std::string &name) {
-  return FindUniqueInOutByVarName(op, name, false);
+                                            const std::string &name,
+                                            bool skip_persistable = false) {
+  return FindUniqueInOutByVarName(op, name, false, skip_persistable);
 }
 
-struct ReadWriteCounter {
-  inline void Add(const ReadWriteCounter &other) {
-    read_cnt_ += other.read_cnt_;
-    write_cnt_ += other.write_cnt_;
+struct VarHandleComparator {
+  bool operator()(const VarHandle *var1, const VarHandle *var2) const {
+    return var1->scope_idx_ != var2->scope_idx_
+               ? var1->scope_idx_ < var2->scope_idx_
+               : var1->name_ < var2->name_;
   }
 
-  inline bool NoReadWrite() const { return read_cnt_ == 0 && write_cnt_ == 0; }
-
-  inline bool OnlyWrite() const { return read_cnt_ == 0 && write_cnt_ > 0; }
-
-  inline bool NoRead() const { return read_cnt_ == 0; }
-
-  inline bool NoWrite() const { return write_cnt_ == 0; }
-
-  size_t read_cnt_{0};
-  size_t write_cnt_{0};
+  static bool IsEqual(const VarHandle *var1, const VarHandle *var2) {
+    return var1->scope_idx_ == var2->scope_idx_ && var1->name_ == var2->name_;
+  }
 };
 
-static void UpdateReadWriteCounter(
-    OpHandleBase *op,
-    std::unordered_map<
-        size_t, std::unordered_map<std::string, ReadWriteCounter>> *counters) {
-  auto update_handle = [op, counters](VarHandleBase *var_base, bool is_input) {
-    auto *var = dynamic_cast<VarHandle *>(var_base);
-    if (var == nullptr) return;
-    if (counters->count(var->scope_idx_) &&
-        counters->at(var->scope_idx_).count(var->name_)) {
-      auto &cnt = counters->at(var->scope_idx_).at(var->name_);
-      is_input ? ++cnt.read_cnt_ : ++cnt.write_cnt_;
+// Return read times or written times after var->GeneratedOp()
+static std::pair<int, int> ReadWriteTimes(
+    VarHandle *var, const OpGraphView &graph,
+    const std::vector<OpHandleBase *> &all_ops) {
+  std::pair<int, int> ret{0, 0};
+
+  auto visitor = [&](OpHandleBase *pending_op) {
+    for (auto *in : pending_op->Inputs()) {
+      auto *in_var = dynamic_cast<VarHandle *>(in);
+      if (in_var != nullptr && VarHandleComparator::IsEqual(in_var, var)) {
+        VLOG(8) << "Read " << in_var->name_ << " in " << pending_op->Name();
+        ++ret.first;
+        break;
+      }
+    }
+
+    for (auto *out : pending_op->Outputs()) {
+      auto *out_var = dynamic_cast<VarHandle *>(out);
+      if (out_var != nullptr && VarHandleComparator::IsEqual(out_var, var)) {
+        VLOG(8) << "Write " << out_var->name_ << " in " << pending_op->Name();
+        ++ret.second;
+        break;
+      }
     }
   };
 
-  for (auto *in : op->Inputs()) {
-    update_handle(in, true);
+  if (var->GeneratedOp()) {
+    graph.VisitAllPendingOps(var->GeneratedOp(), visitor);
+  } else {
+    std::for_each(all_ops.begin(), all_ops.end(), visitor);
   }
-
-  for (auto *out : op->Outputs()) {
-    update_handle(out, false);
-  }
+  return ret;
 }
 
 std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
     std::unique_ptr<ir::Graph> ir_graph) const {
-  auto &all_ops = ir_graph->Get<GraphOps>(kGraphOps);
-  OpHandleGraph graph(all_ops);
+  const auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*ir_graph);
+  const OpGraphView graph(all_ops);
+
+  auto has_no_write = [&](VarHandle *var) -> bool {
+    auto rw_times = ReadWriteTimes(var, graph, all_ops);
+    VLOG(10) << var->name_ << " reads " << rw_times.first << " time(s), writes "
+             << rw_times.second << " time(s)";
+    return rw_times.second == 0;
+  };
+
+  std::set<VarHandle *, VarHandleComparator> non_modified_inplace_vars;
+
   for (auto &op : all_ops) {
-    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op.get());
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
     if (compute_op == nullptr) continue;
-    auto &op_base = compute_op->GetOp();
-    op_base.ClearInplaceWithNoChangeMap();
-    auto possible_in_out = op_base.GetInplaceWithNoChangeMap();
-    for (auto &pair : possible_in_out) {
-      const auto &in_name = pair.first;
-      auto *in_var = FindUniqueInputByVarName(compute_op, in_name);
-      if (in_var == nullptr) continue;
-      std::vector<VarHandle *> out_vars;
-      std::vector<std::string> out_names;
-      out_vars.reserve(pair.second.size());
-      out_names.reserve(pair.second.size());
-      for (auto &out_name : pair.second) {
-        auto *out_var = FindUniqueOutputByVarName(compute_op, out_name);
-        if (out_var == nullptr) continue;
-        if (in_var->scope_idx_ != out_var->scope_idx_ ||
-            in_var->name_ != out_var->name_) {
-          out_vars.push_back(out_var);
-          out_names.push_back(out_name);
+    OperatorBase &op_base = compute_op->GetOp();
+    auto *inplace_ctx = op_base.InplaceContext();
+    // std::string -> std::vector<std::string>
+    auto inplace_var_map = op_base.GetNonModifiedInplaceVarMap();
+    inplace_ctx->ClearNonModified();
+    for (auto &var_pair : inplace_var_map) {
+      VarHandle *in_var = FindUniqueInputByVarName(compute_op, var_pair.first);
+      // Condition: in_var cannot be written afterwards
+      if (in_var == nullptr || !has_no_write(in_var)) continue;
+
+      std::set<VarHandle *, VarHandleComparator> out_vars_set;
+      std::vector<std::string> can_inplace_vars;
+      std::unordered_map<std::string, VarHandle *> out_var_name_handle_map;
+      for (auto &out_var_name : var_pair.second) {
+        VarHandle *out_var =
+            FindUniqueOutputByVarName(compute_op, out_var_name);
+        if (out_var != nullptr && out_vars_set.count(out_var) == 0 &&
+            has_no_write(out_var)) {
+          can_inplace_vars.push_back(out_var_name);
+          out_var_name_handle_map[out_var_name] = out_var;
         }
       }
 
-      if (out_vars.empty()) continue;
-
-      std::unordered_map<size_t,
-                         std::unordered_map<std::string, ReadWriteCounter>>
-          counters;
-      // init counters
-      auto &in_counter = counters[in_var->scope_idx_][in_var->name_];
-      for (auto &out_var : out_vars) {
-        counters[out_var->scope_idx_][out_var->name_];
+      if (!can_inplace_vars.empty()) {
+        non_modified_inplace_vars.insert(in_var);
       }
 
-      // Find the op which generates Input(in_name)
-      auto *generated_op = in_var->GeneratedOp();
-      if (generated_op != nullptr) {
-        auto pending_ops = graph.AllPendingOps(generated_op);
-        for (auto &each_level_ops : pending_ops) {
-          for (auto *pending_op : each_level_ops) {
-            if (pending_op == op.get()) continue;  // skip current op
-            UpdateReadWriteCounter(pending_op, &counters);
-          }
-        }
-      } else {
-        // FIXME(zjl): maybe pretty slow when generated_op is nullptr
-        for (auto &tmp_op : all_ops) {
-          if (tmp_op.get() == op.get()) continue;
-          if (auto *tmp_compute_op =
-                  dynamic_cast<ComputationOpHandle *>(op.get())) {
-            UpdateReadWriteCounter(tmp_compute_op, &counters);
-          }
-        }
-      }
-
-      for (size_t i = 0; i < out_vars.size(); ++i) {
-        auto *out_var = out_vars[i];
-        auto &out_counter = counters[out_var->scope_idx_][out_var->name_];
-        /*
-        if ((in_counter.NoWrite() && out_counter.NoWrite()) ||
-            (in_counter.NoReadWrite() && out_counter.OnlyWrite()) ||
-            (in_counter.OnlyWrite() && out_counter.NoReadWrite())) {
-        */
-        if ((in_counter.NoWrite() && out_counter.NoWrite()) ||
-            in_counter.NoReadWrite()) {
-          // can inplace share without change
-          VLOG(10) << "Inplace enabled: " << out_names[i] << " shares "
-                   << in_name << " in op: " << op_base.DebugString()
-                   << " of scope_idx = " << compute_op->GetScopeIdx();
-          op_base.UpdateInplaceWithNoChangeMap(in_name, out_names[i]);
-          in_counter.Add(out_counter);
-        }
+      for (size_t i = 0; i < can_inplace_vars.size(); ++i) {
+        const std::string &in_var_name = var_pair.first;
+        const std::string &out_var_name = can_inplace_vars[i];
+        inplace_ctx->UpdateNonModified(in_var_name, out_var_name);
+        VLOG(10) << "Maybe non-modified inplace share buffer between Input("
+                 << in_var_name << ") -> Output(" << out_var_name
+                 << ") inside operator: " << op_base.DebugString();
+        non_modified_inplace_vars.insert(
+            out_var_name_handle_map.at(out_var_name));
       }
     }
   }
+
+  auto do_not_appear = [&](VarHandle *var) -> bool {
+    auto rw_times = ReadWriteTimes(var, graph, all_ops);
+    VLOG(10) << var->name_ << " reads " << rw_times.first << " time(s), writes "
+             << rw_times.second << " time(s)";
+    return rw_times.first <= 1 && rw_times.second == 0;
+  };
+
+  for (auto &op : all_ops) {
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
+    if (compute_op == nullptr) continue;
+    OperatorBase &op_base = compute_op->GetOp();
+    auto *inplace_ctx = op_base.InplaceContext();
+    auto inplace_var_map = op_base.GetModifiedInplaceVarMap();
+    inplace_ctx->ClearModified();
+    for (auto &var_pair : inplace_var_map) {
+      VarHandle *in_var =
+          FindUniqueInputByVarName(compute_op, var_pair.first, true);
+      if (in_var == nullptr || non_modified_inplace_vars.count(in_var) ||
+          !do_not_appear(in_var)) {
+        continue;
+      }
+
+      VarHandle *out_var =
+          FindUniqueOutputByVarName(compute_op, var_pair.second);
+      if (out_var == nullptr || non_modified_inplace_vars.count(out_var)) {
+        continue;
+      }
+
+      inplace_ctx->UpdateModified(var_pair.first, var_pair.second);
+    }
+  }
+
   return ir_graph;
 }
 
