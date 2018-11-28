@@ -36,7 +36,7 @@ add_subdirectory(details)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
 
-cc_library(util SRCS util.cc)
+cc_library(util SRCS util.cc DEPS framework_proto)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
