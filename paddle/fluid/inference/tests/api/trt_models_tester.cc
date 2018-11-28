@@ -133,11 +133,6 @@ TEST(TensorRT_resnext50, compare) {
   compare(model_dir, /* use_tensorrt */ true);
 }
 
-TEST(trt, profile) {
-  std::string model_dir = FLAGS_infer_model;
-  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
-}
-
 TEST(TensorRT_mobilenet, analysis) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
   compare(model_dir, /* use_tensorrt */ false);
