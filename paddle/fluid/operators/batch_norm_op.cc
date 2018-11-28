@@ -447,16 +447,12 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    d_x->mutable_data<T>(ctx.GetPlace());
-    if ((N * sample_size) == 1 && !use_global_stats) {
-      framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
-      return;
-    }
-
     // init output
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    d_x->mutable_data<T>(ctx.GetPlace());
 
     const T *mean_data = saved_mean->data<T>();
     const T *inv_var_data = saved_inv_variance->data<T>();
@@ -496,6 +492,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     if (d_scale && d_bias) {
       d_bias_arr.setZero();
       d_scale_arr.setZero();
+    }
+
+    if ((N * sample_size) == 1 && !use_global_stats) {
+      framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+      return;
     }
 
     int scale_coefff = use_global_stats ? 1 : N * sample_size;
