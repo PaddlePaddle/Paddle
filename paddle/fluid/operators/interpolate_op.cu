@@ -284,9 +284,15 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(interpolate, ops::InterpolateOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(bilinear_interp, ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
-REGISTER_OP_CUDA_KERNEL(interpolate_grad,
+REGISTER_OP_CUDA_KERNEL(bilinear_interp_grad,
+                        ops::InterpolateGradOpCUDAKernel<float>,
+                        ops::InterpolateGradOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(nearest_interp, ops::InterpolateOpCUDAKernel<float>,
+                        ops::InterpolateOpCUDAKernel<double>,
+                        ops::InterpolateOpCUDAKernel<int>);
+REGISTER_OP_CUDA_KERNEL(nearest_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>);
