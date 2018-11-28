@@ -2328,6 +2328,19 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
     Args:
         input(variable): The input variable which is a LoDTensor.
         act(string, Default None): Activation type, linear|relu|prelu|...
@@ -2354,8 +2367,7 @@ def batch_norm(input,
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
-            and variance are also used during train time,
-            the BN acts as scaling and shiffting.
+            and variance are also used during train period.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.

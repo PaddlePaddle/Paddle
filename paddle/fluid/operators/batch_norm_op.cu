@@ -168,7 +168,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       if ((N * H * W * D) == 1) {
         LOG(WARNING) << "Only 1 element in normalization dimension, "
                      << "we skip the batch norm calculation, let y = x.";
-        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+        framework::TensorCopy(*x, ctx.GetPlace(), y);
       } else {
         double this_factor = 1. - momentum;
 
@@ -282,16 +282,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     }
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    if ((N * H * W * D) == 1) {
-      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-          functor;
-      functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
-      return;
-    }
-
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
     PADDLE_ENFORCE_EQ(scale->dims()[0], C);
 
@@ -305,7 +295,17 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       strides = {H * W * C * D, 1, W * D * C, D * C, C};
     }
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     if (!use_global_stats) {
+      if ((N * H * W * D) == 1) {
+        framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+            functor;
+        functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
+        functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+        return;
+      }
+
       // ------------------- cudnn descriptors ---------------------
       cudnnTensorDescriptor_t data_desc_;
       cudnnTensorDescriptor_t bn_param_desc_;

@@ -246,7 +246,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       if ((N * sample_size) == 1) {
         LOG(WARNING) << "Only 1 element in normalization dimension, "
                      << "we skip the batch norm calculation, let y = x.";
-        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+        framework::TensorCopy(*x, ctx.GetPlace(), y);
         return;
       }
 
@@ -449,8 +449,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     d_x->mutable_data<T>(ctx.GetPlace());
-    if ((N * sample_size) == 1) {
-      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
+    if ((N * sample_size) == 1 && !use_global_stats) {
+      framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
       return;
     }
 
@@ -469,9 +469,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
       ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
-      // auto& place = *ctx.template device_context<
-      //     platform::CPUDeviceContext>().eigen_device();
-      inv_var_tmp = (var_arr + epsilon).sqrt().inverse();
+      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval();
       inv_var_data = running_inv_var_data;
     }
 
@@ -595,7 +593,7 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("SavedMean", Output("SavedMean"));
     op->SetInput("SavedVariance", Output("SavedVariance"));
 
-    // used then setting use_global_stats True during training
+    // used when setting use_global_stats True during training
     op->SetInput("Mean", Output("MeanOut"));
     op->SetInput("Variance", Output("VarianceOut"));
 
