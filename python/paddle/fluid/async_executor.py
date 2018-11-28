@@ -147,7 +147,7 @@ class DataFeedDesc(object):
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].use = True
 
-    def _desc(self):
+    def desc(self):
         """
         Returns a protobuf message for this DataFeedDesc
 
@@ -280,5 +280,5 @@ class AsyncExecutor(object):
                         (fetch_var.name))
 
         self.executor.run_from_files(program_desc,
-                                     data_feed._desc(), filelist, thread_num,
+                                     data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, debug)
