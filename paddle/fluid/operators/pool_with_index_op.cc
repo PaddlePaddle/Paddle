@@ -40,6 +40,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    bool adaptive = ctx->Attrs().Get<bool>("adaptive");
 
     PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                    "Pooling intput should be 4-D or 5-D tensor.");
@@ -60,9 +61,13 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
                       "Paddings size and pooling size should be the same.");
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-    for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(MaxPoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                               paddings[i], strides[i]));
+    if (adaptive) {
+      output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
+    } else {
+      for (size_t i = 0; i < ksize.size(); ++i) {
+        output_shape.push_back(MaxPoolOutputSize(in_x_dims[i + 2], ksize[i],
+                                                 paddings[i], strides[i]));
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
     ctx->SetOutputDim("Mask", framework::make_ddim(output_shape));
@@ -132,6 +137,14 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "global_pooling",
         "(bool, default:false) Whether to use the global pooling. "
         "If global_pooling = true, ksize and paddings will be ignored.")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "adaptive",
+        "(bool, default False) When true, will perform adaptive pooling "
+        "instead, "
+        "output shape in H and W dimensions will be same as ksize, input data "
+        "will be divided into grids specify by ksize averagely and perform "
+        "pooling in each grid area to get output pooling value.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "(vector<int>, default {1, 1}), strides(height, "
@@ -208,6 +221,14 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "global_pooling",
         "(bool, default false) Whether to use the global pooling. "
         "If global_pooling = true, ksize and paddings will be ignored.")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "adaptive",
+        "(bool, default False) When true, will perform adaptive pooling "
+        "instead, "
+        "output shape in H and W dimensions will be same as ksize, input data "
+        "will be divided into grids specify by ksize averagely and perform "
+        "pooling in each grid area to get output pooling value.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "(vector<int>, default {1,1,1}), strides(depth, "

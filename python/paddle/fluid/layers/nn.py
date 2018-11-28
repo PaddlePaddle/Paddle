@@ -52,6 +52,8 @@ __all__ = [
     'softmax',
     'pool2d',
     'pool3d',
+    'adaptive_pool2d',
+    'adaptive_pool3d',
     'batch_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -2494,6 +2496,190 @@ def pool3d(input,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
             "exclusive": exclusive,
+        })
+
+    return pool_out
+
+
+@templatedoc(op_type="pool2d")
+def adaptive_pool2d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    use_cudnn=True,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        use_cudnn (bool): ${use_cudnn_comment}
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: 'use_cudnn' is not a bool value.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.pool2d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='max',
+                            require_index=True)
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 2:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 2.")
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False.")
+
+    if pool_type == "max":
+        l_type = 'max_pool2d_with_index'
+    else:
+        l_type = "pool2d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "use_cudnn": use_cudnn,
+            "adaptive": True,
+        })
+
+    return pool_out
+
+
+@templatedoc(op_type="pool3d")
+def adaptive_pool3d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    use_cudnn=True,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (Depth, Height, Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        use_cudnn (bool): ${use_cudnn_comment}
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: 'use_cudnn' is not a bool value.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.pool2d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='max',
+                            require_index=True)
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 3:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 3.")
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False.")
+
+    if pool_type == "max":
+        l_type = 'max_pool3d_with_index'
+    else:
+        l_type = "pool3d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "use_cudnn": use_cudnn,
+            "adaptive": True,
         })
 
     return pool_out

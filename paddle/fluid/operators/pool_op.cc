@@ -52,6 +52,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   bool ceil_mode = ctx->Attrs().Get<bool>("ceil_mode");
+  bool adaptive = ctx->Attrs().Get<bool>("adaptive");
 
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                  "Pooling intput should be 4-D or 5-D tensor.");
@@ -72,9 +73,13 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
                     "Paddings size and pooling size should be the same.");
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-  for (size_t i = 0; i < ksize.size(); ++i) {
-    output_shape.push_back(PoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                          paddings[i], strides[i], ceil_mode));
+  if (adaptive) {
+    output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
+  } else {
+    for (size_t i = 0; i < ksize.size(); ++i) {
+      output_shape.push_back(PoolOutputSize(
+          in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+    }
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");
@@ -186,6 +191,14 @@ void Pool2dOpMaker::Make() {
       "averaging calculating, otherwise, include the zero-padding. Note, it "
       "is only used when pooling_type is avg. The defalut is True.")
       .SetDefault(true);
+  AddAttr<bool>(
+      "adaptive",
+      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "output shape in H and W dimensions will be same as ksize, input data "
+      "will be divided into grids specify by ksize averagely and perform "
+      "pooling in each grid area to get output pooling value.")
+      .SetDefault(false);
+
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
@@ -325,6 +338,13 @@ void Pool3dOpMaker::Make() {
       "averaging calculating, otherwise, include the zero-padding. Note, it "
       "is only used when pooling_type is avg. The defalut is True.")
       .SetDefault(true);
+  AddAttr<bool>(
+      "adaptive",
+      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "output shape in H and W dimensions will be same as ksize, input data "
+      "will be divided into grids specify by ksize averagely and perform "
+      "pooling in each grid area to get output pooling value.")
+      .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
