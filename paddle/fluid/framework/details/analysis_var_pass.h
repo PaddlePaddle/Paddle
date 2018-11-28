@@ -50,6 +50,7 @@ class AnalysisVarPass : public ir::Pass {
   void RenameVarInGraphNode(const std::string& var,
                             const std::string& cache_var, size_t idx,
                             ir::Graph* graph) const;
+  void SubGraphOptimize(OpDesc* op_desc) const;
   // valid a tensor can be reuse or not
   bool NodeCanReused(ir::Node* node) const;
   // scan subblock and collect the output/input variables.
@@ -113,6 +114,17 @@ void FilterVariables(const std::vector<ir::Node*>& nodes, Callback callback) {
       callback(var);
     }
   }
+}
+
+template <typename Container, typename Callback>
+Container FilterVariables(const Container& nodes, Callback callback) {
+  Container ret;
+  for (auto* node : nodes) {
+    if (callback(node)) {
+      ret.emplace(node);
+    }
+  }
+  return ret;
 }
 
 }  // namespace details

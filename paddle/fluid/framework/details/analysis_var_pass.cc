@@ -25,6 +25,7 @@
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 DEFINE_bool(enable_subgraph_optimize, false,
@@ -55,46 +56,13 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     auto* op_desc = op->Op();
     // some op in graph has no op desc
     if (op_desc == nullptr) continue;
-    if (OpHasSubBlock(op_desc) && FLAGS_enable_subgraph_optimize) {
-      // conditional block, while op and their grad op
-      auto* sub_block_desc =
-          AttrReader(op_desc->GetAttrMap()).Get<BlockDesc*>("sub_block");
-      int sub_counter = 0;
-      for (auto* sub_op_desc : sub_block_desc->AllOps()) {
-        for (auto& sub_op_output_var_pair : sub_op_desc->Outputs()) {
-          for (auto& sub_op_output_var : sub_op_output_var_pair.second) {
-            auto* var_desc = sub_block_desc->FindVar(sub_op_output_var);
-            ir::Node* var = ir::CreateNodeForTest(var_desc).get();
-            if (NodeCanReused(var)) {
-              ir::Node* cache = pool_.NodeMatch(var);
-              if (cache != nullptr) {
-                if (var->Var()->GetDataType() != cache->Var()->GetDataType()) {
-                  continue;
-                }
-                int node_idx_in_pool = pool_.GetPosition(cache);
-                VLOG(3) << string::Sprintf(
-                    "!!! %s,  %s => %s, cache idx %d, pool size %d",
-                    std::to_string(sub_counter), DebugString(var),
-                    DebugString(cache), node_idx_in_pool,
-                    static_cast<int>(pool_.size()));
-                sub_counter += 1;
-                // NOTE(dzh): subblock is not in IR graph. Modify the block_desc
-                // immediately to make the subblock variable reuse strategy take
-                // effect. Because it is a single op in graph. No need to
-                // update the ir nodes.
-                sub_op_desc->Rename(var->Name(), cache->Name());
-                if (sub_op_desc->Block()->HasVar(var->Name())) {
-                  sub_op_desc->Block()->RemoveVar(var->Name());
-                }
-              }
-            }
-          }
-        }
-      }
-    } else {
-      if (OpHasSubBlock(op_desc)) {
+    if (OpHasSubBlock(op_desc)) {
+      if (FLAGS_enable_subgraph_optimize) {
+        SubGraphOptimize(op_desc);
+      } else {
         VLOG(3) << op->Name()
                 << " has subblock, but disable subgraph optimize. skipped.";
+        continue;
       }
     }
 
@@ -164,6 +132,108 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
 
   // graph->ResolveHazard(var_nodes_);
   return graph;
+}
+
+void AnalysisVarPass::SubGraphOptimize(OpDesc* op_desc) const {
+  // conditional block, while op and their grad op
+  auto* sub_block_desc =
+      AttrReader(op_desc->GetAttrMap()).Get<BlockDesc*>("sub_block");
+
+  // create a mirror block to construct an IR Graph.
+  ProgramDesc prog;
+  auto* copy_block = prog.MutableBlock(0);
+  for (auto* op : sub_block_desc->AllOps()) {
+    auto* copy_op = copy_block->AppendOp();
+    copy_op->SetType(op->Type());
+    for (auto& name_pair : op->Inputs()) {
+      copy_op->SetInput(name_pair.first, name_pair.second);
+    }
+    for (auto& name_pair : op->Outputs()) {
+      copy_op->SetOutput(name_pair.first, name_pair.second);
+    }
+  }
+
+  for (auto* var : sub_block_desc->AllVars()) {
+    auto* copy_var = copy_block->Var(var->Name());
+    copy_var->SetDataType(var->GetDataType());
+    // only lod tensor can be reused. So ignore the multiple dims case.
+    copy_var->SetType(var->GetType());
+    copy_var->SetShape(var->GetShape());
+    copy_var->SetPersistable(var->Persistable());
+  }
+
+  ir::Graph sub_graph(prog);
+  auto sub_graph_all_ops = FilterVariables(
+      sub_graph.Nodes(),
+      [&](ir::Node* var) { return var->IsVar() && !var->IsCtrlVar(); });
+  int sub_counter = 0;
+  // subgraph nodes is unordered, reuse need to follow the desc order.
+  // find the right op node through the descs
+  for (auto* sub_op_desc : sub_block_desc->AllOps()) {
+    ir::Node* sub_op = nullptr;
+    for (auto* node : sub_graph_all_ops) {
+      if (node->Op() == sub_op_desc) {
+        sub_op = node;
+        break;
+      }
+    }
+    PADDLE_ENFORCE(sub_op != nullptr);
+    for (auto* var : sub_op->outputs) {
+      if (NodeCanReused(var)) {
+        ir::Node* cache = pool_.NodeMatch(var);
+        if (cache != nullptr) {
+          if (var->Var()->GetDataType() != cache->Var()->GetDataType()) {
+            continue;
+          }
+          int node_idx_in_pool = pool_.GetPosition(cache);
+          VLOG(3) << string::Sprintf(
+              "!!! %s,  %s => %s, cache idx %d, pool size %d",
+              std::to_string(sub_counter++), DebugString(var),
+              DebugString(cache), node_idx_in_pool,
+              static_cast<int>(pool_.size()));
+          // NOTE(dzh): subblock is not in IR graph. Modify the block_desc
+          // immediately to make the subblock variable reuse strategy take
+          // effect. Because it is a single op in graph. No need to
+          // update the ir nodes.
+          sub_op_desc->Rename(var->Name(), cache->Name());
+          if (sub_op_desc->Block()->HasVar(var->Name())) {
+            sub_op_desc->Block()->RemoveVar(var->Name());
+          }
+        }
+      }
+    }
+  }
+
+  //   for (auto& sub_op_output_var_pair : sub_op_desc->Outputs()) {
+  //     for (auto& sub_op_output_var : sub_op_output_var_pair.second) {
+  //       auto* var_desc = sub_block_desc->FindVar(sub_op_output_var);
+  //       ir::Node* var = ir::CreateNodeForTest(var_desc).get();
+  //       if (NodeCanReused(var)) {
+  //         ir::Node* cache = pool_.NodeMatch(var);
+  //         if (cache != nullptr) {
+  //           if (var->Var()->GetDataType() != cache->Var()->GetDataType()) {
+  //             continue;
+  //           }
+  //           int node_idx_in_pool = pool_.GetPosition(cache);
+  //           VLOG(3) << string::Sprintf(
+  //               "!!! %s,  %s => %s, cache idx %d, pool size %d",
+  //               std::to_string(sub_counter), DebugString(var),
+  //               DebugString(cache), node_idx_in_pool,
+  //               static_cast<int>(pool_.size()));
+  //           sub_counter += 1;
+  //           // NOTE(dzh): subblock is not in IR graph. Modify the block_desc
+  //           // immediately to make the subblock variable reuse strategy take
+  //           // effect. Because it is a single op in graph. No need to
+  //           // update the ir nodes.
+  //           sub_op_desc->Rename(var->Name(), cache->Name());
+  //           if (sub_op_desc->Block()->HasVar(var->Name())) {
+  //             sub_op_desc->Block()->RemoveVar(var->Name());
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 std::unordered_set<std::string> AnalysisVarPass::GetSubBlockVars(
