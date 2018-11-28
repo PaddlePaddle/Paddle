@@ -46,6 +46,7 @@ using DeviceGarbageCollectorMap =
 constexpr int kDefaultCPUGarbageCollectorId =
     1 << 8;  // avoid conflict with gpus.
 
+#ifdef PADDLE_WITH_CUDA
 class ReferenceCountOpHandle : public OpHandleBase {
  public:
   ReferenceCountOpHandle(ir::Node *node, const Scope *scope,
@@ -145,6 +146,7 @@ class ReferenceCountOpHandle : public OpHandleBase {
   AtomicReferenceCountMap *ref_cnts_;  // not own
   cudaEvent_t event_;
 };
+#endif  // PADDLE_WITH_CUDA
 
 static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
   std::queue<VarHandleBase *> queue;

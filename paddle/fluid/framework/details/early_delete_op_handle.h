@@ -15,8 +15,14 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/reference_count_op_handle.h"
+#include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
