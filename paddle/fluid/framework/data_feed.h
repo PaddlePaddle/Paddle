@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
-#define ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
+#ifndef PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
+#define PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
 
 #include <fstream>
 #include <memory>
@@ -269,5 +269,5 @@ class MultiSlotDataFeed
 }  // namespace framework
 }  // namespace paddle
 
-#endif  // ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
+#endif  // PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_H_
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
