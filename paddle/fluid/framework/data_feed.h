@@ -46,17 +46,11 @@ class MixTensor {
   }
   bool IsDense() { return is_dense_; }
   LoDTensor* GetLoDTensor() {
-    if (is_dense_) {
-      LOG(ERROR) << "error: let a dense var return a LoDTensor ptr";
-      exit(-1);
-    }
+    PADDLE_ENFORCE(!is_dense_, "Let a dense var return a LoDTensor ptr.");
     return lodtensor_;
   }
   Tensor* GetTensor() {
-    if (!is_dense_) {
-      LOG(ERROR) << "error: let a sparse var return a Tensor ptr";
-      exit(-1);
-    }
+    PADDLE_ENFORCE(is_dense_, "Let a sparse var return a Tensor ptr.");
     return tensor_;
   }
 
@@ -88,8 +82,7 @@ class DataFeed {
   virtual ~DataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename) {
-    LOG(ERROR) << "error: The function CheckFile is not implemented";
-    return false;
+    PADDLE_THROW("This function(CheckFile) is not implemented.");
   }
   // Set filelist for DataFeed.
   // Pay attention that it must init all readers before call this function.
@@ -240,22 +233,14 @@ class MultiSlotType {
 
  private:
   void CheckType(const std::string& type) const {
-    if (type != "uint64" && type != "float") {
-      LOG(ERROR) << "error: there is no this type<" << type << ">.";
-      exit(-1);
-    }
+    PADDLE_ENFORCE((type == "uint64") || (type == "float"),
+                   "There is no this type<%s>.", type);
   }
   void CheckFloat() const {
-    if (type_[0] != 'f') {  // float
-      LOG(ERROR) << "error: add " << type_ << " value to float slot";
-      exit(-1);
-    }
+    PADDLE_ENFORCE(type_[0] == 'f', "Add %s value to float slot.", type_);
   }
   void CheckUint64() const {
-    if (type_[0] != 'u') {  // uint64
-      LOG(ERROR) << "error: add " << type_ << " value to uint64 slot";
-      exit(-1);
-    }
+    PADDLE_ENFORCE(type_[0] == 'u', "Add %s value to uint64 slot.", type_);
   }
   std::vector<float> float_feasign_;
   std::vector<uint64_t> uint64_feasign_;

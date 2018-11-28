@@ -33,10 +33,7 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
     const char* filename) {
   paddle::framework::DataFeedDesc data_feed_desc;
   int file_descriptor = open(filename, O_RDONLY);
-  if (file_descriptor == -1) {
-    LOG(ERROR) << "error: cant open " << filename << std::endl;
-    exit(-1);
-  }
+  PADDLE_ENFORCE(file_descriptor != -1, "Can not open %s.", filename);
   google::protobuf::io::FileInputStream fileInput(file_descriptor);
   google::protobuf::TextFormat::Parse(&fileInput, &data_feed_desc);
   close(file_descriptor);
@@ -46,10 +43,7 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
 const std::vector<std::string> load_filelist_from_file(const char* filename) {
   std::vector<std::string> filelist;
   std::ifstream fin(filename);
-  if (!fin.good()) {
-    LOG(ERROR) << "error: cant open " << filename << std::endl;
-    exit(-1);
-  }
+  PADDLE_ENFORCE(fin.good(), "Can not open %s.", filename);
   std::string line;
   while (getline(fin, line)) {
     filelist.push_back(line);
@@ -116,7 +110,8 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
   std::mutex mu;
   for (int idx = 0; idx < thread_num; ++idx) {
     threads.emplace_back(std::thread([&, idx] {
-      auto* scope = new paddle::framework::Scope();
+      std::unique_ptr<paddle::framework::Scope> scope(
+          new paddle::framework::Scope());
       const std::vector<std::string>& use_slot_alias =
           readers[idx]->GetUseSlotAlias();
       for (auto name : use_slot_alias) {
@@ -153,8 +148,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
               }
             }
           } else {
-            LOG(ERROR) << "error: error type in proto file";
-            exit(-1);
+            PADDLE_THROW("Error type in proto file.");
           }
         }  // end slots loop
       }    // end while Next()
@@ -200,10 +194,7 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
   file_elem_set->resize(data_feed_desc.multi_slot_desc().slots_size());
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
-    if (!fin.good()) {
-      LOG(ERROR) << "error: cant open " << file << std::endl;
-      exit(-1);
-    }
+    PADDLE_ENFORCE(fin.good(), "Can not open %s.", file.c_str());
     while (1) {
       bool end_flag = false;
       for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
@@ -223,8 +214,7 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
               (*file_elem_set)[i].AddValue(feasign);
             }
           } else {
-            LOG(ERROR) << "error: error type in proto file";
-            exit(-1);
+            PADDLE_THROW("Error type in proto file.");
           }
         } else {
           end_flag = true;
