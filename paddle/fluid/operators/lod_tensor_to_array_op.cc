@@ -192,6 +192,10 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     // The first dim of each LoDTensor in Output can only be set at run-time.;
     // We still have to Resize each LoDTensor in Output.
     context->SetOutputDim("Out", x_dim);
+    // The lod level should be passed to out in compile time.
+    if (!context->IsRuntime()) {
+      context->DecreaseLoDLevel("X", /*->*/ "Out");
+    }
   }
 };
 
