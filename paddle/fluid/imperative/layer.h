@@ -23,19 +23,29 @@
 namespace paddle {
 namespace imperative {
 
+class OpBase;
+
 class VarBase {
  public:
   VarBase() {}
   virtual ~VarBase() {}
 
+  OpBase* pre_op_;
   framework::VarDesc* var_desc_;
 };
 
 class OpBase {
  public:
-  OpBase() {}
-  virtual ~OpBase() {}
+  OpBase()
+      : input_vars_(new std::vector<VarBase*>()),
+        output_vars_(new std::vector<VarBase*>()) {}
+  virtual ~OpBase() {
+    delete input_vars_;
+    delete output_vars_;
+  }
 
+  std::vector<VarBase*>* input_vars_;
+  std::vector<VarBase*>* output_vars_;
   framework::OpDesc* op_desc_;
 };
 
