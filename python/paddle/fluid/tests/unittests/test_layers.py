@@ -185,6 +185,25 @@ class TestBook(unittest.TestCase):
                     input=x, label=y, num_classes=2))
         print(str(program))
 
+        # test hsigmod with custom tree structure
+        program2 = Program()
+        with program_guard(program2):
+            x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
+            y2 = layers.data(name='y2', shape=[4], dtype='int64')
+            path_table = layers.data(
+                name='path_table', shape=[4, 6], dtype='int64')
+            path_code = layers.data(
+                name='path_code', shape=[4, 6], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x2,
+                    label=y2,
+                    num_classes=6,
+                    path_table=path_table,
+                    path_code=path_code,
+                    is_custom=True))
+            print(str(program2))
+
     def test_sequence_expand(self):
         program = Program()
         with program_guard(program):
@@ -201,6 +220,17 @@ class TestBook(unittest.TestCase):
             length = layers.data(name='length', shape=[1], dtype='int64')
             self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
         print(str(program))
+
+    def test_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.pool2d(
+                    x,
+                    pool_size=[5, 3],
+                    pool_stride=[1, 2],
+                    pool_padding=(2, 1)))
 
     def test_lstm_unit(self):
         program = Program()
@@ -369,6 +399,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[16], dtype='float32')
             y = layers.data(name='label', shape=[1], dtype='int64')
+            loss, softmax = layers.softmax_with_cross_entropy(
+                x, y, return_softmax=True)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
             loss = layers.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
         print(str(program))
@@ -909,6 +943,16 @@ class TestBook(unittest.TestCase):
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
+        print(str(program))
+
+    def test_bilinear_tensor_product_layer(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[4], dtype="float32")
+
+            theta = layers.data(name="theta", shape=[5], dtype="float32")
+            out = layers.bilinear_tensor_product(data, theta, 6)
+
         print(str(program))
 
 

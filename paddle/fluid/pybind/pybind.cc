@@ -34,8 +34,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -50,7 +52,9 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#endif
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
@@ -82,8 +86,12 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
-  py::module m("core", "C++ core of PaddlePaddle");
+PYBIND11_MODULE(core, m) {
+  // Not used, just make sure cpu_info.cc is linked.
+  paddle::platform::CpuTotalPhysicalMemory();
+
+  paddle::memory::allocation::UseAllocatorStrategyGFlag();
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -340,7 +348,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
@@ -480,7 +488,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                 });;
 // clang-format on
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
@@ -617,9 +625,11 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
+#ifndef _WIN32
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
+#endif
 #endif
 
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
@@ -650,9 +660,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](ir::Pass &self, const std::string &name, const std::string &attr) {
             self.Set<std::string>(name, new std::string(attr));
           })
-      .def("set_int", [](ir::Pass &self, const std::string &name, int val) {
-        self.Set<const int>(name, new int(val));
-      });
+      .def("set_int", [](ir::Pass &self, const std::string &name,
+                         int val) { self.Set<const int>(name, new int(val)); })
+      .def("type", &ir::Pass::Type);
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
       m, "PassBuilder");
@@ -791,6 +801,7 @@ All parameter, weight, gradient are variables in Paddle.
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
           },
           R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
@@ -804,6 +815,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.gradient_scale_ = strategy;
           },
           R"DOC(The type is STR, there are three ways of defining :math:`loss@grad` in
@@ -815,6 +827,7 @@ All parameter, weight, gradient are variables in Paddle.
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
           R"DOC(The type is STR, debug_graphviz_path indicate the path that
@@ -824,6 +837,7 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
           [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.enable_data_balance_ = b;
           })  // FIXME(chengudo): enable_data_balance seems not important
       .def_property(
@@ -832,6 +846,7 @@ All parameter, weight, gradient are variables in Paddle.
             return self.enable_sequential_execution_;
           },
           [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
           R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
@@ -841,24 +856,35 @@ All parameter, weight, gradient are variables in Paddle.
             return self.remove_unnecessary_lock_;
           },
           [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
+      .def_property(
+          "num_trainers",
+          [](const BuildStrategy &self) { return self.num_trainers_; },
+          [](BuildStrategy &self, int num_trainers) {
+            self.num_trainers_ = num_trainers;
+          })
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
           },
           [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.fuse_elewise_add_act_ops_ = b;
           },
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
-      .def("_create_passes_from_strategy",
+      .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
-             return self.CreatePassesFromStrategy();
-           });
+             return self.CreatePassesFromStrategy(true);
+           },
+           R"DOC(Allow user to customized passes. Normally model-specific
+                optimization passes should be defined in this way. BuildStrategy
+                cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -887,7 +913,6 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle

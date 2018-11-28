@@ -11,8 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -24,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -821,11 +820,28 @@ Scope* OperatorWithKernel::TryTransferData(
       VLOG(30) << "Transform Variable " << var_name << " from "
                << kernel_type_for_var << " to " << expected_kernel_key;
 
-      if (new_scope == nullptr) {
+      // In the inference scenerio, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memroy explosion
+      // over the  running of operators.
+      // We use a thread_local cache to fix that issue, the key in the cache is
+      // the combination of the `scope` argument, from_kernel_type,
+      // target_kernel_type.
+      // Have a discussion with @Superjomn or the inference developers if some
+      // changes on this logic for this macro might not tested on the other
+      // scenerios.
+      // If this op is not called by an Executor or ParallelExecutor, it should
+      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
+      // variables, that behavior a lot different.
+      if (!run_by_executor_) {
+        new_scope = TryCreateTransferScope(kernel_type_for_var,
+                                           expected_kernel_key, &scope);
+      }
+      if (!new_scope) {
         new_scope = &scope.NewScope();
       }
 
       auto* trans_var = new_scope->Var(var_name);
+
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);

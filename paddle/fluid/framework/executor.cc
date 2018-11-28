@@ -17,14 +17,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -79,6 +82,24 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
   if (!erase_tensors.empty()) {
     gc->Add(erase_tensors);
   }
+}
+
+static void EnableFusedOp(ExecutorPrepareContext* ctx) {
+#ifdef PADDLE_WITH_NGRAPH
+  VLOG(3) << "use_ngraph=True";
+  auto intervals = FusedOperator::FusedOpIntervals(&ctx->ops_);
+  for (auto& interval : intervals) {
+    auto* fused_op = new FusedOperator(ctx->prog_, ctx->block_id_,
+                                       interval.at(0), interval.at(1));
+    *interval[0] = std::unique_ptr<OperatorBase>(fused_op);
+  }
+  for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
+    ctx->ops_.erase(it->at(0) + 1, it->at(1));
+  }
+#else
+  LOG(WARNING)
+      << "'NGRAPH' is not supported, Please re-compile with WITH_NGRAPH option";
+#endif
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
@@ -338,6 +359,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
+  if (FLAGS_use_ngraph) EnableFusedOp(ctx.get());
   return ctx;
 }
 
@@ -359,6 +381,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -369,8 +392,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector<Tensor>> gc;
-  // WhileOp would set keep_kids to false
-  // WhileGradOp would need the scopes created in WhileOp
+  // WhileOp would set keep_kids to true,
+  // because WhileGradOp needs the scopes created in WhileOp.
   // Perhaps, we should not perform eager deletion in WhileOp
   // The scopes and variables created by WhileOp would be deleted
   // in WhileGradOp.
@@ -396,11 +419,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
                           &(ctx->cur_ref_cnts_));
     }
-
-    if (FLAGS_benchmark) {
-      VLOG(20) << "Memory used after operator " + op->Type() + " running: "
-               << memory::memory_usage(place_);
-    }
   }
 
   if (gc != nullptr) {
@@ -421,13 +439,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
     }
-  }
-
-  if (FLAGS_benchmark) {
-    VLOG(20) << "-------------------------------------------------------";
-    VLOG(20) << "Memory used after deleting local scope: "
-             << memory::memory_usage(place_);
-    VLOG(20) << "-------------------------------------------------------";
   }
 }
 
@@ -485,6 +496,5 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
 #endif
 }
-
 }  // namespace framework
 }  // namespace paddle

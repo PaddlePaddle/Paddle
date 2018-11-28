@@ -15,11 +15,19 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
+
+#define JITKERNEL_DECLARE_STATIC_FUNC                       \
+  static inline std::string name(int d) {                   \
+    PADDLE_THROW("DType should be either float or double"); \
+  }                                                         \
+  static inline bool useJIT(int d) { return false; }        \
+  static inline bool useMKL(int d) { return false; }
 
 #define JITKERNEL_DEFINE_NAME(ker_key, ker_class)    \
   template <>                                        \
@@ -74,10 +82,10 @@ namespace jitkernel {
 #define REGISTER_JITKERNEL_ARGS(ker_key, ker_class, marco_define_name,     \
                                 marco_declare, macro_find_key, macro_impl) \
   marco_define_name(ker_key, ker_class);                                   \
-  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, float, JITKERNEL_DECLARE,       \
-                                JITKERNEL_FIND_KEY, JITKERNEL_IMPL);       \
-  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, double, JITKERNEL_DECLARE,      \
-                                JITKERNEL_FIND_KEY, JITKERNEL_IMPL)
+  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, float, marco_declare,           \
+                                macro_find_key, macro_impl);               \
+  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, double, marco_declare,          \
+                                macro_find_key, macro_impl)
 
 #define REGISTER_JITKERNEL(ker_key, ker_class)                       \
   REGISTER_JITKERNEL_ARGS(ker_key, ker_class, JITKERNEL_DEFINE_NAME, \
@@ -86,17 +94,17 @@ namespace jitkernel {
 
 namespace jit = platform::jit;
 // TODO(TJ): below defines are deprecated, would be remove recently
-#define SEARCH_BLOCK(macro_, ker, dtype, isa)                 \
-  if (d < AVX_FLOAT_BLOCK) {                                  \
-    macro_(ker, dtype, isa, kLT8);                            \
-  } else if (d == AVX_FLOAT_BLOCK) {                          \
-    macro_(ker, dtype, isa, kEQ8);                            \
-  } else if (d > AVX_FLOAT_BLOCK && d < AVX512_FLOAT_BLOCK) { \
-    macro_(ker, dtype, isa, kGT8LT16);                        \
-  } else if (d == AVX512_FLOAT_BLOCK) {                       \
-    macro_(ker, dtype, isa, kEQ16);                           \
-  } else {                                                    \
-    macro_(ker, dtype, isa, kGT16);                           \
+#define SEARCH_BLOCK(macro_, ker, dtype, isa)              \
+  if (d < YMM_FLOAT_BLOCK) {                               \
+    macro_(ker, dtype, isa, kLT8);                         \
+  } else if (d == YMM_FLOAT_BLOCK) {                       \
+    macro_(ker, dtype, isa, kEQ8);                         \
+  } else if (d > YMM_FLOAT_BLOCK && d < ZMM_FLOAT_BLOCK) { \
+    macro_(ker, dtype, isa, kGT8LT16);                     \
+  } else if (d == ZMM_FLOAT_BLOCK) {                       \
+    macro_(ker, dtype, isa, kEQ16);                        \
+  } else {                                                 \
+    macro_(ker, dtype, isa, kGT16);                        \
   }
 
 #define SEARCH_ISA_BLOCK(macro_, ker, dtype)        \

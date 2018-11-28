@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <mkldnn.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
@@ -289,6 +290,22 @@ inline mkldnn::memory::format data_format_to_memory_format(
       return mkldnn::memory::format::nchw;
     default:
       return mkldnn::memory::format::any;
+  }
+}
+
+inline mkldnn::memory::format StringToMKLDNNFormat(std::string* format) {
+  std::transform(format->begin(), format->end(), format->begin(), ::tolower);
+
+  if (!format->compare("nchw")) {
+    return mkldnn::memory::format::nchw;
+  } else if (!format->compare("nchw16c")) {
+    return mkldnn::memory::format::nChw16c;
+  } else if (!format->compare("nchw8c")) {
+    return mkldnn::memory::format::nChw8c;
+  } else if (!format->compare("nhwc")) {
+    return mkldnn::memory::format::nhwc;
+  } else {
+    return mkldnn::memory::format::any;
   }
 }
 
