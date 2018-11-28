@@ -151,8 +151,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     } else if (pass->Type() == "analysis_var_pass") {
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(
-                                             kAllOpDescs,
-                                             new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
 
     } else if (pass->Type() == "sequential_execution_pass") {
       VLOG(1) << "set enable_sequential_execution:"
