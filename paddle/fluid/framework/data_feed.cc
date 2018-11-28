@@ -60,13 +60,10 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   CheckInit();
   if (finish_set_filelist_) {
-    LOG(INFO) << "info: you have set the filelist";
+    LOG(INFO) << "info: you have set the filelist.";
     return false;
   }
-  if (files.size() == 0) {
-    LOG(ERROR) << "error: you have set an empty filelist";
-    exit(-1);
-  }
+  PADDLE_ENFORCE(files.size(), "You have set an empty filelist.");
   filelist_.assign(files.begin(), files.end());
   file_idx_ = 0;
 
@@ -75,10 +72,7 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  if (batch_size <= 0) {
-    LOG(ERROR) << "error: illegal batch size: " << batch_size;
-    exit(-1);
-  }
+  PADDLE_ENFORCE(batch_size > 0, "Illegal batch size: %d.", batch_size);
   default_batch_size_ = batch_size;
 }
 
@@ -92,35 +86,20 @@ bool DataFeed::PickOneFile(std::string* filename) {
 }
 
 void DataFeed::CheckInit() {
-  if (finish_init_) {
-    return;
-  }
-  LOG(ERROR) << "error: initialization did not succeed";
-  exit(-1);
+  PADDLE_ENFORCE(finish_init_, "Initialization did not succeed.");
 }
 
 void DataFeed::CheckSetFileList() {
-  if (finish_set_filelist_) {
-    return;
-  }
-  LOG(ERROR) << "error: set filelist did not succeed";
-  exit(-1);
+  PADDLE_ENFORCE(finish_set_filelist_, "Set filelist did not succeed.");
 }
 
 void DataFeed::CheckStart() {
-  if (finish_start_) {
-    return;
-  }
-  LOG(ERROR) << "error: Datafeed has not started running yet";
-  exit(-1);
+  PADDLE_ENFORCE(finish_start_, "Datafeed has not started running yet.");
 }
 
 template <typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
-  if (queue_size <= 0) {
-    LOG(ERROR) << "error: illegal queue size: " << queue_size;
-    exit(-1);
-  }
+  PADDLE_ENFORCE(queue_size > 0, "Illegal queue size: %d.", queue_size);
   queue_size_ = queue_size;
   queue_ = std::unique_ptr<paddle::operators::reader::BlockingQueue<T>>(
       new paddle::operators::reader::BlockingQueue<T>(queue_size_));
@@ -141,10 +120,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
   std::string filename;
   while (PickOneFile(&filename)) {
     file_.open(filename.c_str());  // is_text_feed
-    if (!file_.good()) {
-      LOG(ERROR) << "error: open file<" << filename << "> fail";
-      exit(-1);
-    }
+    PADDLE_ENFORCE(file_.good(), "Open file<%s> fail.", filename.c_str());
     T instance;
     while (ParseOneInstance(&instance)) {
       queue_->Send(instance);
@@ -179,10 +155,8 @@ void MultiSlotDataFeed::Init(
   finish_set_filelist_ = false;
   finish_start_ = false;
 
-  if (!data_feed_desc.has_multi_slot_desc()) {
-    LOG(ERROR) << "error: multi_slot_desc has not been set";
-    exit(-1);
-  }
+  PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
+                 "Multi_slot_desc has not been set.");
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch());
@@ -319,15 +293,13 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      if (num == 0) {
-        LOG(ERROR)
-            << "error: the number of ids can not be zero, you need padding "
-               "it in data generator; or if there is something wrong with "
-               "the data, please check if the data contains unresolvable "
-               "characters.\nplease check this error line: "
-            << line;
-        exit(-1);
-      }
+      PADDLE_ENFORCE(
+          num,
+          "The number of ids can not be zero, you need padding "
+          "it in data generator; or if there is something wrong with "
+          "the data, please check if the data contains unresolvable "
+          "characters.\nplease check this error line: %s",
+          str);
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float

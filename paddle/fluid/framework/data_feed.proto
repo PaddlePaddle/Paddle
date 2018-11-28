@@ -16,17 +16,15 @@ package paddle.framework;
 
 message DataFeedDesc {
   optional string name = 1;
-  optional int32 batch = 2 [default = 32];
+  optional int32 batch = 2 [ default = 32 ];
   optional MultiSlotDesc multi_slot_desc = 3;
 }
 
-message MultiSlotDesc {
-  repeated Slot slots = 1;
-}
+message MultiSlotDesc { repeated Slot slots = 1; }
 
 message Slot {
   required string name = 1;
   required string type = 2;
-  optional bool dense = 3 [default = false];
-  optional bool use = 4 [default = false];
+  optional bool dense = 3 [ default = false ];
+  optional bool use = 4 [ default = false ];
 }

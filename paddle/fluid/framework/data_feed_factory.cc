@@ -26,24 +26,23 @@ typedef std::unordered_map<std::string, Createdata_feedFunction> data_feedMap;
 data_feedMap g_data_feed_map;
 
 #define REGISTER_DATAFEED_CLASS(data_feed_class)                      \
-  namespace { \
-    std::shared_ptr<DataFeed> Creator_##data_feed_class() {      \
-      return std::shared_ptr<DataFeed>(new data_feed_class);             \
-    }                                                        \
-    class __Registerer_##data_feed_class { \
-     public: \
-     __Registerer_##data_feed_class() { \
-       g_data_feed_map[#data_feed_class] = &Creator_##data_feed_class; \
-     } \
-    }; \
-    __Registerer_##data_feed_class g_registerer_##data_feed_class; \
+  namespace {                                                         \
+  std::shared_ptr<DataFeed> Creator_##data_feed_class() {             \
+    return std::shared_ptr<DataFeed>(new data_feed_class);            \
+  }                                                                   \
+  class __Registerer_##data_feed_class {                              \
+   public:                                                            \
+    __Registerer_##data_feed_class() {                                \
+      g_data_feed_map[#data_feed_class] = &Creator_##data_feed_class; \
+    }                                                                 \
+  };                                                                  \
+  __Registerer_##data_feed_class g_registerer_##data_feed_class;      \
   }  // namespace
-
 
 std::string DataFeedFactory::DataFeedTypeList() {
   std::string data_feed_types;
-  for (auto iter = g_data_feed_map.begin();
-       iter != g_data_feed_map.end(); ++iter) {
+  for (auto iter = g_data_feed_map.begin(); iter != g_data_feed_map.end();
+       ++iter) {
     if (iter != g_data_feed_map.begin()) {
       data_feed_types += ", ";
     }
