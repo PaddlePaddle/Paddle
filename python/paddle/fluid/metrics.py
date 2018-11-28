@@ -46,8 +46,8 @@ def _is_numpy_(var):
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(var, float) or (isinstance(
-        var, np.ndarray) and var.shape == (1, ))
+    return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
 
 
 def _is_number_or_matrix_(var):
