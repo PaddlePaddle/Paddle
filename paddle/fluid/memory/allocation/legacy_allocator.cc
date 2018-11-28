@@ -86,18 +86,18 @@ struct NaiveAllocator {
 
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(1) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
-  VLOG(100) << "  pointer=" << p;
+  VLOG(10) << "  pointer=" << p;
   return p;
 }
 
 template <>
 void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(1) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
@@ -124,12 +124,12 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
           std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
           platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
-      VLOG(100) << "\n\nNOTE: each GPU device use "
-                << FLAGS_fraction_of_gpu_memory_to_use * 100
-                << "% of GPU memory.\n"
-                << "You can set GFlags environment variable '"
-                << "FLAGS_fraction_of_gpu_memory_to_use"
-                << "' to change the fraction of GPU usage.\n\n";
+      VLOG(10) << "\n\nNOTE: each GPU device use "
+               << FLAGS_fraction_of_gpu_memory_to_use * 100
+               << "% of GPU memory.\n"
+               << "You can set GFlags environment variable '"
+               << "FLAGS_fraction_of_gpu_memory_to_use"
+               << "' to change the fraction of GPU usage.\n\n";
     }
   });
 
