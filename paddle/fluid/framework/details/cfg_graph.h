@@ -42,7 +42,6 @@ class ControlFlowGraph {
 
   const std::set<std::string>& LiveIn(ir::Node* op) const;
   const std::set<std::string>& LiveOut(ir::Node* op) const;
-  const std::set<std::string>& Def(ir::Node* op) const;
   const std::set<std::string>& Use(ir::Node* op) const;
   const std::vector<ir::Node*>& Ops() const;
   std::vector<ir::Node*>& Ops();
