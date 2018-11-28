@@ -487,7 +487,6 @@ void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
 #endif
 }
 
-
 template <>
 template <typename T>
 T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
@@ -495,14 +494,13 @@ T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
 #ifdef PADDLE_WITH_MKLML
   sum = CBlas<T>::ASUM(n, x, inc);
 #else
-  //TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
+  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
   for (int c = 0; c < n; ++c) {
     sum += x[c];
   }
 #endif
   return sum;
 }
-
 
 template <>
 template <typename T>
