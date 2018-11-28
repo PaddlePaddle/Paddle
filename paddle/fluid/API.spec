@@ -417,8 +417,6 @@ paddle.reader.compose ArgSpec(args=[], varargs='readers', keywords='kwargs', def
 paddle.reader.chain ArgSpec(args=[], varargs='readers', keywords=None, defaults=None)
 paddle.reader.shuffle ArgSpec(args=['reader', 'buf_size'], varargs=None, keywords=None, defaults=None)
 paddle.reader.ComposeNotAligned.__init__ 
-paddle.reader.ComposeNotAligned.args.__init__ 
-paddle.reader.ComposeNotAligned.message.__init__ 
 paddle.reader.firstn ArgSpec(args=['reader', 'n'], varargs=None, keywords=None, defaults=None)
 paddle.reader.xmap_readers ArgSpec(args=['mapper', 'reader', 'process_num', 'buffer_size', 'order'], varargs=None, keywords=None, defaults=(False,))
 paddle.reader.PipeReader.__init__ ArgSpec(args=['self', 'command', 'bufsize', 'file_type'], varargs=None, keywords=None, defaults=(8192, 'plain'))
