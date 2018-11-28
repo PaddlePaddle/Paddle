@@ -355,7 +355,7 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
-bool VarIsTensor(const Variable& var) {
+static bool VarIsTensor(const Variable& var) {
   return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
 }
 
