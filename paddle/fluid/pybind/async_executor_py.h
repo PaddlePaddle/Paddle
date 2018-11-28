@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
-#define PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
+#ifndef ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
+#define ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -26,4 +26,4 @@ void BindAsyncExecutor(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle
-#endif  // PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_
+#endif  // ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_PYBIND_ASYNC_EXECUTOR_PY_H_

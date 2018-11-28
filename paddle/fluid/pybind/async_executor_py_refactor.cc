@@ -24,8 +24,8 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/async_executor_param.pb.h"
 #include "paddle/fluid/framework/async_executor.h"
+#include "paddle/fluid/framework/async_executor_param.pb.h"
 #include "paddle/fluid/pybind/async_executor_py.h"
 
 namespace py = pybind11;
@@ -36,8 +36,8 @@ void BindAsyncExecutor(py::module* m) {
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
       .def("run_from_files", &framework::AsyncExecutor::RunFromFiles)
       .def("check_files", &framework::AsyncExecutor::CheckFiles);
-}   // end BindAsyncExecutor
-}   // end namespace pybind
-}   // end namespace paddle
+}  // end BindAsyncExecutor
+}  // end namespace pybind
+}  // end namespace paddle
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=80: */
