@@ -24,9 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
-
 #endif
 
 namespace paddle {
@@ -55,8 +53,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
     auto height_sections = context.Attr<std::vector<int>>("height_sections");
     auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
-    if (!height_sections.empty()) {
-// if emap is not empty, then the parameter will be fetched from remote
+    if (!epmap.empty()) {
+// if epmap is not empty, then the parameter will be fetched from remote
 // parameter
 // server
 #ifdef PADDLE_WITH_DISTRIBUTE
