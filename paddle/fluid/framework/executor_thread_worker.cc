@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <map>
-#include <algorithm>
+#include <sstream>
+#include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-#include "google/protobuf/io/zero_copy_stream_impl.h"
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -35,8 +35,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
 namespace paddle {
 namespace framework {
@@ -96,8 +96,7 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   auto& block = program.Block(0);
 
   PADDLE_ENFORCE_NOT_NULL(
-      root_scope_,
-      "root_scope should be set before creating thread scope");
+      root_scope_, "root_scope should be set before creating thread scope");
 
   thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {
@@ -127,22 +126,16 @@ void ExecutorThreadWorker::BindingDataFeedMemory() {
 void ExecutorThreadWorker::SetFetchVarNames(
     const std::vector<std::string>& fetch_var_names) {
   fetch_var_names_.clear();
-  fetch_var_names_.insert(fetch_var_names_.end(),
-                          fetch_var_names.begin(), fetch_var_names.end());
+  fetch_var_names_.insert(fetch_var_names_.end(), fetch_var_names.begin(),
+                          fetch_var_names.end());
 }
 
 void ExecutorThreadWorker::SetDevice() {
   // at most 48 threads binding currently
-  static unsigned priority[] = {
-    0, 1, 2, 3, 4, 5,
-    6, 7, 8, 9, 10, 11,
-    12, 13, 14, 15, 16, 17,
-    18, 19, 20, 21, 22, 23,
-    24, 25, 26, 27, 28, 29,
-    30, 31, 32, 33, 34, 35,
-    36, 37, 38, 39, 40, 41,
-    42, 43, 44, 45, 46, 47
-  };
+  static unsigned priority[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+                                12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+                                36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47};
 
   unsigned int i = this->thread_id_;
 
@@ -157,8 +150,8 @@ void ExecutorThreadWorker::SetDevice() {
       LOG(ERROR) << "WARNING: Failed to set thread affinity for thread " << i;
     } else {
       CPU_ZERO(&mask);
-      if ((0 != sched_getaffinity(0, sizeof(mask), &mask))
-          || (CPU_ISSET(proc, &mask) == 0)) {
+      if ((0 != sched_getaffinity(0, sizeof(mask), &mask)) ||
+          (CPU_ISSET(proc, &mask) == 0)) {
         LOG(INFO) << "WARNING: Failed to set thread affinity for thread " << i;
       }
     }
@@ -187,29 +180,26 @@ void print_fetch_var(Scope* scope, std::string var_name) {
   if (std::type_index(tensor.type()) ==
       std::type_index(typeid(platform::float16))) {
     print_lod_tensor<platform::float16>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(float))) {
+  } else if (std::type_index(tensor.type()) == std::type_index(typeid(float))) {
     print_lod_tensor<float>(var_name, tensor);
   } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(double))) {
+             std::type_index(typeid(double))) {
     print_lod_tensor<double>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(int))) {
+  } else if (std::type_index(tensor.type()) == std::type_index(typeid(int))) {
     print_lod_tensor<int>(var_name, tensor);
   } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(int64_t))) {
+             std::type_index(typeid(int64_t))) {
     print_lod_tensor<int64_t>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(bool))) {
+  } else if (std::type_index(tensor.type()) == std::type_index(typeid(bool))) {
     print_lod_tensor<bool>(var_name, tensor);
   } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(uint8_t))) {
+             std::type_index(typeid(uint8_t))) {
     print_lod_tensor<uint8_t>(var_name, tensor);
   } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(int16_t))) {
+             std::type_index(typeid(int16_t))) {
     print_lod_tensor<int16_t>(var_name, tensor);
   } else if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(int8_t))) {
+             std::type_index(typeid(int8_t))) {
     print_lod_tensor<int8_t>(var_name, tensor);
   } else {
     LOG(ERROR) << "print_fetch_var: unrecognized data type:"
@@ -246,13 +236,11 @@ void ExecutorThreadWorker::TrainFiles() {
 
     for (int i = 0; i < fetch_var_num; ++i) {
       print_fetch_var(thread_scope_, fetch_var_names_[i]);
-    }   // end for (int i = 0...)
-  }     // end while ()
+    }  // end for (int i = 0...)
+  }    // end while ()
 }
 
-void ExecutorThreadWorker::SetThreadId(int tid) {
-  thread_id_ = tid;
-}
+void ExecutorThreadWorker::SetThreadId(int tid) { thread_id_ = tid; }
 
 void ExecutorThreadWorker::SetPlace(const platform::Place& place) {
   place_ = place;
@@ -267,7 +255,7 @@ void ExecutorThreadWorker::SetRootScope(Scope* g_scope) {
   root_scope_ = g_scope;
 }
 
-}   // einit_modelnd namespace framework
-}   // end namespace paddle
+}  // einit_modelnd namespace framework
+}  // end namespace paddle
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */

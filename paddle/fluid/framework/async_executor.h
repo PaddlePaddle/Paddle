@@ -15,17 +15,17 @@ limitations under the License. */
 #ifndef PADDLE_FLUID_FRAMEWORK_ASYNC_EXECUTOR_H_
 #define PADDLE_FLUID_FRAMEWORK_ASYNC_EXECUTOR_H_
 
-#include <memory>
-#include <mutex>    // NOLINT
-#include <set>
 #include <map>
+#include <memory>
+#include <mutex>  // NOLINT
+#include <set>
 #include <string>
-#include <thread>   // NOLINT
-#include <vector>
+#include <thread>  // NOLINT
 #include <typeinfo>
+#include <vector>
 #include "paddle/fluid/framework/data_feed.pb.h"
-#include "paddle/fluid/framework/executor_thread_worker.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_thread_worker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -41,15 +41,14 @@ class AsyncExecutor {
                    const int thread_num,
                    const std::vector<std::string>& fetch_names,
                    const bool debug = false);
+
  private:
   void CreateThreads(ExecutorThreadWorker* worker,
                      const ProgramDesc& main_program,
                      const std::shared_ptr<DataFeed>& reader,
                      const std::vector<std::string>& fetch_var_names,
-                     Scope& root_scope,   // NOLINT
-                     const int thread_index,
-                     const bool debug);
-
+                     Scope& root_scope,  // NOLINT
+                     const int thread_index, const bool debug);
 
  public:
   Scope& root_scope_;

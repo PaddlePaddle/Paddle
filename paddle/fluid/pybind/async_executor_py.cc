@@ -21,18 +21,18 @@ limitations under the License. */
 #ifdef _XOPEN_SOURCE
 #undef _XOPEN_SOURCE
 #endif
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "paddle/fluid/pybind/async_executor_py.h"
-#include "google/protobuf/text_format.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/variant.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/framework/data_feed.pb.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/pybind/async_executor_py.h"
 
 namespace py = pybind11;
 namespace pd = paddle::framework;
@@ -42,10 +42,10 @@ namespace pybind {
 using set_name_func = void (pd::DataFeedDesc::*)(const std::string&);
 void BindAsyncExecutor(py::module* m) {
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
-    .def(py::init<pd::Scope&, const platform::Place&>())
-    .def("run_from_files", &framework::AsyncExecutor::RunFromFile);
-}   // end BindAsyncExecutor
-}   // end namespace pybind
-}   // end namespace paddle
+      .def(py::init<pd::Scope&, const platform::Place&>())
+      .def("run_from_files", &framework::AsyncExecutor::RunFromFile);
+}  // end BindAsyncExecutor
+}  // end namespace pybind
+}  // end namespace paddle
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=80: */

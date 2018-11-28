@@ -15,12 +15,12 @@ limitations under the License. */
 #ifndef PADDLE_FLUID_FRAMEWORK_EXECUTOR_THREAD_WORKER_H_
 #define PADDLE_FLUID_FRAMEWORK_EXECUTOR_THREAD_WORKER_H_
 
-#include <memory>
-#include <mutex>    // NOLINT
-#include <set>
 #include <map>
+#include <memory>
+#include <mutex>  // NOLINT
+#include <set>
 #include <string>
-#include <thread>   // NOLINT
+#include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor.h"
@@ -34,16 +34,13 @@ void CreateTensor(Variable* var, proto::VarType::Type var_type);
 class ExecutorThreadWorker {
  public:
   ExecutorThreadWorker()
-      : thread_id_(-1),
-        root_scope_(NULL),
-        thread_scope_(NULL),
-        debug_(false) {}
+      : thread_id_(-1), root_scope_(NULL), thread_scope_(NULL), debug_(false) {}
   ~ExecutorThreadWorker() {}
 
   void CreateThreadResource(const framework::ProgramDesc& program,
                             const paddle::platform::Place& place);
   void SetThreadId(int tid);
-  void SetDebug(const bool debug) {debug_ = debug;}
+  void SetDebug(const bool debug) { debug_ = debug; }
   void SetRootScope(Scope* g_scope);
   // set cpu device in this function
   // cpu binding is used by default
@@ -72,7 +69,7 @@ class ExecutorThreadWorker {
   // operator name
   std::vector<std::string> op_names_;
   // thread level, local operators for forward and backward
-  std::vector<OperatorBase *> ops_;
+  std::vector<OperatorBase*> ops_;
   // main program for training
   std::unique_ptr<framework::ProgramDesc> main_program_;
   // execution place
