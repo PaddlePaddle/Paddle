@@ -76,7 +76,8 @@ void TestWord2vecPrediction(const std::string& model_path) {
                      0.000932706};
   const size_t num_elements = outputs.front().data.length() / sizeof(float);
   // The outputs' buffers are in CPU memory.
-  for (size_t i = 0; i < std::min((size_t)5UL, num_elements); i++) {
+  for (size_t i = 0; i < std::min(static_cast<size_t>(5UL), num_elements);
+       i++) {
     LOG(INFO) << "data: "
               << static_cast<float*>(outputs.front().data.data())[i];
     PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],

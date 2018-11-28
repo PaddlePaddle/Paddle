@@ -185,8 +185,12 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                << inputs.size();
     return false;
   }
+
+  // Cache the inputs memory for better concurrency performance.
+  feed_tensors_.resize(inputs.size());
+
   for (size_t i = 0; i < inputs.size(); ++i) {
-    framework::LoDTensor input;
+    auto &input = feed_tensors_[i];
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
@@ -261,6 +265,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
+    output->name = fetchs_[idx]->Input("X")[0];
     if (type == typeid(float)) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
