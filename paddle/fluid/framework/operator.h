@@ -127,8 +127,6 @@ class OperatorBase {
   //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
-  void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
-
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -141,8 +139,6 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
-  // Whether this operator executes in an Executor.
-  bool run_by_executor_{true};
 
  private:
   void GenerateTemporaryNames();

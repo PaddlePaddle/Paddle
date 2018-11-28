@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -33,6 +32,11 @@ DEFINE_bool(check_nan_inf, false,
 
 namespace paddle {
 namespace framework {
+
+// Combine two hash values to a single hash.
+inline size_t CombineHash(size_t seed, size_t a) {
+  return (seed ^ a) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
@@ -794,6 +798,17 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 Scope* OperatorWithKernel::TryTransferData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars) const {
+// In the inference scenerio, the scopes will be reused across the batches, so
+// the `new_scope` here will result in GPU memroy explosion over the running of
+// operators.
+// We use a thread_local cache to fix that issue, the key in the cache is the
+// combination of the `scope` argument, from_kernel_type, target_kernel_type.
+// Have a discussion with @Superjomn or the inference developers if some changes
+// on this logic for this macro might not tested on the other scenerios.
+#ifdef PADDLE_ON_INFERENCE
+  thread_local std::unordered_map<size_t, Scope*> infer_transfer_scope_cache;
+#endif
+
   Scope* new_scope = nullptr;
   for (auto& var_name_item : Inputs()) {
     for (auto& var_name : var_name_item.second) {
@@ -824,23 +839,23 @@ Scope* OperatorWithKernel::TryTransferData(
       VLOG(3) << "Transform Variable " << var_name << " from "
               << kernel_type_for_var << " to " << expected_kernel_key;
 
-      // In the inference scenerio, the scopes will be reused across the
-      // batches, so the `new_scope` here will result in GPU memroy explosion
-      // over the  running of operators.
-      // We use a thread_local cache to fix that issue, the key in the cache is
-      // the combination of the `scope` argument, from_kernel_type,
-      // target_kernel_type.
-      // Have a discussion with @Superjomn or the inference developers if some
-      // changes on this logic for this macro might not tested on the other
-      // scenerios.
-      // If this op is not called by an Executor or ParallelExecutor, it should
-      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
-      // variables, that behavior a lot different.
-      if (!run_by_executor_) {
-        new_scope = TryCreateTransferScope(kernel_type_for_var,
-                                           expected_kernel_key, &scope);
+#ifdef PADDLE_ON_INFERENCE
+      size_t infer_cache_key =
+          CombineHash(OpKernelType::Hash()(kernel_type_for_var),
+                      OpKernelType::Hash()(expected_kernel_key));
+      infer_cache_key =
+          CombineHash(infer_cache_key, std::hash<const Scope*>()(&scope));
+
+      auto it = infer_transfer_scope_cache.find(infer_cache_key);
+      if (it != infer_transfer_scope_cache.end()) {
+        new_scope = infer_transfer_scope_cache[infer_cache_key];
+      } else {
+        new_scope = &scope.NewScope();
+        infer_transfer_scope_cache[infer_cache_key] = new_scope;
       }
-      if (!new_scope) {
+#endif
+
+      if (new_scope == nullptr) {
         new_scope = &scope.NewScope();
       }
 
