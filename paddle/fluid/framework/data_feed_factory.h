@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
-#define PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
+#ifndef ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
+#define ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
 
-#include <string>
 #include <memory>
+#include <string>
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
@@ -29,4 +29,4 @@ class DataFeedFactory {
 }  // namespace framework
 }  // namespace paddle
 
-#endif  // PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
+#endif  // ASYNC_EXECUTOR_PADDLE_PADDLE_FLUID_FRAMEWORK_DATA_FEED_FACTORY_H_
