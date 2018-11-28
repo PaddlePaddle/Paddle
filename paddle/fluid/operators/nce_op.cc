@@ -162,9 +162,9 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                               "user should avoid setting this attribute.")
         .SetDefault({});
     AddComment(R"DOC(
-Compute and return the noise-contrastive estimation training loss. See 
-`Noise-contrastive estimation: A new estimation principle for unnormalized 
-statistical models 
+Compute and return the noise-contrastive estimation training loss. See
+`Noise-contrastive estimation: A new estimation principle for unnormalized
+statistical models
  <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
 By default this operator uses a uniform distribution for sampling.
 )DOC");
@@ -230,14 +230,14 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      VLOG(30) << "nce_op_grad op " << weight_grad << " and " << bias_grad
-               << " is set to SelectedRows";
+      VLOG(3) << "nce_op_grad op " << weight_grad << " and " << bias_grad
+              << " is set to SelectedRows";
       block->Var(weight_grad)
           ->SetType(framework::proto::VarType::SELECTED_ROWS);
       block->Var(bias_grad)->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
-      VLOG(30) << "nce_op_grad op " << weight_grad << " and " << bias_grad
-               << " is set to LoDTensor";
+      VLOG(3) << "nce_op_grad op " << weight_grad << " and " << bias_grad
+              << " is set to LoDTensor";
       block->Var(weight_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
       block->Var(bias_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
     }

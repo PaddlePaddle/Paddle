@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/hierarchical_sigmoid_op.h"
+#include <string>
 #include <vector>
-
 namespace paddle {
 namespace operators {
 
@@ -70,13 +70,14 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
     const int64_t batch_size = ctx->GetInputDim("X")[0];
     std::vector<int64_t> output_shape({batch_size, 1});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         ctx.GetPlace());
   }
 };
@@ -86,27 +87,40 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, required) The input tensor with shape [N, D], "
+             "(LoDTensor, required) The input tensor with shape [N, D], "
              "where N is the size of mini-batch, and D is the feature size.");
     AddInput("W",
-             "(Tensor, required), The parameters of hierarchical "
+             "(LoDTensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is a 2-D tensor, the shape is"
-             "[num_classes - 1, D].");
+             "[K, D]. Which K is the num of non-leaf node in Path Tree");
     AddInput("Label",
-             "(Tensor, required), The labels of training data. It's a"
+             "(LoDTensor, required), The labels of training data. It's a"
              "tensor with shape [N, 1].");
+    AddInput("PTable",
+             "(LoDTensor, optional), The Path Table from root to current word"
+             "it should have shape like [N, L], L is the length of the Path")
+        .AsDispensable();
+    AddInput(
+        "PathCode",
+        "(LoDTensor, optional), The Code on each Node of the Path from root "
+        "to current word"
+        "it should have shape like [N, L], L is the length of the Path")
+        .AsDispensable();
     AddInput("Bias",
-             "(Tensor, optional), The bias is a tensor with shape"
-             "[1, num_classes - 1].");
-    AddOutput("Out",
-              "(Tensor, required) The output of hierarchical sigmoid operator."
-              "The shape is [N, 1].");
+             "(LoDTensor, optional), The bias is a tensor with shape or "
+             "[num_classes, 1]"
+             "[num_classes - 1, 1].")
+        .AsDispensable();
+    AddOutput(
+        "Out",
+        "(LoDTensor, required) The output of hierarchical sigmoid operator."
+        "The shape is [N, 1].");
     AddOutput("PreOut",
-              "(Tensor, required) A intermedia 2-D tensor with shape "
+              "(LoDTensor, required) A intermedia 2-D tensor with shape "
               "[batch_size, code_length], where code_length represents the "
               "maximum path length from root to leaf nodes.")
         .AsIntermediate();
-    AddAttr<AttrType>("num_classes", "(int, required), The number of classes")
+    AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
@@ -115,6 +129,10 @@ belonging to the right branch. This idea is from
 "F. Morin, Y. Bengio (AISTATS 05):
 Hierarchical Probabilistic Neural Network Language Model."
       )DOC");
+    AddAttr<bool>("is_sparse",
+                  "(boolean, default false) "
+                  "Sparse update.")
+        .SetDefault(false);
   }
 };
 
@@ -124,16 +142,21 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@Grad) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("PreOut"),
                    "Input(Preout) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("W")),
-                   "Output(W@Grad should not be null.)");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")));
-    if (ctx->HasOutput(framework::GradVarName("Bias"))) {
-      ctx->SetOutputDim(framework::GradVarName("Bias"),
-                        ctx->GetInputDim("Bias"));
+                   "Output(W@Grad should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output(X@Grad should not be null.");
+    if (!ctx->Attrs().Get<bool>("is_sparse")) {
+      if (ctx->HasOutput(framework::GradVarName("Bias"))) {
+        ctx->SetOutputDim(framework::GradVarName("Bias"),
+                          ctx->GetInputDim("Bias"));
+      }
+      ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
     }
-    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
@@ -141,8 +164,52 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         ctx.GetPlace());
+  }
+};
+
+class HierarchicalSigmoidGradOpGradVarTypeInference
+    : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto w_grad_var_name = op_desc.Output(framework::GradVarName("W")).front();
+    auto bias_grad_var_name_vec =
+        op_desc.Output(framework::GradVarName("Bias"));
+    std::string bias_grad_var_name;
+    bool hasBias = false;
+    if (bias_grad_var_name_vec.size()) {
+      hasBias = true;
+      bias_grad_var_name =
+          op_desc.Output(framework::GradVarName("Bias")).front();
+    }
+    auto attr = op_desc.GetAttr("is_sparse");
+    bool is_sparse = boost::get<bool>(attr);
+    if (is_sparse) {
+      VLOG(30) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
+               << " is set to SelectedRows";
+      block->Var(w_grad_var_name)
+          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      if (hasBias) {
+        VLOG(30) << "hierarchical_sigmoid_grad op "
+                 << framework::GradVarName("Bias") << " is set to SelectedRows";
+        block->Var(bias_grad_var_name)
+            ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      }
+    } else {
+      VLOG(30) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
+               << " is set to LoDTensor";
+      block->Var(w_grad_var_name)
+          ->SetType(framework::proto::VarType::LOD_TENSOR);
+      if (hasBias) {
+        VLOG(30) << "hierarchical_sigmoid_grad op "
+                 << framework::GradVarName("Bias") << " is set to LoDTensor";
+        block->Var(bias_grad_var_name)
+            ->SetType(framework::proto::VarType::LOD_TENSOR);
+      }
+    }
+    block->Var(w_grad_var_name)->SetDataType(block->Var("W")->GetDataType());
   }
 };
 
@@ -153,7 +220,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(hierarchical_sigmoid, ops::HierarchicalSigmoidOp,
                   ops::HierarchicalSigmoidOpMaker<int>,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp);
+REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
+                  ops::HierarchicalSigmoidGradOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,
