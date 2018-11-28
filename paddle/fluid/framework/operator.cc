@@ -404,15 +404,19 @@ static inline Tensor* FindOutputTensor(const OperatorBase& op,
 bool OperatorBase::TryNonModifiedInplaceTensor(const Scope& scope,
                                                const std::string& in,
                                                const std::string& out) const {
+  if (!inplace_context_.CanNonModifiedInplace(in, out)) return false;
   auto* in_tensor = FindInputTensor(*this, scope, in);
-  auto* out_tensor = FindOutputTensor(*this, scope, out);
-  if (in_tensor == nullptr || out_tensor == nullptr) return false;
-  if (inplace_context_.CanNonModifiedInplace(in, out) &&
-      in_tensor->numel() == out_tensor->numel()) {
-    out_tensor->ShareBufferWith(*in_tensor);
-    VLOG(10) << "Non-modified inplace share buffer between Input(" << in
-             << ") -> Output(" << out << ") inside operator: " << DebugString();
-    return true;
+  if (in_tensor != nullptr) {
+    auto* out_tensor = FindOutputTensor(*this, scope, out);
+    if (out_tensor != nullptr && in_tensor->numel() == out_tensor->numel()) {
+      out_tensor->ShareBufferWith(*in_tensor);
+      VLOG(10) << "Non-modified inplace share buffer between Input(" << in
+               << ") -> Output(" << out
+               << ") inside operator: " << DebugString();
+      return true;
+    } else {
+      return false;
+    }
   } else {
     return false;
   }
@@ -421,15 +425,19 @@ bool OperatorBase::TryNonModifiedInplaceTensor(const Scope& scope,
 bool OperatorBase::TryModifiedInplaceTensor(const Scope& scope,
                                             const std::string& in,
                                             const std::string& out) const {
+  if (!inplace_context_.CanModifiedInplace(in, out)) return false;
   auto* in_tensor = FindInputTensor(*this, scope, in);
-  auto* out_tensor = FindOutputTensor(*this, scope, out);
-  if (in_tensor == nullptr || out_tensor == nullptr) return false;
-  if (inplace_context_.CanModifiedInplace(in, out) &&
-      in_tensor->numel() == out_tensor->numel()) {
-    out_tensor->ShareBufferWith(*in_tensor);
-    VLOG(10) << "Modified inplace share buffer between Input(" << in
-             << ") -> Output(" << out << ") inside operator: " << DebugString();
-    return true;
+  if (in_tensor != nullptr) {
+    auto* out_tensor = FindOutputTensor(*this, scope, out);
+    if (out_tensor != nullptr && in_tensor->numel() == out_tensor->numel()) {
+      out_tensor->ShareBufferWith(*in_tensor);
+      VLOG(10) << "Modified inplace share buffer between Input(" << in
+               << ") -> Output(" << out
+               << ") inside operator: " << DebugString();
+      return true;
+    } else {
+      return false;
+    }
   } else {
     return false;
   }

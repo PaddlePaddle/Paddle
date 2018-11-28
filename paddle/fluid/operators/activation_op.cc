@@ -94,6 +94,10 @@ class ActivationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
+
+  ModifiedInplaceVarMap GetModifiedInplaceVarMap() const override {
+    return {{"X", "Out"}};
+  }
 };
 
 class ActivationOpInferVarType
@@ -118,6 +122,10 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "Out");
+  }
+
+  ModifiedInplaceVarMap GetModifiedInplaceVarMap() const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
   }
 };
 

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -105,7 +106,7 @@ static std::pair<int, int> ReadWriteTimes(
     for (auto *in : pending_op->Inputs()) {
       auto *in_var = dynamic_cast<VarHandle *>(in);
       if (in_var != nullptr && VarHandleComparator::IsEqual(in_var, var)) {
-        VLOG(8) << "Read " << in_var->name_ << " in " << pending_op->Name();
+        VLOG(10) << "Read " << in_var->name_ << " in " << pending_op->Name();
         ++ret.first;
         break;
       }
@@ -114,7 +115,7 @@ static std::pair<int, int> ReadWriteTimes(
     for (auto *out : pending_op->Outputs()) {
       auto *out_var = dynamic_cast<VarHandle *>(out);
       if (out_var != nullptr && VarHandleComparator::IsEqual(out_var, var)) {
-        VLOG(8) << "Write " << out_var->name_ << " in " << pending_op->Name();
+        VLOG(10) << "Write " << out_var->name_ << " in " << pending_op->Name();
         ++ret.second;
         break;
       }
@@ -126,6 +127,8 @@ static std::pair<int, int> ReadWriteTimes(
   } else {
     std::for_each(all_ops.begin(), all_ops.end(), visitor);
   }
+  VLOG(10) << var->name_ << " reads " << ret.first << " time(s), writes "
+           << ret.second << " time(s)";
   return ret;
 }
 
@@ -136,8 +139,6 @@ std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
 
   auto has_no_write = [&](VarHandle *var) -> bool {
     auto rw_times = ReadWriteTimes(var, graph, all_ops);
-    VLOG(10) << var->name_ << " reads " << rw_times.first << " time(s), writes "
-             << rw_times.second << " time(s)";
     return rw_times.second == 0;
   };
 
@@ -177,9 +178,9 @@ std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
         const std::string &in_var_name = var_pair.first;
         const std::string &out_var_name = can_inplace_vars[i];
         inplace_ctx->UpdateNonModified(in_var_name, out_var_name);
-        VLOG(10) << "Maybe non-modified inplace share buffer between Input("
-                 << in_var_name << ") -> Output(" << out_var_name
-                 << ") inside operator: " << op_base.DebugString();
+        VLOG(5) << "Maybe non-modified inplace share buffer between Input("
+                << in_var_name << ") -> Output(" << out_var_name
+                << ") inside operator: " << op_base.DebugString();
         non_modified_inplace_vars.insert(
             out_var_name_handle_map.at(out_var_name));
       }
@@ -188,8 +189,6 @@ std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
 
   auto do_not_appear = [&](VarHandle *var) -> bool {
     auto rw_times = ReadWriteTimes(var, graph, all_ops);
-    VLOG(10) << var->name_ << " reads " << rw_times.first << " time(s), writes "
-             << rw_times.second << " time(s)";
     return rw_times.first <= 1 && rw_times.second == 0;
   };
 
@@ -200,6 +199,9 @@ std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
     auto *inplace_ctx = op_base.InplaceContext();
     auto inplace_var_map = op_base.GetModifiedInplaceVarMap();
     inplace_ctx->ClearModified();
+    if (!inplace_var_map.empty()) {
+      VLOG(10) << "Modified inplace map appears in:" << op_base.DebugString();
+    }
     for (auto &var_pair : inplace_var_map) {
       VarHandle *in_var =
           FindUniqueInputByVarName(compute_op, var_pair.first, true);
@@ -215,14 +217,18 @@ std::unique_ptr<ir::Graph> InplaceOpPass::ApplyImpl(
       }
 
       bool has_multiple_out_var = std::any_of(
-        compute_op->Outputs().begin(), compute_op->Outputs().end(),
-        [out_var] (VarHandleBase *var_base) {
-          auto var = dynamic_cast<VarHandle *>(var_base);
-          return var != nullptr && var != out_var && VarHandleComparator::IsEqual(var, out_var);
-        });
+          compute_op->Outputs().begin(), compute_op->Outputs().end(),
+          [out_var](VarHandleBase *var_base) {
+            auto var = dynamic_cast<VarHandle *>(var_base);
+            return var != nullptr && var != out_var &&
+                   VarHandleComparator::IsEqual(var, out_var);
+          });
 
       if (!has_multiple_out_var) {
         inplace_ctx->UpdateModified(var_pair.first, var_pair.second);
+        VLOG(5) << "Maybe modified inplace share buffer between Input("
+                << var_pair.first << ") -> Output(" << var_pair.second
+                << ") inside operator: " << op_base.DebugString();
       }
     }
   }

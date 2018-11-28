@@ -76,7 +76,7 @@ struct BuildStrategy {
   int num_trainers_{1};
   bool remove_unnecessary_lock_{false};
 
-  bool inplace_optimize_{false};
+  bool inplace_optimize_{true};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works

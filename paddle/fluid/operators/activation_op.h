@@ -68,6 +68,7 @@ class ActivationKernel
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
+    context.TryModifiedInplaceTensor("X", "Out");
     functor(*place, x, out);
   }
 };
@@ -98,6 +99,8 @@ class ActivationGradKernel
     if (!inplace) {
       auto* X = context.Input<framework::Tensor>("X");
       auto x = framework::EigenVector<T>::Flatten(*X);
+      context.TryModifiedInplaceTensor(framework::GradVarName("Out"),
+                                       framework::GradVarName("X"));
       functor(*place, x, out, dout, dx);
     } else {
       VLOG(10) << " Inplace activation ";

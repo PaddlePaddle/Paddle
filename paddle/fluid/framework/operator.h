@@ -183,7 +183,7 @@ class OperatorBase {
                                    const std::string& out) const;
   // WARN(zjl): User should call this method if he wants to modify `out` after
   // inplace sharing
-  // e.g.: some activation_ops (relu, scale, etc)tivation_ops (relu, scale, etc)
+  // e.g.: some activation_ops (relu, scale, etc)
   bool TryModifiedInplaceTensor(const Scope& scope, const std::string& in,
                                 const std::string& out) const;
 

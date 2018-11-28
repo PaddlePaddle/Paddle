@@ -865,7 +865,7 @@ All parameter, weight, gradient are variables in Paddle.
                 be released and ParallelExecutor would run faster. Default 
                 False.)DOC")
       .def_property(
-          "_inplace_optimize",
+          "inplace_optimize",
           [](const BuildStrategy &self) { return self.inplace_optimize_; },
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
