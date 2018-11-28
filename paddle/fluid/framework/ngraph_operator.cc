@@ -279,7 +279,7 @@ std::shared_ptr<ngraph::runtime::Backend> NgraphOperator::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
 void NgraphOperator::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
-  op->RunInferShape(scope_, place_);
+  op->RuntimeInferShape(scope_, place_);
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope_.FindVar(var_name);
