@@ -409,12 +409,13 @@ All parameter, weight, gradient are variables in Paddle.
 
     You can create var in a scope and get it from the scope.
 
-    Example:
+    Examples:
+        .. code-block:: python
 
-      # create tensor from a scope and set value to it.
-      param = scope.var('Param').get_tensor()
-      param_array = np.full((height, row_numel), 5.0).astype("float32")
-      param.set(param_array, place)
+          # create tensor from a scope and set value to it.
+          param = scope.var('Param').get_tensor()
+          param_array = np.full((height, row_numel), 5.0).astype("float32")
+          param.set(param_array, place)
 
         )DOC")
       .def("var",
