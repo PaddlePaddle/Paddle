@@ -185,7 +185,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   for (size_t i = 0; i < in_var_names.size(); i++) {
     if (NeedSend(local_scope, in_var_names[i])) {
       VLOG(3) << "sending " << in_var_names[i] << " to " << epmap[i]
-               << " to get " << out_var_names[i] << " back";
+              << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
           epmap[i], ctx, local_scope, in_var_names[i], out_var_names[i],
           table_names[i]));
