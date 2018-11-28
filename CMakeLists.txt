@@ -195,6 +195,7 @@ include(external/gtest)     # download, build, install gtest
 include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
+include(external/opencv)    # download, build, install opencv
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/ngraph)    # download, build, install nGraph
 include(external/swig)      # download, build, install swig

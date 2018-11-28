@@ -71,6 +71,7 @@ if (NOT WIN32)
 link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
 link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
 link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
+link_directories("${PADDLE_LIB}/third_party/install/opencv/lib")
 endif(NOT WIN32)
 
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
