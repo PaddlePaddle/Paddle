@@ -31,15 +31,18 @@ class Tracer {
  public:
   Tracer() {}
 
-  void Trace(OpBase* op, const std::map<std::string, VarBase*>& inputs,
-             const std::map<std::string, VarBase*>& outputs) {
+  void Trace(OpBase* op, const std::vector<VarBase*>& inputs,
+             const std::vector<VarBase*>& outputs) {
     framework::OpDesc* op_desc = op->op_desc_;
     LOG(ERROR) << "tracer tracing " << op_desc->Type();
     op_desc->InferShape(*block_);
     op_desc->InferVarType(block_);
     std::unique_ptr<framework::OperatorBase> op_base =
         framework::OpRegistry::CreateOp(*op_desc);
-    for (const std::string& vname : op_desc->InputArgumentNames()) {
+
+    *op->input_vars_ = inputs;
+    for (VarBase* input : inputs) {
+      const std::string vname = input->var_desc_->Name();
       framework::Variable* var = scope_->Var(vname);
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block_->FindVar(vname);
@@ -50,7 +53,10 @@ class Tracer {
         }
       }
     }
-    for (const std::string& vname : op_desc->OutputArgumentNames()) {
+
+    *op->output_vars_ = outputs;
+    for (auto output : outputs) {
+      const std::string vname = output->var_desc_->Name();
       framework::Variable* var = scope_->Var(vname);
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block_->FindVar(vname);
@@ -60,6 +66,7 @@ class Tracer {
           LOG(ERROR) << "tracer doesn't support yet";
         }
       }
+      output->pre_op_ = op;
     }
     op_base->Run(*scope_, platform::CPUPlace());
   }

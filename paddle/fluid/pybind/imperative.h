@@ -37,6 +37,11 @@ class PyLayer : public imperative::Layer {
   }
 };
 
+class PyOpBase : public imperative::OpBase {
+ public:
+  using imperative::OpBase::OpBase;  // Inherit constructors
+};
+
 void BindTracer(pybind11::module* m);
 
 }  // namespace pybind

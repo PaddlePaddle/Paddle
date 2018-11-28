@@ -111,8 +111,9 @@ PYBIND11_MODULE(core, m) {
           },
           py::return_value_policy::reference);
 
-  py::class_<imperative::OpBase>(m, "OpBase",
-                                 R"DOC()DOC")
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase",
+                                           R"DOC()DOC")
+      .def(py::init<>())
       .def_property(
           "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
           [](imperative::OpBase &self, framework::OpDesc *op_desc) {
