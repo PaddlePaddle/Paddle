@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/engine.h"
+#include "paddle/fluid/imperative/layer.h"
 
 namespace paddle {
 namespace imperative {
@@ -29,11 +31,13 @@ class Tracer {
  public:
   Tracer() {}
 
-  void Trace(framework::OpDesc* op_desc) {
+  void Trace(OpBase* op, const std::map<std::string, VarBase*>& inputs,
+             const std::map<std::string, VarBase*>& outputs) {
+    framework::OpDesc* op_desc = op->op_desc_;
     LOG(ERROR) << "tracer tracing " << op_desc->Type();
     op_desc->InferShape(*block_);
     op_desc->InferVarType(block_);
-    std::unique_ptr<framework::OperatorBase> op =
+    std::unique_ptr<framework::OperatorBase> op_base =
         framework::OpRegistry::CreateOp(*op_desc);
     for (const std::string& vname : op_desc->InputArgumentNames()) {
       framework::Variable* var = scope_->Var(vname);
@@ -57,7 +61,7 @@ class Tracer {
         }
       }
     }
-    op->Run(*scope_, platform::CPUPlace());
+    op_base->Run(*scope_, platform::CPUPlace());
   }
 
   void SetScope(framework::Scope* scope) { scope_ = scope; }
