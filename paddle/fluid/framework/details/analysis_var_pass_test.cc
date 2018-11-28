@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/cfg_graph.h"
+#include "paddle/fluid/framework/details/analysis_var_pass.h"
 #include <iostream>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -168,7 +168,7 @@ TEST(CFGGraph, IRGraph) {
 
   // test assign op
   ASSERT_TRUE((std::set<std::string>{"d"} == cfg.LiveIn(cfg.Ops()[3])));
-  ASSERT_TRUE((std::set<std::string>{""} == cfg.LiveOut(cfg.Ops()[3])));
+  ASSERT_TRUE((std::set<std::string>{} == cfg.LiveOut(cfg.Ops()[3])));
 }
 
 }  // namespace details

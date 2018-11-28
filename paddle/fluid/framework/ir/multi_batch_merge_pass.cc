@@ -71,8 +71,6 @@ VarDesc UpdateGradVarDesc(
 std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     std::unique_ptr<Graph> graph) const {
   int num_repeats = Get<const int>(kNumRepeats);
-  std::vector<OpDesc*> all_op_descs = Get<std::vector<OpDesc*>>(kAllOpDescs);
-
   std::vector<Node*> forward_backward_ops;
   std::vector<Node*> optimize_ops;
   std::vector<Node*> lr_ops;  // ops other than forward/backward/optimize
@@ -314,5 +312,4 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
 }  // namespace paddle
 
 REGISTER_PASS(multi_batch_merge_pass, paddle::framework::ir::BatchMergePass)
-    .RequirePassAttr(paddle::framework::ir::kNumRepeats)
-    .RequirePassAttr(paddle::framework::ir::kAllOpDescs);
+    .RequirePassAttr(paddle::framework::ir::kNumRepeats);

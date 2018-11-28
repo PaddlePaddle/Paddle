@@ -15,7 +15,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/reference_count_op_handle.h"
 

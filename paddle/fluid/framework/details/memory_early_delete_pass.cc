@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/memory_early_delete_pass.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/memory_reuse_types.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/reference_count_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"

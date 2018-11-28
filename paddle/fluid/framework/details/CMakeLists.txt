@@ -31,7 +31,7 @@ cc_library(data_balance_op_handle SRCS data_balance_op_handle.cc DEPS op_handle_
 cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor)
 cc_library(fuse_vars_op_handle SRCS fuse_vars_op_handle.cc DEPS op_handle_base scope)
 
-cc_library(memory_optimize_pass SRCS analysis_var_pass.cc cfg_graph.cc memory_reuse_types.cc DEPS graph graph_helper pass)
+cc_library(memory_optimize_pass SRCS analysis_var_pass.cc memory_reuse_types.cc DEPS graph graph_helper pass)
 cc_library(modify_op_lock_and_record_event_pass SRCS modify_op_lock_and_record_event_pass.cc DEPS computation_op_handle op_graph_view multi_devices_helper)
 if(WITH_GPU)
   cc_library(reference_count_pass SRCS reference_count_pass.cc DEPS computation_op_handle scale_loss_grad_op_handle rpc_op_handle
@@ -50,7 +50,7 @@ if (WITH_GPU)
   list(APPEND SSA_GRAPH_EXECUTOR_DEPS reference_count_pass)
 endif()
 cc_test(memory_reuse_types_test SRCS memory_reuse_types_test.cc DEPS framework_proto graph)
-cc_test(cfg_graph_test SRCS cfg_graph_test.cc cfg_graph.cc DEPS framework_proto graph graph_helper op_registry )
+cc_test(analysis_var_pass_test SRCS analysis_var_pass_test.cc analysis_var_pass.cc memory_reuse_types.cc DEPS framework_proto graph graph_helper op_registry pass)
 
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 

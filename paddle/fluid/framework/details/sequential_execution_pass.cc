@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -40,7 +39,7 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
   static std::unordered_set<std::string> skip_dist_ops{
       "send", "recv", "send_barrier", "fetch_barrier"};
 
-  auto &ops = Get<const std::vector<OpDesc *>>(ir::kAllOpDescs);
+  auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
   std::vector<ir::Node *> op_node_list;
   op_node_list.reserve(ops.size());
 
@@ -107,4 +106,4 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
 
 REGISTER_PASS(sequential_execution_pass,
               paddle::framework::details::SequentialExecutionPass)
-    .RequirePassAttr(paddle::framework::ir::kAllOpDescs);
+    .RequirePassAttr(paddle::framework::details::kAllOpDescs);

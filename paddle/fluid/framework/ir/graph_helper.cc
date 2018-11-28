@@ -100,63 +100,6 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   return ret;
 }
 
-std::vector<ir::Node *> SortOperationsInSequence(const Graph &graph) {
-  PADDLE_ENFORCE(graph.Has(kAllOpDescs),
-                 "Graph has no attribute of kAllOpDescs.");
-  auto &ops = graph.Get<std::vector<OpDesc *>>(kAllOpDescs);
-  std::vector<ir::Node *> op_node_list;
-  op_node_list.reserve(ops.size());
-  auto is_same_op_desc = [](OpDesc *op1, OpDesc *op2) {
-    return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
-           op1->Outputs() == op2->Outputs();
-  };
-
-  std::unordered_map<ir::Node *, size_t> op_deps;
-  std::unordered_map<ir::Node *, std::unordered_set<ir::Node *>> pending_ops;
-  std::unordered_set<ir::Node *> ready_ops;
-
-  for (ir::Node *node : graph.Nodes()) {
-    if (!node->IsOp() || node->Op() == nullptr) continue;
-    std::unordered_set<ir::Node *> preceding_ops;
-    for (auto *in : node->inputs) {
-      PADDLE_ENFORCE(in->IsVar(),
-                     "Preceding Node of Op Nodes must be Var Node");
-      if (in->inputs.empty()) continue;
-      PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp(),
-                     "Preceding Op Node of Var Node must be unique");
-      preceding_ops.insert(in->inputs[0]);
-      pending_ops[in->inputs[0]].insert(node);
-    }
-    op_deps[node] = preceding_ops.size();
-    if (preceding_ops.empty()) {
-      ready_ops.insert(node);
-    }
-  }
-
-  for (auto *op_desc : ops) {
-    ir::Node *found_node = nullptr;
-    for (auto *node : ready_ops) {
-      if (is_same_op_desc(op_desc, node->Op())) {
-        PADDLE_ENFORCE(found_node == nullptr,
-                       "Found multiple op_desc in graph: %s", op_desc->Type());
-        found_node = node;
-      }
-    }
-
-    PADDLE_ENFORCE_NOT_NULL(found_node, "Cannot find op_desc in graph: %s",
-                            op_desc->Type());
-    for (auto *pending_op : pending_ops[found_node]) {
-      if (--op_deps.at(pending_op) == 0) {
-        ready_ops.insert(pending_op);
-      }
-    }
-    ready_ops.erase(found_node);
-    op_node_list.push_back(found_node);
-  }
-
-  return op_node_list;
-}
-
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;

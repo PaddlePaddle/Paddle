@@ -17,7 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 
-#include "paddle/fluid/framework/details/cfg_graph.h"
+#include "paddle/fluid/framework/details/memory_reuse_types.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
@@ -126,10 +126,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   // these will transfer ownership to graph. not release by hand.
   std::vector<OpDesc *> *all_op_descs =
       new std::vector<OpDesc *>(main_program.Block(0).AllOps());
-  details::GraphNodePool *graph_pool = new details::GraphNodePool;
-
-  graph->Set(details::kGraphNodePool, graph_pool);  // take ownership
-  graph->Set(ir::kAllOpDescs, all_op_descs);        // take ownership
+  graph->Set(details::kAllOpDescs, all_op_descs);  // take ownership
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (pass->Type() == "multi_devices_pass") {
@@ -151,7 +148,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     } else if (pass->Type() == "sequential_execution_pass") {
       // may conflict with merge_multi_batch_pass, because it change
       // AllOps inside pass. No pass->Erase(kAllOpDescs) on purpose.
-      pass->SetNotOwned(ir::kAllOpDescs, all_op_descs);
+      pass->SetNotOwned(details::kAllOpDescs, all_op_descs);
     } else if (pass->Type() == "analysis_var_pass") {
       pass->SetNotOwned(details::kGraphNodePool, graph_pool);
     }
