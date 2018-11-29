@@ -111,7 +111,7 @@ std::map<std::string,
     NgraphBridge::NG_NODE_MAP = {{"relu", BuildUnaryNode<ngraph::op::Relu>},
                                  {"tanh", BuildUnaryNode<ngraph::op::Tanh>}};
 
-void NgraphBridge::BuildNgGraph(const std::shared_ptr<OperatorBase>& op) {
+void NgraphBridge::BuildNgNode(const std::shared_ptr<OperatorBase>& op) {
   auto& op_type = op->Type();
   NG_NODE_MAP[op_type](op, ngb_node_map_);
 }
