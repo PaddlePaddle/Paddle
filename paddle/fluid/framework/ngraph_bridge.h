@@ -43,7 +43,7 @@ class NgraphBridge {
           var_node_map)
       : ngb_node_map_(var_node_map) {}
 
-  void BuildNgGraph(const std::shared_ptr<OperatorBase>& op);
+  void BuildNgNode(const std::shared_ptr<OperatorBase>& op);
 
  private:
   std::shared_ptr<
