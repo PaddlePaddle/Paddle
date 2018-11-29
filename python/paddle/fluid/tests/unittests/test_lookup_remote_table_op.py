@@ -174,6 +174,7 @@ class TestListenAndServOp(unittest.TestCase):
                     self.assertTrue((result_array[i] == id).all())
 
     def test_lookup_remote_table(self):
+        os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
         # run pserver on CPU in sync mode
         p0 = self._start_pserver(0, False, True, run_pserver)
         self._wait_ps_ready(p0.pid)
