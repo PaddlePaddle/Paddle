@@ -82,10 +82,13 @@ void InitDevices(bool init_p2p) {
   std::vector<int> devices;
 #ifdef PADDLE_WITH_CUDA
   try {
-    int count = platform::GetCUDADeviceCount();
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
-    }
+    // int count = platform::GetCUDADeviceCount();
+    // for (int i = 0; i < count; ++i) {
+    //   devices.push_back(i);
+    // }
+    int dev_id = atoi(std::getenv("PADDLE_TRAINER_ID"));
+    devices.push_back(dev_id);
+    VLOG(30) << "init dev id: " << dev_id;
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
@@ -105,10 +108,11 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
-    if (devices[i] >= count || devices[i] < 0) {
-      LOG(WARNING) << "Invalid devices id.";
-      continue;
-    }
+    VLOG(30) << "init device: " << devices[i];
+    // if (devices[i] >= count || devices[i] < 0) {
+    //   LOG(WARNING) << "Invalid devices id.";
+    //   continue;
+    // }
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {

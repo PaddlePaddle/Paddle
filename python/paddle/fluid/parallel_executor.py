@@ -91,11 +91,15 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
-                 scope=None):
+                 scope=None,
+                 gpus=[]):
         self._places = []
         self._act_places = []
-        if use_cuda:
+        if len(gpus) == 0:
             for i in six.moves.range(core.get_cuda_device_count()):
+                gpus.append(i)
+        if use_cuda:
+            for i in gpus:
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
