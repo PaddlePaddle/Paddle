@@ -17,7 +17,7 @@
 namespace paddle {
 namespace inference {
 using contrib::AnalysisConfig;
-#define MAX_TURN_NUM 9
+#define MAX_TURN_NUM 1
 #define MAX_TURN_LEN 50
 static std::vector<float> result_data;
 
@@ -148,8 +148,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
+  cfg->model_dir = FLAGS_infer_model;
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->specify_input_name = true;
@@ -202,8 +201,8 @@ TEST(Analyzer_dam, fuse_statis) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
   ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 317);
-  EXPECT_EQ(num_ops, 2020);
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 45);
+  EXPECT_EQ(num_ops, 292);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

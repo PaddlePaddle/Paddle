@@ -48,7 +48,9 @@ inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2
 
 # DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
-download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
+# For the normal DAM model
+# download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
+download_model_and_data(${DAM_INSTALL_DIR} "small_dam_model.tar.gz" "small_dam_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc)
 
 # chinese_ner
