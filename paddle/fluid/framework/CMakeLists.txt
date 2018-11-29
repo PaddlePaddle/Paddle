@@ -36,7 +36,6 @@ add_subdirectory(details)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
 
-cc_library(variable_helper SRCS variable_helper.cc DEPS framework_proto)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
@@ -159,6 +158,7 @@ endif(NOT WIN32)
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
+cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
