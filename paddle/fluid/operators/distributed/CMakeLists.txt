@@ -23,7 +23,7 @@ if(WITH_GRPC)
   cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor  proto_desc lookup_sparse_table_op SERIAL)
   cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
-  cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_grpc)
+  cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_grpc memory)
 else()
   set_source_files_properties(brpc_server.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
       brpc_variable_response.cc brpc_sendrecvop_utils.cc brpc_rdma_pool.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -33,7 +33,7 @@ else()
     PROTO send_recv.proto
     DEPS lod_tensor selected_rows memory)
 
-  cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_brpc)
+  cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_brpc memory)
 
   set(brpc_test_depends sendrecvop_brpc brpc ssl crypto protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy)
 
