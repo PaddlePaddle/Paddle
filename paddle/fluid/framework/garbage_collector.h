@@ -65,7 +65,7 @@ class GarbageCollector {
 
     if (clear_deque != nullptr) {
       callback();
-      ClearCallback([=]() {
+      ClearCallback([clear_deque]() {
         for (auto *obj : *clear_deque) obj->clear();
       });
     }
@@ -109,7 +109,6 @@ class DefaultStreamGarbageCollector : public GarbageCollector<T> {
   }
 
   void Wait() const override {
-    this->dev_ctx_->Wait();
     static_cast<const platform::CUDADeviceContext *>(this->dev_ctx_)
         ->WaitStreamCallback();
   }
@@ -127,14 +126,14 @@ class StreamGarbageCollector : public GarbageCollector<T> {
   StreamGarbageCollector(const platform::CUDAPlace &place,
                          size_t max_memory_size)
       : GarbageCollector<T>(place, max_memory_size) {
-    PADDLE_ENFORCE(cudaSetDevice(place.device));
+    platform::SetDeviceId(place.device);
     PADDLE_ENFORCE(cudaStreamCreate(&stream_));
     callback_manager_.reset(new platform::StreamCallbackManager(stream_));
   }
 
   ~StreamGarbageCollector() {
     auto place = boost::get<platform::CUDAPlace>(this->dev_ctx_->GetPlace());
-    PADDLE_ENFORCE(cudaSetDevice(place.device));
+    platform::SetDeviceId(place.device);
     PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
     PADDLE_ENFORCE(cudaStreamDestroy(stream_));
   }
@@ -148,8 +147,11 @@ class StreamGarbageCollector : public GarbageCollector<T> {
   cudaStream_t stream() const { return stream_; }
 
  protected:
+  // ClearCallback and Wait()/Reset() cannot be call in multiple threads
+  // But it is not important, because they would not be called in multiple
+  // threads
+  // either in Executor or ParallelExecutor
   void ClearCallback(const std::function<void()> &callback) override {
-    std::lock_guard<std::mutex> guard(this->mutex_);
     callback_manager_->AddCallback(callback);
   }
 

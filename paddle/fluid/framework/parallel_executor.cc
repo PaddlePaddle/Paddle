@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -49,6 +50,15 @@ class ParallelExecutorPrivate {
       }
     }
   }
+
+  void ResetRuntimeReferenceCount() {
+    for (size_t i = 0; i < rt_ref_cnts_.size(); ++i) {
+      for (auto &pair : rt_ref_cnts_[i]) {
+        rt_cur_ref_cnts_[i][pair.first] = pair.second;
+      }
+    }
+  }
+
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
@@ -60,6 +70,13 @@ class ParallelExecutorPrivate {
   bool own_local_scope_;
   bool use_cuda_;
   bool use_all_reduce_;
+
+  // rt_ref_cnts_ is only initialized when ParallelExecutor constructs, and then
+  // keeps unchanged
+  // Before each iteration, rt_cur_ref_cnts_ is reset to ref_cnts_
+  std::vector<details::ReferenceCountMap> rt_ref_cnts_;
+  std::vector<details::AtomicReferenceCountMap> rt_cur_ref_cnts_;
+  details::GarbageCollectorList gcs_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -128,35 +145,56 @@ ParallelExecutor::ParallelExecutor(
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
-
-  auto max_memory_size = GetEagerDeletionThreshold();
-  if (max_memory_size >= 0) {
-    for (auto &place : member_->places_) {
-      if (!platform::is_gpu_place(place)) continue;
-      auto gpu_place = boost::get<platform::CUDAPlace>(place);
-      if (gcs_[gpu_place.device] == nullptr) {
-        ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
-        cur_ref_cnts_[gpu_place.device].reset(
-            new details::AtomicReferenceCountMap());
-        gcs_[gpu_place.device].reset(
-            new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
-      }
-    }
-    if (!gcs_.empty()) {
-      auto ref_cnt_pass =
-          ir::PassRegistry::Instance().Get("reference_count_pass");
-      ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
-      ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
-      ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-      graph = ref_cnt_pass->Apply(std::move(graph));
-      graph->SetNotOwned("garbage_collector", &gcs_);
-    }
-  }
 #else
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
+
+  auto max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size >= 0) {
+    size_t place_num = member_->places_.size();
+    for (size_t i = 0; i < place_num; ++i) {
+      auto &place = member_->places_[i];
+#ifdef PADDLE_WITH_CUDA
+      if (platform::is_gpu_place(place)) {
+        member_->gcs_.emplace_back(new StreamGarbageCollector<Tensor>(
+            boost::get<platform::CUDAPlace>(place), max_memory_size));
+        VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+      } else if (platform::is_cpu_place(place)) {
+#endif
+        member_->gcs_.emplace_back(new CPUGarbageCollector<Tensor>(
+            boost::get<platform::CPUPlace>(place), max_memory_size));
+        VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#ifdef PADDLE_WITH_CUDA
+      }
+#endif
+    }
+  }
+
+  if (!member_->gcs_.empty()) {
+    std::vector<details::LastLiveOpsOfVars> last_live_ops_of_vars;
+
+    auto ref_cnt_pass =
+        ir::PassRegistry::Instance().Get("reference_count_pass");
+    ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount,
+                              &(member_->rt_ref_cnts_));
+    ref_cnt_pass->SetNotOwned(details::kLastLiveOpsOfVars,
+                              &last_live_ops_of_vars);
+    VLOG(10) << "ReferenceCountPass Applied";
+    graph = ref_cnt_pass->Apply(std::move(graph));
+
+    auto eager_deletion_pass =
+        ir::PassRegistry::Instance().Get("eager_deletion_pass");
+    eager_deletion_pass->SetNotOwned(details::kCurReferenceCount,
+                                     &(member_->rt_cur_ref_cnts_));
+    eager_deletion_pass->SetNotOwned(details::kGarbageCollector,
+                                     &(member_->gcs_));
+    eager_deletion_pass->SetNotOwned(details::kLastLiveOpsOfVars,
+                                     &last_live_ops_of_vars);
+    graph = eager_deletion_pass->Apply(std::move(graph));
+    VLOG(10) << "EagerDeletionPass Applied";
+  }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
@@ -271,18 +309,16 @@ void ParallelExecutor::BCastParamsToDevices(
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
-#ifdef PADDLE_WITH_CUDA
-  if (!gcs_.empty()) {
-    ResetReferenceCount();
-    for (auto &pair : cur_ref_cnts_) {
-      auto &name_map = *(pair.second);
+  if (!member_->gcs_.empty()) {
+    member_->ResetRuntimeReferenceCount();
+    size_t n = member_->rt_ref_cnts_.size();
+    for (size_t i = 0; i < n; ++i) {
       for (auto &fetch_name : fetch_tensors) {
-        name_map.erase(fetch_name);
+        member_->rt_cur_ref_cnts_[i].erase(fetch_name);
       }
-      name_map.erase(fetched_var_name);
+      member_->rt_cur_ref_cnts_[i].erase(fetched_var_name);
     }
   }
-#endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
@@ -326,13 +362,11 @@ ParallelExecutor::~ParallelExecutor() {
   for (auto &p : member_->places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
-  // member_ must be destructed before gcs_ since the destructor of
-  // ReferenceCountOpHandle use raw pointers of gcs_ inside.
-  member_.reset();
+  delete member_;
 }
 
 }  // namespace framework
 }  // namespace paddle
-#ifdef PADDLE_WITH_CUDA
+
 USE_PASS(reference_count_pass);
-#endif
+USE_PASS(eager_deletion_pass);

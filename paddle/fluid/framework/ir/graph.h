@@ -73,14 +73,21 @@ class Graph {
   }
 
   bool Has(const std::string &attr_name) const {
-    return attrs_.find(attr_name) != attrs_.end();
+    return attrs_.count(attr_name) > 0;
   }
 
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
                    attr_name);
-    return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    try {
+      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (boost::bad_any_cast &) {
+      PADDLE_THROW(
+          "Invalid attribute type of %s error, expected: %s, actual: %s",
+          attr_name, typeid(AttrType *).name(),
+          attrs_.at(attr_name).type().name());
+    }
   }
 
   template <typename AttrType>
