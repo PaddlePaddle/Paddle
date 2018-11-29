@@ -108,6 +108,8 @@ class Node {
            Name().find(ir::Node::kControlDepVarName) != std::string::npos;
   }
 
+  bool OpHasAttr(const std::string& name) const;
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
