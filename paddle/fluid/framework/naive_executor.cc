@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/util.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {

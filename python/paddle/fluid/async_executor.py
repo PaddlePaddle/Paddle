@@ -40,19 +40,19 @@ class DataFeedDesc(object):
     A typical message might look like:
 
     >>> name: "MultiSlotDataFeed"
-    >>> batch: 2
+    >>> batch_size: 2
     >>> multi_slot_desc {
     >>>     slots {
     >>>         name: "words"
     >>>         type: "uint64"
-    >>>         dense: false
-    >>>         use: true
+    >>>         is_dense: false
+    >>>         is_used: true
     >>>     }
     >>>     slots {
     >>>         name: "label"
     >>>         type: "uint64"
-    >>>         dense: false
-    >>>         use: true
+    >>>         is_dense: false
+    >>>         is_used: true
     >>>     }
     >>> }
 
@@ -97,7 +97,7 @@ class DataFeedDesc(object):
             batch_size: batch size
 
         """
-        self.proto_desc.batch = batch_size
+        self.proto_desc.batch_size = batch_size
 
     def set_dense_slots(self, dense_slots_name):
         """
@@ -121,7 +121,7 @@ class DataFeedDesc(object):
             )
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
-                name]].dense = True
+                name]].is_dense = True
 
     def set_use_slots(self, use_slots_name):
         """
@@ -145,7 +145,7 @@ class DataFeedDesc(object):
             )
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
-                name]].use = True
+                name]].is_used = True
 
     def desc(self):
         """

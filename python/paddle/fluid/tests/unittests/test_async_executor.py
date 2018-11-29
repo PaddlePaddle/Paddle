@@ -20,24 +20,24 @@ import os
 import shutil
 
 proto_str = ('name: "MultiSlotDataFeed"\n'
-             'batch: 2\n'
+             'batch_size: 2\n'
              'multi_slot_desc {\n'
              '   slots {\n'
              '       name: "words"\n'
              '       type: "uint64"\n'
-             '       dense: false\n'
-             '       use: true\n'
+             '       is_dense: false\n'
+             '       is_used: true\n'
              '   }\n'
              '   slots {\n'
              '       name: "label"\n'
              '       type: "uint64"\n'
-             '       dense: false\n'
-             '       use: true\n'
+             '       is_dense: false\n'
+             '       is_used: true\n'
              '   }\n'
              '}')
 
 URL = 'http://paddle-unittest-data.gz.bcebos.com/python_paddle_fluid_tests_demo_async-executor/train_data.tar.gz'
-MD5 = '533ee3941a1d6f0330fb6bd8045d32b2'
+MD5 = '2a405a31508969b3ab823f42c0f522ca'
 
 
 def bow_net(data,
