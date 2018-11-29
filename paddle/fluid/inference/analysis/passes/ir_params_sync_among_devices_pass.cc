@@ -19,16 +19,6 @@
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace {
-bool IsPersistable(const framework::VarDesc *var) {
-  if (var->Persistable() &&
-      var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
-    return true;
-  }
-  return false;
-}
-}  // namespace
 namespace inference {
 namespace analysis {
 
@@ -47,32 +37,30 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   place = platform::CUDAPlace(argument->gpu_device_id());
 
   auto *scope = argument->scope_ptr();
-  // Get the program which has been processed by several passes.
-  analysis_program_.reset(
-      new framework::ProgramDesc(argument->ir_analyzed_program()));
+  std::vector<std::string> all_vars = scope->LocalVarNames();
 
-  const auto &global_block = analysis_program_->Block(0);
-
-  // sync the params from cpu to gpu.
-  for (auto &var : global_block.AllVars()) {
-    if (IsPersistable(var)) {
-      std::string var_name = var->Name();
-      LOG(INFO) << var_name;
-      auto &t = inference::analysis::GetFromScope<framework::LoDTensor>(
-          *scope, var_name);
+  // We get all the vars from local_scope instead of the ProgramDesc.
+  // Because there exists the case that new parameter variables are not added to
+  // the program in the analysis pass.
+  for (auto &var_name : all_vars) {
+    auto *var = scope->FindLocalVar(var_name);
+    PADDLE_ENFORCE(var != nullptr);
+    if (var->IsType<framework::LoDTensor>() ||
+        var->IsType<framework::Tensor>()) {
+      auto *t = var->GetMutable<framework::LoDTensor>();
 
       platform::CPUPlace cpu_place;
       framework::LoDTensor temp_tensor;
-      temp_tensor.Resize(t.dims());
+      temp_tensor.Resize(t->dims());
       temp_tensor.mutable_data<float>(cpu_place);
 
       // Copy the parameter data to a tmp tensor.
-      TensorCopySync(t, cpu_place, &temp_tensor);
+      TensorCopySync(*t, cpu_place, &temp_tensor);
       // Reallocation the space on GPU
-      t.mutable_data<float>(place);
+      t->mutable_data<float>(place);
 
       // Copy parameter data to newly allocated GPU space.
-      TensorCopySync(temp_tensor, place, &t);
+      TensorCopySync(temp_tensor, place, t);
     }
   }
 }
