@@ -86,6 +86,10 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
 
+# mobilenet-ssd
+inference_analysis_api_test_with_fake_data(test_analyzer_mobilenetssd
+  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenetssd" analyzer_resnet50_tester.cc "ssd_mobilenet_v1_pascalvoc.tar.gz")
+
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # anakin rnn1
