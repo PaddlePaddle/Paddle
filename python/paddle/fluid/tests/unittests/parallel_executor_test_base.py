@@ -66,7 +66,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             loss = method(use_feed=feed_dict is not None)
 
-            optimizer.minimize(loss)
+            optimizer().minimize(loss)
 
             if memory_opt:
                 fluid.memory_optimize(main)

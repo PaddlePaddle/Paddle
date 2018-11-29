@@ -149,10 +149,18 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
     } else if (pass->Type() == "analysis_var_pass") {
+      const std::vector<OpDesc *> *all_op_descs =
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps());
+      GraphNodePool *graph_pool = new GraphNodePool;
+      graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
+                                              all_op_descs);  // take ownership
+      graph->Set<const GraphNodePool>(kGraphNodePool,
+                                      graph_pool);  // take ownership
+
       pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+      pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
+      pass->Erase(kGraphNodePool);
+      pass->SetNotOwned<GraphNodePool>(kGraphNodePool, graph_pool);
 
     } else if (pass->Type() == "sequential_execution_pass") {
       VLOG(1) << "set enable_sequential_execution:"

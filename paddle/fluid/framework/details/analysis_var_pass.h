@@ -59,6 +59,8 @@ class AnalysisVarPass : public ir::Pass {
   // check op has subblock or not
   bool OpHasSubBlock(OpDesc* desc) const;
 
+  BlockDesc* GetBlockDescFromOp() const;
+
   // Reuse Node Pool, Owned.
   mutable OrderedNodePairPool pool_;
   // controlflow Graph
@@ -80,10 +82,10 @@ class ControlFlowGraph {
   void RenameVarInCFGGraph(const std::string& old_node,
                            const std::string& new_node, int begin_idx);
 
-  const std::set<std::string>& LiveIn(ir::Node* op) const;
-  const std::set<std::string>& LiveOut(ir::Node* op) const;
-  const std::set<std::string>& Use(ir::Node* op) const;
-  const std::vector<ir::Node*>& Ops() const;
+  const std::set<std::string> LiveIn(ir::Node* op) const;
+  const std::set<std::string> LiveOut(ir::Node* op) const;
+  const std::set<std::string> Use(ir::Node* op) const;
+  const std::vector<ir::Node*> Ops() const;
   std::vector<ir::Node*>& Ops();
 
   // for ssa-graph nodes
@@ -105,6 +107,7 @@ class ControlFlowGraph {
   VarSetMap uses_;              // op inputs
   VarSetMap defs_;              // op outputs
   std::vector<ir::Node*> ops_;  // op sequence by topology sort
+  std::vector<OpDesc*> op_descs_;
 };
 
 template <typename Callback>

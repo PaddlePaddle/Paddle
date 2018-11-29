@@ -43,7 +43,6 @@ namespace details {
 
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  graph->Set(kGraphNodePool, new GraphNodePool);
   auto nodes = graph->Nodes();
   auto subblock_vars = GetSubBlockVars(nodes);
   skip_set_.insert(subblock_vars.begin(), subblock_vars.end());
@@ -109,9 +108,17 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     }
   }
 
+  // Reconstruct the Graph
+  auto old_nodes = graph->ReleaseNodes();
+  ir::Graph& result = *graph;
+  ProgramDesc* program = GetBlockDescFromOp()->Program();
+  PADDLE_ENFORCE(program != nullptr, "program should not be nullptr");
+  auto var_nodes = result.InitFromProgram(*program);
+  result.ResolveHazard(var_nodes);
+
   // For early delete pass. use GraphNodePool load the unlived vars.
   // 1. find all deps op for each unlived var in memory pool.
-  for (auto& op : cfg_->Ops()) {
+  for (auto& op : result.Nodes()) {
     for (auto& var : op->inputs) {
       if (pool_.Has(var)) {
         pool_.Insert(var, op);
@@ -130,7 +137,6 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     graph_pool.push_back(std::make_pair(it->first->Name(), descs));
   }
 
-  // graph->ResolveHazard(var_nodes_);
   return graph;
 }
 
@@ -221,19 +227,26 @@ std::unordered_set<std::string> AnalysisVarPass::GetSubBlockVars(
   return vars;
 }
 
+BlockDesc* AnalysisVarPass::GetBlockDescFromOp() const {
+  BlockDesc* block_desc = nullptr;
+  for (auto* op : cfg_->Ops()) {
+    if (op->Op() != nullptr && block_desc == nullptr) {
+      block_desc = op->Op()->Block();
+    }
+  }
+  PADDLE_ENFORCE(block_desc != nullptr, "blockdesc should not be nullptr");
+  return block_desc;
+}
+
 void AnalysisVarPass::RenameVarInGraphDesc(const std::string& var,
                                            const std::string& cache_var,
                                            size_t idx) const {
   for (size_t i = idx; i < cfg_->Ops().size(); ++i) {
     auto* op = cfg_->Ops()[i];
-    auto* op_desc = op->Op();
-    PADDLE_ENFORCE(op_desc != nullptr);
+    PADDLE_ENFORCE(op->Op() != nullptr);
+    OpDesc* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
-
-    if (op_desc->Block()->HasVar(var)) {
-      op_desc->Block()->RemoveVar(var);
-    }
   }
 }
 
@@ -330,7 +343,7 @@ bool AnalysisVarPass::OpHasSubBlock(OpDesc* desc) const {
 std::vector<ir::Node*> SortOperationsInSequence(const ir::Graph& graph) {
   PADDLE_ENFORCE(graph.Has(kAllOpDescs),
                  "Graph has no attribute of kAllOpDescs.");
-  auto& ops = graph.Get<std::vector<OpDesc*>>(kAllOpDescs);
+  auto& ops = graph.Get<const std::vector<OpDesc*>>(kAllOpDescs);
   std::vector<ir::Node*> op_node_list;
   op_node_list.reserve(ops.size());
   auto is_same_op_desc = [](OpDesc* op1, OpDesc* op2) {
@@ -507,7 +520,7 @@ void ControlFlowGraph::RenameVarInCFGGraph(const std::string& old_node,
   }
 }
 
-const std::set<std::string>& ControlFlowGraph::LiveIn(ir::Node* op) const {
+const std::set<std::string> ControlFlowGraph::LiveIn(ir::Node* op) const {
   auto it = live_in_.find(op);
   PADDLE_ENFORCE(
       it != live_in_.end(),
@@ -515,7 +528,7 @@ const std::set<std::string>& ControlFlowGraph::LiveIn(ir::Node* op) const {
   return it->second;
 }
 
-const std::set<std::string>& ControlFlowGraph::LiveOut(ir::Node* op) const {
+const std::set<std::string> ControlFlowGraph::LiveOut(ir::Node* op) const {
   auto it = live_out_.find(op);
   PADDLE_ENFORCE(
       it != live_out_.end(),
@@ -523,7 +536,7 @@ const std::set<std::string>& ControlFlowGraph::LiveOut(ir::Node* op) const {
   return it->second;
 }
 
-const std::set<std::string>& ControlFlowGraph::Use(ir::Node* op) const {
+const std::set<std::string> ControlFlowGraph::Use(ir::Node* op) const {
   auto it = uses_.find(op);
   PADDLE_ENFORCE(
       it != uses_.end(),
@@ -531,7 +544,7 @@ const std::set<std::string>& ControlFlowGraph::Use(ir::Node* op) const {
   return it->second;
 }
 
-const std::vector<ir::Node*>& ControlFlowGraph::Ops() const { return ops_; }
+const std::vector<ir::Node*> ControlFlowGraph::Ops() const { return ops_; }
 
 std::vector<ir::Node*>& ControlFlowGraph::Ops() { return ops_; }
 
@@ -557,4 +570,5 @@ ir::Node* ControlFlowGraph::GetNodeFromVarName(const std::string& name,
 }  // namespace paddle
 
 REGISTER_PASS(analysis_var_pass, paddle::framework::details::AnalysisVarPass)
-    .RequirePassAttr(paddle::framework::details::kGraphNodePool);
+    .RequirePassAttr(paddle::framework::details::kGraphNodePool)
+    .RequireGraphAttr(paddle::framework::details::kAllOpDescs);

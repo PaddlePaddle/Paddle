@@ -199,7 +199,7 @@ class ControlFlowGraph(object):
         # NOTE: must sort the in_diff set for cases that get different cache var.
         # FIXME(typhoonzero): maybe use a "sorted set" is better than this.
         can_optimize = [
-            x for x in in_diff
+            x for x in sorted(in_diff)
             if self._check_var_validity(block_desc, x, is_forward)
         ]
         if can_optimize:

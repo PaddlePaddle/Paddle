@@ -55,8 +55,8 @@ def fc_with_inplace_net(use_feed):
     program = fluid.Program()
     with fluid.program_guard(program, startup_program=fluid.Program()):
         fc = fluid.layers.fc(input=x, size=10, act='relu')
-        reshape = fluid.layers.reshape(x=fc, shape=[-1, 2, 5])
-        fc = fluid.layers.reshape(x=reshape, shape=[-1, 5, 2])
+        reshape = fluid.layers.reshape(x=fc, shape=[2, 5, 3])
+        fc = fluid.layers.reshape(x=reshape, shape=[5, 2, 3])
         y_predict = fluid.layers.fc(input=fc, size=10, act='softmax')
         cost = fluid.layers.cross_entropy(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
@@ -98,16 +98,14 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             memory_opt=False,
-            use_ir_memory_optimize=False,
-            optimizer=fluid.optimizer.SGD(learning_rate=0.001))
+            use_ir_memory_optimize=False)
         first_loss1, last_loss1 = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
             memory_opt=False,
-            use_ir_memory_optimize=True,
-            optimizer=fluid.optimizer.SGD(learning_rate=0.001))
+            use_ir_memory_optimize=True)
         for loss in zip(first_loss0, first_loss1):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(last_loss0, last_loss1):
@@ -118,8 +116,8 @@ class TestMNIST(TestParallelExecutorBase):
         self._compare_ir_and_python_memory_optimize(simple_fc_net, True)
 
     def test_fc_with_reshape_net(self):
-        self._compare_ir_and_python_memory_optimize(simple_fc_net, False)
-        self._compare_ir_and_python_memory_optimize(simple_fc_net, True)
+        self._compare_ir_and_python_memory_optimize(fc_with_inplace_net, False)
+        self._compare_ir_and_python_memory_optimize(fc_with_inplace_net, True)
 
 
 if __name__ == '__main__':
