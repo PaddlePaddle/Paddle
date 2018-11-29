@@ -183,7 +183,6 @@ void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
-  VLOG(30) << "init device context: " << place_.device;
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);

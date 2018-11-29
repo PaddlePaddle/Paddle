@@ -114,7 +114,12 @@ struct NCCLContextMap {
         // for (auto &gpu_id : order_) {
         for (size_t i = 0; i < order_.size(); ++i) {
           int gpu_id = order_[i];
-          int rank = trainer_id * order_.size() + gpu_id;
+          int rank;
+          if (order_.size() > 1) {
+            rank = trainer_id * order_.size() + i;
+          } else {
+            rank = trainer_id;
+          }
           VLOG(30) << "init nccl rank: " << rank << " nranks: " << nranks
                    << "gpu id: " << gpu_id;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));

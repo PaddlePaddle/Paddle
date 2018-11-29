@@ -91,10 +91,11 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
-                 scope=None,
-                 gpus=[]):
+                 scope=None):
         self._places = []
         self._act_places = []
+        gpus = os.getenv("PADDLE_GPUS").split(",")
+        gpus = [int(s) for s in gpus]
         if len(gpus) == 0:
             for i in six.moves.range(core.get_cuda_device_count()):
                 gpus.append(i)

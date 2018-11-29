@@ -20,6 +20,7 @@
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/split.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -111,13 +112,20 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   static std::once_flag init_flag;
   static detail::BuddyAllocator **a_arr = nullptr;
+  static std::vector<int> devices;
 
   std::call_once(init_flag, [gpu_id]() {
-    // int gpu_num = platform::GetCUDADeviceCount();
-    // PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
-    //                gpu_num);
-    int gpu_num = 1;
-    std::vector<int> devices({gpu_id});
+    auto gpus_str = std::string(std::getenv("PADDLE_GPUS"));
+    if (!gpus_str.empty()) {
+      for (auto s : paddle::string::Split(gpus_str, ',')) {
+        devices.push_back(atoi(s.c_str()));
+      }
+    } else {
+      int gpu_num = platform::GetCUDADeviceCount();
+      PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
+                     gpu_num);
+    }
+    int gpu_num = devices.size();
 
     a_arr = new BuddyAllocator *[gpu_num];
     // for (int i = 0; i < gpu_num; i++) {
@@ -141,7 +149,9 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
 
   platform::SetDeviceId(gpu_id);
   // return a_arr[gpu_id];
-  return a_arr[0];
+  auto pos = std::distance(devices.begin(),
+                           std::find(devices.begin(), devices.end(), gpu_id));
+  return a_arr[pos];
 }
 #endif
 
