@@ -14,13 +14,24 @@ There are several demos:
     ```
     <space splitted floats as data>\t<space splitted ints as shape>
     ```
+- infer_image_classification:
+  - The C++ code is in `infer_image_classification.cc`.
+  - It accepts e.g. ResNet50, SE-ResNeXt50 and MobileNet-v1 models.
+  - Requires `ImageNet` directory with the ImageNet dataset
 
 To build and execute the demos, simply run 
 ```
-./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU
+./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU $DATA_DIR
 ```
 - It will build and execute the demos in both static and shared library.
-- `$PADDLE_ROOT`: paddle library path
-- `$TURN_ON_MKL`: use MKL or Openblas
+- `$PADDLE_ROOT`:  paddle library path
+- `$TURN_ON_MKL`:  use MKL or Openblas
 - `$TEST_GPU_CPU`: test both GPU/CPU mode or only CPU mode
+- `$DATA_DIR`:     a directory to store models and datasets in
 - NOTE: for simple_on_word2vec, must run `ctest -R test_word2vec -R` to obtain word2vec model at first.
+
+To build only a single demo, run
+```
+./build.sh <demo_name> $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU $WITH_STATIC_LIB
+```
+where `$WITH_STATIC_LIB` determines the linkage (static/dynamic) to PaddlePaddle fluid library.

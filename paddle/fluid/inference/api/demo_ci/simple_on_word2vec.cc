@@ -23,7 +23,7 @@ limitations under the License. */
 #include <memory>
 #include <thread>  //NOLINT
 
-#include "utils.h"  // NOLINT
+#include "utils/utils.h"  // NOLINT
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");

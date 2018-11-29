@@ -80,7 +80,7 @@ link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
-add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
+add_executable(${DEMO_NAME} ${DEMO_NAME}.cc ${DEMO_ADD_SRC})
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
@@ -98,10 +98,10 @@ endif()
 # Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
 if(WITH_STATIC_LIB)
   set(DEPS
-      ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   set(DEPS
-      ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
 
 if (NOT WIN32)
@@ -131,6 +131,10 @@ if(WITH_GPU)
   set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
   set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
   endif()
+endif()
+
+if (${DEMO_NAME} STREQUAL "infer_image_classification")
+  set(DEPS ${DEPS} opencv_core opencv_highgui opencv_imgproc)
 endif()
 
 target_link_libraries(${DEMO_NAME} ${DEPS})

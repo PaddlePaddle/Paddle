@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include "utils.h"  // NOLINT
+#include "utils/utils.h"  // NOLINT
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
