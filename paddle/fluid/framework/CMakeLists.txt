@@ -140,25 +140,20 @@ nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python
 # module.
-add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-touch __init__.py)
+add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
 if (NOT WIN32)
   add_custom_command(TARGET framework_py_proto POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory
-${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 else(NOT WIN32)
-  string(REPLACE "/" "\\" proto_dstpath
-"${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+  string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
   add_custom_command(TARGET framework_py_proto POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E make_directory
-${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+          COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
           COMMAND copy /Y *.py ${proto_dstpath}
-          COMMENT "Copy generated python proto into directory
-paddle/fluid/proto."
+          COMMENT "Copy generated python proto into directory paddle/fluid/proto."
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif(NOT WIN32)
 
