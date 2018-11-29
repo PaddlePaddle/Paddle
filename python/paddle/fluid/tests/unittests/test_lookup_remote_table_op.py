@@ -184,8 +184,8 @@ class TestListenAndServOp(unittest.TestCase):
         port1 = self._get_pserver_port(p1.pid)
 
         places = [core.CPUPlace()]
-        # if core.is_compiled_with_cuda():
-        #     places.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
 
         for place in places:
             self._run_lookup_table_op_one_pserver(place, port0)
