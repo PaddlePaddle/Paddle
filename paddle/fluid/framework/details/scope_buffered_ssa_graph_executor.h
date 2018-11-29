@@ -21,9 +21,11 @@
 #include "paddle/fluid/framework/details/var_handle.h"
 
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -55,6 +57,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope*> local_scopes_;
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+
+  GarbageCollectorList* gc_{nullptr};
 };
 }  // namespace details
 }  // namespace framework
