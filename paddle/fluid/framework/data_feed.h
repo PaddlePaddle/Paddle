@@ -22,9 +22,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.pb.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
 namespace paddle {

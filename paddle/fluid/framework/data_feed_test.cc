@@ -28,6 +28,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 
 paddle::framework::DataFeedDesc load_datafeed_param_from_file(
     const char* filename) {
