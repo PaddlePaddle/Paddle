@@ -100,11 +100,8 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
 
     blas.VEXP(num_classes * batch_size, out_data, out_data);
     for (int n = 0; n < batch_size; ++n) {
-      entities[n] = out_data[n * num_classes];
-      for (int c = 1; c < num_classes; ++c) {
-        entities[n] += out_data[n * num_classes + c];
-      }
-      blas.SCAL(num_classes, 1.0f / entities[n], &out_data[n * num_classes]);
+      auto sum = blas.ASUM(num_classes, &out_data[n * num_classes], 1);
+      blas.SCAL(num_classes, 1.0f / sum, &out_data[n * num_classes]);
     }
   }
 };
