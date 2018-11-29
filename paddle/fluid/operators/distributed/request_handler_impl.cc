@@ -37,7 +37,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Variable* invar,
                                 framework::Variable** outvar,
                                 const int trainer_id,
-                                const std::string& out_var_name) {
+                                const std::string& out_var_name,
+                                const std::string& table_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
   // Sync
@@ -77,8 +78,10 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Variable* invar,
                                framework::Variable** outvar,
                                const int trainer_id,
-                               const std::string& out_var_name) {
+                               const std::string& out_var_name,
+                               const std::string& table_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
+
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(3) << "sync: recv fetch barrier message";
@@ -113,14 +116,22 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     framework::Variable* invar,
                                     framework::Variable** outvar,
                                     const int trainer_id,
-                                    const std::string& out_var_name) {
+                                    const std::string& out_var_name,
+                                    const std::string& table_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
-  auto var_desc = program_->Block(0).FindVar(out_var_name);
-  InitializeVariable(*outvar, var_desc->GetType());
-  executor_->RunPreparedContext(
-      (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
-
+  if (table_name.empty()) {
+    auto var_desc = program_->Block(0).FindVar(out_var_name);
+    InitializeVariable(*outvar, var_desc->GetType());
+    executor_->RunPreparedContext(
+        (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
+  } else {
+    (*outvar)->GetMutable<framework::LoDTensor>();
+    auto lookup_table_op =
+        BuildLookupTableOp(table_name, varname, out_var_name);
+    paddle::platform::CPUPlace cpu_place;
+    lookup_table_op->Run(*scope, cpu_place);
+  }
   return true;
 }
 
@@ -129,7 +140,8 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
                                       const int trainer_id,
-                                      const std::string& out_var_name) {
+                                      const std::string& out_var_name,
+                                      const std::string& table_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
