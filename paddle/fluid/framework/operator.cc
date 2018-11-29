@@ -139,7 +139,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(40) << place << " " << DebugStringEx(&scope);
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -159,7 +159,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } else {
     RunImpl(scope, place);
   }
-  VLOG(30) << place << " " << DebugStringEx(&scope);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -623,6 +623,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
+  void DecreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  }
+
   bool IsRuntime() const override { return true; }
 
  protected:
@@ -716,14 +721,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto expected_kernel_key =
       this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
-  VLOG(30) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
-    VLOG(30) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
     expected_kernel_key.library_type_ = LibraryType::kPlain;
     expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
     kernel_iter = kernels.find(expected_kernel_key);
@@ -775,8 +780,7 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
-    VLOG(30) << "share inplace var " + var_name +
-                    " back to it's original scope";
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* original_tensor =
         GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
     auto* var = transfer_scope.FindVar(var_name);
@@ -817,8 +821,8 @@ Scope* OperatorWithKernel::TryTransferData(
         transfered_inplace_vars->emplace_back(var_name);
       }
 
-      VLOG(30) << "Transform Variable " << var_name << " from "
-               << kernel_type_for_var << " to " << expected_kernel_key;
+      VLOG(3) << "Transform Variable " << var_name << " from "
+              << kernel_type_for_var << " to " << expected_kernel_key;
 
       // In the inference scenerio, the scopes will be reused across the
       // batches, so the `new_scope` here will result in GPU memroy explosion

@@ -2464,7 +2464,8 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False,
-               fuse_with_relu=False):
+               fuse_with_relu=False,
+               use_global_stats=False):
     """
     **Batch Normalization Layer**
 
@@ -2491,6 +2492,19 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
     Args:
         input(variable): The input variable which is a LoDTensor.
         act(string, Default None): Activation type, linear|relu|prelu|...
@@ -2513,6 +2527,11 @@ def batch_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2545,9 +2564,15 @@ def batch_norm(input,
         shape=param_shape,
         dtype=dtype,
         default_initializer=Constant(1.0))
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.param_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.bias_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -2603,7 +2628,8 @@ def batch_norm(input,
             "epsilon": epsilon,
             "is_test": is_test,
             "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu
+            "fuse_with_relu": fuse_with_relu,
+            "use_global_stats": use_global_stats
         })
 
     return helper.append_activation(batch_norm_out)
@@ -4751,19 +4777,33 @@ def hsigmoid(input,
              num_classes,
              param_attr=None,
              bias_attr=None,
-             name=None):
+             name=None,
+             path_table=None,
+             path_code=None,
+             is_custom=False,
+             is_sparse=False):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, each leaf node represents a class(a word) and each
+    complete binary tree, or you can use is_custom to pass your own tree to 
+    implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
     internal node on the path, and sum them to get a total cost. hsigmoid can
     achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the size of word dict.
 
-    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    Using default tree you can Refer to `Hierarchical Probabilistic Neural Network Language Model
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+
+    And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
+        1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
+        2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
+        3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
+         means label of each binary classification, using 1 indicate true, 0 indicate false.
+        4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+        related to the same batch of inputs.
+
 
     Args:
         input (Variable): The input tensor variable with shape
@@ -4771,7 +4811,9 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2.
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+            which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -4783,9 +4825,19 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+            it should be in leaf -> root order
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
+            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
+        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            each code consist with every code of parent nodes. it should be in leaf -> root order
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+             set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+             of W and input will be sparse.
 
     Returns:
-        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+        Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
 
     Examples:
 
@@ -4801,27 +4853,62 @@ def hsigmoid(input,
     out = helper.create_variable_for_type_inference(dtype)
     pre_out = helper.create_variable_for_type_inference(dtype)
     dim = input.shape[1]
-    if num_classes < 2:
-        raise ValueError("num_classes must not be less than 2.")
-    weights = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[num_classes - 1, dim],
-        is_bias=False,
-        dtype=input.dtype)
-    inputs = {"X": input, "W": weights, "Label": label}
-    if helper.bias_attr:
-        bias = helper.create_parameter(
-            attr=helper.bias_attr,
-            shape=[1, num_classes - 1],
-            is_bias=True,
+    if ((num_classes is None) or (num_classes < 2)) and (not is_custom):
+        raise ValueError(
+            "num_classes must not be less than 2 with default tree")
+
+    if (is_custom) and (path_code is None):
+        raise ValueError("path_code should not be None with costum tree")
+    elif (is_custom) and (path_table is None):
+        raise ValueError("path_table should not be None with costum tree")
+    elif (is_custom) and (num_classes is None):
+        raise ValueError("num_classes should not be None with costum tree")
+    else:
+        pass
+
+    weights = None
+
+    if not is_custom:
+        weights = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=[num_classes - 1, dim],
+            is_bias=False,
             dtype=input.dtype)
-        inputs['Bias'] = bias
+    else:
+        weights = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=[num_classes, dim],
+            is_bias=False,
+            dtype=input.dtype)
+    inputs = {
+        "X": input,
+        "W": weights,
+        "PTable": path_table,
+        "PathCode": path_code,
+        "Label": label
+    }
+    if helper.bias_attr:
+        if not is_custom:
+            bias = helper.create_parameter(
+                attr=helper.bias_attr,
+                shape=[num_classes - 1, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            inputs['Bias'] = bias
+        else:
+            bias = helper.create_parameter(
+                attr=helper.bias_attr,
+                shape=[num_classes, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            inputs['Bias'] = bias
     helper.append_op(
         type="hierarchical_sigmoid",
         inputs=inputs,
         outputs={"Out": out,
                  "PreOut": pre_out},
-        attrs={"num_classes": num_classes})
+        attrs={"num_classes": num_classes,
+               "is_sparse": is_sparse})
     return out
 
 

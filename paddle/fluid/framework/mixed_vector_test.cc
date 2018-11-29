@@ -51,7 +51,7 @@ TEST(mixed_vector, InitWithCount) {
 TEST(mixed_vector, ForEach) {
   vec<int> tmp;
   for (auto& v : tmp) {
-    VLOG(30) << v;
+    VLOG(3) << v;
   }
 }
 

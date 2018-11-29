@@ -71,7 +71,7 @@ class OperatorBase;
 class ExecutionContext;
 
 /**
- * OperatorBase has the basic element that Net will call to do computation.
+ * OperatorBase has the basic elements that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
  * should always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
