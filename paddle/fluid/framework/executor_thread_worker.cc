@@ -221,5 +221,3 @@ void ExecutorThreadWorker::SetRootScope(Scope* g_scope) {
 
 }  // einit_modelnd namespace framework
 }  // end namespace paddle
-
-/* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
