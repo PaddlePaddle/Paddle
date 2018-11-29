@@ -341,7 +341,7 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  platform::DeviceContext* Get(const platform::Place& place);
+  platform::DeviceContext* Get(CPUPlace place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(

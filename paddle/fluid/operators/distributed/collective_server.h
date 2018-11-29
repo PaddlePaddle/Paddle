@@ -67,6 +67,19 @@ class GetMonomerBarrierHandler final : public RequestHandler {
   }
 };
 
+class SendMonomerVariableHandler final : public RequestHandler {
+ public:
+  SendMonomerVariableHandler() : RequestHandler(true) {}
+  virtual ~SendMonomerVariableHandler() {}
+  bool Handle(const std::string& var_name, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id,
+              const std::string& out_var_name = "") override {
+    VLOG(50) << "SendMonomerVariableHandler recv " << var_name;
+    return true;
+  }
+};
+
 class CollectiveServer final {
  public:
   explicit CollectiveServer(const std::string& end_point, int fan_in);
@@ -75,11 +88,11 @@ class CollectiveServer final {
 
   void StartServer();
 
-  static CollectiveServer* GetInstance(const std::string& end_point,
+  static CollectiveServer* GetInstance(const std::string& endpoint,
                                        int fan_in) {
     std::call_once(init_flag_, [&]() {
       if (collective_server_.get() == nullptr) {
-        collective_server_.reset(new CollectiveServer(end_point, fan_in));
+        collective_server_.reset(new CollectiveServer(endpoint, fan_in));
         collective_server_->StartServer();
       }
     });
@@ -91,9 +104,12 @@ class CollectiveServer final {
 
   void Stop();
 
+  void RegisterSendRPC(framework* scope, platform::DeviceContext* dev_ctx);
+
  private:
   std::unique_ptr<GetMonomerHandler> get_monomer_handler_;
   std::unique_ptr<GetMonomerBarrierHandler> get_barrier_handler_;
+  std::shared_ptr<distributed::RequestHandler> request_send_handler_;
 
   std::shared_ptr<distributed::RPCServer> rpc_server_;
   std::shared_ptr<std::thread> server_thread_;

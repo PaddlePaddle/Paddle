@@ -144,6 +144,7 @@ void MultiDevSSAGraphBuilder::Init() const {
   strategy_ = Get<const BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
+  collective_context_ = Get<platform::NCCLContextMap>("collective_context");
 #endif
 
   for (auto &p : Get<const std::unordered_set<std::string>>(kParams)) {
@@ -697,7 +698,7 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
+      local_scopes_, places_, nccl_ctxs_, collective_context_));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),

@@ -198,10 +198,10 @@ class RequestHandler {
  protected:
   const bool sync_mode_;
 
-  const platform::DeviceContext* dev_ctx_;
-  framework::Executor* executor_;
-  framework::Scope* scope_;
-  framework::ProgramDesc* program_;
+  const platform::DeviceContext* dev_ctx_{nullptr};
+  framework::Executor* executor_{nullptr};
+  framework::Scope* scope_{nullptr};
+  framework::ProgramDesc* program_{nullptr};
 
   // used for distribute lookup table prefetch
   std::unordered_map<std::string,
@@ -215,7 +215,7 @@ class RequestHandler {
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
 
-  RPCServer* rpc_server_;
+  RPCServer* rpc_server_{nullptr};
 };
 
 }  // namespace distributed

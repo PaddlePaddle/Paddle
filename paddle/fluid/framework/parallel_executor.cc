@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/platform/collective_context.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -56,6 +57,7 @@ class ParallelExecutorPrivate {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
+  std::unique_ptr<platform::CollectiveContext> collective_context;
 #endif
   bool own_local_scope_;
   bool use_cuda_;
@@ -73,7 +75,8 @@ ParallelExecutor::ParallelExecutor(
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    size_t num_trainers, size_t trainer_id)
+    size_t num_trainers, size_t trainer_id,
+    std::vector<std::string> trainer_endpoints)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -125,9 +128,14 @@ ParallelExecutor::ParallelExecutor(
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, params,
-      member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+  platform::CollectiveContext collective_context;
+  context.trainer_id_ = trainer_id;
+  context.endpoints_ = trainer_endpoints;
+
+  std::unique_ptr<ir::Graph> graph =
+      build_strategy.Apply(main_program, member_->places_, loss_var_name,
+                           params, member_->local_scopes_, member_->use_cuda_,
+                           member_->nccl_ctxs_.get(), collective_context);
 
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {

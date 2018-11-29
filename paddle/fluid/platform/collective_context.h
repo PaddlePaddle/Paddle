@@ -28,7 +28,7 @@ struct CollectiveContext {
   std::string String() const {
     std::stringstream ss;
     ss << "endpoints_:";
-    for (auto e : end_points_) {
+    for (auto e : endpoints_) {
       ss << e << ",";
     }
 

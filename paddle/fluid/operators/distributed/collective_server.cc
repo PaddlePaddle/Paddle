@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/collective_server.h"
 
 DEFINE_int32(collective_get_thread_num, 5, "number of threads for rpc get");
+DECLARE_int32(rpc_send_thread_num);
 
 namespace paddle {
 namespace operators {
@@ -31,7 +32,8 @@ std::once_flag CollectiveServer::init_flag_;
 std::shared_ptr<CollectiveServer> CollectiveServer::collective_server_(nullptr);
 
 CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
-  VLOG(1) << "Create colllective server:" << end_point << ", fan_in:" << fan_in;
+  LOG(INFO) << "Create colllective server:" << end_point
+            << ", fan_in:" << fan_in;
   rpc_server_.reset(new RPCSERVER_T(end_point, fan_in));
 }
 
@@ -39,6 +41,18 @@ void CollectiveServer::Stop() {
   rpc_server_->ShutDown();
   server_thread_->join();
   loop_thread_->join();
+}
+
+void CollectiveServer::RegisterSendRPC(framework* scope,
+                                       platform::DeviceContext* dev_ctx) {
+  request_send_handler_.reset(new SendMonomerVariableHandler());
+  request_send_handler_->SetRPCServer(rpc_server_.get());
+  request_send_handler_->SetScope(scope);
+  request_send_handler_->SetDevCtx(dev_ctx);
+
+  rpc_server_->RegisterRPC(distributed::kRequestSend,
+                           request_send_handler_.get(),
+                           FLAGS_rpc_send_thread_num);
 }
 
 void CollectiveServer::StartServer() {
@@ -51,6 +65,7 @@ void CollectiveServer::StartServer() {
   rpc_server_->RegisterRPC(distributed::kRequestGetMonomerVariable,
                            get_monomer_handler_.get(),
                            FLAGS_collective_get_thread_num);
+
   rpc_server_->RegisterRPC(distributed::kRequestGetMonomerBarrier,
                            get_barrier_handler_.get(), 1);
 

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <paddle/fluid/platform/collective_context.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -34,16 +35,19 @@ namespace details {
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
+  platform::CollectiveContext collective_context_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
-                 const platform::NCCLContextMap *nccl_ctxs)
+                 const platform::NCCLContextMap *nccl_ctxs,
+                 const platform::CollectiveContext &context)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
         places_(places),
-        nccl_ctxs_(nccl_ctxs) {
+        nccl_ctxs_(nccl_ctxs),
+        collective_context_(context) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
         this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),

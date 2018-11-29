@@ -31,48 +31,31 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-struct RemoteVar {
-  std::string ep_;
-  std::string var_name_;
-  int trainer_id_{0};
-
-  std::string String() {
-    std::stringstream ss;
-    ss << "ep:" << ep_ << ", var_name:" << var_name_
-       << ", trainer_id:" << trainer_id_;
-
-    return ss.str();
-  }
+template <typename Place, typename DataType>
+struct ReduceSelectedRow {
+  operator()(const std::vector<std::string>& endpoints,
+             const std::string& var_name, framework::Scope* local_scope,
+             int64_t time_out = FLAGS_rpc_deadline);
 };
 
 class CollectiveClient {
  public:
-  CollectiveClient() {
-    rpc_client_.reset(new RPCCLIENT_T());
-    rpc_client_->InitImpl();
-  }
+  CollectiveClient() {}
   virtual ~CollectiveClient() {}
 
   // note this function will retain the rank order.
-  bool Gather(const std::vector<RemoteVar>& remote_vars,
-              std::vector<const framework::SelectedRows*>* dst,
-              const platform::DeviceContext& ctx, framework::Scope* scope,
-              int64_t time_out = FLAGS_rpc_deadline);
+  // TODO(gongwb): Support lodtensor?
+  // TODO(gongwb): Implement ringbased gather.
+  // https://github.com/baidu-research/baidu-allreduce
+  static bool ReduceSelectedRows(const std::vector<std::string>& endpoints,
+                                 const std::string& var_name,
+                                 framework::Scope* local_scope,
+                                 int64_t time_out = FLAGS_rpc_deadline);
 
-  static CollectiveClient* GetInstance() {
-    std::call_once(init_flag_, [&]() {
-      if (client_.get() == nullptr) {
-        client_.reset(new CollectiveClient());
-      }
-    });
-    return client_.get();
-  }
-
- private:
-  std::unique_ptr<RPCClient> rpc_client_;
-
-  static std::once_flag init_flag_;
-  static std::unique_ptr<CollectiveClient> client_;
+  static bool BroadCast(const std::vector<std::string>& endpoints,
+                        const platform::DeviceContext& dev_ctx,
+                        framework::Scope* scope, const std::string& var_name,
+                        int64_t time_out = FLAGS_rpc_deadline);
 };
 }  // namespace distributed
 }  // namespace operators

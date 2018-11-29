@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/collective_client.h.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
@@ -60,51 +61,21 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
-    distributed::RPCClient* client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
-    for (auto& ep : endpoint_list) {
-      VLOG(3) << "sending nccl id to " << ep;
-      client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
-    }
-    client->Wait();
-    for (auto& ep : endpoint_list) {
-      client->AsyncSendBatchBarrier(ep);
-    }
-    client->Wait();
-    VLOG(3) << "sending completed...";
+    distributed::CollectiveClient::BroadCast(endpoint_list, dev_ctx, scope,
+                                             NCCL_ID_VARNAME);
   }
 
   void GetIdByServer(framework::Scope* scope,
                      const platform::DeviceContext& dev_ctx) const {
     std::string endpoint = Attr<std::string>("endpoint");
-    // NOTE: Can not use unique_ptr here because the default
-    // deleter will call GRPC Server's base class's dtor and
-    // that will cause a wired crash.
-    distributed::RequestSendHandler rpc_h(true);
-    std::unique_ptr<distributed::RPCServer> rpc_service(
-        new RPCSERVER_T(endpoint, 1));
+    std::vector<std::string> endpoint_list =
+        Attr<std::vector<std::string>>("endpoint_list");
+    operators::distributed::CollectiveServer* server =
+        operators::distributed::CollectiveServer::GetInstance(
+            end_point, endpoint_list.size());
 
-    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(rpc_service.get());
-
-    framework::ProgramDesc empty_program;
-    framework::Executor executor(dev_ctx.GetPlace());
-    rpc_h.SetScope(scope);
-    rpc_h.SetDevCtx(&dev_ctx);
-    rpc_h.SetProgram(&empty_program);
-    rpc_h.SetExecutor(&executor);
-
-    std::thread server_thread(
-        std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
-
-    rpc_service->SetCond(distributed::kRequestSend);
-    VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service->WaitBarrier(distributed::kRequestSend);
-    VLOG(3) << "got nccl id and stop server...";
-    rpc_service->ShutDown();
-    VLOG(3) << "rpc server stopped";
-    server_thread.join();
+    server->RegisterSendRPC(scope, &dev_ctx);
   }
 };
 
@@ -124,12 +95,10 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
     AddAttr<std::vector<std::string>>(
         "endpoint_list",
         "['trainer1_ip:port', 'trainer2_ip:port', ...] "
-        "list of trainer endpoints start from trainer 1")
-        .SetDefault({});
+        "list of trainer endpoints start from trainer 1");
     AddAttr<int>("trainer_id",
                  "(int default 0) "
-                 "The index of the trainer in distributed training.")
-        .SetDefault(0);
+                 "The index of the trainer in distributed training.");
   }
 };
 

@@ -117,7 +117,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const std::unordered_set<std::string> &param_names,
     const std::vector<Scope *> &local_scopes,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
+    const bool use_cuda, platform::NCCLContextMap *nccl_ctxs,
+    const platform::CollectiveContext &collective_context) const {
 #else
     const bool use_cuda) const {
 #endif
@@ -142,6 +143,10 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
+
+      platform::CollectiveContext context = collective_context;
+      pass->Erase("collective_context");
+      pass->Set<ColllectiveContext>("collective_context", context);
 #endif
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"

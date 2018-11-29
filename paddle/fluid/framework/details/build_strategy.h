@@ -73,10 +73,6 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
-  int num_trainers_{1};
-  int trainer_id_{0};
-  std::vector<std::string> trainer_end_points_;
-
   bool remove_unnecessary_lock_{false};
 
   // NOTE:
@@ -103,7 +99,8 @@ struct BuildStrategy {
       const std::unordered_set<std::string> &param_names,
       const std::vector<Scope *> &local_scopes,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
+      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs,
+      const platform::CollectiveContext &collective_context) const;
 #else
       const bool use_cuda) const;
 #endif

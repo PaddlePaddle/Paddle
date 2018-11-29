@@ -92,7 +92,7 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None,
-                 trainers_end_points=None):
+                 trainers_endpoints=None):
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -134,7 +134,6 @@ class ParallelExecutor(object):
         if num_trainers > 1 and trainers_end_points:
             assert num_trainers == len(
                 trainers_end_points), "num_trainers == len(end_points)"
-            build_strategy.trainers_end_points = trainers_end_points
 
         main = main_program
         main = main if main else framework.default_main_program()
@@ -165,7 +164,7 @@ class ParallelExecutor(object):
             set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
             cpt.to_text(loss_name)
             if loss_name else six.u(''), scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id)
+            build_strategy, num_trainers, trainer_id, trainers_endpoints)
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):

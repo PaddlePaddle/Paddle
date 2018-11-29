@@ -30,12 +30,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::once_flag CollectiveContext::init_flag_;
-std::unique_ptr<CollectiveContext> CollectiveContext::context_;
-
-static inline std::string GetRemoteVarName(const std::string &var_name,
-                                           int rank_id) {
-  return string::Sprintf("%s_merged_tmp@rank_%d", var_name, rank_id);
+static inline std::string GetRemoteVarName(const std::string &var_name, ) {
+  return string::Sprintf("%s_merged_tmp", var_name);
 }
 
 void ReduceOpHandle::WaitLocalSelectedRows(
@@ -52,11 +48,10 @@ void ReduceOpHandle::GatherSelectedRows(
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     VarHandle *out_var_handle, const platform::Place &out_place,
     SelectedRows *dst_selected_rows) {
-  const CollectiveContext &collective_context =
-      *CollectiveContext::GetInstance();
-  VLOG(100) << "GatherSelectedRows CollectiveContext:"
-            << collective_context.String();
-  if (collective_context.end_points_.size() <= 1 ||
+  VLOG(40) << "GatherSelectedRows CollectiveContext:"
+           << collective_context_.String();
+
+  if (collective_context_.end_points_.size() <= 1 ||
       is_cpu_place(in_places[0]) ||
       is_cpu_place(out_place)) {  // TODO(gongwb): add cpu support
     GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
@@ -77,8 +72,7 @@ void ReduceOpHandle::GatherSelectedRows(
   // merge them
   auto merged_dev_ctx =
       dynamic_cast<platform::CUDADeviceContext *>(dev_ctxes.at(out_place));
-  std::string merged_var_name =
-      GetRemoteVarName(out_var_handle->name_, collective_context.rank_id_);
+  std::string merged_var_name = GetRemoteVarName(out_var_handle->name_);
   auto merged_select_rows =
       scope->Var(merged_var_name)->GetMutable<SelectedRows>();
   // FIXME(gongwb):get type?
@@ -89,8 +83,8 @@ void ReduceOpHandle::GatherSelectedRows(
   // 2. start collective server if it doesn't exist
   operators::distributed::CollectiveServer *server =
       operators::distributed::CollectiveServer::GetInstance(
-          collective_context.end_points_[collective_context.rank_id_],
-          collective_context.end_points_.size() - 1);
+          collective_context_.endpoints_[collective_context_.trainer_id_],
+          collective_context_.endpoints_.size() - 1);
 
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar(merged_var_name,
@@ -98,44 +92,15 @@ void ReduceOpHandle::GatherSelectedRows(
                           scope, merged_dev_ctx);
 
   // 3. gather them from all remote nodes.
-  std::vector<const SelectedRows *> remote;
-  operators::distributed::CollectiveClient *client =
-      operators::distributed::CollectiveClient::GetInstance();
-
-  std::vector<operators::distributed::RemoteVar> vars;
-  for (unsigned int i = 0; i < collective_context.end_points_.size(); i++) {
-    if (i == (unsigned)collective_context.rank_id_) continue;
-
-    operators::distributed::RemoteVar var;
-    var.rank_id_ = i;
-    var.var_name_ = GetRemoteVarName(out_var_handle->name_, i);
-    var.ep_ = collective_context.end_points_[i];
-
-    vars.push_back(var);
-    VLOG(40) << "gather from:" << var.String();
-  }
-
-  PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
-  PADDLE_ENFORCE(remote.size() == vars.size());
-
-  // 4. merged local selected rows.
-  std::vector<const SelectedRows *> all;
-  all.resize(collective_context.end_points_.size());
-  for (auto v : vars) {
-    all[v.rank_id_] = scope->FindVar(v.var_name_)->GetMutable<SelectedRows>();
-  }
-  all[collective_context.rank_id_] = merged_select_rows;
-
-  merge_func(*merged_dev_ctx, all, dst_selected_rows);
+  operators::distributed::CollectiveClient::ReduceSelectedRows(
+      collective_context_.endpoints_, merged_var_name, scope);
+  scope->Rename(merged_var_name, out_var_handle->name_);
 
   rpc_server->WaitVarBarrier(merged_var_name);
   rpc_server->ClearVar(merged_var_name);
 
   // 5. clear mid vars
-  std::vector<std::string> tmp_vars{gathered_var_name, merged_var_name};
-  for (auto r : vars) {
-    tmp_vars.push_back(r.var_name_);
-  }
+  std::vector<std::string> tmp_vars{gathered_var_name};
   scope->EraseVars(tmp_vars);
 }
 
