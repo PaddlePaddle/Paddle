@@ -459,9 +459,10 @@ function assert_api_not_changed() {
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' new.spec
         sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
-        # ComposeNotAligned has significant different between py2 and py3
-        sed -i '/.*ComposeNotAligned.*/d' new.spec
     fi
+    # ComposeNotAligned has significant difference between py2 and py3
+    sed -i '/.*ComposeNotAligned.*/d' new.spec
+
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 }
