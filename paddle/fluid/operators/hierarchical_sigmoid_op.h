@@ -185,7 +185,6 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
       w_grad->set_rows(real_rows);
       // Build a map of id -> row_index to speed up finding the index of one id
-      w_grad->SyncIndex();
       w_grad->set_height(w.dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
       framework::DDim temp_dim(w.dims());
