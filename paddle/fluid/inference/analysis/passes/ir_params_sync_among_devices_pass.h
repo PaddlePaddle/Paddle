@@ -15,10 +15,10 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -32,9 +32,6 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
  public:
   void RunImpl(Argument *argument) override;
   std::string repr() const override;
-
- private:
-  std::unique_ptr<framework::ProgramDesc> analysis_program_;
 };
 
 }  // namespace analysis
