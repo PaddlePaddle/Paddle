@@ -238,11 +238,21 @@ void OpDesc::SetOutput(const std::string &param_name,
 }
 
 bool OpDesc::HasAttr(const std::string &name) const {
-  const proto::OpProto &proto = OpInfoMap::Instance().Get(desc_.type()).Proto();
-  for (int i = 0; i != proto.attrs_size(); ++i) {
-    const proto::OpProto::Attr &attr = proto.attrs(i);
-    if (attr.name() == name) {
-      return true;
+  if (attrs_.find(name) != attrs_.end()) {
+    return true;
+  } else {
+    auto &op_info = OpInfoMap::Instance();
+    if (op_info.Has(desc_.type())) {
+      auto op_info_ptr = op_info.Get(desc_.type());
+      if (op_info_ptr.HasOpProtoAndChecker()) {
+        const proto::OpProto &proto = op_info_ptr.Proto();
+        for (int i = 0; i != proto.attrs_size(); ++i) {
+          const proto::OpProto::Attr &attr = proto.attrs(i);
+          if (attr.name() == name) {
+            return true;
+          }
+        }
+      }
     }
   }
   return false;
