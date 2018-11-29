@@ -447,23 +447,19 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
 
 
 class TestDistLookupTableBase(TranspilerTest):
-    def network_with_table(self,
-                           is_sparse,
-                           is_distributed,
-                           remote_prefetch=False):
+    def network_with_table(self, is_sparse, is_distributed):
         self.table_size = 1000
         self.emb_size = 64
         self.lookup_table_name = 'shared_w'
 
-        def emb_pool(ids, table_name, is_distributed, remote_prefetch):
+        def emb_pool(ids, table_name, is_distributed):
             emb = fluid.layers.embedding(
                 input=ids,
                 size=[self.table_size, self.emb_size],
                 dtype='float32',
                 param_attr=table_name,
                 is_sparse=is_sparse,
-                is_distributed=is_distributed,
-                remote_prefetch=remote_prefetch)
+                is_distributed=is_distributed)
             pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
             return pool
 
@@ -473,12 +469,9 @@ class TestDistLookupTableBase(TranspilerTest):
             name='brand_ids', shape=[1], dtype='int64', lod_level=1)
         profile_ids = fluid.layers.data(
             name='brand_ids', shape=[1], dtype='int64', lod_level=1)
-        title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed,
-                             False)
-        brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed,
-                             False)
-        profile_emb = emb_pool(profile_ids, "profile_emb", False,
-                               remote_prefetch)
+        title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed)
+        brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed)
+        profile_emb = emb_pool(profile_ids, "profile_emb", False)
         fc0 = fluid.layers.concat(
             input=[title_emb, brand_emb, profile_emb], axis=1)
         predict = fluid.layers.fc(input=fc0,
@@ -794,8 +787,7 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
     def net_conf(self):
         import os
         os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
-        self.network_with_table(
-            is_sparse=True, is_distributed=False, remote_prefetch=True)
+        self.network_with_table(is_sparse=True, is_distributed=False)
 
     def transpiler_test_impl(self):
         pserver1, startup1 = self.get_pserver(self.pserver1_ep)
@@ -826,7 +818,7 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'sum', 'split_selected_rows', 'send', 'send_barrier', 'recv',
-            'recv', 'recv', 'fetch_barrier', 'concat'
+            'recv', 'fetch_barrier'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
