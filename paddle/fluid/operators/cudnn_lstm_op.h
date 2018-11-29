@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,10 @@ using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class CudnnLSTMKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(
+        "CPU is not support for this kernel now. Will be add in the future");
+  }
 };
 
 template <typename DeviceContext, typename T>

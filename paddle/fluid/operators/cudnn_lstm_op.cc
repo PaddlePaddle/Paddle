@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -122,13 +122,11 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
                   "The will affect the shape of the Out, last_h, and last_c")
         .SetDefault(false);
     AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(10);
-    AddAttr<int>("batch_size", "the instance number the batch").SetDefault(10);
     AddAttr<int>("hidden_size", "hidden size of the LSTM").SetDefault(100);
     AddAttr<int>("num_layers", "the total layer number of the LSTM")
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
-    AddAttr<bool>("fix_seed", "True if it fix dropout seed").SetDefault(false);
-    AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
+    AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(-1);
     AddComment(R"DOC(
 CUDNN LSTM implementation
 
@@ -136,16 +134,32 @@ A four-gate Long Short-Term Memory network with no peephole connections.
 In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
 the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 
-it = σ(Wi X xt + Ri X ht-1 + bWi + bRi)
-ft = σ(Wf X xt + Rf X ht-1 + bWf + bRf)
-ot = σ(Wo X xt + Ro X ht-1 + bWo + bRo)
-c't = tanh(Wc X xt + Rc X ht-1 + bWc + bRc)
-ct = ft * ct-1 + it * c't
-ht = ot * tanh(ct)
+$$ i_t = sigmoid(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) $$
 
-Where σ is the sigmoid operator: σ(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
+$$ f_t = sigmoid(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f) $$
+
+$$ o_t = sigmoid(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o) $$
+
+$$ \\tilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c) $$
+
+$$ c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t} $$
+
+$$ h_t = o_t \\odot tanh(c_t) $$
+
+- W terms denote weight matrices (e.g. $W_{ix}$ is the matrix
+  of weights from the input gate to the input)
+- The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
+- sigmoid is the logistic sigmoid function.
+- $i, f, o$ and $c$ are the input gate, forget gate, output gate,
+  and cell activation vectors, respectively, all of which have the same size as
+  the cell output activation vector $h$.
+- The $\odot$ is the element-wise product of the vectors.
+- `tanh` is the activation functions.
+- $\tilde{c_t}$ is also called candidate hidden state,
+  which is computed based on the current input and the previous hidden state.
+
+Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
 X represensts a matrix multiplication
-and tanh is the hyperbolic tangent function. it, ft, ot, c't represent the input, forget, output and new gates respectively.
 
 
 )DOC");
