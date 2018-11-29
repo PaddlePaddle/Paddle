@@ -6892,7 +6892,7 @@ def pad2d(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
-        paddings (tuple|list): The padding size. If padding is a tuple, it must
+        paddings (tuple|list|variable): The padding size. If padding is a tuple, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Default: padding = [0, 0, 0, 0].
         mode (str): Three modes: constant(default), reflect, edge. Default: constant
@@ -6917,16 +6917,17 @@ def pad2d(input,
     helper = LayerHelper('pad2d', **locals())
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
+    inputs = {'X': input}
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_frmat': data_format}
+
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = paddings
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
     helper.append_op(
-        type='pad2d',
-        inputs={'X': input},
-        outputs={"Out": out},
-        attrs={
-            'paddings': paddings,
-            'mode': mode,
-            'pad_value': pad_value,
-            'data_frmat': data_format
-        })
+        type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     return out
 
