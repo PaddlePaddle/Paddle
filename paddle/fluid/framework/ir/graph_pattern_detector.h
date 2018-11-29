@@ -692,11 +692,11 @@ struct ConvElementwiseaddAct : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
-struct ConvElementwiseaddElementwiseaddAct : public PatternBase {
-  ConvElementwiseaddElementwiseaddAct(PDPattern* pattern,
-                                      const std::string& name_scope)
+// Conv + ElementwiseAdd + ElementwiseAdd + Activation
+struct ConvElementwiseadd2Act : public PatternBase {
+  ConvElementwiseadd2Act(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope,
-                    "conv_elementwiseadd_elementwiseadd_act") {}
+                    "conv_elementwiseadd2_elementwiseadd_act") {}
 
   PDNode* operator()(PDNode* conv_in);
 

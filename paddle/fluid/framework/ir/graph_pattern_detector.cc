@@ -1101,6 +1101,10 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
+std::unordered_set<std::string> conv_act_set({"identity", "sigmoid", "relu",
+                                              "relu6", "relux", "tanh",
+                                              "band_pass"});
+
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
@@ -1114,24 +1118,22 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
-  auto elementwise_add_out = pattern->NewNode(elementwise_add_op_repr())
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
                                  ->assert_is_op_output("elementwise_add")
                                  ->AsIntermediate();
 
-  std::unordered_set<std::string> act_set(
-      {"identity", "sigmoid", "relu", "relu6", "relux", "tanh", "band_pass"});
   auto act_op = pattern->NewNode(act_op_repr())
                     ->assert_is_op()
-                    ->assert_more([act_set](Node *node) {
+                    ->assert_more([&](Node *node) {
                       auto op_type = node->Name();
-                      return act_set.count(op_type);
+                      return conv_act_set.count(op_type);
                     });
   auto act_out = pattern->NewNode(act_out_repr())
                      ->assert_is_var()
                      // is activation op's output.
-                     ->assert_more([act_set](Node *node) {
+                     ->assert_more([&](Node *node) {
                        for (auto *in_op : node->inputs) {
-                         if (act_set.count(in_op->Name())) {
+                         if (conv_act_set.count(in_op->Name())) {
                            return true;
                          }
                        }
@@ -1148,8 +1150,7 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   return act_out;
 }
 
-PDNode *patterns::ConvElementwiseaddElementwiseaddAct::operator()(
-    PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d", "Filter")
@@ -1175,20 +1176,18 @@ PDNode *patterns::ConvElementwiseaddElementwiseaddAct::operator()(
                                    ->assert_is_op_output("elementwise_add")
                                    ->AsIntermediate();
 
-  std::unordered_set<std::string> act_set(
-      {"identity", "sigmoid", "relu", "relu6", "relux", "tanh", "band_pass"});
   auto act_op = pattern->NewNode(act_op_repr())
                     ->assert_is_op()
-                    ->assert_more([act_set](Node *node) {
+                    ->assert_more([&](Node *node) {
                       auto op_type = node->Name();
-                      return act_set.count(op_type);
+                      return conv_act_set.count(op_type);
                     });
   auto act_out = pattern->NewNode(act_out_repr())
                      ->assert_is_var()
                      // is activation op's output.
-                     ->assert_more([act_set](Node *node) {
+                     ->assert_more([&](Node *node) {
                        for (auto *in_op : node->inputs) {
-                         if (act_set.count(in_op->Name())) {
+                         if (conv_act_set.count(in_op->Name())) {
                            return true;
                          }
                        }

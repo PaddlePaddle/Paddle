@@ -143,5 +143,21 @@ TEST(TensorRT_mobilenet, analysis) {
   compare(model_dir, /* use_tensorrt */ false);
 }
 
+TEST(AnalysisPredictor, use_gpu) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  AnalysisConfig config(true);
+  config.model_dir = model_dir;
+  config.fraction_of_gpu_memory = 0.15;
+
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+
+  std::vector<PaddleTensor> outputs;
+  for (auto& input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+  }
+}
+
 }  // namespace inference
 }  // namespace paddle

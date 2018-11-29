@@ -20,9 +20,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class ConvElementwiseAddActFusePass : public FusePassBase {
+class ConvElementwiseAdd2ActFusePass : public FusePassBase {
  public:
-  virtual ~ConvElementwiseAddActFusePass() {}
+  virtual ~ConvElementwiseAdd2ActFusePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;

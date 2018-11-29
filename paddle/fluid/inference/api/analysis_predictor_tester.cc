@@ -55,9 +55,10 @@ TEST(AnalysisPredictor, analysis_off) {
 }
 
 TEST(AnalysisPredictor, analysis_on) {
-  AnalysisConfig config(false);
+  AnalysisConfig config(true);
   config.model_dir = FLAGS_dirname;
   config.enable_ir_optim = true;
+  config.fraction_of_gpu_memory = 0.15;
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
