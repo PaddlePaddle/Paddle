@@ -186,6 +186,11 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   VLOG(30) << "predict cost: " << timer.toc() << "ms";
 
   // Fix TensorArray reuse not cleaned bug.
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
   tensor_array_batch_cleaner_.CollectNoTensorVars(scope_.get());
   tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
