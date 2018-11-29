@@ -54,11 +54,20 @@ const std::vector<std::string> load_filelist_from_file(const char* filename) {
 
 void GenerateFileForTest(const char* protofile, const char* filelist) {
   std::ofstream w_protofile(protofile);
-  w_protofile
-      << "name: \"MultiSlotDataFeed\"\nbatch: 128\nmulti_slot_desc {\n"
-         "    slots {\n        name: \"uint64_data\"\n        type: \"uint64\""
-         "\n        use: true\n    }\n    slots {\n        name: \"float_data\""
-         "\n        type: \"float\"\n        use: true\n    }\n}";
+  w_protofile << "name: \"MultiSlotDataFeed\"\n"
+                 "batch_size: 2\n"
+                 "multi_slot_desc {\n"
+                 "    slots {\n"
+                 "        name: \"uint64_data\"\n"
+                 "        type: \"uint64\"\n"
+                 "        is_used: true\n"
+                 "    }\n"
+                 "    slots {\n"
+                 "        name: \"float_data\"\n"
+                 "        type: \"float\"\n"
+                 "        is_used: false\n"
+                 "    }\n"
+                 "}";
   w_protofile.close();
   std::ofstream w_filelist(filelist);
   int total_file = 4;
@@ -97,7 +106,13 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
                           const paddle::framework::DataFeedDesc& data_feed_desc,
                           const std::vector<std::string>& filelist,
                           const int thread_num) {
-  reader_elem_set->resize(data_feed_desc.multi_slot_desc().slots_size());
+  int used_slot_num = 0;
+  for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
+    if (data_feed_desc.multi_slot_desc().slots(i).is_used()) {
+      ++used_slot_num;
+    }
+  }
+  reader_elem_set->resize(used_slot_num);
   std::vector<std::thread> threads;
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers;
   readers.resize(thread_num);
@@ -124,18 +139,21 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       }
       readers[idx]->Start();
       while (readers[idx]->Next()) {
+        int index = 0;
         for (int k = 0; k < data_feed_desc.multi_slot_desc().slots_size();
              ++k) {
           auto slot = data_feed_desc.multi_slot_desc().slots(k);
-          auto name = slot.name();
-          const paddle::framework::LoDTensor* tens = feed_targets[name];
+          if (!slot.is_used()) {
+            continue;
+          }
+          const paddle::framework::LoDTensor* tens = feed_targets[slot.name()];
           if (slot.type() == "uint64") {
             const int64_t* data = tens->data<int64_t>();
             for (size_t i = 0; i < tens->NumElements(); ++i) {
               std::pair<size_t, size_t> element = tens->lod_element(0, i);
               for (size_t j = element.first; j < element.second; ++j) {
                 std::lock_guard<std::mutex> lock(mu);
-                (*reader_elem_set)[k].AddValue((uint64_t)data[j]);
+                (*reader_elem_set)[index].AddValue((uint64_t)data[j]);
               }
             }
           } else if (slot.type() == "float") {
@@ -144,12 +162,13 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
               std::pair<size_t, size_t> element = tens->lod_element(0, i);
               for (size_t j = element.first; j < element.second; ++j) {
                 std::lock_guard<std::mutex> lock(mu);
-                (*reader_elem_set)[k].AddValue(data[j]);
+                (*reader_elem_set)[index].AddValue(data[j]);
               }
             }
           } else {
             PADDLE_THROW("Error type in proto file.");
           }
+          ++index;
         }  // end slots loop
       }    // end while Next()
     }));   // end anonymous function
@@ -191,30 +210,45 @@ void CheckIsUnorderedSame(const std::vector<MultiTypeSet>& s1,
 void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
                         const paddle::framework::DataFeedDesc& data_feed_desc,
                         const std::vector<std::string>& filelist) {
-  file_elem_set->resize(data_feed_desc.multi_slot_desc().slots_size());
+  int used_slot_num = 0;
+  for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
+    if (data_feed_desc.multi_slot_desc().slots(i).is_used()) {
+      ++used_slot_num;
+    }
+  }
+  file_elem_set->resize(used_slot_num);
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
     PADDLE_ENFORCE(fin.good(), "Can not open %s.", file.c_str());
     while (1) {
       bool end_flag = false;
+      int index = 0;
       for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
         int num;
         if (fin >> num) {
-          auto type = data_feed_desc.multi_slot_desc().slots(i).type();
+          auto slot = data_feed_desc.multi_slot_desc().slots(i);
+          auto type = slot.type();
           if (type == "uint64") {
             while (num--) {
               uint64_t feasign;
               fin >> feasign;
-              (*file_elem_set)[i].AddValue(feasign);
+              if (slot.is_used()) {
+                (*file_elem_set)[index].AddValue(feasign);
+              }
             }
           } else if (type == "float") {
             while (num--) {
               float feasign;
               fin >> feasign;
-              (*file_elem_set)[i].AddValue(feasign);
+              if (slot.is_used()) {
+                (*file_elem_set)[index].AddValue(feasign);
+              }
             }
           } else {
             PADDLE_THROW("Error type in proto file.");
+          }
+          if (slot.is_used()) {
+            ++index;
           }
         } else {
           end_flag = true;

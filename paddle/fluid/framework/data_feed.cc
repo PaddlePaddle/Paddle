@@ -52,7 +52,7 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   CheckInit();
   if (finish_set_filelist_) {
-    LOG(INFO) << "info: you have set the filelist.";
+    VLOG(3) << "info: you have set the filelist.";
     return false;
   }
   PADDLE_ENFORCE(files.size(), "You have set an empty filelist.");
@@ -151,8 +151,8 @@ void MultiSlotDataFeed::Init(
                  "Multi_slot_desc has not been set.");
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
-  SetBatchSize(data_feed_desc.batch());
-  SetQueueSize(data_feed_desc.batch());
+  SetBatchSize(data_feed_desc.batch_size());
+  SetQueueSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
@@ -163,10 +163,10 @@ void MultiSlotDataFeed::Init(
     const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.use() ? use_slots_.size() : -1;
-    if (slot.use()) {
+    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
-      use_slots_is_dense_.push_back(slot.dense());
+      use_slots_is_dense_.push_back(slot.is_dense());
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -177,7 +177,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   CheckInit();  // get info of slots
   std::ifstream fin(filename);
   if (!fin.good()) {
-    LOG(ERROR) << "error: open file<" << filename << "> fail";
+    VLOG(1) << "error: open file<" << filename << "> fail";
     return false;
   }
   std::string line;
@@ -190,10 +190,10 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   for (const auto& alias : use_slots_) {
     use_slots_alias += alias + " ";
   }
-  LOG(INFO) << "total slots num: " << all_slots_.size();
-  LOG(INFO) << "total slots alias: " << all_slots_alias;
-  LOG(INFO) << "used slots num: " << use_slots_.size();
-  LOG(INFO) << "used slots alias: " << use_slots_alias;
+  VLOG(3) << "total slots num: " << all_slots_.size();
+  VLOG(3) << "total slots alias: " << all_slots_alias;
+  VLOG(3) << "used slots num: " << use_slots_.size();
+  VLOG(3) << "used slots alias: " << use_slots_alias;
   while (getline(fin, line)) {
     ++instance_cout;
     const char* str = line.c_str();
@@ -202,39 +202,39 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       int num = strtol(endptr, &endptr, 10);
       if (num < 0) {
-        LOG(ERROR) << "error: the number of ids is a negative number: " << num;
-        LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                   << filename << ">";
+        VLOG(1) << "error: the number of ids is a negative number: " << num;
+        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                << filename << ">";
         return false;
       } else if (num == 0) {
-        LOG(ERROR)
+        VLOG(1)
             << "error: the number of ids can not be zero, you need "
                "padding it in data generator; or if there is something wrong"
                " with the data, please check if the data contains unresolvable "
                "characters.";
-        LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                   << filename << ">";
+        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                << filename << ">";
         return false;
       } else if (errno == ERANGE || num > INT_MAX) {
-        LOG(ERROR) << "error: the number of ids greater than INT_MAX";
-        LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                   << filename << ">";
+        VLOG(1) << "error: the number of ids greater than INT_MAX";
+        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                << filename << ">";
         return false;
       }
       if (all_slots_type_[i] == "float") {
         for (int i = 0; i < num; ++i) {
           strtof(endptr, &endptr);
           if (errno == ERANGE) {
-            LOG(ERROR) << "error: the value is out of the range of "
-                          "representable values for float";
-            LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                       << filename << ">";
+            VLOG(1) << "error: the value is out of the range of "
+                       "representable values for float";
+            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                    << filename << ">";
             return false;
           }
           if (i + 1 != num && endptr - str == len) {
-            LOG(ERROR) << "error: there is a wrong with the number of ids.";
-            LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                       << filename << ">";
+            VLOG(1) << "error: there is a wrong with the number of ids.";
+            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                    << filename << ">";
             return false;
           }
         }
@@ -242,34 +242,34 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         for (int i = 0; i < num; ++i) {
           strtoull(endptr, &endptr, 10);
           if (errno == ERANGE) {
-            LOG(ERROR) << "error: the value is out of the range of "
-                          "representable values for uint64_t";
-            LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                       << filename << ">";
+            VLOG(1) << "error: the value is out of the range of "
+                       "representable values for uint64_t";
+            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                    << filename << ">";
             return false;
           }
           if (i + 1 != num && endptr - str == len) {
-            LOG(ERROR) << "error: there is a wrong with the number of ids.";
-            LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                       << filename << ">";
+            VLOG(1) << "error: there is a wrong with the number of ids.";
+            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+                    << filename << ">";
             return false;
           }
         }
       } else {
-        LOG(ERROR) << "error: this type<" << all_slots_type_[i]
-                   << "> is not supported";
+        VLOG(1) << "error: this type<" << all_slots_type_[i]
+                << "> is not supported";
         return false;
       }
     }
     if (endptr - str != len) {
-      LOG(ERROR) << "error: there is some data at the end of the line.";
-      LOG(ERROR) << "please check line<" << instance_cout << "> in file<"
-                 << filename << ">";
+      VLOG(1) << "error: there is some data at the end of the line.";
+      VLOG(1) << "please check line<" << instance_cout << "> in file<"
+              << filename << ">";
       return false;
     }
   }
-  LOG(INFO) << "instances cout: " << instance_cout;
-  LOG(INFO) << "The file format is correct";
+  VLOG(3) << "instances cout: " << instance_cout;
+  VLOG(3) << "The file format is correct";
   return true;
 }
 
@@ -375,4 +375,3 @@ void MultiSlotDataFeed::PutToFeedVec(
 
 }  // namespace framework
 }  // namespace paddle
-/* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
