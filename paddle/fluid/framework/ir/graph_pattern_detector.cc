@@ -1108,6 +1108,9 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
                       ->assert_is_op_output("conv2d")
                       ->assert_is_op_input("elementwise_add", "X")
                       ->AsIntermediate();
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr());
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
                                   ->assert_is_op_input("elementwise_add", "Y")
@@ -1137,7 +1140,7 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
                      })
                      ->AsOutput();
 
-  conv_op->LinksFrom({conv_in});
+  conv_op->LinksFrom({conv_in, conv_filter});
   conv_out->LinksFrom({conv_op}).LinksTo({elementwise_add_op});
   elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
       .LinksTo({elementwise_add_out});
@@ -1149,6 +1152,9 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
 PDNode *patterns::ConvElementwiseaddElementwiseaddAct::operator()(
     PDNode *conv_in) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
   auto conv_out = pattern->NewNode(conv_out_repr())
                       ->assert_is_op_output("conv2d")
                       ->assert_is_op_input("elementwise_add", "X")
@@ -1191,7 +1197,7 @@ PDNode *patterns::ConvElementwiseaddElementwiseaddAct::operator()(
                      })
                      ->AsOutput();
 
-  conv_op->LinksFrom({conv_in}).LinksTo({conv_out});
+  conv_op->LinksFrom({conv_in, conv_filter}).LinksTo({conv_out});
   elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
       .LinksTo({elementwise_add_out});
   elementwise_add_op_1->LinksFrom(

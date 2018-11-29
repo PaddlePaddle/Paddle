@@ -682,6 +682,7 @@ struct ConvElementwiseaddAct : public PatternBase {
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(conv_filter);
 
   PATTERN_DECL_NODE(elementwise_add_op);
   PATTERN_DECL_NODE(elementwise_add_in_y);  // input
@@ -700,6 +701,7 @@ struct ConvElementwiseaddElementwiseaddAct : public PatternBase {
   PDNode* operator()(PDNode* conv_in);
 
   PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_filter);
   PATTERN_DECL_NODE(conv_out);
 
   PATTERN_DECL_NODE(elementwise_add_op);
