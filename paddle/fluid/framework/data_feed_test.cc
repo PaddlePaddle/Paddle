@@ -58,13 +58,33 @@ void GenerateFileForTest(const char* protofile, const char* filelist) {
                  "batch_size: 2\n"
                  "multi_slot_desc {\n"
                  "    slots {\n"
-                 "        name: \"uint64_data\"\n"
+                 "        name: \"uint64_sparse_slot\"\n"
                  "        type: \"uint64\"\n"
+                 "        is_dense: false\n"
                  "        is_used: true\n"
                  "    }\n"
                  "    slots {\n"
-                 "        name: \"float_data\"\n"
+                 "        name: \"float_sparse_slot\"\n"
                  "        type: \"float\"\n"
+                 "        is_dense: false\n"
+                 "        is_used: true\n"
+                 "    }\n"
+                 "    slots {\n"
+                 "        name: \"uint64_dense_slot\"\n"
+                 "        type: \"uint64\"\n"
+                 "        is_dense: true\n"
+                 "        is_used: true\n"
+                 "    }\n"
+                 "    slots {\n"
+                 "        name: \"float_dense_slot\"\n"
+                 "        type: \"float\"\n"
+                 "        is_dense: true\n"
+                 "        is_used: true\n"
+                 "    }\n"
+                 "    slots {\n"
+                 "        name: \"not_used_slot\"\n"
+                 "        type: \"uint64\"\n"
+                 "        is_dense: false\n"
                  "        is_used: false\n"
                  "    }\n"
                  "}";
@@ -78,8 +98,9 @@ void GenerateFileForTest(const char* protofile, const char* filelist) {
       w_filelist << std::endl;
     }
     std::ofstream w_datafile(filename.c_str());
-    w_datafile << "9 3 9 7 8 6 2 0 8 2 5 0.1 0.2 0.3 0.4 0.5\n"
-                  "3 0 100 200 1 99.9\n1 19260817 3 123.123 556.556 985.211\n";
+    w_datafile << "3 3978 620 82 1 1926.08 1 1926 1 6.02 1 1996\n"
+                  "2 1300 2983353 1 985.211 1 8 1 0.618 1 12\n"
+                  "1 19260827 2 3.14 2.718 1 27 1 2.236 1 28\n";
     w_datafile.close();
   }
   w_filelist.close();
@@ -127,47 +148,83 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
     threads.emplace_back(std::thread([&, idx] {
       std::unique_ptr<paddle::framework::Scope> scope(
           new paddle::framework::Scope());
-      const std::vector<std::string>& use_slot_alias =
-          readers[idx]->GetUseSlotAlias();
-      for (auto name : use_slot_alias) {
-        readers[idx]->AddFeedVar(scope->Var(name), name);
-      }
-      std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
-      for (auto name : use_slot_alias) {
-        feed_targets[name] =
-            &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
+      const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
+      std::map<std::string, const paddle::framework::LoDTensor*>
+          lodtensor_targets;
+      std::map<std::string, const paddle::framework::Tensor*> tensor_targets;
+      for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+        const auto& slot = multi_slot_desc.slots(i);
+        if (slot.is_used()) {
+          const auto& name = slot.name();
+          readers[idx]->AddFeedVar(scope->Var(name), name);
+          if (slot.is_dense()) {
+            tensor_targets[name] =
+                &scope->FindVar(name)->Get<paddle::framework::Tensor>();
+          } else {
+            lodtensor_targets[name] =
+                &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
+          }
+        }
       }
       readers[idx]->Start();
       while (readers[idx]->Next()) {
         int index = 0;
-        for (int k = 0; k < data_feed_desc.multi_slot_desc().slots_size();
-             ++k) {
-          auto slot = data_feed_desc.multi_slot_desc().slots(k);
+        for (int k = 0; k < multi_slot_desc.slots_size(); ++k) {
+          const auto& slot = multi_slot_desc.slots(k);
           if (!slot.is_used()) {
             continue;
           }
-          const paddle::framework::LoDTensor* tens = feed_targets[slot.name()];
-          if (slot.type() == "uint64") {
-            const int64_t* data = tens->data<int64_t>();
-            for (size_t i = 0; i < tens->NumElements(); ++i) {
-              std::pair<size_t, size_t> element = tens->lod_element(0, i);
-              for (size_t j = element.first; j < element.second; ++j) {
-                std::lock_guard<std::mutex> lock(mu);
-                (*reader_elem_set)[index].AddValue((uint64_t)data[j]);
+          if (slot.is_dense()) {  // dense branch
+            const paddle::framework::Tensor* tens = tensor_targets[slot.name()];
+            if (slot.type() == "uint64") {
+              const int64_t* data = tens->data<int64_t>();
+              int batch_size = tens->dims()[0];
+              int dim = tens->dims()[1];
+              for (int i = 0; i < batch_size; ++i) {
+                for (int j = 0; j < dim; ++j) {
+                  std::lock_guard<std::mutex> lock(mu);
+                  (*reader_elem_set)[index].AddValue(
+                      (uint64_t)data[i * dim + j]);
+                }
               }
-            }
-          } else if (slot.type() == "float") {
-            const float* data = tens->data<float>();
-            for (size_t i = 0; i < tens->NumElements(); ++i) {
-              std::pair<size_t, size_t> element = tens->lod_element(0, i);
-              for (size_t j = element.first; j < element.second; ++j) {
-                std::lock_guard<std::mutex> lock(mu);
-                (*reader_elem_set)[index].AddValue(data[j]);
+            } else if (slot.type() == "float") {
+              const float* data = tens->data<float>();
+              int batch_size = tens->dims()[0];
+              int dim = tens->dims()[1];
+              for (int i = 0; i < batch_size; ++i) {
+                for (int j = 0; j < dim; ++j) {
+                  std::lock_guard<std::mutex> lock(mu);
+                  (*reader_elem_set)[index].AddValue(data[i * dim + j]);
+                }
               }
+            } else {
+              PADDLE_THROW("Error type in proto file.");
             }
-          } else {
-            PADDLE_THROW("Error type in proto file.");
-          }
+          } else {  // sparse branch
+            const paddle::framework::LoDTensor* tens =
+                lodtensor_targets[slot.name()];
+            if (slot.type() == "uint64") {
+              const int64_t* data = tens->data<int64_t>();
+              for (size_t i = 0; i < tens->NumElements(); ++i) {
+                std::pair<size_t, size_t> element = tens->lod_element(0, i);
+                for (size_t j = element.first; j < element.second; ++j) {
+                  std::lock_guard<std::mutex> lock(mu);
+                  (*reader_elem_set)[index].AddValue((uint64_t)data[j]);
+                }
+              }
+            } else if (slot.type() == "float") {
+              const float* data = tens->data<float>();
+              for (size_t i = 0; i < tens->NumElements(); ++i) {
+                std::pair<size_t, size_t> element = tens->lod_element(0, i);
+                for (size_t j = element.first; j < element.second; ++j) {
+                  std::lock_guard<std::mutex> lock(mu);
+                  (*reader_elem_set)[index].AddValue(data[j]);
+                }
+              }
+            } else {
+              PADDLE_THROW("Error type in proto file.");
+            }
+          }  // end sparse branch
           ++index;
         }  // end slots loop
       }    // end while Next()
