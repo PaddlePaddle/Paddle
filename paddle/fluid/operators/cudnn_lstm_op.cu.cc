@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -273,7 +273,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     size_t max_len = ctx.Attr<int>("max_len");
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
-    int batch_size = ctx.Attr<int>("batch_size");
     int input_size = ctx.Attr<int>("input_size");
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
@@ -304,9 +303,13 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
                             ->GetMutable<CudnnRNNCache>();
       std::random_device rnd;
-      int seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : rnd();
+      int seed = ctx.Attr<int>("seed");
+      if (seed == -1) {
+        seed = rnd();
+      }
 
       auto input_w_numel = w->numel();
+      auto batch_size = x->dims()[1];
       cudnn_rnn_cache->init(handle, ctx, max_len, batch_size, input_size,
                             hidden_size, num_layers, dropout_prob, is_bidirec,
                             seed, input_w_numel);

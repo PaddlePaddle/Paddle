@@ -169,7 +169,7 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
-    'cudnn_lstm',
+    'lstm',
 ]
 
 
@@ -467,39 +467,53 @@ def dynamic_lstm(input,
     return hidden, cell
 
 
-def cudnn_lstm(input,
-               init_h,
-               init_c,
-               batch_size,
-               max_len,
-               dropout_prob,
-               input_size,
-               hidden_size,
-               num_layers,
-               is_bidirec=False,
-               dtype='float32',
-               is_test=False,
-               name=None,
-               default_initializer=None,
-               fix_seed=False,
-               seed=0):
+def lstm(input,
+         init_h,
+         init_c,
+         max_len,
+         dropout_prob,
+         input_size,
+         hidden_size,
+         num_layers,
+         is_bidirec=False,
+         dtype='float32',
+         is_test=False,
+         name=None,
+         default_initializer=None,
+         seed=-1):
     """
-    CUDNN LSTM implementation
+    If Device is GPU, This op will use cudnn LSTM implementation
 
     A four-gate Long Short-Term Memory network with no peephole connections.
     In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
     the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 
-    it = sigmoid(Wi X xt + Ri X ht-1 + bWi + bRi)
-    ft = sigmoid(Wf X xt + Rf X ht-1 + bWf + bRf)
-    ot = sigmoid(Wo X xt + Ro X ht-1 + bWo + bRo)
-    c't = tanh(Wc X xt + Rc X ht-1 + bWc + bRc)
-    ct = ft * ct-1 + it * c't
-    ht = ot * tanh(ct)
+    $$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) $$
+
+    $$ f_t = \\sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f) $$
+
+    $$ o_t = \\sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o) $$
+
+    $$ \\tilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c) $$
+
+    $$ c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t} $$
+
+    $$ h_t = o_t \\odot tanh(c_t) $$
+
+    - W terms denote weight matrices (e.g. $W_{ix}$ is the matrix
+      of weights from the input gate to the input)
+    - The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
+    - sigmoid is the logistic sigmoid function.
+    - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
+      and cell activation vectors, respectively, all of which have the same size as
+      the cell output activation vector $h$.
+    - The $\odot$ is the element-wise product of the vectors.
+    - `tanh` is the activation functions.
+    - $\tilde{c_t}$ is also called candidate hidden state,
+      which is computed based on the current input and the previous hidden state.
 
     Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
     X represensts a matrix multiplication
-    and tanh is the hyperbolic tangent function. it, ft, ot, c't represent the input, forget, output and new gates respectively.
 
 
     Args:
@@ -510,7 +524,6 @@ def cudnn_lstm(input,
         init_c(Variable): The initial cell state of the LSTM.
                        This is a tensor with shape ( num_layers x batch_size x hidden_size )
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        batch_size (int): total distance numer of the batch
         max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len 
         dropout_prob(float): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
                              There is NO dropout work on rnn output of the last RNN layers
@@ -524,9 +537,7 @@ def cudnn_lstm(input,
                          will be named automatically.
         default_initializer(Initialize|None): Where use initializer to initialize the Weight
                          If set None, defaule initializer will be used
-
-        fix_seed(bool): If it's True, fix seed will used for dropout in LSTM
-        seed(int): If fix_seed is True, dropout seed in LSTM will use this seed 
+        seed(int): Seed for dropout in LSTM, If it's -1, dropout will use random seed
 
 
     Returns:
@@ -553,7 +564,7 @@ def cudnn_lstm(input,
             init_hidden1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
             init_cell1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
 
-            rnn_out, last_h, last_c = layers.cudnn_lstm( input, init_h, init_c, batch_size, \
+            rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
                     max_len, dropout_prob, input_size, hidden_size, \
                     num_layers)
     """
@@ -610,12 +621,10 @@ def cudnn_lstm(input,
             'max_len': max_len,
             'is_bidirec': is_bidirec,
             'input_size': input_size,
-            'batch_size': batch_size,
             'hidden_size': hidden_size,
             'num_layers': num_layers,
             'is_test': is_test,
             'dropout_prob': dropout_prob,
-            'fix_seed': fix_seed,
             'seed': seed,
         })
     return out, last_h, last_c
