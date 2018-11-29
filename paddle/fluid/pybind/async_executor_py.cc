@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/variant.h"
@@ -42,7 +43,10 @@ namespace pybind {
 using set_name_func = void (pd::DataFeedDesc::*)(const std::string&);
 void BindAsyncExecutor(py::module* m) {
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
-      .def(py::init<pd::Scope&, const platform::Place&>())
+      .def(py::init([](framework::Scope* scope, const platform::Place& place) {
+        return std::unique_ptr<framework::AsyncExecutor>(
+            new framework::AsyncExecutor(scope, place));
+      }))
       .def("run_from_files", &framework::AsyncExecutor::RunFromFile);
 }  // end BindAsyncExecutor
 }  // end namespace pybind

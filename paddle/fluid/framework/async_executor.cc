@@ -32,17 +32,17 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-AsyncExecutor::AsyncExecutor(Scope& scope, const platform::Place& place)
+AsyncExecutor::AsyncExecutor(Scope* scope, const platform::Place& place)
     : root_scope_(scope), place_(place) {}
 
 void AsyncExecutor::CreateThreads(
     ExecutorThreadWorker* worker, const ProgramDesc& main_program,
     const std::shared_ptr<DataFeed>& reader,
-    const std::vector<std::string>& fetch_var_names, Scope& root_scope,
+    const std::vector<std::string>& fetch_var_names, Scope* root_scope,
     const int thread_index, const bool debug) {
   worker->SetThreadId(thread_index);
   worker->SetDebug(debug);
-  worker->SetRootScope(&root_scope);
+  worker->SetRootScope(root_scope);
   worker->CreateThreadResource(main_program, place_);
   worker->SetDataFeed(reader);
   worker->SetFetchVarNames(fetch_var_names);
@@ -129,7 +129,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
     th.join();
   }
 
-  root_scope_.DropKids();
+  root_scope_->DropKids();
 
   return;
 }

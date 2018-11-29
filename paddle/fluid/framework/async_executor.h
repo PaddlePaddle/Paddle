@@ -32,7 +32,7 @@ namespace paddle {
 namespace framework {
 class AsyncExecutor {
  public:
-  AsyncExecutor(Scope& scope, const platform::Place& place);  // NOLINT
+  AsyncExecutor(Scope* scope, const platform::Place& place);
   virtual ~AsyncExecutor() {}
   void RunFromFile(const ProgramDesc& main_program,
                    const std::string& data_feed_desc_str,
@@ -46,11 +46,11 @@ class AsyncExecutor {
                      const ProgramDesc& main_program,
                      const std::shared_ptr<DataFeed>& reader,
                      const std::vector<std::string>& fetch_var_names,
-                     Scope& root_scope,  // NOLINT
-                     const int thread_index, const bool debug);
+                     Scope* root_scope, const int thread_index,
+                     const bool debug);
 
  public:
-  Scope& root_scope_;
+  Scope* root_scope_;
   platform::Place place_;
 };
 
