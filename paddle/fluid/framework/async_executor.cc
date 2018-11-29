@@ -87,8 +87,8 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
 
   if (actual_thread_num > file_cnt) {
-    LOG(ERROR) << "Thread num = " << thread_num << ", file num = " << file_cnt
-               << ". Changing thread_num = " << file_cnt;
+    VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt
+            << ". Changing thread_num = " << file_cnt;
     actual_thread_num = file_cnt;
   }
 

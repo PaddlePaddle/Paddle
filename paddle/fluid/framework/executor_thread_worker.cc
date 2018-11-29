@@ -105,19 +105,19 @@ void ExecutorThreadWorker::SetDevice() {
     CPU_SET(proc, &mask);
 
     if (-1 == sched_setaffinity(0, sizeof(mask), &mask)) {
-      LOG(ERROR) << "WARNING: Failed to set thread affinity for thread "
-                 << thread_id;
+      VLOG(1) << "WARNING: Failed to set thread affinity for thread "
+              << thread_id;
     } else {
       CPU_ZERO(&mask);
       if ((0 != sched_getaffinity(0, sizeof(mask), &mask)) ||
           (CPU_ISSET(proc, &mask) == 0)) {
-        LOG(INFO) << "WARNING: Failed to set thread affinity for thread "
-                  << thread_id;
+        VLOG(3) << "WARNING: Failed to set thread affinity for thread "
+                << thread_id;
       }
     }
   } else {
-    LOG(ERROR) << "WARNING: Failed to set thread affinity for thread "
-               << thread_id;
+    VLOG(1) << "WARNING: Failed to set thread affinity for thread "
+            << thread_id;
   }
 #endif
 }
@@ -166,8 +166,8 @@ void print_fetch_var(Scope* scope, std::string var_name) {
              std::type_index(typeid(int8_t))) {
     print_lod_tensor<int8_t>(var_name, tensor);
   } else {
-    LOG(ERROR) << "print_fetch_var: unrecognized data type:"
-               << tensor.type().name();
+    VLOG(1) << "print_fetch_var: unrecognized data type:"
+            << tensor.type().name();
   }
 
   return;

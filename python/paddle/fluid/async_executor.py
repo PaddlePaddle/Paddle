@@ -171,6 +171,9 @@ class AsyncExecutor(object):
     file list, which will be retrieved in C++, then training inputs will be
     read, parsed and fed to training network within C++ code.
 
+    AsyncExecutor is in active development and the API might change in the near
+    future.
+
     Example:
         >>> data_feed = fluid.DataFeedDesc('data.proto')
         >>> startup_program = fluid.default_startup_program()
@@ -228,7 +231,6 @@ class AsyncExecutor(object):
         Running the dataset will be on multiple threads, within each a thread
         local scope will be created, then all OPs also created in that scope.
         Parameters are updated by all the OPs simultaneously.
-
 
         Args:
             program(Program): the program that need to run, if not provied,
