@@ -151,8 +151,8 @@ void MultiSlotDataFeed::Init(
                  "Multi_slot_desc has not been set.");
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
-  SetBatchSize(data_feed_desc.batch());
-  SetQueueSize(data_feed_desc.batch());
+  SetBatchSize(data_feed_desc.batch_size());
+  SetQueueSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
@@ -163,10 +163,10 @@ void MultiSlotDataFeed::Init(
     const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.use() ? use_slots_.size() : -1;
-    if (slot.use()) {
+    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
-      use_slots_is_dense_.push_back(slot.dense());
+      use_slots_is_dense_.push_back(slot.is_dense());
     }
   }
   feed_vec_.resize(use_slots_.size());

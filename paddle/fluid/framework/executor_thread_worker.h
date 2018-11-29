@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_FLUID_FRAMEWORK_EXECUTOR_THREAD_WORKER_H_
-#define PADDLE_FLUID_FRAMEWORK_EXECUTOR_THREAD_WORKER_H_
+#pragma once
 
 #include <map>
 #include <memory>
@@ -87,5 +86,3 @@ class ExecutorThreadWorker {
 
 }  // namespace framework
 }  // namespace paddle
-#endif  // PADDLE_FLUID_FRAMEWORK_EXECUTOR_THREAD_WORKER_H_
-/* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */

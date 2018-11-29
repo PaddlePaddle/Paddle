@@ -18,7 +18,7 @@ import paddle
 from paddle.fluid import core
 
 URL = 'http://paddle-unittest-data.gz.bcebos.com/python_paddle_fluid_tests_demo_async-executor/train_data.tar.gz'
-MD5 = '533ee3941a1d6f0330fb6bd8045d32b2'
+MD5 = '2a405a31508969b3ab823f42c0f522ca'
 
 
 def bow_net(data,
