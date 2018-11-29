@@ -14,12 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// logging.h and windows.h conflict
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-// solve static linking error in windows
-// https://github.com/google/glog/issues/301
-#define GOOGLE_GLOG_DLL_DECL
-
 #include <glog/logging.h>
 #include <map>
 #include <memory>
@@ -75,6 +69,9 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   std::vector<framework::OpDesc *> fetchs_;
+  // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
+  // concurrency problems, wrong results and memory leak, so cache them.
+  std::vector<framework::LoDTensor> feed_tensors_;
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;

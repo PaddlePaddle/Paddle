@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/time.h>
 #include <limits>
 
 #include "glog/logging.h"  // For VLOG
@@ -20,7 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(rpc_disable_reuse_port);
 
 namespace paddle {
 namespace operators {
@@ -38,7 +40,7 @@ void GRPCClient::SendComplete() {
   std::unique_lock<std::mutex> lk(completed_mutex_);
   if (!completed_) {
     for (auto& it : channels_) {
-      VLOG(30) << "send complete message to " << it.first;
+      VLOG(3) << "send complete message to " << it.first;
       this->AsyncSendComplete(it.first);
     }
     PADDLE_ENFORCE(this->Wait(), "internal grpc error");
@@ -81,7 +83,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
-    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
     s->response_call_back_ = nullptr;
@@ -142,7 +144,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
     s->response_call_back_ = ProcGetResponse;
@@ -190,7 +192,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
 
-    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
     s->response_call_back_ = ProcGetResponse;
@@ -328,14 +330,14 @@ void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
-  VLOG(30) << "GRPCClient Proceed begin";
+  VLOG(3) << "GRPCClient Proceed begin";
   while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
 
     if (c->status_.ok()) {
-      VLOG(30) << c->GetVarHandlePtr()->String() << " process";
+      VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
       // FIXME(gongwb): parse error_details?
@@ -370,7 +372,7 @@ void GRPCClient::Proceed() {
       sync_cond_.notify_all();
     }
   }
-  VLOG(30) << "GRPCClient Proceed end";
+  VLOG(3) << "GRPCClient Proceed end";
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
@@ -383,6 +385,9 @@ std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
   // Channel configurations:
   grpc::ChannelArguments args;
   args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 2000);
+  if (FLAGS_rpc_disable_reuse_port) {
+    args.SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());

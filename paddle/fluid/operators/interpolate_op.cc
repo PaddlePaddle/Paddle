@@ -76,11 +76,12 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
-    AddAttr<std::string>(
-        "interp_method",
-        "(string), interpolation method, can be \"bilinear\" for "
-        "bilinear interpolation and \"nearest\" for nearest "
-        "neighbor interpolation.");
+    AddAttr<std::string>("interp_method",
+                         "(string, default \"bilinear\"), interpolation "
+                         "method, can be \"bilinear\" for "
+                         "bilinear interpolation and \"nearest\" for nearest "
+                         "neighbor interpolation.")
+        .SetDefault("bilinear");
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
@@ -132,11 +133,19 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(interpolate, ops::InterpolateOp, ops::InterpolateOpMaker,
+REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(interpolate_grad, ops::InterpolateOpGrad);
-REGISTER_OP_CPU_KERNEL(interpolate, ops::InterpolateKernel<float>,
+REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad);
+REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad);
+REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
-REGISTER_OP_CPU_KERNEL(interpolate_grad, ops::InterpolateGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(bilinear_interp_grad, ops::InterpolateGradKernel<float>,
+                       ops::InterpolateGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(nearest_interp, ops::InterpolateKernel<float>,
+                       ops::InterpolateKernel<double>,
+                       ops::InterpolateKernel<uint8_t>);
+REGISTER_OP_CPU_KERNEL(nearest_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);

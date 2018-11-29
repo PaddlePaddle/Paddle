@@ -42,6 +42,7 @@ DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
 
 DECLARE_bool(profile);
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
@@ -177,11 +178,9 @@ void TestOneThreadPrediction(
     warmup_timer.tic();
     predictor->Run(inputs[0], outputs, batch_size);
     PrintTime(batch_size, 1, 1, 0, warmup_timer.toc(), 1);
-#if !defined(_WIN32)
     if (FLAGS_profile) {
       paddle::platform::ResetProfiler();
     }
-#endif
   }
 
   LOG(INFO) << "Run " << num_times << " times...";
@@ -206,35 +205,51 @@ void TestMultiThreadPrediction(
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
-  for (int tid = 1; tid < num_threads; ++tid) {
-    predictors.emplace_back(predictors.front()->Clone());
-  }
+  auto main_predictor = CreateTestPredictor(config, use_analysis);
 
   size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
-#ifdef PADDLE_WITH_MKLDNN
-      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
-#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
-      auto &predictor = predictors[tid];
-      LOG(INFO) << "running thread " << tid;
-      Timer timer;
-      timer.tic();
-      for (int i = 0; i < num_times; i++) {
-        for (const auto &input : inputs) {
-          ASSERT_TRUE(predictor->Run(input, &outputs_tid));
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = main_predictor->Clone();
+#ifdef PADDLE_WITH_MKLDNN
+      if (use_analysis) {
+        static_cast<AnalysisPredictor *>(predictor.get())
+            ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
+      }
+#endif
+
+      // warmup run
+      LOG(INFO) << "Running thread " << tid << ", warm up run...";
+      {
+        Timer warmup_timer;
+        warmup_timer.tic();
+        predictor->Run(inputs[0], outputs, batch_size);
+        PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
+        if (FLAGS_profile) {
+          paddle::platform::ResetProfiler();
         }
       }
 
-      auto time = timer.toc();
-      total_time += time;
-      PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
-                inputs.size());
+      LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
+      {
+        Timer timer;
+        timer.tic();
+        for (int i = 0; i < num_times; i++) {
+          for (const auto &input : inputs) {
+            ASSERT_TRUE(predictor->Run(input, &outputs_tid));
+          }
+        }
+
+        auto time = timer.toc();
+        total_time += time;
+        PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
+                  inputs.size());
+      }
     });
   }
   for (int i = 0; i < num_threads; ++i) {

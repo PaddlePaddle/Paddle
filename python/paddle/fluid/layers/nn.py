@@ -85,6 +85,7 @@ __all__ = [
     'row_conv',
     'multiplex',
     'layer_norm',
+    'group_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
@@ -343,128 +344,126 @@ def embedding(input,
     return tmp
 
 
-if os.name != 'nt':
+@templatedoc(op_type="lstm")
+def dynamic_lstm(input,
+                 size,
+                 h_0=None,
+                 c_0=None,
+                 param_attr=None,
+                 bias_attr=None,
+                 use_peepholes=True,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 cell_activation='tanh',
+                 candidate_activation='tanh',
+                 dtype='float32',
+                 name=None):
+    """
+    ${comment}
 
-    @templatedoc(op_type="lstm")
-    def dynamic_lstm(input,
-                     size,
-                     h_0=None,
-                     c_0=None,
-                     param_attr=None,
-                     bias_attr=None,
-                     use_peepholes=True,
-                     is_reverse=False,
-                     gate_activation='sigmoid',
-                     cell_activation='tanh',
-                     candidate_activation='tanh',
-                     dtype='float32',
-                     name=None):
-        """
-        ${comment}
+    Args:
+        input (Variable): ${input_comment}
+        size (int): 4 * hidden size.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the hidden size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                               hidden-hidden weights.
 
-        Args:
-            input (Variable): ${input_comment}
-            size (int): 4 * hidden size.
-            h_0(Variable): The initial hidden state is an optional input, default is zero.
-                           This is a tensor with shape (N x D), where N is the
-                           batch size and D is the hidden size.
-            c_0(Variable): The initial cell state is an optional input, default is zero.
-                           This is a tensor with shape (N x D), where N is the
-                           batch size. `h_0` and `c_0` can be NULL but only at the same time.
-            param_attr(ParamAttr|None): The parameter attribute for the learnable
-                                   hidden-hidden weights.
+                               - Weights = {:math:`W_{ch}, W_{ih}, \
+                                                W_{fh}, W_{oh}`}
+                               - The shape is (D x 4D), where D is the hidden
+                                 size.
 
-                                   - Weights = {:math:`W_{ch}, W_{ih}, \
-                                                    W_{fh}, W_{oh}`}
-                                   - The shape is (D x 4D), where D is the hidden
-                                     size.
+                               If it is set to None or one attribute of ParamAttr,
+                               dynamic_lstm will create ParamAttr as param_attr.
+                               If the Initializer of the param_attr is not set, the
+                               parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
+                              weights, which contains two parts, input-hidden
+                              bias weights and peephole connections weights if
+                              setting `use_peepholes` to `True`.
 
-                                   If it is set to None or one attribute of ParamAttr,
-                                   dynamic_lstm will create ParamAttr as param_attr.
-                                   If the Initializer of the param_attr is not set, the
-                                   parameter is initialized with Xavier. Default: None.
-            bias_attr (ParamAttr|None): The bias attribute for the learnable bias
-                                  weights, which contains two parts, input-hidden
-                                  bias weights and peephole connections weights if
-                                  setting `use_peepholes` to `True`.
+                              1. `use_peepholes = False`
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is (1 x 4D).
+                              2. `use_peepholes = True`
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+                                 - The shape is (1 x 7D).
 
-                                  1. `use_peepholes = False`
-                                     - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                     - The shape is (1 x 4D).
-                                  2. `use_peepholes = True`
-                                     - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
-                                                     W_{fc}, W_{oc}`}.
-                                     - The shape is (1 x 7D).
+                              If it is set to None or one attribute of ParamAttr,
+                              dynamic_lstm will create ParamAttr as bias_attr.
+                              If the Initializer of the bias_attr is not set,
+                              the bias is initialized zero. Default: None.
+        use_peepholes (bool): ${use_peepholes_comment}
+        is_reverse (bool): ${is_reverse_comment}
+        gate_activation (str): ${gate_activation_comment}
+        cell_activation (str): ${cell_activation_comment}
+        candidate_activation (str): ${candidate_activation_comment}
+        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
 
-                                  If it is set to None or one attribute of ParamAttr,
-                                  dynamic_lstm will create ParamAttr as bias_attr.
-                                  If the Initializer of the bias_attr is not set,
-                                  the bias is initialized zero. Default: None.
-            use_peepholes (bool): ${use_peepholes_comment}
-            is_reverse (bool): ${is_reverse_comment}
-            gate_activation (str): ${gate_activation_comment}
-            cell_activation (str): ${cell_activation_comment}
-            candidate_activation (str): ${candidate_activation_comment}
-            dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
-            name (str|None): A name for this layer(optional). If set None, the layer
-                             will be named automatically.
+    Returns:
+        tuple: The hidden state, and cell state of LSTM. The shape of both \
+        is (T x D), and lod is the same with the `input`.
 
-        Returns:
-            tuple: The hidden state, and cell state of LSTM. The shape of both \
-            is (T x D), and lod is the same with the `input`.
+    Examples:
+        .. code-block:: python
 
-        Examples:
-            .. code-block:: python
+            hidden_dim = 512
+            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+                                           bias_attr=False)
+            forward, _ = fluid.layers.dynamic_lstm(
+                input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+    """
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    helper = LayerHelper('lstm', **locals())
+    size = size // 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
-                hidden_dim = 512
-                forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
-                                               bias_attr=False)
-                forward, _ = fluid.layers.dynamic_lstm(
-                    input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
-        """
-        assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
-        helper = LayerHelper('lstm', **locals())
-        size = size // 4
-        weight = helper.create_parameter(
-            attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
-        bias_size = [1, 7 * size]
-        if not use_peepholes:
-            bias_size[1] = 4 * size
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+    hidden = helper.create_variable_for_type_inference(dtype)
+    cell = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, size), \
+            'The shape of h0 should be (batch_size, %d)' % size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
 
-        hidden = helper.create_variable_for_type_inference(dtype)
-        cell = helper.create_variable_for_type_inference(dtype)
-        batch_gate = helper.create_variable_for_type_inference(dtype)
-        batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
-        inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-        batch_size = input.shape[0]
-        if h_0:
-            assert h_0.shape == (batch_size, size), \
-                'The shape of h0 should be (batch_size, %d)' % size
-            inputs['H0'] = h_0
-        if c_0:
-            assert c_0.shape == (batch_size, size), \
-                'The shape of c0 should be (batch_size, %d)' % size
-            inputs['C0'] = c_0
-
-        helper.append_op(
-            type='lstm',
-            inputs=inputs,
-            outputs={
-                'Hidden': hidden,
-                'Cell': cell,
-                'BatchGate': batch_gate,
-                'BatchCellPreAct': batch_cell_pre_act
-            },
-            attrs={
-                'use_peepholes': use_peepholes,
-                'is_reverse': is_reverse,
-                'gate_activation': gate_activation,
-                'cell_activation': cell_activation,
-                'candidate_activation': candidate_activation
-            })
-        return hidden, cell
+    helper.append_op(
+        type='lstm',
+        inputs=inputs,
+        outputs={
+            'Hidden': hidden,
+            'Cell': cell,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation
+        })
+    return hidden, cell
 
 
 def dynamic_lstmp(input,
@@ -726,11 +725,11 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate, 
-            reset gate and candidate calculations. If it is set to None or one 
-            attribute of ParamAttr, dynamic_gru will create ParamAttr as 
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, dynamic_gru will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         is_reverse(bool): Whether to compute reversed GRU, default
@@ -847,11 +846,11 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates 
+            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate, 
-            reset gate and candidate calculations. If it is set to None or one 
-            attribute of ParamAttr, gru_unit will create ParamAttr as 
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, gru_unit will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
         activation (string): The activation type for cell (actNode).
@@ -963,43 +962,39 @@ def linear_chain_crf(input, label, param_attr=None):
     return log_likelihood
 
 
-if os.name != 'nt':
+@templatedoc()
+def crf_decoding(input, param_attr, label=None):
+    """
+    ${comment}
 
-    @templatedoc()
-    def crf_decoding(input, param_attr, label=None):
-        """
-        ${comment}
+    Args:
+        input(${emission_type}): ${emission_comment}
 
-        Args:
-            input(${emission_type}): ${emission_comment}
+        param_attr(ParamAttr): The parameter attribute for training.
 
-            param_attr(ParamAttr): The parameter attribute for training.
+        label(${label_type}): ${label_comment}
 
-            label(${label_type}): ${label_comment}
+    Returns:
+        Variable: ${viterbi_path_comment}
 
-        Returns:
-            Variable: ${viterbi_path_comment}
+    Examples:
+        .. code-block:: python
 
-        Examples:
-            .. code-block:: python
-
-               crf_decode = layers.crf_decoding(
-                    input=hidden, param_attr=ParamAttr(name="crfw"))
-        """
-        helper = LayerHelper('crf_decoding', **locals())
-        transition = helper.get_parameter(param_attr.name)
-        viterbi_path = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
-        helper.append_op(
-            type='crf_decoding',
-            inputs={
-                "Emission": [input],
+           crf_decode = layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
+    """
+    helper = LayerHelper('crf_decoding', **locals())
+    transition = helper.get_parameter(param_attr.name)
+    viterbi_path = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
+    helper.append_op(
+        type='crf_decoding',
+        inputs={"Emission": [input],
                 "Transition": transition,
-                "Label": label
-            },
-            outputs={"ViterbiPath": [viterbi_path]})
+                "Label": label},
+        outputs={"ViterbiPath": [viterbi_path]})
 
-        return viterbi_path
+    return viterbi_path
 
 
 @templatedoc()
@@ -1064,9 +1059,9 @@ def dropout(x,
                                            inference: out = input
                                            (make is a tensor same shape with input, value is 0 or 1
                                             ratio of 0 is dropout_prob)
-                                           dropout op can be removed from the program. 
+                                           dropout op can be removed from the program.
                                            the program will be efficient
-                                        
+
 
 
     Returns:
@@ -2139,17 +2134,22 @@ def pool2d(input,
                           input tensor is NCHW, where N is batch size, C is
                           the number of channels, H is the height of the
                           feature, and W is the width of the feature.
-        pool_size (int): The side length of pooling windows. All pooling
-                         windows are squares with pool_size on a side.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
         pool_type: ${pooling_type_comment}
-        pool_stride (int): stride of the pooling layer.
-        pool_padding (int): padding size.
+        pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width).
+            Otherwise, the pool stride size will be a square of an int.
+        pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
+            it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
+            Otherwise, the pool padding size will be a square of an int.
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling 
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
     Returns:
@@ -2240,7 +2240,7 @@ def pool3d(input,
         ceil_mode (bool): ${ceil_mode_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        exclusive (bool): Whether to exclude padding points in average pooling 
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
     Returns:
@@ -2300,7 +2300,8 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False,
-               fuse_with_relu=False):
+               fuse_with_relu=False,
+               use_global_stats=False):
     """
     **Batch Normalization Layer**
 
@@ -2327,6 +2328,19 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
     Args:
         input(variable): The input variable which is a LoDTensor.
         act(string, Default None): Activation type, linear|relu|prelu|...
@@ -2349,6 +2363,11 @@ def batch_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2381,9 +2400,15 @@ def batch_norm(input,
         shape=param_shape,
         dtype=dtype,
         default_initializer=Constant(1.0))
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.param_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.bias_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -2439,7 +2464,8 @@ def batch_norm(input,
             "epsilon": epsilon,
             "is_test": is_test,
             "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu
+            "fuse_with_relu": fuse_with_relu,
+            "use_global_stats": use_global_stats
         })
 
     return helper.append_activation(batch_norm_out)
@@ -2551,6 +2577,84 @@ def layer_norm(input,
                "begin_norm_axis": begin_norm_axis})
 
     return helper.append_activation(layer_norm_out)
+
+
+@templatedoc()
+def group_norm(input,
+               groups,
+               epsilon=1e-05,
+               param_attr=None,
+               bias_attr=None,
+               act=None,
+               data_layout='NCHW',
+               name=None):
+    """
+    **Group Normalization Layer**
+
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`
+
+    Args:
+        input(Variable): The input tensor variable.
+        groups(int): The number of groups that divided from channels.
+        epsilon(float): The small value added to the variance to prevent
+            division by zero.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            scale :math:`g`. If it is set to False, no scale will be added to the output units.
+            If it is set to None, the bias is initialized one. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+            bias :math:`b`. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
+        act(str): Activation to be applied to the output of group normalizaiton.
+        data_layout(string|NCHW): Only NCHW is supported.
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying group normalization on the input.
+
+    Examples:
+
+        >>> data = fluid.layers.data(name='data', shape=[8, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.group_norm(input=data, groups=4)
+    """
+    helper = LayerHelper('group_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    if data_layout != 'NCHW':
+        raise ValueError("unsupported data layout:" + data_layout)
+    param_shape = [input_shape[1]]
+    if param_attr:
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0))
+        inputs['Scale'] = scale
+    if bias_attr:
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
+
+    # create output
+    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="group_norm",
+        inputs=inputs,
+        outputs={
+            "Y": group_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={"epsilon": epsilon,
+               "groups": groups})
+
+    return helper.append_activation(group_norm_out)
 
 
 def conv2d_transpose(input,
@@ -4316,7 +4420,8 @@ def nce(input,
         name=None,
         sampler="uniform",
         custom_dist=None,
-        seed=0):
+        seed=0,
+        is_sparse=False):
     """
     ${comment}
 
@@ -4342,11 +4447,12 @@ def nce(input,
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+        custom_dist (float[]): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
         seed (int): The seed used in sampler. default: 0.
+        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
 
     Returns:
         Variable: The output nce loss.
@@ -4385,7 +4491,7 @@ def nce(input,
                           num_neg_samples=3,
                           sampler="custom_dist",
                           custom_dist=dist)
-            
+
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -4398,12 +4504,7 @@ def nce(input,
         shape=[num_total_classes, dim],
         is_bias=False,
         dtype=input.dtype)
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
+    inputs = {}
     if helper.bias_attr:
         b = helper.create_parameter(
             attr=helper.bias_attr,
@@ -4415,18 +4516,10 @@ def nce(input,
     sample_logits = helper.create_variable_for_type_inference(dtype=input.dtype)
     sample_labels = helper.create_variable_for_type_inference(dtype=label.dtype)
 
-    if num_neg_samples is None:
-        num_neg_samples = 10
-    else:
-        num_neg_samples = int(num_neg_samples)
-
-    inputs = {
-        'Input': input,
-        'Label': label,
-        'Weight': w,
-        'Bias': b,
-        'SampleWeight': sample_weight if sample_weight is not None else []
-    }
+    inputs['Input'] = input
+    inputs['Label'] = label
+    inputs['Weight'] = w
+    inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
 
     if sampler == "uniform":
         sampler = 0
@@ -4434,17 +4527,73 @@ def nce(input,
         sampler = 1
     elif sampler == "custom_dist":
         assert custom_dist is not None
-        assert isinstance(custom_dist, Variable)
-        inputs['CustomDistribution'] = custom_dist
+        # assert isinstance(custom_dist, Variable)
+
+        custom_dist_len = len(custom_dist)
+        alias_probs_ = [0] * custom_dist_len
+        alias_ = [0] * custom_dist_len
+        bigs = []
+        littles = []
+        for i in range(custom_dist_len):
+            normal_prob = custom_dist[i] * custom_dist_len
+            if normal_prob - 1.0 > 1e-4:
+                bigs.append((i, normal_prob))
+            elif 1.0 - normal_prob > 1e-4:
+                littles.append((i, normal_prob))
+            else:
+                alias_probs_[i] = normal_prob
+                alias_[i] = -1
+
+        while len(bigs) and len(littles):
+            big = bigs.pop(0)
+            little = littles.pop(0)
+
+            big_idx = big[0]
+            big_prob = big[1]
+
+            alias_probs_[little[0]] = little[1]
+            alias_[little[0]] = big_idx
+            big_left = big[1] + little[1] - 1
+            if big_left - 1.0 > 1e-4:
+                bigs.append((big_idx, big_left))
+            elif 1.0 - big_left > 1e-4:
+                littles.append((big_idx, big_left))
+            else:
+                alias_probs_[big_idx] = big_left
+                alias_[big_idx] = -1
+
+        if len(bigs):
+            big = bigs.pop(0)
+            alias_probs_[big[0]] = 1.0
+            alias_[big[0]] = -1
+        if len(littles):
+            little = littles.pop(0)
+            alias_probs_[little[0]] = 1.0
+            alias_[little[0]] = -1
+
+        probs = assign(input=np.array(custom_dist).astype('float32'))
+        custom_alias = assign(input=np.array(alias_).astype('int32'))
+        custom_alias_probs = assign(
+            input=np.array(alias_probs_).astype('float32'))
+
+        inputs['CustomDistProbs'] = probs
+        inputs['CustomDistAlias'] = custom_alias
+        inputs['CustomDistAliasProbs'] = custom_alias_probs
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
+
+    if num_neg_samples is None:
+        num_neg_samples = 10
+    else:
+        num_neg_samples = int(num_neg_samples)
 
     attrs = {
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
-        'sampler': sampler
+        'sampler': sampler,
+        'is_sparse': is_sparse
     }
 
     helper.append_op(
@@ -4464,19 +4613,33 @@ def hsigmoid(input,
              num_classes,
              param_attr=None,
              bias_attr=None,
-             name=None):
+             name=None,
+             path_table=None,
+             path_code=None,
+             is_custom=False,
+             is_sparse=False):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, each leaf node represents a class(a word) and each
+    complete binary tree, or you can use is_custom to pass your own tree to 
+    implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
     internal node on the path, and sum them to get a total cost. hsigmoid can
     achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the size of word dict.
 
-    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    Using default tree you can Refer to `Hierarchical Probabilistic Neural Network Language Model
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+
+    And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
+        1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
+        2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
+        3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
+         means label of each binary classification, using 1 indicate true, 0 indicate false.
+        4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+        related to the same batch of inputs.
+
 
     Args:
         input (Variable): The input tensor variable with shape
@@ -4484,7 +4647,9 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2.
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+            which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -4496,9 +4661,19 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
+        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+            it should be in leaf -> root order
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
+            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
+        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            each code consist with every code of parent nodes. it should be in leaf -> root order
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+             set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+             of W and input will be sparse.
 
     Returns:
-        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+        Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
 
     Examples:
 
@@ -4514,27 +4689,62 @@ def hsigmoid(input,
     out = helper.create_variable_for_type_inference(dtype)
     pre_out = helper.create_variable_for_type_inference(dtype)
     dim = input.shape[1]
-    if num_classes < 2:
-        raise ValueError("num_classes must not be less than 2.")
-    weights = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[num_classes - 1, dim],
-        is_bias=False,
-        dtype=input.dtype)
-    inputs = {"X": input, "W": weights, "Label": label}
-    if helper.bias_attr:
-        bias = helper.create_parameter(
-            attr=helper.bias_attr,
-            shape=[1, num_classes - 1],
-            is_bias=True,
+    if ((num_classes is None) or (num_classes < 2)) and (not is_custom):
+        raise ValueError(
+            "num_classes must not be less than 2 with default tree")
+
+    if (is_custom) and (path_code is None):
+        raise ValueError("path_code should not be None with costum tree")
+    elif (is_custom) and (path_table is None):
+        raise ValueError("path_table should not be None with costum tree")
+    elif (is_custom) and (num_classes is None):
+        raise ValueError("num_classes should not be None with costum tree")
+    else:
+        pass
+
+    weights = None
+
+    if not is_custom:
+        weights = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=[num_classes - 1, dim],
+            is_bias=False,
             dtype=input.dtype)
-        inputs['Bias'] = bias
+    else:
+        weights = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=[num_classes, dim],
+            is_bias=False,
+            dtype=input.dtype)
+    inputs = {
+        "X": input,
+        "W": weights,
+        "PTable": path_table,
+        "PathCode": path_code,
+        "Label": label
+    }
+    if helper.bias_attr:
+        if not is_custom:
+            bias = helper.create_parameter(
+                attr=helper.bias_attr,
+                shape=[num_classes - 1, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            inputs['Bias'] = bias
+        else:
+            bias = helper.create_parameter(
+                attr=helper.bias_attr,
+                shape=[num_classes, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            inputs['Bias'] = bias
     helper.append_op(
         type="hierarchical_sigmoid",
         inputs=inputs,
         outputs={"Out": out,
                  "PreOut": pre_out},
-        attrs={"num_classes": num_classes})
+        attrs={"num_classes": num_classes,
+               "is_sparse": is_sparse})
     return out
 
 
@@ -4556,9 +4766,9 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra 
+            # use append_batch_size=False to avoid prepending extra
             # batch size in shape
-            x = fluid.layers.data(name='x', shape=[5, 10, 15], 
+            x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
             x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
@@ -4835,7 +5045,7 @@ def softmax_with_cross_entropy(logits,
     3) If numeric_stable_mode is True, softmax is calculated first by:
 
     .. math::
-        
+
         max_j = \\max_{i=0}^{K}{\\text{logit}_i}
 
         log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
@@ -4858,18 +5068,18 @@ def softmax_with_cross_entropy(logits,
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
                                     when soft_label is False and GPU is used.
-                                    When soft_label is True or CPU is used, 
-                                    the algorithm is always numerically stable. 
-                                    Note that the speed may be slower when use 
+                                    When soft_label is True or CPU is used,
+                                    the algorithm is always numerically stable.
+                                    Note that the speed may be slower when use
                                     stable algorithm. Default: False
-        return_softmax (bool): A flag indicating whether to return the softmax 
+        return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
 
     Returns:
-        Variable or Tuple of two Variables: Return the cross entropy loss if 
-                              `return_softmax` is False, otherwise the tuple 
-                              (loss, softmax), where the cross entropy loss is 
-                              a 2-D tensor with shape [N x 1], and softmax is a 
+        Variable or Tuple of two Variables: Return the cross entropy loss if
+                              `return_softmax` is False, otherwise the tuple
+                              (loss, softmax), where the cross entropy loss is
+                              a 2-D tensor with shape [N x 1], and softmax is a
                               2-D tensor with shape [N x K].
 
     Examples:
@@ -5593,48 +5803,42 @@ def label_smooth(label,
     return smooth_label
 
 
-if os.name != 'nt':
+@templatedoc()
+def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+    """
+    ${comment}
 
-    @templatedoc()
-    def roi_pool(input,
-                 rois,
-                 pooled_height=1,
-                 pooled_width=1,
-                 spatial_scale=1.0):
-        """
-        ${comment}
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
-        Args:
-            input (Variable): ${x_comment}
-            rois (Variable): ROIs (Regions of Interest) to pool over.
-            pooled_height (integer): ${pooled_height_comment} Default: 1
-            pooled_width (integer): ${pooled_width_comment} Default: 1
-            spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+    Returns:
+        Variable: ${out_comment}.
 
-        Returns:
-            Variable: ${out_comment}.
+    Examples:
+        .. code-block:: python
 
-        Examples:
-            .. code-block:: python
-
-                pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
-        """
-        helper = LayerHelper('roi_pool', **locals())
-        dtype = helper.input_dtype()
-        pool_out = helper.create_variable_for_type_inference(dtype)
-        argmaxes = helper.create_variable_for_type_inference(dtype='int32')
-        helper.append_op(
-            type="roi_pool",
-            inputs={"X": input,
-                    "ROIs": rois},
-            outputs={"Out": pool_out,
-                     "Argmax": argmaxes},
-            attrs={
-                "pooled_height": pooled_height,
-                "pooled_width": pooled_width,
-                "spatial_scale": spatial_scale
-            })
-        return pool_out
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
+    """
+    helper = LayerHelper('roi_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+    argmaxes = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type="roi_pool",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": pool_out,
+                 "Argmax": argmaxes},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale
+        })
+    return pool_out
 
 
 @templatedoc()
@@ -5756,20 +5960,20 @@ def image_resize(input,
                          Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST' 
+        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST'
                        currently.
                        Default: 'BILINEAR'
-        actual_shape(Variable): An optional input to specify output shape 
-                                dynamically. If provided, image resize  
-                                according to this given shape rather than 
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority. It is recommended to use 
-                                actual_shape instead of :attr:`out_shape` if you 
-                                want to specify output shape dynamically. When 
-                                using actual_shape to specify output shape, one of 
-                                :attr:`out_shape` and :attr:`scale` should also be 
-                                set, otherwise errors would be occured in graph 
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
 
@@ -5780,7 +5984,7 @@ def image_resize(input,
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR' 
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR'
                     or 'NEAREST' currently.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2.
@@ -5798,9 +6002,10 @@ def image_resize(input,
         raise ValueError(
             "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
         )
+    resample_type = resample_methods[resample]
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
-    helper = LayerHelper('interpolate', **locals())
+    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
     def _is_list_or_turple_(data):
@@ -5834,35 +6039,33 @@ def image_resize(input,
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='interpolate',
+        type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={
-            "out_h": out_h,
-            "out_w": out_w,
-            "interp_method": resample_methods[resample]
-        })
+        attrs={"out_h": out_h,
+               "out_w": out_w,
+               "interp_method": resample_type})
     return out
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input,
                     out_shape=None,
                     scale=None,
                     name=None,
                     actual_shape=None):
     """
-    Resize input by performing bilinear interpolation based on given 
-    output shape which specified by actual_shape, out_shape and scale 
+    Resize input by performing bilinear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
     in priority order.
 
-    Bilinear interpolation is an extension of linear interpolation for 
-    interpolating functions of two variables (e.g. H-direction and 
-    W-direction in this op) on a rectilinear 2D grid. The key idea is 
-    to perform linear interpolation first in one direction, and then 
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
     again in the other direction.
 
-    For details of bilinear interpolation, please refer to Wikipedia: 
+    For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
     Args:
@@ -5875,17 +6078,17 @@ def resize_bilinear(input,
              a higher priority than scale. Default: None.
 
         name(str|None): The output variable name.
-        actual_shape(Variable): An optional input to specify output shape 
-                                dynamically. If provided, image resize  
-                                according to this given shape rather than 
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority. It is recommended to use 
-                                actual_shape instead of :attr:`out_shape` if you 
-                                want to specify output shape dynamically. When 
-                                using actual_shape to specify output shape, one of 
-                                :attr:`out_shape` and :attr:`scale` should also be 
-                                set, otherwise errors would be occured in graph 
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
 
@@ -5901,7 +6104,7 @@ def resize_bilinear(input,
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
 
 
-@templatedoc(op_type="interpolate")
+@templatedoc(op_type="nearest_interp")
 def resize_nearest(input,
                    out_shape=None,
                    scale=None,
@@ -5909,11 +6112,11 @@ def resize_nearest(input,
                    actual_shape=None):
     """
     Resize input by performing nearest neighbor interpolation in both the
-    3rd dimention(in height direction) and the 4th dimention(in width 
-    direction) based on given output shape which specified by actual_shape, 
+    3rd dimention(in height direction) and the 4th dimention(in width
+    direction) based on given output shape which specified by actual_shape,
     out_shape and scale in priority order.
 
-    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
@@ -5926,17 +6129,17 @@ def resize_nearest(input,
              a higher priority than scale. Default: None.
 
         name(str|None): The output variable name.
-        actual_shape(Variable): An optional input to specify output shape 
-                                dynamically. If provided, image resize  
-                                according to this given shape rather than 
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the 
-                                highest priority. It is recommended to use 
-                                actual_shape instead of :attr:`out_shape` if you 
-                                want to specify output shape dynamically. When 
-                                using actual_shape to specify output shape, one of 
-                                :attr:`out_shape` and :attr:`scale` should also be 
-                                set, otherwise errors would be occured in graph 
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
 
@@ -6403,7 +6606,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-                    isinstance(shape, Variable)):
+            isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
@@ -6446,15 +6649,15 @@ def affine_grid(theta, out_shape, name=None):
                         [x_14, x_15, x_16]]
                        [[x_21, x_22, x_23]
                         [x_24, x_25, x_26]]]
-      
+
               out_shape = [2, 3, 5, 5]
-      
+
           Step 1:
-      
+
               Generate normalized coordinates according to out_shape.
               The values of the normalized coordinates are in the interval between -1 and 1.
               The shape of the normalized coordinates is [2, H, W] as below:
-      
+
               C = [[[-1.  -1.  -1.  -1.  -1. ]
                     [-0.5 -0.5 -0.5 -0.5 -0.5]
                     [ 0.   0.   0.   0.   0. ]
@@ -6525,7 +6728,7 @@ def affine_grid(theta, out_shape, name=None):
     helper = LayerHelper('affine_grid')
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
-        isinstance(out_shape, Variable)):
+            isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Variable.")
 
     if not isinstance(theta, Variable):
@@ -6766,6 +6969,13 @@ def elu(x, alpha=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.elu(x, alpha=0.2)
     """
     helper = LayerHelper('elu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6789,6 +6999,13 @@ def relu6(x, threshold=6.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.relu6(x, threshold=6.0)
     """
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6812,6 +7029,13 @@ def pow(x, factor=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.pow(x, factor=2.0)
     """
     helper = LayerHelper('pow', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6836,6 +7060,13 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6861,6 +7092,13 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6885,6 +7123,13 @@ def swish(x, beta=1.0, name=None):
 
     Returns:
         output(${out_type}): ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.swish(x, beta=2.0)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6900,18 +7145,18 @@ def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
 
-        y = \max(0, x) + alpha \min(0, x)
+        y = \max(0, x) + alpha * \min(0, x)
 
     Args:
         x (Variable): The input tensor.
-	  param_attr(ParamAttr|None): The parameter attribute for the learnable
-                                    weight (alpha).
-        mode (string): The mode for weight sharing
-		       all: all elements share same weight
- 		       channel:elements in a channel share same weight
- 		       element:each element has a weight
-	name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                       weight (alpha).
+        mode (string): The mode for weight sharing. It supports all, channel
+                       and element. all: all elements share same weight
+                       channel:elements in a channel share same weight
+                       element:each element has a weight
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -6920,7 +7165,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
             mode = 'channel'
             output = fluid.layers.prelu(x,mode)
     """
@@ -7702,6 +7947,15 @@ def logical_and(x, y, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            right = fluid.layers.data(
+                name='right', shape=[1], dtype='int32')
+            result = fluid.layers.logical_and(x=left, y=right)
     """
 
     return _logical_op(
@@ -7721,6 +7975,15 @@ def logical_or(x, y, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            right = fluid.layers.data(
+                name='right', shape=[1], dtype='int32')
+            result = fluid.layers.logical_or(x=left, y=right)
     """
 
     return _logical_op(
@@ -7740,6 +8003,15 @@ def logical_xor(x, y, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            right = fluid.layers.data(
+                name='right', shape=[1], dtype='int32')
+            result = fluid.layers.logical_xor(x=left, y=right)
     """
 
     return _logical_op(
@@ -7758,6 +8030,13 @@ def logical_not(x, out=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            left = fluid.layers.data(
+                name='left', shape=[1], dtype='int32')
+            result = fluid.layers.logical_not(x=left)
     """
 
     return _logical_op(
@@ -7777,6 +8056,13 @@ def clip(x, min, max, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[1], dtype='float32')
+            reward = fluid.layers.clip(x=input, min=-1.0, max=1.0)
     """
 
     helper = LayerHelper("clip", **locals())
@@ -7809,6 +8095,13 @@ def clip_by_norm(x, max_norm, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[1], dtype='float32')
+            reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
     """
 
     helper = LayerHelper("clip_by_norm", **locals())
@@ -7954,19 +8247,19 @@ def maxout(x, groups, name=None):
 def space_to_depth(x, blocksize, name=None):
     """
     Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
-    
-    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the 
-    input LoDtensor where values from the height and width dimensions are moved to the channel dimension. 
+
+    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of the
+    input LoDtensor where values from the height and width dimensions are moved to the channel dimension.
     The attr blocksize indicates the input block size.
-    
-    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according 
+
+    space_to_depth will reorgnize the elements of input with shape[batch, channel, height, width] according
     to blocksize to construct output with shape [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
-    
-    space_to_depth is used to This operation is useful for resizing the activations between convolutions 
+
+    space_to_depth is used to This operation is useful for resizing the activations between convolutions
     (but keeping all data)
 
     - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
-    - The depth of the output tensor is block_size * block_size * input channel 
+    - The depth of the output tensor is block_size * block_size * input channel
     - The Y, X coordinates within each block of the input become the high order component of the output channel index
     - channel should be divisible by square of blocksize
     - height, width should be divsible by blocksize
@@ -8013,7 +8306,7 @@ def space_to_depth(x, blocksize, name=None):
 
 @templatedoc()
 def sequence_reverse(x, name=None):
-    """ 
+    """
     ${comment}
 
     Args:
@@ -8080,21 +8373,21 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
 
 
 def similarity_focus(input, axis, indexes, name=None):
-    """  
+    """
     SimilarityFocus Operator
 
     Generate a similarity focus mask with the same shape of input using the following method:
-    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
-       to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
-       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+    1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding
+       to the axis according to the indexes. For example, if axis=1 and indexes=[a],
+       it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
        is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
-    2. For each index, find the largest numbers in the tensor T, so that the same 
-       row and same column has at most one number(what it means is that if the 
-       largest number has been found in the i-th row and the j-th column, then 
-       the numbers in the i-th row or j-th column will be skipped. And then the 
-       next largest number will be selected from the remaining numbers. Obviously 
-       there will be min(B, C) numbers), and mark the corresponding position of the 
-       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+    2. For each index, find the largest numbers in the tensor T, so that the same
+       row and same column has at most one number(what it means is that if the
+       largest number has been found in the i-th row and the j-th column, then
+       the numbers in the i-th row or j-th column will be skipped. And then the
+       next largest number will be selected from the remaining numbers. Obviously
+       there will be min(B, C) numbers), and mark the corresponding position of the
+       3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for
        each index.
     3. Broadcast the 3-D similarity focus mask to the same shape of input X.
 
@@ -8150,16 +8443,16 @@ def similarity_focus(input, axis, indexes, name=None):
                               [1.0, 0.0]]]]
 
     Args:
-        input(Variable): The input tensor variable(default float). It should 
+        input(Variable): The input tensor variable(default float). It should
             be a 4-D tensor with shape [BatchSize, A, B, C].
         axis(int): Indicating the dimension to be selected. It can only be
             1, 2 or 3.
         indexes(list): Indicating the indexes of the selected dimension.
 
     Returns:
-        Variable: A tensor variable with the same shape and same type 
+        Variable: A tensor variable with the same shape and same type
             as the input.
-        
+
     Examples:
         .. code-block:: python
             data = fluid.layers.data(
@@ -8262,12 +8555,12 @@ def hash(input, hash_size, num_hash=1, name=None):
 @templatedoc()
 def grid_sampler(x, grid, name=None):
     """
-    This operation samples input X by using bilinear interpolation based on 
+    This operation samples input X by using bilinear interpolation based on
     flow field grid, which is usually gennerated by affine_grid. The grid of
-    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates 
-    with shape [N, H, W] each, where grid_x is indexing the 4th dimension 
-    (in width dimension) of input data x and grid_y is indexng the 3rd 
-    dimention (in height dimension), finally results is the bilinear 
+    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates
+    with shape [N, H, W] each, where grid_x is indexing the 4th dimension
+    (in width dimension) of input data x and grid_y is indexng the 3rd
+    dimention (in height dimension), finally results is the bilinear
     interpolation value of 4 nearest corner points.
 
     Step 1:
@@ -8277,7 +8570,7 @@ def grid_sampler(x, grid, name=None):
     grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
     Step 2:
-    Indices input data X with grid (x, y) in each [H, W] area, and bilinear 
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear
     interpolate point value by 4 nearest points.
 
       wn ------- y_n ------- en
@@ -8314,7 +8607,7 @@ def grid_sampler(x, grid, name=None):
         name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): Output of shape [N, C, H, W] data samples input X 
+        out(Variable): Output of shape [N, C, H, W] data samples input X
         using bilnear interpolation based on input grid.
 
     Exmples:

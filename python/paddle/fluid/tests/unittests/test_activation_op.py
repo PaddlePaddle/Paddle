@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
-from scipy.special import expit
+from scipy.special import expit, erf
 
 
 class TestActivation(OpTest):
@@ -285,6 +285,23 @@ class TestRelu(TestActivation):
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestGelu(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = 0.5 * x * (1.0 + erf(x / np.sqrt(2.0)))
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -628,6 +645,7 @@ create_test_act_fp16_class(TestCos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
+create_test_act_fp16_class(TestGelu)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu)

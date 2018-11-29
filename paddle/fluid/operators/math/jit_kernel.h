@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>  // for shared_ptr
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/operators/math/jit_kernel_impl.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -26,14 +27,7 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-// TODO(TJ): move these to some proper place
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-#define XMM_FLOAT_BLOCK 4
-#define YMM_FLOAT_BLOCK 8
-#define ZMM_FLOAT_BLOCK 16
-
+// TODO(TJ): remove me
 typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
 class Kernel {
@@ -95,6 +89,15 @@ class VAddBiasKernel : public Kernel {
   void (*Compute)(const T *, const T *, T *, int);
 };
 
+#ifdef PADDLE_WITH_MKLDNN
+template <typename T>
+class EltwiseMulnChw16cNCKernel : public Kernel {
+ public:
+  // nChw16c = nChw16c .* NC
+  void (*Compute)(const float *, const float *, float *, int, int);
+};
+#endif
+
 template <typename T>
 class VActKernel : public Kernel {
  public:
@@ -119,24 +122,18 @@ class VTanhKernel : public VActKernel<T> {};
 template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  virtual void ComputeCtHt(T *gates, const T *ct_1, T *ct, T *ht,
-                           /* below only used in peephole*/
-                           const T *wp_data = nullptr,
-                           T *checked = nullptr) const = 0;
-
   // compute c1 and h1 without c0 or h0
-  virtual void ComputeC1H1(T *gates, T *ct, T *ht,
-                           /* below only used in peephole*/
-                           const T *wp_data = nullptr) const = 0;
+  void (*ComputeC1H1)(lstm_t *, const lstm_attr_t *);
+  void (*ComputeCtHt)(lstm_t *, const lstm_attr_t *);
 };
 
 template <typename T>
 class GRUKernel : public Kernel {
  public:
   // compute h1 without h0
-  virtual void ComputeH1(T *gates, T *ht) const = 0;
-  virtual void ComputeHtPart1(T *gates, const T *ht_1, T *ht) const = 0;
-  virtual void ComputeHtPart2(T *gates, const T *ht_1, T *ht) const = 0;
+  void (*ComputeH1)(gru_t *, const gru_attr_t *);
+  void (*ComputeHtPart1)(gru_t *, const gru_attr_t *);
+  void (*ComputeHtPart2)(gru_t *, const gru_attr_t *);
 };
 
 template <typename T>

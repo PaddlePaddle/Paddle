@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/operators/math/jit_gen.h"
+#include "paddle/fluid/operators/math/jit_kernel_impl.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -45,14 +46,6 @@ typedef enum {
 extern const float exp_float_consts[];
 extern const int exp_int_0x7f[];
 extern int g_tmp_mem[];
-
-// TODO(TJ): move these to some proper place
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-#define XMM_FLOAT_BLOCK 4
-#define YMM_FLOAT_BLOCK 8
-#define ZMM_FLOAT_BLOCK 16
 
 #define ALIGN32 __attribute__((aligned(32)))
 #define EXP_HIG 88.3762626647949f
@@ -176,31 +169,34 @@ class VActJitCode : public JitCode {
  protected:
   // compute relu with ymm, xmm
   template <typename JMM>
-  void relu_jmm(JMM& dst, JMM& src, JMM& zero) {  // NOLINT
+  void relu_jmm(JMM& dst, JMM& src, int zero_idx = 15) {  // NOLINT
+    JMM zero = JMM(zero_idx);
+    vxorps(zero, zero, zero);
     vmaxps(dst, src, zero);
   }
 
   // compute exp with ymm, xmm
   template <typename JMM>
-  void exp_jmm(JMM& dst, JMM& src, int fx_idx = 2, int fy_idx = 3,  // NOLINT
-               int mask_idx = 4, int tmp_idx = 5) {
-    using namespace platform::jit;         // NOLINT
-    assert(src.getIdx() != dst.getIdx());  // TODO(TJ): use enfore
+  void exp_jmm(JMM& dst, JMM& src, int src_idx = 11, int fx_idx = 12,  // NOLINT
+               int fy_idx = 13, int mask_idx = 14, int tmp_idx = 15) {
+    using namespace platform::jit;  // NOLINT
     // check all idx can not equal
+    JMM jmm_src = JMM(src_idx);
     JMM jmm_fx = JMM(fx_idx);
     JMM jmm_fy = JMM(fy_idx);
     JMM jmm_mask = JMM(mask_idx);
     JMM jmm_tmp = JMM(tmp_idx);
     reg64_t reg_ptr_global = rax;
     push(reg_ptr_global);
+    vmovaps(jmm_src, src);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_HIG]);
-    vminps(src, src, jmm_tmp);
+    vminps(jmm_src, jmm_src, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_LOW]);
-    vmaxps(src, src, jmm_tmp);
+    vmaxps(jmm_src, jmm_src, jmm_tmp);
     // express exp(x) as exp(g + n*log(2))
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_LOG2EF]);
-    vmulps(jmm_fx, src, jmm_tmp);
+    vmulps(jmm_fx, jmm_src, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_0P5]);
     vaddps(jmm_fx, jmm_fx, jmm_tmp);
     vroundps(jmm_fy, jmm_fx, 0x01);
@@ -214,21 +210,21 @@ class VActJitCode : public JitCode {
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_C2]);
     JMM ymm_z = JMM(jmm_mask.getIdx());
     vmulps(ymm_z, jmm_fx, jmm_tmp);
-    vsubps(src, src, jmm_fy);
-    vsubps(src, src, ymm_z);
-    vmulps(ymm_z, src, src);
+    vsubps(jmm_src, jmm_src, jmm_fy);
+    vsubps(jmm_src, jmm_src, ymm_z);
+    vmulps(ymm_z, jmm_src, jmm_src);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_P0]);
-    vmulps(dst, src, jmm_tmp);
+    vmulps(dst, jmm_src, jmm_tmp);
     for (size_t i = OFFSET_EXP_P1; i < OFFSET_EXP_P5;
          i += (YMM_FLOAT_BLOCK * sizeof(float))) {
       vmovaps(jmm_tmp, ptr[reg_ptr_global + i]);  // P1~P4
       vaddps(dst, dst, jmm_tmp);
-      vmulps(dst, dst, src);
+      vmulps(dst, dst, jmm_src);
     }
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_P5]);
     vaddps(dst, dst, jmm_tmp);
     vmulps(dst, dst, ymm_z);
-    vaddps(dst, dst, src);
+    vaddps(dst, dst, jmm_src);
     vmovaps(jmm_tmp, ptr[reg_ptr_global]);
     vaddps(dst, dst, jmm_tmp);
     // build 2^n
@@ -265,20 +261,23 @@ class VActJitCode : public JitCode {
 
   // compute sigmoid with ymm, xmm
   template <typename JMM>
-  void sigmoid_jmm(JMM& dst, JMM& src, int fx_idx = 2,  // NOLINT
-                   int fy_idx = 3, int mask_idx = 4, int tmp_idx = 5) {
+  void sigmoid_jmm(JMM& dst, JMM& src, int src_idx = 11,  // NOLINT
+                   int fx_idx = 12, int fy_idx = 13, int mask_idx = 14,
+                   int tmp_idx = 15) {
     // y = 1 / (1 + e^-x)
     JMM jmm_tmp = JMM(tmp_idx);
+    JMM jmm_src = JMM(src_idx);
     reg64_t reg_ptr_global = rax;
     push(reg_ptr_global);
+    vmovaps(jmm_src, src);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MAX]);
-    vminps(src, src, jmm_tmp);
+    vminps(jmm_src, jmm_src, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_SIGMOID_MIN]);
-    vmaxps(src, src, jmm_tmp);
+    vmaxps(jmm_src, jmm_src, jmm_tmp);
     vxorps(jmm_tmp, jmm_tmp, jmm_tmp);
-    vsubps(src, jmm_tmp, src);
-    exp_jmm<JMM>(dst, src, fx_idx, fy_idx, mask_idx, tmp_idx);
+    vsubps(jmm_src, jmm_tmp, jmm_src);
+    exp_jmm<JMM>(dst, jmm_src, src_idx, fx_idx, fy_idx, mask_idx, tmp_idx);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
     vaddps(dst, dst, jmm_tmp);
     vdivps(dst, jmm_tmp, dst);
@@ -287,19 +286,22 @@ class VActJitCode : public JitCode {
 
   // compute tanh with ymm, xmm
   template <typename JMM>
-  void tanh_jmm(JMM& dst, JMM& src, int fx_idx = 2, int fy_idx = 3,  // NOLINT
-                int mask_idx = 4, int tmp_idx = 5) {
+  void tanh_jmm(JMM& dst, JMM& src, int src_idx = 11,  // NOLINT
+                int fx_idx = 12, int fy_idx = 13, int mask_idx = 14,
+                int tmp_idx = 15) {
     // y = 2 / (1 + e^(-2x)) - 1
+    JMM jmm_src = JMM(src_idx);
     JMM jmm_tmp = JMM(tmp_idx);
     JMM jmm_zero = JMM(mask_idx);
     reg64_t reg_ptr_global = rax;
     push(reg_ptr_global);
+    vmovaps(jmm_src, src);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_float_consts));
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
     vxorps(jmm_zero, jmm_zero, jmm_zero);
     vsubps(jmm_tmp, jmm_zero, jmm_tmp);
-    vmulps(src, src, jmm_tmp);
-    exp_jmm<JMM>(dst, src, fx_idx, fy_idx, mask_idx, tmp_idx);
+    vmulps(jmm_src, jmm_src, jmm_tmp);
+    exp_jmm<JMM>(dst, jmm_src, src_idx, fx_idx, fy_idx, mask_idx, tmp_idx);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
     vaddps(dst, dst, jmm_tmp);
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_TWO]);
@@ -307,6 +309,30 @@ class VActJitCode : public JitCode {
     vmovaps(jmm_tmp, ptr[reg_ptr_global + OFFSET_EXP_ONE]);
     vsubps(dst, dst, jmm_tmp);
     pop(reg_ptr_global);
+  }
+
+  template <typename JMM>
+  void act(JMM& dst, JMM& src, operand_type type) {  // NOLINT
+    // use 11~15
+    switch (type) {
+      case operand_type::relu:
+        relu_jmm<JMM>(dst, src, 15);
+        break;
+      case operand_type::exp:
+        exp_jmm<JMM>(dst, src, 11, 12, 13, 14, 15);
+        break;
+      case operand_type::sigmoid:
+        sigmoid_jmm<JMM>(dst, src, 11, 12, 13, 14, 15);
+        break;
+      case operand_type::tanh:
+        tanh_jmm<JMM>(dst, src, 11, 12, 13, 14, 15);
+        break;
+      case operand_type::identity:
+        break;
+      default:
+        // throw error
+        break;
+    }
   }
 
  protected:
@@ -321,6 +347,184 @@ class VActJitCode : public JitCode {
   xmm_t xmm_dst = xmm_t(1);
   ymm_t ymm_dst = ymm_t(1);
 };
+
+class LSTMJitCode : public VActJitCode {
+ public:
+  const char* name() const override {
+    std::string base = "LSTMJitCode";
+    if (use_peephole_) {
+      base += "_Peephole";
+    }
+    if (compute_c1h1_) {
+      base += "_C1H1";
+    }
+    auto AddTypeStr = [&](operand_type type) {
+      switch (type) {
+        case operand_type::relu:
+          base += "_Relu";
+          break;
+        case operand_type::exp:
+          base += "_Exp";
+          break;
+        case operand_type::sigmoid:
+          base += "_Sigmoid";
+          break;
+        case operand_type::tanh:
+          base += "_Tanh";
+          break;
+        case operand_type::identity:
+          base += "_Identity";
+          break;
+        default:
+          break;
+      }
+    };
+    AddTypeStr(act_gate_);
+    AddTypeStr(act_cand_);
+    AddTypeStr(act_cell_);
+    return base.c_str();
+  }
+
+  explicit LSTMJitCode(bool compute_c1h1, const lstm_attr_t& attr,
+                       size_t code_size = 256 * 1024, void* code_ptr = nullptr)
+      : VActJitCode(attr.d, operand_type::sigmoid /* this is bugy*/, code_size,
+                    code_ptr),
+        compute_c1h1_(compute_c1h1) {
+    auto typeExchange = [](const std::string& type) -> gen::operand_type {
+      if (type == "sigmoid") {
+        return operand_type::sigmoid;
+      } else if (type == "relu") {
+        return operand_type::relu;
+      } else if (type == "tanh") {
+        return operand_type::tanh;
+      } else if (type == "identity" || type == "") {
+        return operand_type::identity;
+      }  // else throw error
+      return operand_type::identity;
+    };
+    num_ = attr.d;
+    use_peephole_ = attr.use_peephole;
+    act_gate_ = typeExchange(attr.act_gate);
+    act_cand_ = typeExchange(attr.act_cand);
+    act_cell_ = typeExchange(attr.act_cell);
+  }
+  static bool init(int d);
+  void generate() override;
+
+ protected:
+  int num_;
+  bool compute_c1h1_;
+  bool use_peephole_;
+  operand_type act_gate_;
+  operand_type act_cand_;
+  operand_type act_cell_;
+  reg64_t param1{abi_param1};
+};
+
+class GRUJitCode : public VActJitCode {
+ public:
+  const char* name() const override {
+    std::string base = "GRUJitCode";
+    if (id_ == 0) {
+      base += "_H1";
+    } else if (id_ == 1) {
+      base += "_HtPart1";
+    } else if (id_ == 2) {
+      base += "_HtPart2";
+    }
+    auto AddTypeStr = [&](operand_type type) {
+      switch (type) {
+        case operand_type::relu:
+          base += "_Relu";
+          break;
+        case operand_type::exp:
+          base += "_Exp";
+          break;
+        case operand_type::sigmoid:
+          base += "_Sigmoid";
+          break;
+        case operand_type::tanh:
+          base += "_Tanh";
+          break;
+        case operand_type::identity:
+          base += "_Identity";
+          break;
+        default:
+          break;
+      }
+    };
+    AddTypeStr(act_gate_);
+    AddTypeStr(act_cand_);
+    return base.c_str();
+  }
+
+  explicit GRUJitCode(int id, const gru_attr_t& attr,
+                      size_t code_size = 256 * 1024, void* code_ptr = nullptr)
+      : VActJitCode(attr.d, operand_type::sigmoid /* this is bugy*/, code_size,
+                    code_ptr),
+        id_(id) {
+    auto typeExchange = [](const std::string& type) -> gen::operand_type {
+      if (type == "sigmoid") {
+        return operand_type::sigmoid;
+      } else if (type == "relu") {
+        return operand_type::relu;
+      } else if (type == "tanh") {
+        return operand_type::tanh;
+      } else if (type == "identity" || type == "") {
+        return operand_type::identity;
+      }  // else throw error
+      return operand_type::identity;
+    };
+    num_ = attr.d;
+    act_gate_ = typeExchange(attr.act_gate);
+    act_cand_ = typeExchange(attr.act_cand);
+  }
+  static bool init(int d);
+  void generate() override;
+
+ protected:
+  int id_;
+  int num_;
+  operand_type act_gate_;
+  operand_type act_cand_;
+  reg64_t param1{abi_param1};
+};
+
+#ifdef PADDLE_WITH_MKLDNN
+struct EltwiseMulnChw16cNC : public Xbyak::CodeGenerator {
+  explicit EltwiseMulnChw16cNC(size_t code_size = 256 * 1024)
+      : Xbyak::CodeGenerator(code_size) {
+    // RDI is ptr x_input
+    // RSI is ptr y_input
+    // RDX is ptr output
+    // RCX is height
+    // r8 is width
+
+    push(rbx);
+
+    xor_(rax, rax);
+    xor_(r10, r10);
+    vmovups(zmm3, ptr[rsi]);
+
+    L("h_loop");
+    xor_(rbx, rbx);
+    L("w_loop");
+    vmovups(zmm2, ptr[rdi + rax]);
+    vmulps(zmm1, zmm2, zmm3);
+    vmovups(ptr[rdx + rax], zmm1);
+    add(rax, 64);
+    inc(rbx);
+    cmp(r8, rbx);
+    jnz("w_loop");
+    inc(r10);
+    cmp(r10, rcx);
+    jnz("h_loop");
+
+    pop(rbx);
+    ret();
+  }
+};
+#endif
 
 }  // namespace gen
 }  // namespace jitkernel
