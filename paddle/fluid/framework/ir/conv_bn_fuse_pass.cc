@@ -286,6 +286,7 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
   gpd(graph.get(), handler);
 
   AddStatis(found_conv_bn_count);
+
   return graph;
 }
 
