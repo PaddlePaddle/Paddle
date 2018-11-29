@@ -351,7 +351,6 @@ class TestMulticlassNMSLoDInput(OpTest):
             'score_threshold': score_threshold,
             'nms_eta': 1.0,
             'normalized': normalized,
-            'use_scale': True,
             'use_clip': True
         }
 

@@ -308,7 +308,6 @@ def detection_output(loc,
             'keep_top_k': keep_top_k,
             'score_threshold': score_threshold,
             'nms_eta': 1.0,
-            'use_scale': (shared == False),
             'use_clip': (shared == False),
             'normalized': shared
         })
