@@ -792,6 +792,8 @@ class TestNCCL2Transpile(TranspilerTest):
 # test for remote prefetch
 class TestRemoteLookupTable(TestDistLookupTableBase):
     def net_conf(self):
+        import os
+        os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
         self.network_with_table(
             is_sparse=True, is_distributed=False, remote_prefetch=True)
 
