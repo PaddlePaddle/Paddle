@@ -36,12 +36,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
   platform::Place place;
-  if (argument->use_gpu()) {
-    PADDLE_ENFORCE(argument->gpu_device_id_valid());
-    place = platform::CUDAPlace(argument->gpu_device_id());
-  } else {
-    place = platform::CPUPlace();
-  }
+  place = platform::CPUPlace();
 
   if (argument->model_dir_valid()) {
     auto program =
