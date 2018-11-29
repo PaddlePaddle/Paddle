@@ -76,12 +76,12 @@ class ChunkedAllocator : public Allocator {
       default_allocator_ = raw_allocator_;
     } else {
       if (capacity == 1) {
-        VLOG(10) << "Create BestFitAllocator with chunk_size "
-                 << max_chunk_size_;
+        VLOG(1) << "Create BestFitAllocator with chunk_size "
+                << max_chunk_size_;
         default_allocator_ = CreateAllocatorWithChunk();
       } else {
-        VLOG(10) << "Create AutoIncrementAllocator with chunk_size "
-                 << max_chunk_size_ << " and capacity " << capacity;
+        VLOG(1) << "Create AutoIncrementAllocator with chunk_size "
+                << max_chunk_size_ << " and capacity " << capacity;
         default_allocator_ = std::make_shared<AutoIncrementAllocator>(
             [this] { return std::move(CreateAllocatorWithChunk()); }, capacity);
       }
