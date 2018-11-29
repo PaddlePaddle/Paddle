@@ -141,6 +141,10 @@ int PrivateQueueDataFeed<T>::Next() {
   return batch_size_;
 }
 
+#ifdef _WIN32
+template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
+#endif
+
 void MultiSlotDataFeed::Init(
     const paddle::framework::DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
