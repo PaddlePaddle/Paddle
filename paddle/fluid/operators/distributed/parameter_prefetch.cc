@@ -102,7 +102,8 @@ static void MergeMultipleVarsIntoOneBySection(
     const std::string& out_name, const std::vector<std::string>& out_var_names,
     const std::vector<int>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
-    const framework::ExecutionContext& context, framework::Scope* scope) {
+    const framework::ExecutionContext& context, framework::Scope* scope,
+    platform::DeviceContext* actual_ctx) {
   PADDLE_ENFORCE_EQ(out_var_names.size(), height_section.size(), "");
 
   auto cpu_place = platform::CPUPlace();
@@ -151,10 +152,12 @@ static void MergeMultipleVarsIntoOneBySection(
 #ifndef PADDLE_WITH_CUDA
             PADDLE_THROW("paddle is not compiled with CUDA!");
 #else
+            auto stream =
+                static_cast<platform::CUDADeviceContext*>(actual_ctx)->stream();
             memory::Copy(boost::get<platform::CUDAPlace>(id_tensor.place()),
                          out_tensor_data + offset * row_numel, cpu_place,
                          out_var_data + i * row_numel,
-                         sizeof(float) * row_numel);
+                         sizeof(float) * row_numel, stream);
 #endif
           }
         }
@@ -174,6 +177,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
+  auto& actual_ctx = *pool.Get(context.GetPlace());
 
   distributed::RPCClient* rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
@@ -201,11 +205,13 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     framework::Tensor cpu_tensor;
     auto* cpu_tensor_data =
         cpu_tensor.mutable_data<int64_t>(id_tensor.dims(), cpu_place);
+    auto stream =
+        static_cast<platform::CUDADeviceContext*>(&actual_ctx)->stream();
     memory::Copy(cpu_place, cpu_tensor_data,
                  boost::get<platform::CUDAPlace>(id_tensor.place()),
-                 id_tensor.data<int64_t>(),
-                 sizeof(int64_t) * id_tensor.numel());
-    for (size_t i = 0; i < id_tensor.numel(); ++i) {
+                 id_tensor.data<int64_t>(), sizeof(int64_t) * id_tensor.numel(),
+                 stream);
+    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
       ids_vector.push_back(cpu_tensor_data[i]);
     }
 #endif
@@ -239,7 +245,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
-                                    context, &local_scope);
+                                    context, &local_scope, &actual_ctx);
 
   context.scope().DeleteScope(&local_scope);
 }
