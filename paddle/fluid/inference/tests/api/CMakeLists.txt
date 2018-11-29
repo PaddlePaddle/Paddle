@@ -51,7 +51,7 @@ set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 # For the normal DAM model: download DAM_model.tar.gz and DAM_data.txt.tar.gz.
 # download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
 download_model_and_data(${DAM_INSTALL_DIR} "dam_small_model.tar.gz" "dam_small_data.txt.tar.gz")
-# For the normal DAM model: --max_turn_num=9.
+# For the normal DAM model: use --max_turn_num=9.
 inference_analysis_test(test_analyzer_dam SRCS analyzer_dam_tester.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${DAM_INSTALL_DIR}/model --infer_data=${DAM_INSTALL_DIR}/data.txt --max_turn_num=1)
