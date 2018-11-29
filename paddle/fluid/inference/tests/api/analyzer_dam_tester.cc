@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
-DEFINE_int32(max_turn_num, 1,
+DEFINE_int32(max_turn_num, 9,
              "The max turn number: 1 for the small and 9 for the normal.");
 
 namespace paddle {
