@@ -38,7 +38,7 @@ std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr("is_test")) {
+      if (n->OpHasAttr("is_test")) {
         op->SetAttr("is_test", true);
       } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
                  end(op_list)) {
