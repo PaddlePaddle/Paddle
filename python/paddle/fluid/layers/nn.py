@@ -170,6 +170,8 @@ __all__ = [
     'bilinear_tensor_product',
 ]
 
+kIgnoreIndex = -100
+
 
 def fc(input,
        size,
@@ -1103,7 +1105,7 @@ def dropout(x,
     return out
 
 
-def cross_entropy(input, label, soft_label=False, ignore_index=-100):
+def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
     **Cross Entropy Layer**
 
@@ -4796,7 +4798,7 @@ def multiplex(inputs, index):
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=-100,
+                               ignore_index=kIgnoreIndex,
                                numeric_stable_mode=False,
                                return_softmax=False):
     """
@@ -7892,7 +7894,10 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
 
 @templatedoc()
-def sigmoid_cross_entropy_with_logits(x, label, ignore_index=-100, name=None):
+def sigmoid_cross_entropy_with_logits(x,
+                                      label,
+                                      ignore_index=kIgnoreIndex,
+                                      name=None):
     """
     ${comment}
 
