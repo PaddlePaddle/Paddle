@@ -17,11 +17,9 @@ namespace imperative {
 namespace utils {
 
 // zero copy between NDArray and Tensor
-void TensorToNumpy(const Tensor& src, const platform::Place& dst_place,
-                   const platform::DeviceContext& ctx, Tensor* dst);
+PyObject* TensorToNumpy(const framework::Tensor& tensor);
 
-void TensorFromNumpy(const Tensor& src, const platform::Place& dst_place,
-                     const platform::DeviceContext& ctx, Tensor* dst);
+framework::Tensor TensorFromNumpy(PyObject* obj);
 
 }  // namespace utils
 }  // namespace imperative

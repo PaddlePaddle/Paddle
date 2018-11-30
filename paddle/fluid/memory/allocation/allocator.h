@@ -78,7 +78,7 @@ class Allocation {
 
   virtual ~Allocation();
 
- private:
+ protected:
   Allocator* allocator_;
   void* ptr_;
   size_t size_;
@@ -121,7 +121,12 @@ class Allocator {
             // 2. it can use an `registered` memory for RDMA
             //    communication.
 
-    NumOfAttrs = 5  // The number of all attributes. It is used internally.
+    kNumpyShared =
+        5,  // The memory was shared from numpy object.
+            // So we should NOT allocate a new memory
+            // and only free when calling explicitly.
+
+    NumOfAttrs = 6  // The number of all attributes. It is used internally.
   };
 
   virtual ~Allocator();

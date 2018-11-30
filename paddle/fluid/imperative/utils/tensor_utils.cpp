@@ -28,9 +28,42 @@ namespace paddle {
 namespace imperative {
 namespace utils {
 
-namespace {
+struct NumpyDataTypeMap {
+  std::unordered_map<int, int> proto_to_dtype_;
+  std::unordered_map<int, int> dtype_to_proto_;
+};
 
-static void CheckTensor(const Tensor& tensor) {
+static NumpyDataTypeMap* InitNumpyDataTypeMap();
+
+static NumpyDataTypeMap& gNumpyDataTypeMap() {
+  static NumpyDataTypeMap* g_numpy_data_type_map_ = InitNumpyDataTypeMap();
+  return *g_numpy_data_type_map_;
+}
+
+static inline void RegisterNumpyType(NumpyDataTypeMap* map,
+                                     int dtype,
+                                     proto::VarType::Type proto_type) {
+  mape->proto_to_dtype_.emplace(static_cast<int>(proto_type), dtype);
+  mape->dtype_to_proto_.emplace(dtype, static_cast<int>(proto_type));
+}
+
+static NumpyDataTypeMap* InitNumpyDataTypeMap() {
+  NumpyDataTypeMap* map = new NumpyDataTypeMap();
+
+  RegisterNumpyType(map, NPY_HALF, proto::VarType::FP16);
+  RegisterNumpyType(map, NPY_FLOAT, proto::VarType::FP32);
+  RegisterNumpyType(map, NPY_DOUBLE, proto::VarType::FP64);
+  RegisterNumpyType(map, NPY_INT32, proto::VarType::INT32);
+  RegisterNumpyType(map, NPY_INT64, proto::VarType::INT64);
+  RegisterNumpyType(map, NPY_BOOL, proto::VarType::BOOL);
+  RegisterNumpyType(map, NPY_LONGLONG, proto::VarType::SIZE_T);
+  RegisterNumpyType(map, NPY_INT16, proto::VarType::INT16);
+  RegisterNumpyType(map, NPY_UINT8, proto::VarType::UINT8);
+
+  return map;
+}
+
+static void CheckTensor(const framework::Tensor& tensor) {
   // NOTE(minqiyang): add API hint when any check meets error here
   // check if tensor is initialized
   PADDLE_ENFORCE(tensor.IsInitialized(),
@@ -43,30 +76,27 @@ static void CheckTensor(const Tensor& tensor) {
                  "Can only convert CPU tensor to numpy.");
 }
 
-static int GetDType(const Tensor& tensor) {
-  proto::VarType::Type type = ToDataType(tensor.type());
-  switch (type) {
-    case proto::VarType::FP16:
-      return NPY_HALF;
-    case proto::VarType::FP32:
-      return NPY_FLOAT;
-    case proto::VarType::FP64:
-      return NPY_DOUBLE;
-    case proto::VarType::INT32:
-      return NPY_INT32;
-    case proto::VarType::INT64:
-      return NPY_INT64;
-    case proto::VarType::SIZE_T:
-      return NPY_LONGLONG;
-    case proto::VarType::INT16:
-      return NPY_INT16;
-    case proto::VarType::UINT8:
-      return NPY_UINT8;
-    default:
-      PADDLE_THROW("Numpy conversion from tensor with type %s is NOT supported",
-                   type.name());
+static int GetDType(const framework::Tensor& tensor) {
+  auto it = gNumpyDataTypeMap().proto_to_dtype_.find(
+      static_cast<int>(framework::ToDataType(tensor.type())));
+  if (it != gNumpyDataTypeMap().proto_to_dtype_.end()) {
+    return it->second;
   }
+
+  PADDLE_THROW("Numpy conversion from tensor with type %s is NOT supported",
+               type.name());
 }
+
+static std::type_index GetTensorType(int dtype) {
+  auto it = gNumpyDataTypeMap().dtype_to_proto_.find(dtype);
+  if (it != gNumpyDataTypeMap().dtype_to_proto_.end()) {
+    return framework::ToTypeIndex(it->second);
+  }
+
+  PADDLE_THROW("Numpy conversion from numpy array with type %s is NOT supported",
+               dtype);
+}
+
 
 static std::vector<npy_intp> DDimToNumpyShape(const framework::DDim& ddim) {
   std::vector<npy_intp> numpy_shape;
@@ -76,11 +106,20 @@ static std::vector<npy_intp> DDimToNumpyShape(const framework::DDim& ddim) {
   }
 }
 
-} // NOLINT
+static std::vector<npy_intp> NumpyShapeToDDim(const std::vector<npy_intp>& numpy_shape) {
+  DDim ddim;
+  std::vector<int64_t> dims;
+  std::vector<npy_intp> numpy_shape;
+  numpy_shape.reserve(ddim.size());
+  for (size_t i = 0u; i != ddim.size(); ++i) {
+    dims.emplace_back
+    numpy_shape.emplace_back(static_cast<npy_intp>(ddim[i]));
+  }
+}
 
 // NOTICE(minqiyang): try pybind11 here and decide the way of
 // implementing numpy bridge after the benchmark.
-void TensorToNumpy(const framework::Tensor& tensor) {
+PyObject* TensorToNumpy(const framework::Tensor& tensor) {
   // check the place of tensor
   CheckTensor();
 
@@ -95,7 +134,7 @@ void TensorToNumpy(const framework::Tensor& tensor) {
   }
 
   // create numpy array
-  auto array = THPObjectPtr(PyArray_New(
+  PyObject* array = PyArray_New(
       &PyArray_Type,
       tensor.dims().size(),
       sizes.data(),
@@ -104,43 +143,42 @@ void TensorToNumpy(const framework::Tensor& tensor) {
       tensor.mutable_data(),
       0,
       NPY_ARRAY_BEHAVED,
-      nullptr));
+      nullptr);
 
   if (!array) {
     return nullptr;
   }
 
-  // create a VarBase py_object and set it to Numpy PyArrayObj
-  if (PyArray_SetBaseObject(reinterpret_cast<PyArrayObject*>(array.get()),
-                            make_var_base(tensor)) == -1) {
-    // TODO(minqiyang): we should avoid to release the tensor here,
-    // since we passed it to numpy.
-    return nullptr;
-  }
+  // TODO(minqiyang): we should avoid to release the tensor here,
+  // since we passed it to numpy.
+  // // create a VarBase py_object and set it to Numpy PyArrayObj
+  // if (PyArray_SetBaseObject(reinterpret_cast<PyArrayObject*>(array.get()),
+                            // make_var_base(tensor)) == -1) {
+    // return nullptr;
+  // }
 
-  return array.release();
+  return array;
 }
 
 framework::Tensor TensorFromNumpy(PyObject* obj) {
+  // check numpy ndarray
   if (!PyArray_Check(obj)) {
     PADDLE_THROW("Only np.ndarray is supported, got %s here",
                  Py_TYPE(obj)->tp_name);
   }
-
   auto array = reinterpret_cast<PyArrayObject*>(obj);
-  // get the number of dim
-  int ndim = PyArray_NDIM(array);
-  auto sizes = to_aten_shape(ndim, PyArray_DIMS(array));
-  auto strides = to_aten_shape(ndim, PyArray_STRIDES(array));
 
-  int item_size = PyArray_ITEMSIZE(array);
-  for (auto& stride : strides) {
-    PADDLE_ENFORCE(stride >= 0,
-                   "negative strides in numpy array is NOT supported now");
-    PADDLE_ENFORCE(stride % item_size == 0,
-                   "numpy array's strides is NOT the times of item size"
-                   "please copy the numpy array and redo this method");
-    stride /= item_size;
+  // get the meta data of numpy ndarray
+  int ndim = PyArray_NDIM(array);
+  std::vector<int64_t> dims = NumpyShapeToVector(ndim, PyArray_DIMS(array));
+  // NOTE(minqiyang): after tensor's requested size calculation, we will throw
+  // the strides info away, because tensor will calculate strides itself.
+  std::vector<int64_t> strides = NumpyShapeToVector(ndim, PyArray_STRIDES(array));
+
+  // calculate the requested size of tensor
+  size_t requested_size = 0U;
+  if (dims.size() >= 1 && strides.size() >= 1) {
+    requested_size = static_cast<size_t>(dims[0] * strides[0]);
   }
 
   // check byte order
@@ -150,9 +188,17 @@ framework::Tensor TensorFromNumpy(PyObject* obj) {
                    "numpy array's byte orders should keep the same with the native byte order");
   }
 
+  // get the data ptr and construct the memory allocator attribute
   void* data_ptr = PyArray_DATA(array);
-  Tensor tensor;
-  tensor.mutable_data();
+  framework::Tensor tensor;
+  tensor.clear();
+  tensor.Resize(framework::make_ddim(dims));
+  tensor.mutable_data(platform::CPUPlace(), GetTensorType(PyArray_TYPE(array)),
+                      memory::Allocator::Attr::kNumpyShared, 0U);
+  // NOTE(minqiyang): must be CPUAllocation here, we will down cast this
+  // allocation to CPUAllocation
+  memory::CPUAllocation* cpu_allocation = reinterpret_cast<memory::CPUAllocation*>(tensor.Holder().get());
+  cpu_allocation->share_data_with(data_ptr, requested_size);
 
   Py_INCREF(obj);
 

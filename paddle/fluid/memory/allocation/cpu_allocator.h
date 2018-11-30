@@ -35,6 +35,8 @@ class CPUAllocator;
 class CPUAllocation : public Allocation {
  public:
   CPUAllocation(void* ptr, size_t size);
+
+  virtual void share_data_with(void* ptr, size_t size);
 };
 
 class CPUAllocator : public Allocator {
