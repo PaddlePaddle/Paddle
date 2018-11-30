@@ -43,7 +43,7 @@ class PReluOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(alpha_var);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
-    platform::CUDAPlace place;
+    platform::CUDAPlace place(engine_->GetDevice());
     std::unique_ptr<framework::LoDTensor> alpha_tensor_device(
         new framework::LoDTensor());
     alpha_tensor_device->Resize(alpha_tensor->dims());

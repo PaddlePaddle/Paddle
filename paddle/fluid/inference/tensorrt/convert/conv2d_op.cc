@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/conv2d_transpose_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -33,12 +34,11 @@ bool to_skip_merging_optimize(TensorRTEngine* engine,
   return false;
 }
 
-template <typename RegistFunc, typename SetDilationFunc>
+template <typename RegistFunc>
 void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                    const framework::Scope& scope, bool test_mode,
-                   RegistFunc fadd_layer, SetDilationFunc fset_dilation,
-                   const std::string& name) {
-  VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
+                   RegistFunc fadd_layer, const std::string& type) {
+  VLOG(3) << "convert a fluid " << type << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
@@ -53,15 +53,23 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   PADDLE_ENFORCE_NOT_NULL(Y_v);
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
 
-  platform::CPUPlace cpu_place;
   std::unique_ptr<framework::LoDTensor> weight_tensor(
       new framework::LoDTensor());
   weight_tensor->Resize(Y_t->dims());
-  TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
-
-  auto* weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
-
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
+
+  float* weight_data = nullptr;
+
+  if (type == "conv2d") {
+    platform::CPUPlace cpu_place;
+    TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
+    weight_data = weight_tensor->mutable_data<float>((cpu_place));
+  } else {
+    platform::CUDAPlace place(engine->GetDevice());
+    TensorCopySync((*Y_t), place, weight_tensor.get());
+    weight_data = weight_tensor->mutable_data<float>(place);
+  }
+
   const int n_output = weight_tensor->dims()[0];
   const int n_input = weight_tensor->dims()[1];
   const int filter_h = weight_tensor->dims()[2];
@@ -79,22 +87,12 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
   nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
 
-  TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(weight_data),
-                                static_cast<size_t>(weight_tensor->numel())};
-
-  TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
-                           nv_ksize, weight, bias);
-  PADDLE_ENFORCE(layer != nullptr);
-  layer->setStride(nv_strides);
-  layer->setPadding(nv_paddings);
-  layer->setNbGroups(groups);
-  // set dilations
-  fset_dilation(layer, nv_dilations);
+                           nv_ksize, nv_strides, nv_paddings, nv_dilations,
+                           groups, weight_data, weight_tensor->numel());
 
   auto output_name = op_desc.Output("Output").front();
-  layer->setName((name + " (Output: " + output_name + ")").c_str());
+  layer->setName((type + " (Output: " + output_name + ")").c_str());
   engine->weight_map[op_desc.Input("Filter").front()] =
       std::move(weight_tensor);
   layer->getOutput(0)->setName(output_name.c_str());
@@ -115,15 +113,25 @@ class Conv2dOpConverter : public OpConverter {
         engine_, op, scope, test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Conv output maps */
             int n_input,                             /* Conv input maps */
-            nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
-            TensorRTEngine::Weight& bias) -> nvinfer1::IConvolutionLayer* {
+            nvinfer1::DimsHW& ksize, nvinfer1::DimsHW& nv_strides,
+            nvinfer1::DimsHW& nv_paddings, nvinfer1::DimsHW& nv_dilations,
+            int groups, float* weight_data,
+            int weight_data_num) -> nvinfer1::IConvolutionLayer* {
+          TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+                                        static_cast<void*>(weight_data),
+                                        static_cast<size_t>(weight_data_num)};
+
+          TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
+
           auto* layer =
               TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
                                    ksize, weight.get(), bias.get());
+          PADDLE_ENFORCE(layer != nullptr);
+          layer->setStride(nv_strides);
+          layer->setPadding(nv_paddings);
+          layer->setNbGroups(groups);
+          layer->setDilation(nv_dilations);
           return layer;
-        },
-        [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          layer->setDilation(dilations);
         },
         "conv2d");
   }
@@ -137,18 +145,27 @@ class Deconv2dOpConverter : public OpConverter {
         engine_, op, scope, test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Deconv input maps */
             int n_input,                             /* Deconv output maps */
-            nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
-            TensorRTEngine::Weight& bias) -> nvinfer1::IDeconvolutionLayer* {
-          auto* layer =
-              TRT_ENGINE_ADD_LAYER(engine_, Deconvolution, *inputs, n_input,
-                                   ksize, weight.get(), bias.get());
+            nvinfer1::DimsHW& ksize, nvinfer1::DimsHW& nv_strides,
+            nvinfer1::DimsHW& nv_paddings, nvinfer1::DimsHW& nv_dilations,
+            int groups, float* weight_data,
+            float weight_data_num) -> nvinfer1::IPluginLayer* {
+          nvinfer1::Dims input_dims = inputs->getDimensions();
+          std::vector<int> input_shape;
+          for (int i = 0; i < input_dims.nbDims; i++) {
+            input_shape.push_back(input_dims.d[i]);
+          }
+
+          plugin::Conv2dTransposePlugin* plugin =
+              new plugin::Conv2dTransposePlugin(
+                  weight_data, weight_data_num, {ksize.h(), ksize.w()},
+                  {nv_strides.h(), nv_strides.w()},
+                  {nv_paddings.h(), nv_paddings.w()},
+                  {nv_dilations.h(), nv_dilations.w()}, groups, input_shape,
+                  engine_->GetDevice());
+
+          auto* layer = engine_->AddPlugin(&inputs, 1, plugin);
+          PADDLE_ENFORCE(layer != nullptr);
           return layer;
-        },
-        [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          PADDLE_ENFORCE(
-              dilations.d[0] == 1 && dilations.d[1] == 1,
-              "Dilations must be (1, 1) for tensorRT, but given (%d, %d)",
-              dilations.d[0], dilations.d[1]);
         },
         "conv2d_transpose");
   }
