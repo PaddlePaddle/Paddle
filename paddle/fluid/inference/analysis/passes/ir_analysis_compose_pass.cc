@@ -62,6 +62,7 @@ void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
   // TODO(Superjomn) move these to Argument.analysis_pass.
   std::vector<std::string> passes({
       "ir_graph_build_pass", "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
   });
   for (const auto &pass : passes) {
     VLOG(2) << "Run pass " << pass;

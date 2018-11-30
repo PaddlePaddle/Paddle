@@ -57,7 +57,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
-  VLOG(30) << "Predictor::init()";
+  VLOG(3) << "Predictor::init()";
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -171,7 +171,7 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  VLOG(30) << "Predictor::predict";
+  VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
   // set feed variable
@@ -190,23 +190,27 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(30) << "predict cost: " << timer.toc() << "ms";
-
-  // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
-  tensor_array_batch_cleaner_.ResetTensorArray();
 
   // Collect variable shapes for memory optimization.
   if (need_collect_var_shapes_for_memory_optim()) {
     CollectVarShapes();
   }
 
+  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
+  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
 
 bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                 framework::Scope *scope) {
-  VLOG(30) << "Predictor::set_feed";
+  VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
@@ -283,7 +287,7 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                  framework::Scope *scope) {
-  VLOG(30) << "Predictor::get_fetch";
+  VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
@@ -292,6 +296,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
+    output->name = fetchs_[idx]->Input("X")[0];
     if (type == typeid(float)) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
@@ -348,7 +353,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
-  VLOG(30) << "create AnalysisConfig";
+  VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -362,7 +367,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(30) << "set flag: " << flag;
+      VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }
@@ -426,7 +431,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }

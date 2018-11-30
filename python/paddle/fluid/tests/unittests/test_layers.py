@@ -185,6 +185,25 @@ class TestBook(unittest.TestCase):
                     input=x, label=y, num_classes=2))
         print(str(program))
 
+        # test hsigmod with custom tree structure
+        program2 = Program()
+        with program_guard(program2):
+            x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
+            y2 = layers.data(name='y2', shape=[4], dtype='int64')
+            path_table = layers.data(
+                name='path_table', shape=[4, 6], dtype='int64')
+            path_code = layers.data(
+                name='path_code', shape=[4, 6], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x2,
+                    label=y2,
+                    num_classes=6,
+                    path_table=path_table,
+                    path_code=path_code,
+                    is_custom=True))
+            print(str(program2))
+
     def test_sequence_expand(self):
         program = Program()
         with program_guard(program):
@@ -933,6 +952,15 @@ class TestBook(unittest.TestCase):
 
             theta = layers.data(name="theta", shape=[5], dtype="float32")
             out = layers.bilinear_tensor_product(data, theta, 6)
+
+        print(str(program))
+
+    def test_batch_norm(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.batch_norm(data)
 
         print(str(program))
 
