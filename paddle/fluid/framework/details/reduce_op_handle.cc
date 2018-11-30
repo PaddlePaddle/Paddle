@@ -68,6 +68,9 @@ void ReduceOpHandle::GatherSelectedRows(
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
   WaitLocalSelectedRows(dev_ctxes);
+  VLOG(100) << "gathered selected rows:" << gathered_var_name
+            << operators::distributed::GetSelectedRowsInfo(
+                   *gathered_select_rows);
 
   // merge them
   auto merged_dev_ctx =
@@ -79,6 +82,8 @@ void ReduceOpHandle::GatherSelectedRows(
   operators::math::scatter::MergeAdd<platform::CUDADeviceContext, float>
       merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
+  VLOG(100) << "merged selected rows:" << merged_var_name
+            << operators::distributed::GetSelectedRowsInfo(*merged_select_rows);
 
   // 2. start collective server if it doesn't exist
   operators::distributed::CollectiveServer *server =
@@ -92,9 +97,14 @@ void ReduceOpHandle::GatherSelectedRows(
                           scope, merged_dev_ctx);
 
   // 3. gather them from all remote nodes.
+  auto reduce_eps = collective_context_.endpoints_;
+  reduce_eps.erase(eps.begin() + collective_context_.trainer_id_);
   operators::distributed::CollectiveClient::ReduceSelectedRows(
-      collective_context_.endpoints_, merged_var_name, scope);
+      reduce_eps, merged_var_name, scope);
   scope->Rename(merged_var_name, out_var_handle->name_);
+  auto slr = scope->FindVar(out_var_handle->name_)->GetMutable<SelectedRows>();
+  VLOG(100) << "reduced selected rows:" << merged_var_name
+            << operators::distributed::GetSelectedRowsInfo(*slr);
 
   rpc_server->WaitVarBarrier(merged_var_name);
   rpc_server->ClearVar(merged_var_name);

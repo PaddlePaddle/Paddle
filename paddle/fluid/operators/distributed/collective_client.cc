@@ -30,7 +30,7 @@ template <typename DataType>
 struct ReduceSelectedRow {
   operator()(const std::vector<std::string>& endpoints,
              const std::string& var_name, framework::Scope* local_scope,
-             int64_t time_out = FLAGS_rpc_deadline) {
+             int64_t time_out) {
     distributed::RPCClient* client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
@@ -67,8 +67,8 @@ struct ReduceSelectedRow {
           scopes[i]->FindVar(var_name)->GetMutable<framework::SelectedRows>();
       slrs.push_back(select_rows);
 
-      VLOG(40) << "gather from ep:" << endpionts[i]
-               << ", select_rows:" << select_rows->Info();
+      VLOG(40) << "gather from ep:" << endpoints[i]
+               << ", select_rows:" << GetSelectedRowsInfo(*select_rows);
 
       client->AsyncGetMonomerBarrier(endpoints[i], var_name);
     }
@@ -113,7 +113,10 @@ struct ReduceSelectedRow {
 
 bool CollectiveClient::ReduceSelectedRows(
     const std::vector<std::string>& endpoints, const std::string& var_name,
-    framework::Scope* local_scope, int64_t time_out) {}
+    framework::Scope* local_scope, int64_t time_out) {
+  ReduceSelectedRow<float> slr;
+  slr(endpoints, var_name, local_scope);
+}
 bool CollectiveClient::BroadCast(const std::vector<std::string>& endpoints,
                                  const platform::DeviceContext& dev_ctx,
                                  framework::Scope* scope,

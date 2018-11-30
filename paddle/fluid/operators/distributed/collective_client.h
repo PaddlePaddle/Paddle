@@ -31,7 +31,23 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-template <typename Place, typename DataType>
+inline std::string GetSelectedRowsInfo(
+    const framework::SelectedRows& slr) const {
+  std::stringstream ss;
+  ss << "height:" << slr.height() << ", rows:[";
+  for (unsigned int i = 0; i < slr.rows().size(); i++) {
+    if (i != slr.rows().size() - 1) {
+      ss << slr.rows()[i] << ",";
+    } else {
+      ss << slr.rows()[i];
+    }
+  }
+  ss << "], dims:" << slr.value()->dims();
+
+  return ss.str();
+}
+
+template <typename DataType>
 struct ReduceSelectedRow {
   operator()(const std::vector<std::string>& endpoints,
              const std::string& var_name, framework::Scope* local_scope,
