@@ -84,7 +84,7 @@ void InitDevices(bool init_p2p) {
 #ifdef PADDLE_WITH_CUDA
   try {
     // use user specified GPUs in single-node multi-process mode.
-    char *gpus_cstr = std::getenv("GPU_NUM");
+    char *gpus_cstr = std::getenv("PADDLE_GPUS");
     if (gpus_cstr) {
       auto devices_str = paddle::string::Split(std::string(gpus_cstr), ',');
       for (auto id : devices_str) {

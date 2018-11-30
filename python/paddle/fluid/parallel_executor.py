@@ -95,7 +95,7 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         gpus = []
-        gpus_env = os.getenv("GPU_NUM")
+        gpus_env = os.getenv("PADDLE_GPUS")
         if gpus_env:
             gpus = [int(s) for s in gpus_env.split(",")]
         else:

@@ -115,7 +115,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   static std::vector<int> devices;
 
   std::call_once(init_flag, [gpu_id]() {
-    char *gpus_cstr = std::getenv("GPU_NUM");
+    char *gpus_cstr = std::getenv("PADDLE_GPUS");
     if (gpus_cstr) {
       for (auto s : paddle::string::Split(std::string(gpus_cstr), ',')) {
         devices.push_back(atoi(s.c_str()));
