@@ -12,12 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cudnn_lstm_op.h"
 #include <string>
-
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -201,18 +197,22 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class NotImpleKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(
+        "CPU is not support for this kernel now. Will be add in the future");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cudnn_lstm, ops::CudnnLSTMOp, ops::CudnnLSTMOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(lstm_cudnn_grad, ops::CudnnLSTMGradOp);
+REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    cudnn_lstm,
-    ops::CudnnLSTMKernel<paddle::platform::CPUDeviceContext, float>);
-
-REGISTER_OP_CPU_KERNEL(
-    lstm_cudnn_grad,
-    ops::CudnnLSTMGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);
+REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
