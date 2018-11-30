@@ -862,7 +862,7 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
       if (node->Op()->Type() == "fetch_barrier") {
         outvar_dev_id =
             GetVarDeviceID(*result, output->Name(), *sharded_var_device);
-        PADDLE_ENFORCE_NE(outvar_dev_id, -1);
+        PADDLE_ENFORCE_NE(outvar_dev_id, -1, "output name %s", output->Name());
       }
       p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
