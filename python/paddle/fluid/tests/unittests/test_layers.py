@@ -963,6 +963,15 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_batch_norm(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.batch_norm(data)
+
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
