@@ -326,6 +326,11 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    remote_prefetch = False
+    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
+        remote_prefetch = True
+    if remote_prefetch:
+        assert is_sparse is True and is_distributed is False
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
@@ -339,6 +344,7 @@ def embedding(input,
         attrs={
             'is_sparse': is_sparse,
             'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
             'padding_idx': padding_idx
         })
     return tmp
@@ -2300,7 +2306,8 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False,
-               fuse_with_relu=False):
+               fuse_with_relu=False,
+               use_global_stats=False):
     """
     **Batch Normalization Layer**
 
@@ -2327,6 +2334,19 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
     Args:
         input(variable): The input variable which is a LoDTensor.
         act(string, Default None): Activation type, linear|relu|prelu|...
@@ -2349,6 +2369,11 @@ def batch_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2381,9 +2406,15 @@ def batch_norm(input,
         shape=param_shape,
         dtype=dtype,
         default_initializer=Constant(1.0))
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.param_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+    # setting stop_gradient=True to reduce computation
+    if use_global_stats and helper.bias_attr.learning_rate == 0.:
+        scale.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -2439,7 +2470,8 @@ def batch_norm(input,
             "epsilon": epsilon,
             "is_test": is_test,
             "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu
+            "fuse_with_relu": fuse_with_relu,
+            "use_global_stats": use_global_stats
         })
 
     return helper.append_activation(batch_norm_out)
@@ -4218,14 +4250,22 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.5, 0.1, 0.3, 0.1]]
 
         input.lod = [[4, 4]]
+      
+        Computation:
 
-        Then:
+        step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
+               [[0], [2], [1], [0]]
+        step2: merge repeated tokens and remove blank which is 0. Then we get first output sequence:
+               [[2], [1]]
+
+        Finally:
 
         output.data = [[2],
                        [1],
                        [3]]
 
         output.lod = [[2, 1]]
+
 
     Args:
 
@@ -4241,8 +4281,10 @@ def ctc_greedy_decoder(input, blank, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[]] and dims [1, 1].
+        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1].
+                  'Lp' is the sum if all output sequences' length. If all the sequences
+                  in result were empty, the result LoDTensor will be [-1] with 
+                  LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -6892,7 +6934,7 @@ def pad2d(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
-        paddings (tuple|list): The padding size. If padding is a tuple, it must
+        paddings (tuple|list|Variable): The padding size. If padding is a tuple, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Default: padding = [0, 0, 0, 0].
         mode (str): Three modes: constant(default), reflect, edge. Default: constant
@@ -6917,16 +6959,17 @@ def pad2d(input,
     helper = LayerHelper('pad2d', **locals())
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
+    inputs = {'X': input}
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
+
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = paddings
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
     helper.append_op(
-        type='pad2d',
-        inputs={'X': input},
-        outputs={"Out": out},
-        attrs={
-            'paddings': paddings,
-            'mode': mode,
-            'pad_value': pad_value,
-            'data_frmat': data_format
-        })
+        type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     return out
 
@@ -7574,6 +7617,11 @@ def uniform_random_batch_size_like(input,
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 11])
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -7611,6 +7659,10 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            out = layers.gaussian_random(shape=[20, 30])
     """
 
     helper = LayerHelper('gaussian_random', **locals())
@@ -7646,6 +7698,16 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(
+                name="X",
+                shape=[13, 11],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.sampling_id(x)
     """
 
     helper = LayerHelper('sampling_id', **locals())
@@ -7685,6 +7747,14 @@ def gaussian_random_batch_size_like(input,
 
     Returns:
         out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.gaussian_random_batch_size_like(
+                input, shape=[-1, 11], mean=1.0, std=2.0)
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
@@ -7717,6 +7787,12 @@ def sum(x):
 
     Returns:
         out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.sum(input)
     """
 
     helper = LayerHelper('sum', **locals())
@@ -7745,6 +7821,17 @@ def slice(input, axes, starts, ends):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            starts = [1, 0, 2]
+            ends = [3, 3, 4]
+            axes = [0, 1, 2]
+
+            input = layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
@@ -7772,6 +7859,12 @@ def shape(input):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.shape(input)
     """
 
     helper = LayerHelper('shape', **locals())
