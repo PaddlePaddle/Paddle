@@ -30,7 +30,6 @@ using Tensor = framework::Tensor;
 using framework::DataLayout;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
-//using MKLDNNDataType = mkldnn::memory::data_type;
 
 template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
@@ -46,7 +45,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
  
     const T* input_data = input->data<T>();
     float* output_data = output->mutable_data<float>(ctx.GetPlace());
-    //T scale_data = *(scale->data<T>());
     std::vector<float> scale_data = {*(scale->data<float>())};
     std::vector<float> reorder_scale = {1.0f / scale_data[0]};
 
@@ -77,7 +75,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     pipeline.push_back(*reorder_p);
     stream(stream::kind::eager).submit(pipeline).wait(); 
 
-    //output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(dst_memory));
 
   }
@@ -114,5 +111,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_KERNEL(dequantize, MKLDNN, ::paddle::platform::CPUPlace, ops::DeQuantOpKernel<uint8_t>);
+REGISTER_OP_KERNEL(dequantize, MKLDNN, ::paddle::platform::CPUPlace, ops::DeQuantOpKernel<uint8_t>, ops::DeQuantOpKernel<int8_t>);
                    

@@ -46,7 +46,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     const T* input_data = input->data<T>();
-    uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
+
     std::vector<T> scale_data = {*(scale->data<T>())};
 
     mkldnn::primitive_attr attri;
@@ -59,20 +59,32 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto src_memory = std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
     std::shared_ptr<primitive::at> src_memory_p = std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
 
-    auto dst_md = platform::MKLDNNMemDesc(
-            {dst_tz}, memory::data_type::u8, memory::format::nhwc);
-    auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<uint8_t>(output_data));
+    bool is_negative = ctx.Attr<bool>("is_negative_input");
+    mkldnn::memory::primitive_desc dst_pd;
+    std::shared_ptr<mkldnn::memory> dst_memory;
+    if (is_negative) {
+        int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
+        auto dst_md = platform::MKLDNNMemDesc(
+                {dst_tz}, memory::data_type::s8, memory::format::nhwc);
+        dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
+        dst_memory.reset(new mkldnn::memory(dst_pd, to_void_cast<int8_t>(output_data)));
+    } else {
+        uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
+        auto dst_md = platform::MKLDNNMemDesc(
+                {dst_tz}, memory::data_type::u8, memory::format::nhwc);
+        dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
+        dst_memory.reset(new mkldnn::memory(dst_pd, to_void_cast<uint8_t>(output_data)));
+    }
     
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
         new reorder::primitive_desc(src_pd, dst_pd, attri));    
-    auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, dst_memory));
+    auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, *dst_memory));
 
     pipeline.push_back(*reorder_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(dst_memory));
+    output->set_format(GetMKLDNNFormat(*dst_memory));
   }
 };
 

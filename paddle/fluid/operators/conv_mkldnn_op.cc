@@ -300,7 +300,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                   "It must use CPUPlace.");
-
     const bool is_test = ctx.Attr<bool>("is_test");
 
     auto& dev_ctx =
@@ -433,6 +432,27 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             output->mutable_data<T>(ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, handler->GetDstMemorySize());
         dst_memory_p->set_data_handle(to_void_cast<T>(output_data)); 
       }
+    } else if(is_INT8 && dst_memory_p){
+      if(fuse_residual_conn) {
+        auto residual_param = ctx.Input<Tensor>("ResidualData");
+        auto residual_dt = paddle::framework::ToMKLDNNDataType(residual_param->type());
+        output->ShareDataWith(*residual_param);
+        if(residual_dt == mkldnn::memory::data_type::u8){
+          uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
+          dst_memory_p->set_data_handle(to_void_cast<uint8_t>(output_data));
+        } else{
+          int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
+          dst_memory_p->set_data_handle(to_void_cast<int8_t>(output_data));
+        }
+      } else {
+        if(fuse_relu){
+          uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, handler->GetDstMemorySize());
+          dst_memory_p->set_data_handle(to_void_cast<uint8_t>(output_data));
+        } else{
+          int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, handler->GetDstMemorySize());
+          dst_memory_p->set_data_handle(to_void_cast<int8_t>(output_data));
+        }
+      }
     }
 
     if(!is_INT8){
@@ -552,6 +572,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         output->set_layout(DataLayout::kMKLDNN);
         output->set_format(GetMKLDNNFormat(*dst_memory_p));
       } else {
+std::cout<<"this is init fp32!!!!!!!!!!!!!"<<std::endl;
         if(src_memory_reorder_p){
           pipeline.push_back(*src_memory_reorder_p);
         } 
@@ -773,6 +794,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         output->set_layout(DataLayout::kMKLDNN);
         output->set_format(GetMKLDNNFormat(*dst_memory_p));
       } else {
+std::cout<<"this is init int8!!!!!!!!!!!!!!"<<std::endl;
         if(src_memory_reorder_p){
           pipeline.push_back(*src_memory_reorder_p);
         }
@@ -1152,7 +1174,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(conv2d, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConvMKLDNNOpKernel<float>,
-                   ops::ConvMKLDNNOpKernel<uint8_t>);
+                   ops::ConvMKLDNNOpKernel<uint8_t>,
+                   ops::ConvMKLDNNOpKernel<int8_t>);
 
 REGISTER_OP_KERNEL(conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConvMKLDNNGradOpKernel<float>);
