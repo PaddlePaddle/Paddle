@@ -4250,14 +4250,22 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.5, 0.1, 0.3, 0.1]]
 
         input.lod = [[4, 4]]
+      
+        Computation:
 
-        Then:
+        step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
+               [[0], [2], [1], [0]]
+        step2: merge repeated tokens and remove blank which is 0. Then we get first output sequence:
+               [[2], [1]]
+
+        Finally:
 
         output.data = [[2],
                        [1],
                        [3]]
 
         output.lod = [[2, 1]]
+
 
     Args:
 
@@ -4273,8 +4281,10 @@ def ctc_greedy_decoder(input, blank, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[]] and dims [1, 1].
+        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1].
+                  'Lp' is the sum if all output sequences' length. If all the sequences
+                  in result were empty, the result LoDTensor will be [-1] with 
+                  LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
