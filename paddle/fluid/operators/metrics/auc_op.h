@@ -75,7 +75,7 @@ class AucKernel : public framework::OpKernel<T> {
     const auto *label_data = label->data<int64_t>();
 
     for (size_t i = 0; i < batch_size; i++) {
-      T predict_data = inference_data[i * inference_width + 1];
+      auto predict_data = inference_data[i * inference_width + 1];
       PADDLE_ENFORCE_LE(predict_data, 1,
                         "The predict data must less or equal 1.");
       PADDLE_ENFORCE_GE(predict_data, 0,
