@@ -284,7 +284,6 @@ PYBIND11_MODULE(core, m) {
         // Check that the lod info is valid and match the outermost
         // dimension of the LoDTensor data
         return CheckLoD(self.lod(), vectorize(self.dims()).front());
-      .def("numpy", [](LoDTensor &self) -> )
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")

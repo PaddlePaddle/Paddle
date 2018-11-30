@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <Python.h>
+#include "paddle/fluid/framework/tensor.h"
+
 namespace paddle {
 namespace imperative {
 namespace utils {

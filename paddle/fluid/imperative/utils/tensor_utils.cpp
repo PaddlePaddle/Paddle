@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/imperative/utils/tensor_utils.h"
-
-#include <Python.h>
-
-#ifdef WITH_PYTHON
-#include <numpy/arrayobject.h>
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #endif
 
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/imperative/utils/tensor_utils.h"
+#include <stdint.h> // for int8_t
+#include <typeindex>
+#include <cstdint>
+#include <map>
+#include <numpy/arrayobject.h>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -42,23 +46,23 @@ static NumpyDataTypeMap& gNumpyDataTypeMap() {
 
 static inline void RegisterNumpyType(NumpyDataTypeMap* map,
                                      int dtype,
-                                     proto::VarType::Type proto_type) {
-  mape->proto_to_dtype_.emplace(static_cast<int>(proto_type), dtype);
-  mape->dtype_to_proto_.emplace(dtype, static_cast<int>(proto_type));
+                                     framework::proto::VarType::Type proto_type) {
+  map->proto_to_dtype_.emplace(static_cast<int>(proto_type), dtype);
+  map->dtype_to_proto_.emplace(dtype, static_cast<int>(proto_type));
 }
 
 static NumpyDataTypeMap* InitNumpyDataTypeMap() {
   NumpyDataTypeMap* map = new NumpyDataTypeMap();
 
-  RegisterNumpyType(map, NPY_HALF, proto::VarType::FP16);
-  RegisterNumpyType(map, NPY_FLOAT, proto::VarType::FP32);
-  RegisterNumpyType(map, NPY_DOUBLE, proto::VarType::FP64);
-  RegisterNumpyType(map, NPY_INT32, proto::VarType::INT32);
-  RegisterNumpyType(map, NPY_INT64, proto::VarType::INT64);
-  RegisterNumpyType(map, NPY_BOOL, proto::VarType::BOOL);
-  RegisterNumpyType(map, NPY_LONGLONG, proto::VarType::SIZE_T);
-  RegisterNumpyType(map, NPY_INT16, proto::VarType::INT16);
-  RegisterNumpyType(map, NPY_UINT8, proto::VarType::UINT8);
+  RegisterNumpyType(map, NPY_HALF, framework::proto::VarType::FP16);
+  RegisterNumpyType(map, NPY_FLOAT, framework::proto::VarType::FP32);
+  RegisterNumpyType(map, NPY_DOUBLE, framework::proto::VarType::FP64);
+  RegisterNumpyType(map, NPY_INT32, framework::proto::VarType::INT32);
+  RegisterNumpyType(map, NPY_INT64, framework::proto::VarType::INT64);
+  RegisterNumpyType(map, NPY_BOOL, framework::proto::VarType::BOOL);
+  RegisterNumpyType(map, NPY_LONGLONG, framework::proto::VarType::SIZE_T);
+  RegisterNumpyType(map, NPY_INT16, framework::proto::VarType::INT16);
+  RegisterNumpyType(map, NPY_UINT8, framework::proto::VarType::UINT8);
 
   return map;
 }
@@ -84,13 +88,13 @@ static int GetDType(const framework::Tensor& tensor) {
   }
 
   PADDLE_THROW("Numpy conversion from tensor with type %s is NOT supported",
-               type.name());
+               tensor.type().name());
 }
 
 static std::type_index GetTensorType(int dtype) {
   auto it = gNumpyDataTypeMap().dtype_to_proto_.find(dtype);
   if (it != gNumpyDataTypeMap().dtype_to_proto_.end()) {
-    return framework::ToTypeIndex(it->second);
+    return framework::ToTypeIndex(static_cast<framework::proto::VarType::Type>(it->second));
   }
 
   PADDLE_THROW("Numpy conversion from numpy array with type %s is NOT supported",
@@ -104,24 +108,24 @@ static std::vector<npy_intp> DDimToNumpyShape(const framework::DDim& ddim) {
   for (size_t i = 0u; i != ddim.size(); ++i) {
     numpy_shape.emplace_back(static_cast<npy_intp>(ddim[i]));
   }
+  return numpy_shape;
 }
 
-static std::vector<npy_intp> NumpyShapeToDDim(const std::vector<npy_intp>& numpy_shape) {
-  DDim ddim;
+static std::vector<int64_t> NumpyShapeToVector(int ndim, npy_intp* numpy_shape) {
   std::vector<int64_t> dims;
-  std::vector<npy_intp> numpy_shape;
-  numpy_shape.reserve(ddim.size());
-  for (size_t i = 0u; i != ddim.size(); ++i) {
-    dims.emplace_back
-    numpy_shape.emplace_back(static_cast<npy_intp>(ddim[i]));
+  dims.reserve(ndim);
+  for (int i = 0; i != ndim; ++i) {
+    dims.emplace_back(numpy_shape[i]);
   }
+
+  return dims;
 }
 
 // NOTICE(minqiyang): try pybind11 here and decide the way of
 // implementing numpy bridge after the benchmark.
 PyObject* TensorToNumpy(const framework::Tensor& tensor) {
   // check the place of tensor
-  CheckTensor();
+  CheckTensor(tensor);
 
   // get meta data (type, shape e.g..) from tensor
   auto dtype = GetDType(tensor);
@@ -140,7 +144,7 @@ PyObject* TensorToNumpy(const framework::Tensor& tensor) {
       sizes.data(),
       dtype,
       strides.data(),
-      tensor.mutable_data(),
+      tensor.Holder()->ptr(),
       0,
       NPY_ARRAY_BEHAVED,
       nullptr);
@@ -197,7 +201,7 @@ framework::Tensor TensorFromNumpy(PyObject* obj) {
                       memory::Allocator::Attr::kNumpyShared, 0U);
   // NOTE(minqiyang): must be CPUAllocation here, we will down cast this
   // allocation to CPUAllocation
-  memory::CPUAllocation* cpu_allocation = reinterpret_cast<memory::CPUAllocation*>(tensor.Holder().get());
+  memory::allocation::CPUAllocation* cpu_allocation = reinterpret_cast<memory::allocation::CPUAllocation*>(tensor.Holder().get());
   cpu_allocation->share_data_with(data_ptr, requested_size);
 
   Py_INCREF(obj);
@@ -208,4 +212,3 @@ framework::Tensor TensorFromNumpy(PyObject* obj) {
 }  // namespace utils
 }  // namespace imperative
 }  // namespace paddle
-
