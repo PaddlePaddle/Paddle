@@ -41,6 +41,11 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
+  return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
+         op1->Outputs() == op2->Outputs();
+}
+
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto nodes = graph->Nodes();
@@ -111,7 +116,7 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   // Reconstruct the Graph
   auto old_nodes = graph->ReleaseNodes();
   ir::Graph& result = *graph;
-  ProgramDesc* program = GetBlockDescFromOp()->Program();
+  ProgramDesc* program = GetBlockDescFromOp(cfg_->Ops())->Program();
   PADDLE_ENFORCE(program != nullptr, "program should not be nullptr");
   auto var_nodes = result.InitFromProgram(*program);
   result.ResolveHazard(var_nodes);
@@ -227,26 +232,14 @@ std::unordered_set<std::string> AnalysisVarPass::GetSubBlockVars(
   return vars;
 }
 
-BlockDesc* AnalysisVarPass::GetBlockDescFromOp() const {
-  BlockDesc* block_desc = nullptr;
-  for (auto* op : cfg_->Ops()) {
-    if (op->Op() != nullptr && block_desc == nullptr) {
-      block_desc = op->Op()->Block();
-    }
-  }
-  PADDLE_ENFORCE(block_desc != nullptr, "blockdesc should not be nullptr");
-  return block_desc;
-}
-
 void AnalysisVarPass::RenameVarInGraphDesc(const std::string& var,
                                            const std::string& cache_var,
                                            size_t idx) const {
-  for (size_t i = idx; i < cfg_->Ops().size(); ++i) {
-    auto* op = cfg_->Ops()[i];
-    PADDLE_ENFORCE(op->Op() != nullptr);
-    OpDesc* op_desc = op->Op();
+  for (size_t i = idx; i < cfg_->OpDescs().size(); ++i) {
+    auto* op_desc = cfg_->OpDescs()[i];
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
+    if (op_desc->Block()->HasVar(var)) op_desc->Block()->RemoveVar(var);
   }
 }
 
@@ -399,6 +392,29 @@ std::vector<ir::Node*> SortOperationsInSequence(const ir::Graph& graph) {
 
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
   ops_ = SortOperationsInSequence(graph);
+
+  // NOTE(): IR Node always create new OpDesc, so modify the
+  // OpDesc underlying op is meaningless. We need to record
+  // the original OpDescs and do the reuse trick.
+  // To keep the op descs sequence same with op node sequence
+  // Add a checker after the mapping, to check op -> op_desc.
+  auto* block_desc = GetBlockDescFromOp(ops_);
+  auto op_descs = block_desc->AllOps();
+  for (auto& op : ops_) {
+    if (!op->IsOp() || op->Op() == nullptr) continue;
+    for (auto& desc : op_descs) {
+      if (IsSameDesc(desc, op->Op())) {
+        op_descs_.emplace_back(desc);
+        break;
+      }
+    }
+  }
+
+  std::transform(ops_.begin(), ops_.end(), op_descs_.begin(), op_descs_.begin(),
+                 [&](ir::Node* op, OpDesc* op_desc) {
+                   PADDLE_ENFORCE(IsSameDesc(op->Op(), op_desc));
+                   return op_desc;
+                 });
   ConnectNodes();
 }
 
@@ -547,6 +563,12 @@ const std::set<std::string> ControlFlowGraph::Use(ir::Node* op) const {
 const std::vector<ir::Node*> ControlFlowGraph::Ops() const { return ops_; }
 
 std::vector<ir::Node*>& ControlFlowGraph::Ops() { return ops_; }
+
+const std::vector<OpDesc*> ControlFlowGraph::OpDescs() const {
+  return op_descs_;
+}
+
+std::vector<OpDesc*>& ControlFlowGraph::OpDescs() { return op_descs_; }
 
 ir::Node* ControlFlowGraph::GetNodeFromVarName(const std::string& name,
                                                ir::Node* op) const {

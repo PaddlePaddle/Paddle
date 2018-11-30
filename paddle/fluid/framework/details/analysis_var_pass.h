@@ -36,6 +36,18 @@ constexpr char kAllOpDescs[] = "all_op_descs";
 
 std::vector<ir::Node*> SortOperationsInSequence(const ir::Graph& graph);
 
+template <typename Container>
+inline static BlockDesc* GetBlockDescFromOp(const Container& ops) {
+  BlockDesc* block_desc = nullptr;
+  for (auto* op : ops) {
+    if (op->Op() != nullptr && block_desc == nullptr) {
+      block_desc = op->Op()->Block();
+    }
+  }
+  PADDLE_ENFORCE(block_desc != nullptr, "blockdesc should not be nullptr");
+  return block_desc;
+}
+
 class ControlFlowGraph;
 class AnalysisVarPass : public ir::Pass {
  protected:
@@ -59,8 +71,7 @@ class AnalysisVarPass : public ir::Pass {
   // check op has subblock or not
   bool OpHasSubBlock(OpDesc* desc) const;
 
-  BlockDesc* GetBlockDescFromOp() const;
-
+ private:
   // Reuse Node Pool, Owned.
   mutable OrderedNodePairPool pool_;
   // controlflow Graph
@@ -87,6 +98,8 @@ class ControlFlowGraph {
   const std::set<std::string> Use(ir::Node* op) const;
   const std::vector<ir::Node*> Ops() const;
   std::vector<ir::Node*>& Ops();
+  const std::vector<OpDesc*> OpDescs() const;
+  std::vector<OpDesc*>& OpDescs();
 
   // for ssa-graph nodes
   ir::Node* GetNodeFromVarName(const std::string& name, ir::Node* op) const;
@@ -104,10 +117,10 @@ class ControlFlowGraph {
   VarSetMap live_in_;
   // variables lived after run current op.
   VarSetMap live_out_;
-  VarSetMap uses_;              // op inputs
-  VarSetMap defs_;              // op outputs
-  std::vector<ir::Node*> ops_;  // op sequence by topology sort
-  std::vector<OpDesc*> op_descs_;
+  VarSetMap uses_;                 // op inputs
+  VarSetMap defs_;                 // op outputs
+  std::vector<ir::Node*> ops_;     // op sequence by topology sort
+  std::vector<OpDesc*> op_descs_;  // op descs
 };
 
 template <typename Callback>
