@@ -20,7 +20,7 @@ import six
 from .framework import Program, default_main_program, Variable
 from . import core
 
-__all__ = ['Executor', 'global_scope', 'scope_guard', '_switch_scope']
+__all__ = ['Executor', 'global_scope', 'scope_guard']
 
 g_scope = core.Scope()
 
