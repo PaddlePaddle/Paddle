@@ -413,7 +413,7 @@ class Executor(object):
             >>> fluid.layers.assign(hidden,out)
             >>> loss = fluid.layers.mean(out)
             >>> adam = fluid.optimizer.Adam()
-	    >>> adam.minimize(loss)
+						>>> adam.minimize(loss)
 
             >>> cpu = core.CPUPlace()
             >>> exe = fluid.Executor(cpu)
