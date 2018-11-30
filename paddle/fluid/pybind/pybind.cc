@@ -287,7 +287,9 @@ PYBIND11_MODULE(core, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-      .def("_dtype", [](Tensor &self) { return self.type(); });
+      .def("_place", [](Tensor &self) { return self.place(); })
+      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
+
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -665,6 +667,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("is_gpu_place", [](platform::Place &self) { return platform::is_gpu_place(self); })
+      .def("device_id", [](platform::Place &self) { return boost::get<platform::CUDAPlace>(self).device; })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
@@ -677,6 +681,7 @@ All parameter, weight, gradient are variables in Paddle.
                            const platform::CUDAPinnedPlace &cuda_pinned_place) {
         self = cuda_pinned_place;
       });
+
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
