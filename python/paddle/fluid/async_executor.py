@@ -64,7 +64,7 @@ class AsyncExecutor(object):
 
     Args:
         place(fluid.CPUPlace|None): indicate the executor run on which device.
-                                   Only CPUPlace supported
+                                    Only CPUPlace supported
 
     Note:
         For debugging complicated network in parallel-GPUs, you can test it
