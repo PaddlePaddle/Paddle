@@ -20,6 +20,8 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
+DECLARE_bool(rpc_disable_reuse_port);
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -98,7 +100,7 @@ class RequestSend final : public RequestBase {
 
   void Process() override {
     std::string varname = GetReqName();
-    VLOG(40) << "RequestSend var_name:" << varname;
+    VLOG(4) << "RequestSend var_name:" << varname;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
@@ -135,7 +137,7 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string varname = request_.varname();
     int trainer_id = request_.trainer_id();
-    VLOG(40) << "RequestGet " << varname;
+    VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
@@ -181,9 +183,10 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
-    VLOG(40) << "RequestPrefetch, in_var_name: " << in_var_name
-             << " out_var_name: " << out_var_name;
+    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
@@ -191,7 +194,7 @@ class RequestPrefetch final : public RequestBase {
     framework::Variable* outvar = scope->Var(out_var_name);
 
     request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
-                             out_var_name);
+                             out_var_name, table_name);
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
@@ -231,8 +234,8 @@ class RequestCheckpointNotify final : public RequestBase {
     std::string checkpoint_dir = request_->OutVarname();
     int trainer_id = request_->GetTrainerId();
 
-    VLOG(40) << "RequestCheckpointNotify notify: " << checkpoint_notify
-             << ", dir: " << checkpoint_dir;
+    VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
+            << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
                              trainer_id, checkpoint_dir);
@@ -246,11 +249,25 @@ class RequestCheckpointNotify final : public RequestBase {
 };
 
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(40) << "AsyncGRPCServer is wait server ready";
+  VLOG(4) << "AsyncGRPCServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(40) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
+
+// Define an option subclass in order to disable SO_REUSEPORT for the
+// server socket.
+// Come from:
+// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc
+class NoReusePortOption : public ::grpc::ServerBuilderOption {
+ public:
+  void UpdateArguments(::grpc::ChannelArguments* args) override {
+    args->SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
+
+  void UpdatePlugins(std::vector<std::unique_ptr<::grpc::ServerBuilderPlugin>>*
+                         plugins) override {}
+};
 
 void AsyncGRPCServer::StartServer() {
   ::grpc::ServerBuilder builder;
@@ -259,6 +276,10 @@ void AsyncGRPCServer::StartServer() {
 
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
+  if (FLAGS_rpc_disable_reuse_port) {
+    builder.SetOption(
+        std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+  }
   builder.RegisterService(&service_);
 
   for (auto t : rpc_call_map_) {
@@ -282,15 +303,14 @@ void AsyncGRPCServer::StartServer() {
     reqs.reserve(kRequestBufSize);
 
     for (int i = 0; i < kRequestBufSize; i++) {
-      VLOG(60) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
-               << " I: " << i;
+      VLOG(6) << "TryToRegisterNewOne on RPC NAME: " << rpc_name << " I: " << i;
       TryToRegisterNewOne(rpc_name, i);
     }
 
     for (int i = 0; i < threadnum; i++) {
       rpc_threads_[rpc_name].emplace_back(new std::thread(std::bind(
           &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_name, f)));
-      VLOG(40) << t.first << " creates threads!";
+      VLOG(4) << t.first << " creates threads!";
     }
   }
 
@@ -307,7 +327,7 @@ void AsyncGRPCServer::StartServer() {
     auto& threads = t.second;
     for (size_t i = 0; i < threads.size(); ++i) {
       threads[i]->join();
-      VLOG(40) << t.first << " threads ends!";
+      VLOG(4) << t.first << " threads ends!";
     }
   }
 }
@@ -315,7 +335,7 @@ void AsyncGRPCServer::StartServer() {
 void AsyncGRPCServer::ShutdownQueue() {
   for (auto& t : rpc_cq_) {
     t.second->Shutdown();
-    VLOG(40) << t.first << " queue shutdown!";
+    VLOG(4) << t.first << " queue shutdown!";
   }
 }
 
@@ -324,7 +344,7 @@ void AsyncGRPCServer::ShutDownImpl() {
   is_shut_down_ = true;
   ShutdownQueue();
 
-  VLOG(40) << "server_ shutdown!";
+  VLOG(4) << "server_ shutdown!";
   server_->Shutdown();
 }
 
@@ -332,12 +352,12 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
                                           int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
-    VLOG(40) << "shutdown, do not TryToRegisterNewSendOne";
+    VLOG(4) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
 
-  VLOG(40) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
-           << " REQ ID: " << req_id;
+  VLOG(4) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
+          << " REQ ID: " << req_id;
 
   auto& reqs = rpc_reqs_[rpc_name];
   auto& handler = rpc_call_map_[rpc_name];
@@ -358,7 +378,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
 
   reqs[req_id] = b;
 
-  VLOG(40) << "Create RequestSend status:" << b->Status();
+  VLOG(4) << "Create RequestSend status:" << b->Status();
 }
 
 void AsyncGRPCServer::HandleRequest(
@@ -368,15 +388,15 @@ void AsyncGRPCServer::HandleRequest(
   bool ok = false;
 
   while (true) {
-    VLOG(40) << "HandleRequest " << rpc_name << " wait next";
+    VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      VLOG(30) << "CompletionQueue " << rpc_name << " shutdown!";
+      VLOG(3) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
     int req_id = static_cast<int>(reinterpret_cast<intptr_t>(tag));
-    VLOG(40) << "HandleRequest " << rpc_name << ", req_id:" << req_id
-             << " get next";
+    VLOG(4) << "HandleRequest " << rpc_name << ", req_id:" << req_id
+            << " get next";
 
     auto& reqs = rpc_reqs_[rpc_name];
     RequestBase* base = nullptr;
@@ -386,7 +406,7 @@ void AsyncGRPCServer::HandleRequest(
       base = reqs[req_id];
     }
 
-    VLOG(30) << base->Status2String(rpc_name);
+    VLOG(3) << base->Status2String(rpc_name);
 
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
