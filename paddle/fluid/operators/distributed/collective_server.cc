@@ -37,6 +37,7 @@ CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
 }
 
 void CollectiveServer::Stop() {
+  std::cout << "begin to stop" << std::endl;
   rpc_server_->ShutDown();
   server_thread_->join();
   loop_thread_->join();

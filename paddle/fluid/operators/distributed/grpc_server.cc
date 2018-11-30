@@ -443,12 +443,12 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
                                           int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
-    VLOG(4) << "shutdown, do not TryToRegisterNewSendOne";
+    VLOG(40) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
 
-  VLOG(4) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
-          << " REQ ID: " << req_id;
+  VLOG(40) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
+           << " REQ ID: " << req_id;
 
   auto& reqs = rpc_reqs_[rpc_name];
   auto& handler = rpc_call_map_[rpc_name];

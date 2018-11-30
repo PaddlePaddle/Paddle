@@ -111,11 +111,11 @@ class CollectiveServer final {
  private:
   std::unique_ptr<GetMonomerHandler> get_monomer_handler_;
   std::unique_ptr<GetMonomerBarrierHandler> get_barrier_handler_;
-  std::shared_ptr<distributed::RequestHandler> request_send_handler_;
+  std::unique_ptr<distributed::RequestHandler> request_send_handler_;
 
   std::shared_ptr<distributed::RPCServer> rpc_server_;
-  std::shared_ptr<std::thread> server_thread_;
-  std::shared_ptr<std::thread> loop_thread_;
+  std::unique_ptr<std::thread> server_thread_;
+  std::unique_ptr<std::thread> loop_thread_;
 
   bool ready_{false};
 

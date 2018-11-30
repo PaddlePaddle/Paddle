@@ -64,7 +64,8 @@ void GenerateVars(framework::Scope* scope, platform::Place place,
   paddle::operators::math::set_constant(ctx, tensor, 32.7);
   for (int i = 0; i < 3; ++i) rows->push_back(i);
 
-  std::cout << "generated src:" << distributed::GetSelectedRowsInfo(*slr);
+  std::cout << "generated src:" << distributed::GetSelectedRowsInfo(*slr)
+            << std::endl;
 }
 
 TEST(PREFETCH, GPU) {
@@ -76,7 +77,7 @@ TEST(PREFETCH, GPU) {
   // prepare server
   framework::Scope* server_scope = new framework::Scope();
   GenerateVars(server_scope, place, var_name);
-  auto server = StartServer(ep, 2, server_scope, place);
+  auto server = StartServer(ep, 1, server_scope, place);
   auto rpc_server = server->GetRPCServer();
 
   // prepare client
@@ -89,14 +90,15 @@ TEST(PREFETCH, GPU) {
 
   auto slr =
       client_scope->FindVar(var_name)->GetMutable<framework::SelectedRows>();
-  std::cout << "ReduceSelectedRows:" << distributed::GetSelectedRowsInfo(*slr);
+  std::cout << "ReduceSelectedRows:" << distributed::GetSelectedRowsInfo(*slr)
+            << std::endl;
 
   std::cout << "begin WaitVarBarrier" << std::endl;
   rpc_server->WaitVarBarrier(var_name);
   rpc_server->ClearRegisteredVars();
   server->Stop();
 
+  server.release();
   delete server_scope;
   delete client_scope;
-  server.release();
 }
