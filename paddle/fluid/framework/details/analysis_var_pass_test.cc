@@ -147,7 +147,7 @@ TEST(CFGGraph, IRGraph) {
   // prepare ir graph
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
-  std::vector<OpDesc*>* all_op_descs =
+  const std::vector<OpDesc*>* all_op_descs =
       new std::vector<OpDesc*>(prog.Block(0).AllOps());
   graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
 

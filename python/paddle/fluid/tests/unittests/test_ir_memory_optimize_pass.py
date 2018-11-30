@@ -52,14 +52,13 @@ def simple_fc_net(use_feed):
 
 def fc_with_inplace_net(use_feed):
     x, y = _feed_data_helper(use_feed)
-    program = fluid.Program()
-    with fluid.program_guard(program, startup_program=fluid.Program()):
-        fc = fluid.layers.fc(input=x, size=10, act='relu')
-        reshape = fluid.layers.reshape(x=fc, shape=[2, 5, 3])
-        fc = fluid.layers.reshape(x=reshape, shape=[5, 2, 3])
-        y_predict = fluid.layers.fc(input=fc, size=10, act='softmax')
-        cost = fluid.layers.cross_entropy(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+    fc = fluid.layers.fc(input=x, size=20, act='relu')
+    fc = fluid.layers.fc(input=fc, size=10, act='relu')
+    reshape = fluid.layers.reshape(x=fc, shape=[-1, 2, 5])
+    reshape = fluid.layers.reshape(x=reshape, shape=[-1, 5, 2])
+    y_predict = fluid.layers.fc(input=reshape, size=10, act='softmax')
+    cost = fluid.layers.cross_entropy(input=y_predict, label=y)
+    avg_cost = fluid.layers.mean(cost)
     return avg_cost
 
 

@@ -86,8 +86,8 @@ TEST(Tensor, MutableData) {
 
     // set src_tensor a different type but bigger size.
     // memory block is supposed to be changed.
-    auto* tmp2 = src_tensor.mutable_data<double>(framework::make_ddim({2, 2}),
-                                                 platform::CPUPlace());
+    auto* tmp2 = src_tensor.mutable_data<double>(
+        framework::make_ddim({2, 2, 3}), platform::CPUPlace());
     p4 = reinterpret_cast<float*>(tmp2);
     EXPECT_NE(p1, p4);
   }
