@@ -133,19 +133,19 @@ def rpn_target_assign(bbox_pred,
     Examples:
         .. code-block:: python
 
-        bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
-                          append_batch_size=False, dtype='float32')
-        cls_logits = layers.data(name='cls_logits', shape=[100, 1],
-                          append_batch_size=False, dtype='float32')
-        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
-                          append_batch_size=False, dtype='float32')
-        gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                         append_batch_size=False, dtype='float32')
-        loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
-            fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
-                                          cls_logits=cls_logits,
-                                          anchor_box=anchor_box,
-                                          gt_boxes=gt_boxes)
+		bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+		                  append_batch_size=False, dtype='float32')
+		cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+		                  append_batch_size=False, dtype='float32')
+		anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+		                  append_batch_size=False, dtype='float32')
+		gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+		                 append_batch_size=False, dtype='float32')
+		loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
+		    fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
+		                                  cls_logits=cls_logits,
+		                                  anchor_box=anchor_box,
+		                                  gt_boxes=gt_boxes)
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
