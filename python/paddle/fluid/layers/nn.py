@@ -4414,14 +4414,22 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.5, 0.1, 0.3, 0.1]]
 
         input.lod = [[4, 4]]
+      
+        Computation:
 
-        Then:
+        step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
+               [[0], [2], [1], [0]]
+        step2: merge repeated tokens and remove blank which is 0. Then we get first output sequence:
+               [[2], [1]]
+
+        Finally:
 
         output.data = [[2],
                        [1],
                        [3]]
 
         output.lod = [[2, 1]]
+
 
     Args:
 
@@ -4437,8 +4445,10 @@ def ctc_greedy_decoder(input, blank, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[]] and dims [1, 1].
+        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1].
+                  'Lp' is the sum if all output sequences' length. If all the sequences
+                  in result were empty, the result LoDTensor will be [-1] with 
+                  LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -7088,7 +7098,7 @@ def pad2d(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
-        paddings (tuple|list): The padding size. If padding is a tuple, it must
+        paddings (tuple|list|Variable): The padding size. If padding is a tuple, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Default: padding = [0, 0, 0, 0].
         mode (str): Three modes: constant(default), reflect, edge. Default: constant
@@ -7113,16 +7123,17 @@ def pad2d(input,
     helper = LayerHelper('pad2d', **locals())
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
+    inputs = {'X': input}
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
+
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = paddings
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
     helper.append_op(
-        type='pad2d',
-        inputs={'X': input},
-        outputs={"Out": out},
-        attrs={
-            'paddings': paddings,
-            'mode': mode,
-            'pad_value': pad_value,
-            'data_frmat': data_format
-        })
+        type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     return out
 
