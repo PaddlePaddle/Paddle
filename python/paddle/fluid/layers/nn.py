@@ -326,6 +326,11 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    remote_prefetch = False
+    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
+        remote_prefetch = True
+    if remote_prefetch:
+        assert is_sparse is True and is_distributed is False
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
@@ -339,6 +344,7 @@ def embedding(input,
         attrs={
             'is_sparse': is_sparse,
             'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
             'padding_idx': padding_idx
         })
     return tmp

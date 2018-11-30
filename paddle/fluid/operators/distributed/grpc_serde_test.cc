@@ -130,7 +130,8 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   math::set_constant(ctx, tensor, 31.9);
 
   ::grpc::ByteBuffer msg;
-  operators::distributed::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  operators::distributed::SerializeToByteBuffer("myvar", &var, ctx, &msg,
+                                                "outvar", 0, "table_name");
   EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
