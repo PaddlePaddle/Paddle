@@ -58,7 +58,7 @@ class WhileOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
-    if (!is_test) {  // for train
+    if (!is_test || !run_by_executor_) {  // for Executor or train
       framework::Executor executor(dev_place);
 
       auto ctx = executor.Prepare(*program, block->ID());
@@ -68,7 +68,8 @@ class WhileOp : public framework::OperatorBase {
         executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
                                     true);
       }
-    } else {  // for inference
+    } else {  // for inference NaiveExecutor
+      // Avoid keep creating new operators and scopes for each batch.
       if (!ops_created_) {
         LOG(INFO) << "create operators";
         InitNaiveExecutorForSubblock(*program, &scope);
