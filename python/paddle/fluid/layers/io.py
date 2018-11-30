@@ -943,7 +943,18 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 def shuffle(reader, buffer_size):
     """
-    Shuffle the reader.
+    Creates a data reader whose data output is shuffled.
+    Output from the iterator that created by original reader will be
+    buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
+    is determined by argument buf_size.
+
+    Args:
+        param reader: the original reader whose output will be shuffled.
+        type reader: callable
+        param buf_size: shuffle buffer size.
+        type buf_size: int
+        return: the new reader whose output is shuffled.
+        rtype: callable
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
