@@ -237,6 +237,31 @@ class DistributeTranspiler(object):
         else:
             raise ValueError("must set trainer_id > 0")
 
+    def _get_all_remote_sparse_update_op(self, main_program):
+        sparse_update_ops = []
+        sparse_update_op_types = ["lookup_table"]
+        for op in main_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'remote_prefetch') is True and not op.attr(
+                        'is_distributed'):
+                sparse_update_ops.append(op)
+        return sparse_update_ops
+
+    def _update_remote_sparse_update_op(self, param_varname, height_sections,
+                                        endpint_map, table_names):
+        for op in self.sparse_update_ops:
+            if param_varname in op.input_arg_names:
+                op._set_attr('epmap', endpint_map)
+                op._set_attr('table_names', table_names)
+                op._set_attr('height_sections', height_sections)
+                op._set_attr('trainer_id', self.trainer_id)
+
+    def _is_input_of_remote_sparse_update_op(self, param_name):
+        for op in self.sparse_update_ops:
+            if param_name in op.input_arg_names:
+                return True
+        return False
+
     def transpile(self,
                   trainer_id,
                   program=None,
@@ -300,6 +325,12 @@ class DistributeTranspiler(object):
             self.param_name_to_grad_name[param_var.name] = grad_var.name
             self.grad_name_to_param_name[grad_var.name] = param_var.name
 
+        # get all sparse update ops
+        self.sparse_update_ops = self._get_all_remote_sparse_update_op(
+            self.origin_program)
+        # use_sparse_update_param_name -> split_height_section
+        self.sparse_param_to_height_sections = dict()
+
         # add distributed attrs to program
         self.origin_program._is_distributed = True
         self.origin_program._endpoints = self.pserver_endpoints
@@ -337,6 +368,13 @@ class DistributeTranspiler(object):
                 splited_grad_varname = splited_vars[0].name
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
+                if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
+                    sparse_param_name = self.grad_name_to_param_name[
+                        grad_varname]
+                    if self._is_input_of_remote_sparse_update_op(
+                            sparse_param_name):
+                        self.sparse_param_to_height_sections[
+                            sparse_param_name] = [splited_vars[0].shape[0]]
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
                 index = find_op_by_output_arg(
@@ -407,16 +445,18 @@ class DistributeTranspiler(object):
         all_recv_outputs = []
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
+            table_names = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
+                table_names.append(var.name)
             if self.sync_mode:
                 recv_dep_in = send_barrier_out
             else:
                 # connect deps to send op in async mode
                 recv_dep_in = self.grad_name_to_send_dummy_out[
                     self.param_name_to_grad_name[param_varname]]
-            all_recv_outputs.extend(splited_var)
+
             # get recv op_role_var, if not splited, the grad should have .trainer suffix
             # if splited, grad should be the original grad var name. ParallelExecutor
             # will use op_role_var to get expected device place to run this op.
@@ -426,18 +466,25 @@ class DistributeTranspiler(object):
             if len(splited_trainer_grad) == 1:
                 recv_op_role_var_name = splited_trainer_grad[0].name
 
-            program.global_block().append_op(
-                type="recv",
-                inputs={"X": [recv_dep_in]},
-                outputs={"Out": splited_var},
-                attrs={
-                    "epmap": eps,
-                    "trainer_id": self.trainer_id,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    OP_ROLE_VAR_ATTR_NAME:
-                    [param_varname, recv_op_role_var_name],
-                    "sync_mode": not self.sync_mode
-                })
+            if param_varname in self.sparse_param_to_height_sections:
+                height_sections = self.sparse_param_to_height_sections[
+                    param_varname]
+                self._update_remote_sparse_update_op(
+                    param_varname, height_sections, eps, table_names)
+            else:
+                all_recv_outputs.extend(splited_var)
+                program.global_block().append_op(
+                    type="recv",
+                    inputs={"X": [recv_dep_in]},
+                    outputs={"Out": splited_var},
+                    attrs={
+                        "epmap": eps,
+                        "trainer_id": self.trainer_id,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME:
+                        [param_varname, recv_op_role_var_name],
+                        "sync_mode": not self.sync_mode
+                    })
 
         if self.sync_mode:
             # form a WAW dependency
@@ -455,14 +502,15 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[param_varname]
-            program.global_block().append_op(
-                type="concat",
-                inputs={"X": splited_var},
-                outputs={"Out": [orig_param]},
-                attrs={
-                    "axis": 0,
-                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
-                })
+            if param_varname not in self.sparse_param_to_height_sections:
+                program.global_block().append_op(
+                    type="concat",
+                    inputs={"X": splited_var},
+                    outputs={"Out": [orig_param]},
+                    attrs={
+                        "axis": 0,
+                        RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                    })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
@@ -1421,6 +1469,10 @@ to transpile() call.")
             height_sections = []
             for v in splited_vars:
                 height_sections.append(v.shape[0])
+            sparse_param_name = self.grad_name_to_param_name[orig_var.name]
+            if self._is_input_of_remote_sparse_update_op(sparse_param_name):
+                self.sparse_param_to_height_sections[
+                    sparse_param_name] = height_sections
             program.global_block()._insert_op(
                 index=index + 1,
                 type="split_selected_rows",

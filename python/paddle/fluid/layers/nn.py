@@ -326,6 +326,11 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    remote_prefetch = False
+    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
+        remote_prefetch = True
+    if remote_prefetch:
+        assert is_sparse is True and is_distributed is False
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
@@ -339,6 +344,7 @@ def embedding(input,
         attrs={
             'is_sparse': is_sparse,
             'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
             'padding_idx': padding_idx
         })
     return tmp
@@ -7600,6 +7606,11 @@ def uniform_random_batch_size_like(input,
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 11])
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -7637,6 +7648,10 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            out = layers.gaussian_random(shape=[20, 30])
     """
 
     helper = LayerHelper('gaussian_random', **locals())
@@ -7672,6 +7687,16 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(
+                name="X",
+                shape=[13, 11],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.sampling_id(x)
     """
 
     helper = LayerHelper('sampling_id', **locals())
@@ -7711,6 +7736,14 @@ def gaussian_random_batch_size_like(input,
 
     Returns:
         out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.gaussian_random_batch_size_like(
+                input, shape=[-1, 11], mean=1.0, std=2.0)
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
@@ -7743,6 +7776,12 @@ def sum(x):
 
     Returns:
         out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.sum(input)
     """
 
     helper = LayerHelper('sum', **locals())
@@ -7771,6 +7810,17 @@ def slice(input, axes, starts, ends):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            starts = [1, 0, 2]
+            ends = [3, 3, 4]
+            axes = [0, 1, 2]
+
+            input = layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
@@ -7798,6 +7848,12 @@ def shape(input):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.shape(input)
     """
 
     helper = LayerHelper('shape', **locals())
