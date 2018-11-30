@@ -111,7 +111,6 @@ struct NCCLContextMap {
       {
         int nranks = num_trainers * order_.size();
         NCCLGroupGuard gurad;
-        // for (auto &gpu_id : order_) {
         for (size_t i = 0; i < order_.size(); ++i) {
           int gpu_id = order_[i];
           int rank;

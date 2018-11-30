@@ -84,9 +84,9 @@ void InitDevices(bool init_p2p) {
 #ifdef PADDLE_WITH_CUDA
   try {
     // use user specified GPUs in single-node multi-process mode.
-    auto gpus_str = std::string(std::getenv("PADDLE_GPUS"));
-    if (!gpus_str.empty()) {
-      auto devices_str = paddle::string::Split(gpus_str, ',');
+    char *gpus_cstr = std::getenv("GPU_NUM");
+    if (gpus_cstr) {
+      auto devices_str = paddle::string::Split(std::string(gpus_cstr), ',');
       for (auto id : devices_str) {
         devices.push_back(atoi(id.c_str()));
       }
@@ -105,21 +105,14 @@ void InitDevices(bool init_p2p) {
 
 void InitDevices(bool init_p2p, const std::vector<int> devices) {
   std::vector<platform::Place> places;
-  //   int count = 0;
-  // #ifdef PADDLE_WITH_CUDA
-  //   try {
-  //     count = platform::GetCUDADeviceCount();
-  //   } catch (const std::exception &exp) {
-  //     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  //   }
-  // #endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
-    VLOG(30) << "init device: " << devices[i];
-    // if (devices[i] >= count || devices[i] < 0) {
-    //   LOG(WARNING) << "Invalid devices id.";
-    //   continue;
-    // }
+    // In multi process multi gpu mode, we may have gpuid = 7
+    // but count = 1.
+    if (devices[i] < 0) {
+      LOG(WARNING) << "Invalid devices id.";
+      continue;
+    }
 
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
