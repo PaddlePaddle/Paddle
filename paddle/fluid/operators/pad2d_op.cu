@@ -287,7 +287,8 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
   }
 }
 
-void get_paddings(int* paddings, const framework::ExecutionContext& context) {
+static inline void GetPaddings(int* paddings,
+                               const framework::ExecutionContext& context) {
   auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
     Tensor pads;
@@ -308,7 +309,7 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     int pads[4];
-    get_paddings(pads, context);
+    GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = context.Attr<T>("pad_value");
@@ -386,7 +387,7 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     int pads[4];
-    get_paddings(pads, context);
+    GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));

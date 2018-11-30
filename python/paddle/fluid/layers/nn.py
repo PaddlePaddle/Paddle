@@ -6918,7 +6918,7 @@ def pad2d(input,
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
     inputs = {'X': input}
-    attrs = {'mode': mode, 'pad_value': pad_value, 'data_frmat': data_format}
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
 
     if isinstance(paddings, Variable):
         inputs['Paddings'] = paddings
