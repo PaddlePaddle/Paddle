@@ -79,12 +79,13 @@ def train():
     executor = fluid.Executor(place)
     executor.run(startup_program)
 
+    async_executor = fluid.AsyncExecutor(place)
     main_program = fluid.default_main_program()
     epochs = 10
     filelist = ["train_data/part-%d" % i for i in range(12)]
     for i in range(epochs):
         thread_num = 4
-        executor.run_from_files(
+        async_executor.run(
             main_program,  # This can be changed during iteration
             dataset,  # This can be changed during iteration
             filelist,  # This can be changed during iteration

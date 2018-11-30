@@ -112,23 +112,22 @@ class TestAsyncExecutor(unittest.TestCase):
         executor.run(startup_program)
 
         main_program = fluid.default_main_program()
-        executor = fluid.Executor(place)
+        async_executor = fluid.AsyncExecutor(place)
 
-        self.assertRaises(TypeError, executor.run_from_files)
-        self.assertRaises(TypeError, executor.run_from_files, main_program)
-        self.assertRaises(TypeError, executor.run_from_files, main_program,
+        self.assertRaises(TypeError, async_executor.run)
+        self.assertRaises(TypeError, async_executor.run, main_program)
+        self.assertRaises(TypeError, async_executor.run, main_program,
                           data_feed)
 
         filelist = ['train_data/part-%d' % i for i in range(10)]
-        self.assertRaises(TypeError, executor.run_from_files, main_program,
+        self.assertRaises(TypeError, async_executor.run, main_program,
                           data_feed, filelist)
 
         thread_num = 4
-        self.assertRaises(TypeError, executor.run_from_files, main_program,
+        self.assertRaises(TypeError, async_executor.run, main_program,
                           data_feed, filelist, thread_num)
 
-        executor.run_from_files(main_program, data_feed, filelist, thread_num,
-                                [acc])
+        async_executor.run(main_program, data_feed, filelist, thread_num, [acc])
         fluid.io.save_inference_model("imdb.model", [data.name, label.name],
                                       [acc], executor)
         statinfo = os.stat('imdb.model/__model__')
