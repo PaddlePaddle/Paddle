@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cudnn_lstm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -246,7 +247,7 @@ struct CudnnRNNCache {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -343,7 +344,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -380,7 +381,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto init_c_dims = init_c->dims();
     in_grad->mutable_data<T>(ctx.GetPlace());
     weight_grad->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> zero;
+    math::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
     zero(dev_ctx, in_grad, static_cast<T>(0.0));
     zero(dev_ctx, weight_grad, static_cast<T>(0.0));
 
@@ -486,9 +487,5 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    cudnn_lstm,
-    ops::CudnnLSTMGPUKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    cudnn_lstm_grad,
-    ops::CudnnLSTMGPUGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(cudnn_lstm, ops::CudnnLSTMGPUKernel<float>);
+REGISTER_OP_CUDA_KERNEL(cudnn_lstm_grad, ops::CudnnLSTMGPUGradKernel<float>);
