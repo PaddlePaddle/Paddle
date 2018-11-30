@@ -487,8 +487,8 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    cudnn_lstm,
+    lstm_cudnn,
     ops::CudnnLSTMGPUKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
-    cudnn_lstm_grad,
+    lstm_cudnn_grad,
     ops::CudnnLSTMGPUGradKernel<paddle::platform::CUDADeviceContext, float>);
