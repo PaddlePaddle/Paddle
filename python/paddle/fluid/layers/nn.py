@@ -928,7 +928,7 @@ def dynamic_gru(input,
             emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
             x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            hidden = fluid.layers.dynamic_gru(input=x, dim=hidden_dim)
+            hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
     helper = LayerHelper('gru', **locals())
@@ -3560,6 +3560,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
 
     Examples:
         .. code-block:: python
+
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
             finished_ids, finished_scores = layers.beam_search_decode(
@@ -5057,7 +5058,7 @@ def im2sequence(input,
 
             output.lod = [[4, 4]]
 
-     Examples:
+    Examples:
 
         .. code-block:: python
 
@@ -5845,23 +5846,23 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                   [[41, 42, 43]]]]
             Y.shape = (1, 3, 1, 3)
 
-    And
-        pad_value = -1,
+    	And
+            pad_value = -1,
 
-    Return:
-        Out = [[[[35, 36, 37],
-                  [-1, -1, -1]],
-                [[38, 39, 40],
-                  [-1, -1, -1]],
-                 [[41, 42, 43],
-                  [-1, -1, -1]]],
-                [[[-1, -1, -1],
-                  [-1, -1, -1]],
-                 [[-1, -1, -1],
-                  [-1, -1, -1]],
-                 [[-1, -1, -1],
-                  [-1, -1, -1]]]]
-        Out.shape = (2, 3, 2, 3)
+        Return:
+            Out = [[[[35, 36, 37],
+                     [-1, -1, -1]],
+                    [[38, 39, 40],
+                     [-1, -1, -1]],
+                    [[41, 42, 43],
+                     [-1, -1, -1]]],
+                  [[[-1, -1, -1],
+                    [-1, -1, -1]],
+                   [[-1, -1, -1],
+                    [-1, -1, -1]],
+                   [[-1, -1, -1],
+                    [-1, -1, -1]]]]
+            Out.shape = (2, 3, 2, 3)
 
     Args:
         x (Variable): The input tensor variable.
@@ -6100,6 +6101,7 @@ def image_resize(input,
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+
         'NEAREST' : Nearest neighbor interpolation
 
     Args:
@@ -6755,7 +6757,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
             # or
             z = fluid.layers.data(name="z", shape=[3, 5], dtype="float32")
-            crop = fluid.layers.crop(z, shape=[2, 3])
+            crop = fluid.layers.crop(z, shape=[-1, 2, 3])
 
     """
     helper = LayerHelper('crop', **locals())
@@ -7036,39 +7038,40 @@ def pad2d(input,
     than height-1. And the width dimension has the same condition.
 
     Example:
+        .. code-block:: text
 
-      Given that X is a channel of image from input:
+	      Given that X is a channel of image from input:
 
-      X = [[1, 2, 3],
-           [4, 5, 6]]
+	      X = [[1, 2, 3],
+		   [4, 5, 6]]
 
-      Case 0:
+	      Case 0:
 
-        paddings = [0, 1, 2, 3],
-        mode = 'constant'
-        pad_value = 0
+		paddings = [0, 1, 2, 3],
+		mode = 'constant'
+		pad_value = 0
 
-        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
-               [0, 0, 4, 5, 6, 0, 0, 0]
-               [0, 0, 0, 0, 0, 0, 0, 0]]
+		Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+		       [0, 0, 4, 5, 6, 0, 0, 0]
+		       [0, 0, 0, 0, 0, 0, 0, 0]]
 
-      Case 1:
+	      Case 1:
 
-        paddings = [0, 1, 2, 1],
-        mode = 'reflect'
+		paddings = [0, 1, 2, 1],
+		mode = 'reflect'
 
-        Out = [[3, 2, 1, 2, 3, 2]
-               [6, 5, 4, 5, 6, 5]
-               [3, 2, 1, 2, 3, 2]]
+		Out = [[3, 2, 1, 2, 3, 2]
+		       [6, 5, 4, 5, 6, 5]
+		       [3, 2, 1, 2, 3, 2]]
 
-      Case 2:
+	      Case 2:
 
-        paddings = [0, 1, 2, 1],
-        mode = 'edge'
+		paddings = [0, 1, 2, 1],
+		mode = 'edge'
 
-        Out = [[1, 1, 1, 2, 3, 3]
-               [4, 4, 4, 5, 6, 6]
-               [4, 4, 4, 5, 6, 6]]
+		Out = [[1, 1, 1, 2, 3, 3]
+		       [4, 4, 4, 5, 6, 6]
+		       [4, 4, 4, 5, 6, 6]]
 
 
     Args:
@@ -7305,13 +7308,13 @@ def prelu(x, mode, param_attr=None, name=None):
     Args:
         x (Variable): The input tensor.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-                       weight (alpha).
+          weight (alpha).
         mode (string): The mode for weight sharing. It supports all, channel
-                       and element. all: all elements share same weight
-                       channel:elements in a channel share same weight
-                       element:each element has a weight
+          and element. all: all elements share same weight
+          channel:elements in a channel share same weight
+          element:each element has a weight
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+          will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
