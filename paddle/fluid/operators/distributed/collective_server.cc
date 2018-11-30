@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/collective_server.h"
 
 DEFINE_int32(collective_get_thread_num, 5, "number of threads for rpc get");
-DECLARE_int32(rpc_send_thread_num);
 
 namespace paddle {
 namespace operators {
@@ -43,7 +42,7 @@ void CollectiveServer::Stop() {
   loop_thread_->join();
 }
 
-void CollectiveServer::RegisterSendRPC(framework* scope,
+void CollectiveServer::RegisterSendRPC(framework::Scope* scope,
                                        platform::DeviceContext* dev_ctx) {
   request_send_handler_.reset(new SendMonomerVariableHandler());
   request_send_handler_->SetRPCServer(rpc_server_.get());
@@ -51,8 +50,7 @@ void CollectiveServer::RegisterSendRPC(framework* scope,
   request_send_handler_->SetDevCtx(dev_ctx);
 
   rpc_server_->RegisterRPC(distributed::kRequestSend,
-                           request_send_handler_.get(),
-                           FLAGS_rpc_send_thread_num);
+                           request_send_handler_.get(), 5);
 }
 
 void CollectiveServer::StartServer() {

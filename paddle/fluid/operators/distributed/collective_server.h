@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
@@ -104,7 +105,8 @@ class CollectiveServer final {
 
   void Stop();
 
-  void RegisterSendRPC(framework* scope, platform::DeviceContext* dev_ctx);
+  void RegisterSendRPC(framework::Scope* scope,
+                       platform::DeviceContext* dev_ctx);
 
  private:
   std::unique_ptr<GetMonomerHandler> get_monomer_handler_;

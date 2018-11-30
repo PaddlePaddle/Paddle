@@ -33,9 +33,10 @@ namespace distributed = paddle::operators::distributed;
 
 std::unique_ptr<distributed::CollectiveServer> StartServer(
     const std::string& ep, int fan_in, framework::Scope* scope,
-    platform::DeviceContext* dev_ctx) {
+    const platform::Place& place) {
   distributed::CollectiveServer* server =
       distributed::CollectiveServer::GetInstance(ep, fan_in);
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
 
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar("var1", distributed::kRequestGetMonomerVariable,
@@ -45,11 +46,11 @@ std::unique_ptr<distributed::CollectiveServer> StartServer(
   return std::unique_ptr<distributed::CollectiveServer>(server);
 }
 
-std::unique_ptr<framework::Scope> GenerateVars(platform::Place place) {
+void GenerateVars(framework::Scope* scope, platform::Place place,
+                  const std::string& var_name) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
 
-  framework::Scope* scope = new framework::Scope();
   framework::Variable* var = scope->Var("var1");
   auto* slr = var->GetMutable<framework::SelectedRows>();
   slr->set_height(1000);
@@ -63,53 +64,39 @@ std::unique_ptr<framework::Scope> GenerateVars(platform::Place place) {
   paddle::operators::math::set_constant(ctx, tensor, 32.7);
   for (int i = 0; i < 3; ++i) rows->push_back(i);
 
-  std::cout << "src:" << slr->Info();
-
-  return std::unique_ptr<framework::Scope>(scope);
-}
-
-void Gather(const std::vector<distributed::RemoteVar>& vars,
-            platform::DeviceContext* dev_ctx) {
-  distributed::CollectiveClient* client =
-      distributed::CollectiveClient::GetInstance();
-
-  framework::Scope* scope = new framework::Scope();
-  framework::Variable* var = scope->Var("var1");
-  var->GetMutable<framework::SelectedRows>();
-
-  std::vector<const framework::SelectedRows*> dst;
-  client->Gather(vars, &dst, *dev_ctx, scope);
-  std::cout << "dst:" << dst[0]->Info();
+  std::cout << "generated src:" << distributed::GetSelectedRowsInfo(*slr);
 }
 
 TEST(PREFETCH, GPU) {
   platform::CUDAPlace place;
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& ctx = *pool.Get(place);
 
   std::string ep = "127.0.0.1:7164";
-  auto scope = GenerateVars(place);
+  std::string var_name = "var1";
 
-  auto* v1 = scope->FindVar("var1");
-  std::cout << "var1:" << v1 << std::endl;
-
-  auto server = StartServer(ep, 2, scope.get(), &ctx);
+  // prepare server
+  framework::Scope* server_scope = new framework::Scope();
+  GenerateVars(server_scope, place, var_name);
+  auto server = StartServer(ep, 2, server_scope, place);
   auto rpc_server = server->GetRPCServer();
 
-  distributed::RemoteVar var;
-  var.ep_ = ep;
-  var.var_name_ = "var1";
-  var.rank_id_ = 0;
+  // prepare client
+  framework::Scope* client_scope = new framework::Scope();
+  GenerateVars(client_scope, place, var_name);
 
-  std::vector<distributed::RemoteVar> vars{var};
-  Gather(vars, &ctx);
-  Gather(vars, &ctx);
+  std::vector<std::string> eps{ep};
+  distributed::CollectiveClient::ReduceSelectedRows<float>(eps, var_name,
+                                                           client_scope);
+
+  auto slr =
+      client_scope->FindVar(var_name)->GetMutable<framework::SelectedRows>();
+  std::cout << "ReduceSelectedRows:" << distributed::GetSelectedRowsInfo(*slr);
 
   std::cout << "begin WaitVarBarrier" << std::endl;
-  rpc_server->WaitVarBarrier("var1");
+  rpc_server->WaitVarBarrier(var_name);
   rpc_server->ClearRegisteredVars();
   server->Stop();
 
-  scope.release();
+  delete server_scope;
+  delete client_scope;
   server.release();
 }

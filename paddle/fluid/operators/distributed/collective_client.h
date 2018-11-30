@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
@@ -31,8 +32,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-inline std::string GetSelectedRowsInfo(
-    const framework::SelectedRows& slr) const {
+inline std::string GetSelectedRowsInfo(const framework::SelectedRows& slr) {
   std::stringstream ss;
   ss << "height:" << slr.height() << ", rows:[";
   for (unsigned int i = 0; i < slr.rows().size(); i++) {
@@ -42,17 +42,10 @@ inline std::string GetSelectedRowsInfo(
       ss << slr.rows()[i];
     }
   }
-  ss << "], dims:" << slr.value()->dims();
+  ss << "], dims:" << slr.value().dims();
 
   return ss.str();
 }
-
-template <typename DataType>
-struct ReduceSelectedRow {
-  operator()(const std::vector<std::string>& endpoints,
-             const std::string& var_name, framework::Scope* local_scope,
-             int64_t time_out = FLAGS_rpc_deadline);
-};
 
 class CollectiveClient {
  public:
@@ -63,16 +56,20 @@ class CollectiveClient {
   // TODO(gongwb): Support lodtensor?
   // TODO(gongwb): Implement ringbased gather.
   // https://github.com/baidu-research/baidu-allreduce
-  static bool ReduceSelectedRows(const std::vector<std::string>& endpoints,
+  template <typename T>
+  static void ReduceSelectedRows(const std::vector<std::string>& endpoints,
                                  const std::string& var_name,
                                  framework::Scope* local_scope,
                                  int64_t time_out = FLAGS_rpc_deadline);
 
-  static bool BroadCast(const std::vector<std::string>& endpoints,
+  static void BroadCast(const std::vector<std::string>& endpoints,
                         const platform::DeviceContext& dev_ctx,
                         framework::Scope* scope, const std::string& var_name,
                         int64_t time_out = FLAGS_rpc_deadline);
 };
+
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
+
+#include "paddle/fluid/operators/distributed/collective_client_impl.h"

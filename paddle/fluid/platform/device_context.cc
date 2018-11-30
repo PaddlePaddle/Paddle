@@ -25,7 +25,7 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-platform::DeviceContext* DeviceContextPool::Get(CPUPlace place) {
+platform::DeviceContext* DeviceContextPool::Get(const Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(

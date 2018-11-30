@@ -13,7 +13,7 @@ if(WITH_GRPC)
   grpc_library(sendrecvop_grpc SRCS grpc_bytebuffer_stream.cc sendrecvop_utils.cc grpc_client.cc
         request_handler_impl.cc rpc_client.cc rpc_server.cc grpc_server.cc variable_response.cc grpc_variable_response.cc grpc_serde.cc collective_client.cc collective_server.cc
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows memory)
+      DEPS lod_tensor selected_rows_functor memory)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
@@ -26,7 +26,8 @@ if(WITH_GRPC)
   cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
 
   cc_test(collective_server_test SRCS collective_server_test.cc 
-      DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor  scope math_function SERIAL)
+      DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor
+      selected_rows_functor  scope math_function SERIAL)
   return()
 endif()
 

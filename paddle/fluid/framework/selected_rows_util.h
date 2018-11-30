@@ -30,8 +30,8 @@ void SelectedRowsCopy(const SelectedRows& src, const platform::Place& dst_place,
 
   auto dims = framework::make_ddim(
       {static_cast<int64_t>(src.rows().size()), src.value().dims()[1]});
-  auto out_tensor =
-      out.mutable_value()->mutable_data<DataType>(dims, dst_place);
+
+  out.mutable_value()->mutable_data<DataType>(dims, dst_place);
 
   TensorCopy(src.value(), dst_place, dst->mutable_value());
 }
