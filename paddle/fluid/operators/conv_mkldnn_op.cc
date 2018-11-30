@@ -572,7 +572,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         output->set_layout(DataLayout::kMKLDNN);
         output->set_format(GetMKLDNNFormat(*dst_memory_p));
       } else {
-std::cout<<"this is init fp32!!!!!!!!!!!!!"<<std::endl;
         if(src_memory_reorder_p){
           pipeline.push_back(*src_memory_reorder_p);
         } 
@@ -794,7 +793,6 @@ std::cout<<"this is init fp32!!!!!!!!!!!!!"<<std::endl;
         output->set_layout(DataLayout::kMKLDNN);
         output->set_format(GetMKLDNNFormat(*dst_memory_p));
       } else {
-std::cout<<"this is init int8!!!!!!!!!!!!!!"<<std::endl;
         if(src_memory_reorder_p){
           pipeline.push_back(*src_memory_reorder_p);
         }
