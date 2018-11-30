@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "mkldnn.hpp"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -146,7 +146,9 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
+    bool global_stats = is_test || use_global_stats;
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto *mean = ctx.Input<Tensor>("Mean");
@@ -177,13 +179,14 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     T *batch_mean_data = nullptr;
     T *batch_variance_data = nullptr;
 
-    if (!is_test) {
+    if (!global_stats) {
       batch_mean_data = batch_mean->mutable_data<T>(ctx.GetPlace());
       batch_variance_data = batch_variance->mutable_data<T>(ctx.GetPlace());
     }
 
-    auto propagation = is_test == true ? mkldnn::prop_kind::forward_scoring
-                                       : mkldnn::prop_kind::forward_training;
+    auto propagation = global_stats == true
+                           ? mkldnn::prop_kind::forward_scoring
+                           : mkldnn::prop_kind::forward_training;
 
     auto src_tz = paddle::framework::vectorize2int(x->dims());
     auto scale_tz = paddle::framework::vectorize2int(scale->dims());
@@ -199,7 +202,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                     shift->data<T>() + ic, &scaleshift_data);
 
     unsigned flags = mkldnn::use_scale_shift;
-    if (is_test) flags |= mkldnn::use_global_stats;
+    if (global_stats) flags |= mkldnn::use_global_stats;
     if (fuse_with_relu) flags |= mkldnn::fuse_bn_relu;
 
     // create mkldnn memory from input x tensor
@@ -208,7 +211,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // keys for backward pass
     const std::string key = BatchNormMKLDNNHandler::GetHash(
-        src_tz, epsilon, flags, is_test, input_format,
+        src_tz, epsilon, flags, global_stats, input_format,
         ctx.op().Output("SavedMean"));
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
 
@@ -239,7 +242,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         batch_norm_fwd_pd->dst_primitive_desc().desc(), y_data);
 
     std::shared_ptr<batch_norm_fwd> batch_norm_p;
-    if (is_test) {
+    if (global_stats) {
       // create mkldnn memory for stats (as input)
       std::shared_ptr<memory> mean_memory =
           handler.AcquireMeanMemoryFromPrimitive(to_void_cast(mean_data));
@@ -269,7 +272,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*batch_norm_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
-    if (!is_test) {
+    if (!global_stats) {
       // mkldnn only compute stats for current batch
       // so we need compute momentum stats via Eigen lib
       EigenVectorArrayMap<T> batch_mean_e(batch_mean_data, ic);
