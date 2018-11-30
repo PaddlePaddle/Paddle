@@ -405,22 +405,22 @@ class Executor(object):
 
 
         Examples:
+            .. code-block:: python
 
-            >>> data = layers.data(name='X', shape=[1], dtype='float32')
-            >>> hidden = layers.fc(input=data, size=10)
-            >>> layers.assign(hidden, out)
-            >>> loss = layers.mean(out)
-            >>> adam = fluid.optimizer.Adam()
-            >>> adam.minimize(loss)
-
-            >>> cpu = core.CPUPlace()
-            >>> exe = Executor(cpu)
-            >>> exe.run(default_startup_program())
-
-            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> outs = exe.run(
-            >>>     feed={'X': x},
-            >>>     fetch_list=[loss.name])
+                data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                out = fluid.layers.create_tensor(dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                fluid.layers.assign(hidden,out)
+                loss = fluid.layers.mean(out)
+                adam = fluid.optimizer.Adam()
+                adam.minimize(loss)
+                cpu = fluid.core.CPUPlace()
+                exe = fluid.Executor(cpu)
+                exe.run(fluid.default_startup_program())
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                outs = exe.run(
+                    feed={'X': x},
+                    fetch_list=[loss.name])
         """
 
         if self._closed:

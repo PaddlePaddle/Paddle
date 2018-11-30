@@ -134,12 +134,12 @@ class GradientClipByValue(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
-            w_param_attrs = ParamAttr(name=None,
-              initializer=UniformInitializer(low=-1.0, high=1.0, seed=0),
+            w_param_attrs = fluid.ParamAttr(name=None,
+              initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
-              regularizer=L1Decay(1.0),
+              regularizer=fluid.regularizer.L1Decay(1.0),
               trainable=True,
-              clip=GradientClipByValue(-1.0, 1.0))
+              clip=fluid.clip.GradientClipByValue(-1.0, 1.0))
             y_predict = fluid.layers.fc(input=x, size=1, param_attr=w_param_attrs)
     """
 
@@ -185,12 +185,12 @@ class GradientClipByNorm(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
-            w_param_attrs = ParamAttr(name=None,
-              initializer=UniformInitializer(low=-1.0, high=1.0, seed=0),
+            w_param_attrs = fluid.ParamAttr(name=None,
+                  initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
-              regularizer=L1Decay(1.0),
+              regularizer=fluid.regularizer.L1Decay(1.0),
               trainable=True,
-              clip=GradientClipByNorm(clip_norm=2.0))
+              clip=fluid.clip.GradientClipByNorm(clip_norm=2.0))
             y_predict = fluid.layers.fc(input=x, size=1, param_attr=w_param_attrs)
 
     """
