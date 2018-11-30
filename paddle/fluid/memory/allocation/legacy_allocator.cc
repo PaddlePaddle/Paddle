@@ -134,7 +134,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
     for (size_t i = 0; i < devices.size(); ++i) {
       int dev_id = devices[i];
       a_arr[i] = nullptr;
-      platform::SetDeviceId(i);
+      platform::SetDeviceId(dev_id);
       a_arr[i] = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                         new detail::GPUAllocator(dev_id)),
                                     platform::GpuMinChunkSize(),
