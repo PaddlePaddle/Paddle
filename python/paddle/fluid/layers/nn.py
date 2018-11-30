@@ -1152,7 +1152,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
                                            labels. Default: `False`.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: -100
+                            if soft_label is set to False. Default: kIgnoreIndex
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -4856,7 +4856,7 @@ def softmax_with_cross_entropy(logits,
             labels as soft labels. By default, `soft_label` is set to False.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: -100
+                            if soft_label is set to False. Default: kIgnoreIndex
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
                                     when soft_label is False and GPU is used.
