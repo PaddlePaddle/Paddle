@@ -126,7 +126,7 @@ TEST(CTR_READER, read_data) {
 
   LoDTensorBlockingQueueHolder queue_holder;
   int capacity = 64;
-  queue_holder.InitOnce(capacity, {}, false);
+  queue_holder.InitOnce(capacity, false);
 
   std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
 

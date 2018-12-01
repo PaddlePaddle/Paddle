@@ -523,7 +523,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
