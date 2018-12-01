@@ -90,7 +90,7 @@ def ctr_reader(feed_data,
         reader_name = "_".join([name, "reader"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
 
     startup_blk = default_startup_program().current_block()
     reader_var = startup_blk.create_var(name=reader_name)
