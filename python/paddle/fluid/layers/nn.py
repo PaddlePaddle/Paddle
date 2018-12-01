@@ -477,12 +477,10 @@ def lstm(input,
          init_h,
          init_c,
          max_len,
-         dropout_prob,
-         input_size,
          hidden_size,
          num_layers,
+         dropout_prob=0.0,
          is_bidirec=False,
-         dtype='float32',
          is_test=False,
          name=None,
          default_initializer=None,
@@ -531,13 +529,11 @@ def lstm(input,
                        This is a tensor with shape ( num_layers x batch_size x hidden_size )
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
         max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len 
-        dropout_prob(float): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
-                             There is NO dropout work on rnn output of the last RNN layers
-        input_size (int): hidden size of the input tensor
         hidden_size (int): hidden size of the LSTM
         num_layers (int): total layers number of the LSTM
+        dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers
         is_bidirec (bool): If it is bidirectional
-        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
         is_test (bool): If it is in test phrase
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
@@ -577,6 +573,9 @@ def lstm(input,
 
     helper = LayerHelper('cudnn_lstm', **locals())
 
+    dtype = input.dtype
+    input_shape = list(input.shape)
+    input_size = input_shape[-1]
     weight_size = 0
     for i in range(num_layers):
         if i == 0:

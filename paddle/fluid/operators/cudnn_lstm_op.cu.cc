@@ -279,12 +279,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
 
-    /*
-    if (is_test) {
-      TensorCopy(*x, ctx.GetPlace(), out);
-      return;
-    }*/
-
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto *cache_var = ctx.InputVar("Cache");
