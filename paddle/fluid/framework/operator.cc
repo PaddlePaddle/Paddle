@@ -754,7 +754,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
-  if (!transfered_inplace_vars.empty()) {
+  if (run_by_executor_ && !transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
@@ -776,6 +776,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
   }
 }
+
 void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {
