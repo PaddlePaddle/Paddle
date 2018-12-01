@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "pslib.h"
 
 namespace paddle {
 namespace framework {

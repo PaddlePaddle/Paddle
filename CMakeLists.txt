@@ -186,6 +186,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/pslib)     # download mklml package
 include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
