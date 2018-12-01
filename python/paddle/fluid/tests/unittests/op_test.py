@@ -216,6 +216,15 @@ class OpTest(unittest.TestCase):
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
                                       self.dtype)
+
+        if hasattr(self, "cache_name_list"):
+            for name in self.cache_name_list:
+                inputs[name] = block.create_var(
+                    name=name,
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW,
+                    stop_gradient=True)
+
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
