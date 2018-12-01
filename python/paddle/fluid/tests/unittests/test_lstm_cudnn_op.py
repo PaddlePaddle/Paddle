@@ -171,10 +171,9 @@ class TestCUDNNLstmOp(OpTest):
         }
 
     def test_output_with_place(self):
-        if not self.testcuda():
-            pass
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-5)
+        if self.testcuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
 
     def testcuda(self):
         return core.is_compiled_with_cuda()
