@@ -48,6 +48,11 @@ DEFINE_string(
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
+DEFINE_string(miopen_dir, "", "Specify path for loading libMIOpen.so.");
+DEFINE_string(hipblas_dir, "", "Specify path for loading libhipblas.so.");
+DEFINE_string(hiprand_dir, "", "Specify path for loading libhiprand.so.");
+DEFINE_string(rccl_dir, "", "Specify path for loading librccl.so.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -227,6 +232,37 @@ void* GetMKLMLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
+#endif
+}
+
+void* GetMIOpenDsoHandle(){
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so");
+#endif
+}
+
+void* GetHipblasDsoHandle(){
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_hipblas_dir, "libhipblas.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_hipblas_dir, "libhipblas.so");
+#endif
+}
+void* GetHiprandDsoHandle(){
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_hiprand_dir, "libhiprand.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_hiprand_dir, "libhiprand.so");
+#endif
+}
+
+void* GetRCCLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so");
 #endif
 }
 
