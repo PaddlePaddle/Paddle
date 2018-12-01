@@ -40,6 +40,9 @@ class AsyncExecutor {
                    const int thread_num,
                    const std::vector<std::string>& fetch_names,
                    const bool debug = false);
+  void ConfigServer() {}
+  void ConfigWorker() {}
+  void StartServer() {}
 
  private:
   void CreateThreads(ExecutorThreadWorker* worker,

@@ -186,7 +186,6 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
-include(external/pslib)     # download mklml package
 include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
@@ -217,6 +216,9 @@ include(external/warpctc)   # download, build, install warpctc
 include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
+include(external/libmct)
+include(external/pslib_brpc)
+include(external/pslib)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -277,6 +279,7 @@ set(EXTERNAL_LIBS
     protobuf
     zlib
     ${PYTHON_LIBRARIES}
+    pslib
 )
 
 if(WITH_AMD_GPU)
