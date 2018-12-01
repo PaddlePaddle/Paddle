@@ -437,8 +437,17 @@ class OpTest(unittest.TestCase):
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
-                            op_attrs)
+
+        cache_list = None
+        if hasattr(self, "cache_name_list"):
+            cache_list = self.cache_name_list
+        self.op = create_op(
+            self.scope,
+            self.op_type,
+            op_inputs,
+            op_outputs,
+            op_attrs,
+            cache_list=cache_list)
 
         if no_grad_set is None:
             no_grad_set = set()

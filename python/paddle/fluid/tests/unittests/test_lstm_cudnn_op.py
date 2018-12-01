@@ -121,9 +121,9 @@ class TestCUDNNLstmOp(OpTest):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float32
 
-        num_steps = 50
-        batch_size = 20
-        hidden_size = 200
+        num_steps = 20
+        batch_size = 5
+        hidden_size = 20
 
         input_weight_size = (hidden_size * hidden_size) * 4
         hidden_weight_size = (hidden_size * hidden_size) * 4
@@ -174,6 +174,15 @@ class TestCUDNNLstmOp(OpTest):
         if self.testcuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
+
+    def test_grad_with_place(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'W', 'InitH', 'InitC']),
+                ['Out', 'last_h', 'last_c'],
+                max_relative_error=0.02)
 
     def testcuda(self):
         return core.is_compiled_with_cuda()
