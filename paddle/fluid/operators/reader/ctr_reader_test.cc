@@ -139,7 +139,7 @@ TEST(CTR_READER, read_data) {
     file_list.push_back(gz_file_name);
   }
 
-  DataDesc data_desc(batch_size, file_list, "gzip", "plain", {}, {},
+  DataDesc data_desc(batch_size, file_list, "gzip", "svm", {}, {},
                      sparse_slots);
 
   CTRReader reader(queue, thread_num, data_desc);
