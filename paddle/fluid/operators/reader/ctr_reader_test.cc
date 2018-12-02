@@ -132,24 +132,27 @@ TEST(CTR_READER, read_data) {
 
   int batch_size = 3;
   int thread_num = 1;
-  std::vector<std::string> slots = {"6002", "6003"};
+  std::vector<std::string> sparse_slots = {"6002", "6003"};
   std::vector<std::string> file_list;
   for (int i = 0; i < thread_num; ++i) {
     file_list.push_back(gz_file_name);
   }
 
-  CTRReader reader(queue, batch_size, thread_num, slots, file_list);
+  CTRReader reader(queue, batch_size, thread_num, "gzip", "plain", {},
+                   sparse_slots, file_list);
 
   reader.Start();
   size_t batch_num =
       std::ceil(static_cast<float>(ctr_data.size()) / batch_size) * thread_num;
-  check_all_data(ctr_data, slots, label_dims, label_value, data_slot_6002,
-                 data_slot_6003, batch_num, batch_size, queue, &reader);
+  check_all_data(ctr_data, sparse_slots, label_dims, label_value,
+                 data_slot_6002, data_slot_6003, batch_num, batch_size, queue,
+                 &reader);
 
   reader.Shutdown();
 
   reader.Start();
-  check_all_data(ctr_data, slots, label_dims, label_value, data_slot_6002,
-                 data_slot_6003, batch_num, batch_size, queue, &reader);
+  check_all_data(ctr_data, sparse_slots, label_dims, label_value,
+                 data_slot_6002, data_slot_6003, batch_num, batch_size, queue,
+                 &reader);
   reader.Shutdown();
 }
