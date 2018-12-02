@@ -36,6 +36,7 @@ using paddle::framework::LoD;
 using paddle::framework::DDim;
 using paddle::platform::CPUPlace;
 using paddle::framework::make_ddim;
+using paddle::operators::reader::DataDesc;
 
 static void generatedata(const std::vector<std::string>& data,
                          const std::string& file_name) {
@@ -138,8 +139,10 @@ TEST(CTR_READER, read_data) {
     file_list.push_back(gz_file_name);
   }
 
-  CTRReader reader(queue, batch_size, thread_num, "gzip", "plain", {},
-                   sparse_slots, file_list);
+  DataDesc data_desc(batch_size, file_list, "gzip", "plain", {}, {},
+                     sparse_slots);
+
+  CTRReader reader(queue, thread_num, data_desc);
 
   reader.Start();
   size_t batch_num =
