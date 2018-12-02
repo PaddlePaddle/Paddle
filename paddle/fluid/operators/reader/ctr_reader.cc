@@ -95,11 +95,27 @@ class GzipReader : public Reader {
   igzstream gzstream_;
 };
 
-class MultiGzipReader : public Reader {
+class PlainFileReader : public Reader {
  public:
-  explicit MultiGzipReader(const std::vector<std::string>& file_list) {
+  explicit PlainFileReader(const std::string& file_name)
+      : myfile_(file_name.c_str()) {}
+
+  ~PlainFileReader() {}
+
+  bool HasNext() override { return myfile_.peek() != EOF; }
+
+  void NextLine(std::string* line) override { std::getline(myfile_, *line); }
+
+ private:
+  std::ifstream myfile_;
+};
+
+template <typename SingleFileReader>
+class MultiFileReader : public Reader {
+ public:
+  explicit MultiFileReader(const std::vector<std::string>& file_list) {
     for (auto& file : file_list) {
-      readers_.emplace_back(std::make_shared<GzipReader>(file));
+      readers_.emplace_back(std::make_shared<SingleFileReader>(file));
     }
   }
 
@@ -119,7 +135,7 @@ class MultiGzipReader : public Reader {
   }
 
  private:
-  std::vector<std::shared_ptr<GzipReader>> readers_;
+  std::vector<std::shared_ptr<SingleFileReader>> readers_;
   size_t current_reader_index_ = 0;
 };
 
@@ -166,7 +182,7 @@ void ReadThread(const std::vector<std::string>& file_list,
   std::vector<std::unordered_map<std::string, std::vector<int64_t>>> batch_data;
   std::vector<int64_t> batch_label;
 
-  MultiGzipReader reader(file_list);
+  MultiFileReader<GzipReader> reader(file_list);
 
   VLOG(30) << "reader inited";
 
