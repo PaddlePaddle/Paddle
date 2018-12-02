@@ -28,7 +28,7 @@ MIOPEN_DNN_ROUTINE_EACH(DEFINE_WRAP);
 #ifdef PADDLE_USE_DSO
 bool HasMIOpen() {
   std::call_once(miopen_dso_flag,
-               []() { miopen_dso_handle = GetMIOpenDsoHandle(); });
+                 []() { miopen_dso_handle = GetMIOpenDsoHandle(); });
   return miopen_dso_handle != nullptr;
 }
 

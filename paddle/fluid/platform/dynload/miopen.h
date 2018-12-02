@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <miopen/miopen.h>
 #include <dlfcn.h>
+#include <miopen/miopen.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
@@ -52,24 +52,24 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 #ifdef PADDLE_USE_DSO
 
 extern void EnforceMIOPENLoaded(const char* fn_name);
-#define DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> decltype(__name(args...)) {           \
-      using miopen_func = decltype(&::__name);                              \
-      std::call_once(miopen_dso_flag, []() {                                \
+#define DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP(__name)                             \
+  struct DynLoad__##__name {                                                 \
+    template <typename... Args>                                              \
+    auto operator()(Args... args) -> decltype(__name(args...)) {             \
+      using miopen_func = decltype(&::__name);                               \
+      std::call_once(miopen_dso_flag, []() {                                 \
         miopen_dso_handle = paddle::platform::dynload::GetMIOpenDsoHandle(); \
-      });                                                                  \
-      EnforceMIOPENLoaded(#__name);                                         \
-      void* p_##__name = dlsym(miopen_dso_handle, #__name);                 \
-      return reinterpret_cast<miopen_func>(p_##__name)(args...);            \
-    }                                                                      \
-  };                                                                       \
+      });                                                                    \
+      EnforceMIOPENLoaded(#__name);                                          \
+      void* p_##__name = dlsym(miopen_dso_handle, #__name);                  \
+      return reinterpret_cast<miopen_func>(p_##__name)(args...);             \
+    }                                                                        \
+  };                                                                         \
   extern struct DynLoad__##__name __name
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP(__name)                  \
+#define DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP(__name)                 \
   struct DynLoad__##__name {                                     \
     template <typename... Args>                                  \
     auto operator()(Args... args) -> decltype(__name(args...)) { \
@@ -85,47 +85,46 @@ extern void EnforceMIOPENLoaded(const char* fn_name);
  * different cudnn version has different interfaces
  **/
 #define MIOPEN_DNN_ROUTINE_EACH(__macro)                     \
-  __macro(miopenSet4dTensorDescriptor);                     \
-  __macro(miopenGet4dTensorDescriptor);                     \
-  __macro(miopenFindConvolutionForwardAlgorithm);           \
-  __macro(miopenGetConvolutionDescriptor);                  \
-  __macro(miopenCreateTensorDescriptor);                    \
-  __macro(miopenDestroyTensorDescriptor);                   \
-  __macro(miopenSet2dPoolingDescriptor);                    \
-  __macro(miopenGet2dPoolingDescriptor);                    \
-  __macro(miopenCreateConvolutionDescriptor);               \
-  __macro(miopenCreatePoolingDescriptor);                   \
-  __macro(miopenDestroyPoolingDescriptor);                  \
-  __macro(miopenInitConvolutionDescriptor);                 \
-  __macro(miopenDestroyConvolutionDescriptor);              \
-  __macro(miopenDeriveBNTensorDescriptor);                  \
-  __macro(miopenCreate);                                    \
-  __macro(miopenDestroy);                                   \
-  __macro(miopenSetStream);                                 \
-  __macro(miopenActivationForward);                         \
-  __macro(miopenConvolutionForward);                        \
-  __macro(miopenConvolutionBackwardBias);                   \
-  __macro(miopenConvolutionForwardGetWorkSpaceSize);        \
-  __macro(miopenPoolingGetWorkSpaceSize);                   \
-  __macro(miopenPoolingForward);                            \
-  __macro(miopenPoolingBackward);                           \
-  __macro(miopenSoftmaxBackward);                           \
-  __macro(miopenSoftmaxForward);                            \
-  __macro(miopenConvolutionBackwardData);                   \
-  __macro(miopenConvolutionBackwardWeights);                \
-  __macro(miopenFindConvolutionBackwardDataAlgorithm);      \
-  __macro(miopenFindConvolutionBackwardWeightsAlgorithm);   \
-  __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize);\
-  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize);   \
-  __macro(miopenBatchNormalizationForwardTraining);         \
-  __macro(miopenBatchNormalizationForwardInference);        \
-  __macro(miopenBatchNormalizationBackward);                \
-  __macro(miopenCreateActivationDescriptor);                \
-  __macro(miopenSetActivationDescriptor);                   \
-  __macro(miopenGetActivationDescriptor);                   \
+  __macro(miopenSet4dTensorDescriptor);                      \
+  __macro(miopenGet4dTensorDescriptor);                      \
+  __macro(miopenFindConvolutionForwardAlgorithm);            \
+  __macro(miopenGetConvolutionDescriptor);                   \
+  __macro(miopenCreateTensorDescriptor);                     \
+  __macro(miopenDestroyTensorDescriptor);                    \
+  __macro(miopenSet2dPoolingDescriptor);                     \
+  __macro(miopenGet2dPoolingDescriptor);                     \
+  __macro(miopenCreateConvolutionDescriptor);                \
+  __macro(miopenCreatePoolingDescriptor);                    \
+  __macro(miopenDestroyPoolingDescriptor);                   \
+  __macro(miopenInitConvolutionDescriptor);                  \
+  __macro(miopenDestroyConvolutionDescriptor);               \
+  __macro(miopenDeriveBNTensorDescriptor);                   \
+  __macro(miopenCreate);                                     \
+  __macro(miopenDestroy);                                    \
+  __macro(miopenSetStream);                                  \
+  __macro(miopenActivationForward);                          \
+  __macro(miopenConvolutionForward);                         \
+  __macro(miopenConvolutionBackwardBias);                    \
+  __macro(miopenConvolutionForwardGetWorkSpaceSize);         \
+  __macro(miopenPoolingGetWorkSpaceSize);                    \
+  __macro(miopenPoolingForward);                             \
+  __macro(miopenPoolingBackward);                            \
+  __macro(miopenSoftmaxBackward);                            \
+  __macro(miopenSoftmaxForward);                             \
+  __macro(miopenConvolutionBackwardData);                    \
+  __macro(miopenConvolutionBackwardWeights);                 \
+  __macro(miopenFindConvolutionBackwardDataAlgorithm);       \
+  __macro(miopenFindConvolutionBackwardWeightsAlgorithm);    \
+  __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize); \
+  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize);    \
+  __macro(miopenBatchNormalizationForwardTraining);          \
+  __macro(miopenBatchNormalizationForwardInference);         \
+  __macro(miopenBatchNormalizationBackward);                 \
+  __macro(miopenCreateActivationDescriptor);                 \
+  __macro(miopenSetActivationDescriptor);                    \
+  __macro(miopenGetActivationDescriptor);                    \
   __macro(miopenDestroyActivationDescriptor);
 MIOPEN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
-
 
 }  // namespace dynload
 }  // namespace platform

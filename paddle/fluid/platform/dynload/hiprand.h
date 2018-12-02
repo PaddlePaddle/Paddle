@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <hiprand.h>
 #include <dlfcn.h>
+#include <hiprand.h>
 #include <mutex>
 #include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -26,27 +26,27 @@ namespace dynload {
 extern std::once_flag hiprand_dso_flag;
 extern void *hiprand_dso_handle;
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_HIPRAND_WRAP(__name)                             \
-  struct DynLoad__##__name {                                                 \
-    using FUNC_TYPE = decltype(&::__name);                                   \
-    template <typename... Args>                                              \
-    inline hiprandStatus_t operator()(Args... args) {                        \
-      std::call_once(hiprand_dso_flag, []() {                                 \
+#define DECLARE_DYNAMIC_LOAD_HIPRAND_WRAP(__name)                              \
+  struct DynLoad__##__name {                                                   \
+    using FUNC_TYPE = decltype(&::__name);                                     \
+    template <typename... Args>                                                \
+    inline hiprandStatus_t operator()(Args... args) {                          \
+      std::call_once(hiprand_dso_flag, []() {                                  \
         hiprand_dso_handle = paddle::platform::dynload::GetHiprandDsoHandle(); \
-      });                                                                    \
-      void *p_##__name = dlsym(hiprand_dso_handle, #__name);                  \
-      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
-    }                                                                        \
-  };                                                                         \
+      });                                                                      \
+      void *p_##__name = dlsym(hiprand_dso_handle, #__name);                   \
+      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);                 \
+    }                                                                          \
+  };                                                                           \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_HIPRAND_WRAP(__name) \
-  struct DynLoad__##__name {                     \
-    template <typename... Args>                  \
+  struct DynLoad__##__name {                      \
+    template <typename... Args>                   \
     hiprandStatus_t operator()(Args... args) {    \
-      return __name(args...);                    \
-    }                                            \
-  };                                             \
+      return __name(args...);                     \
+    }                                             \
+  };                                              \
   extern DynLoad__##__name __name
 #endif
 

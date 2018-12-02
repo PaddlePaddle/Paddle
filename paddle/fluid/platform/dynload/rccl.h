@@ -28,7 +28,7 @@ extern void* rccl_dso_handle;
 
 #ifdef PADDLE_USE_DSO
 
-#define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name)                   \
+#define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name)                           \
   struct DynLoad__##__name {                                             \
     template <typename... Args>                                          \
     auto operator()(Args... args) -> decltype(__name(args...)) {         \

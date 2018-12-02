@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <hipblas.h>
 #include <dlfcn.h>
+#include <hipblas.h>
 #include <mutex>
 #include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -35,45 +35,45 @@ extern void *hipblas_dso_handle;
  * note: default dynamic linked libs
  */
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP(__name)                             \
-  struct DynLoad__##__name {                                                 \
-    using FUNC_TYPE = decltype(&::__name);                                   \
-    template <typename... Args>                                              \
-    inline hipblasStatus_t operator()(Args... args) {                         \
-      std::call_once(hipblas_dso_flag, []() {                                 \
+#define DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP(__name)                              \
+  struct DynLoad__##__name {                                                   \
+    using FUNC_TYPE = decltype(&::__name);                                     \
+    template <typename... Args>                                                \
+    inline hipblasStatus_t operator()(Args... args) {                          \
+      std::call_once(hipblas_dso_flag, []() {                                  \
         hipblas_dso_handle = paddle::platform::dynload::GetHipblasDsoHandle(); \
-      });                                                                    \
-      void *p_##__name = dlsym(hipblas_dso_handle, #__name);                  \
-      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
-    }                                                                        \
-  };                                                                         \
+      });                                                                      \
+      void *p_##__name = dlsym(hipblas_dso_handle, #__name);                   \
+      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);                 \
+    }                                                                          \
+  };                                                                           \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_HIPBLAS_WRAP(__name)     \
-  struct DynLoad__##__name {                         \
-    template <typename... Args>                      \
+  struct DynLoad__##__name {                          \
+    template <typename... Args>                       \
     inline hipblasStatus_t operator()(Args... args) { \
-      return __name(args...);                        \
-    }                                                \
-  };                                                 \
+      return __name(args...);                         \
+    }                                                 \
+  };                                                  \
   extern DynLoad__##__name __name
 #endif
 
 #define HIPBLAS_BLAS_ROUTINE_EACH(__macro) \
-  __macro(hipblasSaxpy);                \
-  __macro(hipblasDaxpy);                \
-  __macro(hipblasSgemv);                \
-  __macro(hipblasDgemv);                \
-  __macro(hipblasSgemm);                \
-  __macro(hipblasDgemm);                \
-  __macro(hipblasHgemm);                \
-  __macro(hipblasSgeam);                \
-  __macro(hipblasDgeam);                \
-  __macro(hipblasCreate);               \
-  __macro(hipblasDestroy);              \
-  __macro(hipblasSetStream);            \
-  __macro(hipblasSetPointerMode);       \
-  __macro(hipblasGetPointerMode);       \
+  __macro(hipblasSaxpy);                   \
+  __macro(hipblasDaxpy);                   \
+  __macro(hipblasSgemv);                   \
+  __macro(hipblasDgemv);                   \
+  __macro(hipblasSgemm);                   \
+  __macro(hipblasDgemm);                   \
+  __macro(hipblasHgemm);                   \
+  __macro(hipblasSgeam);                   \
+  __macro(hipblasDgeam);                   \
+  __macro(hipblasCreate);                  \
+  __macro(hipblasDestroy);                 \
+  __macro(hipblasSetStream);               \
+  __macro(hipblasSetPointerMode);          \
+  __macro(hipblasGetPointerMode);          \
   __macro(hipblasSgemmBatched);            \
   __macro(hipblasDgemmBatched);            \
   __macro(hipblasSgemmStridedBatched);     \
