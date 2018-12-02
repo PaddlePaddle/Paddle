@@ -73,6 +73,21 @@ static inline void parse_line(
   }
 }
 
+// label slot1:fea_sign slot2:fea_sign slot1:fea_sign
+static inline void parse_svm_line(const std::string& line) {}
+
+// label,dense_fea,dense_fea,sparse_fea,sparse_fea
+static inline void parse_csv_line(const std::string& line,
+                                  const std::vector<std::string>& dense_slots,
+                                  const std::vector<std::string>& sparse_slots,
+                                  int64_t* label,
+                                  std::vector<float>* dense_datas,
+                                  std::vector<int64_t>* sparse_datas) {
+  std::vector<std::string> ret;
+  string_split(line, ',', &ret);
+  *label = std::stoi(ret[2]) > 0;
+}
+
 class Reader {
  public:
   virtual ~Reader() {}
@@ -160,10 +175,8 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 }
 
 void ReadThread(const std::vector<std::string>& file_list,
-                const std::string& file_type, const std::string& file_format,
-                const std::vector<std::string>& dense_slots,
-                const std::vector<std::string>& sparse_slots, int batch_size,
-                int thread_id, std::vector<ReaderThreadStatus>* thread_status,
+                const DataDesc& data_desc, int thread_id,
+                std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
   VLOG(3) << "[" << thread_id << "]"
           << " reader thread start! thread_id = " << thread_id;
@@ -175,8 +188,8 @@ void ReadThread(const std::vector<std::string>& file_list,
   VLOG(3) << "set status to running";
 
   std::unordered_map<std::string, size_t> slot_to_index;
-  for (size_t i = 0; i < sparse_slots.size(); ++i) {
-    slot_to_index[sparse_slots[i]] = i;
+  for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
+    slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
   }
 
   std::string line;
@@ -185,25 +198,25 @@ void ReadThread(const std::vector<std::string>& file_list,
   std::vector<int64_t> batch_label;
 
   std::unique_ptr<Reader> reader;
-  if (file_type == "gzip") {
+  if (data_desc.file_type_ == "gzip") {
     reader.reset(new MultiFileReader<GzipReader>(file_list));
-  } else if (file_type == "plain") {
+  } else if (data_desc.file_type_ == "plain") {
     reader.reset(new MultiFileReader<PlainFileReader>(file_list));
   } else {
-    PADDLE_THROW("do not support file format %s", file_type);
+    PADDLE_THROW("do not support file format %s", data_desc.file_type_);
   }
 
   VLOG(3) << "reader inited";
 
   while (reader->HasNext()) {
     batch_data.clear();
-    batch_data.reserve(batch_size);
+    batch_data.reserve(data_desc.batch_size_);
 
     batch_label.clear();
-    batch_label.reserve(batch_size);
+    batch_label.reserve(data_desc.batch_size_);
 
     // read batch_size data
-    for (int i = 0; i < batch_size; ++i) {
+    for (int i = 0; i < data_desc.batch_size_; ++i) {
       if (reader->HasNext()) {
         reader->NextLine(&line);
         std::unordered_map<std::string, std::vector<int64_t>> slot_to_data;
@@ -219,7 +232,7 @@ void ReadThread(const std::vector<std::string>& file_list,
     std::vector<framework::LoDTensor> lod_datas;
 
     // first insert tensor for each sparse_slots
-    for (auto& slot : sparse_slots) {
+    for (auto& slot : data_desc.sparse_slot_ids_) {
       std::vector<size_t> lod_data{0};
       std::vector<int64_t> batch_feasign;
 
