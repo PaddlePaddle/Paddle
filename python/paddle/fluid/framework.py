@@ -276,6 +276,7 @@ class Variable(core.VarBase):
                  stop_gradient=False,
                  is_data=False,
                  **kwargs):
+        core.VarBase.__init__(self)
         self.block = block
         self.error_clip = error_clip
 
@@ -360,6 +361,12 @@ class Variable(core.VarBase):
     def numpy(self, scope):
         tensor = core.get_variable_tensor(scope, self.desc.name())
         return np.array(tensor)
+
+    def backward(self, scope):
+        self._run_backward(scope)
+
+    def grad(self):
+        return np.array(self._grad())
 
     def __str__(self):
         return self.to_string(True)
@@ -983,6 +990,7 @@ class Block(object):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
+        self._op_descs = list()
         self.program = program
         self.removed_vars = collections.OrderedDict()
 
@@ -1238,13 +1246,12 @@ class Block(object):
         if _in_imperative_mode():
             op_desc = core.OpDesc()
             op = Operator(block=self, desc=op_desc, *args, **kwargs)
-            sys.stderr.write('%s %s!!!\n' % (type(op.inputs), type(op.outputs)))
             _imperative_tracer().trace(op, op.inputs, op.outputs)
-            return
-
-        op_desc = self.desc.append_op()
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        else:
+            op_desc = self.desc.append_op()
+            op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.append(op)
+        self._op_descs.append(op_desc)
         return op
 
     def _insert_op(self, index, *args, **kwargs):

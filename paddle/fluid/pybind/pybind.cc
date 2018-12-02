@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -101,8 +102,13 @@ PYBIND11_MODULE(core, m) {
 
   BindException(&m);
 
-  py::class_<imperative::VarBase>(m, "VarBase",
-                                  R"DOC()DOC")
+  py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def("_run_backward",
+           [](imperative::VarBase &self, framework::Scope *scope) {
+             self.RunBackward(scope);
+           })
+      .def("_grad", &imperative::VarBase::Grad)
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
@@ -111,13 +117,14 @@ PYBIND11_MODULE(core, m) {
           },
           py::return_value_policy::reference);
 
-  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase",
-                                           R"DOC()DOC")
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
       .def_property(
           "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
           [](imperative::OpBase &self, framework::OpDesc *op_desc) {
-            self.op_desc_ = op_desc;
+            if (op_desc) {
+              self.op_desc_ = op_desc;
+            }
           },
           py::return_value_policy::reference);
 
