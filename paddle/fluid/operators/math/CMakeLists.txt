@@ -1,6 +1,4 @@
-if (NOT WIN32)
-    add_subdirectory(detail)
-endif(NOT WIN32)
+add_subdirectory(detail)
 
 function(math_library TARGET)
     # math_library is a function to create math library.
@@ -41,11 +39,10 @@ math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
 math_library(im2col)
+math_library(sampler)
 
-if (NOT WIN32) # windows do not support avx functions yet.
-    math_library(gru_compute DEPS activation_functions math_function)
-    math_library(lstm_compute DEPS activation_functions)
-endif (NOT WIN32)
+math_library(gru_compute DEPS activation_functions math_function)
+math_library(lstm_compute DEPS activation_functions)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
 math_library(math_function DEPS blas)
@@ -57,9 +54,9 @@ math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function)
-if (NOT WIN32)
-    math_library(matrix_bit_code)
-endif (NOT WIN32)
+
+math_library(matrix_bit_code)
+
 math_library(unpooling)
 math_library(vol2col)
 
@@ -71,11 +68,16 @@ cc_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS sequence_paddin
 cc_test(sequence_pooling_test SRCS sequence_pooling_test.cc DEPS sequence_pooling)
 if(WITH_GPU)
     nv_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function)
-    nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu DEPS selected_rows_functor math_function)
+    nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu.cc DEPS selected_rows_functor math_function)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
-cc_library(jit_kernel 
-    SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_rnn.cc
-    DEPS cpu_info cblas)
+
+set(JIT_KERNEL_SRCS jit_kernel.cc jit_kernel_blas.cc jit_kernel_exp.cc jit_kernel_rnn.cc jit_kernel_crf_decode.cc jit_kernel_layer_norm.cc)
+set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce)
+if(WITH_XBYAK)
+    list(APPEND JIT_KERNEL_SRCS jit_gen.cc jit_code.cc)
+    list(APPEND JIT_KERNEL_DEPS xbyak)
+endif()
+cc_library(jit_kernel SRCS ${JIT_KERNEL_SRCS} DEPS ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS jit_kernel_test.cc DEPS jit_kernel)

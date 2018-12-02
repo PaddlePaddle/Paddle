@@ -31,11 +31,10 @@ function(windows_symbolic TARGET)
 endfunction()
 
 add_subdirectory(ir)
-if (NOT WIN32)
 add_subdirectory(details)
-endif (NOT WIN32)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
+proto_library(async_executor_proto SRCS data_feed.proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
@@ -68,11 +67,7 @@ if(WITH_GPU)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
-if (NOT WIN32)
-  cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
-else()
-  cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
-endif (NOT WIN32)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -122,13 +117,9 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
-if (NOT WIN32)
+cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler)
-else()
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor)
-endif(NOT WIN32)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -136,44 +127,62 @@ cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
+cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto)
+if(NOT WIN32)
+cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
+  shape_inference data_transform lod_tensor profiler)
+endif(NOT WIN32)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-if (NOT WIN32)
-py_proto_compile(framework_py_proto SRCS framework.proto)
+py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
-add_custom_command(TARGET framework_py_proto POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-    COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
-    COMMENT "Copy generated python proto into directory paddle/fluid/proto."
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+if (NOT WIN32)
+  add_custom_command(TARGET framework_py_proto POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+      COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+else(NOT WIN32)
+  string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+  add_custom_command(TARGET framework_py_proto POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+          COMMAND copy /Y *.py ${proto_dstpath}
+          COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif(NOT WIN32)
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
+cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
-cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
 if(WITH_DISTRIBUTE)
-  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr graph_to_program_pass)
+  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr graph_to_program_pass variable_helper)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
-  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
+  if(NOT WIN32)
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator variable_helper)
+  else(NOT WIN32)
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
+  endif(NOT WIN32)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
- 
-if (NOT WIN32)
+
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
         graph build_strategy
-        fast_threaded_ssa_graph_executor)
-endif() # NOT WIN32
+        fast_threaded_ssa_graph_executor variable_helper)
 
+cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper)
+
+cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -189,3 +198,6 @@ cc_test(tuple_test SRCS tuple_test.cc )
 if (NOT WIN32)
 cc_test(rw_lock_test SRCS rw_lock_test.cc)
 endif (NOT WIN32)
+
+cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
+cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)

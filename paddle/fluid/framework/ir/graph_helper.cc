@@ -15,7 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include <algorithm>
 #include <deque>
+#include <fstream>
+#include <iosfwd>
+#include <ostream>
 #include <unordered_set>
+
+DEFINE_string(print_sub_graph_dir, "",
+              "FLAGS_print_sub_graph_dir is used "
+              "to print the nodes of sub_graphs.");
 
 namespace paddle {
 namespace framework {
@@ -120,19 +127,25 @@ size_t GraphNum(const Graph &graph) {
   std::deque<ir::Node *> q_nodes;
   std::vector<std::unordered_set<ir::Node *>> graph_nodes;
   std::unordered_set<ir::Node *> g_nodes;
+  // q_set used to record records in the queue.
+  std::unordered_set<ir::Node *> q_set;
   size_t graph_count = 0;
 
-  auto traverse_nodes = [&visited_nodes,
-                         &q_nodes](const std::vector<ir::Node *> &nodes) {
-    std::copy_if(
-        nodes.begin(), nodes.end(), std::back_inserter(q_nodes),
-        [&visited_nodes](Node *node) { return !visited_nodes.count(node); });
+  auto traverse_nodes = [&visited_nodes, &q_nodes,
+                         &q_set](const std::vector<ir::Node *> &nodes) {
+    for (auto n : nodes) {
+      if (visited_nodes.count(n) == 0 && q_set.count(n) == 0) {
+        q_nodes.push_back(n);
+        q_set.insert(n);
+      }
+    }
   };
 
   while (visited_nodes.size() != nodes.size()) {
     if (!q_nodes.empty()) {
       auto cur_node = q_nodes.front();
       q_nodes.pop_front();
+      q_set.erase(cur_node);
       visited_nodes.insert(cur_node);
       g_nodes.insert(cur_node);
       traverse_nodes(cur_node->inputs);
@@ -146,6 +159,7 @@ size_t GraphNum(const Graph &graph) {
       for (auto &n : nodes) {
         if (visited_nodes.count(n) == 0) {
           q_nodes.push_back(n);
+          q_set.insert(n);
           break;
         }
       }
@@ -156,12 +170,15 @@ size_t GraphNum(const Graph &graph) {
     graph_nodes.emplace_back(g_nodes);
   }
 
-  if (VLOG_IS_ON(10)) {
-    VLOG(10) << "graph_num: " << graph_nodes.size();
-    for (auto &g_n : graph_nodes) {
-      VLOG(10) << "graph_nodes: " << g_n.size();
-      if (g_n.size() < 10) {
-        std::stringstream out;
+  if (FLAGS_print_sub_graph_dir.size()) {
+    if (graph_nodes.size() > 1) {
+      std::stringstream out;
+      for (auto &g_n : graph_nodes) {
+        out << "graph_nodes: " << g_n.size() << "\n";
+      }
+      out << "\n\n";
+      for (auto &g_n : graph_nodes) {
+        out << "graph_nodes: " << g_n.size();
         for (auto &node : g_n) {
           out << "\nNode: " << node->Name() << " in [";
           for (auto &n : node->inputs) {
@@ -173,8 +190,12 @@ size_t GraphNum(const Graph &graph) {
           }
           out << "]";
         }
-        VLOG(10) << out.str();
+        out << "\n\n\n";
       }
+      std::unique_ptr<std::ostream> fout(
+          new std::ofstream(FLAGS_print_sub_graph_dir));
+      PADDLE_ENFORCE(fout->good());
+      *fout << out.str();
     }
   }
 

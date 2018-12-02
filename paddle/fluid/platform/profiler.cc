@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/port.h"
 
-#include <sys/time.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -226,7 +226,7 @@ RecordBlock::~RecordBlock() {
 
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
-                 "Can't enbale profling, since the input state is ",
+                 "Can't enable profiling, since the input state is ",
                  "ProfilerState::kDisabled");
 
   std::lock_guard<std::mutex> l(profiler_mu);

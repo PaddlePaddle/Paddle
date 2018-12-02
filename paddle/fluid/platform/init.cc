@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -35,6 +38,7 @@ std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
+    FLAGS_logtostderr = true;
     argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
@@ -64,7 +68,7 @@ void InitP2P(std::vector<int> devices) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
         } else {
-          cudaSetDevice(devices[i]);
+          platform::CUDADeviceGuard guard(devices[i]);
           cudaDeviceEnablePeerAccess(devices[j], 0);
         }
       }
@@ -112,32 +116,65 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
+
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
-  if (platform::jit::MayIUse(platform::jit::avx512f)) {
-#ifndef __AVX512F__
-    LOG(WARNING) << "AVX512F is available, Please re-compile on local machine";
-#endif
-  }
-  if (platform::jit::MayIUse(platform::jit::avx2)) {
-#ifndef __AVX2__
-    LOG(WARNING) << "AVX2 is available, Please re-compile on local machine";
-#endif
-  }
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
   if (platform::jit::MayIUse(platform::jit::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
 #endif
   }
+
+// Throw some informations when CPU instructions mismatch.
+#define AVX_GUIDE(compiletime, runtime)                                     \
+  LOG(FATAL)                                                                \
+      << "This version is compiled on higher instruction(" #compiletime     \
+         ") system, you may encounter illegal instruction error running on" \
+         " your local CPU machine. Please reinstall the " #runtime          \
+         " version or compile from source code."
+
+#ifdef __AVX512F__
+  if (!platform::jit::MayIUse(platform::jit::avx512f)) {
+    if (platform::jit::MayIUse(platform::jit::avx2)) {
+      AVX_GUIDE(AVX512, AVX2);
+    } else if (platform::jit::MayIUse(platform::jit::avx)) {
+      AVX_GUIDE(AVX512, AVX);
+    } else {
+      AVX_GUIDE(AVX512, NonAVX);
+    }
+  }
+#endif
+
+#ifdef __AVX2__
+  if (!platform::jit::MayIUse(platform::jit::avx2)) {
+    if (platform::jit::MayIUse(platform::jit::avx)) {
+      AVX_GUIDE(AVX2, AVX);
+    } else {
+      AVX_GUIDE(AVX2, NonAVX);
+    }
+  }
+#endif
+
+#ifdef __AVX__
+  if (!platform::jit::MayIUse(platform::jit::avx)) {
+    AVX_GUIDE(AVX, NonAVX);
+  }
+#endif
+#undef AVX_GUIDE
+
+#endif
 }
 
 void InitGLOG(const std::string &prog_name) {
   // glog will not hold the ARGV[0] inside.
   // Use strdup to alloc a new string.
   google::InitGoogleLogging(strdup(prog_name.c_str()));
+#ifndef _WIN32
   google::InstallFailureSignalHandler();
+#endif
 }
 
 }  // namespace framework

@@ -65,7 +65,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            param = fluid.default_main_program().global_block().var('fc.w')
+            param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -165,6 +165,7 @@ def save_vars(executor,
 
         save_vars(
             executor,
+            main_program=main_program,
             dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
@@ -172,10 +173,17 @@ def save_vars(executor,
         save_program = Program()
         save_block = save_program.global_block()
 
+        if main_program is None:
+            main_program = default_main_program()
+        if not isinstance(main_program, Program):
+            raise TypeError("program should be as Program type or None")
+
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
+                continue
+            if each_var.name == main_program._distributed_lookup_table:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
@@ -197,6 +205,16 @@ def save_vars(executor,
                 inputs={'X': save_var_list},
                 outputs={},
                 attrs={'file_path': os.path.join(dirname, filename)})
+
+        # if there is lookup table, the trainer 0 will notify all pserver to save.
+        if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
+            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+            attrs = {}
+            attrs['epmap'] = main_program._endpoints
+            attrs['dir'] = lookup_table_filename
+            attrs['lookup_table'] = main_program._distributed_lookup_table
+            save_block.append_op(
+                type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
 
         executor.run(save_program)
 
@@ -379,10 +397,21 @@ def load_vars(executor,
         load_prog = Program()
         load_block = load_prog.global_block()
 
+        if main_program is None:
+            main_program = default_main_program()
+        if not isinstance(main_program, Program):
+            raise TypeError("program should be as Program type or None")
+
+        load_slice_vars = []
+        for each_var in main_program._slice_vars_and_attrs:
+            load_slice_vars.append(each_var[2].name)
+
         load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
+                continue
+            if each_var.name in load_slice_vars:
                 continue
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
@@ -405,9 +434,6 @@ def load_vars(executor,
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
         executor.run(load_prog)
-
-        if main_program is None:
-            main_program = default_main_program()
 
         # load slice vars on pserver, if have it.
         _load_slice_up_vars(executor, dirname,
@@ -611,22 +637,20 @@ def save_inference_model(dirname,
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
     elif export_for_deployment:
-        if not (bool(target_vars) and all(
-                isinstance(var, Variable) for var in target_vars)):
+        if not (bool(target_vars) and
+                all(isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
     if main_program is None:
         main_program = default_main_program()
 
-    # if there is lookup table, the trainer 0 will notify all pserver to save.
-    if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
-        lookup_table_filename = os.path.join(dirname, "__lookup_table__")
-        _save_lookup_tables_by_notify(executor, lookup_table_filename,
-                                      main_program._distributed_lookup_table,
-                                      main_program._endpoints)
-
-    if not os.path.isdir(dirname):
+    # when a pserver and a trainer running on the same machine, mkdir may conflict
+    try:
         os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     if model_filename is not None:
         model_basename = os.path.basename(model_filename)
     else:
@@ -637,13 +661,21 @@ def save_inference_model(dirname,
     # it can only be loaded for inference directly. If it's false, the whole
     # original program and related meta are saved so that future usage can be
     # more flexible.
+
+    origin_program = main_program.clone()
+
     if export_for_deployment:
         main_program = main_program.clone()
         global_block = main_program.global_block()
+        need_to_remove_op_index = []
         for i, op in enumerate(global_block.ops):
             op.desc.set_is_target(False)
             if op.type == "feed" or op.type == "fetch":
-                global_block._remove_op(i)
+                need_to_remove_op_index.append(i)
+
+        for index in need_to_remove_op_index[::-1]:
+            global_block._remove_op(index)
+
         main_program.desc.flush()
 
         main_program = main_program._prune(targets=target_vars)
@@ -661,8 +693,11 @@ def save_inference_model(dirname,
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
 
+    main_program._copy_dist_param_info_from(origin_program)
+
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
+
     save_persistables(executor, dirname, main_program, params_filename)
 
 
@@ -884,12 +919,16 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
 
     load_prog = Program()
     load_block = load_prog.global_block()
+    need_delete_vars = []
 
     for var_tuple in slice_vars_and_attrs:
         orig_var = var_tuple[0]
         start = var_tuple[1]
         slice_var = var_tuple[2]
-        end = start + reduce(lambda x, y: x * y, slice_var.shape)
+        end = start + slice_var.shape[0]
+
+        orig_var_name = orig_var.name
+        orig_var.name = "{}.origin".format(orig_var_name)
 
         clone_orig_var = load_block.create_var(
             name=orig_var.name,
@@ -909,7 +948,7 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
             type='load',
             inputs={},
             outputs={'Out': [clone_orig_var]},
-            attrs={'file_path': os.path.join(dirname, clone_orig_var.name)})
+            attrs={'file_path': os.path.join(dirname, orig_var_name)})
         load_block.append_op(
             type="slice",
             inputs={'Input': clone_orig_var},
@@ -917,5 +956,9 @@ def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
             attrs={'axes': [0],
                    'starts': [start],
                    'ends': [end]})
+        need_delete_vars.append(clone_orig_var)
 
+    load_block.append_op(
+        type='delete_var',
+        inputs={'X': need_delete_vars}, )
     executor.run(load_prog)

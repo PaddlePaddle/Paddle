@@ -286,11 +286,33 @@ int GRPCVariableResponse::Parse(Source* source) {
           platform::EnableProfiler(platform::ProfilerState::kCPU);
         } else if (profiling == platform::kDisableProfiler &&
                    platform::IsProfileEnabled()) {
-          // TODO(panyx0718): Should we allow to customize file dir.
           platform::DisableProfiler(
               platform::EventSortingKey::kDefault,
-              string::Sprintf("/tmp/profile_ps_%lld", listener_id));
+              string::Sprintf("%s_%lld", FLAGS_rpc_server_profile_path,
+                              listener_id));
         }
+        break;
+      }
+      case sendrecv::VariableMessage::kTrainerIdFieldNumber: {
+        uint64_t trainer_id = 0;
+        if (!input.ReadVarint64(&trainer_id)) {
+          return tag;
+        }
+        meta_.set_trainer_id(trainer_id);
+        break;
+      }
+      case sendrecv::VariableMessage::kTableNameFieldNumber: {
+        uint32_t length;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
+          return tag;
+        }
+
+        std::string temp;
+        if (!input.ReadString(&temp, length)) {
+          return tag;
+        }
+
+        meta_.set_table_name(temp);
         break;
       }
       default: {

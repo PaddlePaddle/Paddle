@@ -112,20 +112,42 @@ class TestDetection(unittest.TestCase):
 
 class TestPriorBox(unittest.TestCase):
     def test_prior_box(self):
-        data_shape = [3, 224, 224]
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
-        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-        box, var = layers.prior_box(
-            input=conv1,
-            image=images,
-            min_sizes=[100.0],
-            aspect_ratios=[1.],
-            flip=True,
-            clip=True)
-        assert len(box.shape) == 4
-        assert box.shape == var.shape
-        assert box.shape[3] == 4
+        program = Program()
+        with program_guard(program):
+            data_shape = [3, 224, 224]
+            images = fluid.layers.data(
+                name='pixel', shape=data_shape, dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.prior_box(
+                input=conv1,
+                image=images,
+                min_sizes=[100.0],
+                aspect_ratios=[1.],
+                flip=True,
+                clip=True)
+            assert len(box.shape) == 4
+            assert box.shape == var.shape
+            assert box.shape[3] == 4
+
+
+class TestDensityPriorBox(unittest.TestCase):
+    def test_density_prior_box(self):
+        program = Program()
+        with program_guard(program):
+            data_shape = [3, 224, 224]
+            images = fluid.layers.data(
+                name='pixel', shape=data_shape, dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.density_prior_box(
+                input=conv1,
+                image=images,
+                densities=[3, 4],
+                fixed_sizes=[50., 60.],
+                fixed_ratios=[1.0],
+                clip=True)
+            assert len(box.shape) == 4
+            assert box.shape == var.shape
+            assert box.shape[-1] == 4
 
 
 class TestAnchorGenerator(unittest.TestCase):

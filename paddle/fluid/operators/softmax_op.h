@@ -35,8 +35,13 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
     Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
 
-    math::SoftmaxFunctor<DeviceContext, T>()(
+#ifdef PADDLE_ON_INFERENCE
+    math::SoftmaxFunctor<DeviceContext, T, true>()(
         context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
+#else
+    math::SoftmaxFunctor<DeviceContext, T, false>()(
+        context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
+#endif
   }
 };
 

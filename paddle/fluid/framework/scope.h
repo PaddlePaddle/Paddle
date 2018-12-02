@@ -81,6 +81,8 @@ class Scope {
   /// Find if a scope exists in the kid scopes
   bool HasKid(const Scope* scope) const;
 
+  const std::list<Scope*>& kids() const { return kids_; }
+
   // enumerate all the variables current contains.
   std::vector<std::string> LocalVarNames() const;
 
@@ -116,12 +118,17 @@ class Scope {
 
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
-  Scope const* parent_{nullptr};
+  const Scope* parent_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
   mutable std::mutex mutex_;
 };
+
+// Generate some debug string about the inherience structure of scope, quite
+// naive.
+std::string GenScopeTreeDebugInfo(Scope*);
+
 }  // namespace framework
 }  // namespace paddle

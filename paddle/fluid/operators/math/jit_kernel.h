@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>  // for shared_ptr
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/operators/math/jit_kernel_impl.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -26,19 +27,14 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-#define AVX_FLOAT_BLOCK 8
-#define AVX2_FLOAT_BLOCK 8
-#define AVX512_FLOAT_BLOCK 16
-
+// TODO(TJ): remove me
 typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
 class Kernel {
  public:
   Kernel() = default;
   virtual ~Kernel() = default;
+  // TODO(TJ): below members should be deprecated.
   int num_{0};
   int end_{0};
   int rest_{0};
@@ -64,91 +60,95 @@ class KernelPool {
 template <typename T>
 class VMulKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
 class VAddKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
-};
-
-template <typename T>
-class VScalKernel : public Kernel {
- public:
-  virtual void Compute(const T a, const T *x, T *y) const = 0;
-  virtual void Compute(const T a, T *x) const = 0;
-};
-
-template <typename T>
-class VAddBiasKernel : public Kernel {
- public:
-  virtual void Compute(const T a, const T *x, T *y) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
 
 template <typename T>
 class VAddReluKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, const T *y, T *z) const = 0;
+  void (*Compute)(const T *, const T *, T *, int);
 };
+
+template <typename T>
+class VScalKernel : public Kernel {
+ public:
+  // y = a.*x
+  void (*Compute)(const T *, const T *, T *, int);
+};
+
+template <typename T>
+class VAddBiasKernel : public Kernel {
+ public:
+  // y = a.+x
+  void (*Compute)(const T *, const T *, T *, int);
+};
+
+#ifdef PADDLE_WITH_MKLDNN
+template <typename T>
+class EltwiseMulnChw16cNCKernel : public Kernel {
+ public:
+  // nChw16c = nChw16c .* NC
+  void (*Compute)(const float *, const float *, float *, int, int);
+};
+#endif
 
 template <typename T>
 class VActKernel : public Kernel {
  public:
-  virtual void Compute(const T *x, T *y) const = 0;
+  void (*Compute)(const T *, T *, int);
 };
 
 template <typename T>
-class VReluKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VReluKernel : public VActKernel<T> {};
 
 template <typename T>
-class VIdentityKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VIdentityKernel : public VActKernel<T> {};
 
 template <typename T>
-class VExpKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VExpKernel : public VActKernel<T> {};
 
 template <typename T>
-class VSigmoidKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VSigmoidKernel : public VActKernel<T> {};
 
 template <typename T>
-class VTanhKernel : public VActKernel<T> {
- public:
-  virtual void Compute(const T *x, T *y) const = 0;
-};
+class VTanhKernel : public VActKernel<T> {};
 
 template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  virtual void ComputeCtHt(T *gates, const T *ct_1, T *ct, T *ht,
-                           /* below only used in peephole*/
-                           const T *wp_data = nullptr,
-                           T *checked = nullptr) const = 0;
-
   // compute c1 and h1 without c0 or h0
-  virtual void ComputeC1H1(T *gates, T *ct, T *ht,
-                           /* below only used in peephole*/
-                           const T *wp_data = nullptr) const = 0;
+  void (*ComputeC1H1)(lstm_t *, const lstm_attr_t *);
+  void (*ComputeCtHt)(lstm_t *, const lstm_attr_t *);
 };
 
 template <typename T>
 class GRUKernel : public Kernel {
  public:
   // compute h1 without h0
-  virtual void ComputeH1(T *gates, T *ht) const = 0;
-  virtual void ComputeHtPart1(T *gates, const T *ht_1, T *ht) const = 0;
-  virtual void ComputeHtPart2(T *gates, const T *ht_1, T *ht) const = 0;
+  void (*ComputeH1)(gru_t *, const gru_attr_t *);
+  void (*ComputeHtPart1)(gru_t *, const gru_attr_t *);
+  void (*ComputeHtPart2)(gru_t *, const gru_attr_t *);
+};
+
+template <typename T>
+class CRFDecodeKernel : public Kernel {
+ public:
+  virtual void Compute(const int seq_len, const T *x, const T *w, T *alpha,
+                       int *track) const = 0;
+};
+
+template <typename T>
+class LayerNormKernel : public Kernel {
+ public:
+  virtual void Compute(T *x, T *out, T *mean, T *var, const T *scale,
+                       const T *bias, int height,
+                       const float epsilon) const = 0;
 };
 
 }  // namespace jitkernel

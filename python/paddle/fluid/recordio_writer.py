@@ -41,9 +41,6 @@ def convert_reader_to_recordio_file(
     """
     Convert a Python Reader to a recordio file.
 
-    Please see :ref:`api_guide_python_reader` and :ref:`api_guide_reader_op` for
-    details.
-
     Examples:
 
         >>> import paddle.fluid as fluid
