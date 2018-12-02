@@ -200,22 +200,22 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       int num = strtol(endptr, &endptr, 10);
       if (num < 0) {
-        VLOG(1) << "error: the number of ids is a negative number: " << num;
-        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+        VLOG(0) << "error: the number of ids is a negative number: " << num;
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
       } else if (num == 0) {
-        VLOG(1)
+        VLOG(0)
             << "error: the number of ids can not be zero, you need "
                "padding it in data generator; or if there is something wrong"
                " with the data, please check if the data contains unresolvable "
                "characters.";
-        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
       } else if (errno == ERANGE || num > INT_MAX) {
-        VLOG(1) << "error: the number of ids greater than INT_MAX";
-        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+        VLOG(0) << "error: the number of ids greater than INT_MAX";
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
       }
@@ -223,15 +223,15 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         for (int i = 0; i < num; ++i) {
           strtof(endptr, &endptr);
           if (errno == ERANGE) {
-            VLOG(1) << "error: the value is out of the range of "
+            VLOG(0) << "error: the value is out of the range of "
                        "representable values for float";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
           if (i + 1 != num && endptr - str == len) {
-            VLOG(1) << "error: there is a wrong with the number of ids.";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "error: there is a wrong with the number of ids.";
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
@@ -240,30 +240,33 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         for (int i = 0; i < num; ++i) {
           strtoull(endptr, &endptr, 10);
           if (errno == ERANGE) {
-            VLOG(1) << "error: the value is out of the range of "
+            VLOG(0) << "error: the value is out of the range of "
                        "representable values for uint64_t";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
           if (i + 1 != num && endptr - str == len) {
-            VLOG(1) << "error: there is a wrong with the number of ids.";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "error: there is a wrong with the number of ids.";
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
         }
       } else {
-        VLOG(1) << "error: this type<" << all_slots_type_[i]
+        VLOG(0) << "error: this type<" << all_slots_type_[i]
                 << "> is not supported";
         return false;
       }
     }
-    if (endptr - str != len) {
-      VLOG(1) << "error: there is some data at the end of the line.";
-      VLOG(1) << "please check line<" << instance_cout << "> in file<"
-              << filename << ">";
-      return false;
+    while (endptr - str != len) {
+      if (!isspace(*(endptr++))) {
+        VLOG(0)
+            << "error: there is some extra characters at the end of the line.";
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
+                << filename << ">";
+        return false;
+      }
     }
   }
   VLOG(3) << "instances cout: " << instance_cout;
