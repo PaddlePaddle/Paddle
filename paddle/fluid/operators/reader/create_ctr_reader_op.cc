@@ -41,13 +41,16 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    int thread_num = Attr<int>("thread_num");
-    std::vector<std::string> slots = Attr<std::vector<std::string>>("slots");
-    int batch_size = Attr<int>("batch_size");
-    std::vector<std::string> file_list =
-        Attr<std::vector<std::string>>("file_list");
-    out->Reset(std::make_shared<CTRReader>(queue_holder->GetQueue(), batch_size,
-                                           thread_num, slots, file_list));
+    auto thread_num = Attr<int>("thread_num");
+    auto sparse_slots = Attr<std::vector<std::string>>("sparse_slots");
+    auto dense_slots = Attr<std::vector<std::string>>("dense_slots");
+    auto batch_size = Attr<int>("batch_size");
+    auto file_type = Attr<std::string>("file_type");
+    auto file_format = Attr<std::string>("file_format");
+    auto file_list = Attr<std::vector<std::string>>("file_list");
+    out->Reset(std::make_shared<CTRReader>(
+        queue_holder->GetQueue(), batch_size, thread_num, file_type,
+        file_format, dense_slots, sparse_slots, file_list));
   }
 };
 
@@ -58,10 +61,15 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
              "Name of the `LoDTensorBlockingQueueHolder` variable");
     AddAttr<int>("thread_num", "the thread num to read data");
     AddAttr<int>("batch_size", "the batch size of read data");
+    AddAttr<std::string>("file_type", "plain or gzip").SetDefault("plain");
+    AddAttr<std::string>("file_format", "svm or csv").SetDefault("csv");
     AddAttr<std::vector<std::string>>("file_list",
                                       "The list of files that need to read");
     AddAttr<std::vector<std::string>>(
-        "slots", "the slots that should be extract from file");
+        "dense_slots", "the sparse slots id that should be extract from file")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "sparse_slots", "the sparse slots id that should be extract from file");
 
     AddComment(R"DOC(
 			Create CTRReader to support read ctr data with cpp.

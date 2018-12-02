@@ -36,7 +36,9 @@ namespace reader {
 enum ReaderThreadStatus { Running, Stopped };
 
 void ReadThread(const std::vector<std::string>& file_list,
-                const std::vector<std::string>& slots, int batch_size,
+                const std::string& file_type, const std::string& file_format,
+                const std::vector<std::string>& dense_slots,
+                const std::vector<std::string>& sparse_slots, int batch_size,
                 int thread_id, std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue);
 
@@ -47,11 +49,18 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 
 class CTRReader : public framework::FileReader {
  public:
-  explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
-                     int batch_size, int thread_num,
-                     const std::vector<std::string>& slots,
-                     const std::vector<std::string>& file_list)
-      : batch_size_(batch_size), slots_(slots), file_list_(file_list) {
+  CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+            int batch_size, int thread_num, const std::string& file_type,
+            const std::string& file_format,
+            const std::vector<std::string>& dense_slots,
+            const std::vector<std::string>& sparse_slots,
+            const std::vector<std::string>& file_list)
+      : batch_size_(batch_size),
+        file_type_(file_type),
+        file_format_(file_format),
+        dense_slots_(dense_slots),
+        sparse_slots_(sparse_slots),
+        file_list_(file_list) {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     PADDLE_ENFORCE_GT(file_list.size(), 0, "file list should not be empty");
@@ -97,7 +106,8 @@ class CTRReader : public framework::FileReader {
     VLOG(3) << "thread_num " << thread_num_;
     for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
       read_threads_.emplace_back(new std::thread(
-          std::bind(&ReadThread, file_groups_[thread_id], slots_, batch_size_,
+          std::bind(&ReadThread, file_groups_[thread_id], file_type_,
+                    file_format_, dense_slots_, sparse_slots_, batch_size_,
                     thread_id, &read_thread_status_, queue_)));
     }
     monitor_thread_.reset(new std::thread(
@@ -119,7 +129,10 @@ class CTRReader : public framework::FileReader {
  private:
   size_t thread_num_;
   const int batch_size_;
-  const std::vector<std::string> slots_;
+  const std::string file_type_;
+  const std::string file_format_;
+  const std::vector<std::string> dense_slots_;
+  const std::vector<std::string> sparse_slots_;
   const std::vector<std::string> file_list_;
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
   std::vector<std::unique_ptr<std::thread>> read_threads_;
