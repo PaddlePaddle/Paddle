@@ -259,6 +259,13 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         return false;
       }
     }
+    // It may be added '\t' character to the end of the output of reduce
+    // task when processes data by Hadoop(when the output of the reduce
+    // task of Hadoop has only one field, it will add a '\t' at the end
+    // of the line by default), which does not affect the correctness of
+    // the data. Therefore, it should be judged that the data is not
+    // normal when the end of each line of data contains characters
+    // which are not spaces.
     while (endptr - str != len) {
       if (!isspace(*(endptr++))) {
         VLOG(0)
