@@ -26,6 +26,7 @@ class MyLayer(fluid.imperative.PyLayer):
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs[0])
+        self._x_for_debug = x
         return [fluid.layers.elementwise_mul(x, x)]
 
 
@@ -43,6 +44,8 @@ class TestImperative(unittest.TestCase):
             x = l(np.array([1.0, 2.0, -1.0], dtype=np.float32))[0]
             self.assertIsNotNone(x)
             sys.stderr.write("%s output: %s\n" % (x, x.numpy(scope=l._scope)))
+            x.backward(l._scope)
+            sys.stderr.write("grad %s\n" % l._x_for_debug.grad())
 
 
 if __name__ == '__main__':

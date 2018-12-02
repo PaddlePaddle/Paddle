@@ -42,6 +42,11 @@ class PyOpBase : public imperative::OpBase {
   using imperative::OpBase::OpBase;  // Inherit constructors
 };
 
+class PyVarBase : public imperative::VarBase {
+ public:
+  using imperative::VarBase::VarBase;  // Inherit constructors
+};
+
 void BindTracer(pybind11::module* m);
 
 }  // namespace pybind
