@@ -26,10 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
-#if !defined(_WIN32)
 #include "paddle/fluid/recordio/scanner.h"
 #include "paddle/fluid/recordio/writer.h"
-#endif  // _WIN32
 
 namespace paddle {
 namespace framework {
@@ -305,7 +303,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-#if !defined(_WIN32)
 void WriteToRecordIO(recordio::Writer *writer,
                      const std::vector<LoDTensor> &tensor,
                      const platform::DeviceContext &dev_ctx) {
@@ -335,19 +332,7 @@ bool ReadFromRecordIO(recordio::Scanner *scanner,
 
   return true;
 }
-#else
-class Writer {};
-class Scanner {};
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {}
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  PADDLE_ENFORCE("windows didn't supported recordio!.");
-  return true;
-}
-#endif  // _WIN32
+
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
@@ -418,7 +403,7 @@ void LoDTensor::MergeLoDTensor(
     PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
-      auto &offset = sub_lod.back();
+      size_t offset = sub_lod.back();
       for (size_t k = 1; k < lod[j].size(); ++k) {
         sub_lod.push_back(lod[j][k] + offset);
       }

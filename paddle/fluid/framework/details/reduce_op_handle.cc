@@ -27,7 +27,7 @@ namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
+  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
   if (places_.size() == 1) return;
   // the input and output may have dummy var.
@@ -125,7 +125,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(

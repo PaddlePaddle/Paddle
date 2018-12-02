@@ -40,56 +40,21 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/flags.h"
-#include "paddle/fluid/inference/analysis/pass_manager.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class Analyzer : public OrderedRegistry<PassManager> {
+class Analyzer final {
  public:
-  // Register all the pass-managers.
   Analyzer();
 
   void Run(Argument* argument);
 
-  Analyzer& DisableIrPasses(const std::vector<std::string>& passes);
-  Analyzer& IncludeIrPasses(const std::vector<std::string>& passes);
-  Analyzer& IncludeAllIrPasses();
-  Analyzer& SetUseMkldnn(bool use_mkldnn);
-
   DISABLE_COPY_AND_ASSIGN(Analyzer);
 
- private:
-  // All avaiable IR passes.
-  // The bigger fuse comes first, so that the small operators prefer to be
-  // merged in a larger fuse op. The small fusion will not break the pattern of
-  // larger fusion.
-  const std::vector<std::string> all_ir_passes_{{
-      // Manual update the passes here.
-      "infer_clean_graph_pass",         //
-      "attention_lstm_fuse_pass",       //
-      "seqconv_eltadd_relu_fuse_pass",  //
-      "embedding_fc_lstm_fuse_pass",    //
-      "fc_lstm_fuse_pass",              //
-      "mul_lstm_fuse_pass",             //
-      "fc_gru_fuse_pass",               //
-      "mul_gru_fuse_pass",              //
-      "seq_concat_fc_fuse_pass",        //
-      "fc_fuse_pass",                   //
-      "conv_bn_fuse_pass",              //
-      "conv_eltwiseadd_bn_fuse_pass",   //
-#ifdef PADDLE_WITH_MKLDNN
-      "conv_bias_mkldnn_fuse_pass",             //
-      "conv_relu_mkldnn_fuse_pass",             //
-      "conv_elementwise_add_mkldnn_fuse_pass",  //
-#endif
-  }};
-
-  std::unordered_set<std::string> disabled_ir_passes_;
-  // Ir passes to run
-  std::vector<std::string> ir_passes_;
-  bool use_mkldnn_;
+ protected:
+  void RunIrAnalysis(Argument* argument);
 };
 
 }  // namespace analysis

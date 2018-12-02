@@ -43,11 +43,11 @@ class TestDistSimnetBow2x2DenseAsync(TestDistBase):
         self._enforce_place = "CPU"
 
     #FIXME(typhoonzero): fix async tests later
-    def no_test_simnet_bow(self):
+    def notest_simnet_bow(self):
         need_envs = {
             "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '0',
-            'IS_SELF_CONTAINED_LR': '1'
+            'IS_SELF_CONTAINED_LR': '1',
         }
         self.check_with_place(
             "dist_simnet_bow.py",
@@ -79,8 +79,7 @@ class TestDistSimnetBow2x2SparseAsync(TestDistBase):
         self._sync_mode = False
         self._enforce_place = "CPU"
 
-    #FIXME(typhoonzero): fix async tests later
-    def no_test_simnet_bow(self):
+    def test_simnet_bow(self):
         need_envs = {
             "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '1',
@@ -94,7 +93,6 @@ class TestDistSimnetBow2x2SparseAsync(TestDistBase):
 
 
 # FIXME(tangwei): Learningrate variable is not created on pserver.
-"""
 class TestDistSimnetBow2x2LookupTableSync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -147,7 +145,7 @@ class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
             delta=1e-5,
             check_error_log=False,
             need_envs=need_envs)
-"""
+
 
 if __name__ == "__main__":
     unittest.main()

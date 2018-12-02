@@ -26,6 +26,15 @@ class TestDistMnist2x2(TestDistBase):
         self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
+class TestDistMnist2x2Lars(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_mnist_lars.py", delta=1e-5)
+
+
 class TestDistMnist2x2WithMemopt(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -40,8 +49,16 @@ class TestDistMnistAsync(TestDistBase):
         self._sync_mode = False
         self._use_reduce = False
 
-    # FIXME(typhoonzero): fix async mode test later
-    def no_test_dist_train(self):
+    def test_dist_train(self):
+        self.check_with_place("dist_mnist.py", delta=200)
+
+
+class TestDistMnistDcAsgd(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._dc_asgd = True
+
+    def test_se_resnext(self):
         self.check_with_place("dist_mnist.py", delta=200)
 
 

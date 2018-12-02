@@ -26,6 +26,11 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 if(WIN32)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+    add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
+    set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
+    set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
+    set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
 endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
@@ -41,6 +46,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
+option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -62,13 +68,14 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
-option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
+option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
+option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
-option(WITH_INFERENCE    "Compile fluid inference library"              ON)
+option(ON_INFER         "Turn on inference optimization."               OFF)
 option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
@@ -104,6 +111,8 @@ if(ANDROID OR IOS)
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL when cross-compiling for Android and iOS" FORCE)
+    set(WITH_NGRAPH OFF CACHE STRING
+        "Disable nGraph when cross-compiling for Android and iOS" FORCE)
     set(WITH_GOLANG OFF CACHE STRING
         "Disable golang when cross-compiling for Android and iOS" FORCE)
 
@@ -119,6 +128,21 @@ endif()
 if (APPLE OR WIN32)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL for building on mac and windows" FORCE)
+endif()
+
+if (WIN32)
+    set(WITH_AVX OFF CACHE STRING
+            "Disable AVX when compiling for Windows" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+            "Disable DSO when compiling for Windows" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+            "Disable MKL when compiling for Windows" FORCE)
+    set(WITH_DISTRIBUTE OFF CACHE STRING
+            "Disable DISTRIBUTE when compiling for Windows" FORCE)
+    set(WITH_C_API OFF CACHE STRING
+            "Disable C_API when compiling for Windows" FORCE)
+    set(WITH_FLUID_ONLY ON CACHE STRING
+            "Enable FLUID_ONLY when compiling for Windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -172,6 +196,7 @@ include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
+include(external/ngraph)    # download, build, install nGraph
 include(external/swig)      # download, build, install swig
 include(external/boost)     # download boost
 include(external/any)       # download libn::any
@@ -179,13 +204,17 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
-
-if (NOT WIN32)
-# there is no official support of snappystream, warpctc, nccl, cupti in windows
+include(external/rocprim)
+include(external/xxhash)    # download xxhash
+include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+
+if (NOT WIN32)
+# there is no official support of warpctc, nccl, cupti in windows
 include(external/warpctc)   # download, build, install warpctc
 include(cupti)
+include(external/gzstream)
 endif (NOT WIN32)
 
 if(WITH_DISTRIBUTE)
@@ -290,6 +319,14 @@ set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+
+if (ON_INFER)
+    message(STATUS "On inference mode, will take place some specific optimization.")
+    add_definitions(-DPADDLE_ON_INFERENCE)
+else()
+    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
+    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
 
 add_subdirectory(paddle)
 if(WITH_PYTHON)

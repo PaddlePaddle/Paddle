@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -62,7 +63,7 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
   });
 
   size_t op_id = 0;
-  for (auto &op : graph.Get<GraphOps>(kGraphOps)) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(graph)) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;

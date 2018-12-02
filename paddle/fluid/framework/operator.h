@@ -20,8 +20,6 @@ limitations under the License. */
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
@@ -54,6 +52,9 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
+/// Variables with this suffix are the new Gradient.
+constexpr char kNewGradSuffix[] = "@NEWGRAD@";
+
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
@@ -63,12 +64,14 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
+const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
+Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class OperatorBase;
 class ExecutionContext;
 
 /**
- * OperatorBase has the basic element that Net will call to do computation.
+ * OperatorBase has the basic elements that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
  * should always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
@@ -95,6 +98,7 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
+  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
@@ -123,6 +127,8 @@ class OperatorBase {
   //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
+  void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -135,6 +141,8 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // Whether this operator executes in an Executor.
+  bool run_by_executor_{true};
 
  private:
   void GenerateTemporaryNames();
@@ -223,7 +231,7 @@ class ExecutionContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> const T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
@@ -236,7 +244,7 @@ class ExecutionContext {
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const std::string& sub_name) -> T* {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });

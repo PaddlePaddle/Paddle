@@ -190,7 +190,9 @@ class RequestHandler {
   //    }
   virtual bool Handle(const std::string& varname, framework::Scope* scope,
                       framework::Variable* var, framework::Variable** outvar,
-                      const std::string& out_var_name = "") = 0;
+                      const int trainer_id,
+                      const std::string& out_var_name = "",
+                      const std::string& table_name = "") = 0;
 
  protected:
   const bool sync_mode_;

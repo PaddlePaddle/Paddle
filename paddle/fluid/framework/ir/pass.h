@@ -93,6 +93,7 @@ class Pass {
  protected:
   virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
+    return graph;
   }
 
  private:
@@ -196,26 +197,26 @@ struct PassRegistrar : public Registrar {
                 msg)
 
 // Register a new pass that can be applied on the IR.
-#define REGISTER_PASS(pass_type, pass_class)                          \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
-      __reg_pass__##pass_type,                                        \
-      "REGISTER_PASS must be called in global namespace");            \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      __pass_registrar_##pass_type##__(#pass_type);                   \
-  int TouchPassRegistrar_##pass_type() {                              \
-    __pass_registrar_##pass_type##__.Touch();                         \
-    return 0;                                                         \
-  }                                                                   \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      &__pass_tmp_registrar_##pass_type##__ __attribute__((unused)) = \
+#define REGISTER_PASS(pass_type, pass_class)                \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                      \
+      __reg_pass__##pass_type,                              \
+      "REGISTER_PASS must be called in global namespace");  \
+  static ::paddle::framework::ir::PassRegistrar<pass_class> \
+      __pass_registrar_##pass_type##__(#pass_type);         \
+  int TouchPassRegistrar_##pass_type() {                    \
+    __pass_registrar_##pass_type##__.Touch();               \
+    return 0;                                               \
+  }                                                         \
+  static ::paddle::framework::ir::PassRegistrar<pass_class> \
+      &__pass_tmp_registrar_##pass_type##__ UNUSED =        \
           __pass_registrar_##pass_type##__
 
-#define USE_PASS(pass_type)                                           \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
-      __use_pass_itself_##pass_type,                                  \
-      "USE_PASS must be called in global namespace");                 \
-  extern int TouchPassRegistrar_##pass_type();                        \
-  static int use_pass_itself_##pass_type##_ __attribute__((unused)) = \
+#define USE_PASS(pass_type)                           \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \
+      __use_pass_itself_##pass_type,                  \
+      "USE_PASS must be called in global namespace"); \
+  extern int TouchPassRegistrar_##pass_type();        \
+  static int use_pass_itself_##pass_type##_ UNUSED =  \
       TouchPassRegistrar_##pass_type()
 
 }  // namespace ir

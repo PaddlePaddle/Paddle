@@ -22,6 +22,29 @@ ENV HOME /root
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
+# Prepare packages for Python
+RUN apt-get update && \
+    apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev
+
+# Install Python3.6
+RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+    tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
+    ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+    wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
+    tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+
+# Install Python3.7
+RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
+    tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+
+RUN rm -r /root/python_build
+
 RUN apt-get update && \
     apt-get install -y --allow-downgrades patchelf \
     python3 python3-dev python3-pip \
@@ -74,30 +97,48 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 RUN pip3 install -U wheel && \
     pip3 install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip3.6 install -U wheel && \
+    pip3.6 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3.6 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip3.7 install -U wheel && \
+    pip3.7 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3.7 install sphinx-rtd-theme==0.1.9 recommonmark && \
     easy_install -U pip && \
-    pip install -U wheel && \
+    pip install -U pip setuptools wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3 install pre-commit 'ipython==5.3.0' && \
+RUN pip3 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3 install opencv-python && \
-    pip install pre-commit 'ipython==5.3.0' && \
+    pip3.6 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.6 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3.6 install opencv-python && \
+    pip3.7 install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.7 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3.7 install opencv-python && \
+    pip install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
 
 #For docstring checker
 RUN pip3 install pylint pytest astroid isort
+RUN pip3.6 install pylint pytest astroid isort
+RUN pip3.7 install pylint pytest astroid isort
 RUN pip install pylint pytest astroid isort LinkChecker
 
 COPY ./python/requirements.txt /root/
 RUN pip3 install -r /root/requirements.txt
+RUN pip3.6 install -r /root/requirements.txt
+RUN pip3.7 install -r /root/requirements.txt
 RUN pip install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip3 install certifi urllib3[secure]
+RUN pip3.6 install certifi urllib3[secure]
+RUN pip3.7 install certifi urllib3[secure]
 RUN pip install certifi urllib3[secure]
 
 

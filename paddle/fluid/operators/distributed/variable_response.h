@@ -27,6 +27,8 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
+DECLARE_string(rpc_server_profile_path);
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -83,6 +85,7 @@ class VariableResponse {
   inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
+  inline std::string TableName() const { return meta_.table_name(); }
 
   // should call parse first.
   framework::Variable* GetVar() {
@@ -91,6 +94,8 @@ class VariableResponse {
     }
     return scope_->FindVar(meta_.varname());
   }
+
+  int GetTrainerId() { return static_cast<int>(meta_.trainer_id()); }
 
  protected:
   bool ReadRaw(::google::protobuf::io::CodedInputStream* input,

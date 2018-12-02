@@ -1496,6 +1496,9 @@ class Program(object):
             >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
         self._op_role_var = [
@@ -1503,11 +1506,11 @@ class Program(object):
             for var in param_and_grads
         ]
         yield
-        self._op_role_var = []
-        self._current_role = OpRole.Forward
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
 
     @contextlib.contextmanager
-    def _lr_schedule_guard(self):
+    def _lr_schedule_guard(self, is_with_opt=False):
         """
         A with guard to set :code:`LRSched` :code:`OpRole` and
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
@@ -1515,6 +1518,10 @@ class Program(object):
 
         Notes: This is a very low level API. Users should not use it directly.
 
+        Args:
+            is_with_opt: Only set to true if these ops a in the middle
+                 of a bunch of optimize ops so that it can be treated
+                 correctly. For example, sgd->lr_op->sgd->lr_op->sgd.
 
         Examples:
 
@@ -1528,6 +1535,8 @@ class Program(object):
 
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.LRSched
+        if is_with_opt:
+            self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
         # TODO(typhoonzero): how to set target learning rate var
         self._op_role_var = []
         yield
@@ -1689,6 +1698,7 @@ class Program(object):
 
         p._copy_param_info_from(self)
         p._copy_data_info_from(self)
+        p._copy_dist_param_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -1928,6 +1938,25 @@ class Program(object):
             raise ValueError("_copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
+
+    def _copy_dist_param_info_from(self, other):
+        """
+        Copy the information of distributed information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("_copy_dist_param_info_from should be invoked with "
+                            "Program")
+        self._is_distributed = other._is_distributed
+        self._is_chief = other._is_chief
+        self._slice_vars_and_attrs = other._slice_vars_and_attrs
+        self._endpoints = other._endpoints
+        self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):
         """
