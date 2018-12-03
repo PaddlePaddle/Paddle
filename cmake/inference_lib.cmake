@@ -185,8 +185,9 @@ endif ()
 set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid*.*
        ${src_dir}/${module}/api/paddle_*.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "platform")

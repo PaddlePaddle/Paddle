@@ -56,6 +56,13 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
+IF(WIN32)
+    IF(NOT EXISTS "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
+        add_custom_command(TARGET extern_snappy POST_BUILD
+                COMMAND cmake -E copy ${SNAPPY_INSTALL_DIR}/lib/snappy.lib ${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib
+                )
+    ENDIF()
+ENDIF(WIN32)
 
 add_library(snappy STATIC IMPORTED GLOBAL)
 set_property(TARGET snappy PROPERTY IMPORTED_LOCATION ${SNAPPY_LIBRARIES})
