@@ -76,22 +76,6 @@ static inline void parse_line(
 // label slot1:fea_sign slot2:fea_sign slot1:fea_sign
 static inline void parse_svm_line(const std::string& line) {}
 
-// label,dense_fea,dense_fea,sparse_fea,sparse_fea
-static inline void parse_csv_line(const std::string& line,
-                                  const DataDesc& data_desc, int64_t* label,
-                                  std::vector<float>* dense_datas,
-                                  std::vector<int64_t>* sparse_datas) {
-  std::vector<std::string> ret;
-  string_split(line, ',', &ret);
-  *label = std::stol(ret[2]) > 0;
-  for (auto& idx : data_desc.dense_slot_index_) {
-    dense_datas->push_back(std::stof(ret[idx]));
-  }
-  for (auto& idx : data_desc.sparse_slot_index_) {
-    sparse_datas->push_back(std::stol(ret[idx]));
-  }
-}
-
 class Reader {
  public:
   virtual ~Reader() {}
@@ -250,6 +234,132 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
   }
 }
 
+// label dense_fea,dense_fea sparse_fea,sparse_fea
+static inline void parse_csv_line(
+    const std::string& line, const DataDesc& data_desc, int64_t* label,
+    std::vector<std::vector<float>>* dense_datas,
+    std::vector<std::vector<int64_t>>* sparse_datas) {
+  std::vector<std::string> ret;
+  string_split(line, ' ', &ret);
+  *label = std::stol(ret[0]);
+  dense_datas->resize(data_desc.dense_slot_index_.size());
+  for (size_t i = 0; i < data_desc.dense_slot_index_.size(); ++i) {
+    int slot_idx = data_desc.dense_slot_index_[i];
+    auto& slot_data = ret[slot_idx];
+    std::vector<std::string> data_in_slot_str;
+    string_split(ret[slot_idx], ',', &data_in_slot_str);
+    std::vector<float> data_in_slot;
+    for (auto& data_str : data_in_slot_str) {
+      (*dense_datas)[i].push_back(std::stof(data_str));
+    }
+  }
+  sparse_datas->resize(data_desc.sparse_slot_index_.size());
+  for (size_t i = 0; i < data_desc.sparse_slot_index_.size(); ++i) {
+    int slot_idx = data_desc.sparse_slot_index_[i];
+    auto& slot_data = ret[slot_idx];
+    std::vector<std::string> data_in_slot_str;
+    string_split(ret[slot_idx], ',', &data_in_slot_str);
+    std::vector<int64_t> data_in_slot;
+    for (auto& data_str : data_in_slot_str) {
+      (*sparse_datas)[i].push_back(std::stol(data_str));
+    }
+  }
+}
+
+void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
+                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  std::string line;
+  while (reader->HasNext()) {
+    std::vector<int64_t> batch_label;
+    batch_label.reserve(data_desc.batch_size_);
+
+    std::vector<std::vector<std::vector<float>>> batch_dense_data;
+    batch_dense_data.reserve(data_desc.batch_size_);
+
+    std::vector<std::vector<std::vector<int64_t>>> batch_sparse_data;
+    batch_sparse_data.reserve(data_desc.batch_size_);
+
+    // read batch_size data
+    for (int i = 0; i < data_desc.batch_size_; ++i) {
+      if (reader->HasNext()) {
+        reader->NextLine(&line);
+        int64_t label;
+        std::vector<std::vector<float>> dense_datas;
+        std::vector<std::vector<int64_t>> sparse_datas;
+        parse_csv_line(line, data_desc, &label, &dense_datas, &sparse_datas);
+        batch_label.push_back(label);
+        if (!batch_dense_data.empty()) {
+          PADDLE_ENFORCE_EQ(batch_dense_data[0].size(), dense_datas.size(),
+                            "dense data should have the same shape");
+        }
+        batch_dense_data.push_back(dense_datas);
+        batch_sparse_data.push_back(sparse_datas);
+      } else {
+        break;
+      }
+    }
+
+    // the order of output data is label, dense_datas, sparse_datas
+    std::vector<framework::LoDTensor> lod_datas;
+
+    // insert label tensor
+    framework::LoDTensor label_tensor;
+    auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
+        framework::make_ddim({static_cast<int64_t>(batch_label.size()), 1}),
+        platform::CPUPlace());
+    memcpy(label_tensor_data, batch_label.data(),
+           batch_label.size() * sizeof(int64_t));
+    auto dim =
+        framework::make_ddim({static_cast<int64_t>(batch_label.size()), 1});
+    lod_datas.push_back(label_tensor);
+
+    // insert tensor for each dense_slots
+    for (size_t i = 0; i < data_desc.dense_slot_index_.size(); ++i) {
+      framework::LoDTensor lod_tensor;
+      size_t width = batch_dense_data[0][i].size();
+      auto* tensor_data = lod_tensor.mutable_data<float>(
+          framework::make_ddim(
+              {static_cast<int64_t>(batch_dense_data.size()),  // batch_size
+               static_cast<int64_t>(width)}),
+          platform::CPUPlace());
+
+      for (size_t j = 0; j < batch_dense_data.size(); ++j) {
+        auto& dense_data_row = batch_dense_data[j][i];
+        memcpy(tensor_data + j * width, dense_data_row.data(),
+               width * sizeof(float));
+      }
+
+      lod_datas.push_back(lod_tensor);
+    }
+
+    // insert tensor for each sparse_slots
+    for (size_t i = 0; i < data_desc.sparse_slot_index_.size(); ++i) {
+      std::vector<size_t> lod_data{0};
+      std::vector<int64_t> batch_feasign;
+
+      for (size_t row_idx = 0; row_idx < batch_sparse_data.size(); ++row_idx) {
+        auto& sparse_ids = batch_sparse_data[row_idx][i];
+        lod_data.push_back(lod_data.back() + sparse_ids.size());
+        batch_feasign.insert(batch_feasign.end(), sparse_ids.begin(),
+                             sparse_ids.end());
+      }
+
+      framework::LoDTensor lod_tensor;
+      framework::LoD lod{lod_data};
+      lod_tensor.set_lod(lod);
+      int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
+          framework::make_ddim({static_cast<int64_t>(batch_feasign.size()), 1}),
+          platform::CPUPlace());
+      memcpy(tensor_data, batch_feasign.data(),
+             batch_feasign.size() * sizeof(int64_t));
+      lod_datas.push_back(lod_tensor);
+    }
+
+    queue->Push(lod_datas);
+    VLOG(4) << "push one data, queue_size=" << queue->Size();
+  }
+}
+
 void ReadThread(const std::vector<std::string>& file_list,
                 const DataDesc& data_desc, int thread_id,
                 std::vector<ReaderThreadStatus>* thread_status,
@@ -276,6 +386,8 @@ void ReadThread(const std::vector<std::string>& file_list,
 
   if (data_desc.file_format_ == "svm") {
     ReadSvmData(data_desc, reader, queue);
+  } else if (data_desc.file_format_ == "csv") {
+    ReadCsvData(data_desc, reader, queue);
   }
 
   (*thread_status)[thread_id] = Stopped;

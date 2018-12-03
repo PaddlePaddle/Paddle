@@ -159,3 +159,71 @@ TEST(CTR_READER, read_data) {
                  &reader);
   reader.Shutdown();
 }
+
+static void GenereteCsvData(const std::string& file_name,
+                            const std::vector<std::string>& data) {
+  std::ofstream out(file_name.c_str());
+  PADDLE_ENFORCE(out.good(), "open file %s failed!", file_name);
+  for (auto& c : data) {
+    out << c;
+  }
+  out.close();
+  PADDLE_ENFORCE(out.good(), "save file %s failed!", file_name);
+}
+
+static void CheckReadCsvOut(const std::vector<LoDTensor>& out) {
+  ASSERT_EQ(out.size(), 3);
+  ASSERT_EQ(out[0].dims()[1], 1);
+  ASSERT_EQ(out[1].dims()[1], 2);
+  ASSERT_EQ(out[2].dims()[1], 1);
+  for (size_t i = 0; i < out[0].numel(); ++i) {
+    int64_t label = out[0].data<int64_t>()[i];
+    auto& dense_dim = out[1].dims();
+    for (size_t j = 0; j < dense_dim[1]; ++j) {
+      ASSERT_EQ(out[1].data<float>()[i * dense_dim[1] + j],
+                static_cast<float>(label + 0.1));
+    }
+    auto& sparse_lod = out[2].lod();
+    for (size_t j = sparse_lod[0][i]; j < sparse_lod[0][i + 1]; ++j) {
+      ASSERT_EQ(out[2].data<int64_t>()[j], label);
+    }
+  }
+}
+
+TEST(CTR_READER, read_csv_data) {
+  std::string file_name = "test_ctr_reader_data.csv";
+  const std::vector<std::string> csv_data = {
+      "0 0.1,0.1 0,0,0,0\n", "1 1.1,1.1 1,1,1,1\n", "2 2.1,2.1 2,2,2,2\n",
+      "3 3.1,3.1 3,3,3,3\n",
+  };
+  GenereteCsvData(file_name, csv_data);
+
+  LoDTensorBlockingQueueHolder queue_holder;
+  int capacity = 64;
+  queue_holder.InitOnce(capacity, false);
+
+  std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
+
+  int batch_size = 3;
+  int thread_num = 1;
+  std::vector<std::string> file_list;
+  for (int i = 0; i < thread_num; ++i) {
+    file_list.push_back(file_name);
+  }
+  DataDesc data_desc(batch_size, file_list, "plain", "csv", {1}, {2}, {});
+
+  CTRReader reader(queue, thread_num, data_desc);
+
+  for (size_t i = 0; i < 2; ++i) {
+    reader.Start();
+    std::vector<LoDTensor> out;
+    while (true) {
+      reader.ReadNext(&out);
+      if (out.empty()) {
+        break;
+      }
+      CheckReadCsvOut(out);
+    }
+    reader.Shutdown();
+  }
+}
