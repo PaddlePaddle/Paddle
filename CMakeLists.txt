@@ -216,6 +216,9 @@ include(external/warpctc)   # download, build, install warpctc
 include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
+include(external/libmct)
+#include(external/pslib_brpc)
+include(external/pslib)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -276,6 +279,9 @@ set(EXTERNAL_LIBS
     protobuf
     zlib
     ${PYTHON_LIBRARIES}
+    pslib
+    #pslib_brpc
+    libmct
 )
 
 if(WITH_AMD_GPU)
