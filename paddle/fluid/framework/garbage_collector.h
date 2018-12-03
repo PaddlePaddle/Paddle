@@ -19,6 +19,9 @@
 #include <functional>
 #include <memory>
 #include <mutex>  // NOLINT
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -36,6 +39,11 @@ class GarbageCollector {
 
   virtual ~GarbageCollector() {}
 
+  size_t NumOfGarbages() const {
+    std::lock_guard<std::mutex> guard(mutex_);
+    return garbages_->size();
+  }
+
   void Reset() {
     std::lock_guard<std::mutex> guard(mutex_);
     garbages_.reset(new std::deque<T *>());
@@ -49,7 +57,7 @@ class GarbageCollector {
 
   template <typename Container, typename Callback>
   void Add(const Container &objs, Callback &&callback) {
-    std::shared_ptr<std::deque<T *>> clear_deque;
+    std::deque<T *> *clear_deque = nullptr;
     {
       std::lock_guard<std::mutex> guard(mutex_);
       for (auto *obj : objs) {
@@ -58,7 +66,7 @@ class GarbageCollector {
       }
       if (cur_memory_size_ >= max_memory_size_) {
         cur_memory_size_ = 0;
-        clear_deque = garbages_;
+        clear_deque = garbages_.release();
         garbages_.reset(new std::deque<T *>());
       }
     }
@@ -67,6 +75,7 @@ class GarbageCollector {
       callback();
       ClearCallback([clear_deque]() {
         for (auto *obj : *clear_deque) obj->clear();
+        delete clear_deque;
       });
     }
   }
@@ -77,7 +86,7 @@ class GarbageCollector {
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
 
   platform::DeviceContext *dev_ctx_;
-  std::shared_ptr<std::deque<T *>> garbages_;
+  std::unique_ptr<std::deque<T *>> garbages_;
   mutable std::mutex mutex_;
   const size_t max_memory_size_;
   size_t cur_memory_size_ = 0;
@@ -97,6 +106,19 @@ class CPUGarbageCollector : public GarbageCollector<T> {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
+class UnsafeFastGPUGarbageCollector : public GarbageCollector<T> {
+ public:
+  UnsafeFastGPUGarbageCollector(const platform::CUDAPlace &place,
+                                size_t max_memory_size)
+      : GarbageCollector<T>(place, max_memory_size) {}
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override {
+    callback();
+  }
+};
+
+template <typename T>
 class DefaultStreamGarbageCollector : public GarbageCollector<T> {
  public:
   DefaultStreamGarbageCollector(const platform::CUDAPlace &place,
@@ -109,7 +131,7 @@ class DefaultStreamGarbageCollector : public GarbageCollector<T> {
   }
 
   void Wait() const override {
-    static_cast<const platform::CUDADeviceContext *>(this->dev_ctx_)
+    static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
         ->WaitStreamCallback();
   }
 
@@ -126,31 +148,23 @@ class StreamGarbageCollector : public GarbageCollector<T> {
   StreamGarbageCollector(const platform::CUDAPlace &place,
                          size_t max_memory_size)
       : GarbageCollector<T>(place, max_memory_size) {
-    platform::SetDeviceId(place.device);
+    platform::CUDADeviceGuard guard(place.device);
     PADDLE_ENFORCE(cudaStreamCreate(&stream_));
     callback_manager_.reset(new platform::StreamCallbackManager(stream_));
   }
 
   ~StreamGarbageCollector() {
     auto place = boost::get<platform::CUDAPlace>(this->dev_ctx_->GetPlace());
-    platform::SetDeviceId(place.device);
+    platform::CUDADeviceGuard guard(place.device);
     PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
     PADDLE_ENFORCE(cudaStreamDestroy(stream_));
   }
 
-  void Wait() const override {
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-    std::lock_guard<std::mutex> guard(this->mutex_);
-    callback_manager_->Wait();
-  }
+  void Wait() const override { callback_manager_->Wait(); }
 
   cudaStream_t stream() const { return stream_; }
 
  protected:
-  // ClearCallback and Wait()/Reset() cannot be call in multiple threads
-  // But it is not important, because they would not be called in multiple
-  // threads
-  // either in Executor or ParallelExecutor
   void ClearCallback(const std::function<void()> &callback) override {
     callback_manager_->AddCallback(callback);
   }

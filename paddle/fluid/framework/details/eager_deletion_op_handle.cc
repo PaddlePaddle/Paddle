@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 
 namespace paddle {
 namespace framework {
@@ -23,38 +24,38 @@ namespace details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node, const Scope *scope, const platform::Place &place,
-    const std::vector<std::string> &var_names, GarbageCollector<Tensor> *gc,
-    AtomicReferenceCountMap *ref_cnts)
-    : OpHandleBase(node), scope_(scope), gc_(gc), ref_cnts_(ref_cnts) {
+    const std::unordered_set<std::string> &var_names,
+    GarbageCollector<Tensor> *gc, AtomicReferenceCountMap *ref_cnts)
+    : OpHandleBase(node),
+      scope_(scope),
+      var_names_(var_names),
+      gc_(gc),
+      ref_cnts_(ref_cnts) {
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place)) {
     dev_ctx_ = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector<Tensor> *>(gc_)) {
-      platform::SetDeviceId(boost::get<platform::CUDAPlace>(place).device);
+      platform::CUDADeviceGuard guard(
+          boost::get<platform::CUDAPlace>(place).device);
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
+      PADDLE_ENFORCE_NOT_NULL(event_);
     }
   }
 #endif
-
-  for (auto &name : var_names) AddVar(name);
 }
 
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #ifdef PADDLE_WITH_CUDA
   if (event_) {
     auto gpu_place = boost::get<platform::CUDAPlace>(dev_ctx_->GetPlace());
-    platform::SetDeviceId(gpu_place.device);
+    platform::CUDADeviceGuard guard(gpu_place.device);
     PADDLE_ENFORCE(cudaEventDestroy(event_));
   }
 #endif
 }
 
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
-
-void EagerDeletionOpHandle::AddVar(const std::string &name) {
-  var_names_.insert(name);
-}
 
 void EagerDeletionOpHandle::RunImpl() {
   auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();

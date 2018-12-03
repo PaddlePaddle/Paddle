@@ -18,52 +18,47 @@
 namespace paddle {
 namespace platform {
 
-struct StreamCallbackContext {
-  inline StreamCallbackContext(const StreamCallbackManager *manager,
-                               std::function<void()> callback)
-      : manager_(manager), callback_(std::move(callback)) {}
-
-  const StreamCallbackManager *manager_;  // do not own
-  std::function<void()> callback_;
-};
-
-StreamCallbackManager::StreamCallbackManager(const cudaStream_t stream)
-    : stream_(stream), thread_pool_(new ::ThreadPool(1)) {}
-
-void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
-  auto *stream_callback_context =
-      new StreamCallbackContext(this, std::move(callback));
 #if CUDA_VERSION >= 10000
-  PADDLE_ENFORCE(cudaLaunchHostFunc(stream_,
-                                    StreamCallbackManager::StreamCallbackFunc,
-                                    stream_callback_context));
+static void CUDART_CB StreamCallbackFunc(void *user_data);
 #else
-  PADDLE_ENFORCE(
-      cudaStreamAddCallback(stream_, StreamCallbackManager::StreamCallbackFunc,
-                            stream_callback_context, 0));
-#endif
-}
-
-void StreamCallbackManager::Wait() const {
-  thread_pool_.reset(new ::ThreadPool(1));
-}
-
-#if CUDA_VERSION >= 10000
-void CUDART_CB StreamCallbackManager::StreamCallbackFunc(void *user_data)
-#else
-void CUDART_CB StreamCallbackManager::StreamCallbackFunc(cudaStream_t stream,
-                                                         cudaError_t status,
-                                                         void *user_data)
+static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
+                                         cudaError_t status, void *user_data)
 #endif
 {
-  auto *callback_context_ptr =
-      reinterpret_cast<StreamCallbackContext *>(user_data);
-  callback_context_ptr->manager_->thread_pool_->enqueue(
-      [callback_context_ptr]() {
-        std::unique_ptr<StreamCallbackContext> callback_context(
-            callback_context_ptr);
-        callback_context->callback_();
-      });
+  std::unique_ptr<std::function<void()>> func(
+      reinterpret_cast<std::function<void()> *>(user_data));
+  (*func)();
+}
+
+StreamCallbackManager::StreamCallbackManager(const cudaStream_t stream)
+    : stream_(stream), thread_pool_(1) {}
+
+void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
+  auto *callback_func = new std::function<void()>(std::move(callback));
+  auto *func = new std::function<void()>([this, callback_func] {
+    std::lock_guard<std::mutex> lock(mtx_);
+    last_future_ = thread_pool_.enqueue([callback_func] {
+      std::unique_ptr<std::function<void()>> releaser(callback_func);
+      (*callback_func)();
+    });
+  });
+#if CUDA_VERSION >= 10000
+  PADDLE_ENFORCE(cudaLaunchHostFunc(stream_, StreamCallbackFunc, func));
+#else
+  PADDLE_ENFORCE(cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
+#endif
+}
+
+StreamCallbackManager::~StreamCallbackManager() { Wait(); }
+
+void StreamCallbackManager::Wait() const {
+  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (last_future_.valid()) {
+      last_future_.wait();
+    }
+  }
 }
 
 }  // namespace platform

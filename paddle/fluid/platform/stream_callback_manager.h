@@ -18,15 +18,22 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <functional>
+#include <future>  // NOLINT
 #include <memory>
+#include <mutex>  // NOLINT
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 
-// NOTE(zjl): clean StreamCallback to make compilation faster
+// NOTE(zjl): clean StreamCallbackManager to make compilation faster
+// Make StreamCallbackManager thread-safe
 class StreamCallbackManager {
  public:
   explicit StreamCallbackManager(const cudaStream_t stream);
+
+  ~StreamCallbackManager();
 
   void AddCallback(std::function<void()> callback) const;
 
@@ -34,14 +41,9 @@ class StreamCallbackManager {
 
  private:
   const cudaStream_t stream_;
-  mutable std::unique_ptr<::ThreadPool> thread_pool_;
-
-#if CUDA_VERSION >= 10000
-  static void CUDART_CB StreamCallbackFunc(void *user_data);
-#else
-  static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
-                                           cudaError_t status, void *user_data);
-#endif
+  mutable ::ThreadPool thread_pool_;
+  mutable std::mutex mtx_;
+  mutable std::future<void> last_future_;
 };
 
 }  // namespace platform
