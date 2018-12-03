@@ -188,9 +188,13 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_dam, profile) {
+void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -208,6 +212,11 @@ TEST(Analyzer_dam, profile) {
     }
   }
 }
+
+TEST(Analyzer_dam, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
 
 // Check the fuse status
 TEST(Analyzer_dam, fuse_statis) {
