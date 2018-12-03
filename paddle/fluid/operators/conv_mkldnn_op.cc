@@ -336,7 +336,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     int groups = ctx.Attr<int>("groups");
-//std::cout<<"force_fp32_output = "<<force_fp32_output<<std::endl;
+
     if (fuse_residual_conn) {
       PADDLE_ENFORCE(force_fp32_output != true,
                      "residual fusion does not support force output with fp32");
@@ -373,7 +373,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, weights_tz, strides, paddings, dilations, groups,
         ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
-//std::cout<<key<<std::endl;
+
     bool is_INT8 = ctx.HasInput("Scale_in")? true : false;
     
     bool need_s8_to_u8 = false;
@@ -811,7 +811,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         output->set_layout(DataLayout::kMKLDNN);
         output->set_format(GetMKLDNNFormat(*dst_memory_p));
       } else {
-//std::cout<<"this is int8 init"<<std::endl;
         if(src_memory_reorder_p){
           pipeline.push_back(*src_memory_reorder_p);
         }
