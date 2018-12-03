@@ -61,9 +61,7 @@ class OpDesc {
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
 
-  bool HasAttr(const std::string &name) const {
-    return attrs_.find(name) != attrs_.end();
-  }
+  bool HasAttr(const std::string &name) const;
 
   proto::AttrType GetAttrType(const std::string &name) const;
 
