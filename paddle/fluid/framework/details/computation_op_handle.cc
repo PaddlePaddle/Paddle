@@ -31,8 +31,6 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
-  VLOG(10) << "Run Op" << Name();
-
   auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
   };

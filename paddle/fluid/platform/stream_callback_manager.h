@@ -33,7 +33,7 @@ class StreamCallbackManager {
  public:
   explicit StreamCallbackManager(const cudaStream_t stream);
 
-  ~StreamCallbackManager();
+  ~StreamCallbackManager() = default;
 
   void AddCallback(std::function<void()> callback) const;
 
