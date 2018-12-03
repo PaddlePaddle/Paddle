@@ -129,6 +129,15 @@ if (WITH_MKLDNN)
             )
 endif ()
 
+if (WITH_NGRAPH)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/ngraph")
+    copy(ngraph_lib
+            SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
+            DSTS ${dst_dir} ${dst_dir}
+            DEPS ngraph
+            )
+endif ()
+
 if (NOT WIN32)
     if (NOT MOBILE_INFERENCE AND NOT RPI)
         set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")

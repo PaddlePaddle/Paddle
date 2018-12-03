@@ -75,8 +75,13 @@ class AucKernel : public framework::OpKernel<T> {
     const auto *label_data = label->data<int64_t>();
 
     for (size_t i = 0; i < batch_size; i++) {
-      uint32_t binIdx = static_cast<uint32_t>(
-          inference_data[i * inference_width + 1] * num_thresholds);
+      auto predict_data = inference_data[i * inference_width + 1];
+      PADDLE_ENFORCE_LE(predict_data, 1,
+                        "The predict data must less or equal 1.");
+      PADDLE_ENFORCE_GE(predict_data, 0,
+                        "The predict data must gather or equal 0.");
+
+      uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
       if (label_data[i]) {
         (*stat_pos)[binIdx] += 1.0;
       } else {

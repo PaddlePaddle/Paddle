@@ -111,11 +111,11 @@ else()
 endif()
 
 if (NOT WIN32)
-  set(EXTERNAL_LIB "-lrt -ldl -lpthread")
-  set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
-      glog gflags protobuf snappystream snappy z xxhash
-      ${EXTERNAL_LIB})
+set(EXTERNAL_LIB "-lrt -ldl -lpthread")
+set(DEPS ${DEPS}
+    ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
+    glog gflags protobuf snappystream snappy z xxhash
+    ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
