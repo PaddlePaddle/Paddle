@@ -26,9 +26,6 @@ endif(WIN32)
 # paddle_fluid_origin exclude inference api interface
 if(WIN32)
   sep_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
-  if(WITH_GPU AND NOT WITH_DSO)
-    target_link_libraries(paddle_fluid_origin ${cuda_modules})
-  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 endif(WIN32)
@@ -44,9 +41,6 @@ set(SHARED_INFERENCE_SRCS
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
     analysis_config paddle_pass_builder)
-  if(WITH_GPU AND NOT WITH_DSO)
-    target_link_libraries(paddle_fluid ${cuda_modules})
-  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
     analysis_config paddle_pass_builder)
@@ -63,9 +57,6 @@ if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
           DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
   target_link_libraries(paddle_fluid_shared shlwapi)
-  if(WITH_GPU AND NOT WITH_DSO)
-    target_link_libraries(paddle_fluid_origin ${cuda_modules})
-  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
       DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)

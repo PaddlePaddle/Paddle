@@ -31,9 +31,8 @@ INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include zl
 ExternalProject_Add(
     extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
-        #    GIT_REPOSITORY  "https://github.com/madler/zlib.git"
-            GIT_REPOSITORY  "http://admin@172.20.90.14:8080/r/zlib.git"
-#    GIT_TAG         "v1.2.8"
+    GIT_REPOSITORY  "https://github.com/madler/zlib.git"
+    GIT_TAG         "v1.2.8"
     PREFIX          ${ZLIB_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
