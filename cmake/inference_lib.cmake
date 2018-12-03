@@ -190,8 +190,13 @@ if (WITH_ANAKIN AND WITH_MKL)
 endif ()
 
 set(module "inference")
+if(WIN32)
+    set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*)
+else(WIN32)
+    set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+endif(WIN32)
 copy(inference_lib DEPS ${inference_deps}
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+  SRCS ${src_dir}/${module}/*.h ${inference_lib_binary}
        ${src_dir}/${module}/api/paddle_*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
         )
@@ -230,21 +235,16 @@ copy(third_party DEPS fluid_lib_dist
         )
 
 # only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
+if(WIN32)
+    set(inference_api_lib_binary ${FLUID_INSTALL_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*)
+else(WIN32)
+    set(inference_api_lib_binary ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+endif(WIN32)
 copy(inference_api_lib DEPS fluid_lib_dist
-  SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+  SRCS ${inference_api_lib_binary}
        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
-
-if(WIN32)
-    copy(inference_lib DEPS ${inference_deps}
-            SRCS ${PADDLE_BINARY_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*
-            DSTS ${dst_dir}/${module})
-    copy(inference_api_lib DEPS fluid_lib_dist
-            SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*
-            DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib
-            )
-endif(WIN32)
 
 add_custom_target(inference_lib_dist DEPENDS third_party inference_api_lib)
 
