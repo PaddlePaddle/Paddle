@@ -172,6 +172,8 @@ __all__ = [
     'lstm',
 ]
 
+kIgnoreIndex = -100
+
 
 def fc(input,
        size,
@@ -1267,7 +1269,7 @@ def dropout(x,
     return out
 
 
-def cross_entropy(input, label, soft_label=False, ignore_index=-100):
+def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
     **Cross Entropy Layer**
 
@@ -1314,7 +1316,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=-100):
                                            labels. Default: `False`.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: -100
+                            if soft_label is set to False. Default: kIgnoreIndex
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -5185,7 +5187,7 @@ def multiplex(inputs, index):
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=-100,
+                               ignore_index=kIgnoreIndex,
                                numeric_stable_mode=False,
                                return_softmax=False):
     """
@@ -5243,7 +5245,7 @@ def softmax_with_cross_entropy(logits,
             labels as soft labels. By default, `soft_label` is set to False.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: -100
+                            if soft_label is set to False. Default: kIgnoreIndex
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
                                     when soft_label is False and GPU is used.
@@ -8415,13 +8417,17 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
 
 @templatedoc()
-def sigmoid_cross_entropy_with_logits(x, label, name=None):
+def sigmoid_cross_entropy_with_logits(x,
+                                      label,
+                                      ignore_index=kIgnoreIndex,
+                                      name=None):
     """
     ${comment}
 
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
+        ignore_index(&{ignore_index}): ${ignore_index_comment}
         name(basestring|None): Name of the output.
 
     Returns:
@@ -8440,7 +8446,7 @@ def sigmoid_cross_entropy_with_logits(x, label, name=None):
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={},
+        attrs={"ignore_index": ignore_index},
         outputs={"Out": out})
     return out
 
