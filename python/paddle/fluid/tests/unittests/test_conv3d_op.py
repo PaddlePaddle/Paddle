@@ -74,6 +74,8 @@ class TestConv3dOp(OpTest):
     def setUp(self):
         self.op_type = "conv3d"
         self.use_cudnn = False
+        self.use_mkldnn = False
+        self.data_format = "AnyLayout"
         self.dtype = np.float32
         self.init_kernel_type()
         self.init_group()
@@ -83,8 +85,7 @@ class TestConv3dOp(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilations': self.dilations,
-            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
+            'dilations': self.dilations
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -101,7 +102,9 @@ class TestConv3dOp(OpTest):
             'paddings': self.pad,
             'groups': self.groups,
             'dilations': self.dilations,
-            'use_cudnn': self.use_cudnn
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format
         }
         self.outputs = {'Output': output}
 

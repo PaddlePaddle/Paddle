@@ -229,6 +229,10 @@ $$
 }
 
 void Conv3DOpMaker::Make() {
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -247,6 +251,11 @@ void Conv3DOpMaker::Make() {
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
             "The format of output tensor is also NCDHW.");
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
+           "Used with fuse_residual_connection fusion.")
+      .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "
@@ -276,6 +285,13 @@ void Conv3DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_residual_connection",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever convolution output is as an input to residual "
+                "connection.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
