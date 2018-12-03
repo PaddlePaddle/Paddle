@@ -188,11 +188,38 @@ class MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemory(
+      const std::shared_ptr<mkldnn::memory>& user_memory_p,
+      const std::shared_ptr<mkldnn::memory>& target_memory_p,
+      const std::string& suffix,
+      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+    auto local_key = key_ + suffix;
+    auto key_reorder_p = key_ + suffix + "reorder_p";
+
+    auto stored_reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+        dev_ctx_.GetBlob(key_reorder_p));
+
+    if (stored_reorder_p) {
+      pipeline.push_back(*stored_reorder_p);
+    } else {
+      auto reorder_p =
+          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+      pipeline.push_back(*reorder_p);
+    }
+
+    return target_memory_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemory(
       mkldnn::memory::primitive_desc& mpd,       // NOLINT
       mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       const std::string& suffix,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
+      bool is_persistent = false,
+      bool is_INT8 = false,
+      std::vector<float> scale_data = {1.0f},
+      int mask = 0) {
     // create reorder primitive if the input format is not the preferred one
     auto local_key = key_ + suffix;
     auto key_reorder_p = key_ + suffix + "reorder_p";
@@ -206,14 +233,23 @@ class MKLDNNHandler {
       std::shared_ptr<mkldnn::primitive> reorder_p;
       if (mpd != user_mpd) {
         target_memory_p = std::make_shared<mkldnn::memory>(mpd);
+        std::shared_ptr<mkldnn::reorder> reorder_p;
+        if(is_INT8){
+            mkldnn::primitive_attr attri; //attribute for int8 weights and bias data reorder.
+            attri.set_output_scales(mask, scale_data);
 
-        auto reorder_p =
-            std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+            auto reorder_pd = std::shared_ptr<mkldnn::reorder::primitive_desc>(
+                    new mkldnn::reorder::primitive_desc(user_mpd, mpd, attri));
+            reorder_p =
+                std::shared_ptr<mkldnn::reorder>(new mkldnn::reorder(*reorder_pd, *user_memory_p, *target_memory_p));
+        } else{
+            reorder_p = std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+        }
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
         pipeline.push_back(*reorder_p);
       }
       dev_ctx_.SetBlob(local_key, target_memory_p);
-    } else {
+    } else if (!is_persistent) {
       // Make reorder if needed
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));

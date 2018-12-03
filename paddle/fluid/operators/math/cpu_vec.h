@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
@@ -32,11 +33,11 @@ namespace math {
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 
-#define AVX_FLOAT_BLOCK 8
+#define YMM_FLOAT_BLOCK 8
 #define AVX_DOUBLE_BLOCK 4
-#define AVX2_FLOAT_BLOCK 8
+#define YMM_FLOAT_BLOCK 8
 #define AVX2_DOUBLE_BLOCK 4
-#define AVX512_FLOAT_BLOCK 16
+#define ZMM_FLOAT_BLOCK 16
 #define AVX512_DOUBLE_BLOCK 8
 
 template <typename T>
@@ -87,7 +88,7 @@ template <>
 inline void vec_scal<float, platform::jit::avx>(const int n, const float a,
                                                 const float* x, float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_scal<float, platform::jit::isa_any>(n, a, x, y);
     return;
@@ -124,10 +125,8 @@ inline void vec_scal<float, platform::jit::avx2>(const int n, const float a,
 }
 
 template <>
-inline void vec_scal<float, platform::jit::avx512_common>(const int n,
-                                                          const float a,
-                                                          const float* x,
-                                                          float* y) {
+inline void vec_scal<float, platform::jit::avx512f>(const int n, const float a,
+                                                    const float* x, float* y) {
   // TODO(TJ): enable me
   vec_scal<float, platform::jit::avx2>(n, a, x, y);
 }
@@ -143,7 +142,7 @@ template <>
 inline void vec_bias_sub<float, platform::jit::avx>(const int n, const float a,
                                                     const float* x, float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_bias_sub<float, platform::jit::isa_any>(n, a, x, y);
     return;
@@ -180,10 +179,10 @@ inline void vec_bias_sub<float, platform::jit::avx2>(const int n, const float a,
 }
 
 template <>
-inline void vec_bias_sub<float, platform::jit::avx512_common>(const int n,
-                                                              const float a,
-                                                              const float* x,
-                                                              float* y) {
+inline void vec_bias_sub<float, platform::jit::avx512f>(const int n,
+                                                        const float a,
+                                                        const float* x,
+                                                        float* y) {
   // TODO(TJ): enable me
   vec_bias_sub<float, platform::jit::avx2>(n, a, x, y);
 }
@@ -201,7 +200,7 @@ inline void vec_cross<float, platform::jit::avx>(const int n, const float* x,
                                                  const float* y, const float* z,
                                                  float* out) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_cross<float, platform::jit::isa_any>(n, x, y, z, out);
     return;
@@ -241,7 +240,7 @@ inline void vec_cross<float, platform::jit::avx2>(const int n, const float* x,
 }
 
 template <>
-inline void vec_cross<float, platform::jit::avx512_common>(
+inline void vec_cross<float, platform::jit::avx512f>(
     const int n, const float* x, const float* y, const float* z, float* out) {
   // TODO(TJ): enable me
   vec_cross<float, platform::jit::avx>(n, x, y, z, out);
@@ -258,7 +257,7 @@ template <>
 inline void vec_add_bias<float, platform::jit::avx>(const int n, const float a,
                                                     const float* x, float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_add_bias<float, platform::jit::isa_any>(n, a, x, y);
     return;
@@ -295,10 +294,10 @@ inline void vec_add_bias<float, platform::jit::avx2>(const int n, const float a,
 }
 
 template <>
-inline void vec_add_bias<float, platform::jit::avx512_common>(const int n,
-                                                              const float a,
-                                                              const float* x,
-                                                              float* y) {
+inline void vec_add_bias<float, platform::jit::avx512f>(const int n,
+                                                        const float a,
+                                                        const float* x,
+                                                        float* y) {
   // TODO(TJ): enable me
   vec_add_bias<float, platform::jit::avx2>(n, a, x, y);
 }
@@ -327,7 +326,7 @@ template <>
 inline void vec_sigmoid<float, platform::jit::avx>(const int n, const float* x,
                                                    float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
     return;
@@ -389,9 +388,9 @@ inline void vec_sigmoid<float, platform::jit::avx2>(const int n, const float* x,
 }
 
 template <>
-inline void vec_sigmoid<float, platform::jit::avx512_common>(const int n,
-                                                             const float* x,
-                                                             float* y) {
+inline void vec_sigmoid<float, platform::jit::avx512f>(const int n,
+                                                       const float* x,
+                                                       float* y) {
   // TODO(TJ): enable me
   vec_sigmoid<float, platform::jit::avx2>(n, x, y);
 }
@@ -416,7 +415,7 @@ template <>
 inline void vec_relu<float, platform::jit::avx>(const int n, const float* x,
                                                 float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block * 4) {
     vec_relu<float, platform::jit::isa_any>(n, x, y);
     return;
@@ -453,9 +452,8 @@ inline void vec_relu<float, platform::jit::avx2>(const int n, const float* x,
 }
 
 template <>
-inline void vec_relu<float, platform::jit::avx512_common>(const int n,
-                                                          const float* x,
-                                                          float* y) {
+inline void vec_relu<float, platform::jit::avx512f>(const int n, const float* x,
+                                                    float* y) {
   // TODO(TJ): enable me
   vec_relu<float, platform::jit::avx2>(n, x, y);
 }
@@ -476,7 +474,7 @@ class VecActivations {
     } else if (type == "identity" || type == "") {
       return vec_identity<T, isa>;
     }
-    LOG(FATAL) << "Not support type: " << type;
+    PADDLE_THROW("Not support type: %s", type);
   }
 };
 

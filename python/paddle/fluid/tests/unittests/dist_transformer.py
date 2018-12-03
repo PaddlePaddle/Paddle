@@ -35,7 +35,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
 import paddle.compat as cpt
 from paddle.compat import long_type
 
@@ -92,7 +92,7 @@ class TrainTaskConfig(object):
     src_vocab_fpath = data_path + "vocab.bpe.32000"
     trg_vocab_fpath = data_path + "vocab.bpe.32000"
     train_file_pattern = data_path + "train.tok.clean.bpe.32000.en-de"
-    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de"
+    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de.cut"
     pool_size = 2000
     sort_type = None
     local = True
@@ -437,13 +437,8 @@ def split_data(data, num_part):
     ]
 
 
-def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
+def test_context(test_program, avg_cost, train_exe, dev_count, data_input_names,
                  sum_cost, token_num):
-    # Context to do validation.
-    test_program = train_progm.clone()
-    with fluid.program_guard(test_program):
-        test_program = fluid.io.get_inference_program([avg_cost])
-
     val_data = DataReader(
         src_vocab_fpath=TrainTaskConfig.src_vocab_fpath,
         trg_vocab_fpath=TrainTaskConfig.trg_vocab_fpath,
@@ -505,7 +500,7 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
 
 
 def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
-               token_num, predict):
+               token_num, predict, test_program):
     # Initialize the parameters.
     if TrainTaskConfig.ckpt_path:
         lr_scheduler.current_steps = TrainTaskConfig.start_step
@@ -554,7 +549,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                                                                              -1] + label_data_input_fields
 
     if TrainTaskConfig.val_file_pattern is not None:
-        test = test_context(train_progm, avg_cost, train_exe, dev_count,
+        test = test_context(test_program, avg_cost, train_exe, dev_count,
                             data_input_names, sum_cost, token_num)
 
     # the best cross-entropy value with label smoothing
@@ -567,17 +562,11 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
     for pass_id in six.moves.xrange(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
-            if batch_id >= 5:
+            if batch_id >= RUN_STEP:
                 break
 
             feed_list = []
             total_num_token = 0
-
-            #if TrainTaskConfig.local:
-            #    lr_rate = lr_scheduler.update_learning_rate()
-            #for place_id, data_buffer in enumerate(
-            #        split_data(
-            #            data, num_part=dev_count)):
 
             if TrainTaskConfig.local:
                 lr_rate = lr_scheduler.update_learning_rate()
@@ -1170,6 +1159,7 @@ def prepare_encoder(src_word,
             name=pos_enc_param_name,
             trainable=False,
             initializer=fluid.initializer.ConstantInitializer(0.001)))
+    src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
     return layers.dropout(
         enc_input,
@@ -1492,7 +1482,7 @@ def wrap_decoder(trg_vocab_size,
     if weight_sharing:
         predict = layers.matmul(
             x=dec_output,
-            y=fluid.get_var(word_emb_param_names[0]),
+            y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True)
     else:
         predict = layers.fc(input=dec_output,
@@ -1646,6 +1636,8 @@ def get_model(is_dist, is_async):
     local_lr_scheduler = LearningRateScheduler(ModelHyperParams.d_model,
                                                TrainTaskConfig.warmup_steps,
                                                TrainTaskConfig.learning_rate)
+    # Context to do validation.
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     if not is_dist:
         optimizer = fluid.optimizer.Adam(
@@ -1670,7 +1662,7 @@ def get_model(is_dist, is_async):
             epsilon=TrainTaskConfig.eps)
         optimizer.minimize(sum_cost)
 
-    return sum_cost, avg_cost, predict, token_num, local_lr_scheduler
+    return sum_cost, avg_cost, predict, token_num, local_lr_scheduler, test_program
 
 
 def update_args():
@@ -1701,9 +1693,9 @@ class DistTransformer2x2(TestDistRunnerBase):
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, place, args):
-
-        sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
+    def run_trainer(self, args):
+        TrainTaskConfig.use_gpu = args.use_cuda
+        sum_cost, avg_cost, predict, token_num, local_lr_scheduler, test_program = get_model(
             args.is_dist, not args.sync_mode)
 
         if args.is_dist:
@@ -1719,12 +1711,17 @@ class DistTransformer2x2(TestDistRunnerBase):
             TrainTaskConfig.batch_size = 20
             trainer_prog = fluid.default_main_program()
 
+        if args.use_cuda:
+            place = fluid.CUDAPlace(0)
+        else:
+            place = fluid.CPUPlace()
+
         startup_exe = fluid.Executor(place)
 
         TrainTaskConfig.local = not args.is_dist
 
         train_loop(startup_exe, trainer_prog, 1, sum_cost, avg_cost,
-                   local_lr_scheduler, token_num, predict)
+                   local_lr_scheduler, token_num, predict, test_program)
 
 
 if __name__ == "__main__":

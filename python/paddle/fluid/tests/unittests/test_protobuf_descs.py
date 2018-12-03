@@ -38,40 +38,40 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(['z'], op.output("Out"))
         self.assertEqual(["Out"], op.output_names())
 
-        op.set_attr("int_attr", 1)
+        op._set_attr("int_attr", 1)
         self.assertEqual(1, op.attr("int_attr"))
         self.assertTrue(op.has_attr("int_attr"))
         self.assertEqual(core.AttrType.INT, op.attr_type("int_attr"))
 
-        op.set_attr("float_attr", -1.32)
+        op._set_attr("float_attr", -1.32)
         self.assertAlmostEqual(-1.32, op.attr("float_attr"), delta=1e-4)
         self.assertTrue(op.has_attr("float_attr"))
 
-        op.set_attr("bool_attr", False)
+        op._set_attr("bool_attr", False)
         self.assertFalse(op.attr("bool_attr"))
 
-        op.set_attr("string_attr", "abc")
+        op._set_attr("string_attr", "abc")
         self.assertEqual("abc", op.attr("string_attr"))
         self.assertTrue(op.has_attr("string_attr"))
 
-        op.set_attr("ints_attr", [1, 2, 3])
+        op._set_attr("ints_attr", [1, 2, 3])
         self.assertEqual([1, 2, 3], op.attr("ints_attr"))
 
         expected = [1.2, 2.3, 3.4]
-        op.set_attr("floats_attr", expected)
+        op._set_attr("floats_attr", expected)
         for e, a in zip(expected, op.attr("floats_attr")):
             self.assertAlmostEqual(e, a, delta=1e-4)
 
-        op.set_attr("strings_attr", ["a", "b", "c"])
+        op._set_attr("strings_attr", ["a", "b", "c"])
         self.assertEqual(["a", "b", "c"], op.attr("strings_attr"))
 
-        op.set_attr("bools_attr", [True, False, True])
+        op._set_attr("bools_attr", [True, False, True])
         self.assertEqual([True, False, True], op.attr("bools_attr"))
 
         self.assertEqual(8, len(op.attr_names()))
 
-        op.set_block_attr("block_attr", program_desc.block(0))
-        self.assertEqual(0, op.block_attr_id("block_attr"))
+        op.set_block_attr("_block_attr", program_desc.block(0))
+        self.assertEqual(0, op._block_attr_id("_block_attr"))
 
         mul_op = block.append_op()
         mul_op.set_type("mul")

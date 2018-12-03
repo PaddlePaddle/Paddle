@@ -44,6 +44,18 @@ class SoftmaxWithCrossEntropyOpMaker
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "numeric_stable_mode",
+        "(bool, default: false), A flag to indicate whether to use more "
+        "numerically stable algorithm. This flag is only valid when "
+        "soft_label is false and GPU is used.")
+        .SetDefault(false);
+    AddAttr<int>(
+        "ignore_index",
+        "(int, default -100), Specifies a target value that is ignored and"
+        "does not contribute to the input gradient. Only valid if soft_label"
+        "is set to False")
+        .SetDefault(-100);
     AddComment(R"DOC(
 Softmax With Cross Entropy Operator.
 

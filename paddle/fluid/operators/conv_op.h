@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -60,12 +61,27 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() override;
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
 };
 
 class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() override;
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
+};
+
+class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{
+        {"Input", /*->*/ "Output"}};
+  }
 };
 
 class ConvOp : public framework::OperatorWithKernel {
@@ -380,7 +396,8 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    depthwiseConv(dev_ctx, *input, filter, strides, paddings, output);
+    depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                  output);
   }
 };
 
@@ -415,14 +432,14 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
       depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                             paddings, input_grad);
+                             paddings, dilations, input_grad);
     }
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
       depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides, paddings,
-                              filter_grad);
+                              dilations, filter_grad);
     }
   }
 };

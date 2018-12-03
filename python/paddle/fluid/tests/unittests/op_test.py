@@ -47,23 +47,12 @@ def get_numeric_gradient(place,
                          input_to_check,
                          output_names,
                          delta=0.005,
-                         in_place=False,
-                         sum_outputs=None):
+                         in_place=False):
     # FIXME: change this method by compile time concepts
     set_input(scope, op, inputs, place)
 
     def product(dim):
         return six.moves.reduce(lambda a, b: a * b, dim, 1)
-
-    def get_output():
-        sum = []
-        op.run(scope, place)
-        for output_name in output_names:
-            if sum_outputs and output_name not in sum_outputs:
-                continue
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).sum() / len(output_names)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -79,6 +68,15 @@ def get_numeric_gradient(place,
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
+
+    def get_output():
+        sum = []
+        op.run(scope, place)
+        for output_name in output_names:
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).astype(
+                    tensor_to_check_dtype).mean())
+        return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 
@@ -348,7 +346,7 @@ class OpTest(unittest.TestCase):
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
-                    str(actual_t))
+                    str(actual_t) + " in class " + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
@@ -364,7 +362,9 @@ class OpTest(unittest.TestCase):
             else:
                 return []
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+        cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
+           and not cpu_only:
             places.append(core.CUDAPlace(0))
         return places
 
@@ -381,8 +381,8 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
 
-    def __assert_is_close(self, numeric_grads, analytic_grads, names,
-                          max_relative_error, msg_prefix):
+    def _assert_is_close(self, numeric_grads, analytic_grads, names,
+                         max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
@@ -407,14 +407,13 @@ class OpTest(unittest.TestCase):
                    numeric_grad_delta=0.005,
                    in_place=False,
                    max_relative_error=0.005,
-                   user_defined_grads=None,
-                   sum_outputs=None):
+                   user_defined_grads=None):
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
                                        in_place, max_relative_error,
-                                       user_defined_grads, sum_outputs)
+                                       user_defined_grads)
 
     def check_grad_with_place(self,
                               place,
@@ -424,8 +423,7 @@ class OpTest(unittest.TestCase):
                               numeric_grad_delta=0.005,
                               in_place=False,
                               max_relative_error=0.005,
-                              user_defined_grads=None,
-                              sum_outputs=None):
+                              user_defined_grads=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -448,15 +446,14 @@ class OpTest(unittest.TestCase):
                 input_to_check,
                 output_names,
                 delta=numeric_grad_delta,
-                in_place=in_place,
-                sum_outputs=sum_outputs) for input_to_check in inputs_to_check
+                in_place=in_place) for input_to_check in inputs_to_check
         ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
 
-        self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
-                               max_relative_error,
-                               "Gradient Check On %s" % str(place))
+        self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
+                              max_relative_error,
+                              "Gradient Check On %s" % str(place))
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

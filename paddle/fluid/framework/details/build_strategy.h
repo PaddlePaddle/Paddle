@@ -15,6 +15,17 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/ir/pass_builder.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -54,7 +65,48 @@ struct BuildStrategy {
 
   std::string debug_graphviz_path_{""};
 
+  bool fuse_elewise_add_act_ops_{false};
+
   bool enable_data_balance_{false};
+
+  bool enable_sequential_execution_{false};
+
+  bool fuse_broadcast_op_{false};
+
+  bool remove_unnecessary_lock_{false};
+
+  // NOTE:
+  // Before you add new options, think if it's a general strategy that works
+  // with other strategy. If not, the strategy should be created through
+  // CreatePassesFromStrategy and the pass can be managed separately.
+
+  // User normally doesn't need to call this API.
+  // The PassBuilder allows for more customized insert, remove of passes
+  // from python side.
+  // A new PassBuilder is created based on configs defined above and
+  // passes are owned by the PassBuilder.
+  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy(
+      bool finalize_strategy) const;
+
+  bool IsFinalized() const { return is_finalized_; }
+
+  // Apply the passes built by the pass_builder_. The passes will be
+  // applied to the Program and output an ir::Graph.
+  std::unique_ptr<ir::Graph> Apply(
+      const ProgramDesc &main_program,
+      const std::vector<platform::Place> &places,
+      const std::string &loss_var_name,
+      const std::unordered_set<std::string> &param_names,
+      const std::vector<Scope *> &local_scopes,
+#ifdef PADDLE_WITH_CUDA
+      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
+#else
+      const bool use_cuda) const;
+#endif
+
+ private:
+  mutable bool is_finalized_ = false;
+  mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
 
 }  // namespace details

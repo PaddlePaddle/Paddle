@@ -20,6 +20,7 @@ import numpy as np
 from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import paddle
+import paddle.fluid.core as core
 import paddle.dataset.wmt16 as wmt16
 import os
 
@@ -170,7 +171,10 @@ class TestTransformer(TestParallelExecutorBase):
                 writer.complete_append_tensor()
 
     def test_main(self):
-        self.check_network_convergence(transformer, use_cuda=True)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(transformer, use_cuda=True)
+            self.check_network_convergence(
+                transformer, use_cuda=True, enable_sequential_execution=True)
         self.check_network_convergence(transformer, use_cuda=False, iter=5)
 
 

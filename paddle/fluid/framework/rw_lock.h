@@ -46,6 +46,7 @@ struct RWLock {
  private:
   pthread_rwlock_t lock_;
 };
+// TODO(paddle-dev): Support RWLock for WIN32 for correctness.
 #else
 // https://stackoverflow.com/questions/7125250/making-pthread-rwlock-wrlock-recursive
 // In windows, rw_lock seems like a hack. Use empty object and do nothing.

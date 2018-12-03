@@ -112,20 +112,42 @@ class TestDetection(unittest.TestCase):
 
 class TestPriorBox(unittest.TestCase):
     def test_prior_box(self):
-        data_shape = [3, 224, 224]
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
-        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-        box, var = layers.prior_box(
-            input=conv1,
-            image=images,
-            min_sizes=[100.0],
-            aspect_ratios=[1.],
-            flip=True,
-            clip=True)
-        assert len(box.shape) == 4
-        assert box.shape == var.shape
-        assert box.shape[3] == 4
+        program = Program()
+        with program_guard(program):
+            data_shape = [3, 224, 224]
+            images = fluid.layers.data(
+                name='pixel', shape=data_shape, dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.prior_box(
+                input=conv1,
+                image=images,
+                min_sizes=[100.0],
+                aspect_ratios=[1.],
+                flip=True,
+                clip=True)
+            assert len(box.shape) == 4
+            assert box.shape == var.shape
+            assert box.shape[3] == 4
+
+
+class TestDensityPriorBox(unittest.TestCase):
+    def test_density_prior_box(self):
+        program = Program()
+        with program_guard(program):
+            data_shape = [3, 224, 224]
+            images = fluid.layers.data(
+                name='pixel', shape=data_shape, dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.density_prior_box(
+                input=conv1,
+                image=images,
+                densities=[3, 4],
+                fixed_sizes=[50., 60.],
+                fixed_ratios=[1.0],
+                clip=True)
+            assert len(box.shape) == 4
+            assert box.shape == var.shape
+            assert box.shape[-1] == 4
 
 
 class TestAnchorGenerator(unittest.TestCase):
@@ -148,51 +170,60 @@ class TestAnchorGenerator(unittest.TestCase):
 
 class TestGenerateProposalLabels(unittest.TestCase):
     def test_generate_proposal_labels(self):
-        rpn_rois = layers.data(
-            name='rpn_rois',
-            shape=[4, 4],
-            dtype='float32',
-            lod_level=1,
-            append_batch_size=False)
-        gt_classes = layers.data(
-            name='gt_classes',
-            shape=[6],
-            dtype='int32',
-            lod_level=1,
-            append_batch_size=False)
-        gt_boxes = layers.data(
-            name='gt_boxes',
-            shape=[6, 4],
-            dtype='float32',
-            lod_level=1,
-            append_batch_size=False)
-        im_scales = layers.data(
-            name='im_scales',
-            shape=[1],
-            dtype='float32',
-            lod_level=1,
-            append_batch_size=False)
-        class_nums = 5
-        rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights = fluid.layers.generate_proposal_labels(
-            rpn_rois=rpn_rois,
-            gt_classes=gt_classes,
-            gt_boxes=gt_boxes,
-            im_scales=im_scales,
-            batch_size_per_im=2,
-            fg_fraction=0.5,
-            fg_thresh=0.5,
-            bg_thresh_hi=0.5,
-            bg_thresh_lo=0.0,
-            bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-            class_nums=class_nums)
-        assert rois.shape[1] == 4
-        assert rois.shape[0] == labels_int32.shape[0]
-        assert rois.shape[0] == bbox_targets.shape[0]
-        assert rois.shape[0] == bbox_inside_weights.shape[0]
-        assert rois.shape[0] == bbox_outside_weights.shape[0]
-        assert bbox_targets.shape[1] == 4 * class_nums
-        assert bbox_inside_weights.shape[1] == 4 * class_nums
-        assert bbox_outside_weights.shape[1] == 4 * class_nums
+        program = Program()
+        with program_guard(program):
+            rpn_rois = layers.data(
+                name='rpn_rois',
+                shape=[4, 4],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            gt_classes = layers.data(
+                name='gt_classes',
+                shape=[6],
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            is_crowd = layers.data(
+                name='is_crowd',
+                shape=[6],
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            gt_boxes = layers.data(
+                name='gt_boxes',
+                shape=[6, 4],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            im_info = layers.data(
+                name='im_info',
+                shape=[1, 3],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            class_nums = 5
+            rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights = fluid.layers.generate_proposal_labels(
+                rpn_rois=rpn_rois,
+                gt_classes=gt_classes,
+                is_crowd=is_crowd,
+                gt_boxes=gt_boxes,
+                im_info=im_info,
+                batch_size_per_im=2,
+                fg_fraction=0.5,
+                fg_thresh=0.5,
+                bg_thresh_hi=0.5,
+                bg_thresh_lo=0.0,
+                bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+                class_nums=class_nums)
+            assert rois.shape[1] == 4
+            assert rois.shape[0] == labels_int32.shape[0]
+            assert rois.shape[0] == bbox_targets.shape[0]
+            assert rois.shape[0] == bbox_inside_weights.shape[0]
+            assert rois.shape[0] == bbox_outside_weights.shape[0]
+            assert bbox_targets.shape[1] == 4 * class_nums
+            assert bbox_inside_weights.shape[1] == 4 * class_nums
+            assert bbox_outside_weights.shape[1] == 4 * class_nums
 
 
 class TestMultiBoxHead(unittest.TestCase):
@@ -254,18 +285,18 @@ class TestRpnTargetAssign(unittest.TestCase):
     def test_rpn_target_assign(self):
         program = Program()
         with program_guard(program):
-            loc_shape = [10, 50, 4]
-            score_shape = [10, 50, 2]
+            bbox_pred_shape = [10, 50, 4]
+            cls_logits_shape = [10, 50, 2]
             anchor_shape = [50, 4]
 
-            loc = layers.data(
-                name='loc',
-                shape=loc_shape,
+            bbox_pred = layers.data(
+                name='bbox_pred',
+                shape=bbox_pred_shape,
                 append_batch_size=False,
                 dtype='float32')
-            scores = layers.data(
-                name='scores',
-                shape=score_shape,
+            cls_logits = layers.data(
+                name='cls_logits',
+                shape=cls_logits_shape,
                 append_batch_size=False,
                 dtype='float32')
             anchor_box = layers.data(
@@ -278,27 +309,44 @@ class TestRpnTargetAssign(unittest.TestCase):
                 shape=anchor_shape,
                 append_batch_size=False,
                 dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32')
-
-            pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
-                loc=loc,
-                scores=scores,
+            gt_boxes = layers.data(
+                name='gt_boxes', shape=[4], lod_level=1, dtype='float32')
+            is_crowd = layers.data(
+                name='is_crowd',
+                shape=[10],
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            im_info = layers.data(
+                name='im_info',
+                shape=[1, 3],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            pred_scores, pred_loc, tgt_lbl, tgt_bbox, bbox_inside_weight = layers.rpn_target_assign(
+                bbox_pred=bbox_pred,
+                cls_logits=cls_logits,
                 anchor_box=anchor_box,
                 anchor_var=anchor_var,
-                gt_box=gt_box,
+                gt_boxes=gt_boxes,
+                is_crowd=is_crowd,
+                im_info=im_info,
                 rpn_batch_size_per_im=256,
-                fg_fraction=0.25,
+                rpn_straddle_thresh=0.0,
+                rpn_fg_fraction=0.5,
                 rpn_positive_overlap=0.7,
-                rpn_negative_overlap=0.3)
+                rpn_negative_overlap=0.3,
+                use_random=False)
 
             self.assertIsNotNone(pred_scores)
             self.assertIsNotNone(pred_loc)
             self.assertIsNotNone(tgt_lbl)
             self.assertIsNotNone(tgt_bbox)
+            self.assertIsNotNone(bbox_inside_weight)
             assert pred_scores.shape[1] == 1
             assert pred_loc.shape[1] == 4
             assert pred_loc.shape[1] == tgt_bbox.shape[1]
+            print(str(program))
 
 
 class TestGenerateProposals(unittest.TestCase):

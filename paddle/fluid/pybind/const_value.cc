@@ -27,6 +27,7 @@ void BindConstValue(pybind11::module* m) {
   m->def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
   m->def("kControlDepVarName",
          [] { return framework::ir::Node::kControlDepVarName; });
+  m->def("kNewGradSuffix", [] { return framework::kNewGradSuffix; });
 
   auto op_proto_and_checker_maker =
       m->def_submodule("op_proto_and_checker_maker");
@@ -36,7 +37,9 @@ void BindConstValue(pybind11::module* m) {
       .value("Backward", framework::OpRole::kBackward)
       .value("Optimize", framework::OpRole::kOptimize)
       .value("Loss", framework::OpRole::kLoss)
-      .value("RPC", framework::OpRole::kRPC);
+      .value("RPC", framework::OpRole::kRPC)
+      .value("Dist", framework::OpRole::kDist)
+      .value("LRSched", framework::OpRole::kLRSched);
 
   op_proto_and_checker_maker.def(
       "kOpRoleAttrName", framework::OpProtoAndCheckerMaker::OpRoleAttrName);

@@ -27,8 +27,11 @@ class SelectedRowsTester : public ::testing::Test {
     selected_rows_.reset(new SelectedRows(rows, height));
 
     Tensor* value = selected_rows_->mutable_value();
-    value->mutable_data<float>(
+    auto* data = value->mutable_data<float>(
         make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
+    for (int64_t i = 0; i < value->numel(); ++i) {
+      data[i] = static_cast<float>(i);
+    }
   }
 
  protected:
@@ -60,6 +63,10 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());
   ASSERT_EQ(selected_rows_->value().dims(), dst_tensor.value().dims());
   ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
+  auto* dst_data = dst_tensor.value().data<float>();
+  for (int64_t i = 0; i < dst_tensor.value().numel(); ++i) {
+    ASSERT_EQ(dst_data[i], static_cast<float>(i));
+  }
 }
 
 TEST(SelectedRows, SparseTable) {
@@ -77,14 +84,18 @@ TEST(SelectedRows, SparseTable) {
       data[i * embedding_width + j] = static_cast<float>(i);
     }
   }
-  ASSERT_EQ(table.AutoGrownIndex(10, true), 0);
-  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
-  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
-  ASSERT_EQ(table.AutoGrownIndex(6, true), 2);
+  ASSERT_EQ(table.AutoGrownIndex(10, true, false), 0);
+  ASSERT_EQ(table.AutoGrownIndex(8, true, false), 1);
+  ASSERT_EQ(table.AutoGrownIndex(8, true, false), 1);
+  ASSERT_EQ(table.AutoGrownIndex(6, true, false), 2);
+  for (int64_t i = 11; i < 20; i++) {
+    ASSERT_EQ(table.AutoGrownIndex(i, true, true), -1);
+    ASSERT_TRUE(!table.HasKey(i));
+  }
   ASSERT_TRUE(table.HasKey(10));
   ASSERT_TRUE(table.HasKey(8));
   ASSERT_TRUE(table.HasKey(6));
-  ASSERT_EQ(table.rows().size(), 3);
+  ASSERT_EQ(table.rows().size(), 3UL);
 
   framework::Tensor ids;
   ids.Resize(framework::make_ddim({4}));

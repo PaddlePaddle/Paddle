@@ -30,7 +30,7 @@ import paddle.dataset.common
 
 __all__ = ['train', 'test']
 
-URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/housing/housing.data'
+URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
     'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',

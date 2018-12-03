@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -42,10 +42,11 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
                    "Input(RpnRois) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtClasses"),
                    "Input(GtClasses) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
+                   "Input(IsCrowd) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
                    "Input(GtBoxes) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImScales"),
-                   "Input(ImScales) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Rois"),
                    "Output(Rois) of RpnTargetAssignOp should not be null");
@@ -64,22 +65,21 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 
     auto rpn_rois_dims = ctx->GetInputDim("RpnRois");
     auto gt_classes_dims = ctx->GetInputDim("GtClasses");
+    auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
-    auto im_scales_dims = ctx->GetInputDim("ImScales");
+    auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     PADDLE_ENFORCE_EQ(rpn_rois_dims.size(), 2,
                       "The rank of Input(RpnRois) must be 2.");
-    PADDLE_ENFORCE_EQ(gt_classes_dims.size(), 1,
-                      "The rank of Input(GtClasses) must be 1.");
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
                       "The rank of Input(GtBoxes) must be 2.");
-    PADDLE_ENFORCE_EQ(im_scales_dims.size(), 1,
-                      "The rank of Input(ImScales) must be 1.");
+    PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
+                      "The rank of Input(ImInfo) must be 2.");
 
     int class_nums = ctx->Attrs().Get<int>("class_nums");
 
     ctx->SetOutputDim("Rois", {-1, 4});
-    ctx->SetOutputDim("LabelsInt32", {-1});
+    ctx->SetOutputDim("LabelsInt32", {-1, 1});
     ctx->SetOutputDim("BboxTargets", {-1, 4 * class_nums});
     ctx->SetOutputDim("BboxInsideWeights", {-1, 4 * class_nums});
     ctx->SetOutputDim("BboxOutsideWeights", {-1, 4 * class_nums});
@@ -106,44 +106,17 @@ void Concat(const platform::CPUDeviceContext& context,
 }
 
 template <typename T>
-void BboxOverlaps(const Tensor& r_boxes, const Tensor& c_boxes,
-                  Tensor* overlaps) {
-  auto r_boxes_et = framework::EigenTensor<T, 2>::From(r_boxes);
-  auto c_boxes_et = framework::EigenTensor<T, 2>::From(c_boxes);
-  auto overlaps_et = framework::EigenTensor<T, 2>::From(*overlaps);
-  int r_num = r_boxes.dims()[0];
-  int c_num = c_boxes.dims()[0];
-  auto zero = static_cast<T>(0.0);
-  T r_box_area, c_box_area, x_min, y_min, x_max, y_max, inter_w, inter_h,
-      inter_area;
-  for (int i = 0; i < r_num; ++i) {
-    r_box_area = (r_boxes_et(i, 2) - r_boxes_et(i, 0) + 1) *
-                 (r_boxes_et(i, 3) - r_boxes_et(i, 1) + 1);
-    for (int j = 0; j < c_num; ++j) {
-      c_box_area = (c_boxes_et(j, 2) - c_boxes_et(j, 0) + 1) *
-                   (c_boxes_et(j, 3) - c_boxes_et(j, 1) + 1);
-      x_min = std::max(r_boxes_et(i, 0), c_boxes_et(j, 0));
-      y_min = std::max(r_boxes_et(i, 1), c_boxes_et(j, 1));
-      x_max = std::min(r_boxes_et(i, 2), c_boxes_et(j, 2));
-      y_max = std::min(r_boxes_et(i, 3), c_boxes_et(j, 3));
-      inter_w = std::max(x_max - x_min + 1, zero);
-      inter_h = std::max(y_max - y_min + 1, zero);
-      inter_area = inter_w * inter_h;
-      overlaps_et(i, j) = inter_area / (r_box_area + c_box_area - inter_area);
-    }
-  }
-}
-
-template <typename T>
 std::vector<std::vector<int>> SampleFgBgGt(
     const platform::CPUDeviceContext& context, Tensor* iou,
-    const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
-    const float bg_thresh_hi, const float bg_thresh_lo,
-    std::minstd_rand engine) {
+    const Tensor& is_crowd, const int batch_size_per_im,
+    const float fg_fraction, const float fg_thresh, const float bg_thresh_hi,
+    const float bg_thresh_lo, std::minstd_rand engine, const bool use_random) {
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
   std::vector<int> gt_inds;
-  T* proposal_to_gt_overlaps = iou->mutable_data<T>(context.GetPlace());
+  int64_t gt_num = is_crowd.numel();
+  const int* crowd_data = is_crowd.data<int>();
+  T* proposal_to_gt_overlaps = iou->data<T>();
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];
   float epsilon = 0.00001;
@@ -152,6 +125,9 @@ std::vector<std::vector<int>> SampleFgBgGt(
   for (int64_t i = 0; i < row; ++i) {
     const T* v = proposal_to_gt_overlaps + i * col;
     T max_overlap = *std::max_element(v, v + col);
+    if ((i < gt_num) && (crowd_data[i])) {
+      max_overlap = -1.0;
+    }
     if (max_overlap > fg_thresh) {
       for (int64_t j = 0; j < col; ++j) {
         T val = proposal_to_gt_overlaps[i * col + j];
@@ -170,17 +146,19 @@ std::vector<std::vector<int>> SampleFgBgGt(
   }
 
   // Reservoir Sampling
+  std::uniform_real_distribution<float> uniform(0, 1);
   int fg_rois_per_im = std::floor(batch_size_per_im * fg_fraction);
   int fg_rois_this_image = fg_inds.size();
   int fg_rois_per_this_image = std::min(fg_rois_per_im, fg_rois_this_image);
-  std::uniform_real_distribution<float> uniform(0, 1);
-  const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
-  if (fg_size > fg_rois_per_this_image) {
-    for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
-      int rng_ind = std::floor(uniform(engine) * i);
-      if (rng_ind < fg_rois_per_this_image) {
-        std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
-        std::iter_swap(gt_inds.begin() + rng_ind, gt_inds.begin() + i);
+  if (use_random) {
+    const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
+    if (fg_size > fg_rois_per_this_image) {
+      for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
+        int rng_ind = std::floor(uniform(engine) * i);
+        if (rng_ind < fg_rois_per_this_image) {
+          std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
+          std::iter_swap(gt_inds.begin() + rng_ind, gt_inds.begin() + i);
+        }
       }
     }
   }
@@ -192,12 +170,14 @@ std::vector<std::vector<int>> SampleFgBgGt(
   int bg_rois_per_image = batch_size_per_im - fg_rois_per_this_image;
   int bg_rois_this_image = bg_inds.size();
   int bg_rois_per_this_image = std::min(bg_rois_per_image, bg_rois_this_image);
-  const int64_t bg_size = static_cast<int64_t>(bg_inds.size());
-  if (bg_size > bg_rois_per_this_image) {
-    for (int64_t i = bg_rois_per_this_image; i < bg_size; ++i) {
-      int rng_ind = std::floor(uniform(engine) * i);
-      if (rng_ind < fg_rois_per_this_image)
-        std::iter_swap(bg_inds.begin() + rng_ind, bg_inds.begin() + i);
+  if (use_random) {
+    const int64_t bg_size = static_cast<int64_t>(bg_inds.size());
+    if (bg_size > bg_rois_per_this_image) {
+      for (int64_t i = bg_rois_per_this_image; i < bg_size; ++i) {
+        int rng_ind = std::floor(uniform(engine) * i);
+        if (rng_ind < fg_rois_per_this_image)
+          std::iter_swap(bg_inds.begin() + rng_ind, bg_inds.begin() + i);
+      }
     }
   }
   std::vector<int> new_bg_inds(bg_inds.begin(),
@@ -248,14 +228,14 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
 template <typename T>
 std::vector<Tensor> SampleRoisForOneImage(
     const platform::CPUDeviceContext& context, Tensor* rpn_rois,
-    Tensor* gt_classes, Tensor* gt_boxes, Tensor* im_scale,
+    Tensor* gt_classes, Tensor* is_crowd, Tensor* gt_boxes, Tensor* im_info,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
     const float bg_thresh_hi, const float bg_thresh_lo,
     const std::vector<float>& bbox_reg_weights, const int class_nums,
-    std::minstd_rand engine) {
+    std::minstd_rand engine, bool use_random) {
   auto rpn_rois_et = framework::EigenTensor<T, 2>::From(*rpn_rois);
-  auto im_scale_data = im_scale->data<T>()[0];
-  rpn_rois_et = rpn_rois_et / im_scale_data;
+  auto im_scale = im_info->data<T>()[2];
+  rpn_rois_et = rpn_rois_et / im_scale;
 
   Tensor boxes;
   int proposals_num = gt_boxes->dims()[0] + rpn_rois->dims()[0];
@@ -270,8 +250,8 @@ std::vector<Tensor> SampleRoisForOneImage(
 
   // Generate proposal index
   std::vector<std::vector<int>> fg_bg_gt = SampleFgBgGt<T>(
-      context, &proposal_to_gt_overlaps, batch_size_per_im, fg_fraction,
-      fg_thresh, bg_thresh_hi, bg_thresh_lo, engine);
+      context, &proposal_to_gt_overlaps, *is_crowd, batch_size_per_im,
+      fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, engine, use_random);
   std::vector<int> fg_inds = fg_bg_gt[0];
   std::vector<int> bg_inds = fg_bg_gt[1];
   std::vector<int> gt_inds = fg_bg_gt[2];
@@ -291,15 +271,15 @@ std::vector<Tensor> SampleRoisForOneImage(
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, nullptr, false,
-                &bbox_targets_single);
+  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, bbox_reg_weights.data(),
+                false, &bbox_targets_single);
 
   // Scale rois
   Tensor sampled_rois;
   sampled_rois.mutable_data<T>(sampled_boxes.dims(), context.GetPlace());
   auto sampled_rois_et = framework::EigenTensor<T, 2>::From(sampled_rois);
   auto sampled_boxes_et = framework::EigenTensor<T, 2>::From(sampled_boxes);
-  sampled_rois_et = sampled_boxes_et * im_scale_data;
+  sampled_rois_et = sampled_boxes_et * im_scale;
 
   // Expand box targets
   Tensor bbox_targets, bbox_inside_weights, bbox_outside_weights;
@@ -351,8 +331,9 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* rpn_rois = context.Input<LoDTensor>("RpnRois");
     auto* gt_classes = context.Input<LoDTensor>("GtClasses");
+    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
     auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* im_scales = context.Input<LoDTensor>("ImScales");
+    auto* im_info = context.Input<LoDTensor>("ImInfo");
 
     auto* rois = context.Output<LoDTensor>("Rois");
     auto* labels_int32 = context.Output<LoDTensor>("LabelsInt32");
@@ -369,18 +350,21 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     std::vector<float> bbox_reg_weights =
         context.Attr<std::vector<float>>("bbox_reg_weights");
     int class_nums = context.Attr<int>("class_nums");
+    bool use_random = context.Attr<bool>("use_random");
 
     PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
                       "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(
         gt_classes->lod().size(), 1UL,
         "GenerateProposalLabelsOp gt_classes needs 1 level of LoD");
+    PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
+                      "GenerateProposalLabelsOp is_crowd needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                       "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD");
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
 
     rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
-    labels_int32->mutable_data<int>({n * batch_size_per_im},
+    labels_int32->mutable_data<int>({n * batch_size_per_im, 1},
                                     context.GetPlace());
     bbox_targets->mutable_data<T>({n * batch_size_per_im, kBoxDim * class_nums},
                                   context.GetPlace());
@@ -391,8 +375,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 
     std::random_device rnd;
     std::minstd_rand engine;
-    int seed =
-        context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+    int seed = rnd();
     engine.seed(seed);
 
     framework::LoD lod;
@@ -403,19 +386,23 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();
+    auto is_crowd_lod = is_crowd->lod().back();
     auto gt_boxes_lod = gt_boxes->lod().back();
     for (int i = 0; i < n; ++i) {
       Tensor rpn_rois_slice =
           rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       Tensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
+      Tensor is_crowd_slice =
+          is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
       Tensor gt_boxes_slice =
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
-      Tensor im_scales_slice = im_scales->Slice(i, i + 1);
+      Tensor im_info_slice = im_info->Slice(i, i + 1);
       std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
-          dev_ctx, &rpn_rois_slice, &gt_classes_slice, &gt_boxes_slice,
-          &im_scales_slice, batch_size_per_im, fg_fraction, fg_thresh,
-          bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums, engine);
+          dev_ctx, &rpn_rois_slice, &gt_classes_slice, &is_crowd_slice,
+          &gt_boxes_slice, &im_info_slice, batch_size_per_im, fg_fraction,
+          fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
+          engine, use_random);
       Tensor sampled_rois = tensor_output[0];
       Tensor sampled_labels_int32 = tensor_output[1];
       Tensor sampled_bbox_targets = tensor_output[2];
@@ -442,7 +429,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     bbox_inside_weights->set_lod(lod);
     bbox_outside_weights->set_lod(lod);
     rois->Resize({num_rois, kBoxDim});
-    labels_int32->Resize({num_rois});
+    labels_int32->Resize({num_rois, 1});
     bbox_targets->Resize({num_rois, kBoxDim * class_nums});
     bbox_inside_weights->Resize({num_rois, kBoxDim * class_nums});
     bbox_outside_weights->Resize({num_rois, kBoxDim * class_nums});
@@ -452,31 +439,88 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // TODO(buxingyuan): Add Document
-    AddInput("RpnRois", "RpnRois.");
-    AddInput("GtClasses", "GtClasses.");
-    AddInput("GtBoxes", "GtBoxes.");
-    AddInput("ImScales", "ImScales.");
+    AddInput(
+        "RpnRois",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [N, 4]. "
+        "N is the number of the GenerateProposalOp's output, "
+        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+    AddInput("GtClasses",
+             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "M is the number of groundtruth, "
+             "each element is a class label of groundtruth.");
+    AddInput(
+        "IsCrowd",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "M is the number of groundtruth, "
+        "each element is a flag indicates whether a groundtruth is crowd.");
+    AddInput(
+        "GtBoxes",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 4]. "
+        "M is the number of groundtruth, "
+        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+    AddInput("ImInfo",
+             "(Tensor), This input is a 2D Tensor with shape [B, 3]. "
+             "B is the number of input images, "
+             "each element consists of im_height, im_width, im_scale.");
 
-    AddOutput("Rois", "Rois.");
-    AddOutput("LabelsInt32", "LabelsInt32.");
-    AddOutput("BboxTargets", "BboxTargets.");
-    AddOutput("BboxInsideWeights", "BboxInsideWeights.");
-    AddOutput("BboxOutsideWeights", "BboxOutsideWeights.");
+    AddOutput(
+        "Rois",
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "P usuall equal to  batch_size_per_im * batch_size, "
+        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+    AddOutput("LabelsInt32",
+              "(LoDTensor), This output is a 2D LoDTensor with shape [P], "
+              "each element repersents a class label of a roi");
+    AddOutput("BboxTargets",
+              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+              "class_nums], "
+              "each element repersents a box label of a roi");
+    AddOutput(
+        "BboxInsideWeights",
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "class_nums], "
+        "each element indicates whether a box should contribute to loss.");
+    AddOutput(
+        "BboxOutsideWeights",
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "class_nums], "
+        "each element indicates whether a box should contribute to loss.");
 
-    AddAttr<int>("batch_size_per_im", "batch_size_per_im");
-    AddAttr<float>("fg_fraction", "fg_fraction");
-    AddAttr<float>("fg_thresh", "fg_thresh");
-    AddAttr<float>("bg_thresh_hi", "bg_thresh_hi");
-    AddAttr<float>("bg_thresh_lo", "bg_thresh_lo");
-    AddAttr<std::vector<float>>("bbox_reg_weights", "bbox_reg_weights");
-    AddAttr<int>("class_nums", "class_nums");
-    AddAttr<bool>("fix_seed", "fix_seed").SetDefault(false);
-    AddAttr<int>("seed", "seed").SetDefault(0);
+    AddAttr<int>("batch_size_per_im", "Batch size of rois per images.");
+    AddAttr<float>("fg_fraction",
+                   "Foreground fraction in total batch_size_per_im.");
+    AddAttr<float>(
+        "fg_thresh",
+        "Overlap threshold which is used to chose foreground sample.");
+    AddAttr<float>("bg_thresh_hi",
+                   "Overlap threshold upper bound which is used to chose "
+                   "background sample.");
+    AddAttr<float>("bg_thresh_lo",
+                   "Overlap threshold lower bound which is used to chose "
+                   "background sample.");
+    AddAttr<std::vector<float>>("bbox_reg_weights", "Box regression weights.");
+    AddAttr<int>("class_nums", "Class number.");
+    AddAttr<bool>(
+        "use_random",
+        "Use random sampling to choose foreground and background boxes.")
+        .SetDefault(true);
 
     AddComment(R"DOC(
-Generate Proposals Labels Operator.
-)DOC");
+This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
+to sample foreground boxes and background boxes, and compute loss target.
+
+RpnRois is the output boxes of RPN and was processed by generate_proposal_op, these boxes
+were combined with groundtruth boxes and sampled according to batch_size_per_im and fg_fraction,
+If an instance with a groundtruth overlap greater than fg_thresh, then it was considered as a foreground sample.
+If an instance with a groundtruth overlap greater than bg_thresh_lo and lower than bg_thresh_hi,
+then it was considered as a background sample.
+After all foreground and background boxes are chosen (so called Rois),
+then we apply random sampling to make sure
+the number of foreground boxes is no more than batch_size_per_im * fg_fraction.
+
+For each box in Rois, we assign the classification (class label) and regression targets (box label) to it.
+Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
+    )DOC");
   }
 };
 

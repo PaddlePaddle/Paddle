@@ -53,7 +53,7 @@ inline DataLayout ToPaddleLayout(const MKLDNNFormat& format) {
 inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
   static const std::map<std::type_index, MKLDNNDataType> dict{
       {std::type_index(typeid(float)), MKLDNNDataType::f32},  // NOLINT
-      {std::type_index(typeid(char)), MKLDNNDataType::s8},    // NOLINT
+      {std::type_index(typeid(signed char)), MKLDNNDataType::s8},    // NOLINT
       {std::type_index(typeid(unsigned char)), MKLDNNDataType::u8},
       {std::type_index(typeid(int16_t)), MKLDNNDataType::s16},
       {std::type_index(typeid(int32_t)), MKLDNNDataType::s32}};

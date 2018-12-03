@@ -105,7 +105,7 @@ class SelectedRows {
    * the value
    */
   void Get(const framework::Tensor& ids, framework::Tensor* value,
-           bool auto_grown = false);
+           bool auto_grown = false, bool is_test = false);
 
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
@@ -118,7 +118,7 @@ class SelectedRows {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown);
+  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   void SyncIndex();
 

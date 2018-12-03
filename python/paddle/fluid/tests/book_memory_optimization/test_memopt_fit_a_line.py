@@ -20,6 +20,7 @@ import sys
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 
 # need to fix random seed and training data to compare the loss
 # value accurately calculated by the default and the memory optimization
@@ -38,7 +39,7 @@ if fluid.core.is_compiled_with_cuda():
     place = fluid.CUDAPlace(0)
 
 places = get_places(device_count=0, device_type=device_type)
-pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
+pd = ParallelDo(places, use_nccl=use_nccl)
 with pd.do():
     x_ = pd.read_input(x)
     y_ = pd.read_input(y)

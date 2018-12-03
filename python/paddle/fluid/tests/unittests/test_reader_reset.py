@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import os
 import paddle.fluid as fluid
 import paddle
 import numpy as np
@@ -41,6 +41,8 @@ class TestReaderReset(unittest.TestCase):
                 self.data_file_name, reader, feeder)
 
     def setUp(self):
+        # set parallel threads to fit 20 batches in line 49
+        os.environ['CPU_NUM'] = str(20)
         self.use_cuda = fluid.core.is_compiled_with_cuda()
         self.data_file_name = './reader_reset_test.recordio'
         self.ins_shape = [3]

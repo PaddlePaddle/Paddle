@@ -37,12 +37,9 @@ from . import unique_name
 
 __all__ = [
     'Program',
-    'Operator',
-    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
-    'get_var',
     'name_scope',
 ]
 
@@ -489,7 +486,8 @@ class OpProtoHolder(object):
     def generated_op_attr_names():
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
-            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
         }
 
 
@@ -539,8 +537,7 @@ class Operator(object):
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
         'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'channel_create', 'channel_close', 'channel_send',
-        'channel_recv', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -654,13 +651,16 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
-        if self.has_kernel(type):
+        if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
-    def has_kernel(self, op_type):
+    def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
-
+    
+    def set_input(self, name, value):
+        self.desc.set_input(name, value)
+    
     def to_string(self, throw_on_error):
         """
         Get debug string.
@@ -699,7 +699,7 @@ class Operator(object):
         """
         return self.desc.input(name)
 
-    def rename_input(self, old_name, new_name):
+    def _rename_input(self, old_name, new_name):
         """
         Rename the `old_name` to `new_name`.
 
@@ -710,9 +710,9 @@ class Operator(object):
         Returns:
             None
         """
-        self.desc.rename_input(old_name, new_name)
+        self.desc._rename_input(old_name, new_name)
 
-    def rename_output(self, old_name, new_name):
+    def _rename_output(self, old_name, new_name):
         """
         Rename the `old_name` to `new_name`.
 
@@ -723,7 +723,7 @@ class Operator(object):
         Returns:
             None
         """
-        self.desc.rename_output(old_name, new_name)
+        self.desc._rename_output(old_name, new_name)
 
     @property
     def input_names(self):
@@ -787,7 +787,7 @@ class Operator(object):
         """
         return self.desc.attr_type(name)
 
-    def set_attr(self, name, val):
+    def _set_attr(self, name, val):
         """
         Set the value of attribute by attribute's name.
 
@@ -820,7 +820,7 @@ class Operator(object):
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
-            self.desc.set_attr(name, val)
+            self.desc._set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -839,7 +839,7 @@ class Operator(object):
         """
         return self.desc.attr(name)
 
-    def block_attr_id(self, name):
+    def _block_attr_id(self, name):
         """
         Get the block attribute's id by name.
 
@@ -849,9 +849,9 @@ class Operator(object):
         Returns:
             int: the block index.
         """
-        return self.desc.block_attr_id(name)
+        return self.desc._block_attr_id(name)
 
-    def block_attr(self, name):
+    def _block_attr(self, name):
         """
         Get the block attribute  by name.
 
@@ -862,11 +862,11 @@ class Operator(object):
             block: the block attribute.
         """
 
-        id = self.block_attr_id(name)
+        id = self._block_attr_id(name)
         assert (id >= 0 and id < len(self.block.program.blocks))
         return self.block.program.blocks[id]
 
-    def blocks_attr(self, name):
+    def _blocks_attr(self, name):
         """
         Get the blocks attribute  by name.
 
@@ -877,13 +877,13 @@ class Operator(object):
             list: list of the blocks attribute.
         """
         attrs = []
-        for i in self.blocks_attr_ids(name):
+        for i in self._blocks_attr_ids(name):
             assert (i >= 0 and i < len(self.block.program.blocks))
             attrs.append(self.block.program.blocks[i])
 
         return attrs
 
-    def blocks_attr_ids(self, name):
+    def _blocks_attr_ids(self, name):
         """
         Get the blocks attribute's ids by name.
 
@@ -894,7 +894,7 @@ class Operator(object):
             list: list of the blocks ids.
         """
 
-        return self.desc.blocks_attr_ids(name)
+        return self.desc._blocks_attr_ids(name)
 
     def all_attrs(self):
         """
@@ -908,11 +908,11 @@ class Operator(object):
         for n in attr_names:
             attr_type = self.desc.attr_type(n)
             if attr_type == core.AttrType.BLOCK:
-                attr_map[n] = self.block_attr(n)
+                attr_map[n] = self._block_attr(n)
                 continue
 
             if attr_type == core.AttrType.BLOCKS:
-                attr_map[n] = self.blocks_attr(n)
+                attr_map[n] = self._blocks_attr(n)
                 continue
 
             attr_map[n] = self.attr(n)
@@ -935,7 +935,7 @@ class Block(object):
 
     Notes:
         The constructor of Block should not be invoked directly. Please
-        use `Program.create_block()` to create a block.
+        use `Program._create_block()` to create a block.
 
     Examples:
         .. code-block:: python
@@ -1483,7 +1483,7 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimized_guard(self, param_and_grads):
+    def _optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
@@ -1496,9 +1496,12 @@ class Program(object):
         Examples:
 
             >>> p, g = backward(...)
-            >>> with program.optimized_guard([p,g]):
+            >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
         self._op_role_var = [
@@ -1506,8 +1509,42 @@ class Program(object):
             for var in param_and_grads
         ]
         yield
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
+
+    @contextlib.contextmanager
+    def _lr_schedule_guard(self, is_with_opt=False):
+        """
+        A with guard to set :code:`LRSched` :code:`OpRole` and
+        :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
+        set to the target learning rate.
+
+        Notes: This is a very low level API. Users should not use it directly.
+
+        Args:
+            is_with_opt: Only set to true if these ops a in the middle
+                 of a bunch of optimize ops so that it can be treated
+                 correctly. For example, sgd->lr_op->sgd->lr_op->sgd.
+
+        Examples:
+
+            >>> p, g = backward(...)
+            >>> with program.lr_schedule_guard():
+            >>>     lr = lr * decay
+        """
+
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.LRSched
+        if is_with_opt:
+            self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
+        # TODO(typhoonzero): how to set target learning rate var
         self._op_role_var = []
-        self._current_role = OpRole.Forward
+        yield
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
 
     def __str__(self):
         """
@@ -1554,7 +1591,7 @@ class Program(object):
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
-    def get_desc(self):
+    def _get_desc(self):
         """
         Get the C++ side of `ProgramDesc` object pointer. The C++ object is
         exposed by :code:`pybind`.
@@ -1647,7 +1684,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize(export_for_deployment=False)
+            p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -1663,10 +1700,10 @@ class Program(object):
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
-        p.copy_data_info_from(self)
+        p._copy_data_info_from(self)
         return p
 
-    def prune(self, targets):
+    def _prune(self, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -1717,7 +1754,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self, export_for_deployment=True):
+    def _inference_optimize(self, prune_read_op=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1729,8 +1766,8 @@ class Program(object):
         information will be lost.
 
         Args:
-            export_for_deployment(bool): remove the read ops that are added by py_reader
-                                        for cpp inference library
+            prune_read_op(bool): remove the read ops that are added by py_reader
+                                 for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1738,15 +1775,13 @@ class Program(object):
         Returns:
             Program: The new program.
         """
-        # this is an alternative implement before
-        # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
 
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        if export_for_deployment:
+        if prune_read_op:
             while True:
                 if read_op_idx >= root_block.op_size() or root_block.op(
                         read_op_idx).type() == 'read':
@@ -1764,7 +1799,7 @@ class Program(object):
             for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
-                    op.set_attr('is_test', True)
+                    op._set_attr('is_test', True)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
@@ -1841,7 +1876,7 @@ class Program(object):
         """
         return self.blocks[self.current_block_idx]
 
-    def create_block(self, parent_idx=None):
+    def _create_block(self, parent_idx=None):
         """
         Create a new block with the :code:`parent_idx` and change the current block
         to new block.
@@ -1860,7 +1895,7 @@ class Program(object):
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
 
-    def rollback(self):
+    def _rollback(self):
         """
         Exit a code block, i.e., roll back to the parent block.
         Returns:
@@ -1906,7 +1941,7 @@ class Program(object):
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
-    def copy_data_info_from(self, other):
+    def _copy_data_info_from(self, other):
         """
         Copy the information of data variables from other program.
 
@@ -2138,7 +2173,7 @@ def program_guard(main_program, startup_program=None):
         switch_startup_program(startup_program)
 
 
-def get_var(name, program=None):
+def _get_var(name, program=None):
     """
     Get a variable by name from the global block of a program.
 

@@ -22,8 +22,8 @@ namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
+  VLOG(30) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+           << dst_place;
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -36,6 +36,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   auto size = src.numel() * SizeOfType(src.type());
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(30) << "Skip copy the same data async from " << src_place << " to "
+               << dst_place;
+      return;
+    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -71,6 +76,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
+      if (src_ptr == dst_ptr) {
+        VLOG(30) << "Skip copy the same data async from " << src_place << " to "
+                 << dst_place;
+        return;
+      }
       memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
                    stream);
     } else {
@@ -104,8 +114,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst) {
-  VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
-          << " to " << dst_place;
+  VLOG(30) << "TensorCopySync " << src.dims() << " from " << src.place()
+           << " to " << dst_place;
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
@@ -114,6 +124,11 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
   auto size = src.numel() * SizeOfType(src.type());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(30) << "Skip copy the same data from " << src_place << " to "
+               << dst_place;
+      return;
+    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -130,9 +145,20 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
+      VLOG(30) << "Skip copy the same data from " << src_place << " to "
+               << dst_place;
+      return;
+    }
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
+                 nullptr);
   }
 #endif
 }
@@ -165,10 +191,12 @@ inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
 }
 
 template <typename Predicate>
-struct AnyVisitor : public boost::static_visitor<bool> {
+class AnyVisitor : public boost::static_visitor<bool> {
+ private:
   const framework::Tensor& tensor_;
   Predicate predicate_;
 
+ public:
   AnyVisitor(const framework::Tensor& tensor, Predicate predicate)
       : tensor_(tensor), predicate_(std::move(predicate)) {}
 
@@ -207,10 +235,39 @@ struct AnyVisitor : public boost::static_visitor<bool> {
 };
 
 template <typename Predicate>
+class AnyOutVisitor : public boost::static_visitor<> {
+ private:
+  const framework::Tensor& tensor_;
+  mutable framework::Tensor* out_;
+  Predicate predicate_;
+
+ public:
+  AnyOutVisitor(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out)
+      : tensor_(tensor), out_(out), predicate_(std::move(predicate)) {}
+
+  template <typename Place>
+  void operator()(const Place& place) const {
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
+    out_->Resize({1});
+    out_->mutable_data<bool>(place);
+    AnyImpl(predicate_, tensor_, *ctx, out_);
+  }
+};
+
+template <typename Predicate>
 inline bool Any(const framework::Tensor& tensor, Predicate predicate) {
   AnyVisitor<Predicate> visitor(tensor, predicate);
   auto place = tensor.place();
   return platform::VisitPlace(place, visitor);
+}
+
+template <typename Predicate>
+inline void Any(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out) {
+  AnyOutVisitor<Predicate> visitor(tensor, predicate, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
 }
 
 struct ContainsNANPredicate {
@@ -227,6 +284,12 @@ bool TensorContainsNAN(const framework::Tensor& tensor) {
   return Any(tensor, predicate);
 }
 
+void TensorContainsNAN(const framework::Tensor& tensor,
+                       framework::Tensor* out) {
+  ContainsNANPredicate predicate;
+  Any(tensor, predicate, out);
+}
+
 struct ContainsInfPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
@@ -239,6 +302,71 @@ struct ContainsInfPredicate {
 bool TensorContainsInf(const framework::Tensor& tensor) {
   ContainsInfPredicate predicate;
   return Any(tensor, predicate);
+}
+
+void TensorContainsInf(const framework::Tensor& tensor,
+                       framework::Tensor* out) {
+  ContainsInfPredicate predicate;
+  Any(tensor, predicate, out);
+}
+
+// NOTE(dzhwinter):
+// Isfinite need a AllVisitor to loop through all the elements.
+// We choose two cuda call instead of one allvisitor. The AllVisitor
+// should be implemented if the performance hurts.
+bool TensorIsfinite(const framework::Tensor& tensor) {
+  ContainsInfPredicate pred_inf;
+  ContainsNANPredicate pred_nan;
+  return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
+}
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+static inline void __global__ BothFalse(const T* cmp, T* out) {
+  out[0] = (!cmp[0]) && (!out[0]);
+}
+#endif
+
+struct BothFalseVisitor : public boost::static_visitor<> {
+  const framework::Tensor& in_;
+  mutable framework::Tensor* out_;
+  BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)
+      : in_(in), out_(out) {}
+
+  template <typename Place>
+  void operator()(const Place& place) const {
+    VisitorImpl(place);
+  }
+
+  void VisitorImpl(const platform::CUDAPlace& gpu) const {
+#ifdef PADDLE_WITH_CUDA
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
+    BothFalse<bool><<<1, 1, 0, ctx->stream()>>>(in_.data<bool>(),
+                                                out_->mutable_data<bool>(gpu));
+#endif
+  }
+
+  void VisitorImpl(const platform::CPUPlace& cpu) const {
+    bool lhs = !in_.data<bool>()[0];
+    bool rhs = !out_->mutable_data<bool>(cpu)[0];
+    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+  }
+
+  void VisitorImpl(
+      const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
+    bool lhs = !in_.data<bool>()[0];
+    bool rhs = !out_->mutable_data<bool>(cpu)[0];
+    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+  }
+};
+
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
+  framework::Tensor tmp;
+  TensorContainsInf(tensor, &tmp);
+  TensorContainsNAN(tensor, out);
+  BothFalseVisitor visitor(tmp, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
 }
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,

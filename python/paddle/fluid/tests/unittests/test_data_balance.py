@@ -84,7 +84,7 @@ class TestDataBalance(unittest.TestCase):
         self.data_file_name = './data_balance_test.recordio'
         self.lod_data_file_name = './data_balance_with_lod_test.recordio'
         self.total_ins_num = 50
-        self.batch_size = 10
+        self.batch_size = 12
         self.prepare_data()
         self.prepare_lod_data()
 
@@ -116,7 +116,7 @@ class TestDataBalance(unittest.TestCase):
                 print("WARNING: Unittest TestDataBalance skipped. \
                     For the result is not correct when device count \
                     is larger than batch size.")
-                exit(0)
+                return
             fetch_list = [image.name, label.name]
 
             data_appeared = [False] * self.total_ins_num

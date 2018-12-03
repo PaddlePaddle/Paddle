@@ -13,9 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .layer_function_generator import generate_layer_fn
+import os
+from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
+from .. import core
+from ..framework import convert_np_dtype_to_dtype_
 
-__activations__ = [
+__activations_noattr__ = [
     'sigmoid',
     'logsigmoid',
     'exp',
@@ -33,47 +36,24 @@ __activations__ = [
     'square',
     'softplus',
     'softsign',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
 ]
 
-__all__ = [
-    'mean',
-    'mul',
-    'scale',
-    'sigmoid_cross_entropy_with_logits',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
-    'clip',
-    'clip_by_norm',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
-    'uniform_random_batch_size_like',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'shape',
-    'maxout',
-] + __activations__
+__all__ = []
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+# It is a hot fix in some unittest using:
+#   fluid.layers.scale(x=x, scale=10.0, out=out_var)
+# e.g.: test_program_code.py, test_dist_train.py
+globals()['_scale'] = generate_layer_fn('scale')
+
+globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
+
+__all__ += __activations_noattr__
+
+for _OP in set(__activations_noattr__):
+    globals()[_OP] = generate_layer_fn_noattr(_OP)
 
 __all__ += ["uniform_random"]
 
@@ -81,8 +61,11 @@ _uniform_random_ = generate_layer_fn('uniform_random')
 
 
 def uniform_random(shape, dtype=None, min=None, max=None, seed=None):
+    locals_var = locals().keys()
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
@@ -101,8 +84,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
+    locals_var = locals().keys()
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
@@ -122,12 +106,12 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
+    locals_var = locals().keys()
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val
-
     return _cum_sum_(**kwargs)
 
 
@@ -144,8 +128,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
+    locals_var = locals().keys()
     kwargs = dict()
-    for name in locals():
+    for name in locals_var:
         val = locals()[name]
         if val is not None:
             kwargs[name] = val

@@ -13,17 +13,28 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import contextlib
+import sys
 
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as pd
 from paddle.fluid.executor import Executor
 from functools import partial
 import unittest
-import os
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -198,12 +209,12 @@ def train(use_cuda, is_sparse, is_local=True):
     ]
 
     def event_handler(event):
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, EndStepEvent):
             print('pass_id=' + str(event.epoch) + ' batch=' + str(event.step))
             if event.step == 10:
                 trainer.stop()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=partial(train_program, is_sparse),
         place=place,
         optimizer_func=optimizer_func)

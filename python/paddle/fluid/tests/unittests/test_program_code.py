@@ -25,6 +25,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
+import paddle.fluid.layers.ops as ops
 
 from paddle.fluid.transpiler.details import program_to_code
 
@@ -52,7 +53,7 @@ class TestProgram2Code(unittest.TestCase):
                     name="X",
                     append_batch_size=False)
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
-                layers.scale(x=x, scale=10.0, out=out_var)
+                ops._scale(x=x, scale=10.0, out=out_var)
 
         program_to_code(main)
 

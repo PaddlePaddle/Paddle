@@ -22,7 +22,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
+#include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
@@ -72,6 +74,9 @@ bool NativePaddlePredictor::Init(
   }
 #endif
 
+  // no matter with or without MKLDNN
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
@@ -101,7 +106,7 @@ bool NativePaddlePredictor::Init(
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
   } else {
-    LOG(ERROR) << "fail to load inference model.";
+    LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
     return false;
   }
 
@@ -144,14 +149,18 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
-                                false /* don't create variable eatch time */);
+                                false /* don't create variable each time */);
   VLOG(4) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+  VLOG(30) << "predict cost: " << timer.toc() << "ms";
+
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
 
@@ -215,57 +224,20 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 template <typename T>
 void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                         PaddleTensor *output) {
-  std::vector<int> shape;
-  auto dims_i = fetch.dims();
-  auto lod = fetch.lod();
-  const T *output_ptr = fetch.data<T>();
-  auto num = fetch.numel();
-  std::vector<T> data;
-  if (0 == lod.size()) {
-    std::copy(output_ptr, output_ptr + num, std::back_inserter(data));
-    for (int j = 0; j < dims_i.size(); ++j) {
-      shape.push_back(dims_i[j]);
-    }
-  } else {
-    // for batch detection
-    // image[0] -> output[0] shape {145, 6}
-    // image[1] -> output[1] shape {176, 6}
-    // then,
-    // the batch output shape {321, 6}
-    // the lod {{0, 145, 321}}
-    // so we should append output[0] to {176, 6}
-    size_t max_dim = 0;
-    for (size_t j = 1; j < lod[0].size(); j++) {
-      max_dim = std::max(max_dim, lod[0][j] - lod[0][j - 1]);
-    }
-    size_t common_dim = lod[0].back() == 0 ? 0 : num / lod[0].back();
-    if (max_dim > 0) {
-      data.resize((lod[0].size() - 1) * max_dim * common_dim, 0);
-    }
-    for (size_t j = 1; j < lod[0].size(); j++) {
-      size_t start = lod[0][j - 1] * common_dim;
-      size_t end = lod[0][j] * common_dim;
-      if (end > start) {
-        std::copy(output_ptr + start, output_ptr + end,
-                  data.begin() + (j - 1) * max_dim * common_dim);
-      }
-    }
-    shape.push_back(lod[0].size() - 1);
-    shape.push_back(max_dim);
-    for (int j = 1; j < dims_i.size(); ++j) {
-      shape.push_back(dims_i[j]);
-    }
-  }
-
-  output->shape = shape;
-  auto &buffer = output->data;
-  if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
-    buffer.Resize(sizeof(T) * data.size());
-  }
-  std::memcpy(buffer.data(), data.data(), buffer.length());
-  // copy LoD
-  for (const auto &level : fetch.lod()) {
-    output->lod.emplace_back(level);
+  // set shape.
+  auto shape = framework::vectorize(fetch.dims());
+  output->shape.assign(shape.begin(), shape.end());
+  // set data.
+  const T *data = fetch.data<T>();
+  int num_elems = inference::VecReduceToInt(shape);
+  output->data.Resize(num_elems * sizeof(T));
+  // The fetched tensor output by fetch op, should always in CPU memory, so just
+  // copy.
+  memcpy(output->data.data(), data, num_elems * sizeof(T));
+  // set lod
+  output->lod.clear();
+  for (auto &level : fetch.lod()) {
+    output->lod.emplace_back(level.begin(), level.end());
   }
 }
 
@@ -325,6 +297,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 #else
   return std::move(predictor);
 #endif
+}
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
+    const NativeConfig &config) {
+  return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 }
 
 }  // namespace paddle

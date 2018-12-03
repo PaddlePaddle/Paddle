@@ -21,6 +21,7 @@ __all__ = [
     "sequence_conv_pool",
     "glu",
     "scaled_dot_product_attention",
+    "img_conv_group",
 ]
 
 
@@ -39,8 +40,7 @@ def simple_img_conv_pool(input,
                          param_attr=None,
                          bias_attr=None,
                          act=None,
-                         use_cudnn=True,
-                         use_mkldnn=False):
+                         use_cudnn=True):
     """
     The simple_img_conv_pool is composed with one Convolution2d and one Pool2d.
 
@@ -64,27 +64,35 @@ def simple_img_conv_pool(input,
             average-pooling. Default :math:`max`.
         global_pooling (bool): Whether to use the global pooling. If global_pooling = true,
             pool_size and pool_padding while be ignored. Default False
-        conv_stride (int|list|tuple): The stride size of the Conv2d Layer. If stride is a
+        conv_stride (int|list|tuple): The stride size of the conv2d Layer. If stride is a
             list or tuple, it must contain two integers, (conv_stride_H, conv_stride_W). Otherwise,
             the conv_stride_H = conv_stride_W = conv_stride. Default: conv_stride = 1.
-        conv_padding (int|list|tuple): The padding size of the Conv2d Layer. If padding is
+        conv_padding (int|list|tuple): The padding size of the conv2d Layer. If padding is
             a list or  tuple, it must contain two integers, (conv_padding_H, conv_padding_W).
             Otherwise, the conv_padding_H = conv_padding_W = conv_padding. Default: conv_padding = 0.
-        conv_dilation (int|list|tuple): The dilation size of the Conv2d Layer. If dilation is
+        conv_dilation (int|list|tuple): The dilation size of the conv2d Layer. If dilation is
             a list or tuple, it must contain two integers, (conv_dilation_H, conv_dilation_W).
             Otherwise, the conv_dilation_H = conv_dilation_W = conv_dilation. Default: conv_dilation = 1.
-        conv_groups (int): The groups number of the Conv2d Layer. According to grouped
+        conv_groups (int): The groups number of the conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
-        bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
-        act (str): Activation type for Conv2d. Default: None
+            connected to the second half of the input channels. Default: groups=1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`.
+            Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        act (str): Activation type for conv2d, if it is set to None, activation is not
+            appended. Default: None.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not, it is valid only when compiled
-            with mkldnn library. Default: False
 
     Return:
         Variable: The result of input after Convolution2d and Pool2d.
@@ -111,8 +119,7 @@ def simple_img_conv_pool(input,
         param_attr=param_attr,
         bias_attr=bias_attr,
         act=act,
-        use_cudnn=use_cudnn,
-        use_mkldnn=use_mkldnn)
+        use_cudnn=use_cudnn)
 
     pool_out = layers.pool2d(
         input=conv_out,
@@ -121,8 +128,7 @@ def simple_img_conv_pool(input,
         pool_stride=pool_stride,
         pool_padding=pool_padding,
         global_pooling=global_pooling,
-        use_cudnn=use_cudnn,
-        use_mkldnn=use_mkldnn)
+        use_cudnn=use_cudnn)
     return pool_out
 
 
@@ -137,8 +143,7 @@ def img_conv_group(input,
                    conv_batchnorm_drop_rate=0.0,
                    pool_stride=1,
                    pool_type="max",
-                   use_cudnn=True,
-                   use_mkldnn=False):
+                   use_cudnn=True):
     """
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
     and Pool2d. According to the input arguments, img_conv_group will do serials of
@@ -176,8 +181,6 @@ def img_conv_group(input,
             average-pooling. Default :math:`max`.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not, it is valid only when compiled
-            with mkldnn library. Default: False
 
     Return:
         Variable: The final result after serial computation using Convolution2d,
@@ -225,8 +228,7 @@ def img_conv_group(input,
             padding=conv_padding[i],
             param_attr=param_attr[i],
             act=local_conv_act,
-            use_cudnn=use_cudnn,
-            use_mkldnn=use_mkldnn)
+            use_cudnn=use_cudnn)
 
         if conv_with_batchnorm[i]:
             tmp = layers.batch_norm(input=tmp, act=conv_act, in_place=True)
@@ -239,8 +241,7 @@ def img_conv_group(input,
         pool_size=pool_size,
         pool_type=pool_type,
         pool_stride=pool_stride,
-        use_cudnn=use_cudnn,
-        use_mkldnn=use_mkldnn)
+        use_cudnn=use_cudnn)
     return pool_out
 
 
@@ -249,7 +250,8 @@ def sequence_conv_pool(input,
                        filter_size,
                        param_attr=None,
                        act="sigmoid",
-                       pool_type="max"):
+                       pool_type="max",
+                       bias_attr=None):
     """
     The sequence_conv_pool is composed with Sequence Convolution and Pooling.
 
@@ -265,6 +267,11 @@ def sequence_conv_pool(input,
         pool_type (str): Pooling type can be :math:`max` for max-pooling, :math:`average` for
             average-pooling, :math:`sum` for sum-pooling, :math:`sqrt` for sqrt-pooling.
             Default :math:`max`.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, sequence_conv
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
 
     Return:
         Variable: The final result after Sequence Convolution and Pooling.
@@ -288,6 +295,7 @@ def sequence_conv_pool(input,
         num_filters=num_filters,
         filter_size=filter_size,
         param_attr=param_attr,
+        bias_attr=bias_attr,
         act=act)
 
     pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)

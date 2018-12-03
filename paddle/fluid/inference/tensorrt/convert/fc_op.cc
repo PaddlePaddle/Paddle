@@ -52,7 +52,7 @@ class FcOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a fluid fc op to tensorrt fc layer without bias";
+    VLOG(3) << "convert a fluid fc op to tensorrt fc layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
@@ -107,6 +107,8 @@ class FcOpConverter : public OpConverter {
                                        n_output, tmp_weight.get(), bias.get());
 
     auto output_name = op_desc.Output("Out").front();
+    layer->setName(("fc (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     engine_->weight_map[op_desc.Input("Y").front()] = std::move(tmp);
     if (test_mode) {

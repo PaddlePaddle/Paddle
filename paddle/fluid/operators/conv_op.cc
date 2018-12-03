@@ -94,10 +94,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
   auto input_data_type =
       framework::ToDataType(ctx.Input<Tensor>("Input")->type());
-  auto filter_data_type =
-      framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
-  PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-                    "input and filter data type should be consistent");
+  //auto filter_data_type =
+  //    framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
+  //PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+  //                  "input and filter data type should be consistent");
 
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
@@ -109,6 +109,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -127,10 +131,31 @@ void Conv2DOpMaker::Make() {
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
       .AsDispensable();
+  AddInput("Scale_in",
+           "(Tensor) Scale_in to be used for int8 input data."
+           "Only used with INT8.")
+      .AsDispensable();
+  AddInput("Scale_in_eltwise",
+           "(Tensor) Scale_in_eltwise to be used for int8 eltwise input data."
+           "Only used with MKL-DNN.")
+      .AsDispensable();
+  AddInput("Scale_weights",
+           "(Tensor) Scale_weights to be used for int8 weights data."
+           "Only used with MKL-DNN.")
+      .AsDispensable();
+  AddInput("Scale_out",
+           "(Tensor) Scale_out to be used for int8 output data."
+           "Only used with MKL-DNN.")
+      .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCHW.");
+
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
+           "Used with fuse_residual_connection fusion.")
+      .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -161,6 +186,15 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_residual_connection",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever convolution output is as an input to residual "
+                "connection.")
+      .SetDefault(false);
+  AddAttr<bool>("force_fp32_output", "(bool, default false) Force INT8 kernel output FP32, only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -177,6 +211,11 @@ void Conv2DOpMaker::Make() {
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
       .SetDefault(4096);
+  AddAttr<bool>("exhaustive_search",
+                "(bool, default false) cuDNN has many algorithm to calculation "
+                "convolution, whether enable exhaustive search ",
+                "for cuDNN convolution or not, defalut is False.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -205,6 +244,7 @@ $$
        W_{out}= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]}+ 1
 $$
 )DOC");
+  Apply();
 }
 
 void Conv3DOpMaker::Make() {
@@ -225,8 +265,7 @@ void Conv3DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.")
-      .Reuse("Input");
+            "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "
@@ -264,6 +303,9 @@ void Conv3DOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("AnyLayout");
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Only used in mkldnn INT8 kernel")
+      .SetDefault(false);
   // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. workspace size for cudnn, in MB, "
@@ -272,7 +314,11 @@ void Conv3DOpMaker::Make() {
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
       .SetDefault(4096);
-
+  AddAttr<bool>("exhaustive_search",
+                "(bool, default false) cuDNN has many algorithm to calculation "
+                "convolution, whether enable exhaustive search ",
+                "for cuDNN convolution or not, defalut is False.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Convolution3D Operator.
 
@@ -302,6 +348,7 @@ Example:
        W_{out}= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{ strides[2]}+ 1
   $$
 )DOC");
+  Apply();
 }
 
 void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
@@ -345,6 +392,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
+                  ops::ConvOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
@@ -352,7 +400,9 @@ REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
+                  ops::ConvOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 

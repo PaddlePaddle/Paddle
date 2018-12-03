@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cross_entropy_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -138,6 +139,11 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false), a flag indicating whether to "
                   "interpretate the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<int>("ignore_index",
+                 "(int, default -100), Specifies a target value that is"
+                 "ignored and does not contribute to the input gradient."
+                 "Only valid if soft_label is set to False")
+        .SetDefault(-100);
     AddComment(R"DOC(
 CrossEntropy Operator.
 
@@ -174,6 +180,15 @@ or not. But the output only shares the LoD information with input X.
 )DOC");
   }
 };
+
+class CrossEntropyOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -181,6 +196,7 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
+                  ops::CrossEntropyOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,

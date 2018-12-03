@@ -17,23 +17,20 @@ IF(USE_EIGEN_FOR_BLAS)
 ENDIF(USE_EIGEN_FOR_BLAS)
 
 INCLUDE(cblas)
-# IF(WIN32 AND NOT ${CBLAS_FOUND})
-
-
 
 IF(NOT ${CBLAS_FOUND})
-
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
     SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
-    SET(CBLAS_INCLUDE_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
+    SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
     SET(CBLAS_LIBRARIES
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
     ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
+
     IF (WIN32)
         SET(CBLAS_FOUND true)
         MESSAGE(WARNING, "In windows, openblas only support msvc build, please build it manually and put it at " ${CBLAS_INSTALL_DIR})
@@ -96,7 +93,7 @@ IF(NOT ${CBLAS_FOUND})
     ENDIF(NOT WIN32)
     SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
-        INSTALL(DIRECTORY ${CBLAS_INCLUDE_DIR} DESTINATION third_party/openblas)
+        INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
         # Because libopenblas.a is a symbolic link of another library, thus need to
         # install the whole directory.
         IF(ANDROID)
@@ -117,8 +114,8 @@ IF(NOT ${CBLAS_FOUND})
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
-MESSAGE(STATUS "BLAS Include: ${CBLAS_INCLUDE_DIR}")
-INCLUDE_DIRECTORIES(${CBLAS_INCLUDE_DIR})
+MESSAGE(STATUS "BLAS Include: ${CBLAS_INC_DIR}")
+INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
 # FIXME(gangliao): generate cblas target to track all high performance
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)

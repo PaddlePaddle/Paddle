@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.dataset.mnist as mnist
+from paddle.fluid.layers.io import open_recordio_file
 
 
 class TestPreprocessor(unittest.TestCase):
@@ -43,7 +44,7 @@ class TestPreprocessor(unittest.TestCase):
         img_expected_res = []
         lbl_expected_res = []
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data_file = fluid.layers.io.open_recordio_file(
+            data_file = open_recordio_file(
                 './mnist_for_preprocessor_test.recordio',
                 shapes=[[-1, 784], [-1, 1]],
                 lod_levels=[0, 0],
@@ -64,7 +65,7 @@ class TestPreprocessor(unittest.TestCase):
         img_actual_res = []
         lbl_actual_res = []
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data_file = fluid.layers.io.open_recordio_file(
+            data_file = open_recordio_file(
                 './mnist_for_preprocessor_test.recordio',
                 shapes=[[-1, 784], [-1, 1]],
                 lod_levels=[0, 0],

@@ -89,7 +89,8 @@ def reader_creator(tar_file, file_name, dict_size):
             ]
             for name in names:
                 for line in f.extractfile(name):
-                    line_split = line.strip().split(six.b('\t'))
+                    line = cpt.to_text(line)
+                    line_split = line.strip().split('\t')
                     if len(line_split) != 2:
                         continue
                     src_seq = line_split[0]  # one source sequence

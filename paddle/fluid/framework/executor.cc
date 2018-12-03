@@ -14,18 +14,20 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -37,18 +39,77 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog), block_id_(block_id) {
+  if (GetEagerDeletionThreshold() >= 0) {
+    ref_cnts_ = GetNonPersistableReferenceCount<int>(prog_, block_id_);
+  }
+}
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
-  VLOG(5) << "destroy ExecutorPrepareContext";
+  VLOG(50) << "destroy ExecutorPrepareContext";
+}
+
+template <typename RefCntMap>
+static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
+                                GarbageCollector<Tensor>* gc,
+                                RefCntMap* ref_cnts) {
+  std::unordered_set<Tensor*> erase_tensors;
+
+  auto handler = [&](const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto it = ref_cnts->find(name);
+        if (it == ref_cnts->end()) continue;
+        if ((it->second)-- == 1) {
+          auto* var = scope.FindVar(name);
+          if (var != nullptr) {
+            VLOG(100) << "Erase tensor \'" << name << "\'";
+            if (var->IsType<LoDTensor>()) {
+              erase_tensors.insert(var->GetMutable<LoDTensor>());
+            } else if (var->IsType<SelectedRows>()) {
+              erase_tensors.insert(
+                  var->GetMutable<SelectedRows>()->mutable_value());
+            }
+          }
+        }
+      }
+    }
+  };
+
+  handler(op->Inputs());
+  handler(op->Outputs());
+
+  if (!erase_tensors.empty()) {
+    gc->Add(erase_tensors);
+  }
+}
+
+static void EnableFusedOp(ExecutorPrepareContext* ctx) {
+#ifdef PADDLE_WITH_NGRAPH
+  VLOG(3) << "use_ngraph=True";
+  auto intervals = FusedOperator::FusedOpIntervals(&ctx->ops_);
+  for (auto& interval : intervals) {
+    auto* fused_op = new FusedOperator(ctx->prog_, ctx->block_id_,
+                                       interval.at(0), interval.at(1));
+    *interval[0] = std::unique_ptr<OperatorBase>(fused_op);
+  }
+  for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
+    ctx->ops_.erase(it->at(0) + 1, it->at(1));
+  }
+#else
+  LOG(WARNING)
+      << "'NGRAPH' is not supported, Please re-compile with WITH_NGRAPH option";
+#endif
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
+  // TODO(typhoonzero): complete message will need to use real trainer_id,
+  // except 0.
   ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
+      ::paddle::operators::distributed::GRPCClient>(0)
       ->SendComplete();
 #endif
 }
@@ -63,7 +124,7 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
+    var->GetMutable<std::vector<framework::Scope*>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -72,15 +133,13 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::CHANNEL) {
-    var->GetMutable<ChannelHolder>();
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
         var_type);
   }
 }
@@ -103,21 +162,21 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " global, which pointer is " << ptr;
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(30) << "Create Variable " << var->Name()
+                 << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
+               << ptr;
     }
   }
 }
@@ -248,7 +307,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& feed_target : (*feed_targets)) {
       std::string var_name = feed_target.first;
-      VLOG(3) << "feed target's name: " << var_name;
+      VLOG(30) << "feed target's name: " << var_name;
 
       // prepend feed op
       auto* op = global_block->PrependOp();
@@ -271,7 +330,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& fetch_target : (*fetch_targets)) {
       std::string var_name = fetch_target.first;
-      VLOG(3) << "fetch target's name: " << var_name;
+      VLOG(30) << "fetch target's name: " << var_name;
 
       // append fetch op
       auto* op = global_block->AppendOp();
@@ -300,6 +359,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
+  if (FLAGS_use_ngraph) EnableFusedOp(ctx.get());
   return ctx;
 }
 
@@ -321,6 +381,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -329,15 +390,43 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+  std::unique_ptr<GarbageCollector<Tensor>> gc;
+  // WhileOp would set keep_kids to false
+  // WhileGradOp would need the scopes created in WhileOp
+  // Perhaps, we should not perform eager deletion in WhileOp
+  // The scopes and variables created by WhileOp would be deleted
+  // in WhileGradOp.
+  if (max_memory_size >= 0 && !keep_kids) {
+    ctx->ResetReferenceCount();
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(place_)) {
+      gc.reset(new DefaultStreamGarbageCollector<Tensor>(
+          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+    } else {
+#endif
+      gc.reset(new CPUGarbageCollector<Tensor>(
+          boost::get<platform::CPUPlace>(place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
+    }
+#endif
+  }
+
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
 
-    if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
+    if (gc != nullptr) {
+      DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
+                          &(ctx->cur_ref_cnts_));
     }
   }
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+  if (gc != nullptr) {
+    gc->Wait();
+  } else {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);
   } else {
@@ -350,13 +439,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
     }
-  }
-
-  if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
   }
 }
 
@@ -400,7 +482,7 @@ void Executor::RunPreparedContext(
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
+  VLOG(30) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
@@ -414,6 +496,5 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
 #endif
 }
-
 }  // namespace framework
 }  // namespace paddle
