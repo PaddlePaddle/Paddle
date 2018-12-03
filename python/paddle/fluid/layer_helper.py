@@ -23,6 +23,7 @@ import numpy as np
 from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
+from paddle.fluid.imperative import base
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
 from six.moves import zip
@@ -62,7 +63,7 @@ class LayerHelper(object):
         if isinstance(x, Variable):
             return x
         elif isinstance(x, np.ndarray):
-            return self._np_to_variable(x)
+            return base.to_variable(x, self.main_program.current_block())
         else:
             raise ValueError("inputs wrong type %s\n" % x)
 
