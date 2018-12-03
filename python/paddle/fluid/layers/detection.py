@@ -46,6 +46,7 @@ __all__ = [
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
+    'box_decoder_and_assign',
 ]
 
 
@@ -400,6 +401,44 @@ def polygon_box_transform(input, name=None):
         outputs={"Output": output})
     return output
 
+@templatedoc()
+def box_decoder_and_assign(prior_box,
+              prior_box_var,
+              target_box,
+              box_score,
+              box_clip):
+    """
+    ${comment}
+
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        box_score(${box_score_type}): ${box_score_comment}
+    Returns:
+        output_box(${output_box_type}): ${output_box_comment}
+        output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+    """
+    helper = LayerHelper("box_decoder_and_assign", **locals())
+
+    output_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+    output_assign_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+
+    helper.append_op(
+        type="box_decoder_and_assign",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box,
+            "BoxScore": box_score
+        },
+        attrs={"box_clip": box_clip},
+        outputs={
+            "OutputBox": output_box,
+            "OutputAssignBox": output_assign_box})
+    return output_box, output_assign_box
 
 @templatedoc()
 def detection_map(detect_res,
