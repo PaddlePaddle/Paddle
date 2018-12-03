@@ -182,6 +182,12 @@ Example:
        H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
+  
+  For adaptive = true:
+       $$
+       H_{out} = ksize[0]   W_{out} = ksize[1]
+       $$
+      
 
 )DOC");
   }
@@ -266,6 +272,11 @@ Example:
        D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
        H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
+       $$
+  
+  For adaptive = true:
+       $$
+       D_{out} = ksize[0]   H_{out} = ksize[1]   W_{out} = ksize[2]
        $$
 
 )DOC");
