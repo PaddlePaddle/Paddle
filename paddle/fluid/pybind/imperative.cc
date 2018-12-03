@@ -23,20 +23,13 @@ namespace pybind {
 // Bind Methods
 void BindTracer(pybind11::module *m) {
   pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
-      .def(pybind11::init<>())
+      .def("__init__",
+           [](imperative::Tracer &self, framework::BlockDesc *root_block) {
+             new (&self) imperative::Tracer(root_block);
+           })
       .def("trace", &imperative::Tracer::Trace)
-      .def_property("scope",
-                    [](const imperative::Tracer &self) { return self.Scope(); },
-                    [](imperative::Tracer &self, framework::Scope *scope) {
-                      self.SetScope(scope);
-                    },
-                    R"DOC()DOC")
-      .def_property("block",
-                    [](const imperative::Tracer &self) { return self.Block(); },
-                    [](imperative::Tracer &self, framework::BlockDesc *block) {
-                      self.SetBlock(block);
-                    },
-                    R"DOC()DOC");
+      .def("get_scope", &imperative::Tracer::GetScope,
+           pybind11::return_value_policy::reference);
 }
 
 }  // namespace pybind

@@ -358,11 +358,13 @@ class Variable(core.VarBase):
         self.stop_gradient = stop_gradient
         self.is_data = is_data
 
-    def numpy(self, scope):
+    def numpy(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
         tensor = core.get_variable_tensor(scope, self.desc.name())
         return np.array(tensor)
 
-    def backward(self, scope):
+    def backward(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
         self._run_backward(scope)
 
     def grad(self):
@@ -668,14 +670,14 @@ class Operator(core.OpBase):
         for inp in inputs.values():
             if isinstance(inp, Variable):
                 input_vars.append(inp)
-            elif isinstance(inp, list):
+            elif isinstance(inp, list) or isinstance(inp, tuple):
                 input_vars.extend(inp[:])
         self.inputs = input_vars
         output_vars = []
         for out in outputs.values():
             if isinstance(out, Variable):
                 output_vars.append(out)
-            elif isinstance(inp, list):
+            elif isinstance(out, list) or isinstance(out, tuple):
                 output_vars.extend(out[:])
         self.outputs = output_vars
 
@@ -1246,7 +1248,7 @@ class Block(object):
         if _in_imperative_mode():
             op_desc = core.OpDesc()
             op = Operator(block=self, desc=op_desc, *args, **kwargs)
-            _imperative_tracer().trace(op, op.inputs, op.outputs)
+            _imperative_tracer().trace(op, op.inputs, op.outputs, self.desc)
         else:
             op_desc = self.desc.append_op()
             op = Operator(block=self, desc=op_desc, *args, **kwargs)
@@ -2257,9 +2259,9 @@ def _get_var(name, program=None):
 
 
 @contextlib.contextmanager
-def _imperative_guard():
+def _imperative_guard(tracer):
     global _imperative_tracer_
     tmp_trace = _imperative_tracer_
-    _imperative_tracer_ = core.Tracer()
+    _imperative_tracer_ = tracer
     yield
     _imperative_tracer_ = tmp_trace

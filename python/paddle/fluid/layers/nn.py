@@ -17,7 +17,6 @@ All layers just related to the neural network.
 
 from __future__ import print_function
 
-import sys
 import numpy as np
 import os
 from ..layer_helper import LayerHelper
