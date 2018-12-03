@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
