@@ -48,13 +48,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)     \
-  struct DynLoad__##__name {                        \
-    template <typename... Args>                     \
-    inline cudnnStatus_t operator()(Args... args) { \
-      return ::__name(args...);                     \
-    }                                               \
-  };                                                \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name) \
+  struct DynLoad__##__name {                    \
+    template <typename... Args>                 \
+    inline auto operator()(Args... args) {      \
+      return ::__name(args...);                 \
+    }                                           \
+  };                                            \
   extern DynLoad__##__name __name
 
 #endif
@@ -111,7 +111,23 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
   __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
   __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
-  __macro(cudnnGetErrorString);
+  __macro(cudnnGetErrorString);                           \
+  __macro(cudnnCreateDropoutDescriptor);                  \
+  __macro(cudnnDropoutGetStatesSize);                     \
+  __macro(cudnnSetDropoutDescriptor);                     \
+  __macro(cudnnCreateRNNDescriptor);                      \
+  __macro(cudnnSetRNNDescriptor);                         \
+  __macro(cudnnGetRNNParamsSize);                         \
+  __macro(cudnnGetRNNWorkspaceSize);                      \
+  __macro(cudnnGetRNNTrainingReserveSize);                \
+  __macro(cudnnRNNForwardTraining);                       \
+  __macro(cudnnRNNBackwardData);                          \
+  __macro(cudnnRNNBackwardWeights);                       \
+  __macro(cudnnRNNForwardInference);                      \
+  __macro(cudnnDestroyDropoutDescriptor);                 \
+  __macro(cudnnDestroyRNNDescriptor);                     \
+  __macro(cudnnSetRNNDescriptor_v6);
+
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #define CUDNN_DNN_ROUTINE_EACH_R2(__macro) \

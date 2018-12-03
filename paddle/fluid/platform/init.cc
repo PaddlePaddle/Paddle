@@ -49,7 +49,7 @@ void InitGflags(std::vector<std::string> argv) {
       line += ' ';
     }
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(10) << "Init commandline: " << line;
+    VLOG(1) << "Init commandline: " << line;
   });
 }
 

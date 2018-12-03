@@ -37,7 +37,13 @@ if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
 endif()
 
-register_operators(EXCLUDES warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS})
+SET(OP_PREFETCH_DEPS "")
+if (WITH_DISTRIBUTE)
+    SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
+endif()
+
+register_operators(EXCLUDES warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+
 
 # warpctc_op needs cudnn 7 above
 if (WITH_GPU AND NOT WIN32)
