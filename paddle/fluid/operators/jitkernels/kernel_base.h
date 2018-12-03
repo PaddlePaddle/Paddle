@@ -25,6 +25,7 @@ typedef enum { vmul = 0, vadd = 1, vsub, vexp } KernelType;
 class Kernel {
  public:
   Kernel() = default;
+  virtual ~Kernel() = default;
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
@@ -32,14 +33,18 @@ template <typename T, typename Func, typename Attr>  // TODO(TJ): use tuple
 class KernelImpl : public Kernel {
  public:
   using ELEMENT_TYPE = T;  // TODO(TJ): remove me?
-  KernelImpl() = default;
-  virtual ~KernelImpl() = default;
-
-  virtual Func GetFunc() { return func; }
+  virtual Func GetFunc() const { return func; }
   virtual bool UseMe(Attr attr) const = 0;
 
  protected:
   Func func{nullptr};
+};
+
+template <typename T, typename Func, typename Attr>  // TODO(TJ): use tuple
+class ReferKernel : public KernelImpl<T, Func, Attr> {
+ public:
+  // Refer code can always be used
+  bool UseMe(Attr attr) const override { return true; }
 };
 
 }  // namespace jitkernels

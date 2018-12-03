@@ -21,11 +21,14 @@ namespace paddle {
 namespace operators {
 namespace jitkernels {
 
-// refer do not need useme, it would be the last one.
-
 KernelPool& KernelPool::Instance() {
   static KernelPool g_kernel_pool;
   return g_kernel_pool;
+}
+
+ReferKernelPool& ReferKernelPool::Instance() {
+  static ReferKernelPool g_refer_kernel_pool;
+  return g_refer_kernel_pool;
 }
 
 }  // namespace jitkernels
