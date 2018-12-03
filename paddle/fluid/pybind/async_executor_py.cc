@@ -47,7 +47,11 @@ void BindAsyncExecutor(py::module* m) {
         return std::unique_ptr<framework::AsyncExecutor>(
             new framework::AsyncExecutor(scope, place));
       }))
-      .def("run_from_files", &framework::AsyncExecutor::RunFromFile);
+      .def("run_from_files", &framework::AsyncExecutor::RunFromFile)
+      .def("config_pslib",   &framework::AsyncExecutor::ConfigPslib)
+      .def("start_server",  &framework::AsyncExecutor::StartServer)
+      .def("init_model",  &framework::AsyncExecutor::InitModel)
+      .def("save_model",  &framework::AsyncExecutor::SaveModel);
 }  // end BindAsyncExecutor
 }  // end namespace pybind
 }  // end namespace paddle

@@ -149,3 +149,16 @@ class AsyncExecutor(object):
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, debug)
+
+    def config_ps(self, dist_desc, host_sign_list, node_num, index):
+        self.executor.config_pslib(dist_desc, host_sign_list, node_num, index)
+
+    def start_server(self):
+        self.executor.start_server()
+
+    def init_model(self):
+        self.executor.init_model()
+
+    def save_model(self, save_path):
+        self.executor.save_model(save_path)
+        

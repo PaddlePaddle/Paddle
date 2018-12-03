@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "pslib.h"
 
 namespace paddle {
 namespace framework {
@@ -47,6 +48,10 @@ void AsyncExecutor::CreateThreads(
   worker->SetDataFeed(reader);
   worker->SetFetchVarNames(fetch_var_names);
   worker->BindingDataFeedMemory();
+  worker->SetPSlibPtr(_pslib_ptr);
+  worker->SetPullDenseThread(_pull_dense_thread);
+  worker->BindingSlotVariableMemory();
+  worker->SetParamConfig(&_param_config);
 }
 
 void PrepareReaders(std::vector<std::shared_ptr<DataFeed>>& readers,  // NOLINT
@@ -58,6 +63,77 @@ void PrepareReaders(std::vector<std::shared_ptr<DataFeed>>& readers,  // NOLINT
     readers[i]->Init(data_feed_desc);  // set batch_size and queue_size here
   }
   readers[0]->SetFileList(filelist);
+}
+
+void AsyncExecutor::ConfigPslib(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index) {
+    _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(new paddle::distributed::PSlib());
+    _pslib_ptr->init_and_config(dist_desc, host_sign_list, node_num, index);//TODO
+}
+
+void AsyncExecutor::StartServer() {
+    _pslib_ptr->run_server();
+}
+
+void AsyncExecutor::InitModel() {
+    //TODO only rank = 0 do this
+    std::vector<int> all_dense_table_id; //TODO
+    all_dense_table_id.push_back(0);
+    for (auto table_id: all_dense_table_id) {
+        std::vector<paddle::ps::Region> regions;
+        std::vector<std::string> variables;  //TODO
+        for (auto& t : variables) {
+            Variable* var = root_scope_->FindVar(t);
+            CHECK(var != nullptr) << "var[" << t << "] not found";
+            LoDTensor* tensor = var->GetMutable<LoDTensor>();
+
+            float* g = tensor->data<float>();
+            CHECK(g != nullptr) << "var[" << t << "] value not initialized";
+
+            float init_range = 0.2;
+            int rown = tensor->dims()[0];
+            init_range /= sqrt(rown);
+
+            std::normal_distribution<float> ndistr(0.0, 1.0);
+            for (auto i = 0u; i < tensor->numel(); ++i) {
+                g[i] = ndistr(local_random_engine()) * init_range;
+            }
+
+            paddle::ps::Region reg(g, tensor->numel());
+            regions.emplace_back(std::move(reg));
+        }
+
+        auto push_status = _pslib_ptr->_worker_ptr->push_dense_param(regions.data(), regions.size(), table_id);
+        push_status.wait();
+        auto status = push_status.get();
+        if (status != 0) {
+            LOG(FATAL) << "push dense param failed, status[" << status << "]";
+            exit(-1);
+        } 
+    }
+}
+
+void AsyncExecutor::SaveModel(const std::string& path) {
+    auto ret = _pslib_ptr->_worker_ptr->flush();
+    ret.wait();
+    ret = _pslib_ptr->_worker_ptr->save(path, 0);
+    ret.wait();
+    int32_t feasign_cnt = ret.get();
+    if (feasign_cnt == -1) { // TODO should be feasign_cnt < 0, because server bug
+        LOG(FATAL) << "save model failed";
+        exit(-1);
+    }
+}
+
+void AsyncExecutor::PrepareDenseThread() {
+    DensePullThreadParam param;
+    param.ps_client = _pslib_ptr->_worker_ptr;;
+    param.threshold = 1;//GlobalConfig::instance().pull_dense_per_batch; //TODO
+    param.training_thread_num = actual_thread_num;
+    param.root_scope = root_scope_;
+    //param.dense_params = &GlobalConfig::instance().dense_variable_name; //TODO
+
+    _pull_dense_thread = std::shared_ptr<DensePullThread>(new DensePullThread(param));
+
 }
 
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
@@ -82,7 +158,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   google::protobuf::TextFormat::ParseFromString(data_feed_desc_str,
                                                 &data_feed_desc);
 
-  int actual_thread_num = thread_num;
+  actual_thread_num = thread_num;
   int file_cnt = filelist.size();
   PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
 
@@ -106,11 +182,11 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed>> readers;
   PrepareReaders(readers, actual_thread_num, data_feed_desc, filelist);
-
+  PrepareDenseThread();
   std::vector<std::shared_ptr<ExecutorThreadWorker>> workers;
   workers.resize(actual_thread_num);
   for (auto& worker : workers) {
-    worker.reset(new ExecutorThreadWorker);
+    worker.reset(new AsyncExecutorThreadWorker);
   }
 
   // prepare thread resource here
@@ -128,7 +204,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& th : threads) {
     th.join();
   }
-
+  _pull_dense_thread->stop();
   root_scope_->DropKids();
 
   return;
