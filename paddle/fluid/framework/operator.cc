@@ -760,6 +760,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
+  // Transfer variables for inplace operators is not allowed when MKL-DNN
+  // mode is enabled.
   if (expected_kernel_key.library_type_ != LibraryType::kMKLDNN &&
       run_by_executor_ && !transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
