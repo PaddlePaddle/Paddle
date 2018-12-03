@@ -23,11 +23,12 @@ namespace allocation {
 CPUAllocation::CPUAllocation(void *ptr, size_t size)
     : Allocation(ptr, size, platform::CPUPlace()) {}
 
-void CPUAllocation::share_data_with(void* ptr, size_t size) {
+void CPUAllocation::share_data_with(void *ptr, size_t size) {
   ptr_ = ptr;
   size_ = size;
 
-  VLOG(10) << "CPUAllocation shares data with ptr: " << ptr << " size: " << size;
+  VLOG(10) << "CPUAllocation shares data with ptr: " << ptr
+           << " size: " << size;
 }
 
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
@@ -49,8 +50,8 @@ Allocation *CPUAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
     default:
       auto status = posix_memalign(&ptr, kAlignment, size);
       if (UNLIKELY(status) != 0) {
-        throw BadAlloc(string::Sprintf("Cannot allocate cpu memory %d. Errno is %d",
-                                       size, status));
+        throw BadAlloc(string::Sprintf(
+            "Cannot allocate cpu memory %d. Errno is %d", size, status));
       }
       break;
   }

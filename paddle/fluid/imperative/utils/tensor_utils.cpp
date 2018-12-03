@@ -17,11 +17,11 @@
 #endif
 
 #include "paddle/fluid/imperative/utils/tensor_utils.h"
-#include <stdint.h> // for int8_t
-#include <typeindex>
+#include <numpy/arrayobject.h>
+#include <stdint.h>  // for int8_t
 #include <cstdint>
 #include <map>
-#include <numpy/arrayobject.h>
+#include <typeindex>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -44,9 +44,9 @@ static NumpyDataTypeMap& gNumpyDataTypeMap() {
   return *g_numpy_data_type_map_;
 }
 
-static inline void RegisterNumpyType(NumpyDataTypeMap* map,
-                                     int dtype,
-                                     framework::proto::VarType::Type proto_type) {
+static inline void RegisterNumpyType(
+    NumpyDataTypeMap* map, int dtype,
+    framework::proto::VarType::Type proto_type) {
   map->proto_to_dtype_.emplace(static_cast<int>(proto_type), dtype);
   map->dtype_to_proto_.emplace(dtype, static_cast<int>(proto_type));
 }
@@ -70,8 +70,7 @@ static NumpyDataTypeMap* InitNumpyDataTypeMap() {
 static void CheckTensor(const framework::Tensor& tensor) {
   // NOTE(minqiyang): add API hint when any check meets error here
   // check if tensor is initialized
-  PADDLE_ENFORCE(tensor.IsInitialized(),
-                 "Tensor should be initialized first");
+  PADDLE_ENFORCE(tensor.IsInitialized(), "Tensor should be initialized first");
 
   // check the place of tensor
   // NOTE(minqiyang): we could only support numpy bridge
@@ -94,13 +93,13 @@ static int GetDType(const framework::Tensor& tensor) {
 static std::type_index GetTensorType(int dtype) {
   auto it = gNumpyDataTypeMap().dtype_to_proto_.find(dtype);
   if (it != gNumpyDataTypeMap().dtype_to_proto_.end()) {
-    return framework::ToTypeIndex(static_cast<framework::proto::VarType::Type>(it->second));
+    return framework::ToTypeIndex(
+        static_cast<framework::proto::VarType::Type>(it->second));
   }
 
-  PADDLE_THROW("Numpy conversion from numpy array with type %s is NOT supported",
-               dtype);
+  PADDLE_THROW(
+      "Numpy conversion from numpy array with type %s is NOT supported", dtype);
 }
-
 
 static std::vector<npy_intp> DDimToNumpyShape(const framework::DDim& ddim) {
   std::vector<npy_intp> numpy_shape;
@@ -111,7 +110,8 @@ static std::vector<npy_intp> DDimToNumpyShape(const framework::DDim& ddim) {
   return numpy_shape;
 }
 
-static std::vector<int64_t> NumpyShapeToVector(int ndim, npy_intp* numpy_shape) {
+static std::vector<int64_t> NumpyShapeToVector(int ndim,
+                                               npy_intp* numpy_shape) {
   std::vector<int64_t> dims;
   dims.reserve(ndim);
   for (int i = 0; i != ndim; ++i) {
@@ -139,15 +139,8 @@ PyObject* TensorToNumpy(const framework::Tensor& tensor) {
 
   // create numpy array
   PyObject* array = PyArray_New(
-      &PyArray_Type,
-      tensor.dims().size(),
-      sizes.data(),
-      dtype,
-      strides.data(),
-      tensor.Holder()->ptr(),
-      0,
-      NPY_ARRAY_BEHAVED,
-      nullptr);
+      &PyArray_Type, tensor.dims().size(), sizes.data(), dtype, strides.data(),
+      tensor.Holder()->ptr(), 0, NPY_ARRAY_BEHAVED, nullptr);
 
   if (!array) {
     return nullptr;
@@ -157,8 +150,8 @@ PyObject* TensorToNumpy(const framework::Tensor& tensor) {
   // since we passed it to numpy.
   // // create a VarBase py_object and set it to Numpy PyArrayObj
   // if (PyArray_SetBaseObject(reinterpret_cast<PyArrayObject*>(array.get()),
-                            // make_var_base(tensor)) == -1) {
-    // return nullptr;
+  // make_var_base(tensor)) == -1) {
+  // return nullptr;
   // }
 
   return array;
@@ -177,7 +170,8 @@ framework::Tensor TensorFromNumpy(PyObject* obj) {
   std::vector<int64_t> dims = NumpyShapeToVector(ndim, PyArray_DIMS(array));
   // NOTE(minqiyang): after tensor's requested size calculation, we will throw
   // the strides info away, because tensor will calculate strides itself.
-  std::vector<int64_t> strides = NumpyShapeToVector(ndim, PyArray_STRIDES(array));
+  std::vector<int64_t> strides =
+      NumpyShapeToVector(ndim, PyArray_STRIDES(array));
 
   // calculate the requested size of tensor
   size_t requested_size = 0U;
@@ -187,9 +181,10 @@ framework::Tensor TensorFromNumpy(PyObject* obj) {
 
   // check byte order
   if (!PyArray_EquivByteorders(PyArray_DESCR(array)->byteorder, NPY_NATIVE)) {
-    PADDLE_ENFORCE(PyArray_EquivByteorders(PyArray_DESCR(array)->byteorder,
-                                           NPY_NATIVE),
-                   "numpy array's byte orders should keep the same with the native byte order");
+    PADDLE_ENFORCE(
+        PyArray_EquivByteorders(PyArray_DESCR(array)->byteorder, NPY_NATIVE),
+        "numpy array's byte orders should keep the same with the native byte "
+        "order");
   }
 
   // get the data ptr and construct the memory allocator attribute
@@ -201,7 +196,9 @@ framework::Tensor TensorFromNumpy(PyObject* obj) {
                       memory::Allocator::Attr::kNumpyShared, 0U);
   // NOTE(minqiyang): must be CPUAllocation here, we will down cast this
   // allocation to CPUAllocation
-  memory::allocation::CPUAllocation* cpu_allocation = reinterpret_cast<memory::allocation::CPUAllocation*>(tensor.Holder().get());
+  memory::allocation::CPUAllocation* cpu_allocation =
+      reinterpret_cast<memory::allocation::CPUAllocation*>(
+          tensor.Holder().get());
   cpu_allocation->share_data_with(data_ptr, requested_size);
 
   Py_INCREF(obj);
