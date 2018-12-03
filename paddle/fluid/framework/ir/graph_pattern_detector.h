@@ -462,7 +462,7 @@ struct ConvTranspose : public PatternBase {
   PATTERN_DECL_NODE(conv_weight);
   PATTERN_DECL_NODE(conv_out);
   PATTERN_DECL_NODE(transpose_out);
-  // PATTERN_DECL_NODE(transpose_xshape);
+  PATTERN_DECL_NODE(transpose_xshape);
 };
 
 // SEQCONV with Elementwise_Add ReLU

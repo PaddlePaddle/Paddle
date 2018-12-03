@@ -801,16 +801,15 @@ PDNode *patterns::ConvTranspose::operator()(
                            ->assert_is_only_output_of_op("conv2d")
                            ->assert_is_op_input("transpose2");
   // outputs
-  // auto *transpose_xshape_var = pattern->NewNode(transpose_xshape_repr())
-  //                                  ->AsIntermediate()
-  //                                  ->assert_is_op_output("transpose");
+  auto *transpose_xshape_var = pattern->NewNode(transpose_xshape_repr())
+                                   ->assert_is_op_output("transpose2");
   auto *transpose_out_var = pattern->NewNode(transpose_out_repr())
                                 ->AsOutput()
                                 ->assert_is_op_output("transpose2");
 
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
   transpose_op->LinksFrom({conv_out_var})
-      .LinksTo({transpose_out_var /*, transpose_xshape_var*/});
+      .LinksTo({transpose_out_var, transpose_xshape_var});
   return transpose_out_var;
 }
 

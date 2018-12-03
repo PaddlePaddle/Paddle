@@ -177,7 +177,7 @@ void Conv2DOpMaker::Make() {
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.");
-  // AddOutput("XShape", "(Tensor)The output tensor.");
+  AddOutput("XShape", "(Tensor)The output tensor.").AsDispensable();
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."

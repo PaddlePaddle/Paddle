@@ -96,6 +96,25 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       weights_tz[4] = w;
     }
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto layout_string = ctx.Attr<std::string>("reorder_output_format");
+    if (!layout_string.empty() &&
+        framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
+      auto dst_tz_old = dst_tz;
+      // get back the nchw dimensions from nhwc for dst_md proper memory
+      // allocation for mkldnn conv primitive to work
+      std::vector<int> axis = {0, 3, 1, 2};
+      for (size_t i = 0; i < axis.size(); i++) {
+        dst_tz[i] = dst_tz_old[axis[i]];
+      }
+      auto xshape = ctx.Output<Tensor>("XShape");
+      std::vector<int64_t> x_shape_dim(dst_tz_old.size() + 1);
+      x_shape_dim[0] = 0;
+      for (int i = 0; i < dst_tz_old.size(); ++i) {
+        x_shape_dim[i + 1] = dst_tz_old[i];
+      }
+      xshape->Resize(framework::make_ddim(x_shape_dim));
+      std::cout << xshape->dims() << std::endl;
+    }
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
@@ -197,7 +216,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
     } else {
-      auto layout_string = ctx.Attr<std::string>("reorder_output_format");
       if (!layout_string.empty() &&
           framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
         dst_memory_p = handler.AcquireDstMemoryFromPrimitive();
@@ -233,7 +251,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // create reorder primitive if the output reorder format is specified to
     // "NHWC" for example by a fuse conv + transpose
-    auto layout_string = ctx.Attr<std::string>("reorder_output_format");
     if (!layout_string.empty() &&
         framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
       auto output_data = output->mutable_data<T>(
