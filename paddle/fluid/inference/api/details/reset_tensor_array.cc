@@ -46,5 +46,28 @@ void TensorArrayBatchCleaner::ResetTensorArray() {
   }
 }
 
+void TensorArrayBatchCleaner::CollectNoTensorVars(framework::Scope *scope) {
+  if (no_tensor_flag_) {
+    for (auto &var_name : scope->LocalVarNames()) {
+      auto *var = scope->FindVar(var_name);
+      if (!var->IsInitialized()) continue;
+      if (!valid_types_.count(var->Type())) {
+        no_tensor_vars_.insert(var);
+      }
+    }
+
+    for (auto *kid : scope->kids()) {
+      CollectTensorArrays(kid);
+    }
+    no_tensor_flag_ = false;  // Only collect one time.
+  }
+}
+
+void TensorArrayBatchCleaner::ResetNoTensorVars() {
+  for (auto *var : no_tensor_vars_) {
+    var->Clear();
+  }
+}
+
 }  // namespace details
 }  // namespace paddle

@@ -278,6 +278,7 @@ class Executor(object):
         p = core.Place()
         p.set_place(place)
         self.executor = core.Executor(p)
+
         self.program_caches = dict()
         self._closed = False
 
