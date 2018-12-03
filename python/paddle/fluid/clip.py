@@ -271,7 +271,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                     "All parameters' 'clip_norm' of a same group should be the same"
                 )
 
-        square = grad * grad
+        square = layers.square(grad)
         local_norm_var = layers.reduce_sum(input=square)
         context[self.group_name].append(local_norm_var)
 

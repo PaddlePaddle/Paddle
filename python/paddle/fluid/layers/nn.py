@@ -112,6 +112,8 @@ __all__ = [
     'mean_iou',
     'relu',
     'selu',
+    'abs',
+    'square',
     'log',
     'crop',
     'rank_loss',
@@ -6456,6 +6458,68 @@ def relu(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def abs(x, name=None):
+    """
+    Abs takes one input data (Tensor) and produces one output data (Tensor)
+    where the rectified linear function, y = abs(x), is applied to
+    the tensor elementwise.
+
+    .. math::
+
+        Out = \\Abs(x)
+
+    Args:
+        x (Variable): The input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.abs(x)
+    """
+    helper = LayerHelper('abs', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="abs", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def square(x, name=None):
+    """
+    Square takes one input data (Tensor) and produces one output data (Tensor)
+    where the rectified linear function, y = x^2, is applied to
+    the tensor elementwise.
+
+    .. math::
+
+        Out = \\Square(x)
+
+    Args:
+        x (Variable): The input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.square(x)
+    """
+    helper = LayerHelper('square', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="square", inputs={"X": x}, outputs={"Out": out})
     return out
 
 
