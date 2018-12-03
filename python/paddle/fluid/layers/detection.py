@@ -206,7 +206,7 @@ def detection_output(loc,
                      keep_top_k=200,
                      score_threshold=0.01,
                      nms_eta=1.0,
-                     shared=False):
+                     shared=True):
     """
     **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
