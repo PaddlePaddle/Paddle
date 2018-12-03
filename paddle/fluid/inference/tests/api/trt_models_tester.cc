@@ -16,14 +16,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
-
-namespace paddle {
-namespace inference {
+#include "paddle/fluid/inference/tests/api/test_api_helper.h"
 
 DEFINE_bool(use_tensorrt, true, "Test the performance of TensorRT engine.");
 DEFINE_string(prog_filename, "", "Name of model file.");
 DEFINE_string(param_filename, "", "Name of parameters file.");
+
+namespace paddle {
+namespace inference {
 
 template <typename ConfigType>
 void SetConfig(ConfigType* config, std::string model_dir, bool use_gpu,
@@ -135,7 +135,7 @@ TEST(TensorRT_resnext50, compare) {
 
 TEST(TensorRT_resnext50, profile) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
-  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
+  profile(model_dir, FLAGS_use_analysis, FLAGS_use_tensorrt);
 }
 
 TEST(TensorRT_mobilenet, analysis) {

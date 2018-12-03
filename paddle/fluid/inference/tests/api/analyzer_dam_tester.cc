@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/inference/tests/api/test_api_helper.h"
 
 DEFINE_int32(max_turn_num, 9,
              "The max turn number: 1 for the small and 9 for the normal.");

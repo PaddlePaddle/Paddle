@@ -192,8 +192,8 @@ void TestOneThreadPrediction(
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
-    PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
-              inputs.size());
+    PrintTime(batch_size, num_times, 1, 0,
+              run_timer.toc() / (num_times > 1 ? num_times : 1), inputs.size());
   }
 }
 
@@ -247,8 +247,8 @@ void TestMultiThreadPrediction(
 
         auto time = timer.toc();
         total_time += time;
-        PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
-                  inputs.size());
+        PrintTime(batch_size, num_times, num_threads, tid,
+                  time / (num_times > 1 ? num_times : 1), inputs.size());
       }
     });
   }

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/inference/tests/api/test_api_helper.h"
 
 namespace paddle {
 namespace inference {
