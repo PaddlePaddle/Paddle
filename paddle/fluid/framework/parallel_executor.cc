@@ -158,8 +158,13 @@ ParallelExecutor::ParallelExecutor(
       auto &place = member_->places_[i];
 #ifdef PADDLE_WITH_CUDA
       if (platform::is_gpu_place(place)) {
-        member_->gcs_.emplace_back(new StreamGarbageCollector<Tensor>(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+        if (IsFastEagerDeletionModeEnabled()) {
+          member_->gcs_.emplace_back(new UnsafeFastGPUGarbageCollector<Tensor>(
+              boost::get<platform::CUDAPlace>(place), max_memory_size));
+        } else {
+          member_->gcs_.emplace_back(new StreamGarbageCollector<Tensor>(
+              boost::get<platform::CUDAPlace>(place), max_memory_size));
+        }
         VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
       } else if (platform::is_cpu_place(place)) {
 #endif
@@ -181,8 +186,8 @@ ParallelExecutor::ParallelExecutor(
                               &(member_->rt_ref_cnts_));
     ref_cnt_pass->SetNotOwned(details::kLastLiveOpsOfVars,
                               &last_live_ops_of_vars);
-    VLOG(10) << "ReferenceCountPass Applied";
     graph = ref_cnt_pass->Apply(std::move(graph));
+    VLOG(10) << "ReferenceCountPass Applied";
 
     auto eager_deletion_pass =
         ir::PassRegistry::Instance().Get("eager_deletion_pass");
@@ -194,6 +199,8 @@ ParallelExecutor::ParallelExecutor(
                                      &last_live_ops_of_vars);
     graph = eager_deletion_pass->Apply(std::move(graph));
     VLOG(10) << "EagerDeletionPass Applied";
+
+    graph->SetNotOwned(details::kGarbageCollector, &(member_->gcs_));
   }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.

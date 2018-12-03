@@ -50,6 +50,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
 
  private:
+  void WaitAllGarbageCollectors();
+
   size_t drop_scope_counter_{0};
 
   ExecutionStrategy strategy_;

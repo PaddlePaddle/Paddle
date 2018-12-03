@@ -14,11 +14,13 @@
 
 #include <queue>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/op_graph_view.h"
 #include "paddle/fluid/framework/details/reference_count_pass.h"
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -26,6 +28,89 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+struct OpConnectionDetector {
+ public:
+  enum RelationShip { kSame = 0, kNoDeps = 1, kBefore = 2, kAfter = 3 };
+
+  explicit OpConnectionDetector(const std::vector<OpHandleBase *> &all_ops)
+      : graph_(all_ops) {}
+
+  template <typename OpSet>
+  std::unordered_set<typename OpSet::key_type> MaxNoDepOps(
+      const OpSet &op_set) {
+    using KeyType = typename OpSet::key_type;
+    static_assert(
+        std::is_base_of<OpHandleBase,
+                        typename std::remove_pointer<KeyType>::type>::value,
+        "Key type of OpSet must be or derived of OpHandleBase");
+
+    std::vector<OpHandleBase *> ops(op_set.begin(), op_set.end());
+    std::unordered_set<KeyType> ret;
+    auto rels = GetRelations(ops);
+    auto not_before = [](RelationShip r) { return r != kBefore; };
+    for (size_t i = 0; i < rels.size(); ++i) {
+      if (std::all_of(rels[i].begin(), rels[i].end(), not_before)) {
+        ret.insert(static_cast<KeyType>(ops[i]));
+      }
+    }
+    return ret;
+  }
+
+ private:
+  std::vector<std::vector<RelationShip>> GetRelations(
+      const std::vector<OpHandleBase *> ops) {
+    std::unordered_map<OpHandleBase *, size_t> op_to_idx;
+    for (size_t i = 0; i < ops.size(); ++i) {
+      PADDLE_ENFORCE(graph_.HasOp(ops[i]), "Op does not exist in graph");
+      op_to_idx[ops[i]] = i;
+    }
+
+    PADDLE_ENFORCE(op_to_idx.size() == ops.size(), "Duplicate ops");
+
+    std::vector<std::vector<RelationShip>> ret(ops.size());
+    for (auto &e : ret) {
+      e.assign(ops.size(), kSame);
+    }
+
+    size_t found_num = ops.size();
+    size_t total_num = ops.size() * ops.size();
+    auto visitor = [&](OpHandleBase *op, size_t i) {
+      auto it = op_to_idx.find(op);
+      if (it != op_to_idx.end()) {
+        size_t j = it->second;
+        if (ret[i][j] != kSame) {
+          ret[i][j] = kBefore;
+          ret[j][i] = kAfter;
+          found_num += 2;
+          if (found_num == total_num) {
+            return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    for (size_t i = 0; i < ops.size(); ++i) {
+      auto sub_visitor = [&, i](OpHandleBase *op) { return visitor(op, i); };
+      if (!graph_.VisitAllPendingOps(ops[i], sub_visitor)) {
+        break;
+      }
+    }
+
+    for (size_t i = 0; i < ops.size(); ++i) {
+      for (size_t j = i + 1; j < ops.size(); ++j) {
+        if (ret[i][j] != kSame) continue;
+        ret[i][j] = kNoDeps;
+        ret[j][i] = kNoDeps;
+      }
+    }
+
+    return ret;
+  }
+
+  const OpGraphView graph_;
+};
 
 static ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
     OpHandleBase *op, size_t scope_idx) {
@@ -59,9 +144,15 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   last_live_ops_of_vars = std::vector<LastLiveOpsOfVars>(vars.size());
   ref_cnts = std::vector<ReferenceCountMap>(vars.size());
 
+  OpConnectionDetector detector(ir::FilterByNodeWrapper<OpHandleBase>(*graph));
+
   for (size_t i = 0; i < vars.size(); ++i) {
     for (auto &name_var_pair : vars[i]) {
-      if (name_var_pair.second.empty()) continue;
+      if (name_var_pair.second.empty()) {
+        continue;
+      }
+
+      const std::string &var_name = name_var_pair.first;
       auto *last_ver_var = name_var_pair.second.back();
 
       VarDesc *var_desc = nullptr;
@@ -83,30 +174,46 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
       }
 
       std::unordered_set<ComputationOpHandle *> last_live_op;
-      auto add_last_live_op = [&](OpHandleBase *op) {
+      auto add_last_live_op = [&](OpHandleBase *op) -> bool {
         auto *compute_op = FindNextComputationOpHandleOrReturnItself(op, i);
         if (compute_op) {
           last_live_op.insert(compute_op);
+          return true;
+        } else {
+          return false;
         }
       };
-      const std::string &var_name = name_var_pair.first;
+
+      bool can_delete = false;
       auto &pending_ops = last_ver_var->PendingOps();
       if (pending_ops.empty()) {
         auto *generated_op = last_ver_var->GeneratedOp();
-        if (generated_op) {
-          ref_cnts[i].emplace(var_name, 1);
-          add_last_live_op(generated_op);
+        if (generated_op && add_last_live_op(generated_op)) {
+          can_delete = true;
         }
       } else {
-        ref_cnts[i].emplace(var_name, pending_ops.size());
+        can_delete = true;
         for (auto *pending_op : pending_ops) {
-          add_last_live_op(pending_op);
+          if (!add_last_live_op(pending_op)) {
+            can_delete = false;
+            break;
+          }
         }
       }
 
-      last_live_ops_of_vars[i].emplace(var_name, std::move(last_live_op));
+      if (can_delete) {
+        size_t original_size = last_live_op.size();
+        last_live_op = detector.MaxNoDepOps(last_live_op);
+        if (last_live_op.size() != original_size) {
+          VLOG(10) << "Shrink last living op number of " << var_name << " from "
+                   << original_size << " to " << last_live_op.size();
+        }
+        ref_cnts[i].emplace(var_name, last_live_op.size());
+        last_live_ops_of_vars[i].emplace(var_name, std::move(last_live_op));
+      }
     }
   }
+
   return graph;
 }
 

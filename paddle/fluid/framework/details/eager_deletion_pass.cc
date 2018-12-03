@@ -26,62 +26,61 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static void AddDependencyBetween(OpHandleBase *in, OpHandleBase *out,
-                                 ir::Graph *graph) {
-  auto it = std::find_if(
-      in->Outputs().begin(), in->Outputs().end(), [](VarHandleBase *var) {
-        return dynamic_cast<DummyVarHandle *>(var) != nullptr;
-      });
-
-  if (it != in->Outputs().end()) {
-    out->AddInput(*it);
-  } else {
-    auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-    in->AddOutput(dep_var);
-    out->AddInput(dep_var);
-  }
-
-  // Add leaf node to eager_deletion_node
-  if (out->Outputs().empty()) {
-    auto *dummy_leaf = new DummyVarHandle(graph->CreateControlDepVar());
-    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dummy_leaf);
-    out->AddOutput(dummy_leaf);
-  }
-}
-
 std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  auto &vars = graph->Get<GraphVars>(kGraphVars);
+  const auto &vars = graph->Get<GraphVars>(kGraphVars);
 
   auto &ref_cnts =
       Get<std::vector<AtomicReferenceCountMap>>(kCurReferenceCount);
-  auto &last_live_ops = Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
+  const auto &last_live_ops =
+      Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
   auto &gcs = Get<GarbageCollectorList>(kGarbageCollector);
 
   ref_cnts = std::vector<AtomicReferenceCountMap>(vars.size());
 
-  std::unordered_map<ComputationOpHandle *, EagerDeletionOpHandle *> op_map;
+  std::unordered_map<ComputationOpHandle *, std::unordered_set<std::string>>
+      op_vars_map;
+
   for (auto &var_ops_map : last_live_ops) {
     for (auto &var_ops_pair : var_ops_map) {
       const std::string &var_name = var_ops_pair.first;
-      for (ComputationOpHandle *op : var_ops_pair.second) {
-        auto it = op_map.find(op);
-        if (it != op_map.end()) {
-          it->second->AddVar(var_name);
-        } else {
-          auto *eager_deletion_node = graph->CreateEmptyNode(
-              "eager_deletion", ir::Node::Type::kOperation);
-          auto *eager_deletion_op = new EagerDeletionOpHandle(
-              eager_deletion_node, op->GetScope(), op->GetPlace(), {var_name},
-              gcs[op->GetScopeIdx()].get(), &(ref_cnts[op->GetScopeIdx()]));
-          AddDependencyBetween(op, eager_deletion_op, graph.get());
-          op_map[op] = eager_deletion_op;
-        }
+      for (auto *op : var_ops_pair.second) {
+        op_vars_map[op].insert(var_name);
       }
     }
   }
-  VLOG(10) << "Create " << op_map.size() << " EagerDeletionOpHandle(s)";
+
+  for (auto &pair : op_vars_map) {
+    auto *op = pair.first;
+    auto &var_names = pair.second;
+
+    auto *eager_deletion_node =
+        graph->CreateEmptyNode("eager_deletion", ir::Node::Type::kOperation);
+    auto *eager_deletion_op = new EagerDeletionOpHandle(
+        eager_deletion_node, op->GetScope(), op->GetPlace(),
+        std::move(var_names), gcs[op->GetScopeIdx()].get(),
+        &(ref_cnts[op->GetScopeIdx()]));
+
+    auto it = std::find_if(
+        op->Outputs().begin(), op->Outputs().end(), [](VarHandleBase *var) {
+          return dynamic_cast<DummyVarHandle *>(var) != nullptr;
+        });
+
+    if (it != op->Outputs().end()) {
+      eager_deletion_op->AddInput(*it);
+    } else {
+      auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+      graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
+      op->AddOutput(dep_var);
+      eager_deletion_op->AddInput(dep_var);
+    }
+
+    auto *dummy_leaf = new DummyVarHandle(graph->CreateControlDepVar());
+    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dummy_leaf);
+    eager_deletion_op->AddOutput(dummy_leaf);
+  }
+
+  VLOG(10) << "Create " << op_vars_map.size() << " EagerDeletionOpHandle(s)";
   return graph;
 }
 

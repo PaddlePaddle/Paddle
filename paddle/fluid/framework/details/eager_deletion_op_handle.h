@@ -25,13 +25,11 @@ class Scope;
 
 namespace details {
 
-class EagerDeletionPass;
-
 class EagerDeletionOpHandle : public OpHandleBase {
  public:
   EagerDeletionOpHandle(ir::Node *node, const Scope *scope,
                         const platform::Place &place,
-                        const std::vector<std::string> &var_names,
+                        const std::unordered_set<std::string> &var_names,
                         GarbageCollector<Tensor> *gc,
                         AtomicReferenceCountMap *ref_cnts);
 
@@ -45,8 +43,6 @@ class EagerDeletionOpHandle : public OpHandleBase {
  private:
   void ClearTensors(const std::vector<Tensor *> &tensors);
 
-  void AddVar(const std::string &name);
-
   const Scope *scope_;
   std::unordered_set<std::string> var_names_;
   GarbageCollector<Tensor> *gc_;       // not own
@@ -55,8 +51,6 @@ class EagerDeletionOpHandle : public OpHandleBase {
   platform::CUDADeviceContext *dev_ctx_{nullptr};
   cudaEvent_t event_{nullptr};
 #endif
-
-  friend class EagerDeletionPass;
 };
 
 }  // namespace details

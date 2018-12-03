@@ -16,6 +16,7 @@
 
 #include <sys/time.h>
 
+#include <algorithm>
 #include <chrono>  // NOLINT
 #include <cstdlib>
 #include <fstream>
@@ -55,8 +56,7 @@ class CTRReader : public framework::FileReader {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     PADDLE_ENFORCE_GT(file_list.size(), 0, "file list should not be empty");
-    thread_num_ =
-        file_list_.size() > thread_num ? thread_num : file_list_.size();
+    thread_num_ = std::min<size_t>(file_list_.size(), thread_num);
     queue_ = queue;
     SplitFiles();
     for (size_t i = 0; i < thread_num_; ++i) {
@@ -95,10 +95,10 @@ class CTRReader : public framework::FileReader {
     queue_->ReOpen();
     VLOG(3) << "reopen success";
     VLOG(3) << "thread_num " << thread_num_;
-    for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
-      read_threads_.emplace_back(new std::thread(
-          std::bind(&ReadThread, file_groups_[thread_id], slots_, batch_size_,
-                    thread_id, &read_thread_status_, queue_)));
+    for (size_t thread_id = 0; thread_id < thread_num_; thread_id++) {
+      read_threads_.emplace_back(new std::thread(std::bind(
+          &ReadThread, file_groups_[thread_id], slots_, batch_size_,
+          static_cast<int>(thread_id), &read_thread_status_, queue_)));
     }
     monitor_thread_.reset(new std::thread(
         std::bind(&MonitorThread, &read_thread_status_, queue_)));

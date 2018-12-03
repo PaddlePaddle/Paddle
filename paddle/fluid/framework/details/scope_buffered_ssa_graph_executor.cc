@@ -36,6 +36,15 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
   }
 }
 
+void ScopeBufferedSSAGraphExecutor::WaitAllGarbageCollectors() {
+  if (gc_) {
+    for (auto &gc : *gc_) {
+      gc->Wait();
+      gc->Reset();
+    }
+  }
+}
+
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   if (drop_scope_counter_ == 0) {
@@ -74,19 +83,19 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     drop_scope_counter_ = 0;
     // Wait All computational streams
-    for (size_t i = 0; i < places_.size(); ++i) {
-      platform::DeviceContextPool::Instance().Get(places_[i])->Wait();
-      if (gc_) {
-        (*gc_)[i]->Wait();
-        (*gc_)[i]->Reset();
-      }
+    for (auto &p : places_) {
+      platform::DeviceContextPool::Instance().Get(p)->Wait();
     }
+    WaitAllGarbageCollectors();
     for (auto &scope : local_scopes_) {
       auto &local_scope =
           *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
       scope->DeleteScope(local_scope);
     }
+  } else {
+    WaitAllGarbageCollectors();
   }
+
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {
