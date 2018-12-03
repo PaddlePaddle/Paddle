@@ -40,9 +40,8 @@ void SortHelper(
     }
   }
 
-  VLOG(30) << "topology sort insert: " << node->Name()
-           << reinterpret_cast<void *>(node) << " input "
-           << node->inputs.size();
+  VLOG(3) << "topology sort insert: " << node->Name()
+          << reinterpret_cast<void *>(node) << " input " << node->inputs.size();
   ret->push_back(node);
 }
 
@@ -111,9 +110,9 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
         PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
-        VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
-                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
+        VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+                << " -> " << n->Name() << reinterpret_cast<void *>(n)
+                << "  via " << var->Name() << reinterpret_cast<void *>(var);
         adj_list[n].insert(adj_n);
       }
     }

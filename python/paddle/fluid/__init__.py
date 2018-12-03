@@ -20,6 +20,13 @@ from .framework import *
 # import all class inside executor into fluid module
 from . import executor
 from .executor import *
+
+from . import data_feed_desc
+from .data_feed_desc import *
+
+from . import async_executor
+from .async_executor import *
+
 from . import trainer
 from . import inferencer
 
@@ -54,7 +61,8 @@ Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-    parallel_executor.__all__ + lod_tensor.__all__ + [
+    parallel_executor.__all__ + lod_tensor.__all__ + \
+    data_feed_desc.__all__ + async_executor.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -91,6 +99,7 @@ def __bootstrap__():
     """
     import sys
     import os
+    import platform
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -110,15 +119,17 @@ def __bootstrap__():
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
-
+    sysstr = platform.system()
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'eager_delete_scope',
-        'use_mkldnn', 'use_ngraph', 'initial_cpu_memory_in_mb',
-        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        "dist_threadpool_size", 'cpu_deterministic', 'eager_delete_tensor_gb',
-        'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir'
+        'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_mkldnn',
+        'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
+        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
+        'eager_delete_tensor_gb', 'allocator_strategy',
+        'reader_queue_speed_test_mode', 'print_sub_graph_dir'
     ]
+    if 'Darwin' not in sysstr:
+        read_env_flags.append('use_pinned_memory')
+
     if os.name != 'nt':
         read_env_flags.append('warpctc_dir')
         read_env_flags.append('cpu_deterministic')
@@ -130,11 +141,13 @@ def __bootstrap__():
         read_env_flags.append('rpc_send_thread_num')
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
+        read_env_flags.append('rpc_disable_reuse_port')
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
-            'conv_workspace_size_limit', 'cudnn_exhaustive_search'
+            'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
+            'cudnn_exhaustive_search'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

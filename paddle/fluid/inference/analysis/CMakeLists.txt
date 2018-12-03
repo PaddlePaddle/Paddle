@@ -35,4 +35,5 @@ function(inference_analysis_test TARGET)
   endif()
 endfunction(inference_analysis_test)
 
-inference_analysis_test(test_analyzer SRCS analyzer_tester.cc EXTRA_DEPS paddle_inference_api)
+inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
+    EXTRA_DEPS reset_tensor_array paddle_inference_api)

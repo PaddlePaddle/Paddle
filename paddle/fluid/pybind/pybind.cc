@@ -21,13 +21,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#if defined(_WIN32)
-#define NOMINMAX
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#define GOOGLE_GLOG_DLL_DECL
-#include <Windows.h>
-#endif
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -36,9 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#ifndef _WIN32
 #include "paddle/fluid/framework/parallel_executor.h"
-#endif
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -46,10 +37,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/protobuf.h"
@@ -94,9 +87,12 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
+PYBIND11_MODULE(core, m) {
+  // Not used, just make sure cpu_info.cc is linked.
+  paddle::platform::CpuTotalPhysicalMemory();
+
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
-  py::module m("core", "C++ core of PaddlePaddle");
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -359,22 +355,16 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<platform::Communicator>();
            },
            py::return_value_policy::reference)
-
 #endif
-#ifndef _WIN32
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference)
-#endif
-      ;  // NOLINT
+           py::return_value_policy::reference);
 
-#if !defined(_WIN32)
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ResetAll);
-#endif
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
@@ -409,7 +399,26 @@ All parameter, weight, gradient are variables in Paddle.
             },
         py::return_value_policy::copy);
 
-  py::class_<Scope>(m, "Scope", "")
+  py::class_<Scope>(m, "Scope", R"DOC(
+    Scope is an association of a name to Variable. All variables belong to Scope.
+
+    Variables in a parent scope can be retrieved from local scope.
+
+    You need to specify a scope to run a Net, i.e., `exe.Run(&scope)`.
+    One net can run in different scopes and update different variable in the
+    scope.
+
+    You can create var in a scope and get it from the scope.
+
+    Examples:
+        .. code-block:: python
+
+          # create tensor from a scope and set value to it.
+          param = scope.var('Param').get_tensor()
+          param_array = np.full((height, row_numel), 5.0).astype("float32")
+          param.set(param_array, place)
+
+        )DOC")
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
@@ -643,7 +652,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
-#ifndef _WIN32
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -664,7 +672,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
-#endif
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
@@ -693,7 +700,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("remove_pass",
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
-#ifndef _WIN32
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
@@ -875,6 +881,12 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
+          "num_trainers",
+          [](const BuildStrategy &self) { return self.num_trainers_; },
+          [](BuildStrategy &self, int num_trainers) {
+            self.num_trainers_ = num_trainers;
+          })
+      .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
@@ -921,8 +933,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-#endif
-  return m.ptr();
+  BindAsyncExecutor(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+#include <random>
 #include <thread>  // NOLINT
 #include <vector>
 #include "gtest/gtest.h"
@@ -98,9 +99,8 @@ TEST(BestFitAllocator, test_concurrent_cpu_allocation) {
 
   LockedAllocator locked_allocator(std::move(best_fit_allocator));
 
-  auto th_main = [&] {
-    std::random_device dev;
-    std::default_random_engine engine(dev());
+  auto th_main = [&](std::random_device::result_type seed) {
+    std::default_random_engine engine(seed);
     std::uniform_int_distribution<size_t> dist(1U, 1024U);
 
     for (size_t i = 0; i < 128; ++i) {
@@ -124,7 +124,8 @@ TEST(BestFitAllocator, test_concurrent_cpu_allocation) {
   {
     std::vector<std::thread> threads;
     for (size_t i = 0; i < 1024; ++i) {
-      threads.emplace_back(th_main);
+      std::random_device dev;
+      threads.emplace_back(th_main, dev());
     }
     for (auto& th : threads) {
       th.join();

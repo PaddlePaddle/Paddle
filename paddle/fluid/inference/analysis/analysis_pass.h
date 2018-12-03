@@ -46,8 +46,6 @@ class AnalysisPass {
  protected:
   // User should implement these.
   virtual void RunImpl(Argument* argument) = 0;
-
-  Argument* argument_{nullptr};
 };
 
 }  // namespace analysis

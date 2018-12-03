@@ -35,10 +35,10 @@ class ROIAlignOp : public framework::OperatorWithKernel {
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(rois_dims[1] == 4,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
@@ -103,7 +103,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4)"
-             "given as [[x1, y1, x2, y2], …]. "
+             "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
     AddOutput("Out",

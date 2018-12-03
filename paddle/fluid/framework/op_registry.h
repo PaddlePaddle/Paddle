@@ -23,11 +23,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
-#if defined(_WIN32)
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#define GOOGLE_GLOG_DLL_DECL
-#endif
-
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
