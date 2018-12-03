@@ -81,6 +81,16 @@ if (NOT WIN32)
   endif()
 endif(NOT WIN32)
 
+if (NOT WIN32)
+    set(NGRAPH_PATH "${PADDLE_LIB}/third_party/install/ngraph")
+    if(EXISTS ${NGRAPH_PATH})
+        include(GNUInstallDirs)
+        include_directories("${NGRAPH_PATH}/include")
+        link_directories("${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}")
+        set(NGRAPH_LIB ${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}/libngraph${CMAKE_SHARED_LIBRARY_SUFFIX})
+    endif()
+endif()
+
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
@@ -103,7 +113,7 @@ endif()
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB}
+      ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
       glog gflags protobuf snappystream snappy z xxhash
       ${EXTERNAL_LIB})
 else()
