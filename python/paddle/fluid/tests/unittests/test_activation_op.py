@@ -460,7 +460,7 @@ class TestPow(TestActivation):
         self.op_type = "pow"
         self.init_dtype()
 
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-2, 2, [11, 17]).astype(self.dtype)
         out = np.power(x, 3)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}

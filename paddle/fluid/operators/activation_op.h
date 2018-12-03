@@ -746,6 +746,21 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct SimplePow {
+  explicit SimplePow(const int factor) : factor_(factor) {}
+
+  HOSTDEVICE T operator()(const T& val) const {
+    T result = static_cast<T>(1);
+    for (int i = 0; i < factor_; ++i) {
+      result = result * val;
+    }
+    return result;
+  }
+
+  int factor_;
+};
+
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
@@ -755,7 +770,13 @@ struct PowFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.pow(static_cast<T>(factor));
+    int i_factor = static_cast<int>(factor);
+    PADDLE_ENFORCE_EQ(factor, static_cast<float>(i_factor),
+                      "Currently, the factor only can be an integer.");
+    PADDLE_ENFORCE_GE(i_factor, 0, "The factor should be greater than 0.");
+
+    SimplePow<T> pow(i_factor);
+    out.device(d) = x.unaryExpr(pow);
   }
 };
 
@@ -768,8 +789,12 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(factor) *
-                   x.pow(static_cast<T>(factor) - static_cast<T>(1));
+    int i_factor = static_cast<int>(factor - 1);
+    PADDLE_ENFORCE_EQ(factor - 1, static_cast<float>(i_factor),
+                      "Currently, the factor only can be an integer.");
+    PADDLE_ENFORCE_GE(i_factor, 0, "The factor should be greater than 0.");
+    SimplePow<T> pow(i_factor);
+    dx.device(d) = dout * static_cast<T>(factor) * x.unaryExpr(pow);
   }
 };
 

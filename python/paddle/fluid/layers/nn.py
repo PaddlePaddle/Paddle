@@ -7054,13 +7054,16 @@ def pow(x, factor=1.0, name=None):
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.pow(x, factor=2.0)
     """
+    assert factor == int(
+        factor
+    ) and factor > 1, "Currently the factor must be an integer, and it's value must be greater than 1."
     helper = LayerHelper('pow', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='pow',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'factor': factor})
+        attrs={'factor': float(factor)})
     return out
 
 
