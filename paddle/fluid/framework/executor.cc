@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -154,36 +155,6 @@ void Executor::Close() {
       ::paddle::operators::distributed::GRPCClient>(0)
       ->SendComplete();
 #endif
-}
-
-void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope*>>();
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarType::READER) {
-    var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::RAW) {
-    // GetMutable will be called in operator
-  } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
-        var_type);
-  }
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,

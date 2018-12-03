@@ -16,6 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -78,29 +82,38 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+    if (use_cudnn) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
+#endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
       layout_, library_);
 }
 
 void Conv2DTransposeOpMaker::Make() {
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution transpose operator. "
@@ -144,6 +157,11 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -237,6 +255,9 @@ void Conv3DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",

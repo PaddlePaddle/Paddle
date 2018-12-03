@@ -128,6 +128,8 @@ class OperatorBase {
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
+  virtual void RuntimeInferShape(const Scope& scope,
+                                 const platform::Place& place) const {}
 
  protected:
   std::string type_;
@@ -347,6 +349,9 @@ class OperatorWithKernel : public OperatorBase {
   virtual void InferShape(InferShapeContext* ctx) const {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
+
+  void RuntimeInferShape(const Scope& scope,
+                         const platform::Place& place) const override;
 
  protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
