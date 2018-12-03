@@ -18,22 +18,21 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "paddle/fluid/operators/jitkernels/jitcode_base.h"
 #include "paddle/fluid/operators/jitkernels/kernel_base.h"
 #include "paddle/fluid/operators/jitkernels/kernel_key.h"
-
-#ifdef PADDLE_WITH_XBYAK
-#include "paddle/fluid/operators/jitkernels/jitcode/jitcode.h"
-#endif
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 namespace jitkernels {
 
+// TODO(TJ): rename file to kernel_pool
+
 template <KernelType KT>
 class JitCodePool {
  public:
+  JitCodePool() = default;
   static JitCodePool& Instance() {
     static thread_local JitCodePool<KT> g_jit_codes;
     return g_jit_codes;
@@ -51,13 +50,11 @@ class JitCodePool {
   }
 
  private:
-  JitCodePool() = default;
   std::unordered_map<size_t, std::shared_ptr<const JitBase>> codes_;
-
   DISABLE_COPY_AND_ASSIGN(JitCodePool);
 };
 
-// std::tuple<T, Func, Attr>
+// TODO(TJ): std::tuple<T, Func, Attr>
 template <typename T, typename Func, typename Attr>
 struct KernelAttr {
   typedef T data_type;
@@ -65,76 +62,99 @@ struct KernelAttr {
   typedef Attr attr_type;
 };
 
+typedef std::unique_ptr<const Kernel> KernelPtr;
+typedef std::unordered_map<KernelKey, std::vector<KernelPtr>, KernelKey::Hash>
+    KernelMap;
+
 class KernelPool {
  public:
   static KernelPool& Instance();
-
-  typedef std::unique_ptr<const Kernel> KernelPtr;
-  typedef std::unordered_map<KernelKey, std::vector<KernelPtr>, KernelKey::Hash>
-      KernelMap;
+  KernelPool() = default;
   KernelMap& AllKernels() { return pool_; }
-
   void Insert(const KernelKey& key, KernelPtr value) {
     if (pool_.find(key) == pool_.end()) {
       pool_.emplace(key, std::vector<KernelPtr>());
     }
     pool_.at(key).emplace_back(std::move(value));
   }
-  KernelPool() = default;
 
  private:
   KernelMap pool_;
-
   DISABLE_COPY_AND_ASSIGN(KernelPool);
 };
 
-// TODO(TJ): create_jitcode;
+// Every kernel should have refer code and it should be used in unit tests,
+// so refer kernels should have it's independent kernel pool
+class ReferKernelPool {
+ public:
+  static ReferKernelPool& Instance();
+  ReferKernelPool() = default;
+  KernelMap& AllKernels() { return pool_; }
+  void Insert(const KernelKey& key, KernelPtr value) {
+    if (pool_.find(key) == pool_.end()) {
+      pool_.emplace(key, std::vector<KernelPtr>());
+    }
+    pool_.at(key).emplace_back(std::move(value));
+  }
+
+ private:
+  KernelMap pool_;
+  DISABLE_COPY_AND_ASSIGN(ReferKernelPool);
+};
+
+// Refer code do not related with attr, and always on CPUPlace
+template <KernelType KT, typename T, typename Func, typename Attr>
+inline Func GetRefer() {
+  auto& ref_pool = ReferKernelPool().Instance().AllKernels();
+  KernelKey kkey(KT, platform::CPUPlace());
+  auto ref_iter = ref_pool.find(kkey);
+  PADDLE_ENFORCE(ref_iter != ref_pool.end(),
+                 "Every Kernel should have reference function.");
+  auto& ref_impls = ref_iter->second;
+  for (auto& impl : ref_impls) {
+    auto i = dynamic_cast<const ReferKernel<T, Func, Attr>*>(impl.get());
+    if (i) {
+      return i->GetFunc();
+    }
+  }
+  return nullptr;
+}
 
 // TODO(TJ): make tuple? named KernelAttr
 template <KernelType KT, typename T, typename Func, typename Attr,
           typename PlaceType = platform::CPUPlace>
 Func Get(Attr attr) {
-  size_t key = GetKey<Attr>(attr);
-  auto jitcode = JitCodePool<KT>().Instance().Get(key);
-  if (jitcode) {
-    return jitcode->template getCode<Func>();
+  // size_t key = GetKey<Attr>(attr);
+  // auto jitcode = JitCodePool<KT>().Instance().Get(key);
+  // if (jitcode) {
+  //   return jitcode->template getCode<Func>();
+  // }
+
+  if (std::is_same<PlaceType, platform::CPUPlace>::value &&
+      std::is_same<T, float>::value) {  // TODO(TJ): float move to create
+    // auto p = CreateJitCode<KT, Attr>(attr);
+    // if (p) {
+    //   JitCodePool<KT>().Instance().Insert(key, p);
+    //   return p->template getCode<Func>();
+    // }
   }
 
-#ifdef PADDLE_WITH_XBYAK
-// // jitcode::JitCode is under protection of PADDLE_WITH_XBYAK
-// if (std::is_same<PlaceType, platform::CPUPlace>::value) {
-//   if (UseJitCode<KT, T, Attr>(attr)) {
-//     std::shared_ptr<JitBase> p(std::make_shared<jitcode::JitCode<KT, Attr>>(
-//         attr, CodeSize<KT, Attr>(attr)));
-//     JitCodePool<KT>().Instance().Insert(key, p);
-//     return p->getCode<Func>();
-//   }
-// }
-#endif
-
-  // (KernelKey(type, place), vector<Kernel>)
+  // pool: (KernelKey(type, place), vector<Kernel>)
   auto& pool = KernelPool().Instance().AllKernels();
   KernelKey kkey(KT, PlaceType());
   auto iter = pool.find(kkey);
   if (iter != pool.end()) {
-    auto impls = iter->second;
-    for (auto impl : impls) {
-      auto i = std::dynamic_pointer_cast<KernelImpl<T, Func, Attr>>(impl.get());
+    auto& impls = iter->second;
+    for (auto& impl : impls) {
+      auto i = dynamic_cast<const KernelImpl<T, Func, Attr>*>(impl.get());
       if (i && i->UseMe(attr)) {
         return i->GetFunc();
       }
     }
   }
 
-  // The last implementation should be reference function on CPU
-  // Every kernel should have refer code.
-
-  //  because of test refer should have it's own pool
-  // PADDLE_ENFORCE_GT(list.size(), 1) << "Should have refer implemtation";
-  // const auto& refer = KernelRefer<KT, T>().AllKernels();
-  // return refer.Get<Func>();
-
-  return nullptr;
+  // The last implementation should be reference function on CPUPlace.
+  return GetRefer<KT, T, Func, Attr>();
 }
 
 }  // namespace jitkernels

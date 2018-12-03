@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gflags/gflags.h>
+#include <memory>  // for shared_ptr
 #include "paddle/fluid/operators/jitkernels/kernel_base.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -42,11 +43,6 @@ bool UseJitCode(Attr attr) {
 template <typename Attr>
 size_t GetKey(Attr attr);
 
-template <>
-size_t GetKey<int>(int d) {
-  return d;
-}
-
 class JitBase {
  public:
   JitBase() = default;
@@ -67,6 +63,9 @@ class JitBase {
  protected:
   void dumpCode(const unsigned char* code);
 };
+
+template <KernelType KT, typename Attr>
+std::shared_ptr<const JitBase> CreateJitCode(Attr attr);
 
 }  // namespace jitkernels
 }  // namespace operators

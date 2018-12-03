@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/jitkernels/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -26,6 +27,13 @@ void VMul(const T* x, const T* y, T* z, int n) {
     z[i] = x[i] * y[i];
   }
 }
+
+template <typename T>
+class VMulKernel
+    : public ReferKernel<T, void (*)(const T*, const T*, T*, int), int> {
+ public:
+  VMulKernel() { this->func = VMul<T>; }
+};
 
 }  // namespace refer
 }  // namespace jitkernels
