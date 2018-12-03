@@ -90,5 +90,4 @@ TEST(prelu_op, test_scalar) {
 }  // namespace inference
 }  // namespace paddle
 
-// USE_OP(prelu);
-USE_CPU_ONLY_OP(prelu);
+USE_OP(prelu);
