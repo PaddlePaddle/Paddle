@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -46,7 +47,7 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 }
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
-  VLOG(50) << "destroy ExecutorPrepareContext";
+  VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
 template <typename RefCntMap>
@@ -63,7 +64,7 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
         if ((it->second)-- == 1) {
           auto* var = scope.FindVar(name);
           if (var != nullptr) {
-            VLOG(100) << "Erase tensor \'" << name << "\'";
+            VLOG(10) << "Erase tensor \'" << name << "\'";
             if (var->IsType<LoDTensor>()) {
               erase_tensors.insert(var->GetMutable<LoDTensor>());
             } else if (var->IsType<SelectedRows>()) {
@@ -114,36 +115,6 @@ void Executor::Close() {
 #endif
 }
 
-void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope*>>();
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarType::READER) {
-    var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::RAW) {
-    // GetMutable will be called in operator
-  } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
-        var_type);
-  }
-}
-
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
                                int block_id) {
   auto& global_block = pdesc.Block(block_id);
@@ -162,21 +133,21 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(30) << "Create Variable " << var->Name()
-                 << " global, which pointer is " << ptr;
+        VLOG(3) << "Create Variable " << var->Name()
+                << " global, which pointer is " << ptr;
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-        VLOG(30) << "Create Variable " << var->Name()
-                 << " locally, which pointer is " << ptr;
+        VLOG(3) << "Create Variable " << var->Name()
+                << " locally, which pointer is " << ptr;
       }
     }
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(30) << "Create variable " << var->Name() << ", which pointer is "
-               << ptr;
+      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
+              << ptr;
     }
   }
 }
@@ -307,7 +278,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& feed_target : (*feed_targets)) {
       std::string var_name = feed_target.first;
-      VLOG(30) << "feed target's name: " << var_name;
+      VLOG(3) << "feed target's name: " << var_name;
 
       // prepend feed op
       auto* op = global_block->PrependOp();
@@ -330,7 +301,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     int i = 0;
     for (auto& fetch_target : (*fetch_targets)) {
       std::string var_name = fetch_target.first;
-      VLOG(30) << "fetch target's name: " << var_name;
+      VLOG(3) << "fetch target's name: " << var_name;
 
       // append fetch op
       auto* op = global_block->AppendOp();
@@ -392,8 +363,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector<Tensor>> gc;
-  // WhileOp would set keep_kids to false
-  // WhileGradOp would need the scopes created in WhileOp
+  // WhileOp would set keep_kids to true,
+  // because WhileGradOp needs the scopes created in WhileOp.
   // Perhaps, we should not perform eager deletion in WhileOp
   // The scopes and variables created by WhileOp would be deleted
   // in WhileGradOp.
@@ -482,7 +453,7 @@ void Executor::RunPreparedContext(
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(30) << "use_mkldnn=True";
+  VLOG(3) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {

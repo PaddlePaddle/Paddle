@@ -12,12 +12,12 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include <unordered_map>
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -29,269 +29,6 @@ using mkldnn::reorder;
 using mkldnn::stream;
 using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
-
-class ConvMKLDNNHandler : public platform::MKLDNNHandler {
- public:
-  ConvMKLDNNHandler(
-      std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd,
-      const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-      const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {
-    conv_pd_ = conv_pd;
-  }
-
-  ConvMKLDNNHandler(
-      std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd,
-      std::shared_ptr<mkldnn::convolution_backward_data::primitive_desc>
-          conv_bwd_data_pd,
-      std::shared_ptr<mkldnn::convolution_backward_weights::primitive_desc>
-          conv_bwd_weights_pd,
-      const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-      const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        conv_pd_(conv_pd),
-        conv_bwd_weights_pd_(conv_bwd_weights_pd),
-        conv_bwd_data_pd_(conv_bwd_data_pd) {
-    // If we are in Grad operatgor then update a key with BWD suffix to
-    // distinguish from FWD memory primitives
-    key_ += "-BWD";
-  }
-
-  size_t GetDstMemorySize() const {
-    return conv_pd_->dst_primitive_desc().get_size();
-  }
-  
-  mkldnn::memory::format GetDstFormat() const {
-    return static_cast<mkldnn::memory::format>(
-        conv_pd_->dst_primitive_desc().desc().data.format);
-  }
-
-  size_t GetDiffWeightsMemorySize() const {
-    return conv_bwd_weights_pd_->diff_weights_primitive_desc().get_size();
-  }
-
-  size_t GetDiffSourceMemorySize() const {
-    return conv_bwd_data_pd_->diff_src_primitive_desc().get_size();
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemoryFromWeightsPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto src_pd = conv_bwd_weights_pd_->src_primitive_desc();
-    auto user_pd = user_memory_p->get_primitive_desc();
-    return this->AcquireMemory(src_pd, user_pd, user_memory_p,
-                               "@weights-src_mem_p", pipeline);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromWeightsPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto diff_dst_pd = conv_bwd_weights_pd_->diff_dst_primitive_desc();
-    auto user_pd = user_memory_p->get_primitive_desc();
-    return this->AcquireMemory(diff_dst_pd, user_pd, user_memory_p,
-                               "@weights-diff_dst_mem_p", pipeline);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemoryFromWeightsPrimitive(
-      void* ptr) {
-    return this->AcquireMemoryFromPrimitive(
-        conv_bwd_weights_pd_->diff_weights_primitive_desc(), ptr,
-        "@diff_weights_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto diff_dst_pd = conv_bwd_data_pd_->diff_dst_primitive_desc();
-    auto user_pd = user_memory_p->get_primitive_desc();
-    return this->AcquireMemory(diff_dst_pd, user_pd, user_memory_p,
-                               "@data-diff_dst_mem_p", pipeline);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromDataPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto weights_pd = conv_bwd_data_pd_->weights_primitive_desc();
-    auto user_pd = user_weights_memory_p->get_primitive_desc();
-    return this->AcquireMemory(weights_pd, user_pd, user_weights_memory_p,
-                               "@data-weights_mem_p", pipeline);
-  }
-
-
-  std::shared_ptr<mkldnn::memory> AcquireResidualDataMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_residual_data_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromResidualDataMemory(
-      const std::shared_ptr<mkldnn::memory>& user_residual_memory_p,
-      void* dst_ptr,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    return this->AcquireMemory(user_residual_memory_p,
-                               this->AcquireDstMemoryFromPrimitive(dst_ptr),
-                               "@residual_data_mem_p", pipeline);
-  }
-  
-  std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromDataPrimitive(
-      void* ptr) {
-    return this->AcquireMemoryFromPrimitive(
-        conv_bwd_data_pd_->diff_src_primitive_desc(), ptr, "@diff_src_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(conv_pd_->dst_primitive_desc(), ptr,
-                                            "@dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemoryFromPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto src_pd = conv_pd_->src_primitive_desc();
-    auto user_pd = user_memory_p->get_primitive_desc();
-    return this->AcquireMemory(src_pd, user_pd, user_memory_p, "@src_mem_p",
-                               pipeline);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
-      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
-      bool is_persistent = false,
-      bool is_INT8 = false,
-      std::vector<float> scale_data = {1.0f},
-      int mask = 0) { 
-    auto user_weights_pd = user_weights_memory_p->get_primitive_desc();
-    auto weights_pd = conv_pd_->weights_primitive_desc();
-    return this->AcquireMemory(weights_pd, user_weights_pd,
-                               user_weights_memory_p, "@weights_mem_p",
-                               pipeline, is_persistent,
-                               is_INT8, scale_data, mask);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireBiasMemoryFromPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_bias_memory_p,
-      std::vector<mkldnn::primitive>& pipeline,
-      bool is_persistent = false,
-      bool is_INT8 = false,
-      std::vector<float> scale_data = {1.0f},
-      int mask = 0) {  // NOLINT
-    auto user_bias_pd = user_bias_memory_p->get_primitive_desc();
-    auto bias_pd = conv_pd_->bias_primitive_desc();
-    return this->AcquireMemory(bias_pd, user_bias_pd, user_bias_memory_p,
-                               "@bias_mem_p", pipeline, is_persistent,
-                               is_INT8, scale_data, mask);
-  }
-
-  std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
-      std::shared_ptr<mkldnn::memory> src_memory_p,
-      std::shared_ptr<mkldnn::memory> weights_memory_p,
-      std::shared_ptr<mkldnn::memory> dst_memory_p) {
-    auto prim_key = key_ + "@conv_p";
-    auto conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
-        dev_ctx_.GetBlob(prim_key));
-    PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find convolution primitive in device context");
-    if (conv_p == nullptr) {
-      conv_p = std::make_shared<mkldnn::convolution_forward>(
-          *conv_pd_, *(src_memory_p), *(weights_memory_p.get()),
-          *(dst_memory_p.get()));
-
-      dev_ctx_.SetBlob(prim_key, conv_p);
-    } else {
-      is_reusing_ = true;
-    }
-    return conv_p;
-  }
-
-  std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
-      std::shared_ptr<mkldnn::memory> src_memory_p,
-      std::shared_ptr<mkldnn::memory> weights_memory_p,
-      std::shared_ptr<mkldnn::memory> bias_memory_p,
-      std::shared_ptr<mkldnn::memory> dst_memory_p) {
-    auto prim_key = key_ + "@conv_p";
-    auto conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
-        dev_ctx_.GetBlob(prim_key));
-    PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find convolution primitive in device context");
-    if (conv_p == nullptr) {
-      conv_p = std::make_shared<mkldnn::convolution_forward>(
-          *conv_pd_, *(src_memory_p), *(weights_memory_p.get()),
-          *(bias_memory_p.get()), *(dst_memory_p.get()));
-
-      dev_ctx_.SetBlob(prim_key, conv_p);
-    } else {
-      is_reusing_ = true;
-    }
-    return conv_p;
-  }
-
-  std::shared_ptr<mkldnn::convolution_backward_weights>
-  AcquireConvolutionBackwardWeights(
-      std::shared_ptr<mkldnn::memory> src_memory_p,
-      std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      std::shared_ptr<mkldnn::memory> diff_weights_memory_p) {
-    auto prim_key = key_ + "@conv_bwd_weights_p";
-    auto conv_bwd_weights_p =
-        std::static_pointer_cast<mkldnn::convolution_backward_weights>(
-            dev_ctx_.GetBlob(prim_key));
-    PADDLE_ENFORCE(
-        (conv_bwd_weights_p != nullptr) || (is_reusing_ == false),
-        "Fail to find convolution bwd weights primitive in device context");
-    if (conv_bwd_weights_p == nullptr) {
-      // create backward conv primitive for weights
-      conv_bwd_weights_p =
-          std::make_shared<mkldnn::convolution_backward_weights>(
-              *conv_bwd_weights_pd_, *src_memory_p, *diff_dst_memory_p,
-              *diff_weights_memory_p);
-      dev_ctx_.SetBlob(prim_key, conv_bwd_weights_p);
-    } else {
-      is_reusing_ = true;
-    }
-    return conv_bwd_weights_p;
-  }
-
-  std::shared_ptr<mkldnn::convolution_backward_data>
-  AcquireConvolutionBackwardData(
-      std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      std::shared_ptr<mkldnn::memory> weights_memory_p,
-      std::shared_ptr<mkldnn::memory> diff_src_memory_p) {
-    auto prim_key = key_ + "@conv_bwd_data_p";
-    auto conv_bwd_data_p =
-        std::static_pointer_cast<mkldnn::convolution_backward_data>(
-            dev_ctx_.GetBlob(prim_key));
-    PADDLE_ENFORCE(
-        (conv_bwd_data_p != nullptr) || (is_reusing_ == false),
-        "Fail to find convolution bwd data primitive in device context");
-    if (conv_bwd_data_p == nullptr) {
-      conv_bwd_data_p = std::make_shared<mkldnn::convolution_backward_data>(
-          *conv_bwd_data_pd_, *diff_dst_memory_p, *weights_memory_p,
-          *diff_src_memory_p);
-      dev_ctx_.SetBlob(prim_key, conv_bwd_data_p);
-    } else {
-      is_reusing_ = true;
-    }
-    return conv_bwd_data_p;
-  }
-
-  // Generate keys for storing/retriving primitives for this operator
-  // TODO(jczaja): Make hashing function more optimial
-  static std::string GetHash(memory::dims& input_dims,     // NOLINT
-                             memory::dims& weights_dims,   // NOLINT
-                             std::vector<int>& strides,    // NOLINT
-                             std::vector<int>& paddings,   // NOLINT
-                             std::vector<int>& dilations,  // NOLINT
-                             int groups, const std::string& suffix) {
-    return dims2str(input_dims) + dims2str(weights_dims) + dims2str(strides) +
-           dims2str(paddings) + dims2str(dilations) + std::to_string(groups) +
-           suffix;
-  }
-
- private:
-  std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd_;
-  std::shared_ptr<mkldnn::convolution_backward_weights::primitive_desc>
-      conv_bwd_weights_pd_;
-  std::shared_ptr<mkldnn::convolution_backward_data::primitive_desc>
-      conv_bwd_data_pd_;
-};
 
 template <typename T>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
@@ -369,7 +106,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-    const std::string key = ConvMKLDNNHandler::GetHash(
+    const std::string key = platform::ConvMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
         ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
@@ -406,9 +143,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
     conv_pd = std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(dev_ctx.GetBlob(key_conv_pd));
-    std::shared_ptr<ConvMKLDNNHandler> handler;
+    std::shared_ptr<platform::ConvMKLDNNHandler> handler;
     if(conv_pd){
-      handler.reset(new ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
+      handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
     }
     if (!is_INT8 && dst_memory_p){
       if (fuse_residual_conn) {
@@ -506,7 +243,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         // Save conv_pd/src_memory/weights_memory for backward pass
         dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
-        handler.reset(new ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
+        handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
 
         // create mkldnn memory from input tensors (data/weights)
         user_src_memory_p =
@@ -717,7 +454,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         // Save conv_pd/src_memory/weights_memory for backward pass
         dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
-        handler.reset(new ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
+        handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx, mkldnn_engine, key));
 
         // create mkldnn memory from input tensors (data/weights)
         user_src_memory_p =
@@ -1062,9 +799,9 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "Output" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key =
-        ConvMKLDNNHandler::GetHash(src_tz, weights_tz, strides, paddings,
-                                   dilations, groups, ctx.op().Input("Output"));
+    const std::string key = platform::ConvMKLDNNHandler::GetHash(
+        src_tz, weights_tz, strides, paddings, dilations, groups,
+        ctx.op().Input("Output"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     std::vector<primitive> pipeline;
@@ -1119,8 +856,9 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         std::make_shared<mkldnn::convolution_backward_data::primitive_desc>(
             conv_bwd_data_desc, mkldnn_engine, *conv_pd);
 
-    ConvMKLDNNHandler handler(conv_pd, conv_bwd_data_pd, conv_bwd_weights_pd,
-                              dev_ctx, mkldnn_engine, key);
+    platform::ConvMKLDNNHandler handler(conv_pd, conv_bwd_data_pd,
+                                        conv_bwd_weights_pd, dev_ctx,
+                                        mkldnn_engine, key);
 
     // create mkldnn memory from input tensors (data/weights)
     auto user_src_memory_p =
