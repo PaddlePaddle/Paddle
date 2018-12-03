@@ -49,8 +49,6 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
 #endif
 }
 
-StreamCallbackManager::~StreamCallbackManager() { Wait(); }
-
 void StreamCallbackManager::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   {
