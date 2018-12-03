@@ -443,25 +443,26 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
-// CONV with Transpose2
-// op: conv + transpose2
+// CONV with Transpose
+// op: conv + transpose
 // named nodes:
 // conv_input, conv_weight,
 // conv_out, conv,
-// transpose2_out, transpose2
-struct ConvTranspose2 : public PatternBase {
-  ConvTranspose2(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_transpose2") {}
+// transpose_xshape, transpose_out, transpose
+struct ConvTranspose : public PatternBase {
+  ConvTranspose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_transpose") {}
 
   PDNode* operator()(PDNode* conv_input);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
-  PATTERN_DECL_NODE(transpose2);
+  PATTERN_DECL_NODE(transpose);
   // declare variable node's name
   PATTERN_DECL_NODE(conv_weight);
   PATTERN_DECL_NODE(conv_out);
-  PATTERN_DECL_NODE(transpose2_out);
+  PATTERN_DECL_NODE(transpose_out);
+  // PATTERN_DECL_NODE(transpose_xshape);
 };
 
 // SEQCONV with Elementwise_Add ReLU

@@ -70,6 +70,49 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   ctx->ShareLoD("Input", "Output");
+
+  // PADDLE_ENFORCE(ctx->HasOutput("XShape"), "Output(XShape) should not be
+  // null");
+  const auto out_dims = framework::make_ddim(output_shape);
+  // std::vector<int64_t> out_shape_dim(in_dims.size() + 1);
+  // out_shape_dim[0] = 0;
+  // for (int i = 0; i < in_dims.size(); ++i) {
+  //   out_shape_dim[i + 1] = in_dims[i];
+  // }
+  // ctx->SetOutputDim("XShape", framework::make_ddim(out_shape_dim));
+  // ctx->ShareLoD("Input", [>-><] "XShape");
+
+  auto out_fmt = ctx->Attrs().Get<std::string>("reorder_output_format");
+  if (out_fmt.empty()) {
+    // do nothing
+  } else if (out_fmt == "NHWC") {
+    std::vector<int> axis = {0, 2, 3, 1};
+    size_t out_rank = out_dims.size();
+    size_t axis_size = axis.size();
+
+    PADDLE_ENFORCE_EQ(out_rank, axis_size,
+                      "The input tensor's rank(%d) "
+                      "should be equal to the axis's size(%d)",
+                      out_rank, axis_size);
+
+    std::vector<int> count(axis_size, 0);
+    for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE(
+          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
+          "Each element of Attribute axis should be a unique value "
+          "range from 0 to (dims - 1), "
+          "where the dims is the axis's size");
+    }
+
+    framework::DDim out_dims_new(out_dims);
+    for (size_t i = 0; i < axis_size; i++) {
+      out_dims_new[i] = out_dims[axis[i]];
+    }
+    ctx->SetOutputDim("Output", out_dims_new);
+    // ctx->ShareLoD("Input", "Output");
+  } else {
+    throw std::invalid_argument("unknown reorder output format: " + out_fmt);
+  }
 }
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
@@ -134,6 +177,7 @@ void Conv2DOpMaker::Make() {
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.");
+  // AddOutput("XShape", "(Tensor)The output tensor.");
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
