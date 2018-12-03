@@ -193,7 +193,6 @@ class DistributeTranspiler(object):
                trainer_id=trainer_id
            )
     """
->>>>>>> develop
 
     def __init__(self, config=None):
         if config is not None:
