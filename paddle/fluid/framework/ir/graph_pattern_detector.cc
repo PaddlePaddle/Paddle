@@ -1030,23 +1030,26 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
 }
 
 PDNode *patterns::ConvBias::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
+    paddle::framework::ir::PDNode *conv_input, bool is_conv3d) {
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(is_conv3d ? "conv3d" : "conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())
+                      ->assert_is_op(is_conv3d ? "conv3d" : "conv2d");
   auto *eltiwse_op =
       pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
   // Create variables
   // Filter
-  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
-                              ->AsInput()
-                              ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+  auto *conv_weight_var =
+      pattern->NewNode(conv_weight_repr())
+          ->AsInput()
+          ->assert_is_persistable_var()
+          ->assert_is_op_input(is_conv3d ? "conv3d" : "conv2d", "Filter");
   // intermediate variable, will be removed in the IR after fuse.
-  auto *conv_out_var = pattern->NewNode(conv_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
-                           ->assert_is_op_input("elementwise_add");
+  auto *conv_out_var =
+      pattern->NewNode(conv_out_repr())
+          ->AsIntermediate()
+          ->assert_is_only_output_of_op(is_conv3d ? "conv3d" : "conv2d")
+          ->assert_is_op_input("elementwise_add");
   // Bias stored in elementwise_add
   auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
                                ->AsInput()
