@@ -612,6 +612,7 @@ class Operator(core.OpBase):
                     return True
             return False
 
+        self.inputs = []
         if inputs is not None:
             for in_proto in proto.inputs:
                 found = find_name(inputs, in_proto.name)
@@ -638,6 +639,13 @@ class Operator(core.OpBase):
                 else:
                     self.desc.set_input(in_proto.name, [])
 
+            for inp in inputs.values():
+                if isinstance(inp, Variable):
+                    self.inputs.append(inp)
+                elif isinstance(inp, list) or isinstance(inp, tuple):
+                    self.inputs.extend(inp[:])
+
+        self.outputs = []
         if outputs is not None:
             given = set()
             need = set()
@@ -666,20 +674,11 @@ class Operator(core.OpBase):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        input_vars = []
-        for inp in inputs.values():
-            if isinstance(inp, Variable):
-                input_vars.append(inp)
-            elif isinstance(inp, list) or isinstance(inp, tuple):
-                input_vars.extend(inp[:])
-        self.inputs = input_vars
-        output_vars = []
-        for out in outputs.values():
-            if isinstance(out, Variable):
-                output_vars.append(out)
-            elif isinstance(out, list) or isinstance(out, tuple):
-                output_vars.extend(out[:])
-        self.outputs = output_vars
+            for out in outputs.values():
+                if isinstance(out, Variable):
+                    self.outputs.append(out)
+                elif isinstance(out, list) or isinstance(out, tuple):
+                    self.outputs.extend(out[:])
 
         if op_attrs is not None:
             if not isinstance(op_attrs, dict):
