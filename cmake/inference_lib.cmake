@@ -138,27 +138,25 @@ if (WITH_NGRAPH)
             )
 endif ()
 
-if (NOT WIN32)
-    if (NOT MOBILE_INFERENCE AND NOT RPI)
-        set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
-        copy(snappy_lib
-                SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
-                DSTS ${dst_dir} ${dst_dir}/lib
-                DEPS snappy)
+if (NOT MOBILE_INFERENCE AND NOT RPI)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
+    copy(snappy_lib
+            SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib
+            DEPS snappy)
 
-        set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
-        copy(snappystream_lib
-                SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
-                DSTS ${dst_dir} ${dst_dir}/lib
-                DEPS snappystream)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
+    copy(snappystream_lib
+            SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib
+            DEPS snappystream)
 
-        set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
-        copy(zlib_lib
-                SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-                DSTS ${dst_dir} ${dst_dir}/lib
-                DEPS zlib)
-    endif ()
-endif (NOT WIN32)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
+    copy(zlib_lib
+            SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib
+            DEPS zlib)
+endif ()
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
@@ -194,9 +192,8 @@ endif ()
 set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*
        ${src_dir}/${module}/api/paddle_*.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "platform")
@@ -238,6 +235,16 @@ copy(inference_api_lib DEPS fluid_lib_dist
        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
+
+if(WIN32)
+    copy(inference_lib DEPS ${inference_deps}
+            SRCS ${PADDLE_BINARY_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*
+            DSTS ${dst_dir}/${module})
+    copy(inference_api_lib DEPS fluid_lib_dist
+            SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*
+            DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib
+            )
+endif(WIN32)
 
 add_custom_target(inference_lib_dist DEPENDS third_party inference_api_lib)
 
