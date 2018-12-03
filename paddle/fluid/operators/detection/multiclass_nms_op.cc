@@ -304,6 +304,13 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         int idx = score_index_pairs[j].second.second;
         new_indices[label].push_back(idx);
       }
+      if (scores_size == 2) {
+        for (size_t j = 0; j < score_index_pairs.size(); ++j) {
+          int label = score_index_pairs[j].second.first;
+          std::stable_sort(new_indices[label].begin(),
+                           new_indices[label].end());
+        }
+      }
       new_indices.swap(*indices);
       *num_nmsed_out = keep_top_k;
     }

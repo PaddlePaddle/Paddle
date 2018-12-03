@@ -162,6 +162,9 @@ def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
             selected_indices[c] = []
         for s, c, idx in sorted_score_index:
             selected_indices[c].append(idx)
+        if not shared:
+            for labels in selected_indices:
+                selected_indices[labels].sort()
         num_det = keep_top_k
 
     return selected_indices, num_det
