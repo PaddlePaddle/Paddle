@@ -36,10 +36,7 @@ class VarBase {
         var_(nullptr),
         grads_(nullptr) {}
 
-  virtual ~VarBase() {
-    LOG(ERROR) << "deleting var";
-    LOG(ERROR) << "done deleting var";
-  }
+  virtual ~VarBase() {}
 
   void ApplyGrad(framework::Scope* scope, framework::Variable* grad);
 

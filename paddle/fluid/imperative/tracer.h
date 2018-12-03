@@ -55,7 +55,7 @@ class Tracer {
              framework::BlockDesc* block) {
     framework::Scope* scope = GetScope(block);
     framework::OpDesc* op_desc = op->op_desc_;
-    LOG(ERROR) << "tracer tracing " << op_desc->Type();
+    VLOG(3) << "tracer tracing " << op_desc->Type();
     op_desc->InferShape(*block);
     op_desc->InferVarType(block);
     std::unique_ptr<framework::OperatorBase> op_base =

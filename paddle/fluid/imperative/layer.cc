@@ -75,16 +75,6 @@ class Autograd {
   }
 
  private:
-  void AccumGrads(int grad_idx, Variable* grad,
-                  std::vector<Variable*>* op_grads) {
-    if (!(*op_grads)[grad_idx]) {
-      // FIXME(panyx0718): This should be a deep copy.
-      (*op_grads)[grad_idx] = grad;
-      return;
-    }
-    AddTo(grad, (*op_grads)[grad_idx]);
-  }
-
   std::map<OpBase*, int> ComputeDepCounts(OpBase* op) {
     std::map<OpBase*, int> ret;
 
@@ -108,14 +98,6 @@ class Autograd {
     return ret;
   }
 
-  std::vector<Variable*> CreateOpGrads(size_t count) {
-    std::vector<Variable*> op_grads;
-    for (size_t i = 0; i < count; ++i) {
-      op_grads.push_back(nullptr);
-    }
-    return op_grads;
-  }
-
   framework::Scope* scope_;
 };
 
@@ -133,7 +115,7 @@ framework::Variable* CreateVariable(const std::string& name,
     varname = string::Sprintf("%s@%d", varname, id);
   }
 
-  LOG(ERROR) << "creating var " << varname;
+  VLOG(3) << "creating var " << varname;
   framework::Variable* var = scope->Var(varname);
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
 
@@ -165,22 +147,25 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
 
   for (const std::string& grad_invar : grad_op_desc_->InputArgumentNames()) {
     if (grad_to_var_->find(grad_invar) == grad_to_var_->end()) {
+      // grad op inputs can be forward inputs, so not in grad_to_var.
       continue;
     }
-    LOG(ERROR) << "op grad in var " << grad_invar;
+    VLOG(3) << "op grad in var " << grad_invar;
     block_->FindRecursiveOrCreateVar(grad_invar);
     framework::Variable* var = scope->Var(grad_invar);
     const std::string& invar = grad_to_var_->at(grad_invar);
     for (VarBase* varbase : *output_vars_) {
+      // Use the accumulated grads_ by sharing the input with grads_.
       if (varbase->var_desc_->Name() == invar) {
         var->GetMutable<framework::LoDTensor>()->ShareDataWith(
             varbase->grads_->Get<framework::LoDTensor>());
+        break;
       }
     }
   }
 
   for (const std::string& outvar : grad_op_desc_->OutputArgumentNames()) {
-    LOG(ERROR) << "grad outvar " << outvar;
+    VLOG(3) << "grad outvar " << outvar;
     block_->FindRecursiveOrCreateVar(outvar);
     framework::Variable* var = scope->Var(outvar);
     if (!var->IsInitialized()) {
@@ -199,6 +184,7 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
 
   opbase->Run(*scope, platform::CPUPlace());
 
+  // `ret` matches exactly with `input_vars_` of forward op.
   std::vector<Variable*> ret;
   for (size_t i = 0; i < input_vars_->size(); ++i) {
     bool found = false;
@@ -207,7 +193,7 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
       VarBase* origin_var = (*input_vars_)[i];
       std::string orig_var = grad_to_var_->at(outvar);
       PADDLE_ENFORCE(origin_var->var_desc_->Name() == orig_var);
-      LOG(ERROR) << "apply grad " << outvar << " with origin " << orig_var;
+      VLOG(3) << "apply grad " << outvar << " with origin " << orig_var;
       origin_var->ApplyGrad(scope, var);
       found = true;
       ret.push_back(var);
