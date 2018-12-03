@@ -30,7 +30,7 @@ std::unique_ptr<Node> CreateNodeForTest(const std::string &name,
   return std::unique_ptr<Node>(new Node(name, type));
 }
 
-bool Node::OpHasAttr(const std::string &name) const {
+bool Node::RuntimeHasAttr(const std::string &name) const {
   if (Op()->HasAttr(name)) {
     return true;
   } else {
