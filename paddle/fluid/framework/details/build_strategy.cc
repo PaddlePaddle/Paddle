@@ -118,8 +118,10 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const bool use_cuda) const {
 #endif
   // Create a default one if not finalized by user.
-  CreatePassesFromStrategy(
-      false, static_cast<int>(collective_context.endpoints_.size()));
+  CreatePassesFromStrategy(false,
+                           static_cast<int>(collective_context.num_trainers_));
+
+  VLOG(10) << "collective_context:" << collective_context.String();
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
@@ -159,8 +161,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       LOG(INFO) << "SeqOnlyAllReduceOps:"
                 << SeqOnlyAllReduceOps(
                        *this,
-                       static_cast<int>(collective_context.endpoints_.size()))
-                << ", num_trainers:" << collective_context.endpoints_.size();
+                       static_cast<int>(collective_context.num_trainers_))
+                << ", num_trainers:" << collective_context.num_trainers_;
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(

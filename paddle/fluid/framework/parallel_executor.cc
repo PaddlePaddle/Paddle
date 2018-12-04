@@ -58,7 +58,6 @@ class ParallelExecutorPrivate {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
-  std::unique_ptr<platform::CollectiveContext> collective_context;
   bool own_local_scope_;
   bool use_cuda_;
   bool use_all_reduce_;
@@ -130,6 +129,10 @@ ParallelExecutor::ParallelExecutor(
   platform::CollectiveContext collective_context;
   collective_context.trainer_id_ = trainer_id;
   collective_context.endpoints_ = collective_trainer_endpoints;
+  collective_context.num_trainers_ = collective_num_trainers;
+
+  LOG(INFO) << "collective_context:" << collective_context.String();
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,

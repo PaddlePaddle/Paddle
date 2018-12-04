@@ -25,6 +25,7 @@ namespace platform {
 struct CollectiveContext {
   std::vector<std::string> endpoints_;
   int trainer_id_{0};
+  int num_trainers_{0};
 
   std::string String() const {
     std::stringstream ss;
@@ -33,7 +34,8 @@ struct CollectiveContext {
       ss << e << ",";
     }
 
-    ss << "trainer_id_:" << trainer_id_;
+    ss << ", trainer_id_:" << trainer_id_
+       << ", num_trainers_:" << num_trainers_;
 
     return ss.str();
   }
