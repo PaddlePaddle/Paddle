@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
+def generate_compatible_batched_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
     BATCH_SIZE = 2
     M = 3
     N = 4
@@ -93,7 +93,8 @@ class Generator(object):
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
             'transpose_X': self.transpose_X,
-            'transpose_Y': self.transpose_Y
+            'transpose_Y': self.transpose_Y,
+            'use_mkldnn': self.use_mkldnn
         }
         self.outputs = {'Out': Out}
 
@@ -116,13 +117,14 @@ class Generator(object):
 def inject_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
-    shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-                                                  trans_y)
+    shape_x, shape_y = generate_compatible_batched_shapes(dim_x, dim_y, trans_x,
+                                                          trans_y)
     globals()[test_name] = type(test_name, (Generator, OpTest), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
         'transpose_X': trans_x,
         'transpose_Y': trans_y,
+        'use_mkldnn': False,
     })
 
 
@@ -168,6 +170,7 @@ for dim in [4]:
                 'shape_Y': shape_Y,
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
+                'use_mkldnn': False,
             })
 
 if __name__ == "__main__":
