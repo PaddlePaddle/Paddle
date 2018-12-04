@@ -125,13 +125,14 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
-    slice_var_up (bool): Do Tensor slice for pservers, default is True.
-    split_method (PSDispatcher): RoundRobin or HashName can be used
-        try to choose the best method to balance loads for pservers.
-    min_block_size (int): Minimum splitted element number in block.
-        According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-        We can use bandwidth effiently when data size is larger than 2MB.If you
-        want to change it, please be sure you see the slice_variable function.
+    Args:
+        slice_var_up (bool): Do Tensor slice for pservers, default is True.
+        split_method (PSDispatcher): RoundRobin or HashName can be used
+          try to choose the best method to balance loads for pservers.
+        min_block_size (int): Minimum splitted element number in block.
+          According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+          We can use bandwidth effiently when data size is larger than 2MB.If you
+          want to change it, please be sure you see the slice_variable function.
     """
 
     slice_var_up = True
@@ -163,35 +164,35 @@ class DistributeTranspiler(object):
     Examples:
         .. code-block:: python
 
-           # for pserver mode
-           pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-           trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-           current_endpoint = "192.168.0.1:6174"
-           trainer_id = 0
-           trainers = 4
-           role = os.getenv("PADDLE_TRAINING_ROLE")
-
-           t = fluid.DistributeTranspiler()
-           t.transpile(
-                trainer_id, pservers=pserver_endpoints, trainers=trainers)
-           if role == "PSERVER":
-                pserver_program = t.get_pserver_program(current_endpoint)
-                pserver_startup_program = t.get_startup_program(current_endpoint,
+            # for pserver mode
+            pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            current_endpoint = "192.168.0.1:6174"
+            trainer_id = 0
+            trainers = 4
+            role = os.getenv("PADDLE_TRAINING_ROLE")
+	     
+            t = fluid.DistributeTranspiler()
+            t.transpile(
+                 trainer_id, pservers=pserver_endpoints, trainers=trainers)
+            if role == "PSERVER":
+                 pserver_program = t.get_pserver_program(current_endpoint)
+                 pserver_startup_program = t.get_startup_program(current_endpoint,
                                                                 pserver_program)
-           elif role == "TRAINER":
-                trainer_program = t.get_trainer_program()
+            elif role == "TRAINER":
+                 trainer_program = t.get_trainer_program()
 
-           # for nccl2 mode
-           config = fluid.DistributeTranspilerConfig()
-           config.mode = "nccl2"
-           t = fluid.DistributeTranspiler(config=config)
-           t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
-           exe = fluid.ParallelExecutor(
-               use_cuda,
-               loss_name=loss_var.name,
-               num_trainers=len(trainers.split(",)),
-               trainer_id=trainer_id
-           )
+            # for nccl2 mode
+            config = fluid.DistributeTranspilerConfig()
+            config.mode = "nccl2"
+            t = fluid.DistributeTranspiler(config=config)
+            t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
+            exe = fluid.ParallelExecutor(
+                use_cuda,
+                loss_name=loss_var.name,
+                num_trainers=len(trainers.split(",)),
+                trainer_id=trainer_id
+            )
     """
 
     def __init__(self, config=None):
