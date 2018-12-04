@@ -18,14 +18,12 @@ import os
 import time
 import logging
 
-import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import io
 from paddle.fluid import Program
 
 __all__ = [
-    "load_inference_model", "load_persistable_vars",
+    "load_persistables_for_increment", "load_persistables_for_inference",
     "convert_dist_to_sparse_program"
 ]
 
@@ -121,7 +119,7 @@ def convert_dist_to_sparse_program(main_program):
     return main_program
 
 
-def load_persistable_vars(executor, dirname, program, lookup_table_var):
+def _load_persistable_vars(executor, dirname, program, lookup_table_vars):
     def _is_checkpoint_var(exclude_fluid_vars=None):
         """
         the checkpoint will not save or load all the variables.
@@ -159,8 +157,65 @@ def load_persistable_vars(executor, dirname, program, lookup_table_var):
 
         return is_valid
 
-    def _load_lookup_table_vars(executor, dirname, main_program,
-                                lookup_table_vars):
+    io.load_vars(
+        executor,
+        dirname=dirname,
+        main_program=program,
+        predicate=_is_checkpoint_var(lookup_table_vars),
+        filename=None)
+
+
+def load_persistables_for_increment(dirname, executor, program,
+                                    lookup_table_var, lookup_table_var_path):
+    """
+    for increment trainning, the pserver will not only load dense variables,
+    but also load the suitable lookup table var. Because of slice lookup table
+    var with HASH, we must load the correct slice var.
+    """
+
+    def __load_lookup_table_vars(executor, main_program, lookup_table_var,
+                                 lookup_table_var_path):
+        emb_var = main_program.global_block().var(lookup_table_var)
+
+        load_program = Program()
+        load_block = load_program.global_block()
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [emb_var]},
+            attrs={'file_path': lookup_table_var_path})
+        executor.run(load_program)
+
+    if not os.path.isdir(dirname):
+        raise ValueError("There is no directory named '%s'", dirname)
+
+    if not os.path.exists(lookup_table_var_path):
+        raise ValueError("There is no file named '%s'", lookup_table_var_path)
+
+    if not isinstance(program, Program):
+        raise ValueError("program must be an instance of fluid.Program")
+
+    _logger.info("Start Load Sparse Program With "
+                 "Distributed Lookup Table Vars from {}, time = {}".format(
+                     dirname, time.ctime()))
+
+    _load_persistable_vars(executor, dirname, program, [lookup_table_var])
+    __load_lookup_table_vars(executor, program, lookup_table_var,
+                             lookup_table_var_path)
+
+    _logger.info("Finish Load Sparse Program With "
+                 "Distributed Lookup Table Vars from {}, time = {}".format(
+                     dirname, time.ctime()))
+
+
+def load_persistables_for_inference(dirname, executor, program,
+                                    lookup_table_var_name):
+    """
+    this function is suitable for local inference with lookup table variables.
+    """
+
+    def __load_lookup_table_vars(executor, dirname, main_program,
+                                 lookup_table_vars):
         if not os.path.isdir(dirname):
             raise ValueError("There is no directory named '%s'", dirname)
 
@@ -209,48 +264,34 @@ def load_persistable_vars(executor, dirname, program, lookup_table_var):
         global_block.append_op(type='delete_var', inputs={'X': sums})
         executor.run(convert_program)
 
+    if not os.path.isdir(dirname):
+        raise ValueError("There is no directory named '%s'", dirname)
+
+    if program:
+        if not isinstance(program, Program):
+            raise ValueError("program must be an instance of fluid.Program")
+    else:
+        local_model = os.path.join(dirname, model_filename)
+
+        with open(local_model, "rb") as f:
+            program_desc_str = f.read()
+
+        program = Program.parse_from_string(program_desc_str)
+
+        if not core._is_program_version_supported(program._version()):
+            raise ValueError("Unsupported program version: %d\n" %
+                             program._version())
+
     _logger.info("Start Load Sparse Program With "
                  "Distributed Lookup Table Vars from {}, time = {}".format(
                      dirname, time.ctime()))
 
-    lookup_table_vars = [lookup_table_var]
-
-    io.load_vars(
-        executor,
-        dirname=dirname,
-        main_program=program,
-        predicate=_is_checkpoint_var(lookup_table_vars),
-        filename=None)
-
-    _load_lookup_table_vars(executor, dirname, program, lookup_table_vars)
+    _load_persistable_vars(executor, dirname, program, [lookup_table_var_name])
+    __load_lookup_table_vars(executor, dirname, program,
+                             [lookup_table_var_name])
 
     _logger.info("Finish Load Sparse Program With "
                  "Distributed Lookup Table Vars from {}, time = {}".format(
                      dirname, time.ctime()))
 
-
-def load_inference_model(dirname, executor, lookup_table_var_name):
-    if not os.path.isdir(dirname):
-        raise ValueError("There is no directory named '%s'", dirname)
-
-    local_model = os.path.join(dirname, model_filename)
-
-    with open(local_model, "rb") as f:
-        program_desc_str = f.read()
-
-    program = Program.parse_from_string(program_desc_str)
-
-    if not core._is_program_version_supported(program._version()):
-        raise ValueError("Unsupported program version: %d\n" %
-                         program._version())
-
-    # Binary data also need version.
-    load_persistable_vars(executor, dirname, program, lookup_table_var_name)
-
-    feed_target_names = program.desc.get_feed_target_names()
-    fetch_target_names = program.desc.get_fetch_target_names()
-    fetch_targets = [
-        program.global_block().var(name) for name in fetch_target_names
-    ]
-
-    return [program, feed_target_names, fetch_targets]
+    return program
