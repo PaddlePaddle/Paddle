@@ -169,6 +169,9 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
+    'merge_selected_rows',
+    'selected_rows_mul_tensor',
+    'get_tensor_from_selected_rows',
 ]
 
 
@@ -8216,6 +8219,29 @@ def mean(x, name=None):
 
 
 @templatedoc()
+def merge_selected_rows(x, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("merge_selected_rows", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="merge_selected_rows",
+        inputs={"X": x},
+        attrs={},
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     """
     ${comment}
@@ -8863,3 +8889,51 @@ def bilinear_tensor_product(x,
 
     # add activation
     return helper.append_activation(out)
+
+
+@templatedoc()
+def selected_rows_mul_tensor(x, y, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper('selected_rows_mul_tensor', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='selected_rows_mul_tensor',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={})
+    return out
+
+
+@templatedoc()
+def get_tensor_from_selected_rows(x, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper('get_tensor_from_selected_rows', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='get_tensor_from_selected_rows',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={})
+    return out

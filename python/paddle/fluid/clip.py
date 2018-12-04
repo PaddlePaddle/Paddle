@@ -271,7 +271,12 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                     "All parameters' 'clip_norm' of a same group should be the same"
                 )
 
-        square = layers.square(grad)
+        merge_grad = grad
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            merge_grad = layers.merge_selected_rows(grad)
+            merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+
+        square = layers.square(merge_grad)
         local_norm_var = layers.reduce_sum(input=square)
         context[self.group_name].append(local_norm_var)
 
@@ -290,8 +295,13 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
             assert group_scale_var.shape == (1, )
             self.context[group_scale_name] = group_scale_var
 
-        new_grad = layers.elementwise_mul(
-            x=grad, y=self.context[group_scale_name])
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            new_grad = layers.selected_rows_mul_tensor(
+                x=grad, y=self.context[group_scale_name])
+        else:
+            new_grad = layers.elementwise_mul(
+                x=grad, y=self.context[group_scale_name])
+
         return param, new_grad
 
 

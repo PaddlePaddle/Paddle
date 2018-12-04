@@ -43,13 +43,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("X").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front());
+        "The input var's type should be LoDTensor, but the received is %s [%s]",
+        ctx->GetInputsVarType("X").front(), ctx->Inputs("X").front());
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Y").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Y").front(), ctx->GetInputsVarType("Y").front());
+        "The input var's type should be LoDTensor, but the received is %s [%s]",
+        ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
