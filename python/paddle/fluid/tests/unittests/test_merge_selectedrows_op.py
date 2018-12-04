@@ -68,10 +68,6 @@ class TestMergeSelectedRows(unittest.TestCase):
         for place in self.get_places():
             self.check_with_place(place)
 
-    # def test_check_grad(self):
-    #     for place in self.get_places():
-    #         self.check_grad_with_place(place)
-
 
 if __name__ == "__main__":
     unittest.main()
