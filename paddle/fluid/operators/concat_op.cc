@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
-
-#include <paddle/fluid/platform/mkldnn_helper.h>
 #include <string>
 #include <vector>
+
+#ifdef PADDLE_WITH_MKLDNN
+#include <paddle/fluid/platform/mkldnn_helper.h>
+#endif
 
 namespace paddle {
 namespace operators {
