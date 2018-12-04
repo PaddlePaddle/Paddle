@@ -157,8 +157,8 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
-  VLOG(3) << "all reader thread is stopped, push empty data into queue";
-  queue->Push({});
+  VLOG(3) << "all reader thread is stopped, close the queue";
+  queue->Close();
   VLOG(3) << "monitor thread exited";
 }
 
@@ -247,7 +247,7 @@ static inline void parse_csv_line(
     int slot_idx = data_desc.dense_slot_index_[i];
     auto& slot_data = ret[slot_idx];
     std::vector<std::string> data_in_slot_str;
-    string_split(ret[slot_idx], ',', &data_in_slot_str);
+    string_split(slot_data, ',', &data_in_slot_str);
     std::vector<float> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
       (*dense_datas)[i].push_back(std::stof(data_str));

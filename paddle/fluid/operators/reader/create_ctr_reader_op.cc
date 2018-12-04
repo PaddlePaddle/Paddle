@@ -51,6 +51,7 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto file_list = Attr<std::vector<std::string>>("file_list");
     DataDesc data_desc(batch_size, file_list, file_type, file_format,
                        dense_slot_index, sparse_slot_index, sparse_slots);
+    VLOG(1) << data_desc;
     out->Reset(std::make_shared<CTRReader>(queue_holder->GetQueue(), thread_num,
                                            data_desc));
   }
@@ -69,10 +70,10 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
                                       "The list of files that need to read");
     AddAttr<std::vector<int>>(
         "dense_slot_index",
-        "the sparse slots id that should be extract from file")
+        "the dense slots id that should be extract from file")
         .SetDefault({});
     AddAttr<std::vector<int>>(
-        "dense_slot_index",
+        "sparse_slot_index",
         "the sparse slots id that should be extract from file")
         .SetDefault({});
     AddAttr<std::vector<std::string>>("sparse_slots",
