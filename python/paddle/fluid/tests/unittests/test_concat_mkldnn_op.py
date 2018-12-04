@@ -29,6 +29,7 @@ class TestMKLDNNConcatOp(TestConcatOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
+
 class TestMKLDNNConcatOp2(TestConcatOp2):
     def setUp(self):
         super(TestMKLDNNConcatOp2, self).setUp()
@@ -39,6 +40,7 @@ class TestMKLDNNConcatOp2(TestConcatOp2):
 
     def init_kernel_type(self):
         self.use_mkldnn = True
+
 
 class TestMKLDNNConcatOp3(TestConcatOp3):
     def setUp(self):
