@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/split.h"
 
 #ifndef _WIN32
 constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
@@ -135,7 +136,7 @@ std::vector<int> GetSelectedDevices() {
   // use user specified GPUs in single-node multi-process mode.
   std::vector<int> devices;
   if (!FLAGS_selected_gpus.empty()) {
-    auto devices_str = paddle::string::Split(std::string(gpus_cstr), ',');
+    auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
     for (auto id : devices_str) {
       devices.push_back(atoi(id.c_str()));
     }
