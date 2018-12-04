@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 
 class TestMeanOp(OpTest):
     def setUp(self):
-        self.op_type = "merge_selected_rows"
+        self.op_type = "mean"
         self.dtype = np.float32
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
