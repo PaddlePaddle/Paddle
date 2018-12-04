@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/platform/collective_context.h"
 
 namespace paddle {
 namespace platform {
@@ -42,6 +43,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
+  mutable platform::CollectiveContext collective_context_;
 #endif
 
   int GetVarDeviceID(

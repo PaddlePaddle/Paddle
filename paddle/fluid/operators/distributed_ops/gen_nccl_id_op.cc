@@ -22,7 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/macros.h"
-#include "paddle/fluid/operators/distributed/collective_client.h.h"
+#include "paddle/fluid/operators/distributed/collective_client.h"
+#include "paddle/fluid/operators/distributed/collective_server.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
@@ -73,7 +74,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("endpoint_list");
     operators::distributed::CollectiveServer* server =
         operators::distributed::CollectiveServer::GetInstance(
-            end_point, endpoint_list.size());
+            endpoint, endpoint_list.size());
 
     server->RegisterSendRPC(scope, &dev_ctx);
   }

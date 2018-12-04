@@ -30,89 +30,108 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static inline std::string GetRemoteVarName(const std::string &var_name, ) {
+static inline std::string GetRemoteVarName(const std::string &var_name) {
   return string::Sprintf("%s_merged_tmp", var_name);
 }
 
-void ReduceOpHandle::WaitLocalSelectedRows(
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes) {
-  // TODO(gongwb): use event wait?
-  for (auto &dev_ctx : dev_ctxes) {
-    dev_ctx.second->Wait();
+template <typename DevCtx>
+struct ReduceSelectedRowsFunctor {
+  const std::vector<Scope *> &local_scopes_;
+  const std::vector<const SelectedRows *> &src_slrs_;
+
+  const std::vector<platform::Place> &in_places_;
+  const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes_;
+
+  VarHandle *out_var_handle_;
+  const platform::Place &out_place_;
+  SelectedRows *dst_slr_;
+
+  const platform::CollectiveContext collective_context_;
+
+  ReduceSelectedRowsFunctor(
+      const std::vector<framework::Scope *> &scopes,
+      const std::vector<const SelectedRows *> &src_selected_rows,
+      const std::vector<platform::Place> &in_places,
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      VarHandle *out_var_handle, const platform::Place &out_place,
+      SelectedRows *dst_selected_rows,
+      const platform::CollectiveContext &collective_context)
+      : local_scopes_(scopes),
+        src_slrs_(src_selected_rows),
+        in_places_(in_places),
+        dev_ctxes_(dev_ctxes),
+        out_var_handle_(out_var_handle),
+        out_place_(out_place),
+        dst_slr_(dst_selected_rows),
+        collective_context_(collective_context) {}
+
+  template <typename T>
+  void apply() const {
+    VLOG(40) << "GatherSelectedRows CollectiveContext:"
+             << collective_context_.String();
+
+    // 1. gather local selected rows, merge them
+    std::string gathered_var_name = out_var_handle_->name_ + "_gathered_tmp";
+    auto scope = local_scopes_.at(out_var_handle_->scope_idx_);
+    auto gathered_var_mid = scope->Var(gathered_var_name);
+    auto gathered_select_rows =
+        gathered_var_mid->GetMutable<framework::SelectedRows>();
+    GatherLocalSelectedRows(src_slrs_, in_places_, dev_ctxes_, out_place_,
+                            gathered_select_rows);
+
+    // wait
+    for (auto &dev_ctx : dev_ctxes_) {
+      dev_ctx.second->Wait();
+    }
+
+    VLOG(100) << "gathered selected rows:" << gathered_var_name
+              << operators::distributed::GetSelectedRowsInfo(
+                     *gathered_select_rows);
+
+    // merge them
+    auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes_.at(out_place_));
+    std::string merged_var_name = GetRemoteVarName(out_var_handle_->name_);
+    auto merged_select_rows =
+        scope->Var(merged_var_name)->GetMutable<SelectedRows>();
+    operators::math::scatter::MergeAdd<DevCtx, T> merge_func;
+    merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
+    VLOG(100) << "merged selected rows:" << merged_var_name
+              << operators::distributed::GetSelectedRowsInfo(
+                     *merged_select_rows);
+
+    // 2. start collective server if it doesn't exist
+    operators::distributed::CollectiveServer *server =
+        operators::distributed::CollectiveServer::GetInstance(
+            collective_context_.endpoints_[collective_context_.trainer_id_],
+            collective_context_.endpoints_.size() - 1);
+
+    auto rpc_server = server->GetRPCServer();
+    rpc_server->RegisterVar(merged_var_name,
+                            operators::distributed::kRequestGetMonomerVariable,
+                            scope, merged_dev_ctx);
+
+    // 3. gather them from all remote nodes.
+    auto reduce_eps = collective_context_.endpoints_;
+    reduce_eps.erase(reduce_eps.begin() + collective_context_.trainer_id_);
+
+    operators::distributed::CollectiveClient::ReduceSelectedRows<T>(
+        reduce_eps, merged_var_name, scope);
+
+    scope->EraseVars(std::vector<std::string>{out_var_handle_->name_});
+    scope->Rename(merged_var_name, out_var_handle_->name_);
+    auto slr =
+        scope->FindVar(out_var_handle_->name_)->GetMutable<SelectedRows>();
+    VLOG(100) << "reduced selected rows:" << merged_var_name
+              << operators::distributed::GetSelectedRowsInfo(*slr);
+
+    rpc_server->WaitVarBarrier(merged_var_name);
+    rpc_server->ClearVar(merged_var_name);
+
+    // 5. clear mid vars
+    std::vector<std::string> tmp_vars{gathered_var_name};
+    scope->EraseVars(tmp_vars);
   }
-}
-
-void ReduceOpHandle::GatherSelectedRows(
-    const std::vector<const SelectedRows *> &src_selected_rows,
-    const std::vector<platform::Place> &in_places,
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-    VarHandle *out_var_handle, const platform::Place &out_place,
-    SelectedRows *dst_selected_rows) {
-  VLOG(40) << "GatherSelectedRows CollectiveContext:"
-           << collective_context_.String();
-
-  if (collective_context_.end_points_.size() <= 1 ||
-      is_cpu_place(in_places[0]) ||
-      is_cpu_place(out_place)) {  // TODO(gongwb): add cpu support
-    GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
-                            dst_selected_rows);
-    return;
-  }
-
-  // 1. gather local selected rows, merge them
-  std::string gathered_var_name = out_var_handle->name_ + "_gathered_tmp";
-  auto scope = local_scopes_.at(out_var_handle->scope_idx_);
-  auto gathered_var_mid = scope->Var(gathered_var_name);
-  auto gathered_select_rows =
-      gathered_var_mid->GetMutable<framework::SelectedRows>();
-  GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
-                          gathered_select_rows);
-  WaitLocalSelectedRows(dev_ctxes);
-  VLOG(100) << "gathered selected rows:" << gathered_var_name
-            << operators::distributed::GetSelectedRowsInfo(
-                   *gathered_select_rows);
-
-  // merge them
-  auto merged_dev_ctx =
-      dynamic_cast<platform::CUDADeviceContext *>(dev_ctxes.at(out_place));
-  std::string merged_var_name = GetRemoteVarName(out_var_handle->name_);
-  auto merged_select_rows =
-      scope->Var(merged_var_name)->GetMutable<SelectedRows>();
-  // FIXME(gongwb):get type?
-  operators::math::scatter::MergeAdd<platform::CUDADeviceContext, float>
-      merge_func;
-  merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
-  VLOG(100) << "merged selected rows:" << merged_var_name
-            << operators::distributed::GetSelectedRowsInfo(*merged_select_rows);
-
-  // 2. start collective server if it doesn't exist
-  operators::distributed::CollectiveServer *server =
-      operators::distributed::CollectiveServer::GetInstance(
-          collective_context_.endpoints_[collective_context_.trainer_id_],
-          collective_context_.endpoints_.size() - 1);
-
-  auto rpc_server = server->GetRPCServer();
-  rpc_server->RegisterVar(merged_var_name,
-                          operators::distributed::kRequestGetMonomerVariable,
-                          scope, merged_dev_ctx);
-
-  // 3. gather them from all remote nodes.
-  auto reduce_eps = collective_context_.endpoints_;
-  reduce_eps.erase(eps.begin() + collective_context_.trainer_id_);
-  operators::distributed::CollectiveClient::ReduceSelectedRows(
-      reduce_eps, merged_var_name, scope);
-  scope->Rename(merged_var_name, out_var_handle->name_);
-  auto slr = scope->FindVar(out_var_handle->name_)->GetMutable<SelectedRows>();
-  VLOG(100) << "reduced selected rows:" << merged_var_name
-            << operators::distributed::GetSelectedRowsInfo(*slr);
-
-  rpc_server->WaitVarBarrier(merged_var_name);
-  rpc_server->ClearVar(merged_var_name);
-
-  // 5. clear mid vars
-  std::vector<std::string> tmp_vars{gathered_var_name};
-  scope->EraseVars(tmp_vars);
-}
+};
 
 void ReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
@@ -179,9 +198,24 @@ void ReduceOpHandle::RunImpl() {
       std::vector<const SelectedRows *> in_selected_rows =
           GetInputValues<SelectedRows>(in_var_handles, var_scopes);
 
-      GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_,
-                         out_var_handle, t_out_p,
-                         out_var->GetMutable<framework::SelectedRows>());
+      PADDLE_ENFORCE(in_selected_rows.size() > 0,
+                     "input selectrows size must > 0");
+
+      if (platform::is_gpu_place(in_p)) {
+        ReduceSelectedRowsFunctor<platform::CUDADeviceContext> func(
+            local_scopes_, in_selected_rows, in_places, dev_ctxes_,
+            out_var_handle, t_out_p,
+            out_var->GetMutable<framework::SelectedRows>(),
+            collective_context_);
+        VisitDataType(ToDataType(in_selected_rows[0]->value().type()), func);
+      } else {
+        ReduceSelectedRowsFunctor<platform::CPUDeviceContext> func(
+            local_scopes_, in_selected_rows, in_places, dev_ctxes_,
+            out_var_handle, t_out_p,
+            out_var->GetMutable<framework::SelectedRows>(),
+            collective_context_);
+        VisitDataType(ToDataType(in_selected_rows[0]->value().type()), func);
+      }
     });
   } else {
     std::vector<const LoDTensor *> lod_tensors =

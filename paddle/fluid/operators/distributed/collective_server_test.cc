@@ -87,7 +87,6 @@ TEST(PREFETCH, GPU) {
   std::vector<std::string> eps{ep};
   distributed::CollectiveClient::ReduceSelectedRows<float>(eps, var_name,
                                                            client_scope);
-
   auto slr =
       client_scope->FindVar(var_name)->GetMutable<framework::SelectedRows>();
   std::cout << "ReduceSelectedRows:" << distributed::GetSelectedRowsInfo(*slr)

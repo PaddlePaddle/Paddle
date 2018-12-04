@@ -144,7 +144,7 @@ void MultiDevSSAGraphBuilder::Init() const {
   strategy_ = Get<const BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
-  collective_context_ = Get<platform::collective_context>("collective_context");
+  collective_context_ = Get<platform::CollectiveContext>("collective_context");
 #endif
 
   for (auto &p : Get<const std::unordered_set<std::string>>(kParams)) {

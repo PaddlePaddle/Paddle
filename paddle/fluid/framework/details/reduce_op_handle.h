@@ -35,10 +35,10 @@ namespace details {
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-  platform::CollectiveContext collective_context_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
+  platform::CollectiveContext collective_context_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
                  const platform::NCCLContextMap *nccl_ctxs,
@@ -73,9 +73,6 @@ struct ReduceOpHandle : public OpHandleBase {
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle, const platform::Place &out_place,
       SelectedRows *dst_selecte_rows);
-
-  void WaitLocalSelectedRows(
-      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
 
   template <typename T>
   std::vector<const T *> GetInputValues(

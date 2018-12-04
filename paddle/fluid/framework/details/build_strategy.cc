@@ -26,7 +26,8 @@ namespace framework {
 namespace details {
 
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
-  return (!strategy.enable_sequential_execution_ && strategy.num_trainers_ > 1);
+  return (!strategy.enable_sequential_execution_ &&
+          strategy.collective_context_.num_trainers_ > 1);
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
@@ -58,6 +59,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 
+    /*
     CollectiveContext *context = CollectiveContext::GetInstance();
     context->endpoints_ = strategy_.trainer_endpoints_;
     context->trainer_id_ = strategy_.trainer_id_;
@@ -68,6 +70,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                      "trainer_id_ < endpoints_ size");
     }
     VLOG(1) << "CollectiveContext:" << context->String();
+    */
 
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
@@ -158,7 +161,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "all_reduce_deps_pass") {
       LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << num_trainers_;
+                << ", num_trainers:" << collective_context.num_trainers_;
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(

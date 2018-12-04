@@ -44,7 +44,7 @@ void CollectiveServer::Stop() {
 }
 
 void CollectiveServer::RegisterSendRPC(framework::Scope* scope,
-                                       platform::DeviceContext* dev_ctx) {
+                                       const platform::DeviceContext* dev_ctx) {
   request_send_handler_.reset(new SendMonomerVariableHandler());
   request_send_handler_->SetRPCServer(rpc_server_.get());
   request_send_handler_->SetScope(scope);

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <sstream>
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
@@ -53,7 +54,6 @@ class CollectiveClient {
   virtual ~CollectiveClient() {}
 
   // note this function will retain the rank order.
-  // TODO(gongwb): Support lodtensor?
   // TODO(gongwb): Implement ringbased gather.
   // https://github.com/baidu-research/baidu-allreduce
   template <typename T>
