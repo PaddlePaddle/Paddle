@@ -140,15 +140,7 @@ void Conv2DOpMaker::Make() {
            "to which convolution output will be added."
            "Used with fuse_residual_connection fusion.")
       .AsDispensable();
-  AddOutput("Output",
-            "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.");
 
-  AddInput("ResidualData",
-           "(Tensor) Tensor with residual data "
-           "to which convolution output will be added."
-           "Used with fuse_residual_connection fusion.")
-      .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
