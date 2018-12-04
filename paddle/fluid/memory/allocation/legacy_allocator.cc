@@ -115,19 +115,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   static std::vector<int> devices;
 
   std::call_once(init_flag, [gpu_id]() {
-    char *gpus_cstr = std::getenv("PADDLE_GPUS");
-    if (gpus_cstr) {
-      for (auto s : paddle::string::Split(std::string(gpus_cstr), ',')) {
-        devices.push_back(atoi(s.c_str()));
-      }
-    } else {
-      int gpu_num = platform::GetCUDADeviceCount();
-      PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
-                     gpu_num);
-      for (int i = 0; i < gpu_num; ++i) {
-        devices.push_back(i);
-      }
-    }
+    devices = platform::GetSelectedDevices();
     int gpu_num = devices.size();
 
     a_arr = new BuddyAllocator *[gpu_num];
@@ -150,7 +138,6 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   });
 
   platform::SetDeviceId(gpu_id);
-  // return a_arr[gpu_id];
   auto pos = std::distance(devices.begin(),
                            std::find(devices.begin(), devices.end(), gpu_id));
   return a_arr[pos];

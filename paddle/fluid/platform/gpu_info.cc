@@ -45,6 +45,15 @@ DEFINE_bool(
     "input and output must be half precision) and recurrent neural networks "
     "(RNNs).");
 
+DEFINE_string(selected_gpus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (GPU). If you want to use "
+              "all visible devices, set this to empty string. NOTE: the "
+              "reason of doing this is that we want to use P2P communication"
+              "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
+              "share-memory only.");
+
 namespace paddle {
 namespace platform {
 
@@ -119,6 +128,24 @@ int GetCurrentDeviceId() {
       cudaGetDevice(&device_id),
       "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
   return device_id;
+}
+
+//! Get a list of device ids from environment variable or use all.
+std::vector<int> GetSelectedDevices() {
+  // use user specified GPUs in single-node multi-process mode.
+  std::vector<int> devices;
+  if (!FLAGS_selected_gpus.empty()) {
+    auto devices_str = paddle::string::Split(std::string(gpus_cstr), ',');
+    for (auto id : devices_str) {
+      devices.push_back(atoi(id.c_str()));
+    }
+  } else {
+    int count = GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  }
+  return devices;
 }
 
 void SetDeviceId(int id) {

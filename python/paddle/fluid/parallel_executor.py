@@ -96,7 +96,7 @@ class ParallelExecutor(object):
         self._act_places = []
         if use_cuda:
             gpus = []
-            gpus_env = os.getenv("PADDLE_GPUS")
+            gpus_env = os.getenv("FLAGS_selected_gpus")
             if gpus_env:
                 gpus = [int(s) for s in gpus_env.split(",")]
             else:

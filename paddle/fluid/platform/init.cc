@@ -84,18 +84,7 @@ void InitDevices(bool init_p2p) {
 #ifdef PADDLE_WITH_CUDA
   try {
     // use user specified GPUs in single-node multi-process mode.
-    char *gpus_cstr = std::getenv("PADDLE_GPUS");
-    if (gpus_cstr) {
-      auto devices_str = paddle::string::Split(std::string(gpus_cstr), ',');
-      for (auto id : devices_str) {
-        devices.push_back(atoi(id.c_str()));
-      }
-    } else {
-      int count = platform::GetCUDADeviceCount();
-      for (int i = 0; i < count; ++i) {
-        devices.push_back(i);
-      }
-    }
+    devices = platform::GetSelectedDevices();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
