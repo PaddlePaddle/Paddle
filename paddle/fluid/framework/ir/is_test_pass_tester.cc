@@ -15,7 +15,10 @@
 #include "paddle/fluid/framework/ir/is_test_pass.h"
 
 #include <gtest/gtest.h>
-
+#ifdef _WIN32
+#undef FALSE
+#undef TRUE
+#endif
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -101,9 +104,9 @@ TEST(IsTestPass, basic) {
       auto* op = node->Op();
       auto op_name = boost::get<std::string>(op->GetAttr("name"));
       if (op_name == "conv3") {
-        ASSERT_FALSE(op->HasAttr("is_test"));
+        ASSERT_FALSE(node->RuntimeHasAttr("is_test"));
       } else {
-        ASSERT_TRUE(op->HasAttr("is_test"));
+        ASSERT_TRUE(node->RuntimeHasAttr("is_test"));
         EXPECT_TRUE(boost::get<bool>(op->GetAttr("is_test")));
       }
     }
