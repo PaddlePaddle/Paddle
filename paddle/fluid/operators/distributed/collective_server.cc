@@ -43,17 +43,6 @@ void CollectiveServer::Stop() {
   loop_thread_->join();
 }
 
-void CollectiveServer::RegisterSendRPC(framework::Scope* scope,
-                                       const platform::DeviceContext* dev_ctx) {
-  request_send_handler_.reset(new SendMonomerVariableHandler());
-  request_send_handler_->SetRPCServer(rpc_server_.get());
-  request_send_handler_->SetScope(scope);
-  request_send_handler_->SetDevCtx(dev_ctx);
-
-  rpc_server_->RegisterRPC(distributed::kRequestSend,
-                           request_send_handler_.get(), 5);
-}
-
 void CollectiveServer::StartServer() {
   get_monomer_handler_.reset(new GetMonomerHandler());
   get_monomer_handler_->SetRPCServer(rpc_server_.get());

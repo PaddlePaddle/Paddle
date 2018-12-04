@@ -105,9 +105,6 @@ class CollectiveServer final {
 
   void Stop();
 
-  void RegisterSendRPC(framework::Scope* scope,
-                       const platform::DeviceContext* dev_ctx);
-
  private:
   std::unique_ptr<GetMonomerHandler> get_monomer_handler_;
   std::unique_ptr<GetMonomerBarrierHandler> get_barrier_handler_;
