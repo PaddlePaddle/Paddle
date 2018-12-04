@@ -116,7 +116,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     //    ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
 
-    bool is_INT8 = ctx.HasInput("Scale_in")? true : false;
+    bool is_INT8 = false;
+    mkldnn::memory::data_type src_dt = paddle::framework::ToMKLDNNDataType(input->type());
+    if(src_dt == mkldnn::memory::data_type::u8 || src_dt == mkldnn::memory::data_type::s8){
+      is_INT8 = true;
+    }
     
     bool need_s8_to_u8 = false;
     if (fuse_residual_conn && is_INT8 && fuse_relu) {
@@ -341,9 +345,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         bool is_multi_channel = (scale_weights->memory_size() > 1) ? true : false;
 
-        static std::unordered_map<std::string, std::vector<float>> scale_map;
-
-        bool scale_reuse = true;
         auto scale_in_key = key + "@scale_in";
         auto scale_weights_key = key + "@scale_weights";
         auto scale_out_key = key + "@scale_out";
@@ -358,49 +359,26 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         std::vector<float> sum_scale = {1.0f};
         std::vector<float> none_scale = {0};
 
-        if (GetScaleMap(scale_map, scale_in_key) == none_scale){
-          scale_reuse = false;
+        int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
+        scale_in_data = {*(scale_in->data<float>())};
+        scale_weights_data.resize(count);
+        #pragma omp parallel for if (count > 1)
+        for(int i=0; i<count; i++){
+          scale_weights_data[i] =*(scale_weights->data<float>() + i);
         }
-
-        if(!scale_reuse){
-          int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
-          scale_in_data = {*(scale_in->data<float>())};
-          scale_weights_data.resize(count);
-          #pragma omp parallel for if (count > 1)
-          for(int i=0; i<count; i++){
-            scale_weights_data[i] =*(scale_weights->data<float>() + i);
-          }
-          if(!force_fp32_output)
-            scale_out_data = {*(scale_out->data<float>())};
-          output_shift_scale.resize(count);
-          #pragma omp parallel for if (count > 1)
-          for(int i=0; i<count; i++){
-            if(scale_weights_data[i] == 0.0)
-              output_shift_scale[i] = scale_out_data[0];
-            else 
-              output_shift_scale[i] = scale_out_data[0] / (scale_in_data[0] * scale_weights_data[i]);
-          }
-          if(fuse_residual_conn){
-            scale_in_eltwise_data = {*(scale_in_eltwise->data<float>())};
-            sum_scale[0] = scale_out_data[0] / scale_in_eltwise_data[0];
-            SetScaleMap(scale_map, scale_in_eltwise_key, scale_in_eltwise_data);
-          }
-
-          //scale reuse
-          SetScaleMap(scale_map, scale_in_key, scale_in_data);
-          SetScaleMap(scale_map, scale_weights_key, scale_weights_data);
-          SetScaleMap(scale_map, scale_out_key, scale_out_data);
-          SetScaleMap(scale_map, output_shift_scale_key, output_shift_scale);
-          SetScaleMap(scale_map, sum_scale_key, sum_scale);
-        } else{
-          scale_in_data = GetScaleMap(scale_map, scale_in_key);
-          scale_out_data = GetScaleMap(scale_map, scale_out_key);
-          scale_weights_data = GetScaleMap(scale_map, scale_weights_key);
-          if(fuse_residual_conn){
-            scale_in_eltwise_data = GetScaleMap(scale_map, scale_in_eltwise_key);
-          }
-          output_shift_scale = GetScaleMap(scale_map, output_shift_scale_key);
-          sum_scale = GetScaleMap(scale_map, sum_scale_key); 
+        if(!force_fp32_output)
+          scale_out_data = {*(scale_out->data<float>())};
+        output_shift_scale.resize(count);
+        #pragma omp parallel for if (count > 1)
+        for(int i=0; i<count; i++){
+          if(scale_weights_data[i] == 0.0)
+            output_shift_scale[i] = scale_out_data[0];
+          else 
+            output_shift_scale[i] = scale_out_data[0] / (scale_in_data[0] * scale_weights_data[i]);
+        }
+        if(fuse_residual_conn){
+          scale_in_eltwise_data = {*(scale_in_eltwise->data<float>())};
+          sum_scale[0] = scale_out_data[0] / scale_in_eltwise_data[0];
         }
 
         std::vector<primitive> pipeline;
@@ -521,16 +499,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
               handler->AcquireBiasMemory(user_bias_md, to_void_cast<float>(bias_data));
           std::shared_ptr<mkldnn::memory>  bias_memory_p;
           int mask_reorder = is_multi_channel? 1<<0 : 1;
-          if(!scale_reuse){
-            int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
-            scale_bias_data.resize(count);
-            #pragma omp parallel for if (count > 1)
-            for(int i=0; i<count; i++){
-              scale_bias_data[i] = scale_in_data[0] * scale_weights_data[i];
-            }
-            SetScaleMap(scale_map, scale_bias_key, scale_bias_data);
-          } else{
-            scale_bias_data = GetScaleMap(scale_map, scale_bias_key);
+          int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
+          scale_bias_data.resize(count);
+          #pragma omp parallel for if (count > 1)
+          for(int i=0; i<count; i++){
+            scale_bias_data[i] = scale_in_data[0] * scale_weights_data[i];
           }
           bias_memory_p =
               handler->AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline, is_test, is_INT8, scale_bias_data, mask_reorder);
@@ -599,26 +572,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     void AppendKey(std::string& key, const std::string& s) const{
       key.append(s);
-    }
-
-    void SetScaleMap(std::unordered_map<std::string, std::vector<float>> &scale_map,
-                       const std::string& name, std::vector<float> scale_data) const {
-      auto it = scale_map.find(name);
-      if (it == scale_map.end()) {
-        scale_map[name] = scale_data;  // create new blob
-      } else {
-        (*it).second = scale_data;  // set data to existing blob
-      }
-      return;
-    }
-
-    std::vector<float> GetScaleMap(std::unordered_map<std::string, std::vector<float>> &scale_map,
-         const std::string& name) const {
-      auto it = scale_map.find(name);
-      if (it != scale_map.end()) {
-        return (*it).second;
-      }
-      return {0};
     }
 
     mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
