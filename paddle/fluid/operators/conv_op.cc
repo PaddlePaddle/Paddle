@@ -131,21 +131,14 @@ void Conv2DOpMaker::Make() {
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
       .AsDispensable();
-  AddInput("Scale_in",
-           "(Tensor) Scale_in to be used for int8 input data."
-           "Only used with INT8.")
-      .AsDispensable();
-  AddInput("Scale_in_eltwise",
-           "(Tensor) Scale_in_eltwise to be used for int8 eltwise input data."
-           "Only used with MKL-DNN.")
-      .AsDispensable();
-  AddInput("Scale_weights",
-           "(Tensor) Scale_weights to be used for int8 weights data."
-           "Only used with MKL-DNN.")
-      .AsDispensable();
-  AddInput("Scale_out",
-           "(Tensor) Scale_out to be used for int8 output data."
-           "Only used with MKL-DNN.")
+  AddOutput("Output",
+            "(Tensor) The output tensor of convolution operator. "
+            "The format of output tensor is also NCHW.");
+
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
+           "Used with fuse_residual_connection fusion.")
       .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
@@ -193,6 +186,22 @@ void Conv2DOpMaker::Make() {
                 "whenever convolution output is as an input to residual "
                 "connection.")
       .SetDefault(false);
+  AddAttr<float>("Scale_in",
+           "Scale_in to be used for int8 input data."
+           "Only used with INT8.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Scale_out",
+           "Scale_out to be used for int8 output data."
+           "Only used with MKL-DNN.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Scale_in_eltwise",
+           "Scale_in_eltwise to be used for int8 eltwise input data."
+           "Only used with MKL-DNN.")
+      .SetDefault(1.0f);
+  AddAttr<std::vector<float>>("Scale_weights",
+           "Scale_weights to be used for int8 weights data."
+           "Only used with MKL-DNN.")
+      .SetDefault({1.0f});
   AddAttr<bool>("force_fp32_output", "(bool, default false) Force INT8 kernel output FP32, only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
