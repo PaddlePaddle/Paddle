@@ -497,7 +497,9 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/var_desc.h"
                "paddle/fluid/framework/scope.h"
                "paddle/fluid/framework/ir/node.h"
-               "paddle/fluid/framework/ir/graph.h")
+               "paddle/fluid/framework/ir/graph.h"
+               "paddle/fluid/framework/framework.proto"
+               "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
