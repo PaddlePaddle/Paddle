@@ -60,13 +60,24 @@ class WhileOp : public framework::OperatorBase {
 
     bool is_test = Attr<bool>("is_test");
     auto ctx = executor.Prepare(*program, block->ID());
-    while (cond.data<bool>()[0]) {
-      auto &current_scope = scope.NewScope();
-      step_scopes->push_back(&current_scope);
-      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
-      if (is_test) {
-        scope.DeleteScope(&current_scope);
+    if (!is_test) {
+      while (cond.data<bool>()[0]) {
+        auto &current_scope = scope.NewScope();
+        step_scopes->push_back(&current_scope);
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
+                                    true);
+        if (is_test) {
+          scope.DeleteScope(&current_scope);
+        }
       }
+    } else {
+      auto &current_scope = scope.NewScope();
+      executor.CreateVariables(*program, &current_scope, block->ID());
+      while (cond.data<bool>()[0]) {
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
+                                    false);
+      }
+      scope.DeleteScope(&current_scope);
     }
   }
 };
