@@ -27,6 +27,7 @@ __activations_noattr__ = [
     'softshrink',
     'sqrt',
     'abs',
+    'square',
     'ceil',
     'floor',
     'cos',
