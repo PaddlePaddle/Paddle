@@ -18,6 +18,30 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+template <typename Functor>
+class CompareOpKernel<platform::CPUDeviceContext, Functor>
+    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    using T = typename Functor::ELEM_TYPE;
+    using Tensor = framework::Tensor;
+
+    auto* x = context.Input<Tensor>("X");
+    auto* y = context.Input<Tensor>("Y");
+    auto* z = context.Output<Tensor>("Out");
+    int axis = context.Attr<int>("axis");
+
+    if (x->numel() == 1 && y->numel() == 1) {
+      bool* z_data = z->mutable_data<bool>(context.GetPlace());
+      z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);
+    } else {
+      ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
+          context, x, y, axis, Functor(), z);
+    }
+  }
+};
+
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -51,7 +75,7 @@ calculated by $%s$
 template <typename OpComment>
 class CompareOpInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  void operator()(framework::InferShapeContext* context) const override {
     OpComment comment;
     PADDLE_ENFORCE(context->HasInput("X"), "%s operator must has input X",
                    comment.type);
@@ -73,7 +97,7 @@ class CompareOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     bool force_cpu = ctx.Attr<bool>("force_cpu");
