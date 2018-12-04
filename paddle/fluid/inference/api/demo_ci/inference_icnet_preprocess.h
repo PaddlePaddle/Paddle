@@ -180,9 +180,9 @@ class ImageProcess {
 
     // NCHW
     record.shape.push_back(1);
-    record.shape.push_back(3);
-    record.shape.push_back(449);
-    record.shape.push_back(581);
+    record.shape.push_back(C);
+    record.shape.push_back(H);
+    record.shape.push_back(W);
 
     return true;
   }
