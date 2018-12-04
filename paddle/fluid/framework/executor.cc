@@ -101,7 +101,7 @@ static void DeleteUnusedTensors(
         if (--(it->second) == 0) {
           auto* var = scope.FindVar(name);
           if (var != nullptr) {
-            VLOG(10) << "Erase tensor \'" << name << "\'";
+            VLOG(2) << "Erase tensor \'" << name << "\'";
             if (var->IsType<LoDTensor>()) {
               erase_tensors.insert(var->GetMutable<LoDTensor>());
             } else if (var->IsType<SelectedRows>()) {
