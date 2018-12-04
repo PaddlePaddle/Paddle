@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -82,10 +83,8 @@ void InitDevices(bool init_p2p) {
   std::vector<int> devices;
 #ifdef PADDLE_WITH_CUDA
   try {
-    int count = platform::GetCUDADeviceCount();
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
-    }
+    // use user specified GPUs in single-node multi-process mode.
+    devices = platform::GetSelectedDevices();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
@@ -95,20 +94,15 @@ void InitDevices(bool init_p2p) {
 
 void InitDevices(bool init_p2p, const std::vector<int> devices) {
   std::vector<platform::Place> places;
-  int count = 0;
-#ifdef PADDLE_WITH_CUDA
-  try {
-    count = platform::GetCUDADeviceCount();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
-#endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
-    if (devices[i] >= count || devices[i] < 0) {
+    // In multi process multi gpu mode, we may have gpuid = 7
+    // but count = 1.
+    if (devices[i] < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
+
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
