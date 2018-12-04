@@ -133,6 +133,7 @@ static const char kPlaces[] = "places";
 static const char kParams[] = "params";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
+static const char kNumTrainers[] = "num_trainers";
 
 void MultiDevSSAGraphBuilder::Init() const {
   all_vars_.clear();
@@ -300,6 +301,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
+  int num_trainers = Get<int>(kNumTrainers);
+
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
@@ -384,7 +387,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           CreateComputationalOps(&result, node, places_.size());
         }
 
-        if (!is_forwarding && places_.size() > 1) {
+        if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
           if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -863,7 +866,7 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
       if (node->Op()->Type() == "fetch_barrier") {
         outvar_dev_id =
             GetVarDeviceID(*result, output->Name(), *sharded_var_device);
-        PADDLE_ENFORCE_NE(outvar_dev_id, -1);
+        PADDLE_ENFORCE_NE(outvar_dev_id, -1, "output name %s", output->Name());
       }
       p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
@@ -896,4 +899,5 @@ REGISTER_PASS(multi_devices_pass,
     .RequirePassAttr(paddle::framework::details::kPlaces)
     .RequirePassAttr(paddle::framework::details::kParams)
     .RequirePassAttr(paddle::framework::details::kLocalScopes)
-    .RequirePassAttr(paddle::framework::details::kStrategy);
+    .RequirePassAttr(paddle::framework::details::kStrategy)
+    .RequirePassAttr(paddle::framework::details::kNumTrainers);
