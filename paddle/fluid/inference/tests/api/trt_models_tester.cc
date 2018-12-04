@@ -64,8 +64,6 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
       config->enable_ir_optim = true;
     }
   }
-  config->EnableMemoryOptim(false);
-  config->Build();
 }
 
 void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
