@@ -27,6 +27,8 @@ namespace inference {
 
 void Init(const std::vector<std::string> argv);
 
+bool IsPersistable(const framework::VarDesc* var);
+
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
@@ -45,6 +47,10 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 void SaveVars(const framework::Scope& scope,
               const std::vector<std::string>& vars, const std::string& dirname,
               bool predicate = true);
+
+void Save(framework::ProgramDesc* program, framework::Executor* executor,
+          framework::Scope* scope, const std::string& prog_filename,
+          const std::string& param_filename);
 
 }  // namespace inference
 }  // namespace paddle

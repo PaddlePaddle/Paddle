@@ -27,6 +27,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/io.h"
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
@@ -40,17 +41,6 @@ DECLARE_bool(profile);
 namespace paddle {
 
 using contrib::AnalysisConfig;
-
-namespace {
-bool IsPersistable(const framework::VarDesc *var) {
-  if (var->Persistable() &&
-      var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
-    return true;
-  }
-  return false;
-}
-}  // namespace
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
@@ -104,6 +94,7 @@ bool AnalysisPredictor::PrepareScope(
   sub_scope_ = &scope_->NewScope();
   return true;
 }
+
 bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
@@ -126,7 +117,6 @@ bool AnalysisPredictor::PrepareProgram(
       executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
       // Load parameters
-      LOG(INFO) << "load parameters ";
       LoadParameters();
     }
   } else {
@@ -139,6 +129,7 @@ bool AnalysisPredictor::PrepareProgram(
 
   return true;
 }
+
 bool AnalysisPredictor::CreateExecutor() {
   if (config_.use_gpu) {
     status_use_gpu_ = true;
@@ -322,8 +313,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   if (config_.use_gpu && config_.use_tensorrt_) {
     argument_.SetUseTensorRT(true);
-    argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
-    argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+    argument_.SetTensorRTWorkspaceSize(config_.tensorrt_workspace_size_);
+    argument_.SetTensorRTMaxBatchSize(config_.tensorrt_max_batchsize_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();
@@ -479,7 +470,7 @@ bool AnalysisPredictor::LoadParameters() {
   std::vector<std::string> params;
 
   for (auto *var : global_block->AllVars()) {
-    if (IsPersistable(var)) {
+    if (inference::IsPersistable(var)) {
       VLOG(3) << "persistable variable's name: " << var->Name();
 
       framework::VarDesc *new_var = load_block->Var(var->Name());

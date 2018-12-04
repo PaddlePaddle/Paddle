@@ -39,8 +39,8 @@ TEST(Analyzer, analysis_without_tensorrt) {
 
 TEST(Analyzer, analysis_with_tensorrt) {
   Argument argument;
-  argument.SetTensorRtMaxBatchSize(3);
-  argument.SetTensorRtWorkspaceSize(1 << 20);
+  argument.SetTensorRTMaxBatchSize(3);
+  argument.SetTensorRTWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
   argument.SetUseGPU(false);

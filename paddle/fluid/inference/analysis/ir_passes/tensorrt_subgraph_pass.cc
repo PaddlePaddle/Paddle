@@ -28,7 +28,7 @@ using framework::ir::Node;
 std::vector<std::string> ExtractParameters(
     const std::unordered_set<Node *> &nodes);
 
-std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
+std::unique_ptr<framework::ir::Graph> analysis::TensorRTSubgraphPass::ApplyImpl(
 
     std::unique_ptr<framework::ir::Graph> graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
@@ -60,7 +60,7 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   return graph;
 }
 
-void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
+void TensorRTSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                                             Graph *graph) const {
   auto *op_desc = node->Op();
   static int counter{0};
@@ -214,7 +214,7 @@ std::vector<std::string> ExtractParameters(
 }  // namespace paddle
 
 REGISTER_PASS(tensorrt_subgraph_pass,
-              paddle::inference::analysis::TensorRtSubgraphPass)
+              paddle::inference::analysis::TensorRTSubgraphPass)
     .RequirePassAttr("tensorrt_node_teller")
     .RequirePassAttr("max_batch_size")
     .RequirePassAttr("workspace_size");

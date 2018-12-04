@@ -45,15 +45,24 @@ void Init(const std::vector<std::string> argv) {
   framework::InitDevices(FLAGS_init_p2p, devices);
 }
 
-void ReadBinaryFile(const std::string& filename, std::string* contents) {
+void ReadString(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  PADDLE_ENFORCE(static_cast<bool>(fin) && fin.is_open(), "Cannot open file %s",
+                 filename);
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
   fin.read(&(contents->at(0)), contents->size());
   fin.close();
+}
+
+void WriteString(const std::string& filename, const std::string& contents) {
+  std::ofstream fout(filename, std::ios::out | std::ios::binary);
+  PADDLE_ENFORCE(static_cast<bool>(fout) && fout.is_open(),
+                 "Cannot open file %s", filename);
+  fout.write(contents.c_str(), contents.size());
+  fout.close();
 }
 
 bool IsPersistable(const framework::VarDesc* var) {
@@ -72,7 +81,9 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const std::string& param_filename) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
-  framework::ProgramDesc* load_program = new framework::ProgramDesc();
+  // create a temporary program to load parameters.
+  std::unique_ptr<framework::ProgramDesc> load_program(
+      new framework::ProgramDesc());
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
   std::vector<std::string> paramlist;
 
@@ -112,8 +123,6 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
   }
 
   executor->Run(*load_program, scope, 0, true, true);
-
-  delete load_program;
 }
 
 std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
@@ -122,7 +131,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
   VLOG(3) << "loading model from " << model_filename;
-  ReadBinaryFile(model_filename, &program_desc_str);
+  ReadString(model_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -139,7 +148,7 @@ std::unique_ptr<framework::ProgramDesc> Load(
     const std::string& prog_filename, const std::string& param_filename) {
   std::string model_filename = prog_filename;
   std::string program_desc_str;
-  ReadBinaryFile(model_filename, &program_desc_str);
+  ReadString(model_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -165,6 +174,14 @@ void SaveVars(const framework::Scope& scope,
   platform::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
+}
+
+void Save(framework::ProgramDesc* program, framework::Executor* executor,
+          framework::Scope* scope, const std::string& prog_filename,
+          const std::string& param_filename) {
+  std::string program_desc_str;
+  program->Proto()->SerializePartialToString(&program_desc_str);
+  WriteString(prog_filename, program_desc_str);
 }
 
 }  // namespace inference

@@ -40,7 +40,7 @@ void Main() {
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
   config.device = 0;
-  config.EnableTensorRtEngine();
+  config.EnableTensorRTEngine();
   config.fraction_of_gpu_memory = 0.1;  // set by yourself
   predictor = CreatePaddlePredictor(config);
 

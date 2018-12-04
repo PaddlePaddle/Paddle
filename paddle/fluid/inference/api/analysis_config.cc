@@ -93,7 +93,7 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
 #endif
 }
 
-void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
+void contrib::AnalysisConfig::EnableTensorRTEngine(int workspace_size,
                                                    int max_batch_size) {
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;

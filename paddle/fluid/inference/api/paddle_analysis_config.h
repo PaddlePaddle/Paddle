@@ -47,7 +47,7 @@ struct AnalysisConfig : public NativeConfig {
   // NOT stable yet.
   bool use_feed_fetch_ops{true};
 
-  void EnableTensorRtEngine(int workspace_size = 1 << 20,
+  void EnableTensorRTEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1);
   bool use_tensorrt() const { return use_tensorrt_; }
 

@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-class TensorRtSubgraphPass : public framework::ir::FusePassBase {
+class TensorRTSubgraphPass : public framework::ir::FusePassBase {
  public:
   std::unique_ptr<framework::ir::Graph> ApplyImpl(
       std::unique_ptr<framework::ir::Graph> graph) const override;

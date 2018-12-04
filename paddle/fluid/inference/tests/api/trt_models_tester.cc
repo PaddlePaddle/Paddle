@@ -56,7 +56,7 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
     config->device = 0;
     config->fraction_of_gpu_memory = 0.15;
     if (use_tensorrt) {
-      config->EnableTensorRtEngine(1 << 10, batch_size);
+      config->EnableTensorRTEngine(1 << 10, batch_size);
       config->pass_builder()->DeletePass("conv_bn_fuse_pass");
       config->pass_builder()->DeletePass("fc_fuse_pass");
       config->pass_builder()->TurnOnDebug();
