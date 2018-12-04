@@ -16,6 +16,7 @@
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+#include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
@@ -37,6 +38,9 @@ PassRegistry::PassRegistry() {
   passes_.emplace(
       "ir_params_sync_among_devices_pass",
       std::unique_ptr<AnalysisPass>(new IrParamsSyncAmongDevicesPass));
+  passes_.emplace(
+      "ir_graph_to_program_pass",
+      std::unique_ptr<IrGraphToProgramPass>(new IrGraphToProgramPass));
 }
 
 }  // namespace analysis

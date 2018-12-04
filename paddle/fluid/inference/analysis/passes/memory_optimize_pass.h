@@ -58,7 +58,7 @@ class MemoryOptimizePass : public AnalysisPass {
 
   void PerformReusePlan(
       const std::unordered_map<std::string, std::string> &reuse_table,
-      int sort_kind) const;
+      int sort_kind, std::unordered_set<std::string> *vars2remove) const;
 
  public:
   std::string repr() const override;

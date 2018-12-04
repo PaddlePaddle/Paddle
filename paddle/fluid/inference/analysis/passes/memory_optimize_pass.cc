@@ -16,6 +16,7 @@
 #include <fstream>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -144,6 +145,8 @@ void MemoryOptimizePass::CollectShapes(
 // true if found some existing tensor to reuse.
 // false if no sutable tensor to reuse, one need to allocate a new tensor for
 // this requirement.
+// The suitable tensor for reuse is one that is approximately equal to the
+// memory demand.
 bool FindSuitableTensorToReuse(
     const std::string& tensor, int space_required,
     const std::unordered_map<std::string, Node*>& tensor_nodes,
@@ -178,9 +181,8 @@ bool FindSuitableTensorToReuse(
   for (auto& candidate : *free_existing_tensors) {
     if (!space_table.count(candidate)) continue;
     int space = space_table.at(candidate);
-    int space_diff = space - space_required;
-    if (space_diff >= 0 && space_diff < best_fit.second &&
-        cluster->count(candidate)) {
+    int space_diff = std::abs(space - space_required);
+    if (space_diff < best_fit.second && cluster->count(candidate)) {
       best_fit.first = candidate;
       best_fit.second = space_diff;
     }
@@ -391,11 +393,18 @@ void UpdateOpDescsByReuse(
 
 void MemoryOptimizePass::PerformReusePlan(
     const std::unordered_map<std::string, std::string>& reuse_table,
-    int sort_kind) const {
+    int sort_kind, std::unordered_set<std::string>* vars2remove) const {
   std::unordered_map<std::string, Node*> var_node_table;
   BuildVarNodeTable(graph_, &var_node_table);
   // UpdateIrGraphByReuse(graph_, reuse_table, var_node_table);
   UpdateOpDescsByReuse(graph_, reuse_table, sort_kind);
+
+  for (auto& item : reuse_table) {
+    if (item.first != item.second) {
+      vars2remove->insert(item.first);
+    }
+  }
+  VLOG(2) << "to remove vars " << vars2remove->size();
 }
 
 std::vector<std::string> split(const std::string& line, char delim) {
@@ -567,6 +576,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
         max_saving_ratio = allocation.saving_ratio;
         best_strategy = &strategy;
       }
+      break;
     }
 
     auto memory_allocation = (*best_strategy)();
@@ -575,7 +585,13 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
         "---  Saved %f memory for workspace(temporary variables)",
         memory_allocation.saving_ratio);
 
-    PerformReusePlan(reuse_table, 0);
+    argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
+                               new std::unordered_set<std::string>);
+    auto& vars2remove =
+        argument->main_graph().Get<std::unordered_set<std::string>>(
+            framework::ir::kGraphToProgramVarsToRemove);
+
+    PerformReusePlan(reuse_table, memory_allocation.sort_kind, &vars2remove);
   }
 }
 

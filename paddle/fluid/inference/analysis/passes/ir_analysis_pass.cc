@@ -31,8 +31,6 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   IRPassManager the_ir_manager(argument);
   graph = the_ir_manager.Apply(std::move(graph));
   PADDLE_ENFORCE_GT(graph->Nodes().size(), 0);
-  argument->SetIrAnalyzedProgram(new framework::proto::ProgramDesc(
-      the_ir_manager.AcquireProgram(&graph, argument->main_program())));
   argument->SetMainGraph(graph.release());
 }
 

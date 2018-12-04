@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <string>
 #include <thread>  // NOLINT

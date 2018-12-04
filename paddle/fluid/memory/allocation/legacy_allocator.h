@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {

@@ -100,10 +100,12 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
     anc = anc->parent();
   }
 
+  int num_vars = 0;
   for (auto &var : global_block.AllVars()) {
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
+    num_vars++;
 
     if (persistable == var->Persistable()) {
       if (persistable) {
@@ -121,6 +123,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
       }
     }
   }
+  LOG(INFO) << "naive executor create " << num_vars << " vars";
 }
 
 void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
