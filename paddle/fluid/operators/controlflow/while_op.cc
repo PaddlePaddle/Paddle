@@ -32,6 +32,20 @@ static constexpr char kStepScopes[] = "StepScopes";
 static constexpr char kX[] = "X";
 static constexpr char kXGRAD[] = "X@GRAD";
 static constexpr char kOutputs[] = "Out";
+static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+
+namespace {  // NOLINT
+static std::string GetSkipEagerDeletionVarsDebugString(
+    const std::vector<std::string> &vars) {
+  std::string str = "Skip " + std::to_string(vars.size()) +
+                    " var(s) in eager deletion mode: ";
+  for (auto &var : vars) {
+    str.append(var);
+    str.push_back(' ');
+  }
+  return str;
+}
+}  // NOLINT
 
 class WhileOp : public framework::OperatorBase {
  public:
@@ -59,21 +73,12 @@ class WhileOp : public framework::OperatorBase {
                    "Condition of while op must in CPU memory.");
 
     bool is_test = Attr<bool>("is_test");
-    auto &skip_eager_deletion_vars =
-        Attr<std::vector<std::string>>("skip_eager_deletion_vars");
-    if (framework::GetEagerDeletionThreshold() >= 0 && VLOG_IS_ON(10)) {
-      std::string debug_string =
-          "Skip " + std::to_string(skip_eager_deletion_vars.size()) +
-          " vars in eager deletion mode: ";
-      for (auto &var : skip_eager_deletion_vars) {
-        debug_string.append(var);
-        debug_string.push_back(' ');
-      }
-      VLOG(10) << debug_string;
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    if (framework::GetEagerDeletionThreshold() >= 0) {
+      VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
     }
 
-    auto ctx =
-        executor.Prepare(*program, block->ID(), skip_eager_deletion_vars);
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
@@ -110,7 +115,7 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<std::vector<std::string>>("skip_eager_deletion_vars",
+    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
                                       "Users should not set this manually.")
         .SetDefault(std::vector<std::string>());
@@ -137,7 +142,12 @@ class WhileGradOp : public framework::OperatorBase {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
-    auto ctx = executor.Prepare(*program, block->ID());
+
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    if (framework::GetEagerDeletionThreshold() >= 0) {
+      VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+    }
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
 
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
@@ -359,29 +369,51 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     while_grad->SetAttr("original_output_grad", output_grads_list);
 
-    /* The following codes are used in eager deletion mode */
+    /* The followi_ng codes are used in eager deletion mode */
+    std::unordered_set<std::string> bwd_skip_vars;
     if (framework::GetEagerDeletionThreshold() >= 0) {
-      std::unordered_set<std::string> skip_vars;
+      std::unordered_set<std::string> fwd_skip_vars;
       for (auto *op_desc : grad_block->AllOps()) {
+        auto skippable = [&](const std::string &name) {
+          return !grad_block->HasVar(name) &&
+                 (fwd_block->HasVarRecursive(name) ||
+                  parent_block->HasVarRecursive(name));
+        };
         for (auto &in_arg_name : op_desc->InputArgumentNames()) {
-          // If input var of ops inside grad_block is not from grad_block,
-          // it cannot be deleted when forward while_op runs
-          if (in_arg_name != framework::kEmptyVarName &&
-              !grad_block->HasVar(in_arg_name)) {
-            skip_vars.insert(in_arg_name);
+          if (skippable(in_arg_name)) {
+            fwd_skip_vars.insert(in_arg_name);
+          }
+        }
+
+        for (auto &out_arg_name : op_desc->OutputArgumentNames()) {
+          if (skippable(out_arg_name)) {
+            fwd_skip_vars.insert(out_arg_name);
           }
         }
       }
 
-      if (!skip_vars.empty()) {
+      if (!fwd_skip_vars.empty()) {
         // FIXME(zjl): ugly const_cast here, maybe we should find a better way
         // to modify forward while_op
         auto &fwd_while_op = const_cast<framework::OpDesc &>(ForwardOp());
-        fwd_while_op.SetAttr(
-            "skip_eager_deletion_vars",
-            std::vector<std::string>(skip_vars.begin(), skip_vars.end()));
+        fwd_while_op.SetAttr(kSkipEagerDeletionVars,
+                             std::vector<std::string>(fwd_skip_vars.begin(),
+                                                      fwd_skip_vars.end()));
+      }
+
+      // Find backward skip vars
+      auto fwd_input = Input(kX);
+      for (size_t i = 0; i < igs.size(); ++i) {
+        if (igs[i] == framework::kEmptyVarName) {
+          continue;
+        }
+        bwd_skip_vars.insert(igs[i]);
+        bwd_skip_vars.insert(framework::GradVarName(fwd_input[i]));
       }
     }
+    while_grad->SetAttr(
+        kSkipEagerDeletionVars,
+        std::vector<std::string>(bwd_skip_vars.begin(), bwd_skip_vars.end()));
 
     return std::unique_ptr<framework::OpDesc>(while_grad);
   }

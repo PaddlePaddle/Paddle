@@ -16,7 +16,9 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 namespace paddle {
 namespace framework {
