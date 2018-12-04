@@ -12,7 +12,6 @@ class Worker(object):
 
 class DownpourServer(Server):
     def __init__(self):
-        #self.server_ = pslib.ServerParameter().downpour_server_param
         self.server_ = pslib.ServerParameter()
 
     def add_sparse_table(self, table_id, learning_rate,
