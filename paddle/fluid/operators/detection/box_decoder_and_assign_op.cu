@@ -118,9 +118,12 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     DecodeBoxKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
       prior_box_data, prior_box_var_data, target_box_data, roi_num, class_num, box_clip, output_box_data);
 
+    context.device_context().Wait();
     int assign_grid = (roi_num + block - 1) / block;
     AssignBoxKernel<T><<<assign_grid, block, 0, device_ctx.stream()>>>(
       prior_box_data, box_score_data, output_box_data, roi_num, class_num, output_assign_box_data);
+    context.device_context().Wait();
+
   }
 };
 
