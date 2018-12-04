@@ -90,7 +90,6 @@ class Generator(object):
         X = np.random.random(self.shape_X).astype("float32")
         Y = np.random.random(self.shape_Y).astype("float32")
         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
-
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
             'transpose_X': self.transpose_X,
@@ -127,10 +126,10 @@ def inject_test(dim_x, dim_y, trans_x, trans_y):
     })
 
 
-for dim_X in [1, 2]:
-    for dim_Y in [1, 2]:
-        for transose_x in [False, True]:
-            for transose_y in [False, True]:
+for dim_X in (1, 2, 3):
+    for dim_Y in (1, 2, 3):
+        for transose_x in (False, True):
+            for transose_y in (False, True):
                 inject_test(dim_X, dim_Y, transose_x, transose_y)
 
 
@@ -156,7 +155,7 @@ def generate_compatible_shapes(dim, transpose_X, transpose_Y):
 
 
 # # Test case n-dim
-for dim in [2]:
+for dim in [4]:
     for transpose_X in [False, True]:
         for transpose_Y in [False, True]:
             test_name = (

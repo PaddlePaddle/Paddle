@@ -21,10 +21,39 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+namespace {
+template <typename T>
+void MKLDNNMatMul(const framework::Tensor& a, const math::MatDescriptor& dim_a,
+                  const framework::Tensor& b, const math::MatDescriptor& dim_b,
+                  T alpha, framework::Tensor* out, T beta) {
+  auto a_data = a.data<T>();
+  auto b_data = b.data<T>();
+  auto out_data = out->data<T>();
+
+  auto m = static_cast<int>(dim_a.height_);
+  auto n = static_cast<int>(dim_b.width_);
+  auto k = static_cast<int>(dim_a.width_);
+
+  auto lda = dim_a.trans_ ? m : k;
+  auto ldb = dim_b.trans_ ? k : n;
+
+  auto trans_char = [](bool t) -> char { return t ? 'T' : 'N'; };
+
+  auto a_trans_char = trans_char(dim_a.trans_);
+  auto b_trans_char = trans_char(dim_b.trans_);
+
+  mkldnn_sgemm(&b_trans_char, &a_trans_char, &n, &m, &k, &alpha, b_data, &ldb,
+               a_data, &lda, &beta, out_data, &n);
+}
+}  // namespace
+
 template <typename T>
 class MatMulMKLDNNOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE(paddle::platform::is_cpu_place(context.GetPlace()),
+                   "It must use CPUPlace.");
+
     auto x = context.Input<framework::Tensor>("X");
     auto y = context.Input<framework::Tensor>("Y");
 
@@ -47,27 +76,17 @@ class MatMulMKLDNNOpKernel : public framework::OpKernel<T> {
     auto mat_dim_y = math::CreateMatrixDescriptor(dims(y_dims, {y_dims[0], 1}),
                                                   0, y_transposed);
 
-    auto scale = static_cast<T>(context.Attr<float>("alpha"));
+    auto alpha = static_cast<T>(context.Attr<float>("alpha"));
     auto beta = T{0};
 
-    auto x_data = x->data<T>();
-    auto y_data = y->data<T>();
-    auto out_data = out->data<T>();
-
-    auto m = static_cast<int>(mat_dim_x.height_);
-    auto n = static_cast<int>(mat_dim_y.width_);
-    auto k = static_cast<int>(mat_dim_x.width_);
-
-    auto ldx = x_transposed ? m : k;
-    auto ldy = y_transposed ? k : n;
-
-    auto trans_char = [](bool t) -> char { return t ? 'T' : 'N'; };
-
-    auto x_trans_char = trans_char(x_transposed);
-    auto y_trans_char = trans_char(y_transposed);
-
-    mkldnn_sgemm(&y_trans_char, &x_trans_char, &n, &m, &k, &scale, y_data, &ldy,
-                 x_data, &ldx, &beta, out_data, &n);
+    if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
+      MKLDNNMatMul(*x, mat_dim_x, *y, mat_dim_y, alpha, out, beta);
+    } else {
+      auto& dev_ctx =
+          context.template device_context<paddle::platform::CPUDeviceContext>();
+      auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(dev_ctx);
+      blas.MatMul(*x, mat_dim_x, *y, mat_dim_y, alpha, out, beta);
+    }
   }
 };
 }  // namespace operators
