@@ -232,18 +232,21 @@ void ReuseATensor(const std::string& tensor, const std::string& tensor2reuse,
   (*reuse_table)[tensor] = tensor2reuse;
 }
 
-void MemoryStatis(
+// Calculate the memory usage.
+void MemoryEvaluate(
     const std::unordered_map<std::string, std::string>& reuse_table,
     const std::unordered_map<std::string, int>& space_table,
-    long long int* allocated, long long int* saved) {
+    const std::unordered_map<std::string, size_t>& var_batch_ave_size,
+    size_t* allocated, size_t* saved) {
   *allocated = 0;
   *saved = 0;
+
   for (auto elem : reuse_table) {
     // if (elem.first == "feed" || elem.second == "second") continue;
     if (elem.first == elem.second) {
-      *allocated += space_table.at(elem.first);
+      *allocated += var_batch_ave_size.at(elem.first);
     } else {
-      *saved += space_table.at(elem.first);
+      *saved += var_batch_ave_size.at(elem.first);
       VLOG(4) << "reuse " << elem.first << " -> " << elem.second;
     }
   }
@@ -252,6 +255,7 @@ void MemoryStatis(
 // Return saved ratio.
 void MemoryOptimizePass::MakeReusePlan(
     const std::vector<std::unordered_set<std::string>>& var_clusters,
+    const std::unordered_map<std::string, size_t>& var_batch_ave_size,
     std::unordered_map<std::string, std::string>* reuse_table, int sort_kind,
     MemoryAllocation* memory_allocation) const {
   // Clear the existing plan.
@@ -320,13 +324,15 @@ void MemoryOptimizePass::MakeReusePlan(
     }
   }
 
-  long long allocated, saved_memory;
-  MemoryStatis(*reuse_table, space_table, &allocated, &saved_memory);
+  size_t allocated, saved_memory;
+  MemoryEvaluate(*reuse_table, space_table, var_batch_ave_size, &allocated,
+                 &saved_memory);
   float saved_ratio =
       static_cast<float>(saved_memory) / (saved_memory + allocated);
   memory_allocation->allocated = allocated / 1024. / 1024.;
   memory_allocation->saved = saved_memory / 1024. / 1024.;
   memory_allocation->saving_ratio = saved_ratio;
+  memory_allocation->sort_kind = sort_kind;
 }
 
 void BuildVarNodeTable(Graph* graph,
@@ -338,10 +344,12 @@ void BuildVarNodeTable(Graph* graph,
   }
 }
 
+// NOTE The optimized opdesc doesn't match ir::Graph.
 void UpdateOpDescsByReuse(
     Graph* graph,
     const std::unordered_map<std::string, std::string>& reuse_table,
     int sort_kind) {
+  // TODO(Superjomn) change here to be compatible with the runtime order.
   for (auto* node : TopoSort(*graph, sort_kind)) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
@@ -400,6 +408,7 @@ std::vector<std::string> split(const std::string& line, char delim) {
   return res;
 }
 
+// Deserialize the batch var shapes from the cache file.
 std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
     const std::string& path) {
   std::ifstream file(path);
@@ -423,7 +432,31 @@ std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
   return batch_shapes;
 }
 
-std::vector<std::unordered_set<std::string>> AnalysisBatchShapes(
+// Calculate the average memory size of each variable from the batch shape
+// cache.
+std::unordered_map<std::string, size_t> GetBatchAverageSize(
+    const std::vector<std::map<std::string, std::vector<int>>>& batches) {
+  std::unordered_map<std::string, size_t> var2size;
+  // The average size of the batches for each variable.
+  int num_batch = 0;
+  for (const auto& batch : batches) {
+    num_batch++;
+    for (const auto& item : batch) {
+      int dim = std::accumulate(item.second.begin(), item.second.end(), 1,
+                                [](int a, int b) { return a * b; });
+      var2size[item.first] =
+          var2size[item.first] * (num_batch - 1) / num_batch + dim / num_batch;
+    }
+  }
+  return var2size;
+}
+
+// Analysis the batch shapes loading from the cache file.
+// By splitting the variables to different clusters by analyzing their batch
+// size, we can pre-schedule the changes of difference LoDTensor when different
+// length of input sequences is entered.
+// This should works fine for the models operating on sentences.
+std::vector<std::unordered_set<std::string>> AnalysisBatchShapesByBatchSize(
     const std::vector<std::map<std::string, std::vector<int>>>& batches) {
   // collect the batch size of each shape and combine to a stringstream in
   // converient to generate a hash.
@@ -450,6 +483,40 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapes(
   return res;
 }
 
+// Analysis the batch shapes loading from the cache file, and split them to
+// different clusters by their size.
+// This should works fine for the overall models.
+std::vector<std::unordered_set<std::string>> AnalysisBatchShapesBySimilarSize(
+    const std::vector<std::map<std::string, std::vector<int>>>& batches,
+    int interval = 2000 /*1kb*/) {
+  // cluster to different clusters.
+  size_t max_size = 0;
+  auto var2size = GetBatchAverageSize(batches);
+  for (auto& item : var2size) {
+    max_size = std::max(item.second, max_size);
+  }
+
+  std::vector<std::unordered_set<std::string>> res;
+
+  // cluster by intervals.
+  for (size_t interval_size = 0; interval_size < max_size;
+       interval_size += interval) {
+    std::unordered_set<std::string> cluster;
+    for (auto& item : var2size) {
+      if (interval_size <= item.second &&
+          interval_size + interval > item.second) {
+        cluster.insert(item.first);
+      }
+    }
+    if (!cluster.empty()) {
+      res.push_back(cluster);
+    }
+  }
+
+  LOG(INFO) << "Cluster by interval and get " << res.size() << " cluster";
+  return res;
+}
+
 std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
 
 void MemoryOptimizePass::RunImpl(Argument* argument) {
@@ -464,30 +531,50 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   if (inference::IsFileExists(path)) {
     VLOG(4) << "Performing memory optimize";
     auto batches = DeseralizeBatchVarShapes(path);
-    auto clustered_vars = AnalysisBatchShapes(batches);
+    auto clustered_vars_by_batch_size = AnalysisBatchShapesByBatchSize(batches);
+    auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(batches);
+    auto var_batch_ave_size = GetBatchAverageSize(batches);
 
     graph_ = argument->main_graph_ptr();
     std::unordered_map<std::string, std::string> reuse_table;
     float max_saving_ratio = 0.;
-    int best_sort_kind = 0;
-    // Try all the sorting algorithms to get a best reusing strategy.
-    MemoryAllocation memory_allocation;
+
+    std::vector<std::function<MemoryAllocation()>> strategies;
+
     for (int sort_kind = 0; sort_kind < 2; sort_kind++) {
-      MakeReusePlan(clustered_vars, &reuse_table, sort_kind,
-                    &memory_allocation);
-      if (memory_allocation.saving_ratio > max_saving_ratio) {
-        max_saving_ratio = memory_allocation.saving_ratio;
-        best_sort_kind = sort_kind;
+      strategies.emplace_back([&, sort_kind] {
+        MemoryAllocation allocation;
+        MakeReusePlan(clustered_vars_by_batch_size, var_batch_ave_size,
+                      &reuse_table, sort_kind, &allocation);
+        return allocation;
+      });
+
+      strategies.emplace_back([&, sort_kind] {
+        MemoryAllocation allocation;
+        MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
+                      &reuse_table, sort_kind, &allocation);
+        return allocation;
+      });
+    }
+
+    std::function<MemoryAllocation()>* best_strategy;
+
+    // Try all strategies to get the best result.
+    for (auto& strategy : strategies) {
+      auto allocation = strategy();
+      LOG(INFO) << "get strategy saving " << allocation.saving_ratio;
+      if (allocation.saving_ratio > max_saving_ratio) {
+        max_saving_ratio = allocation.saving_ratio;
+        best_strategy = &strategy;
       }
     }
-    MakeReusePlan(clustered_vars, &reuse_table, best_sort_kind,
-                  &memory_allocation);
 
-    string::PrettyLogDetail("---  Allocated %d MB for workspace.",
-                            memory_allocation.allocated);
-    string::PrettyLogDetail("---  Saved %d MB", memory_allocation.saved);
-    string::PrettyLogDetail("---  Saving percentage %f",
-                            memory_allocation.saving_ratio);
+    auto memory_allocation = (*best_strategy)();
+
+    string::PrettyLogDetail(
+        "---  Saved %f memory for workspace(temporary variables)",
+        memory_allocation.saving_ratio);
+
     PerformReusePlan(reuse_table, 0);
   }
 }

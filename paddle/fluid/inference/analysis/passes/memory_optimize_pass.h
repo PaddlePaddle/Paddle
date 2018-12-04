@@ -20,12 +20,18 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+/*
+ * Memory optimization pass for inference with pre-analysis of memory usage
+ * without GC.
+ * It should work with both the LoD or Non-LoD models.
+*/
 class MemoryOptimizePass : public AnalysisPass {
  public:
   struct MemoryAllocation {
     long long allocated;
     long long saved;
     float saving_ratio;
+    int sort_kind;
   };
 
   virtual ~MemoryOptimizePass() = default;
@@ -46,6 +52,7 @@ class MemoryOptimizePass : public AnalysisPass {
   // Returns percentage of saved memory.
   void MakeReusePlan(
       const std::vector<std::unordered_set<std::string>> &var_clusters,
+      const std::unordered_map<std::string, size_t> &var_batch_ave_size,
       std::unordered_map<std::string, std::string> *reuse_table, int sort_kind,
       MemoryAllocation *memory_allocation) const;
 

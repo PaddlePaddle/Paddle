@@ -64,6 +64,8 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
       config->enable_ir_optim = true;
     }
   }
+  config->EnableMemoryOptim(false);
+  config->Build();
 }
 
 void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
@@ -136,6 +138,11 @@ TEST(TensorRT_resnext50, compare) {
 TEST(TensorRT_mobilenet, analysis) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
   compare(model_dir, /* use_tensorrt */ false);
+}
+
+TEST(TensorRT_mobilenet, profile) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  profile(model_dir, true, false);
 }
 
 }  // namespace inference
