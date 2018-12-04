@@ -273,7 +273,6 @@ paddle.fluid.layers.tanh_shrink ArgSpec(args=['x', 'name'], varargs=None, keywor
 paddle.fluid.layers.softshrink ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.sqrt ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.abs ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
-paddle.fluid.layers.square ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.ceil ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.floor ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.cos ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
