@@ -169,7 +169,10 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
+    'lstm',
 ]
+
+kIgnoreIndex = -100
 
 
 def fc(input,
@@ -326,6 +329,11 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    remote_prefetch = False
+    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
+        remote_prefetch = True
+    if remote_prefetch:
+        assert is_sparse is True and is_distributed is False
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
@@ -339,6 +347,7 @@ def embedding(input,
         attrs={
             'is_sparse': is_sparse,
             'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
             'padding_idx': padding_idx
         })
     return tmp
@@ -464,6 +473,168 @@ def dynamic_lstm(input,
             'candidate_activation': candidate_activation
         })
     return hidden, cell
+
+
+def lstm(input,
+         init_h,
+         init_c,
+         max_len,
+         hidden_size,
+         num_layers,
+         dropout_prob=0.0,
+         is_bidirec=False,
+         is_test=False,
+         name=None,
+         default_initializer=None,
+         seed=-1):
+    """
+    If Device is GPU, This op will use cudnn LSTM implementation
+
+    A four-gate Long Short-Term Memory network with no peephole connections.
+    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
+    the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
+
+    $$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) $$
+
+    $$ f_t = \\sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f) $$
+
+    $$ o_t = \\sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o) $$
+
+    $$ \\tilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c) $$
+
+    $$ c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t} $$
+
+    $$ h_t = o_t \\odot tanh(c_t) $$
+
+    - W terms denote weight matrices (e.g. $W_{ix}$ is the matrix
+      of weights from the input gate to the input)
+    - The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
+    - sigmoid is the logistic sigmoid function.
+    - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
+      and cell activation vectors, respectively, all of which have the same size as
+      the cell output activation vector $h$.
+    - The $\odot$ is the element-wise product of the vectors.
+    - `tanh` is the activation functions.
+    - $\tilde{c_t}$ is also called candidate hidden state,
+      which is computed based on the current input and the previous hidden state.
+
+    Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
+    X represensts a matrix multiplication
+
+
+    Args:
+        input (Variable): LSTM input tensor, shape MUST be ( seq_len x batch_size x input_size )
+        init_h(Variable): The initial hidden state of the LSTM                       
+                       This is a tensor with shape ( num_layers x batch_size x hidden_size)
+                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+        init_c(Variable): The initial cell state of the LSTM.
+                       This is a tensor with shape ( num_layers x batch_size x hidden_size )
+                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len 
+        hidden_size (int): hidden size of the LSTM
+        num_layers (int): total layers number of the LSTM
+        dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers
+        is_bidirec (bool): If it is bidirectional
+        is_test (bool): If it is in test phrase
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
+        default_initializer(Initialize|None): Where use initializer to initialize the Weight
+                         If set None, defaule initializer will be used
+        seed(int): Seed for dropout in LSTM, If it's -1, dropout will use random seed
+
+
+    Returns:
+        rnn_out(Tensor): result of LSTM hidden, shape is (seq_len x batch_size x hidden_size)
+                         if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+        last_h(Tensor): the hidden state of the last step of LSTM
+                        shape is ( num_layers x batch_size x hidden_size )
+                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+        last_c(Tensor): the cell state of the last step of LSTM
+                        shape is ( num_layers x batch_size x hidden_size )
+                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+
+
+    Examples:
+        .. code-block:: python
+
+            input = embedding
+            batch_size = 20
+            max_len = 100
+            dropout_prob = 0.2
+            input_size = 100
+            hidden_size = 150
+            num_layers = 1
+            init_hidden1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
+            init_cell1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
+
+            rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
+                    max_len, dropout_prob, input_size, hidden_size, \
+                    num_layers)
+    """
+
+    helper = LayerHelper('cudnn_lstm', **locals())
+
+    dtype = input.dtype
+    input_shape = list(input.shape)
+    input_size = input_shape[-1]
+    weight_size = 0
+    for i in range(num_layers):
+        if i == 0:
+            input_weight_size = (input_size * hidden_size) * 4
+        else:
+            if is_bidirec:
+                input_weight_size = (hidden_size * 2 * hidden_size) * 4
+            else:
+                input_weight_size = (hidden_size * hidden_size) * 4
+
+        hidden_weight_size = (hidden_size * hidden_size) * 4
+
+        if is_bidirec:
+            weight_size += (input_weight_size + hidden_weight_size) * 2
+            weight_size += hidden_size * 8 * 2
+        else:
+            weight_size += input_weight_size + hidden_weight_size
+            weight_size += hidden_size * 8
+
+    weight = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[weight_size],
+        dtype=dtype,
+        default_initializer=default_initializer)
+
+    out = helper.create_variable_for_type_inference(dtype)
+    last_h = helper.create_variable_for_type_inference(dtype)
+    last_c = helper.create_variable_for_type_inference(dtype)
+
+    cache = helper.create_variable(
+        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+
+    helper.append_op(
+        type='cudnn_lstm',
+        inputs={
+            'Input': input,
+            'InitH': init_h,
+            'InitC': init_c,
+            'W': weight,
+            'Cache': cache,
+        },
+        outputs={
+            'Out': out,
+            'last_h': last_h,
+            'last_c': last_c,
+        },
+        attrs={
+            'max_len': max_len,
+            'is_bidirec': is_bidirec,
+            'input_size': input_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'is_test': is_test,
+            'dropout_prob': dropout_prob,
+            'seed': seed,
+        })
+    return out, last_h, last_c
 
 
 def dynamic_lstmp(input,
@@ -757,7 +928,7 @@ def dynamic_gru(input,
             emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
             x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            hidden = fluid.layers.dynamic_gru(input=x, dim=hidden_dim)
+            hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
     helper = LayerHelper('gru', **locals())
@@ -1098,7 +1269,7 @@ def dropout(x,
     return out
 
 
-def cross_entropy(input, label, soft_label=False, ignore_index=-100):
+def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
     **Cross Entropy Layer**
 
@@ -1145,7 +1316,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=-100):
                                            labels. Default: `False`.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: -100
+                            if soft_label is set to False. Default: kIgnoreIndex
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -3415,6 +3586,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
 
     Examples:
         .. code-block:: python
+
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
             finished_ids, finished_scores = layers.beam_search_decode(
@@ -4244,14 +4416,22 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.5, 0.1, 0.3, 0.1]]
 
         input.lod = [[4, 4]]
+      
+        Computation:
 
-        Then:
+        step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
+               [[0], [2], [1], [0]]
+        step2: merge repeated tokens and remove blank which is 0. Then we get first output sequence:
+               [[2], [1]]
+
+        Finally:
 
         output.data = [[2],
                        [1],
                        [3]]
 
         output.lod = [[2, 1]]
+
 
     Args:
 
@@ -4267,8 +4447,10 @@ def ctc_greedy_decoder(input, blank, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[]] and dims [1, 1].
+        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1].
+                  'Lp' is the sum if all output sequences' length. If all the sequences
+                  in result were empty, the result LoDTensor will be [-1] with 
+                  LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -4902,7 +5084,7 @@ def im2sequence(input,
 
             output.lod = [[4, 4]]
 
-     Examples:
+    Examples:
 
         .. code-block:: python
 
@@ -5006,7 +5188,7 @@ def multiplex(inputs, index):
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=-100,
+                               ignore_index=kIgnoreIndex,
                                numeric_stable_mode=False,
                                return_softmax=False):
     """
@@ -5064,7 +5246,7 @@ def softmax_with_cross_entropy(logits,
             labels as soft labels. By default, `soft_label` is set to False.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: -100
+                            if soft_label is set to False. Default: kIgnoreIndex
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
                                     when soft_label is False and GPU is used.
@@ -5689,24 +5871,23 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                   [[38, 39, 40]],
                   [[41, 42, 43]]]]
             Y.shape = (1, 3, 1, 3)
+		And
+            pad_value = -1,
 
-    And
-        pad_value = -1,
-
-    Return:
-        Out = [[[[35, 36, 37],
-                  [-1, -1, -1]],
-                [[38, 39, 40],
-                  [-1, -1, -1]],
-                 [[41, 42, 43],
-                  [-1, -1, -1]]],
-                [[[-1, -1, -1],
-                  [-1, -1, -1]],
-                 [[-1, -1, -1],
-                  [-1, -1, -1]],
-                 [[-1, -1, -1],
-                  [-1, -1, -1]]]]
-        Out.shape = (2, 3, 2, 3)
+        Return:
+            Out = [[[[35, 36, 37],
+                     [-1, -1, -1]],
+                    [[38, 39, 40],
+                     [-1, -1, -1]],
+                    [[41, 42, 43],
+                     [-1, -1, -1]]],
+                  [[[-1, -1, -1],
+                    [-1, -1, -1]],
+                   [[-1, -1, -1],
+                    [-1, -1, -1]],
+                   [[-1, -1, -1],
+                    [-1, -1, -1]]]]
+            Out.shape = (2, 3, 2, 3)
 
     Args:
         x (Variable): The input tensor variable.
@@ -5945,6 +6126,7 @@ def image_resize(input,
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+
         'NEAREST' : Nearest neighbor interpolation
 
     Args:
@@ -6600,7 +6782,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
             # or
             z = fluid.layers.data(name="z", shape=[3, 5], dtype="float32")
-            crop = fluid.layers.crop(z, shape=[2, 3])
+            crop = fluid.layers.crop(z, shape=[-1, 2, 3])
 
     """
     helper = LayerHelper('crop', **locals())
@@ -6881,44 +7063,45 @@ def pad2d(input,
     than height-1. And the width dimension has the same condition.
 
     Example:
+        .. code-block:: text
 
-      Given that X is a channel of image from input:
+	      Given that X is a channel of image from input:
 
-      X = [[1, 2, 3],
-           [4, 5, 6]]
+	      X = [[1, 2, 3],
+		   [4, 5, 6]]
 
-      Case 0:
+	      Case 0:
 
-        paddings = [0, 1, 2, 3],
-        mode = 'constant'
-        pad_value = 0
+		paddings = [0, 1, 2, 3],
+		mode = 'constant'
+		pad_value = 0
 
-        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
-               [0, 0, 4, 5, 6, 0, 0, 0]
-               [0, 0, 0, 0, 0, 0, 0, 0]]
+		Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+		       [0, 0, 4, 5, 6, 0, 0, 0]
+		       [0, 0, 0, 0, 0, 0, 0, 0]]
 
-      Case 1:
+	      Case 1:
 
-        paddings = [0, 1, 2, 1],
-        mode = 'reflect'
+		paddings = [0, 1, 2, 1],
+		mode = 'reflect'
 
-        Out = [[3, 2, 1, 2, 3, 2]
-               [6, 5, 4, 5, 6, 5]
-               [3, 2, 1, 2, 3, 2]]
+		Out = [[3, 2, 1, 2, 3, 2]
+		       [6, 5, 4, 5, 6, 5]
+		       [3, 2, 1, 2, 3, 2]]
 
-      Case 2:
+	      Case 2:
 
-        paddings = [0, 1, 2, 1],
-        mode = 'edge'
+		paddings = [0, 1, 2, 1],
+		mode = 'edge'
 
-        Out = [[1, 1, 1, 2, 3, 3]
-               [4, 4, 4, 5, 6, 6]
-               [4, 4, 4, 5, 6, 6]]
+		Out = [[1, 1, 1, 2, 3, 3]
+		       [4, 4, 4, 5, 6, 6]
+		       [4, 4, 4, 5, 6, 6]]
 
 
     Args:
         input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
-        paddings (tuple|list): The padding size. If padding is a tuple, it must
+        paddings (tuple|list|Variable): The padding size. If padding is a tuple, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Default: padding = [0, 0, 0, 0].
         mode (str): Three modes: constant(default), reflect, edge. Default: constant
@@ -6943,16 +7126,17 @@ def pad2d(input,
     helper = LayerHelper('pad2d', **locals())
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
+    inputs = {'X': input}
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
+
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = paddings
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
     helper.append_op(
-        type='pad2d',
-        inputs={'X': input},
-        outputs={"Out": out},
-        attrs={
-            'paddings': paddings,
-            'mode': mode,
-            'pad_value': pad_value,
-            'data_frmat': data_format
-        })
+        type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     return out
 
@@ -7150,13 +7334,13 @@ def prelu(x, mode, param_attr=None, name=None):
     Args:
         x (Variable): The input tensor.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-                       weight (alpha).
+          weight (alpha).
         mode (string): The mode for weight sharing. It supports all, channel
-                       and element. all: all elements share same weight
-                       channel:elements in a channel share same weight
-                       element:each element has a weight
+          and element. all: all elements share same weight
+          channel:elements in a channel share same weight
+          element:each element has a weight
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+          will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -7600,6 +7784,11 @@ def uniform_random_batch_size_like(input,
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 11])
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -7637,6 +7826,10 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            out = layers.gaussian_random(shape=[20, 30])
     """
 
     helper = LayerHelper('gaussian_random', **locals())
@@ -7672,6 +7865,16 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(
+                name="X",
+                shape=[13, 11],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.sampling_id(x)
     """
 
     helper = LayerHelper('sampling_id', **locals())
@@ -7711,6 +7914,14 @@ def gaussian_random_batch_size_like(input,
 
     Returns:
         out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.gaussian_random_batch_size_like(
+                input, shape=[-1, 11], mean=1.0, std=2.0)
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
@@ -7743,6 +7954,12 @@ def sum(x):
 
     Returns:
         out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.sum(input)
     """
 
     helper = LayerHelper('sum', **locals())
@@ -7771,6 +7988,17 @@ def slice(input, axes, starts, ends):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            starts = [1, 0, 2]
+            ends = [3, 3, 4]
+            axes = [0, 1, 2]
+
+            input = layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
@@ -7798,6 +8026,12 @@ def shape(input):
     Returns:
         out (Variable): ${out_comment}
 
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.shape(input)
     """
 
     helper = LayerHelper('shape', **locals())
@@ -8185,13 +8419,17 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
 
 @templatedoc()
-def sigmoid_cross_entropy_with_logits(x, label, name=None):
+def sigmoid_cross_entropy_with_logits(x,
+                                      label,
+                                      ignore_index=kIgnoreIndex,
+                                      name=None):
     """
     ${comment}
 
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
+        ignore_index(&{ignore_index}): ${ignore_index_comment}
         name(basestring|None): Name of the output.
 
     Returns:
@@ -8210,7 +8448,7 @@ def sigmoid_cross_entropy_with_logits(x, label, name=None):
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={},
+        attrs={"ignore_index": ignore_index},
         outputs={"Out": out})
     return out
 

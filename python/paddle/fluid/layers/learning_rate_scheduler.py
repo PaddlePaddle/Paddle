@@ -308,13 +308,9 @@ def piecewise_decay(boundaries, values):
 
 
 def append_LARS(params_grads, learning_rate, weight_decay):
-    """Applies LARS (LAYER-WISE ADAPTIVE RATE SCALING) to learning rate for
-       each layer.
-
-    ```python
-        learning_rate *= local_gw_ratio * sqrt(sumsq(param))
-                        / (sqrt(sumsq(gradient))+ weight_decay * sqrt(sumsq(param)))
-    ```
+    """
+    Applies LARS (LAYER-WISE ADAPTIVE RATE SCALING) to learning rate for
+    each layer.
 
     Args:
         learning_rate: A learning rate Variable. This
@@ -323,6 +319,11 @@ def append_LARS(params_grads, learning_rate, weight_decay):
 
     Returns:
         The decayed learning rate
+    Examples:
+        .. code-block:: python
+        
+            learning_rate *= local_gw_ratio * sqrt(sumsq(param))
+                        / (sqrt(sumsq(gradient))+ weight_decay * sqrt(sumsq(param)))
     """
 
     def _balanced_weight(param_norm, grad_norm):
