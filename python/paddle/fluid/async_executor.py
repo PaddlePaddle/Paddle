@@ -50,7 +50,6 @@ class AsyncExecutor(object):
         >>>
         >>> place = fluid.CPUPlace()
         >>> async_executor = fluid.AsyncExecutor(place)
-        >>>
         >>> async_executor.run_startup_program(startup_program)
         >>>
         >>> epoch = 10
@@ -85,6 +84,77 @@ class AsyncExecutor(object):
 
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
+
+    def run_startup_program(self, program=None, place=None):
+        """
+        Run startup program.
+
+        Example:
+            >>> place = fluid.CPUPlace()
+            >>> async_executor = fluid.AsyncExecutor(place)
+            >>>
+            >>> startup_program = fluid.default_startup_program()
+            >>> async_executor.run_startup_program(startup_program)
+
+        Args:
+            program(Program|None): startup program to run. If None,
+                                   fluid.default_startup_program() will be used
+            place(fluid.CPUPlace|None): Place to run the program. Only CPUPlace
+                                        is supported
+        """
+        if program is None:
+            program = fluid.default_startup_program()
+
+        if place is None:
+            place = core.CPUPlace()
+
+        if not isinstance(place, core.CPUPlace):
+            raise ValueError("AsyncExecutor only supports CPU device")
+
+        executor = Executor(place)
+        executor.run(program)
+
+    def save_model(self,
+                   dir_name,
+                   feeded_var_names,
+                   target_vars,
+                   main_program=None,
+                   model_filename=None,
+                   params_filename=None,
+                   export_for_deployment=True):
+        """
+        Prune the given `main_program` to build a new program especially for
+        inference, and save it and all related parameters to given `dirname` by
+        the `executor`
+
+        Args:
+            dirname(str): The directory to save the inference model
+            feeded_var_names(list[str]): Names of variables that need to be
+                                         fed data during inference
+            target_vars(list[Variable]): Variables from which we can get
+                                         inference results
+            main_program(Program|None): The original program, which will be
+                                        pruned to build the inference model. If
+                                        it's set None, the default main program
+                                        will be used.
+            model_filename(str|None): The name of the file to save all related
+                                      parameters. If it is set None, parameters
+                                      will be saved in separate files.
+            params_filename(str|None): The name of the file to save all related
+                                       parameters. If None, parameters will be
+                                       saved in separate files.
+            export_for_deployment(bool): If true, programs are modified to only
+                                         support direct inference deployment.
+                                         Otherwise, more information will be
+                                         stored for flexible optimization and
+                                         re-training. Currently, only True is
+                                         supported.
+        """
+        place = core.CPUPlace()
+        executor = Executor(place)
+        io.save_inference_model(dir_name, feeded_var_names, target_vars,
+                                executor, main_program, model_filename,
+                                params_filename, export_for_deployment)
 
     def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
         """

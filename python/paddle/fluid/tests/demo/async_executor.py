@@ -76,8 +76,8 @@ def train():
     # Run startup program
     startup_program = fluid.default_startup_program()
     place = fluid.CPUPlace()
-    executor = fluid.Executor(place)
-    executor.run(startup_program)
+    async_executor = fluid.AsyncExecutor(place)
+    async_executor.run_startup_program(startup_program)
 
     async_executor = fluid.AsyncExecutor(place)
     main_program = fluid.default_main_program()
@@ -92,8 +92,8 @@ def train():
             thread_num,  # This can be changed during iteration
             [data, acc],  # Multiple fetch targets can be specified
             debug=False)
-        fluid.io.save_inference_model('imdb/epoch%d.model' % i,
-                                      [data.name, label.name], [acc], executor)
+        async_executor.save_model('imdb/epoch%d.model' % i,
+                                  [data.name, label.name], [acc])
 
 
 if __name__ == "__main__":

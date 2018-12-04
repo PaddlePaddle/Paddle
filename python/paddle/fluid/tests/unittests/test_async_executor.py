@@ -108,12 +108,10 @@ class TestAsyncExecutor(unittest.TestCase):
         # Run startup program
         startup_program = fluid.default_startup_program()
         place = fluid.CPUPlace()
-        executor = fluid.Executor(place)
-        executor.run(startup_program)
+        async_executor = fluid.AsyncExecutor(place)
+        async_executor.run_startup_program(startup_program)
 
         main_program = fluid.default_main_program()
-        async_executor = fluid.AsyncExecutor(place)
-
         self.assertRaises(TypeError, async_executor.run)
         self.assertRaises(TypeError, async_executor.run, main_program)
         self.assertRaises(TypeError, async_executor.run, main_program,
@@ -128,8 +126,7 @@ class TestAsyncExecutor(unittest.TestCase):
                           data_feed, filelist, thread_num)
 
         async_executor.run(main_program, data_feed, filelist, thread_num, [acc])
-        fluid.io.save_inference_model("imdb.model", [data.name, label.name],
-                                      [acc], executor)
+        async_executor.save_model("imdb.model", [data.name, label.name], [acc])
         statinfo = os.stat('imdb.model/__model__')
         self.assertGreater(statinfo.st_size, 0)
 
