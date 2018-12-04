@@ -103,6 +103,7 @@ struct Argument {
   // Model specified with program and parameters files.
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
+  DECL_ARGUMENT_FIELD(is_memory_load, IsMemoryLoad, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);

@@ -93,9 +93,17 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
+void SetConfig(contrib::AnalysisConfig *cfg, bool memory_load = false) {
+  if (memory_load) {
+    std::string buffer_prog, buffer_param;
+    ReadBinaryFile(FLAGS_infer_model + "/__model__", &buffer_prog);
+    ReadBinaryFile(FLAGS_infer_model + "/param", &buffer_param);
+    cfg->SetProgBufferAndParamBuffer(&buffer_prog[0], buffer_prog.size(),
+                                     &buffer_param[0], buffer_param.size());
+  } else {
+    cfg->prog_file = FLAGS_infer_model + "/__model__";
+    cfg->param_file = FLAGS_infer_model + "/param";
+  }
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->specify_input_name = true;
@@ -114,9 +122,9 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_Chinese_ner, profile) {
+void profile(bool memory_load = false) {
   contrib::AnalysisConfig cfg;
-  SetConfig(&cfg);
+  SetConfig(&cfg, memory_load);
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -136,6 +144,12 @@ TEST(Analyzer_Chinese_ner, profile) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
     }
   }
+}
+
+TEST(Analyzer_Chinese_ner, profile) { profile(); }
+
+TEST(Analyzer_Chinese_ner, profile_memory_load) {
+  profile(true /* memory_load */);
 }
 
 // Check the fuse status
