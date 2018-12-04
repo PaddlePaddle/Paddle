@@ -87,6 +87,25 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "If the grad op reuse the input's variable.")
         .SetDefault(false);
+
+    // for parameter prefetch
+    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<int>>("height_sections",
+                              "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "table_names",
+        "(string vector, the splited table names that will be fetched from "
+        "parameter server)"
+        "in the order of input variables for mapping")
+        .SetDefault({});
+
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -134,13 +153,13 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      VLOG(30) << "lookup_table_grad op " << framework::GradVarName("W")
-               << " is set to SelectedRows";
+      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
       block->Var(out_var_name)
           ->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
-      VLOG(30) << "lookup_table_grad op " << framework::GradVarName("W")
-               << " is set to LoDTensor";
+      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
+              << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
     block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());

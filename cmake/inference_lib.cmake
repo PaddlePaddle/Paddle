@@ -129,6 +129,15 @@ if (WITH_MKLDNN)
             )
 endif ()
 
+if (WITH_NGRAPH)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/ngraph")
+    copy(ngraph_lib
+            SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
+            DSTS ${dst_dir} ${dst_dir}
+            DEPS ngraph
+            )
+endif ()
+
 if (NOT WIN32)
     if (NOT MOBILE_INFERENCE AND NOT RPI)
         set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
@@ -186,8 +195,7 @@ set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
        ${src_dir}/${module}/api/paddle_*.h
-       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "platform")
