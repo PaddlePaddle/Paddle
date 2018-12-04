@@ -22,6 +22,7 @@ class TestMKLDNNConcatOp(TestConcatOp):
     def setUp(self):
         super(TestMKLDNNConcatOp, self).setUp()
         self.attrs["use_mkldnn"] = True
+        self._cpu_only = True
 
     def test_check_grad(self):
         pass
@@ -34,6 +35,7 @@ class TestMKLDNNConcatOp2(TestConcatOp2):
     def setUp(self):
         super(TestMKLDNNConcatOp2, self).setUp()
         self.attrs["use_mkldnn"] = True
+        self._cpu_only = True
 
     def test_check_grad(self):
         pass
@@ -46,6 +48,7 @@ class TestMKLDNNConcatOp3(TestConcatOp3):
     def setUp(self):
         super(TestMKLDNNConcatOp3, self).setUp()
         self.attrs["use_mkldnn"] = True
+        self._cpu_only = True
 
     def test_check_grad(self):
         pass
