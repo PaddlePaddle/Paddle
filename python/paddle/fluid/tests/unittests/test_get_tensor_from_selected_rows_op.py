@@ -52,9 +52,8 @@ class TestGetTensorFromSelectedRows(unittest.TestCase):
 
         op.run(scope, place)
 
-        out_array = np.array(out.get_tensor())
-        self.assertEqual((4, 2), out_array.shape)
-
+        out_array = np.array(out)
+        self.assertEqual((5, 2), out_array.shape)
         assert (out_array == np_array).all()
 
     def test_check_output(self):
