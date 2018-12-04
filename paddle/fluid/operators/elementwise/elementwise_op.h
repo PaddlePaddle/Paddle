@@ -41,20 +41,27 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                    "Output(Out) of elementwise op should not be null.");
 
     PADDLE_ENFORCE(
-        ctx->GetInputsVarType("X").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s [%s]",
-        ctx->GetInputsVarType("X").front(), ctx->Inputs("X").front());
-    PADDLE_ENFORCE(
         ctx->GetInputsVarType("Y").front() ==
             framework::proto::VarType::LOD_TENSOR,
         "The input var's type should be LoDTensor, but the received is %s [%s]",
         ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
 
-    auto x_dim = ctx->GetInputDim("X");
-    auto y_dim = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                      "Rank of first input must >= rank of second input.");
+    if (ctx->GetInputsVarType("X").front() ==
+        framework::proto::VarType::LOD_TENSOR) {
+      auto x_dim = ctx->GetInputDim("X");
+      auto y_dim = ctx->GetInputDim("Y");
+      PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
+                        "Rank of first input must >= rank of second input.");
+    } else if (ctx->GetInputsVarType("X").front() ==
+               framework::proto::VarType::SELECTED_ROWS) {
+      PADDLE_ENFORCE((ctx->GetInputDim("Y").size() == 1u) &&
+                         (ctx->GetInputDim("Y")[0] == 1),
+                     "For elementwise_op, if X is Sparse, "
+                     "Y must be scalar.");
+    } else {
+      PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
+                   ctx->GetInputsVarType("X").front());
+    }
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");

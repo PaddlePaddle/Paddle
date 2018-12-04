@@ -75,15 +75,9 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
-  Tensor x;
-  if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-    auto x_vars = ctx.InputVar(name);
-    x = *(framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars));
-  } else {
-    x = *ctx.Input<framework::Tensor>(name);
-  }
-  return framework::OpKernelType(framework::ToDataType(x.type()),
-                                 ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(
+      framework::GetDataTypeOfVar(ctx.InputVar(name)), ctx.GetPlace(), layout,
+      library);
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
