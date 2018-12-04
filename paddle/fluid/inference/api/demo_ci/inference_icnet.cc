@@ -61,7 +61,6 @@ class Predictor {
                const int width, void* output, int& output_length,
                int batch_size) {
     int intput_length = channel * height * width * batch_size;
-
     // initialize the input data
     PaddleTensor tensor;
     tensor.shape = std::vector<int>({batch_size, channel, height, width});
@@ -105,8 +104,11 @@ API_REFERENCE void predict(void* handle, float* input, const int channel,
 API_REFERENCE void predict_file(void* handle, const char* bmp_name,
                                 void* output, int& output_length) {
   assert(handle != nullptr);
-  Record record = ImageProcess::ProcessAImage(bmp_name);
-  ((Predictor*)handle)->predict(record.data, C, H, W, output, output_length, 1);
+  Record record;
+  if (ImageProcess::ProcessAImage(record, bmp_name)) {
+    ((Predictor*)handle)
+        ->predict(record.data, C, H, W, output, output_length, 1);
+  }
 }
 
 API_REFERENCE void destory_predictor(void* handle) {

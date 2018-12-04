@@ -41,7 +41,7 @@ struct Record {
 
 class ImageProcess {
  public:
-  static void Image_Read(std::string imagename, unsigned char*& imagebuf,
+  static bool Image_Read(std::string imagename, unsigned char*& imagebuf,
                          int& imagewidth, int& imageheight,
                          int& imagebitcount) {
     int imagelinebyte = 0;
@@ -74,7 +74,11 @@ class ImageProcess {
         imagebuf = imagedatabuf;
       }
       fclose(filep);
+
+      return true;
     }
+
+    return false;
   }
 
   // save the data into BMP file
@@ -149,15 +153,17 @@ class ImageProcess {
     Image_Save(filename, imagebuffer, W, H, 8);
   }
 
-  static Record ProcessAImage(const char* filename) {
-    Record record;
+  static bool ProcessAImage(Record& record, const char* filename) {
     unsigned char* Image_Buf = nullptr;
     int Image_Width = 0;
     int Image_Height = 0;
     int Image_Bitcount = 0;
     int i = 0;
 
-    Image_Read(filename, Image_Buf, Image_Width, Image_Height, Image_Bitcount);
+    if (!Image_Read(filename, Image_Buf, Image_Width, Image_Height,
+                    Image_Bitcount)) {
+      return false;
+    }
     for (int channel = 0; channel < 3; channel++) {
       for (int height = 0; height < Image_Height; height++) {
         for (int width = 0; width < Image_Width; width++) {
@@ -178,6 +184,6 @@ class ImageProcess {
     record.shape.push_back(449);
     record.shape.push_back(581);
 
-    return record;
+    return true;
   }
 };

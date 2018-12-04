@@ -105,7 +105,18 @@ else()
 endif()
 
 if(WITH_STATIC_LIB)
-  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  set(DEPS ${PADDLE_LIB}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+#  set(DEPS
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_1.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_2.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_3.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_4.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_5.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_6.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_7.lib
+#          d:/me_backup/build_gpu_debug/paddle/fluid/inference/Debug/libpaddle_fluid_dummy_lib_8.lib
+#          )
+
 else()
   set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
@@ -120,8 +131,9 @@ else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
       ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
-      ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
-      snappystream ${EXTERNAL_LIB})
+#          ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
+          snappy zlibstatic xxhash
+          snappystream ${EXTERNAL_LIB})
   # NOTE(dzhwinter) shlwapi is deprecated.
   set(DEPS ${DEPS} libcmt shlwapi)
 endif(NOT WIN32)
