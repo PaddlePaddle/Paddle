@@ -42,8 +42,12 @@ void MKLDNNMatMul(const framework::Tensor& a, const math::MatDescriptor& dim_a,
   auto a_trans_char = trans_char(dim_a.trans_);
   auto b_trans_char = trans_char(dim_b.trans_);
 
-  mkldnn_sgemm(&b_trans_char, &a_trans_char, &n, &m, &k, &alpha, b_data, &ldb,
-               a_data, &lda, &beta, out_data, &n);
+  // MKLDNN sgemm operation uses column-major layout so parameters need to be
+  // swapped.
+  auto status = mkldnn_sgemm(&b_trans_char, &a_trans_char, &n, &m, &k, &alpha,
+                             b_data, &ldb, a_data, &lda, &beta, out_data, &n);
+  PADDLE_ENFORCE_EQ(status, mkldnn_success,
+                    "MKLDNN sgemm operation executed with no success.");
 }
 }  // namespace
 
