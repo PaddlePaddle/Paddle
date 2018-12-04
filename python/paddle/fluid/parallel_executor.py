@@ -130,12 +130,12 @@ class ParallelExecutor(object):
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
-        build_strategy.num_trainers = num_trainers
-        build_strategy.trainer_id = trainer_id
+        if num_trainers > 1 and collective_trainers_endpoints:
+            assert num_trainers == len(collective_trainers_endpoints
+                                       ), "num_trainers == len(end_points)"
 
-        if num_trainers > 1 and trainers_end_points:
-            assert num_trainers == len(
-                trainers_end_points), "num_trainers == len(end_points)"
+        if collective_trainers_endpoints is None:
+            collective_trainers_endpoints = []
 
         main = main_program
         main = main if main else framework.default_main_program()
@@ -164,9 +164,9 @@ class ParallelExecutor(object):
                 if not p.stop_gradient
             ]),
             set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
-            cpt.to_text(loss_name)
-            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id, trainers_endpoints)
+            cpt.to_text(loss_name) if loss_name else six.u(''), scope,
+            local_scopes, exec_strategy, build_strategy,
+            collective_trainers_endpoints, num_trainers, trainer_id)
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):

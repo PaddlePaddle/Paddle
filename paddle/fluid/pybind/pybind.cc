@@ -884,8 +884,8 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::unordered_set<std::string> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
                   const std::string &, Scope *, std::vector<Scope *> &,
-                  const ExecutionStrategy &, const BuildStrategy &, size_t,
-                  size_t>())
+                  const ExecutionStrategy &, const BuildStrategy &,
+                  const std::vector<std::string> &, size_t, size_t>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

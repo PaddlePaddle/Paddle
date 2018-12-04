@@ -75,8 +75,8 @@ ParallelExecutor::ParallelExecutor(
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    size_t collective_num_trainers, size_t trainer_id,
-    std::vector<std::string> collective_trainer_endpoints)
+    const std::vector<std::string> &collective_trainer_endpoints,
+    size_t collective_num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
