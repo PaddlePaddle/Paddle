@@ -106,9 +106,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, strides, paddings, dilations, groups,
-        ctx.op().Output("Output"));
+    const int MaxKeyLength = 256;
+    std::string key;
+    key.reserve(MaxKeyLength);
+    AppendKey(key, src_tz, weights_tz, strides, paddings, dilations, groups,
+                     ctx.op().Output("Output"));
+    //const std::string key = platform::ConvMKLDNNHandler::GetHash(
+    //    src_tz, weights_tz, strides, paddings, dilations, groups,
+    //    ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
 
     bool is_INT8 = ctx.HasInput("Scale_in")? true : false;
@@ -565,6 +570,36 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
+    void AppendKey(std::string& key, mkldnn::memory::dims& input_dims,    // NOLINT
+                   mkldnn::memory::dims& weights_dims,  // NOLINT
+                   std::vector<int>& strides,           // NOLINT
+                   std::vector<int>& paddings,          // NOLINT
+                   std::vector<int>& dilations,         // NOLINT
+                   int groups, const std::string& suffix) const{
+      AppendKeyDims(key, input_dims);
+      AppendKeyDims(key, weights_dims);
+      AppendKeyVec(key, strides);
+      AppendKeyVec(key, paddings);
+      AppendKeyVec(key, dilations);
+      AppendKey(key, std::to_string(groups));
+      AppendKey(key, suffix);
+    } 
+
+    void AppendKeyDims(std::string& key, const mkldnn::memory::dims& dims) const{
+      for(unsigned int i=0; i<dims.size(); i++){
+        AppendKey(key, std::to_string(dims[i]));
+      }
+    }
+
+    void AppendKeyVec(std::string& key, const std::vector<int>& dims) const{
+      for(unsigned int i=0; i<dims.size(); i++){
+        AppendKey(key,  std::to_string(dims[i]));
+      }
+    }
+
+    void AppendKey(std::string& key, const std::string& s) const{
+      key.append(s);
+    }
 
     void SetScaleMap(std::unordered_map<std::string, std::vector<float>> &scale_map,
                        const std::string& name, std::vector<float> scale_data) const {
