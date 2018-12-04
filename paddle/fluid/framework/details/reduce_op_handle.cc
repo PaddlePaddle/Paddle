@@ -67,8 +67,8 @@ struct ReduceSelectedRowsFunctor {
 
   template <typename T>
   void apply() const {
-    VLOG(40) << "GatherSelectedRows CollectiveContext:"
-             << collective_context_.String();
+    VLOG(4) << "GatherSelectedRows CollectiveContext:"
+            << collective_context_.String();
 
     if (collective_context_.endpoints_.size() <= 1) {
       GatherLocalSelectedRows(src_slrs_, in_places_, dev_ctxes_, out_place_,
@@ -90,9 +90,9 @@ struct ReduceSelectedRowsFunctor {
       dev_ctx.second->Wait();
     }
 
-    VLOG(100) << "gathered selected rows:" << gathered_var_name
-              << operators::distributed::GetSelectedRowsInfo(
-                     *gathered_select_rows);
+    VLOG(10) << "gathered selected rows:" << gathered_var_name
+             << operators::distributed::GetSelectedRowsInfo(
+                    *gathered_select_rows);
 
     // merge them
     auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes_.at(out_place_));
@@ -101,9 +101,9 @@ struct ReduceSelectedRowsFunctor {
         scope->Var(merged_var_name)->GetMutable<SelectedRows>();
     operators::math::scatter::MergeAdd<DevCtx, T> merge_func;
     merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
-    VLOG(100) << "merged selected rows:" << merged_var_name
-              << operators::distributed::GetSelectedRowsInfo(
-                     *merged_select_rows);
+    VLOG(10) << "merged selected rows:" << merged_var_name
+             << operators::distributed::GetSelectedRowsInfo(
+                    *merged_select_rows);
 
     // 2. start collective server if it doesn't exist
     operators::distributed::CollectiveServer *server =
@@ -127,8 +127,8 @@ struct ReduceSelectedRowsFunctor {
     scope->Rename(merged_var_name, out_var_handle_->name_);
     auto slr =
         scope->FindVar(out_var_handle_->name_)->GetMutable<SelectedRows>();
-    VLOG(100) << "reduced selected rows:" << merged_var_name
-              << operators::distributed::GetSelectedRowsInfo(*slr);
+    VLOG(10) << "reduced selected rows:" << merged_var_name
+             << operators::distributed::GetSelectedRowsInfo(*slr);
 
     rpc_server->WaitVarBarrier(merged_var_name);
     rpc_server->ClearVar(merged_var_name);
@@ -138,6 +138,22 @@ struct ReduceSelectedRowsFunctor {
     scope->EraseVars(tmp_vars);
   }
 };
+
+template <typename Visitor>
+inline void VisitSelectedRowsDataType(proto::VarType::Type type,
+                                      Visitor visitor) {
+  switch (type) {
+    case proto::VarType::FP32: {
+      visitor.template apply<float>();
+      break;
+    }
+    case proto::VarType::FP64: {
+      visitor.template apply<double>();
+      break;
+    }
+    default: { PADDLE_THROW("Not supported %d", type); }
+  }
+}
 
 void ReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
@@ -207,20 +223,21 @@ void ReduceOpHandle::RunImpl() {
       PADDLE_ENFORCE(in_selected_rows.size() > 0,
                      "input selectrows size must > 0");
 
+      auto tensor_type = ToDataType(in_selected_rows[0]->value().type());
       if (platform::is_gpu_place(in_p)) {
         ReduceSelectedRowsFunctor<platform::CUDADeviceContext> func(
             local_scopes_, in_selected_rows, in_places, dev_ctxes_,
             out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>(),
             collective_context_);
-        VisitDataType(ToDataType(in_selected_rows[0]->value().type()), func);
+        VisitSelectedRowsDataType(tensor_type, func);
       } else {
         ReduceSelectedRowsFunctor<platform::CPUDeviceContext> func(
             local_scopes_, in_selected_rows, in_places, dev_ctxes_,
             out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>(),
             collective_context_);
-        VisitDataType(ToDataType(in_selected_rows[0]->value().type()), func);
+        VisitSelectedRowsDataType(tensor_type, func);
       }
     });
   } else {

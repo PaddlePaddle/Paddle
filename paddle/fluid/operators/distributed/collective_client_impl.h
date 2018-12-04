@@ -57,7 +57,7 @@ void CollectiveClient::ReduceSelectedRows(
   // get remote selectrows to cpu_ctx
   std::vector<framework::Scope*> scopes;
   for (auto ep : endpoints) {
-    VLOG(40) << "begin gather from ep:" << ep;
+    VLOG(4) << "begin gather from ep:" << ep;
     auto* scope = &local_scope->NewScope();
     scope->Var(var_name)->GetMutable<framework::SelectedRows>();
     client->AsyncGetMonomerVariable(ep, *cpu_ctx, *scope, var_name, time_out);
@@ -71,8 +71,8 @@ void CollectiveClient::ReduceSelectedRows(
         scopes[i]->FindVar(var_name)->GetMutable<framework::SelectedRows>();
     slrs.push_back(select_rows);
 
-    VLOG(40) << "gather from ep:" << endpoints[i]
-             << ", select_rows:" << GetSelectedRowsInfo(*select_rows);
+    VLOG(4) << "gather from ep:" << endpoints[i]
+            << ", select_rows:" << GetSelectedRowsInfo(*select_rows);
 
     client->AsyncGetMonomerBarrier(endpoints[i], var_name);
   }
@@ -93,7 +93,7 @@ void CollectiveClient::ReduceSelectedRows(
   operators::math::scatter::MergeAdd<platform::CPUDeviceContext, DataType>
       merge_func;
   merge_func(*cpu_ctx, slrs, mid_slr);
-  VLOG(100) << cpu_name << ":" << GetSelectedRowsInfo(*mid_slr);
+  VLOG(10) << cpu_name << ":" << GetSelectedRowsInfo(*mid_slr);
 
   if (platform::is_gpu_place(local_slr->place())) {
     // copy cpu to gpu.
@@ -105,7 +105,7 @@ void CollectiveClient::ReduceSelectedRows(
 
     // wait
     local_dev_ctx->Wait();
-    VLOG(100) << gpu_name << ":" << GetSelectedRowsInfo(*gpu_slr);
+    VLOG(10) << gpu_name << ":" << GetSelectedRowsInfo(*gpu_slr);
 
     // rename
     std::cout << "rename" << std::endl;
