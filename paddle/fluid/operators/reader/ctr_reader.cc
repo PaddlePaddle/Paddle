@@ -101,16 +101,16 @@ class GzipReader : public Reader {
 class PlainFileReader : public Reader {
  public:
   explicit PlainFileReader(const std::string& file_name)
-      : myfile_(file_name.c_str()) {}
+      : stream_(file_name.c_str()) {}
 
   ~PlainFileReader() {}
 
-  bool HasNext() override { return myfile_.peek() != EOF; }
+  bool HasNext() override { return stream_.peek() != EOF; }
 
-  void NextLine(std::string* line) override { std::getline(myfile_, *line); }
+  void NextLine(std::string* line) override { std::getline(stream_, *line); }
 
  private:
-  std::ifstream myfile_;
+  std::ifstream stream_;
 };
 
 template <typename SingleFileReader>
