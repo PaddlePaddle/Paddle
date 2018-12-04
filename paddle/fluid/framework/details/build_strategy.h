@@ -87,7 +87,7 @@ struct BuildStrategy {
   // A new PassBuilder is created based on configs defined above and
   // passes are owned by the PassBuilder.
   std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy(
-      bool finalize_strategy) const;
+      bool finalize_strategy, int collective_num_trainers = 1) const;
 
   bool IsFinalized() const { return is_finalized_; }
 
@@ -99,9 +99,9 @@ struct BuildStrategy {
       const std::string &loss_var_name,
       const std::unordered_set<std::string> &param_names,
       const std::vector<Scope *> &local_scopes,
+      const platform::CollectiveContext &collective_context,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs,
-      const platform::CollectiveContext &collective_context) const;
+      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
 #else
       const bool use_cuda) const;
 #endif

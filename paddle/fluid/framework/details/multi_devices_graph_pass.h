@@ -43,8 +43,8 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
-  mutable platform::CollectiveContext collective_context_;
 #endif
+  mutable platform::CollectiveContext collective_context_;
 
   int GetVarDeviceID(
       const ir::Graph &graph, const std::string &varname,

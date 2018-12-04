@@ -25,15 +25,18 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
-  return (!strategy.enable_sequential_execution_ &&
-          strategy.collective_context_.num_trainers_ > 1);
+static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy,
+                                       unsigned int num_trainers) {
+  return (!strategy.enable_sequential_execution_ && num_trainers > 1);
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
-  explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
-      : ir::PassBuilder(), strategy_(strategy) {
+  explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy,
+                                       int collective_num_trainers = 1)
+      : ir::PassBuilder(),
+        strategy_(strategy),
+        collective_num_trainers_(collective_num_trainers) {
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
     }
@@ -59,19 +62,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 
-    /*
-    CollectiveContext *context = CollectiveContext::GetInstance();
-    context->endpoints_ = strategy_.trainer_endpoints_;
-    context->trainer_id_ = strategy_.trainer_id_;
-    PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
-    if (strategy_.trainer_id_ > 0) {
-      PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
-                         strategy_.trainer_endpoints_.size(),
-                     "trainer_id_ < endpoints_ size");
-    }
-    VLOG(1) << "CollectiveContext:" << context->String();
-    */
-
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -89,7 +79,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
 
-    if (SeqOnlyAllReduceOps(strategy)) {
+    if (SeqOnlyAllReduceOps(strategy, collective_num_trainers_)) {
       AppendPass("all_reduce_deps_pass");
     }
 
@@ -100,14 +90,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
  private:
   BuildStrategy strategy_;
+  int collective_num_trainers_{1};
 };
 
 std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
-    bool finalize_strategy) const {
+    bool finalize_strategy, int collective_num_trainers) const {
   if (is_finalized_) {
     return pass_builder_;
   }
-  pass_builder_.reset(new ParallelExecutorPassBuilder(*this));
+  pass_builder_.reset(
+      new ParallelExecutorPassBuilder(*this, collective_num_trainers));
   if (finalize_strategy) {
     is_finalized_ = true;
   }
@@ -119,14 +111,15 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &param_names,
     const std::vector<Scope *> &local_scopes,
+    const platform::CollectiveContext &collective_context,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    const bool use_cuda, platform::NCCLContextMap *nccl_ctxs,
-    const platform::CollectiveContext &collective_context) const {
+    const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
 #else
     const bool use_cuda) const {
 #endif
   // Create a default one if not finalized by user.
-  CreatePassesFromStrategy(false);
+  CreatePassesFromStrategy(
+      false, static_cast<int>(collective_context.endpoints_.size()));
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
@@ -142,14 +135,17 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("local_scopes");
       pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
                                                     &local_scopes);
+
+      platform::CollectiveContext context = collective_context;
+      pass->Erase("collective_context");
+      pass->Set<platform::CollectiveContext>(
+          "collective_context",
+          new platform::CollectiveContext(collective_context));
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
-
-      platform::CollectiveContext context = collective_context;
-      pass->Erase("collective_context");
-      pass->Set<ColllectiveContext>("collective_context", context);
 #endif
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
@@ -160,8 +156,11 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "all_reduce_deps_pass") {
-      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << collective_context.num_trainers_;
+      LOG(INFO) << "SeqOnlyAllReduceOps:"
+                << SeqOnlyAllReduceOps(
+                       *this,
+                       static_cast<int>(collective_context.endpoints_.size()))
+                << ", num_trainers:" << collective_context.endpoints_.size();
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(

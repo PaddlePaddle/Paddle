@@ -57,8 +57,8 @@ class ParallelExecutorPrivate {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
-  std::unique_ptr<platform::CollectiveContext> collective_context;
 #endif
+  std::unique_ptr<platform::CollectiveContext> collective_context;
   bool own_local_scope_;
   bool use_cuda_;
   bool use_all_reduce_;
@@ -76,7 +76,7 @@ ParallelExecutor::ParallelExecutor(
     Scope *scope, const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
     size_t num_trainers, size_t trainer_id,
-    std::vector<std::string> trainer_endpoints)
+    std::vector<std::string> collective_trainer_endpoints)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -123,19 +123,18 @@ ParallelExecutor::ParallelExecutor(
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-// Startup Program has been run. All local scopes has correct parameters.
+  // Startup Program has been run. All local scopes has correct parameters.
 
-// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
   platform::CollectiveContext collective_context;
-  context.trainer_id_ = trainer_id;
-  context.endpoints_ = trainer_endpoints;
-
+  collective_context.trainer_id_ = trainer_id;
+  collective_context.endpoints_ = collective_trainer_endpoints;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           params, member_->local_scopes_, member_->use_cuda_,
-                           member_->nccl_ctxs_.get(), collective_context);
+                           params, member_->local_scopes_, collective_context,
+                           member_->use_cuda_, member_->nccl_ctxs_.get());
 
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
@@ -161,9 +160,9 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 #else
-  std::unique_ptr<ir::Graph> graph =
-      build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           params, member_->local_scopes_, member_->use_cuda_);
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, collective_context, member_->use_cuda_);
 #endif
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
