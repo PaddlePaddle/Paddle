@@ -70,6 +70,12 @@ struct ReduceSelectedRowsFunctor {
     VLOG(40) << "GatherSelectedRows CollectiveContext:"
              << collective_context_.String();
 
+    if (collective_context_.endpoints_.size() <= 1) {
+      GatherLocalSelectedRows(src_slrs_, in_places_, dev_ctxes_, out_place_,
+                              dst_slr_);
+      return;
+    }
+
     // 1. gather local selected rows, merge them
     std::string gathered_var_name = out_var_handle_->name_ + "_gathered_tmp";
     auto scope = local_scopes_.at(out_var_handle_->scope_idx_);

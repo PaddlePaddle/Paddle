@@ -37,20 +37,6 @@ struct CollectiveContext {
 
     return ss.str();
   }
-
-  /*
-  static CollectiveContext *GetInstance() {
-    std::call_once(init_flag_,
-                   [&]() { context_.reset(new CollectiveContext()); });
-    return context_.get();
-  }
-  */
-
- private:
-  /*
-  static std::once_flag init_flag_;
-  static std::unique_ptr<CollectiveContext> context_;
-  */
 };
 
 }  // namespace platform

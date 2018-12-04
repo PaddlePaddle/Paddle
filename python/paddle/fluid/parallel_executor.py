@@ -63,6 +63,8 @@ class ParallelExecutor(object):
         trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
         scope(Scope): scope to run with, default use fluid.global_scope().
+        collective_trainers_endpoints(list[string]): Trainers' endpoints running under nccl
+            collective mode.
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -92,7 +94,7 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None,
-                 trainers_endpoints=None):
+                 collective_trainers_endpoints=None):
         self._places = []
         self._act_places = []
         if use_cuda:
