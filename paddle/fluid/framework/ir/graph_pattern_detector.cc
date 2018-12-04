@@ -1163,7 +1163,7 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
-  auto elementwise_add_out = pattern->NewNode(elementwise_add_op_repr())
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
                                  ->assert_is_op_output("elementwise_add")
                                  ->assert_is_op_input("elementwise_add", "X")
                                  ->AsIntermediate();
@@ -1172,7 +1172,7 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
   auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
                                     ->assert_is_op_input("elementwise_add", "Y")
                                     ->AsInput();
-  auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_op_1_repr())
+  auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_out_1_repr())
                                    ->assert_is_op_output("elementwise_add")
                                    ->AsIntermediate();
 

@@ -44,7 +44,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
 
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
-                 "Conv intput should be 4-D or 5-D tensor.");
+                 "Conv intput should be 4-D or 5-D tensor, get %u", in_dims.size());
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "Conv input dimension and filter dimension should be the same.");

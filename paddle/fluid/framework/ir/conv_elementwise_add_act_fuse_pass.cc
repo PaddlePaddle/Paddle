@@ -36,7 +36,8 @@ framework::proto::OpDesc PrepareOpDesc(
     const std::string& activation, const std::string& output) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
-  desc.SetInput("bias", {bias});
+  desc.SetType("conv2d_fusion");
+  desc.SetInput("Bias", {bias});
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
@@ -83,7 +84,7 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph.get(),
-                         {conv_op, elementwise_add_op, elementwise_add_out});
+                         {conv_op, elementwise_add_op, elementwise_add_out, act_op});
   };
   gpd(graph.get(), handler);
   return graph;

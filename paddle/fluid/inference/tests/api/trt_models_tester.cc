@@ -148,6 +148,7 @@ TEST(AnalysisPredictor, use_gpu) {
   AnalysisConfig config(true);
   config.model_dir = model_dir;
   config.fraction_of_gpu_memory = 0.15;
+  config.pass_builder()->TurnOnDebug();
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);
