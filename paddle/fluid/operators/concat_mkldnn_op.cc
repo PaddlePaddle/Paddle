@@ -30,15 +30,15 @@ using platform::to_void_cast;
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
     const bool is_layout_correct = input->layout() == DataLayout::kMKLDNN;
-    const bool is_format_defined = input->format() !=
-                                   memory::format::format_undef;
+    const bool is_format_defined =
+        input->format() != memory::format::format_undef;
     PADDLE_ENFORCE(is_layout_correct && is_format_defined,
                    "Wrong layout/format set for Input tensor");
   }
 }
 
-static memory::primitive_desc CreateMemPrimDesc(
-    const Tensor& input, const mkldnn::engine& engine) {
+static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
+                                                const mkldnn::engine& engine) {
   constexpr auto data_type = mkldnn::memory::f32;
   const auto dims = paddle::framework::vectorize2int(input.dims());
   const auto format = input.format();
@@ -48,8 +48,8 @@ static memory::primitive_desc CreateMemPrimDesc(
 }
 
 static mkldnn::memory::format GetDstMemFormat(
-  const concat::primitive_desc& concat_pd) {
-    return (memory::format)concat_pd.dst_primitive_desc().desc().data.format;
+    const concat::primitive_desc& concat_pd) {
+  return (memory::format)concat_pd.dst_primitive_desc().desc().data.format;
 }
 
 static platform::CPUPlace GetCpuPlace(
@@ -61,10 +61,9 @@ static platform::CPUPlace GetCpuPlace(
 }
 
 static const mkldnn::engine& GetMKLDNNEngine(
-  const paddle::framework::ExecutionContext& ctx) {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
-    return dev_ctx.GetEngine();
+    const paddle::framework::ExecutionContext& ctx) {
+  auto& dev_ctx = ctx.template device_context<platform::MKLDNNDeviceContext>();
+  return dev_ctx.GetEngine();
 }
 
 template <typename T>
@@ -89,7 +88,7 @@ class ConcatPrimitiveFactory {
   memory::desc CreateDstMemDescriptor(Tensor* output) {
     auto dst_dims = paddle::framework::vectorize2int(output->dims());
     return memory::desc(dst_dims, platform::MKLDNNGetDataType<T>(),
-                                 memory::format::any);
+                        memory::format::any);
   }
 
   mkldnn::memory CreateDstMemory(const concat::primitive_desc& concat_pd,
@@ -101,10 +100,10 @@ class ConcatPrimitiveFactory {
   void CreateSourcesDescriptors(const std::vector<const Tensor*> multi_input,
                                 const mkldnn::engine& mkldnn_engine) {
     for (size_t i = 0; i < multi_input.size(); i++) {
-        auto mem_prim_desc = CreateMemPrimDesc(*multi_input[i], mkldnn_engine);
-        srcs_pd.push_back(mem_prim_desc);
-        srcs.push_back(memory(mem_prim_desc,
-                       to_void_cast(multi_input[i]->data<T>())));
+      auto mem_prim_desc = CreateMemPrimDesc(*multi_input[i], mkldnn_engine);
+      srcs_pd.push_back(mem_prim_desc);
+      srcs.push_back(
+          memory(mem_prim_desc, to_void_cast(multi_input[i]->data<T>())));
     }
   }
 
@@ -134,8 +133,8 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     int64_t concat_axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
 
     ConcatPrimitiveFactory<T> prim_creator;
-    auto concat_pd = prim_creator.CreateConcatPrimDescriptor(multi_input,
-                         output, static_cast<int>(concat_axis), mkldnn_engine);
+    auto concat_pd = prim_creator.CreateConcatPrimDescriptor(
+        multi_input, output, static_cast<int>(concat_axis), mkldnn_engine);
     auto concat = prim_creator.CreateConcatPrimitive(concat_pd, output, place);
     stream(stream::kind::eager).submit({concat}).wait();
 
