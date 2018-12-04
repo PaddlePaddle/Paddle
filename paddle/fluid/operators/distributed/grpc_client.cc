@@ -40,7 +40,7 @@ void GRPCClient::SendComplete() {
   std::unique_lock<std::mutex> lk(completed_mutex_);
   if (!completed_) {
     for (auto& it : channels_) {
-      VLOG(30) << "send complete message to " << it.first;
+      VLOG(3) << "send complete message to " << it.first;
       this->AsyncSendComplete(it.first);
     }
     PADDLE_ENFORCE(this->Wait(), "internal grpc error");
@@ -83,7 +83,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
-    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
     s->response_call_back_ = nullptr;
@@ -144,7 +144,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
     s->response_call_back_ = ProcGetResponse;
@@ -171,11 +171,13 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
                                           const framework::Scope& scope,
                                           const std::string& in_var_name,
                                           const std::string& out_var_name,
+                                          const std::string& table_name,
                                           int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
   const std::string out_var_name_val = out_var_name;
+  const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
@@ -186,13 +188,14 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      s, method, h, this] {
+                      s, method, h, table_name_val, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
+    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val,
+                          0, table_name_val);
 
-    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
     s->response_call_back_ = ProcGetResponse;
@@ -330,14 +333,14 @@ void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
-  VLOG(30) << "GRPCClient Proceed begin";
+  VLOG(3) << "GRPCClient Proceed begin";
   while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
 
     if (c->status_.ok()) {
-      VLOG(30) << c->GetVarHandlePtr()->String() << " process";
+      VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
       // FIXME(gongwb): parse error_details?
@@ -372,7 +375,7 @@ void GRPCClient::Proceed() {
       sync_cond_.notify_all();
     }
   }
-  VLOG(30) << "GRPCClient Proceed end";
+  VLOG(3) << "GRPCClient Proceed end";
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {

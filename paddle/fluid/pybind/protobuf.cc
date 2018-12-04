@@ -29,8 +29,16 @@ limitations under the License. */
 namespace pybind11 {
 namespace detail {
 
+#if !defined(PYBIND11_HIDDEN)
+#ifdef _WIN32
+#define PYBIND11_HIDDEN __declspec(dllexport)
+#else
+#define PYBIND11_HIDDEN __attribute__((visibility("hidden")))
+#endif
+#endif
+
 // Can be replaced by a generic lambda in C++14
-struct __attribute__((visibility("hidden"))) paddle_variant_caster_visitor
+struct PYBIND11_HIDDEN paddle_variant_caster_visitor
     : public boost::static_visitor<handle> {
   return_value_policy policy;
   handle parent;
@@ -62,9 +70,9 @@ struct paddle_variant_caster<V<Ts...>> {
       if (std::is_same<T, std::vector<float>>::value) {
         auto caster_ints = make_caster<std::vector<int64_t>>();
         if (caster_ints.load(src, convert)) {
-          VLOG(40) << "This value are floats and int64_ts satisfy "
-                      "simultaneously, will set it's type to "
-                      "std::vector<int64_t>";
+          VLOG(4) << "This value are floats and int64_ts satisfy "
+                     "simultaneously, will set it's type to "
+                     "std::vector<int64_t>";
           value = cast_op<std::vector<int64_t>>(caster_ints);
           return true;
         }

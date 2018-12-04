@@ -20,12 +20,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 #ifndef _WIN32
-const float fraction_of_gpu_memory_to_use = 0.92f;
+constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
 #else
 // fraction_of_gpu_memory_to_use cannot be too high on windows,
 // since the win32 graphic sub-system can occupy some GPU memory
 // which may lead to insufficient memory left for paddle
-const float fraction_of_gpu_memory_to_use = 0.5f;
+constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 #endif
 
 DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
@@ -153,8 +153,8 @@ size_t GpuMaxChunkSize() {
   size_t available = 0;
 
   GpuMemoryUsage(&available, &total);
-  VLOG(100) << "GPU Usage " << available / 1024 / 1024 << "M/"
-            << total / 1024 / 1024 << "M";
+  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
+           << total / 1024 / 1024 << "M";
   size_t reserving = static_cast<size_t>(0.05 * total);
   // If available less than minimum chunk size, no usable memory exists.
   available =
