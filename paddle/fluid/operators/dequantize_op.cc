@@ -37,7 +37,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
-    auto* scale = ctx.Input<Tensor>("Scale");
+    auto scale_data = ctx.Attr<float>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -45,8 +45,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
  
     const T* input_data = input->data<T>();
     float* output_data = output->mutable_data<float>(ctx.GetPlace());
-    std::vector<float> scale_data = {*(scale->data<float>())};
-    std::vector<float> reorder_scale = {1.0f / scale_data[0]};
+    std::vector<float> reorder_scale = {1.0f / scale_data};
 
     std::vector<primitive> pipeline;
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
@@ -99,8 +98,8 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(const framework::Execut
 
 void DeQuantOpMaker::Make() {
   AddInput("Input","input data");
-  AddInput("Scale","scale data");
   AddOutput("Output","output data");
+  AddAttr<float>("Scale","scale data").SetDefault({1.0f});
   AddComment(R"DOC(This op will quantize data from INT8 to FP32)DOC");
 }
 

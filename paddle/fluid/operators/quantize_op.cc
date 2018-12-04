@@ -35,7 +35,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
-    auto* scale = ctx.Input<Tensor>("Scale");
+    auto scale_data = ctx.Attr<float>("Scale");
     auto* output = ctx.Output<Tensor>("Output");
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -47,11 +47,9 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
 
-    std::vector<T> scale_data = {*(scale->data<T>())};
-
     mkldnn::primitive_attr attri;
     int mask = 0;
-    attri.set_output_scales(mask, scale_data);
+    attri.set_output_scales(mask, {scale_data});
 
     auto src_md = platform::MKLDNNMemDesc(
             {src_tz}, memory::data_type::f32, input->format());
@@ -108,11 +106,12 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(const framework::Executio
 
 void QuantOpMaker::Make() {
   AddInput("Input","input data");
-  AddInput("Scale","scale data");
   AddOutput("Output","output data");
   AddAttr<bool>("is_negative_input",
                 "(bool, default false) Only used in mkldnn INT8 kernel")
       .SetDefault(false);
+  AddAttr<float>("Scale","scale data")
+      .SetDefault({1.0f});
   AddComment(R"DOC(This op will quantize data from FP32 to INT8)DOC");
 }
 

@@ -143,11 +143,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(dev_ctx.GetBlob(prim_key));
     if(conv_p == nullptr){
       if(is_INT8){
-        CreateINT8Primitive(ctx, is_test, dev_ctx, mkldnn_engine, input, filter,
+        CreateINT8Primitive(ctx, is_test, dev_ctx, mkldnn_engine, input, //filter,
         bias, output,
         strides, paddings,
         dilations, fuse_relu,
-        fuse_residual_conn,// input_data,
+        fuse_residual_conn, input_data,
         filter_data, src_tz,
         weights_tz, g,
         dst_tz, key,
@@ -161,11 +161,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler,
         force_fp32_output);
       }else{
-        CreateFP32Primitive(ctx, is_test, dev_ctx, mkldnn_engine, input, filter,
+        CreateFP32Primitive(ctx, is_test, dev_ctx, mkldnn_engine, input, //filter,
         bias, output,
         strides, paddings,
         dilations, fuse_relu,
-        fuse_residual_conn, //input_data,
+        fuse_residual_conn, input_data,
         filter_data, src_tz,
         weights_tz, g,
         dst_tz, key,
@@ -270,11 +270,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     paddle::framework::ExecutionContext ctx, bool is_test,
     const paddle::platform::MKLDNNDeviceContext& dev_ctx,
     const mkldnn::engine&  mkldnn_engine,
-    const paddle::framework::Tensor* input, const paddle::framework::Tensor* filter,
+    const paddle::framework::Tensor* input,// const paddle::framework::Tensor* filter,
     const paddle::framework::Tensor* bias, paddle::framework::Tensor* output,
     std::vector<int> strides, std::vector<int> paddings,
     std::vector<int> dilations, bool fuse_relu,
-    bool fuse_residual_conn, //const T* input_data,
+    bool fuse_residual_conn, const T* input_data,
     const float* filter_data, std::vector<int> src_tz,
     std::vector<int> weights_tz, int g,
     std::vector<int> dst_tz, const std::string key,
@@ -287,7 +287,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd,
     std::shared_ptr<platform::ConvMKLDNNHandler> handler) const{
 
-      const T* input_data = input->data<T>();
+      //const T* input_data = input->data<T>();
 
       auto user_src_md = platform::MKLDNNMemDesc(
           {src_tz}, platform::MKLDNNGetDataType<T>(), input->format());
@@ -405,11 +405,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const paddle::framework::ExecutionContext& ctx, bool is_test,
     const paddle::platform::MKLDNNDeviceContext & dev_ctx,
     const mkldnn::engine & mkldnn_engine,
-    const paddle::framework::Tensor* input, const paddle::framework::Tensor* filter,
+    const paddle::framework::Tensor* input, //const paddle::framework::Tensor* filter,
     const paddle::framework::Tensor* bias, paddle::framework::Tensor* output,
     std::vector<int> strides, std::vector<int> paddings,
     std::vector<int> dilations, bool fuse_relu,
-    bool fuse_residual_conn,// const T* input_data,
+    bool fuse_residual_conn, const T* input_data,
     const float* filter_data, std::vector<int> src_tz,
     std::vector<int> weights_tz, int g,
     std::vector<int> dst_tz, const std::string key,
@@ -422,14 +422,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd,
     std::shared_ptr<platform::ConvMKLDNNHandler> handler,
     bool force_fp32_output) const {
-      const T* input_data = input->data<T>();
+      //const T* input_data = input->data<T>();
       bool is_INT8 = true;
-      auto* scale_in = ctx.HasInput("Scale_in") ? ctx.Input<Tensor>("Scale_in") : nullptr;
-      auto* scale_in_eltwise = ctx.HasInput("Scale_in_eltwise")? ctx.Input<Tensor>("Scale_in_eltwise") : nullptr;
-      auto* scale_weights = ctx.HasInput("Scale_weights")? ctx.Input<Tensor>("Scale_weights") : nullptr;
-      auto* scale_out = ctx.HasInput("Scale_out")? ctx.Input<Tensor>("Scale_out") : nullptr;
+      auto scale_in_data = ctx.Attr<float>("Scale_in");
+      auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
+      auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+      auto scale_out_data = force_fp32_output? 1.0f : ctx.Attr<float>("Scale_out");
 
-      bool is_multi_channel = (scale_weights->memory_size() > 1) ? true : false;
+      bool is_multi_channel = scale_weights_data.size() > 1 ? true : false;
 
       auto scale_in_key = key + "@scale_in";
       auto scale_weights_key = key + "@scale_weights";
@@ -437,34 +437,33 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto output_shift_scale_key = key + "@output_shift_scale";
       auto sum_scale_key = key + "@sum_scale";
       auto scale_in_eltwise_key = key + "@scale_in_eltwise";
-      std::vector<float> scale_in_data;
-      std::vector<float> scale_out_data = {1.0f};
-      std::vector<float> scale_weights_data;
-      std::vector<float> scale_in_eltwise_data;
+      //std::vector<float> scale_in_data;
+      //std::vector<float> scale_out_data = {1.0f};
+      //std::vector<float> scale_weights_data;
+      //std::vector<float> scale_in_eltwise_data;
       std::vector<float> output_shift_scale;
-      std::vector<float> sum_scale = {1.0f};
-      std::vector<float> none_scale = {0};
+      float sum_scale = 1.0f;
 
       int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
-      scale_in_data = {*(scale_in->data<float>())};
-      scale_weights_data.resize(count);
-      #pragma omp parallel for if (count > 1)
-      for(int i=0; i<count; i++){
-        scale_weights_data[i] =*(scale_weights->data<float>() + i);
-      }
-      if(!force_fp32_output)
-        scale_out_data = {*(scale_out->data<float>())};
+      //scale_in_data = {scale_in};
+      //scale_weights_data.resize(count);
+      //#pragma omp parallel for if (count > 1)
+      //for(int i=0; i<count; i++){
+        //scale_weights_data[i] =*(scale_weights->data<float>() + i);
+      //}
+      //if(!force_fp32_output)
+        //scale_out_data = {*(scale_out->data<float>())};
       output_shift_scale.resize(count);
       #pragma omp parallel for if (count > 1)
       for(int i=0; i<count; i++){
         if(scale_weights_data[i] == 0.0)
-          output_shift_scale[i] = scale_out_data[0];
+          output_shift_scale[i] = scale_out_data;
         else 
-          output_shift_scale[i] = scale_out_data[0] / (scale_in_data[0] * scale_weights_data[i]);
+          output_shift_scale[i] = scale_out_data / (scale_in_data * scale_weights_data[i]);
       }
       if(fuse_residual_conn){
-        scale_in_eltwise_data = {*(scale_in_eltwise->data<float>())};
-        sum_scale[0] = scale_out_data[0] / scale_in_eltwise_data[0];
+        //scale_in_eltwise_data = {*(scale_in_eltwise->data<float>())};
+        sum_scale = scale_out_data / scale_in_eltwise_data;
       }
 
       auto user_src_md = platform::MKLDNNMemDesc(
@@ -511,12 +510,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
                                        strides, paddings, mkldnn_engine,
                                        fuse_relu, fuse_residual_conn,
-                                       output_shift_scale, sum_scale[0], is_test);
+                                       output_shift_scale, sum_scale, is_test);
       } else {
         conv_pd =
             ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
                                  mkldnn_engine, fuse_relu, fuse_residual_conn,
-                                 output_shift_scale, sum_scale[0], is_test);
+                                 output_shift_scale, sum_scale, is_test);
       }
       // Save conv_pd/src_memory/weights_memory for backward pass
       dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -587,7 +586,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         scale_bias_data.resize(count);
         #pragma omp parallel for if (count > 1)
         for(int i=0; i<count; i++){
-          scale_bias_data[i] = scale_in_data[0] * scale_weights_data[i];
+          scale_bias_data[i] = scale_in_data * scale_weights_data[i];
         }
         bias_memory_p =
             handler->AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline, is_test, is_INT8, scale_bias_data, mask_reorder);
