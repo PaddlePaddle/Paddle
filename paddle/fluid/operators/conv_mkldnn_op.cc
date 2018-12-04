@@ -536,8 +536,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                               dst_memory_p);
         }
 
-
-          // push primitive to stream and wait until it's executed
+        // push primitive to stream and wait until it's executed
         pipeline.push_back(*conv_p);
         stream(stream::kind::eager).submit(pipeline).wait();
 
