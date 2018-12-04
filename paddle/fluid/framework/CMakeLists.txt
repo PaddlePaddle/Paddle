@@ -180,7 +180,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper)
+cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper pslib)
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
