@@ -46,7 +46,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
              argument->model_params_path_valid()) {
     auto program =
         LoadModel(argument->model_program_path(), argument->model_params_path(),
-                  argument->scope_ptr(), place);
+                  argument->scope_ptr(), place, argument->is_memory_load());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
@@ -68,9 +68,10 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path, const std::string &params_path,
-    framework::Scope *scope, const platform::Place &place) {
+    framework::Scope *scope, const platform::Place &place,
+    bool is_memory_load) {
   framework::Executor exe(place);
-  return Load(&exe, scope, program_path, params_path);
+  return Load(&exe, scope, program_path, params_path, is_memory_load);
 }
 
 std::string IrGraphBuildPass::repr() const { return "ir-graph-build-pass"; }

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/operators/impl/load_combine.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/pybind/pybind.h"
 
@@ -69,7 +70,8 @@ bool IsPersistable(const framework::VarDesc* var) {
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
-                      const std::string& param_filename) {
+                      const std::string& param_filename,
+                      bool is_memory_load = false) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
@@ -108,6 +110,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
     op->SetType("load_combine");
     op->SetOutput("Out", paramlist);
     op->SetAttr("file_path", {param_filename});
+    op->SetAttr("is_memory_load", {is_memory_load});
     op->CheckAttrs();
   }
 
@@ -130,16 +133,23 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                  "model version %ld is not supported.",
                  main_program->Version());
 
-  LoadPersistables(executor, scope, *main_program, dirname, "");
+  // is_memory_load is false in seperate parameters.
+  LoadPersistables(executor, scope, *main_program, dirname, "",
+                   false /* is_memory_load */);
   return main_program;
 }
 
-std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor* executor, framework::Scope* scope,
-    const std::string& prog_filename, const std::string& param_filename) {
-  std::string model_filename = prog_filename;
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
+                                             const std::string& prog_filename,
+                                             const std::string& param_filename,
+                                             bool is_memory_load = false) {
   std::string program_desc_str;
-  ReadBinaryFile(model_filename, &program_desc_str);
+  if (!is_memory_load) {
+    ReadBinaryFile(prog_filename, &program_desc_str);
+  } else {
+    program_desc_str = prog_filename;
+  }
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -147,8 +157,16 @@ std::unique_ptr<framework::ProgramDesc> Load(
                  "model version %ld is not supported.",
                  main_program->Version());
 
-  LoadPersistables(executor, scope, *main_program, "", param_filename);
+  LoadPersistables(executor, scope, *main_program, "", param_filename,
+                   is_memory_load);
   return main_program;
+}
+
+std::unique_ptr<framework::ProgramDesc> Load(
+    framework::Executor* executor, framework::Scope* scope,
+    const std::string& prog_filename, const std::string& param_filename) {
+  return Load(executor, scope, prog_filename, param_filename,
+              false /* is_memory_load */);
 }
 
 void SaveVars(const framework::Scope& scope,
