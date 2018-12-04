@@ -15,33 +15,72 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T>
+struct SigmoidCrossEntropyWithLogitsForward {
+  HOSTDEVICE SigmoidCrossEntropyWithLogitsForward(const int &ignore_index)
+      : ignore_index(ignore_index) {}
+
+  HOSTDEVICE T operator()(const T &x, const T &label) const {
+    if (static_cast<int>(label) == ignore_index) {
+      return static_cast<T>(0.);
+    }
+    T term1 = (x > 0) ? x : 0;
+    T term2 = x * label;
+    T term3 = std::log(static_cast<T>(1) + std::exp(-(std::abs(x))));
+    return term1 - term2 + term3;
+  }
+
+  int ignore_index;
+};
+
+template <typename T>
+struct SigmoidCrossEntropyWithLogitsBackward {
+  HOSTDEVICE SigmoidCrossEntropyWithLogitsBackward(const int &ignore_index)
+      : ignore_index(ignore_index) {}
+
+  HOSTDEVICE T operator()(const T &x, const T &label) const {
+    if (static_cast<int>(label) == ignore_index) {
+      return static_cast<T>(0.);
+    }
+    T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
+    return simoid_x - label;
+  }
+
+  int ignore_index;
+};
 
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *Labels = context.Input<framework::Tensor>("Label");
-    framework::Tensor *Out = context.Output<framework::Tensor>("Out");
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Labels = context.Input<Tensor>("Label");
+    Tensor *Out = context.Output<Tensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
+    int ignore_index = context.Attr<int>("ignore_index");
 
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto labels = framework::EigenVector<T>::Flatten(*Labels);
-    auto out = framework::EigenVector<T>::Flatten(*Out);
+    auto x = EigenVector<T>::Flatten(*X);
+    auto labels = EigenVector<T>::Flatten(*Labels);
+    auto out = EigenVector<T>::Flatten(*Out);
     auto &place = *context.device_context<DeviceContext>().eigen_device();
 
-    // term1 = max(x, 0)
-    auto term1 = x.cwiseMax(static_cast<T>(0));
-    // term2 = x * labels
-    auto term2 = x * labels;
-    // term3 = log(1 + exp(-abs(x)))
-    auto term3 = (static_cast<T>(1) + (-(x.abs())).exp()).log();
-
-    out.device(place) = term1 - term2 + term3;
+    out.device(place) = x.binaryExpr(
+        labels, SigmoidCrossEntropyWithLogitsForward<T>(ignore_index));
   }
 };
 
@@ -50,23 +89,23 @@ template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *Labels = context.Input<framework::Tensor>("Label");
-    const framework::Tensor *dOut =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    framework::Tensor *dX =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Labels = context.Input<Tensor>("Label");
+    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto labels = framework::EigenVector<T>::Flatten(*Labels);
-    auto dout = framework::EigenVector<T>::Flatten(*dOut);
-    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    auto ignore_index = context.Attr<int>("ignore_index");
+    auto x = EigenVector<T>::Flatten(*X);
+    auto labels = EigenVector<T>::Flatten(*Labels);
+    auto dout = EigenVector<T>::Flatten(*dOut);
+    auto dx = EigenVector<T>::Flatten(*dX);
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto sigmoid_x = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
-    dx.device(place) = dout * (sigmoid_x - labels);
+    auto diff = x.binaryExpr(labels, SigmoidCrossEntropyWithLogitsBackward<T>(
+                                         static_cast<int>(ignore_index)));
+    dx.device(place) = dout * diff;
   }
 };
 
