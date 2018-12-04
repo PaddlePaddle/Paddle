@@ -60,6 +60,35 @@ struct DataDesc {
   const std::vector<std::string> sparse_slot_ids_;
 };
 
+inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
+  os << "data_desc:\n";
+  os << "\tbatch_size -> " << data_desc.batch_size_ << "\n";
+  os << "\tfile_type -> " << data_desc.file_type_ << "\n";
+  os << "\tfile_format -> " << data_desc.file_format_ << "\n";
+  os << "\tfile_names -> {";
+  for (auto& file_name : data_desc.file_names_) {
+    os << file_name << ",";
+  }
+  os << "}\n";
+  os << "\tdense_slot_index -> {";
+  for (auto& slot : data_desc.dense_slot_index_) {
+    os << slot << ",";
+  }
+  os << "}\n";
+  os << "\tsparse_slot_index_ -> {";
+  for (auto& slot : data_desc.sparse_slot_index_) {
+    os << slot << ",";
+  }
+  os << "}\n";
+  os << "\tsparse_slot_ids_ -> {";
+  for (auto& slot : data_desc.sparse_slot_ids_) {
+    os << slot << ",";
+  }
+  os << "}\n";
+
+  return os;
+}
+
 void ReadThread(const std::vector<std::string>& file_list,
                 const DataDesc& data_desc, int thread_id,
                 std::vector<ReaderThreadStatus>* thread_status,
@@ -89,7 +118,7 @@ class CTRReader : public framework::FileReader {
     }
   }
 
-  ~CTRReader() {}
+  ~CTRReader() { Shutdown(); }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
@@ -106,7 +135,10 @@ class CTRReader : public framework::FileReader {
     for (auto& read_thread : read_threads_) {
       read_thread->join();
     }
-    monitor_thread_->join();
+
+    if (monitor_thread_) {
+      monitor_thread_->join();
+    }
 
     read_threads_.clear();
     monitor_thread_.reset(nullptr);

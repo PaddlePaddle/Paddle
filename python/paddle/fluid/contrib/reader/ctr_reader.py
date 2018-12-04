@@ -20,6 +20,8 @@ from paddle.fluid.framework import default_main_program, \
     default_startup_program, Variable
 from paddle.fluid.unique_name import generate as unique_name
 
+__all__ = ['ctr_reader']
+
 
 def monkey_patch_reader_methods(reader):
     def __get_reader__():
@@ -30,7 +32,11 @@ def monkey_patch_reader_methods(reader):
     def reset():
         return __get_reader__().reset()
 
+    def start():
+        return __get_reader__().start()
+
     reader.reset = reset
+    reader.start = start
     reader.stop_gradient = True
     reader.persistable = True
     return reader
@@ -44,13 +50,18 @@ def _copy_reader_var_(block, var):
     return new_var
 
 
-def ctr_reader(feed_data,
-               capacity,
-               thread_num,
-               batch_size,
-               file_list,
-               slots,
-               name=None):
+def ctr_reader(
+        feed_dict,
+        file_type,  # gzip or plain
+        file_format,  # csv or svm
+        dense_slot_indexs,
+        sparse_slot_indexs,
+        capacity,
+        thread_num,
+        batch_size,
+        file_list,
+        slots,
+        name=None):
     """
     Create a CTR reader for data feeding in Python
 
@@ -99,12 +110,22 @@ def ctr_reader(feed_data,
         inputs={'blocking_queue': [queue_name]},
         outputs={'Out': [reader_var]},
         attrs={
+            'use_data_config': False,
             'thread_num': thread_num,
             'batch_size': batch_size,
             'file_list': file_list,
-            'slots': slots,
+            'file_type': file_type,
+            'file_format': file_format,
+            'dense_slot_index': dense_slot_indexs,
+            'sparse_slot_index': sparse_slot_indexs,
+            'sparse_slots': slots,
+            'ranks': [],
+            'lod_levels': [],
+            'shape_concat': []
         })
 
+    dtypes = [data.dtype for data in feed_dict]
+    reader_var.desc.set_dtypes(dtypes)
     reader_var.persistable = True
 
     main_prog_reader_var = _copy_reader_var_(
@@ -118,6 +139,9 @@ def ctr_reader(feed_data,
 
     main_blk = default_main_program().current_block()
     main_blk.append_op(
-        type='read', inputs={'Reader': [reader]}, outputs={'Out': feed_data})
+        type='read',
+        inputs={'Reader': [reader]},
+        attrs={'infer_out': False},
+        outputs={'Out': feed_dict})
 
     return reader

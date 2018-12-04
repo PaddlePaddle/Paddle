@@ -14,20 +14,6 @@
 
 from __future__ import print_function
 
-from . import decoder
-from .decoder import *
-from . import memory_usage_calc
-from .memory_usage_calc import *
-from . import op_frequence
-from .op_frequence import *
-from . import quantize
-from .quantize import *
-from . import reader
-from .reader import *
+from . import ctr_reader
 
-__all__ = []
-__all__ += decoder.__all__
-__all__ += memory_usage_calc.__all__
-__all__ += op_frequence.__all__
-__all__ += quantize.__all__
-__all__ += reader.__all__
+__all__ = ctr_reader.__all__
