@@ -90,9 +90,9 @@ struct ReduceSelectedRowsFunctor {
       dev_ctx.second->Wait();
     }
 
-    VLOG(10) << "gathered selected rows:" << gathered_var_name
-             << operators::distributed::GetSelectedRowsInfo(
-                    *gathered_select_rows);
+    VLOG(9) << "gathered selected rows:" << gathered_var_name
+            << operators::distributed::GetSelectedRowsInfo(
+                   *gathered_select_rows);
 
     // merge them
     auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes_.at(out_place_));
@@ -101,9 +101,8 @@ struct ReduceSelectedRowsFunctor {
         scope->Var(merged_var_name)->GetMutable<SelectedRows>();
     operators::math::scatter::MergeAdd<DevCtx, T> merge_func;
     merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
-    VLOG(10) << "merged selected rows:" << merged_var_name
-             << operators::distributed::GetSelectedRowsInfo(
-                    *merged_select_rows);
+    VLOG(9) << "merged selected rows:" << merged_var_name
+            << operators::distributed::GetSelectedRowsInfo(*merged_select_rows);
 
     // 2. start collective server if it doesn't exist
     operators::distributed::CollectiveServer *server =
@@ -116,6 +115,11 @@ struct ReduceSelectedRowsFunctor {
                             operators::distributed::kRequestGetMonomerVariable,
                             scope, merged_dev_ctx);
 
+    // 5. del gathered var
+    merged_dev_ctx->Wait();
+    std::vector<std::string> tmp_vars{gathered_var_name};
+    scope->EraseVars(tmp_vars);
+
     // 3. gather them from all remote nodes.
     auto reduce_eps = collective_context_.endpoints_;
     reduce_eps.erase(reduce_eps.begin() + collective_context_.trainer_id_);
@@ -127,15 +131,12 @@ struct ReduceSelectedRowsFunctor {
     scope->Rename(merged_var_name, out_var_handle_->name_);
     auto slr =
         scope->FindVar(out_var_handle_->name_)->GetMutable<SelectedRows>();
-    VLOG(10) << "reduced selected rows:" << merged_var_name
-             << operators::distributed::GetSelectedRowsInfo(*slr);
+    VLOG(9) << "reduced selected rows:" << merged_var_name
+            << operators::distributed::GetSelectedRowsInfo(*slr);
 
     rpc_server->WaitVarBarrier(merged_var_name);
     rpc_server->ClearVar(merged_var_name);
-
-    // 5. clear mid vars
-    std::vector<std::string> tmp_vars{gathered_var_name};
-    scope->EraseVars(tmp_vars);
+    VLOG(9) << "ReduceSelectedRowsFunctor end";
   }
 };
 

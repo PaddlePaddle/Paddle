@@ -67,7 +67,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
     multi_devices_pass->Set<int>("num_trainers",
-                                 new int(strategy_.num_trainers_));
+                                 new int(collective_num_trainers_));
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {

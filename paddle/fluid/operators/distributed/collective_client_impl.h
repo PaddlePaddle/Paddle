@@ -43,10 +43,10 @@ void CollectiveClient::ReduceSelectedRows(
       dynamic_cast<platform::CPUDeviceContext*>(
           platform::DeviceContextPool::Instance().Get(cpu_place));
 
+  // 1. copy to cpu if on gpu
   auto local_slr =
       local_scope->FindVar(var_name)->GetMutable<framework::SelectedRows>();
   auto cpu_local_slr = local_slr;
-  // copy if on gpu
   if (platform::is_gpu_place(local_slr->place())) {
     // copy to cpu
     cpu_local_slr = local_scope->Var(var_name + "_cpu_mirror_")
@@ -54,7 +54,7 @@ void CollectiveClient::ReduceSelectedRows(
     framework::SelectedRowsCopy<DataType>(*local_slr, cpu_place, cpu_local_slr);
   }
 
-  // get remote selectrows to cpu_ctx
+  // 2. get remote selectrows to cpu_ctx
   std::vector<framework::Scope*> scopes;
   for (auto ep : endpoints) {
     VLOG(4) << "begin gather from ep:" << ep;
@@ -85,7 +85,7 @@ void CollectiveClient::ReduceSelectedRows(
     local_dev_ctx->Wait();
   }
 
-  // merge local_cpu and remote on cpu.
+  // 3. merge local_cpu and remote on cpu.
   slrs.push_back(cpu_local_slr);
   auto cpu_name = var_name + "_reduced_cpu_";
   auto mid_slr =
@@ -108,10 +108,9 @@ void CollectiveClient::ReduceSelectedRows(
     VLOG(10) << gpu_name << ":" << GetSelectedRowsInfo(*gpu_slr);
 
     // rename
-    std::cout << "rename" << std::endl;
+    VLOG(10) << "rename from " << gpu_name << " to " << var_name;
     local_scope->EraseVars(std::vector<std::string>{var_name});
     local_scope->Rename(gpu_name, var_name);
-    std::cout << "after rename" << std::endl;
   } else {
     local_scope->EraseVars(std::vector<std::string>{var_name});
     local_scope->Rename(cpu_name, var_name);
