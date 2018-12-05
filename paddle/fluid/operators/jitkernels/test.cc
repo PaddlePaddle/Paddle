@@ -19,7 +19,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/jitkernels/kernels.h"
+#include "paddle/fluid/operators/jitkernels/kernel_pool.h"
 // TODO(TJ): remove me
 #include "paddle/fluid/operators/jitkernels/registry.h"
 
