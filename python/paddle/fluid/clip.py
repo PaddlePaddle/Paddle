@@ -192,7 +192,8 @@ class GradientClipByNorm(BaseGradientClipAttr):
               trainable=True,
               clip=fluid.clip.GradientClipByNorm(clip_norm=2.0))
             y_predict = fluid.layers.fc(input=x, size=1, param_attr=w_param_attrs)
-
+            
+            
     """
 
     def __init__(self, clip_norm):
