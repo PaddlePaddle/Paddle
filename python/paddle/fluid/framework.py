@@ -991,7 +991,6 @@ class Block(object):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
-        self._op_descs = list()
         self.program = program
         self.removed_vars = collections.OrderedDict()
 
@@ -1244,15 +1243,11 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
+        op_desc = self.desc.append_op()
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
         if _in_imperative_mode():
-            op_desc = core.OpDesc()
-            op = Operator(block=self, desc=op_desc, *args, **kwargs)
             _imperative_tracer().trace(op, op.inputs, op.outputs, self.desc)
-        else:
-            op_desc = self.desc.append_op()
-            op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.append(op)
-        self._op_descs.append(op_desc)
         return op
 
     def _insert_op(self, index, *args, **kwargs):
