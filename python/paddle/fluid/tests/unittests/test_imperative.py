@@ -43,9 +43,9 @@ class TestImperative(unittest.TestCase):
             l = MyLayer()
             x = l(np.array([1.0, 2.0, -1.0], dtype=np.float32))[0]
             self.assertIsNotNone(x)
-            sys.stderr.write("%s output: %s\n" % (x, x.numpy()))
-            x.backward()
-            sys.stderr.write("grad %s\n" % l._x_for_debug.grad())
+            sys.stderr.write("%s output: %s\n" % (x, x._numpy()))
+            x._backward()
+            sys.stderr.write("grad %s\n" % l._x_for_debug._gradient())
 
 
 if __name__ == '__main__':

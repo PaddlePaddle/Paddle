@@ -293,7 +293,6 @@ class Variable(core.VarBase):
         if is_new_var:
             self.desc.set_type(type)
         elif self.desc.type() != type:
-            # sys.stderr.write('%s vs %s\n' % (self.desc.type(), type))
             raise ValueError("Variable {0} has been created before. The "
                              "previous type is {1}; the new type is {2}. They"
                              " are not matched".format(self.name,
@@ -358,16 +357,16 @@ class Variable(core.VarBase):
         self.stop_gradient = stop_gradient
         self.is_data = is_data
 
-    def numpy(self):
+    def _numpy(self):
         scope = _imperative_tracer().get_scope(self.block.desc)
         tensor = core.get_variable_tensor(scope, self.desc.name())
         return np.array(tensor)
 
-    def backward(self):
+    def _backward(self):
         scope = _imperative_tracer().get_scope(self.block.desc)
         self._run_backward(scope)
 
-    def grad(self):
+    def _gradient(self):
         return np.array(self._grad())
 
     def __str__(self):
