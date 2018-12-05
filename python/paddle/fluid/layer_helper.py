@@ -49,23 +49,8 @@ class LayerHelper(object):
     def startup_program(self):
         return default_startup_program()
 
-    def _np_to_variable(self, x):
-        tensor = core.LoDTensor()
-        tensor.set(x, core.CPUPlace())
-        return Variable(
-            self.main_program.current_block(),
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            name=None,
-            shape=x.shape,
-            dtype=x.dtype)
-
     def to_variable(self, x):
-        if isinstance(x, Variable):
-            return x
-        elif isinstance(x, np.ndarray):
-            return base.to_variable(x, self.main_program.current_block())
-        else:
-            raise ValueError("inputs wrong type %s\n" % x)
+        return base.to_variable(x, self.main_program.current_block())
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)

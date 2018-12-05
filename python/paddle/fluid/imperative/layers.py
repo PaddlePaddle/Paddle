@@ -35,13 +35,8 @@ class PyLayer(core.Layer):
 
         var_inputs = []
         for x in inputs:
-            if isinstance(x, np.ndarray):
-                py_var = base.to_variable(x)
-                var_inputs.append(py_var)
-            elif isinstance(x, framework.Variable):
-                var_inputs.append(x)
-            else:
-                raise ValueError("not var or ndarray %s" % type(x))
+            py_var = base.to_variable(x)
+            var_inputs.append(py_var)
         outputs = self.forward(var_inputs)
         return outputs
 
