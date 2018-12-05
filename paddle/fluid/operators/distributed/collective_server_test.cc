@@ -85,15 +85,16 @@ TEST(PREFETCH, GPU) {
   GenerateVars(client_scope, place, var_name);
 
   std::vector<std::string> eps{ep};
-  distributed::CollectiveClient::ReduceSelectedRows<float>(eps, var_name,
-                                                           client_scope);
-  auto slr =
-      client_scope->FindVar(var_name)->GetMutable<framework::SelectedRows>();
+  std::string dst_var_name = var_name + "_dst_";
+  distributed::CollectiveClient::ReduceSelectedRows<float>(
+      eps, var_name, client_scope, dst_var_name);
+  auto slr = client_scope->FindVar(dst_var_name)
+                 ->GetMutable<framework::SelectedRows>();
   std::cout << "ReduceSelectedRows:" << distributed::GetSelectedRowsInfo(*slr)
             << std::endl;
 
   std::cout << "begin WaitVarBarrier" << std::endl;
-  rpc_server->WaitVarBarrier(var_name);
+  rpc_server->WaitVarBarrier(dst_var_name);
   rpc_server->ClearRegisteredVars();
   server->Stop();
 

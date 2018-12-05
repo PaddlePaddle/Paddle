@@ -76,67 +76,72 @@ struct ReduceSelectedRowsFunctor {
       return;
     }
 
-    // 1. gather local selected rows, merge them
-    std::string gathered_var_name = out_var_handle_->name_ + "_gathered_tmp";
     auto scope = local_scopes_.at(out_var_handle_->scope_idx_);
-    auto gathered_var_mid = scope->Var(gathered_var_name);
+    const std::string &out_var_name = out_var_handle_->name_;
+    auto out_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes_.at(out_place_));
+
+    // 1. gather local selected rows
+    std::string gathered_var_name = out_var_name + "_gathered_tmp_";
     auto gathered_select_rows =
-        gathered_var_mid->GetMutable<framework::SelectedRows>();
+        scope->Var(gathered_var_name)->GetMutable<framework::SelectedRows>();
     GatherLocalSelectedRows(src_slrs_, in_places_, dev_ctxes_, out_place_,
                             gathered_select_rows);
-
-    // wait
     for (auto &dev_ctx : dev_ctxes_) {
       dev_ctx.second->Wait();
     }
-
-    VLOG(9) << "gathered selected rows:" << gathered_var_name
+    VLOG(9) << "gathered local selected rows:" << gathered_var_name
             << operators::distributed::GetSelectedRowsInfo(
                    *gathered_select_rows);
 
-    // merge them
-    auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes_.at(out_place_));
-    std::string merged_var_name = GetRemoteVarName(out_var_handle_->name_);
+    // 2. merge local selected rows
+    std::string merged_var_name = GetRemoteVarName(out_var_name);
     auto merged_select_rows =
         scope->Var(merged_var_name)->GetMutable<SelectedRows>();
     operators::math::scatter::MergeAdd<DevCtx, T> merge_func;
-    merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
-    VLOG(9) << "merged selected rows:" << merged_var_name
+    merge_func(*out_dev_ctx, *gathered_select_rows, merged_select_rows);
+    VLOG(9) << "merged local selected rows:" << merged_var_name
             << operators::distributed::GetSelectedRowsInfo(*merged_select_rows);
 
-    // 2. start collective server if it doesn't exist
+    // 3. start collective server if it doesn't exist
     operators::distributed::CollectiveServer *server =
         operators::distributed::CollectiveServer::GetInstance(
             collective_context_.endpoints_[collective_context_.trainer_id_],
             collective_context_.endpoints_.size() - 1);
-
     auto rpc_server = server->GetRPCServer();
     rpc_server->RegisterVar(merged_var_name,
                             operators::distributed::kRequestGetMonomerVariable,
-                            scope, merged_dev_ctx);
+                            scope, out_dev_ctx);
 
-    // 5. del gathered var
-    merged_dev_ctx->Wait();
-    std::vector<std::string> tmp_vars{gathered_var_name};
-    scope->EraseVars(tmp_vars);
+    // 4. del gathered var
+    out_dev_ctx->Wait();
+    scope->EraseVars(std::vector<std::string>{gathered_var_name});
 
-    // 3. gather them from all remote nodes.
+    // 5. gather them from all remote nodes.
     auto reduce_eps = collective_context_.endpoints_;
+    PADDLE_ENFORCE(collective_context_.trainer_id_ >= 0 &&
+                       collective_context_.trainer_id_ < reduce_eps.size(),
+                   "trainer_id_ must be in [0, %u]",
+                   collective_context_.endpoints_.size());
     reduce_eps.erase(reduce_eps.begin() + collective_context_.trainer_id_);
-
+    std::string reduced_var_name = merged_var_name + "_reduced_with_remotes_";
     operators::distributed::CollectiveClient::ReduceSelectedRows<T>(
-        reduce_eps, merged_var_name, scope);
+        reduce_eps, merged_var_name, scope, reduced_var_name);
 
-    scope->EraseVars(std::vector<std::string>{out_var_handle_->name_});
-    scope->Rename(merged_var_name, out_var_handle_->name_);
-    auto slr =
-        scope->FindVar(out_var_handle_->name_)->GetMutable<SelectedRows>();
-    VLOG(9) << "reduced selected rows:" << merged_var_name
+    // 6. rename from reduced_with_remotes to out_var_name
+    scope->EraseVars(std::vector<std::string>{out_var_name});
+    scope->Rename(reduced_var_name, out_var_name);
+
+    auto slr = scope->FindVar(out_var_name)->GetMutable<SelectedRows>();
+    VLOG(9) << "out selected rows:" << out_var_name
             << operators::distributed::GetSelectedRowsInfo(*slr);
 
+    // 7. wait for every node to get merged_var.
     rpc_server->WaitVarBarrier(merged_var_name);
     rpc_server->ClearVar(merged_var_name);
     VLOG(9) << "ReduceSelectedRowsFunctor end";
+
+    // 8. clear merged_var
+    scope->EraseVars(std::vector<std::string>{merged_var_name});
   }
 };
 
@@ -226,12 +231,16 @@ void ReduceOpHandle::RunImpl() {
 
       auto tensor_type = ToDataType(in_selected_rows[0]->value().type());
       if (platform::is_gpu_place(in_p)) {
+#if defined(PADDLE_WITH_CUDA)
         ReduceSelectedRowsFunctor<platform::CUDADeviceContext> func(
             local_scopes_, in_selected_rows, in_places, dev_ctxes_,
             out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>(),
             collective_context_);
         VisitSelectedRowsDataType(tensor_type, func);
+#else
+        PADDLE_ENFORCE(false, "not surpported cuda");
+#endif
       } else {
         ReduceSelectedRowsFunctor<platform::CPUDeviceContext> func(
             local_scopes_, in_selected_rows, in_places, dev_ctxes_,

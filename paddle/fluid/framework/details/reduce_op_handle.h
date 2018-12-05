@@ -56,9 +56,14 @@ struct ReduceOpHandle : public OpHandleBase {
     }
   }
 #else
+  platform::CollectiveContext collective_context_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
-                 const std::vector<platform::Place> &places)
-      : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
+                 const std::vector<platform::Place> &places,
+                 const platform::CollectiveContext &context)
+      : OpHandleBase(node),
+        local_scopes_(local_scopes),
+        places_(places),
+        collective_context_(context) {}
 #endif
 
   std::string Name() const override;

@@ -60,6 +60,7 @@ class CollectiveClient {
   static void ReduceSelectedRows(const std::vector<std::string>& endpoints,
                                  const std::string& var_name,
                                  framework::Scope* local_scope,
+                                 const std::string& dst_var_name,
                                  int64_t time_out = FLAGS_rpc_deadline);
 
   static void BroadCast(const std::vector<std::string>& endpoints,

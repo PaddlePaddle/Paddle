@@ -707,7 +707,7 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
-      local_scopes_, places_));
+      local_scopes_, places_, collective_context_));
 #endif
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
 
