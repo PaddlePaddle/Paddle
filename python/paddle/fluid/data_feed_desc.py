@@ -55,8 +55,10 @@ class DataFeedDesc(object):
     DataFeedDesc can also be changed during runtime. Once you got familiar with
     what each field mean, you can modify it to better suit your need. E.g.:
     >>> data_feed.set_batch_size(128)
-    >>> data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
-    >>> data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
+    >>> # The slot named 'wd1' will be set used, and the type is Tensor
+    >>> data_feed.set_dense_slots(['wd1'])
+    >>> # The slot named 'wd2' will be set used, and the type is LoDTensor
+    >>> data_feed.set_sparse_slots(['wd2'])
 
     Finally, the content can be dumped out for debugging purpose:
     >>> print(data_feed.desc())
@@ -71,6 +73,7 @@ class DataFeedDesc(object):
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         if self.proto_desc.name == "MultiSlotDataFeed":
+            self.__have_set_used_slot = False
             self.__name_to_index = {
                 slot.name: i
                 for i, slot in enumerate(self.proto_desc.multi_slot_desc.slots)
@@ -101,10 +104,10 @@ class DataFeedDesc(object):
             >>> data_feed.set_dense_slots(['words'])
 
         Args:
-            dense_slots_name: a list of slot names which will be set dense
+            dense_slots_name: a list of slot names which will be set used and be set dense
 
         Note:
-            Default is sparse for all slots
+            Default is not used and sparse for all slots
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError(
@@ -113,30 +116,38 @@ class DataFeedDesc(object):
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].is_dense = True
+            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
+                name]].is_used = True
+        if dense_slots_name:
+            self.__have_set_used_slot = True
 
-    def set_use_slots(self, use_slots_name):
+    def set_sparse_slots(self, sparse_slots_name):
         """
-        Set if a specific slot will be used for training. A dataset shall
-        contain a lot of features, through this function one can select which
-        ones will be used for a specific model.
+        Set if a specific slot will be sparse. Will be effective during training.
+        features for a sparse slot will be fed into a LoDTensor, while those for a
+        dense slot will be fed into a Tensor
 
         Example:
             >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> data_feed.set_use_slots(['words'])
+            >>> data_feed.set_sparse_slots(['words'])
 
         Args:
-            use_slots_name: a list of slot names which will be used in training
+            sparse_slots_name: a list of slot names which will be set used and be set sparse
 
         Note:
-            Default is not used for all slots
+            Default is not used and sparse for all slots
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError(
-                "Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto"
+                "Only MultiSlotDataFeed need set_sparse_slots, pls check your datafeed.proto"
             )
-        for name in use_slots_name:
+        for name in sparse_slots_name:
+            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
+                name]].is_dense = False
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].is_used = True
+        if sparse_slots_name:
+            self.__have_set_used_slot = True
 
     def desc(self):
         """
@@ -149,4 +160,9 @@ class DataFeedDesc(object):
         Returns:
             A string message
         """
+        if self.proto_desc.name == "MultiSlotDataFeed":
+            if not self.__have_set_used_slot:
+                raise ValueError(
+                    "You must use set_dense_slots(list) or set_sparse_slots(list) function to set used slots before training."
+                )
         return text_format.MessageToString(self.proto_desc)

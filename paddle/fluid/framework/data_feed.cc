@@ -33,11 +33,7 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (name == use_slots_[i]) {
-      if (use_slots_is_dense_[i]) {
-        feed_vec_[i] = MixTensor(var->GetMutable<Tensor>());
-      } else {
-        feed_vec_[i] = MixTensor(var->GetMutable<LoDTensor>());
-      }
+      feed_vec_[i] = var->GetMutable<LoDTensor>();
     }
   }
 }
@@ -350,34 +346,21 @@ void MultiSlotDataFeed::PutToFeedVec(
     int total_instance = static_cast<int>(offset.back());
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
-      if (feed_vec_[i].IsDense()) {
-        int size_in_each_batch = total_instance / batch_size_;
-        float* tensor_ptr = feed_vec_[i].GetTensor()->mutable_data<float>(
-            {batch_size_, size_in_each_batch}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
-      } else {
-        float* tensor_ptr = feed_vec_[i].GetLoDTensor()->mutable_data<float>(
-            {total_instance, 1}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
-        LoD data_lod{offset};
-        feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
-      }
+      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec[i].GetUint64Data();
-      if (feed_vec_[i].IsDense()) {
-        int size_in_each_batch = total_instance / batch_size_;
-        int64_t* tensor_ptr = feed_vec_[i].GetTensor()->mutable_data<int64_t>(
-            {batch_size_, size_in_each_batch}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
-      } else {
-        int64_t* tensor_ptr =
-            feed_vec_[i].GetLoDTensor()->mutable_data<int64_t>(
-                {total_instance, 1}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
-        LoD data_lod{offset};
-        feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
-      }
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+    }
+    LoD data_lod{offset};
+    feed_vec_[i]->set_lod(data_lod);
+    if (use_slots_is_dense_[i]) {
+      int size_in_each_batch = total_instance / batch_size_;
+      feed_vec_[i]->Resize({batch_size_, size_in_each_batch});
     }
   }
 }

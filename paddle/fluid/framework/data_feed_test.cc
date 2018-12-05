@@ -53,10 +53,10 @@ const std::vector<std::string> load_filelist_from_file(const char* filename) {
   return filelist;
 }
 
-void GenerateFileForTest(const char* protofile, const char* filelist) {
+void GenerateFileForNormalTest(const char* protofile, const char* filelist) {
   std::ofstream w_protofile(protofile);
   w_protofile << "name: \"MultiSlotDataFeed\"\n"
-                 "batch_size: 2\n"
+                 "batch_size: 3\n"
                  "multi_slot_desc {\n"
                  "    slots {\n"
                  "        name: \"uint64_sparse_slot\"\n"
@@ -90,20 +90,44 @@ void GenerateFileForTest(const char* protofile, const char* filelist) {
                  "    }\n"
                  "}";
   w_protofile.close();
-  std::ofstream w_filelist(filelist);
   int total_file = 4;
+  std::ofstream w_filelist(filelist);
   for (int i = 0; i < total_file; ++i) {
-    std::string filename = "TestMultiSlotDataFeed.data." + std::to_string(i);
+    std::string filename =
+        "test_multi_slot_data_feed.test_data." + std::to_string(i);
     w_filelist << filename;
     if (i + 1 != total_file) {
       w_filelist << std::endl;
     }
     std::ofstream w_datafile(filename.c_str());
-    w_datafile << "3 3978 620 82 1 1926.08 1 1926 1 6.02 1 1996\n"
-                  "2 1300 2983353 1 985.211 1 8 1 0.618 1 12\n"
-                  "1 19260827 2 3.14 2.718 1 27 1 2.236 1 28\n";
+    w_datafile << "3 3978 620 82 1 1926.08 2 1 1926 2 3.0 6.02 1 1996\n"
+                  "2 1300 2983353 1 985.211 2 1 8 2 2.0 0.618 1 12\n"
+                  "1 19260827 2 3.14 2.718 2 1 27 2 1.0 2.236 1 28\n";
     w_datafile.close();
   }
+  w_filelist.close();
+}
+
+void GenerateFileForLittleDataTest(const char* protofile,
+                                   const char* filelist) {
+  std::ofstream w_protofile(protofile);
+  w_protofile << "name: \"MultiSlotDataFeed\"\n"
+                 "batch_size: 1000\n"
+                 "multi_slot_desc {\n"
+                 "    slots {\n"
+                 "        name: \"uint64_sparse_slot\"\n"
+                 "        type: \"uint64\"\n"
+                 "        is_dense: false\n"
+                 "        is_used: true\n"
+                 "    }\n"
+                 "}";
+  w_protofile.close();
+  std::ofstream w_filelist(filelist);
+  std::string filename = "test_multi_slot_data_feed.test_data";
+  w_filelist << filename;
+  std::ofstream w_datafile(filename.c_str());
+  w_datafile << "3 3978 620 82\n";
+  w_datafile.close();
   w_filelist.close();
 }
 
@@ -152,19 +176,13 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
       std::map<std::string, const paddle::framework::LoDTensor*>
           lodtensor_targets;
-      std::map<std::string, const paddle::framework::Tensor*> tensor_targets;
       for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
         const auto& slot = multi_slot_desc.slots(i);
         if (slot.is_used()) {
           const auto& name = slot.name();
           readers[idx]->AddFeedVar(scope->Var(name), name);
-          if (slot.is_dense()) {
-            tensor_targets[name] =
-                &scope->FindVar(name)->Get<paddle::framework::Tensor>();
-          } else {
-            lodtensor_targets[name] =
-                &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
-          }
+          lodtensor_targets[name] =
+              &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
         }
       }
       readers[idx]->Start();
@@ -175,8 +193,9 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
           if (!slot.is_used()) {
             continue;
           }
+          const paddle::framework::LoDTensor* tens =
+              lodtensor_targets[slot.name()];
           if (slot.is_dense()) {  // dense branch
-            const paddle::framework::Tensor* tens = tensor_targets[slot.name()];
             if (slot.type() == "uint64") {
               const int64_t* data = tens->data<int64_t>();
               int batch_size = tens->dims()[0];
@@ -202,8 +221,6 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
               PADDLE_THROW("Error type in proto file.");
             }
           } else {  // sparse branch
-            const paddle::framework::LoDTensor* tens =
-                lodtensor_targets[slot.name()];
             if (slot.type() == "uint64") {
               const int64_t* data = tens->data<int64_t>();
               for (size_t i = 0; i < tens->NumElements(); ++i) {
@@ -321,10 +338,25 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
   }
 }
 
-TEST(DataFeed, MultiSlotUnitTest) {
+TEST(DataFeed, MultiSlotNormalUnitTest) {
   const char* protofile = "data_feed_desc.prototxt";
   const char* filelist_name = "filelist.txt";
-  GenerateFileForTest(protofile, filelist_name);
+  GenerateFileForNormalTest(protofile, filelist_name);
+  const std::vector<std::string> filelist =
+      load_filelist_from_file(filelist_name);
+  paddle::framework::DataFeedDesc data_feed_desc =
+      load_datafeed_param_from_file(protofile);
+  std::vector<MultiTypeSet> reader_elem_set;
+  std::vector<MultiTypeSet> file_elem_set;
+  GetElemSetFromReader(&reader_elem_set, data_feed_desc, filelist, 4);
+  GetElemSetFromFile(&file_elem_set, data_feed_desc, filelist);
+  CheckIsUnorderedSame(reader_elem_set, file_elem_set);
+}
+
+TEST(DataFeed, MultiSlotLittleDataUnitTest) {
+  const char* protofile = "data_feed_desc.prototxt";
+  const char* filelist_name = "filelist.txt";
+  GenerateFileForLittleDataTest(protofile, filelist_name);
   const std::vector<std::string> filelist =
       load_filelist_from_file(filelist_name);
   paddle::framework::DataFeedDesc data_feed_desc =

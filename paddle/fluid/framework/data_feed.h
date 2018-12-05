@@ -30,35 +30,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// Pack Tensor type and LoDTensor type into MixTensor type, in order
-// to record either Tensor or LoDTensor information at the same time.
-class MixTensor {
- public:
-  MixTensor() {}
-  explicit MixTensor(LoDTensor* lodtensor) {
-    is_dense_ = false;
-    lodtensor_ = lodtensor;
-  }
-  explicit MixTensor(Tensor* tensor) {
-    is_dense_ = true;
-    tensor_ = tensor;
-  }
-  bool IsDense() { return is_dense_; }
-  LoDTensor* GetLoDTensor() {
-    PADDLE_ENFORCE(!is_dense_, "Let a dense var return a LoDTensor ptr.");
-    return lodtensor_;
-  }
-  Tensor* GetTensor() {
-    PADDLE_ENFORCE(is_dense_, "Let a sparse var return a Tensor ptr.");
-    return tensor_;
-  }
-
- private:
-  bool is_dense_;
-  LoDTensor* lodtensor_;
-  Tensor* tensor_;
-};
-
 // DataFeed is the base virtual class for all ohther DataFeeds.
 // It is used to read files and parse the data for subsequent trainer.
 // Example:
@@ -133,7 +104,7 @@ class DataFeed {
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
   // The data read by DataFeed will be stored here
-  std::vector<MixTensor> feed_vec_;
+  std::vector<LoDTensor*> feed_vec_;
 
   // the batch size defined by user
   int default_batch_size_;

@@ -105,7 +105,7 @@ class AsyncExecutor(object):
             filelist(str): a file containing the training dataset file list
             thread_num(int): number of concurrent training threads. See
                              :code:`Note` for how to set this properly
-            fetch(str|list): the var name or a list of var names to inspect
+            fetch(Variable|list): Variable or a list of Variable to inspect
             debug(bool): When set to True, fetch vars will be printed to
                          standard output after each minibatch
 
