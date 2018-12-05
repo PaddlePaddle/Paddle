@@ -22,10 +22,8 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-namespace jit = platform::jit;
-
 /* Layer Norm JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+template <typename T, platform::cpu_isa_t isa, jit_block>
 class LayerNormKernelImpl : public LayerNormKernel<T> {
  public:
   explicit LayerNormKernelImpl(int right) : LayerNormKernel<T>() {
@@ -90,7 +88,7 @@ class LayerNormKernelImpl : public LayerNormKernel<T> {
     this->end_ = this->num_ - this->rest_;                                     \
   }                                                                            \
   template <>                                                                  \
-  void LayerNormKernelImpl<float, jit::avx, block>::Compute(                   \
+  void LayerNormKernelImpl<float, platform::avx, block>::Compute(              \
       float* x, float* out, float* mean, float* var, const float* scale,       \
       const float* bias, int height, const float epsilon) const {              \
     __m256 sum;                                                                \
@@ -219,16 +217,16 @@ class LayerNormKernelImpl : public LayerNormKernel<T> {
   }
 
 #ifdef __AVX__
-INTRIAVX_FLOAT(jit::avx, kEQ8);
-INTRIAVX_FLOAT(jit::avx, kGT8LT16);
-INTRIAVX_FLOAT(jit::avx, kEQ16);
-INTRIAVX_FLOAT(jit::avx, kGT16);
+INTRIAVX_FLOAT(platform::avx, kEQ8);
+INTRIAVX_FLOAT(platform::avx, kGT8LT16);
+INTRIAVX_FLOAT(platform::avx, kEQ16);
+INTRIAVX_FLOAT(platform::avx, kGT16);
 #endif
 #ifdef __AVX2__
-INTRIAVX_FLOAT(jit::avx2, kEQ8);
-INTRIAVX_FLOAT(jit::avx2, kGT8LT16);
-INTRIAVX_FLOAT(jit::avx2, kEQ16);
-INTRIAVX_FLOAT(jit::avx2, kGT16);
+INTRIAVX_FLOAT(platform::avx2, kEQ8);
+INTRIAVX_FLOAT(platform::avx2, kGT8LT16);
+INTRIAVX_FLOAT(platform::avx2, kEQ16);
+INTRIAVX_FLOAT(platform::avx2, kGT16);
 #endif
 
 #undef INTRIAVX_FLOAT

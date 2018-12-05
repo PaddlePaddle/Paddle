@@ -29,7 +29,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
-namespace jit = platform::jit;
 
 #ifdef PADDLE_WITH_MKLML
 // try to use MKL to speedup

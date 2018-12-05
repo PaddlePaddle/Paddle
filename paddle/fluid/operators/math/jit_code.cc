@@ -22,7 +22,7 @@ namespace math {
 namespace jitkernel {
 namespace gen {
 
-using namespace platform::jit;  // NOLINT
+using namespace platform;  // NOLINT
 
 bool VXXJitCode::init(int d, int scalar_index) {
   // It's not necessary to use avx512 since it would slow down the frequency
