@@ -888,10 +888,10 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def_property(
           "trainers_endpoints",
-          [](const BuildStrategy &self) { return self.trainers_end_points_; },
+          [](const BuildStrategy &self) { return self.trainers_endpoints_; },
           [](BuildStrategy &self,
-             const std::vector<std::string> &trainers_end_points) {
-            self.trainers_endpoints_ = trainers_end_points;
+             const std::vector<std::string> &trainers_endpoints) {
+            self.trainers_endpoints_ = trainers_endpoints;
           })
       .def_property("trainer_id",
                     [](const BuildStrategy &self) { return self.trainer_id_; },

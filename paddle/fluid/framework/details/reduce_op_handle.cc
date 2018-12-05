@@ -58,8 +58,8 @@ void ReduceOpHandle::GatherSelectedRows(
            << collective_context.String();
 
   // TODO(gongwb): add cpu support
-  if (collective_context.end_points_.size() <= 1 ||
-      is_cpu_place(in_places[0]) || is_cpu_place(out_place)) {
+  if (collective_context.endpoints_.size() <= 1 || is_cpu_place(in_places[0]) ||
+      is_cpu_place(out_place)) {
     GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                             dst_selected_rows);
     return;
@@ -90,8 +90,8 @@ void ReduceOpHandle::GatherSelectedRows(
   // 2. start collective server if it doesn't exist
   operators::distributed::CollectiveServer *server =
       operators::distributed::CollectiveServer::GetInstance(
-          collective_context.end_points_[collective_context.trainer_id_],
-          collective_context.end_points_.size() - 1);
+          collective_context.endpoints_[collective_context.trainer_id_],
+          collective_context.endpoints_.size() - 1);
 
   auto rpc_server = server->GetRPCServer();
   rpc_server->RegisterVar(merged_var_name,
@@ -104,13 +104,13 @@ void ReduceOpHandle::GatherSelectedRows(
       operators::distributed::CollectiveClient::GetInstance();
 
   std::vector<operators::distributed::RemoteVar> vars;
-  for (unsigned int i = 0; i < collective_context.end_points_.size(); i++) {
+  for (unsigned int i = 0; i < collective_context.endpoints_.size(); i++) {
     if (i == (unsigned)collective_context.trainer_id_) continue;
 
     operators::distributed::RemoteVar var;
     var.trainer_id_ = i;
     var.var_name_ = GetRemoteVarName(out_var_handle->name_, i);
-    var.ep_ = collective_context.end_points_[i];
+    var.ep_ = collective_context.endpoints_[i];
 
     vars.push_back(var);
     VLOG(4) << "gather from:" << var.String();
@@ -121,7 +121,7 @@ void ReduceOpHandle::GatherSelectedRows(
 
   // 4. merged local selected rows.
   std::vector<const SelectedRows *> all;
-  all.resize(collective_context.end_points_.size());
+  all.resize(collective_context.endpoints_.size());
   for (auto v : vars) {
     all[v.trainer_id_] =
         scope->FindVar(v.var_name_)->GetMutable<SelectedRows>();

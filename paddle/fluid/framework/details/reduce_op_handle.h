@@ -31,13 +31,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 struct CollectiveContext {
-  std::vector<std::string> end_points_;
+  std::vector<std::string> endpoints_;
   int trainer_id_{0};
 
   std::string String() const {
     std::stringstream ss;
-    ss << "end_points_:";
-    for (auto e : end_points_) {
+    ss << "endpoints_:";
+    for (auto e : endpoints_) {
       ss << e << ",";
     }
 
