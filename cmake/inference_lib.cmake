@@ -32,24 +32,30 @@ function(copy TARGET)
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
         if (WIN32)
-            # windows cmd shell will not expand wildcard automatically.
-            # below expand the files,libs and copy them by rules.
-            file(GLOB header_files ${src} "*.h")
-            file(GLOB static_lib_files ${src} "*.lib")
-            file(GLOB dll_lib_files ${src} "*.dll")
-            set(src_files ${header_files} ${static_lib_files} ${dll_lib_files})
-
-            if (NOT "${src_files}" STREQUAL "")
-                list(REMOVE_DUPLICATES src_files)
-            endif ()
             add_custom_command(TARGET ${TARGET} PRE_BUILD
                     COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
                     )
-            foreach (src_file ${src_files})
-                add_custom_command(TARGET ${TARGET} PRE_BUILD
-                        COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
-                        COMMENT "copying ${src_file} -> ${dst}")
-            endforeach ()
+            if(IS_DIRECTORY ${src})
+                if(EXISTS ${src})
+                    add_custom_command(TARGET ${TARGET} PRE_BUILD
+                            COMMAND cmake -E copy_directory "${src}" "${dst}"
+                            COMMENT "copying ${src} -> ${dst}")
+                else()
+                    message(WARNING "${src} not exist!")
+                endif()
+            else()
+                # windows cmd shell will not expand wildcard automatically.
+                # below expand the files, and copy them by rules.
+                file(GLOB src_files ${src})
+                if (NOT "${src_files}" STREQUAL "")
+                    list(REMOVE_DUPLICATES src_files)
+                endif ()
+                foreach (src_file ${src_files})
+                    add_custom_command(TARGET ${TARGET} PRE_BUILD
+                            COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
+                            COMMENT "copying ${src_file} -> ${dst}")
+                endforeach ()
+            endif()
         else (WIN32) # not windows
             add_custom_command(TARGET ${TARGET} PRE_BUILD
                     COMMAND mkdir -p "${dst}"
@@ -63,7 +69,7 @@ endfunction()
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
 copy(eigen3_lib
         SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
-        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported
+        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen/src ${dst_dir}/unsupported
         DEPS eigen3
         )
 
@@ -191,7 +197,7 @@ endif ()
 
 set(module "inference")
 if(WIN32)
-    set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*)
+    set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
 else(WIN32)
     set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
 endif(WIN32)
@@ -235,13 +241,8 @@ copy(third_party DEPS fluid_lib_dist
         )
 
 # only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
-if(WIN32)
-    set(inference_api_lib_binary ${FLUID_INSTALL_DIR}/paddle/fluid/inference/$<CONFIG>/libpaddle_fluid.*)
-else(WIN32)
-    set(inference_api_lib_binary ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
-endif(WIN32)
 copy(inference_api_lib DEPS fluid_lib_dist
-  SRCS ${inference_api_lib_binary}
+  SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
