@@ -63,6 +63,8 @@ class ParallelExecutor(object):
         trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
         scope(Scope): scope to run with, default use fluid.global_scope().
+        trainers_endpoints(list[string]): Trainer's endpoint. It's used for reduce selected rows
+            since nccl can't support reduce sparse tensors.
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
