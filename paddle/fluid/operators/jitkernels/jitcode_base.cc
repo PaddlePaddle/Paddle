@@ -13,6 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jitkernels/jitcode_base.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
 
@@ -29,7 +32,7 @@ void JitBase::dumpCode(const unsigned char* code) const {
     counter++;
     std::ofstream fout(filename.str(), std::ios::out);
     if (fout.is_open()) {
-      fout.write(reinterpret_cast<const char*>(code), getSize());
+      fout.write(reinterpret_cast<const char*>(code), this->getSize());
       fout.close();
     }
   }
