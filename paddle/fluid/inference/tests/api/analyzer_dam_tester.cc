@@ -171,6 +171,9 @@ void SetConfig(contrib::AnalysisConfig *cfg) {
   cfg->device = 0;
   cfg->specify_input_name = true;
   cfg->enable_ir_optim = true;
+  cfg->EnableMKLDNN();
+  std::vector<std::string> op_list ={"conv3d"};
+  cfg->SetMKLDNNOp(op_list);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {

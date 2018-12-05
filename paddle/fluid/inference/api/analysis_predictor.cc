@@ -324,6 +324,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+  }else if (config_.use_mkldnn()) {
+    argument_.SetMKLDNNOp(config_.mkldnn_op_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();

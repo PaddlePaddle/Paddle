@@ -18,12 +18,20 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+
 std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Aplies MKL-DNN placement strategy.";
+  const std::vector<std::string> op_list = Get<std::vector<std::string>>("mkldnn_op_list");
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp() && n->Op()->HasAttr("use_mkldnn")) {
-      n->Op()->SetAttr("use_mkldnn", true);
+      if (op_list.empty()){
+          n->Op()->SetAttr("use_mkldnn", true);
+      }else{
+          if(std::find(op_list.begin(), op_list.end(), n->Name()) != op_list.end()){
+               n->Op()->SetAttr("use_mkldnn", true);
+          }
+      }
     }
   }
   return graph;
@@ -34,4 +42,5 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
 }  // namespace paddle
 
 REGISTER_PASS(mkldnn_placement_pass,
-              paddle::framework::ir::MKLDNNPlacementPass);
+              paddle::framework::ir::MKLDNNPlacementPass)
+     .RequirePassAttr("mkldnn_op_list");
