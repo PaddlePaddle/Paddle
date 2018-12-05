@@ -18,7 +18,7 @@
 #include <tuple>
 #include <type_traits>
 #include "paddle/fluid/operators/jitkernels/kernel_base.h"
-#include "paddle/fluid/operators/jitkernels/kernels.h"
+#include "paddle/fluid/operators/jitkernels/kernel_pool.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/variant.h"  // for UNUSED
 

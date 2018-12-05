@@ -7,7 +7,9 @@
 
 set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place)
 
-cc_library(jit_kernel_base SRCS kernels.cc jitcode_base.cc DEPS ${JIT_KERNEL_DEPS})
+file(GLOB jit_kernel_cc_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cc")
+list(REMOVE_ITEM jit_kernel_cc_srcs jit_test.cc)
+cc_library(jit_kernel_base SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 
 add_subdirectory(refer)
 add_subdirectory(more)
@@ -15,5 +17,5 @@ if(WITH_XBYAK)
     add_subdirectory(jitcode)
 endif()
 
-cc_library(jit_kernel SRCS kernels.cc DEPS ${JIT_KERNEL_DEPS})
+cc_library(jit_kernel SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS test.cc DEPS jit_kernel)

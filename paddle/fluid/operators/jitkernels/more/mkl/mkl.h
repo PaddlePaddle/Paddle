@@ -41,7 +41,7 @@ class VMulKernel
   VMulKernel() { this->func = VMul<T>; }
   bool UseMe(int d) const override {
     if (std::is_same<T, float>::value) {
-      return platform::jit::MayIUse(platform::jit::avx512f) && d > 512;
+      return platform::MayIUse(platform::avx512f) && d > 512;
     } else {
       return true;
     }
