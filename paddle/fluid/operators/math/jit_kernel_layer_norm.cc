@@ -90,7 +90,7 @@ class LayerNormKernelImpl : public LayerNormKernel<T> {
     this->end_ = this->num_ - this->rest_;                                     \
   }                                                                            \
   template <>                                                                  \
-  void LayerNormKernelImpl<float, jit::avx, block>::Compute(                   \
+  void LayerNormKernelImpl<float, isa, block>::Compute(                        \
       float* x, float* out, float* mean, float* var, const float* scale,       \
       const float* bias, int height, const float epsilon) const {              \
     __m256 sum;                                                                \

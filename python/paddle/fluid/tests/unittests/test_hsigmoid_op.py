@@ -162,7 +162,10 @@ class TestHSigmoidOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
+        self.check_grad(
+            ['Bias', 'X', 'W'], ['Out'],
+            no_grad_set=set('Label'),
+            numeric_grad_delta=0.015)
 
 
 class TestHSigmoidOpSparse(OpTest):

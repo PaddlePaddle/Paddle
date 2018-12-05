@@ -215,7 +215,26 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
   void CRFDecodeKernelImpl<float, jit::avx512f, block>::Compute(               \
       const int seq_len, const float* x, const float* w, float* alpha,         \
       int* track) const {                                                      \
-    INIT_ALPHA(ZMM_FLOAT_BLOCK)                                                \
+    /* Setup the alpha initial value.*/                                        \
+    int i_offset = 0;                                                          \
+    int last_offset = this->rest_ - ZMM_FLOAT_BLOCK;                           \
+    for (int i = 0; i <= this->end_; ++i) {                                    \
+      /* weights, input and alpha values. */                                   \
+      __m512 w_content, x_content, alpha_content;                              \
+      /* Load the relevant data into the variables from un-aligned address.*/  \
+      w_content = _mm512_loadu_ps(w + i_offset);                               \
+      x_content = _mm512_loadu_ps(x + i_offset);                               \
+      alpha_content = _mm512_add_ps(w_content, x_content);                     \
+      _mm512_storeu_ps(alpha + i_offset, alpha_content);                       \
+      i_offset += ZMM_FLOAT_BLOCK;                                             \
+      if (i == this->end_ - 1) {                                               \
+        if (this->rest_ > 0) {                                                 \
+          i_offset += last_offset;                                             \
+        } else {                                                               \
+          break;                                                               \
+        }                                                                      \
+      }                                                                        \
+    }                                                                          \
     /* Use the column-major strategy to get the location of maximum score.*/   \
     int seq_offset = 0;                                                        \
     constexpr int state_trans_base_idx = 2;                                    \
