@@ -89,6 +89,8 @@ struct ReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  template <typename DevCtx, typename DataType>
   void GatherSelectedRows(
       const std::vector<const SelectedRows *> &src_selecte_rows_,
       const std::vector<platform::Place> &in_places,
@@ -96,7 +98,7 @@ struct ReduceOpHandle : public OpHandleBase {
       VarHandle *out_var_handle, const platform::Place &out_place,
       SelectedRows *dst_selecte_rows);
 
-  void WaitLocalSelectedRows(
+  void Wait(
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
 
   template <typename T>
