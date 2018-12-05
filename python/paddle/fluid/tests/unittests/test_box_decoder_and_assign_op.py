@@ -20,38 +20,46 @@ import sys
 import math
 from op_test import OpTest
 
-def box_decoder_and_assign(prior_box, prior_box_var, target_box, box_score, box_clip):
-    proposals = np.zeros_like(target_box, dtype=np.float32)
-    prior_box_loc = np.zeros_like(prior_box, dtype=np.float32)
-    prior_box_loc[:, 0] = prior_box[:, 2] - prior_box[:, 0] + 1.
-    prior_box_loc[:, 1] = prior_box[:, 3] - prior_box[:, 1] + 1.
-    prior_box_loc[:, 2] = (prior_box[:, 2] + prior_box[:, 0]) / 2
-    prior_box_loc[:, 3] = (prior_box[:, 3] + prior_box[:, 1]) / 2
-    pred_bbox = np.zeros_like(target_box, dtype=np.float32)
-    for i in range(prior_box.shape[0]):
-        dw = np.minimum(prior_box_var[2] * target_box[i, 2::4], box_clip)
-        dh = np.minimum(prior_box_var[3] * target_box[i, 3::4], box_clip)
-        pred_bbox[i, 0::4] = prior_box_var[0] * target_box[
-            i, 0::4] * prior_box_loc[i, 0] + prior_box_loc[i, 2]
-        pred_bbox[i, 1::4] = prior_box_var[1] * target_box[
-            i, 1::4] * prior_box_loc[i, 1] + prior_box_loc[i, 3]
-        pred_bbox[i, 2::4] = np.exp(dw) * prior_box_loc[i, 0]
-        pred_bbox[i, 3::4] = np.exp(dh) * prior_box_loc[i, 1]
-    proposals[:, 0::4] = pred_bbox[:, 0::4] - pred_bbox[:, 2::4] / 2
-    proposals[:, 1::4] = pred_bbox[:, 1::4] - pred_bbox[:, 3::4] / 2
-    proposals[:, 2::4] = pred_bbox[:, 0::4] + pred_bbox[:, 2::4] / 2 - 1
-    proposals[:, 3::4] = pred_bbox[:, 1::4] + pred_bbox[:, 3::4] / 2 - 1
+def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
+    boxes = boxes.astype(deltas.dtype, copy=False)
+    widths = boxes[:, 2] - boxes[:, 0] + 1.0
+    heights = boxes[:, 3] - boxes[:, 1] + 1.0
+    ctr_x = boxes[:, 0] + 0.5 * widths
+    ctr_y = boxes[:, 1] + 0.5 * heights
+    wx, wy, ww, wh = weights
+    dx = deltas[:, 0::4] * wx
+    dy = deltas[:, 1::4] * wy
+    dw = deltas[:, 2::4] * ww
+    dh = deltas[:, 3::4] * wh
+    # Prevent sending too large values into np.exp()
+    dw = np.minimum(dw, box_clip)
+    dh = np.minimum(dh, box_clip)
+    pred_ctr_x = dx * widths[:, np.newaxis] + ctr_x[:, np.newaxis]
+    pred_ctr_y = dy * heights[:, np.newaxis] + ctr_y[:, np.newaxis]
+    pred_w = np.exp(dw) * widths[:, np.newaxis]
+    pred_h = np.exp(dh) * heights[:, np.newaxis]
+    pred_boxes = np.zeros(deltas.shape, dtype=deltas.dtype)
+    # x1
+    pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
+    # y1
+    pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
+    # x2 (note: "- 1" is correct; don't be fooled by the asymmetry)
+    pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
+    # y2 (note: "- 1" is correct; don't be fooled by the asymmetry)
+    pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
+
     output_assign_box = []
-    for ino in range(len(proposals)):
+    for ino in range(len(pred_boxes)):
         rank = np.argsort(-box_score[ino])
         maxidx = rank[0]
         if maxidx == 0:
             maxidx = rank[1]
         beg_pos = maxidx * 4
         end_pos = maxidx * 4 + 4
-        output_assign_box.append(proposals[ino, beg_pos:end_pos])
+        output_assign_box.append(pred_boxes[ino, beg_pos:end_pos])
     output_assign_box = np.array(output_assign_box)
-    return proposals, output_assign_box
+
+    return pred_boxes, output_assign_box
 
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
     def test_check_output(self):
@@ -66,7 +74,7 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         target_box = np.random.random((20, 4*num_classes)).astype('float32')
         box_score = np.random.random((20, num_classes)).astype('float32')
         box_clip = 4.135
-        output_box, output_assign_box = box_decoder_and_assign(prior_box, prior_box_var, target_box, box_score, box_clip)        
+        output_box, output_assign_box = box_decoder_and_assign(target_box, prior_box_var, prior_box, box_score, box_clip)        
 
         self.inputs = {
             'PriorBox': (prior_box, lod),

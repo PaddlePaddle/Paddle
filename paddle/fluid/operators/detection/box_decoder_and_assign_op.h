@@ -44,8 +44,8 @@ class BoxDecoderAndAssignKernel : public framework::OpKernel<T> {
     for (int i = 0; i < roi_num; ++i) {
         T prior_box_width = prior_box_data[i * 4 + 2] - prior_box_data[i * 4] + 1;
         T prior_box_height = prior_box_data[i * 4 + 3] - prior_box_data[i * 4 + 1] + 1;
-        T prior_box_center_x = (prior_box_data[i * 4 + 2] + prior_box_data[i * 4]) / 2;
-        T prior_box_center_y = (prior_box_data[i * 4 + 3] + prior_box_data[i * 4 + 1]) / 2;
+        T prior_box_center_x = prior_box_data[i * 4] + prior_box_width / 2;
+        T prior_box_center_y = prior_box_data[i * 4 + 1] + prior_box_height / 2;
       for (int j = 0; j < class_num; ++j) {
         int64_t offset = i * class_num * 4 + j * 4;
         T dw = std::min(prior_box_var_data[2] * target_box_data[offset + 2], bbox_clip);
