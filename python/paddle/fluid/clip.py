@@ -185,7 +185,7 @@ class GradientClipByNorm(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
-            w_param_attrs = flui.ParamAttr(name=None,
+            w_param_attrs = fluid.ParamAttr(name=None,
               initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
               regularizer=fluid.regularizer.L1Decay(1.0),
