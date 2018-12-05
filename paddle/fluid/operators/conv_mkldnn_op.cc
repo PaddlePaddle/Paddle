@@ -139,7 +139,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_key = key + "@dst_mem_p";
     auto src_key = key + "@src_mem_p";
     auto user_src_key = key + "@user_src_mem_p";
-    auto src_reorder_key = key + "@src_mem_p" + "reorder_p";
+    auto src_reorder_key = key + "@src_mem_p@reorder_p";
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(dev_ctx.GetBlob(prim_key));
     if(conv_p == nullptr){
       if(is_INT8){
