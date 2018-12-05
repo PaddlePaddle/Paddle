@@ -151,7 +151,7 @@ void RPCServer::RegisterVar(const std::string& var_name,
   }
 
   rpc_cond_.notify_all();
-  VLOG(40) << "RegisterVar context:" << h.String();
+  VLOG(4) << "RegisterVar context:" << h.String();
 }
 
 void RPCServer::IncreaseVarBarrier(const std::string& var_name) {
@@ -167,11 +167,11 @@ void RPCServer::IncreaseVarBarrier(const std::string& var_name) {
     barrier_cond_.notify_all();
   }
 
-  VLOG(40) << "IncreaseVarBarrier context:" << h.String();
+  VLOG(4) << "IncreaseVarBarrier context:" << h.String();
 }
 
 void RPCServer::WaitVarBarrier(const std::string& var_name) {
-  VLOG(40) << "WaitBarrier var_name:" << var_name;
+  VLOG(4) << "WaitBarrier var_name:" << var_name;
 
   std::unique_lock<std::mutex> lock(mutex_);
   barrier_cond_.wait(lock, [&]() {
@@ -179,11 +179,11 @@ void RPCServer::WaitVarBarrier(const std::string& var_name) {
             exit_flag_.load());
   });
 
-  VLOG(40) << "WaitBarrier context: " << var_map_[var_name].String();
+  VLOG(4) << "WaitBarrier context: " << var_map_[var_name].String();
 }
 
 void RPCServer::SetVarCond(const std::string& var_name) {
-  VLOG(40) << "SetVarCond var_name:" << var_name;
+  VLOG(4) << "SetVarCond var_name:" << var_name;
   {
     std::unique_lock<std::mutex> lock(mutex_);
     if (var_map_.find(var_name) != var_map_.end()) {
@@ -193,14 +193,14 @@ void RPCServer::SetVarCond(const std::string& var_name) {
 }
 
 void RPCServer::WaitVarCond(const std::string& var_name) {
-  VLOG(40) << "WaitVarCond var_name:" << var_name;
+  VLOG(4) << "WaitVarCond var_name:" << var_name;
 
   std::unique_lock<std::mutex> lock(mutex_);
   rpc_cond_.wait(lock, [=] {
     return (var_map_.find(var_name) != var_map_.end() || exit_flag_.load());
   });
 
-  VLOG(40) << "WaitVarCond var_name:" << var_name << " end";
+  VLOG(4) << "WaitVarCond var_name:" << var_name << " end";
 }
 
 MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {

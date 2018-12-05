@@ -29,7 +29,7 @@ if(WITH_GRPC)
 
   cc_test(collective_server_test SRCS collective_server_test.cc 
       DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor
-      selected_rows_functor  scope math_function print_utils SERIAL)
+      selected_rows_functor  scope math_function SERIAL)
 
   cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_grpc memory)
 else()

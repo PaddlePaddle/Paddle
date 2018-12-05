@@ -99,7 +99,7 @@ TEST(PREFETCH, GPU) {
   distributed::RemoteVar var;
   var.ep_ = ep;
   var.var_name_ = "var1";
-  var.rank_id_ = 0;
+  var.trainer_id_ = 0;
 
   std::vector<distributed::RemoteVar> vars{var};
   Gather(vars, &ctx);

@@ -92,7 +92,7 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None,
-                 trainers_end_points=None):
+                 trainers_endpoints=None):
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -138,10 +138,10 @@ class ParallelExecutor(object):
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
 
-        if num_trainers > 1 and trainers_end_points:
+        if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
-                trainers_end_points), "num_trainers == len(end_points)"
-            build_strategy.trainers_end_points = trainers_end_points
+                trainers_endpoints), "num_trainers == len(end_points)"
+            build_strategy.trainers_endpoints = trainers_endpoints
 
         main = main_program
         main = main if main else framework.default_main_program()

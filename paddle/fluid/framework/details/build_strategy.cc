@@ -59,12 +59,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     CollectiveContext *context = CollectiveContext::GetInstance();
-    context->end_points_ = strategy_.trainers_end_points_;
+    context->end_points_ = strategy_.trainers_endpoints_;
     context->rank_id_ = strategy_.trainer_id_;
     PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
     if (strategy_.trainer_id_ > 0) {
       PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
-                         strategy_.trainers_end_points_.size(),
+                         strategy_.trainers_endpoints_.size(),
                      "trainer_id_ < end_points_ size");
     }
     VLOG(1) << "CollectiveContext:" << context->String();

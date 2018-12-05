@@ -32,7 +32,7 @@ namespace framework {
 namespace details {
 struct CollectiveContext {
   std::vector<std::string> end_points_;
-  int rank_id_{0};
+  int trainer_id_{0};
 
   std::string String() const {
     std::stringstream ss;
@@ -41,7 +41,7 @@ struct CollectiveContext {
       ss << e << ",";
     }
 
-    ss << "rank_id_:" << rank_id_;
+    ss << "trainer_id_:" << trainer_id_;
 
     return ss.str();
   }

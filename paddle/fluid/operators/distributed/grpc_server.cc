@@ -228,7 +228,7 @@ class RequestGetMonomerBarrier final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
-    VLOG(40) << "RequestGetMonomerBarrier " << varname;
+    VLOG(4) << "RequestGetMonomerBarrier " << varname;
 
     rpc_server_->WaitVarCond(varname);
     MonomerHandle h = rpc_server_->GetMonomer(varname);
@@ -341,10 +341,10 @@ class RequestCheckpointNotify final : public RequestBase {
 };
 
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(40) << "AsyncGRPCServer is waiting server ready";
+  VLOG(4) << "AsyncGRPCServer is waiting server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(40) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
 
 // Define an option subclass in order to disable SO_REUSEPORT for the
@@ -476,7 +476,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
 
   reqs[req_id] = b;
 
-  VLOG(40) << "TryToRegisterNewOne status:" << b->Status();
+  VLOG(4) << "TryToRegisterNewOne status:" << b->Status();
 }
 
 void AsyncGRPCServer::HandleRequest(

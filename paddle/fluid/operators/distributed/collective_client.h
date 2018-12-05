@@ -34,12 +34,12 @@ namespace distributed {
 struct RemoteVar {
   std::string ep_;
   std::string var_name_;
-  int rank_id_{0};
+  int trainer_id_{0};
 
   std::string String() {
     std::stringstream ss;
     ss << "ep:" << ep_ << ", var_name:" << var_name_
-       << ", rank_id:" << rank_id_;
+       << ", trainer_id:" << trainer_id_;
 
     return ss.str();
   }

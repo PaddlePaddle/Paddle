@@ -44,8 +44,8 @@ bool CollectiveClient::Gather(const std::vector<RemoteVar>& remote_vars,
         scope->FindVar(r.var_name_)->GetMutable<framework::SelectedRows>();
     dst->push_back(select_rows);
 
-    VLOG(40) << "gather from ep:" << r.String()
-             << ", select_rows:" << select_rows->Info();
+    VLOG(4) << "gather from ep:" << r.String()
+            << ", select_rows:" << select_rows->Info();
 
     rpc_client_->AsyncGetMonomerBarrier(r.ep_, r.var_name_);
   }
