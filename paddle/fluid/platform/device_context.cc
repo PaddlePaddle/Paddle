@@ -127,9 +127,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     return retv;
   }
 
-  void deallocate(void* buffer) const override {
-    allocations_.erase(allocations_.find(buffer));
-  }
+  void deallocate(void* buffer) const override { allocations_.erase(buffer); }
 
   void* scratchpad() const override {
     if (scratch_ == NULL) {
