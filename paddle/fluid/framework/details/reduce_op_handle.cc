@@ -31,7 +31,7 @@ namespace framework {
 namespace details {
 
 static inline std::string GetRemoteVarName(const std::string &var_name) {
-  return string::Sprintf("%s_merged_tmp", var_name);
+  return string::Sprintf("%s_merged_tmp_", var_name);
 }
 
 template <typename DevCtx>
@@ -99,6 +99,7 @@ struct ReduceSelectedRowsFunctor {
         scope->Var(merged_var_name)->GetMutable<SelectedRows>();
     operators::math::scatter::MergeAdd<DevCtx, T> merge_func;
     merge_func(*out_dev_ctx, *gathered_select_rows, merged_select_rows);
+    out_dev_ctx->Wait();
     VLOG(9) << "merged local selected rows:" << merged_var_name
             << operators::distributed::GetSelectedRowsInfo(*merged_select_rows);
 
@@ -127,6 +128,7 @@ struct ReduceSelectedRowsFunctor {
     // "_reduced_with_remotes_";
     operators::distributed::CollectiveClient::ReduceSelectedRows<T>(
         reduce_eps, merged_var_name, scope, out_var_name);
+    out_dev_ctx->Wait();
 
     auto out_slr = scope->FindVar(out_var_name)->GetMutable<SelectedRows>();
     VLOG(9) << "out selected rows:" << out_var_name
@@ -202,6 +204,7 @@ void ReduceOpHandle::RunImpl() {
   std::vector<platform::Place> in_places;  // used to get dev_ctx
   for (auto *in_handle : in_var_handles) {
     in_places.emplace_back(in_handle->place_);
+    VLOG(10) << "in_places:" << in_handle->place_;
     auto in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(in_var);

@@ -35,7 +35,7 @@ namespace distributed {
 
 inline std::string GetSelectedRowsInfo(const framework::SelectedRows& slr) {
   std::stringstream ss;
-  ss << "height:" << slr.height() << ", rows:[";
+  ss << "place:" << slr.place() << ", height:" << slr.height() << ", rows:[";
   for (unsigned int i = 0; i < slr.rows().size(); i++) {
     if (i != slr.rows().size() - 1) {
       ss << slr.rows()[i] << ",";

@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/details/print_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -93,8 +94,12 @@ TEST(PREFETCH, GPU) {
   std::cout << "ReduceSelectedRows:" << distributed::GetSelectedRowsInfo(*slr)
             << std::endl;
 
+  std::cout << framework::details::GetVariableReadableData(
+                   *client_scope, "ReduceSelectedRows", dst_var_name)
+            << std::endl;
+
   std::cout << "begin WaitVarBarrier" << std::endl;
-  rpc_server->WaitVarBarrier(dst_var_name);
+  rpc_server->WaitVarBarrier(var_name);
   rpc_server->ClearRegisteredVars();
   server->Stop();
 

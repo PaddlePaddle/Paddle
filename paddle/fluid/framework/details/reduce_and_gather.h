@@ -54,22 +54,22 @@ struct ReduceLoDTensor {
 };
 
 inline void GatherLocalSelectedRows(
-    const std::vector<const SelectedRows *> &src_selecte_rows_,
+    const std::vector<const SelectedRows *> &src_selecte_rows,
     const std::vector<platform::Place> &in_places,
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     const platform::Place &out_place, SelectedRows *dst_selecte_rows) {
-  PADDLE_ENFORCE(!src_selecte_rows_.empty());
+  PADDLE_ENFORCE(!src_selecte_rows.empty());
 
   std::vector<Tensor> in_tensors;
   std::vector<int64_t> out_rows;
 
-  for (auto in_sr_ptr : src_selecte_rows_) {
+  for (auto in_sr_ptr : src_selecte_rows) {
     auto &in_sr = *in_sr_ptr;
     in_tensors.emplace_back(in_sr.value());
     out_rows.insert(out_rows.end(), in_sr.rows().begin(), in_sr.rows().end());
   }
 
-  auto &pre_in = src_selecte_rows_[0];
+  auto &pre_in = src_selecte_rows[0];
 
   auto &dst_tensor = *dst_selecte_rows;
   dst_tensor.set_height(pre_in->height());
@@ -88,10 +88,15 @@ inline void GatherLocalSelectedRows(
   for (size_t j = 0; j < in_tensors.size(); ++j) {
     e += in_tensors[j].dims()[0];
     auto sub_out = out_tensor->Slice(s, e);
-    VLOG(10) << "GatherLocalSelectedRows in_place of " << j << " :"
-             << in_places[j];
-    paddle::framework::TensorCopy(in_tensors[j], out_place,
-                                  *(dev_ctxes.at(in_places[j])), &sub_out);
+
+    VLOG(10)
+        << "GatherLocalSelectedRows in_place at [" << j << "]:" << in_places[j]
+        << ", ctx place:" << dev_ctxes.at(in_places[j])->GetPlace()
+        << ", pool place:"
+        << platform::DeviceContextPool::Instance().Get(in_places[j])->GetPlace()
+        << ", in_tensor place:" << in_tensors[j].place();
+
+    paddle::framework::TensorCopy(in_tensors[j], out_place, &sub_out);
     s = e;
   }
 }

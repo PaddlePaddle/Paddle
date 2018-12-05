@@ -142,7 +142,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
       platform::CollectiveContext context = collective_context;
       pass->Erase("collective_context");
-      pass->Set<platform::CollectiveContext>(
+      pass->SetNotOwned<platform::CollectiveContext>(
           "collective_context",
           new platform::CollectiveContext(collective_context));
 
