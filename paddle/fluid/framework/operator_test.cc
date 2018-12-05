@@ -97,6 +97,8 @@ TEST(OperatorBase, all) {
 namespace paddle {
 namespace framework {
 
+static int special_type_value = 1;
+
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
@@ -211,15 +213,12 @@ REGISTER_OP_WITHOUT_GRADIENT(
     op_with_kernel, paddle::framework::OpWithKernelTest,
     paddle::framework::OpKernelTestProtoAndCheckerMaker);
 
-// REGISTER_OP_CPU_KERNEL(op_with_kernel,
-//                        paddle::framework::CPUKernelTest<float, float>);
+REGISTER_OP_CPU_KERNEL(op_with_kernel,
+                       paddle::framework::CPUKernelTest<float, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    op_with_kernel, CPU, paddle::platform::CPUPlace, DEFAULT_TYPE, 0,
-    paddle::framework::CPUKernelTest<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    op_with_kernel, CPU, paddle::platform::CPUPlace, SPECIAL, 1,
+    op_with_kernel, CPU, paddle::platform::CPUPlace, MY_SPECIAL_NAME,
+    paddle::framework::special_type_value,
     paddle::framework::CPUKernel2Test<float, float>);
 
 // test with single input
@@ -241,6 +240,7 @@ TEST(OpKernel, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_place);
+  // kerne_sub_type = 0, hence cpu_kernel is called, cpu_kernel2 is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
   ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 0);
 
@@ -250,6 +250,7 @@ TEST(OpKernel, all) {
   attr->set_i(1);
   auto op2 = paddle::framework::OpRegistry::CreateOp(op_desc);
   op2->Run(scope, cpu_place);
+  // kerne_sub_type = 1, hence cpu_kernel2 is called, cpu_kernel is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
   ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 1);
 }
