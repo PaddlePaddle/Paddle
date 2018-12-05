@@ -150,8 +150,13 @@ class AsyncExecutor(object):
                                      data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, debug)
 
-    def config_ps(self, dist_desc, host_sign_list, node_num, index):
-        self.executor.config_pslib(dist_desc, host_sign_list, node_num, index)
+    def config_distributed_nodes(self, dist_opt):
+        # get total rank
+        # get rank index
+        # get iplists
+        # get hadoop info
+        return
+
 
     def start_server(self):
         self.executor.start_server()
