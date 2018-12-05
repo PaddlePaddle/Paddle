@@ -158,6 +158,7 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
     }
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 
  protected:

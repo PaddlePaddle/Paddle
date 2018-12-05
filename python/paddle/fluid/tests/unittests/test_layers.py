@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -636,13 +637,21 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
+            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
             out = layers.pad2d(
                 input,
                 paddings=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape")
+            out_1 = layers.pad2d(
+                input,
+                paddings=paddings,
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
             self.assertIsNotNone(out)
+            self.assertIsNotNone(out_1)
         print(str(program))
 
     def test_prelu(self):
@@ -952,6 +961,15 @@ class TestBook(unittest.TestCase):
 
             theta = layers.data(name="theta", shape=[5], dtype="float32")
             out = layers.bilinear_tensor_product(data, theta, 6)
+
+        print(str(program))
+
+    def test_batch_norm(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.batch_norm(data)
 
         print(str(program))
 
