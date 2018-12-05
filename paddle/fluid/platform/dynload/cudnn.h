@@ -125,7 +125,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnRNNBackwardWeights);                       \
   __macro(cudnnRNNForwardInference);                      \
   __macro(cudnnDestroyDropoutDescriptor);                 \
-  __macro(cudnnDestroyRNNDescriptor);                   
+  __macro(cudnnDestroyRNNDescriptor);
 
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
@@ -166,8 +166,7 @@ CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 // APIs in R6
 #if CUDNN_VERSION >= 6000
-#define CUDNN_DNN_ROUTINE_EACH_R6(__macro)  \
-  __macro(cudnnSetRNNDescriptor_v6);
+#define CUDNN_DNN_ROUTINE_EACH_R6(__macro) __macro(cudnnSetRNNDescriptor_v6);
 CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 

@@ -180,8 +180,7 @@ struct CudnnRNNCache {
 
 #if CUDNN_VERSION >= 6000
     CUDNN_ENFORCE(platform::dynload::cudnnSetRNNDescriptor_v6(
-        handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
-        CUDNN_LINEAR_INPUT,
+        handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_, CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD, CUDNN_DATA_FLOAT));
 #else
