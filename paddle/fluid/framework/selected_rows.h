@@ -48,6 +48,11 @@ class SelectedRows {
  public:
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
+    for (auto row : rows_) {
+      PADDLE_ENFORCE_LT(row, height,
+                        "The row index[%d] should be littler than height[%d].",
+                        row, height);
+    }
     value_.reset(new Tensor());
     rwlock_.reset(new RWLock);
   }
