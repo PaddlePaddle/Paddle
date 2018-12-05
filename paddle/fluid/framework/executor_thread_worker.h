@@ -40,8 +40,14 @@ struct AsyncWorkerParamConfig {
     int32_t tmp_push_dense_wait_times;
     int32_t tmp_push_sparse_wait_times;
 
-    std::vector<std::string> slot_input_vec; //6048slot 6050slot //name
-    std::vector<std::string> gradient_var;   //6048slot_embed 
+    std::map<uint64_t, std::vector<std::string>> dense_variable_name;
+    std::map<uint64_t, std::vector<std::string>> dense_gradient_variable_name;
+    std::vector<int>               dense_table_id;
+    std::vector<uint32_t>          dense_table_size;    // fea_dim for each dense table
+    std::vector<int>               sparse_table_id;
+    std::map<uint64_t, std::vector<std::string>> slot_input_vec; //6048slot 6050slot //name
+    std::map<uint64_t, std::vector<std::string>> gradient_var;   //6048slot_embed 
+    std::unordered_map<std::string, uint64_t>       slot_alias_to_table; //TODO done
 };
 
 struct DensePullThreadParam {
@@ -148,7 +154,7 @@ class ExecutorThreadWorker {
   virtual void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
   virtual void SetPullDenseThread(std::shared_ptr<DensePullThread>  dpt) {};
   virtual void BindingSlotVariableMemory() {};
-  virtual void SetParamConfig(AsyncWorkerParamConfig* pc) {};
+  virtual void SetParamConfig(AsyncWorkerParamConfig* param_config) {};
  private:
   void CreateThreadScope(const framework::ProgramDesc& program);
   void CreateThreadOperators(const framework::ProgramDesc& program);
@@ -184,7 +190,7 @@ public:
     void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
     void SetPullDenseThread(std::shared_ptr<DensePullThread> dpt);
     void BindingSlotVariableMemory();
-    void SetParamConfig(AsyncWorkerParamConfig* pc);
+    void SetParamConfig(AsyncWorkerParamConfig* param_config);
     void TrainFiles();  
     void TrainOneNetwork();
     void PrepareParams();
@@ -209,7 +215,6 @@ private:
     std::map<uint64_t, std::vector<std::vector<float>>> _feature_value;
     std::map<uint64_t, std::vector<std::vector<float>>> _feature_push_value;
 
-    std::unordered_map<std::string, uint64_t>       _slot_alias_to_table; //TODO
 
     std::shared_ptr<paddle::distributed::PSlib>     _pslib_ptr;
 
