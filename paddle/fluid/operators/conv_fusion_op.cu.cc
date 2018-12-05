@@ -162,7 +162,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                       "workspace_size to be allocated exceeds the limit");
 
     if ((activation == "identity") &&
-        (algo != CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM)) {
+        (algo != CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM) &&
+        (!residual)) {
       // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
       // enabled with CUDNN_ACTIVATION_IDENTITY in cuDNN lib.
       // But test in some case, the speed is slower, change to use
@@ -180,6 +181,9 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
           handle, &alpha, cudnn_bias_desc, bias_data, &alpha, cudnn_output_desc,
           output_data));
     } else {
+      if (activation == "identity") {
+        algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      }
       // ------------------- cudnn conv+bias+act forward --------------------
       ScalingParamType<T> alpha1 = 1.0f;
       ScalingParamType<T> alpha2 = residual ? 1.0f : 0.0f;
