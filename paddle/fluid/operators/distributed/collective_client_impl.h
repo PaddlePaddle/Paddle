@@ -41,6 +41,8 @@ void CollectiveClient::ReduceSelectedRows(
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   auto cpu_place = platform::CPUPlace();
+  // platform::CPUDeviceContext* cpu_ctx =
+  // dynamic_cast<platform::CPUDeviceContext*>(dev_ctxes.at(cpu_place));
   platform::CPUDeviceContext* cpu_ctx =
       dynamic_cast<platform::CPUDeviceContext*>(
           platform::DeviceContextPool::Instance().Get(cpu_place));
@@ -53,7 +55,7 @@ void CollectiveClient::ReduceSelectedRows(
     // copy to cpu
     cpu_local_slr = local_scope->Var(var_name + "_cpu_mirror_")
                         ->GetMutable<framework::SelectedRows>();
-    framework::SelectedRowsCopy<DataType>(*local_slr, cpu_place, cpu_local_slr);
+    framework::SelectedRowsCopy(*local_slr, cpu_place, cpu_local_slr);
   }
 
   // 2. get remote selectrows to cpu_ctx
@@ -82,6 +84,7 @@ void CollectiveClient::ReduceSelectedRows(
   client->Wait();
 
   // wait copy local from gpu to cpu.
+  // auto local_dev_ctx = dev_ctxes.at(local_slr->place());
   auto local_dev_ctx =
       platform::DeviceContextPool::Instance().Get(local_slr->place());
   if (platform::is_gpu_place(local_slr->place())) {
@@ -99,11 +102,11 @@ void CollectiveClient::ReduceSelectedRows(
   VLOG(9) << cpu_name << ":" << GetSelectedRowsInfo(*reduced_cpu_slr);
 
   if (platform::is_gpu_place(local_slr->place())) {
+    VLOG(10) << "ReduceSelectedRows copy to gpu";
     // copy cpu to gpu.
     auto gpu_slr =
         local_scope->Var(dst_var_name)->GetMutable<framework::SelectedRows>();
-    framework::SelectedRowsCopy<DataType>(*reduced_cpu_slr, local_slr->place(),
-                                          gpu_slr);
+    framework::SelectedRowsCopy(*reduced_cpu_slr, local_slr->place(), gpu_slr);
   } else {
     local_scope->EraseVars(std::vector<std::string>{dst_var_name});
     local_scope->Rename(cpu_name, dst_var_name);

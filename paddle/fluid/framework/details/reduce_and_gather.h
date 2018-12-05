@@ -81,11 +81,15 @@ inline void GatherLocalSelectedRows(
   dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
   Tensor *out_tensor = dst_tensor.mutable_value();
 
+  VLOG(10) << "GatherLocalSelectedRows out_place:" << out_place;
+
   // copy
   int s = 0, e = 0;
   for (size_t j = 0; j < in_tensors.size(); ++j) {
     e += in_tensors[j].dims()[0];
     auto sub_out = out_tensor->Slice(s, e);
+    VLOG(10) << "GatherLocalSelectedRows in_place of " << j << " :"
+             << in_places[j];
     paddle::framework::TensorCopy(in_tensors[j], out_place,
                                   *(dev_ctxes.at(in_places[j])), &sub_out);
     s = e;

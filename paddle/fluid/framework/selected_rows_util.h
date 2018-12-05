@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename DataType>
 void SelectedRowsCopy(const SelectedRows& src, const platform::Place& dst_place,
                       SelectedRows* dst) {
   auto& out = *dst;
@@ -31,8 +30,12 @@ void SelectedRowsCopy(const SelectedRows& src, const platform::Place& dst_place,
   auto dims = framework::make_ddim(
       {static_cast<int64_t>(src.rows().size()), src.value().dims()[1]});
 
-  out.mutable_value()->mutable_data<DataType>(dims, dst_place);
+  auto out_tensor = out.mutable_value();
+  out_tensor->Resize(dims);
+  out_tensor->mutable_data(dst_place, src.value().type());
 
+  VLOG(10) << "SelectedRowsCopy src place:" << src.place()
+           << ", dst_place:" << dst_place;
   TensorCopy(src.value(), dst_place, dst->mutable_value());
 }
 

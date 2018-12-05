@@ -123,17 +123,14 @@ struct ReduceSelectedRowsFunctor {
                    "trainer_id_ must be in [0, %u]",
                    collective_context_.endpoints_.size());
     reduce_eps.erase(reduce_eps.begin() + collective_context_.trainer_id_);
-    std::string reduced_var_name = merged_var_name + "_reduced_with_remotes_";
+    // std::string reduced_var_name = merged_var_name +
+    // "_reduced_with_remotes_";
     operators::distributed::CollectiveClient::ReduceSelectedRows<T>(
-        reduce_eps, merged_var_name, scope, reduced_var_name);
+        reduce_eps, merged_var_name, scope, out_var_name);
 
-    // 6. rename from reduced_with_remotes to out_var_name
-    scope->EraseVars(std::vector<std::string>{out_var_name});
-    scope->Rename(reduced_var_name, out_var_name);
-
-    auto slr = scope->FindVar(out_var_name)->GetMutable<SelectedRows>();
+    auto out_slr = scope->FindVar(out_var_name)->GetMutable<SelectedRows>();
     VLOG(9) << "out selected rows:" << out_var_name
-            << operators::distributed::GetSelectedRowsInfo(*slr);
+            << operators::distributed::GetSelectedRowsInfo(*out_slr);
 
     // 7. wait for every node to get merged_var.
     rpc_server->WaitVarBarrier(merged_var_name);
@@ -142,6 +139,12 @@ struct ReduceSelectedRowsFunctor {
 
     // 8. clear merged_var
     scope->EraseVars(std::vector<std::string>{merged_var_name});
+
+    for (auto s : src_slrs_) {
+      VLOG(10) << "after ReduceSelectedRowsFunctor:" << s->place()
+               << ", dev_ctxes place:"
+               << (dev_ctxes_.at(s->place()))->GetPlace();
+    }
   }
 };
 
