@@ -315,7 +315,7 @@ class TestResnet(TestParallelExecutorBase):
     def test_seresnext_with_learning_rate_decay(self):
         self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
         self._check_resnet_convergence(
-            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
+            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-2)
 
     def test_seresnext_with_new_strategy(self):
         self._compare_reduce_and_allreduce(
