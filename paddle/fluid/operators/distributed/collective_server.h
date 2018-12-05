@@ -41,9 +41,9 @@ class GetMonomerHandler final : public RequestHandler {
   virtual ~GetMonomerHandler() {}
   bool Handle(const std::string& var_name, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override {
-    VLOG(50) << "GetMonomerHandler recv " << var_name;
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override {
+    VLOG(5) << "GetMonomerHandler recv " << var_name;
 
     *outvar = scope->FindVar(var_name);
     PADDLE_ENFORCE(outvar != nullptr, "%s not found", var_name);
@@ -58,25 +58,12 @@ class GetMonomerBarrierHandler final : public RequestHandler {
   virtual ~GetMonomerBarrierHandler() {}
   bool Handle(const std::string& var_name, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override {
-    VLOG(50) << "GetMonomerHandler recv " << var_name;
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override {
+    VLOG(5) << "GetMonomerHandler recv " << var_name;
 
     rpc_server_->IncreaseVarBarrier(var_name);
 
-    return true;
-  }
-};
-
-class SendMonomerVariableHandler final : public RequestHandler {
- public:
-  SendMonomerVariableHandler() : RequestHandler(true) {}
-  virtual ~SendMonomerVariableHandler() {}
-  bool Handle(const std::string& var_name, framework::Scope* scope,
-              framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override {
-    VLOG(50) << "SendMonomerVariableHandler recv " << var_name;
     return true;
   }
 };

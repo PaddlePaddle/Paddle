@@ -496,6 +496,7 @@ void MultiDevSSAGraphBuilder::SetCommunicationContext(
 void MultiDevSSAGraphBuilder::CreateBroadcastOp(ir::Graph *result,
                                                 const std::string &p_name,
                                                 size_t src_dev_id) const {
+  VLOG(10) << "CreateBroadcastOp";
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   auto *op_handle = new BroadcastOpHandle(
       result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
@@ -698,6 +699,7 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(ir::Graph *result,
 VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
                                                    const std::string &og,
                                                    int dst_dev_id) const {
+  VLOG(10) << "CreateReduceOp";
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
