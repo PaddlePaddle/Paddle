@@ -68,7 +68,7 @@ class AsyncExecutor {
   void StartServer();
   void InitModel();
   void SaveModel(const std::string& path);
-
+  void InitParamConfig();
  private:
   void CreateThreads(ExecutorThreadWorker* worker,
                      const ProgramDesc& main_program,
@@ -86,6 +86,7 @@ class AsyncExecutor {
   AsyncWorkerParamConfig _param_config;
  private:
   int actual_thread_num;
+
 };
 
 

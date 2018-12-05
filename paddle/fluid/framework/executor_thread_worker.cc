@@ -382,33 +382,38 @@ void AsyncExecutorThreadWorker::BindingSlotVariableMemory() {
     }
     */
 }
-void AsyncExecutorThreadWorker::SetParamConfig(AsyncWorkerParamConfig* pc) {
-    _param_config = pc;
+
+void AsyncExecutorThreadWorker::SetParamConfig(AsyncWorkerParamConfig* param_config) {
+    _param_config = param_config;
 }
 
 void AsyncExecutorThreadWorker::PrepareParams() {
-    int table_id = 0; //TODO
-    PullSparse(table_id);
-    for (auto& t : _pull_sparse_status) {
-        t.wait();
-        auto status = t.get();
-        if (status != 0) {
-            LOG(ERROR) << "pull sparse failed, status[" << status << "]";
-            exit(-1);
+    //int table_id = 0; //TODO
+    for (auto table_id: _param_config->sparse_table_id) {
+        PullSparse(table_id);
+        for (auto& t : _pull_sparse_status) {
+            t.wait();
+            auto status = t.get();
+            if (status != 0) {
+                LOG(ERROR) << "pull sparse failed, status[" << status << "]";
+                exit(-1);
+            }
         }
     }
     _pull_sparse_status.resize(0);
 
-    FillSparse(table_id);
+    for (auto table_id: _param_config->sparse_table_id) {
+        FillSparse(table_id);
+    }
 }
 
 void AsyncExecutorThreadWorker::UpdateParams() {
-    //for (auto i = 0u; i < GlobalConfig::instance().dense_table_id.size(); ++i) {//TODO
-    for (int i = 0; i < 1; ++i) {
+    for (auto i: _param_config->sparse_table_id) {//TODO
+    //for (int i = 0; i < 1; ++i) {
         PushSparse(i); 
     }
     //for (auto i = 0u; i < GlobalConfig::instance().dense_table_id.size(); ++i) {//TODO
-    for (int i = 1; i < 2; ++i) {
+    for (auto i: _param_config->dense_table_id) {
         PushDense(i);
     }
     int32_t tmp_push_dense_wait_times = _param_config->tmp_push_dense_wait_times; //TODO
@@ -437,14 +442,13 @@ void AsyncExecutorThreadWorker::UpdateParams() {
     }
 
     //for (auto dense_table_id : GlobalConfig::instance().dense_table_id) {//TODO
-        int dense_table_id = 1;
+    for (auto dense_table_id: _param_config->dense_table_id) {
         _pull_dense_thread->increase_thread_version(thread_id_, dense_table_id);
+    }
     //}
 }
 
 void AsyncExecutorThreadWorker::PushDense(int table_id) {
-    //auto table_id = GlobalConfig::instance().dense_table_id[table_id_index]; TODO
-
     std::vector<paddle::ps::Region> regions;
     //auto& variables = GlobalConfig::instance().dense_gradient_variable_name[table_id];
     std::vector<std::string> variables;
@@ -529,7 +533,7 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
         int64_t* ids = tensor->data<int64_t>();
         int len = tensor->numel();
         
-        Variable* var_emb = thread_scope_->FindVar(_param_config->slot_input_vec[slot_idx - 1]);
+        Variable* var_emb = thread_scope_->FindVar(_param_config->slot_input_vec[table_id][slot_idx - 1]);
         LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
         float* ptr = tensor_emb->data<float>();
 
@@ -575,10 +579,10 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
 
     // slot_idx = 0 is label TODO
     for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
-        if (_slot_alias_to_table[feed_vec[slot_idx]] != table_id) {
+        if (_param_config->slot_alias_to_table[feed_vec[slot_idx]] != table_id) {
             continue;
         }
-        Variable* g_var = thread_scope_->FindVar(_param_config->gradient_var[slot_idx - 1]);
+        Variable* g_var = thread_scope_->FindVar(_param_config->gradient_var[table_id][slot_idx - 1]);
         LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
         //int count = g_tensor->numel();
         float* g = g_tensor->data<float>();

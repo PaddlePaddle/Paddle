@@ -67,21 +67,63 @@ void PrepareReaders(std::vector<std::shared_ptr<DataFeed>>& readers,  // NOLINT
 
 void AsyncExecutor::ConfigPslib(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index) {
     _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(new paddle::distributed::PSlib());
-    _pslib_ptr->init_and_config(dist_desc, host_sign_list, node_num, index);//TODO
+    _pslib_ptr->init_and_config(dist_desc, host_sign_list, node_num, index);//TODO done
 }
 
 void AsyncExecutor::StartServer() {
+    InitParamConfig();
     _pslib_ptr->run_server();
+}
+
+void AsyncExecutor::InitParamConfig() {
+    _param_config.fea_dim = _pslib_ptr->get_param()->trainer_param().sparse_table(0).feature_dim(); //TODO
+    _param_config.slot_dim = _param_config.fea_dim - 2; //TODO
+    _param_config.tmp_push_dense_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().pull_dense_per_batch());
+    _param_config.tmp_push_sparse_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
+    //sparse
+    for (auto t = 0u; t < _pslib_ptr->get_param()->trainer_param().sparse_table_size(); ++t) {
+        auto& table = _pslib_ptr->get_param()->trainer_param().sparse_table(t);
+        std::vector<std::string> tmp_sparse_variable_name;
+        for (int i = 0u; i < table.slot_value_size(); ++i) {
+            tmp_sparse_variable_name.push_back(table.slot_value(i));
+            _param_config.slot_alias_to_table[table.slot_value(i)] = table.table_id();
+        }
+        std::vector<std::string> tmp_sparse_gradient_variable_name;
+        for (auto i = 0u; i < table.slot_gradient_size(); ++i) {
+            tmp_sparse_gradient_variable_name.push_back(
+                    table.slot_gradient(i));
+        }
+        _param_config.slot_input_vec[table.table_id()] = std::move(tmp_sparse_variable_name);
+        _param_config.gradient_var[table.table_id()] = std::move(tmp_sparse_gradient_variable_name);
+        _param_config.sparse_table_id.push_back(table.table_id());
+    }
+    //dense
+    for (auto t = 0u; t < _pslib_ptr->get_param()->trainer_param().dense_table_size(); ++t) {
+        auto& table = _pslib_ptr->get_param()->trainer_param().dense_table(t);
+        std::vector<std::string> tmp_dense_variable_name;
+        for (int i = 0u; i < table.dense_variable_name_size(); ++i) {
+            tmp_dense_variable_name.push_back(table.dense_variable_name(i));
+        }
+        std::vector<std::string> tmp_dense_gradient_variable_name;
+        for (auto i = 0u; i < table.dense_gradient_variable_name_size(); ++i) {
+            tmp_dense_gradient_variable_name.push_back(
+                    table.dense_gradient_variable_name(i));
+        }
+        _param_config.dense_variable_name[table.table_id()] = std::move(tmp_dense_variable_name);
+        _param_config.dense_gradient_variable_name[table.table_id()] = std::move(tmp_dense_gradient_variable_name);
+        _param_config.dense_table_id.push_back(table.table_id());
+        _param_config.dense_table_size.push_back(table.fea_dim()); //TODO
+    }
 }
 
 void AsyncExecutor::InitModel() {
     //TODO only rank = 0 do this
-    std::vector<int> all_dense_table_id; //TODO
-    all_dense_table_id.push_back(0);
-    for (auto table_id: all_dense_table_id) {
+    //std::vector<int> all_dense_table_id; //TODO 
+    //all_dense_table_id.push_back(0); //done
+    for (auto table_id: _param_config.dense_table_id) {
         std::vector<paddle::ps::Region> regions;
-        std::vector<std::string> variables;  //TODO
-        for (auto& t : variables) {
+        //std::vector<std::string> variables;  //TODO
+        for (auto& t : _param_config.dense_variable_name[table_id]) {
             Variable* var = root_scope_->FindVar(t);
             CHECK(var != nullptr) << "var[" << t << "] not found";
             LoDTensor* tensor = var->GetMutable<LoDTensor>();
@@ -131,6 +173,7 @@ void AsyncExecutor::PrepareDenseThread() {
     param.training_thread_num = actual_thread_num;
     param.root_scope = root_scope_;
     //param.dense_params = &GlobalConfig::instance().dense_variable_name; //TODO
+    param.dense_params = &_param_config.dense_variable_name;
 
     _pull_dense_thread = std::shared_ptr<DensePullThread>(new DensePullThread(param));
 
