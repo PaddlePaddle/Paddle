@@ -705,7 +705,7 @@ TEST(JitKernel, pool) {
   jit::lstm_attr_t attr(frame_size, act_gate, act_cand, act_cell, false);
 
   // empty call it to avoid unknown flag 'use_pinned_memory' on Mac
-  paddle::platform::jit::MayIUse(paddle::platform::jit::avx);
+  paddle::platform::MayIUse(paddle::platform::avx);
   const auto& plstm1 =
       jit::KernelPool::Instance()
           .template Get<jit::LSTMKernel<float>, const jit::lstm_attr_t&>(attr);

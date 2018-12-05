@@ -179,7 +179,7 @@ class VActJitCode : public JitCode {
   template <typename JMM>
   void exp_jmm(JMM& dst, JMM& src, int src_idx = 11, int fx_idx = 12,  // NOLINT
                int fy_idx = 13, int mask_idx = 14, int tmp_idx = 15) {
-    using namespace platform::jit;  // NOLINT
+    using namespace platform;  // NOLINT
     // check all idx can not equal
     JMM jmm_src = JMM(src_idx);
     JMM jmm_fx = JMM(fx_idx);
