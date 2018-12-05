@@ -28,7 +28,7 @@ namespace jitkernels {
 // TODO(TJ): make these functions as virtual of a class
 
 // Every JitCode should estimate the code size itself
-template <KernelType KT, typename Attr>
+template <KernelType KT, typename T, typename Attr>
 size_t CodeSize(Attr attr) {
   return 4096;
 }
@@ -43,13 +43,11 @@ bool UseJitCode(Attr attr) {
 template <typename Attr>
 size_t GetKey(Attr attr);
 
-class JitBase {
+class JitBase : public Kernel {
  public:
-  JitBase() = default;
-  virtual ~JitBase() = default;
   virtual const char* name() const = 0;
   virtual const unsigned char* getCodeInternal() = 0;
-
+  virtual size_t getSize() const = 0;
   template <typename FUNC>
   const FUNC getCode() {
     const unsigned char* code = this->getCodeInternal();
@@ -58,14 +56,17 @@ class JitBase {
     }
     return reinterpret_cast<const FUNC>(code);
   }
-  DISABLE_COPY_AND_ASSIGN(JitBase);
 
  protected:
-  void dumpCode(const unsigned char* code);
+  void dumpCode(const unsigned char* code) const;
 };
 
-template <KernelType KT, typename Attr>
-std::shared_ptr<const JitBase> CreateJitCode(Attr attr);
+template <KernelType KT, typename T, typename Attr>
+std::unique_ptr<JitBase> CreateJitCode(Attr attr);  //{
+//   if (UseJitCode<KT,T,Attr>) {
+//     return make_unique<xxxxclass>(attr, CodeSize<KT,T,Attr>());
+//   }
+// }
 
 }  // namespace jitkernels
 }  // namespace operators

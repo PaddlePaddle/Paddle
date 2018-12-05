@@ -7,7 +7,7 @@
 
 set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place)
 
-cc_library(jit_kernel_base SRCS kernels.cc DEPS ${JIT_KERNEL_DEPS})
+cc_library(jit_kernel_base SRCS kernels.cc jitcode_base.cc DEPS ${JIT_KERNEL_DEPS})
 
 add_subdirectory(refer)
 add_subdirectory(more)

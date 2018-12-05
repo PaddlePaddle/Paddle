@@ -31,6 +31,9 @@ namespace jitkernels {
 
 template <KernelType KT>
 class JitCodePool {
+  typedef std::unique_ptr<JitBase> JitBasePtr;
+  typedef std::unordered_map<size_t, JitBasePtr> JitBaseMap;
+
  public:
   JitCodePool() = default;
   static JitCodePool& Instance() {
@@ -38,29 +41,26 @@ class JitCodePool {
     return g_jit_codes;
   }
 
-  std::shared_ptr<const JitBase> Get(size_t key) const {
-    if (codes_.find(key) == codes_.end()) {
-      return nullptr;
-    }
-    return codes_.at(key);
-  }
+  const JitBaseMap& AllKernels() { return codes_; }
 
-  void Insert(size_t key, const std::shared_ptr<const JitBase>& value) {
-    codes_.insert({key, value});
+  bool Has(size_t key) const { return codes_.find(key) != codes_.end(); }
+
+  void Insert(size_t key, JitBasePtr value) {
+    codes_.emplace(key, std::move(value));
   }
 
  private:
-  std::unordered_map<size_t, std::shared_ptr<const JitBase>> codes_;
+  JitBaseMap codes_;
   DISABLE_COPY_AND_ASSIGN(JitCodePool);
 };
 
 // TODO(TJ): std::tuple<T, Func, Attr>
-template <typename T, typename Func, typename Attr>
-struct KernelAttr {
-  typedef T data_type;
-  typedef Func return_type;
-  typedef Attr attr_type;
-};
+// template <typename T, typename Func, typename Attr>
+// struct KernelAttr {
+//   typedef T data_type;
+//   typedef Func return_type;
+//   typedef Attr attr_type;
+// };
 
 typedef std::unique_ptr<const Kernel> KernelPtr;
 typedef std::unordered_map<KernelKey, std::vector<KernelPtr>, KernelKey::Hash>
@@ -123,20 +123,21 @@ inline Func GetRefer() {
 // TODO(TJ): make tuple? named KernelAttr
 template <KernelType KT, typename T, typename Func, typename Attr,
           typename PlaceType = platform::CPUPlace>
-Func Get(Attr attr) {
-  // size_t key = GetKey<Attr>(attr);
-  // auto jitcode = JitCodePool<KT>().Instance().Get(key);
-  // if (jitcode) {
-  //   return jitcode->template getCode<Func>();
-  // }
+const Func Get(Attr attr) {
+  size_t key = GetKey<Attr>(attr);
+  auto& codes = JitCodePool<KT>().Instance();
+  if (codes.Has(key)) {
+    return codes.AllKernels().at(key)->template getCode<Func>();
+  }
 
-  if (std::is_same<PlaceType, platform::CPUPlace>::value &&
-      std::is_same<T, float>::value) {  // TODO(TJ): float move to create
-    // auto p = CreateJitCode<KT, Attr>(attr);
-    // if (p) {
-    //   JitCodePool<KT>().Instance().Insert(key, p);
-    //   return p->template getCode<Func>();
-    // }
+  if (std::is_same<PlaceType, platform::CPUPlace>::value) {  // TODO(TJ): float
+                                                             // move to create
+    auto p = CreateJitCode<KT, T, Attr>(attr);
+    if (p) {
+      auto f = p->template getCode<Func>();
+      codes.Insert(key, std::move(p));
+      return f;
+    }
   }
 
   // pool: (KernelKey(type, place), vector<Kernel>)
