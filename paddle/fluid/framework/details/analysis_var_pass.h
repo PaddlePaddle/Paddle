@@ -34,19 +34,9 @@ namespace framework {
 namespace details {
 constexpr char kAllOpDescs[] = "all_op_descs";
 
-std::vector<ir::Node*> SortOperationsInSequence(const ir::Graph& graph);
-
-template <typename Container>
-inline static BlockDesc* GetBlockDescFromOp(const Container& ops) {
-  BlockDesc* block_desc = nullptr;
-  for (auto* op : ops) {
-    if (op->Op() != nullptr && block_desc == nullptr) {
-      block_desc = op->Op()->Block();
-    }
-  }
-  PADDLE_ENFORCE(block_desc != nullptr, "blockdesc should not be nullptr");
-  return block_desc;
-}
+std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
+// sort op in bfs order
+std::vector<ir::Node*> BFSSortGraphOps(const ir::Graph& graph);
 
 class ControlFlowGraph;
 class AnalysisVarPass : public ir::Pass {
@@ -98,11 +88,11 @@ class ControlFlowGraph {
   const std::set<std::string> Use(ir::Node* op) const;
   const std::vector<ir::Node*> Ops() const;
   std::vector<ir::Node*>& Ops();
-  const std::vector<OpDesc*> OpDescs() const;
-  std::vector<OpDesc*>& OpDescs();
 
   // for ssa-graph nodes
   ir::Node* GetNodeFromVarName(const std::string& name, ir::Node* op) const;
+  // convert graph to ProgramDesc
+  std::unique_ptr<ProgramDesc> ToProgramDesc(const ir::Graph& graph) const;
 
  private:
   void BuildCFGGraph();
@@ -117,30 +107,38 @@ class ControlFlowGraph {
   VarSetMap live_in_;
   // variables lived after run current op.
   VarSetMap live_out_;
-  VarSetMap uses_;                 // op inputs
-  VarSetMap defs_;                 // op outputs
-  std::vector<ir::Node*> ops_;     // op sequence by topology sort
-  std::vector<OpDesc*> op_descs_;  // op descs
+  VarSetMap uses_;  // op inputs
+  VarSetMap defs_;  // op outputs
+
+  std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
 
-template <typename Callback>
-void FilterVariables(const std::vector<ir::Node*>& nodes, Callback callback) {
-  for (auto* var : nodes) {
-    if (var->IsVar() && !var->IsCtrlVar()) {
-      callback(var);
+template <typename Container, typename Callback>
+class FilterVariableImpl {
+ public:
+  void operator()(const Container& nodes, Callback callback) {
+    for (auto* node : nodes) {
+      callback(node);
     }
   }
-}
+};
+
+// filter var node for op->inputs/outputs
+template <typename Callback>
+class FilterVariableImpl<std::vector<ir::Node*>, Callback> {
+ public:
+  void operator()(const std::vector<ir::Node*>& nodes, Callback callback) {
+    for (auto* var : nodes) {
+      if (var->IsVar() && !var->IsCtrlVar()) {
+        callback(var);
+      }
+    }
+  }
+};
 
 template <typename Container, typename Callback>
-Container FilterVariables(const Container& nodes, Callback callback) {
-  Container ret;
-  for (auto* node : nodes) {
-    if (callback(node)) {
-      ret.emplace(node);
-    }
-  }
-  return ret;
+void FilterVariables(const Container& nodes, Callback callback) {
+  FilterVariableImpl<Container, Callback>()(nodes, callback);
 }
 
 }  // namespace details

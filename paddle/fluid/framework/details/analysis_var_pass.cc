@@ -15,10 +15,12 @@
 #include "paddle/fluid/framework/details/analysis_var_pass.h"
 #include <algorithm>
 #include <atomic>
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <queue>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -40,6 +42,16 @@ DEFINE_string(memory_optimize_debug, "",
 namespace paddle {
 namespace framework {
 namespace details {
+
+template <typename Container>
+static inline std::string DebugString(Container con) {
+  std::stringstream ss;
+  for (auto c : con) {
+    ss << c->Name() << " ";
+  }
+  ss << std::endl;
+  return ss.str();
+}
 
 static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
   return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
@@ -114,33 +126,33 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   }
 
   // Reconstruct the Graph
-  auto old_nodes = graph->ReleaseNodes();
+  std::unique_ptr<ProgramDesc> program = cfg_->ToProgramDesc(*graph.get());
+  graph->ReleaseNodes();
   ir::Graph& result = *graph;
-  ProgramDesc* program = GetBlockDescFromOp(cfg_->Ops())->Program();
   PADDLE_ENFORCE(program != nullptr, "program should not be nullptr");
   auto var_nodes = result.InitFromProgram(*program);
   result.ResolveHazard(var_nodes);
 
   // For early delete pass. use GraphNodePool load the unlived vars.
   // 1. find all deps op for each unlived var in memory pool.
-  for (auto& op : result.Nodes()) {
-    for (auto& var : op->inputs) {
-      if (pool_.Has(var)) {
-        pool_.Insert(var, op);
-      }
-    }
-  }
-  // 2. convert ir node based memory pool to graph node
-  // because Node* maybe released bettwen passes.
-  auto& graph_pool = Get<GraphNodePool>(kGraphNodePool);
-  for (auto it = pool_.begin(); it != pool_.end(); ++it) {
-    std::unordered_set<OpDesc*> descs;
-    for (auto& op : it->second) {
-      PADDLE_ENFORCE(op->IsOp());
-      descs.insert(op->Op());
-    }
-    graph_pool.push_back(std::make_pair(it->first->Name(), descs));
-  }
+  // for (auto& op : result.Nodes()) {
+  //   for (auto& var : op->inputs) {
+  //     if (pool_.Has(var)) {
+  //       pool_.Insert(var, op);
+  //     }
+  //   }
+  // }
+  // // 2. convert ir node based memory pool to graph node
+  // // because Node* maybe released bettwen passes.
+  // auto& graph_pool = Get<GraphNodePool>(kGraphNodePool);
+  // for (auto it = pool_.begin(); it != pool_.end(); ++it) {
+  //   std::unordered_set<OpDesc*> descs;
+  //   for (auto& op : it->second) {
+  //     PADDLE_ENFORCE(op->IsOp());
+  //     descs.insert(op->Op());
+  //   }
+  //   graph_pool.push_back(std::make_pair(it->first->Name(), descs));
+  // }
 
   return graph;
 }
@@ -174,9 +186,13 @@ void AnalysisVarPass::SubGraphOptimize(OpDesc* op_desc) const {
   }
 
   ir::Graph sub_graph(prog);
-  auto sub_graph_all_ops = FilterVariables(
-      sub_graph.Nodes(),
-      [&](ir::Node* var) { return var->IsVar() && !var->IsCtrlVar(); });
+  std::unordered_set<ir::Node*> sub_graph_all_ops;
+  FilterVariables(sub_graph.Nodes(), [&](ir::Node* var) {
+    // sub_graph_all_ops.emplace(var);
+    if (var->IsVar() && !var->IsCtrlVar()) {
+      sub_graph_all_ops.emplace(var);
+    }
+  });
   int sub_counter = 0;
   // subgraph nodes is unordered, reuse need to follow the desc order.
   // find the right op node through the descs
@@ -235,8 +251,10 @@ std::unordered_set<std::string> AnalysisVarPass::GetSubBlockVars(
 void AnalysisVarPass::RenameVarInGraphDesc(const std::string& var,
                                            const std::string& cache_var,
                                            size_t idx) const {
-  for (size_t i = idx; i < cfg_->OpDescs().size(); ++i) {
-    auto* op_desc = cfg_->OpDescs()[i];
+  for (size_t i = idx; i < cfg_->Ops().size(); ++i) {
+    auto* op = cfg_->Ops()[i];
+    PADDLE_ENFORCE(op->IsOp() && op->Op());
+    auto* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
     if (op_desc->Block()->HasVar(var)) op_desc->Block()->RemoveVar(var);
@@ -246,6 +264,22 @@ void AnalysisVarPass::RenameVarInGraphDesc(const std::string& var,
 void AnalysisVarPass::RenameVarInGraphNode(const std::string& var,
                                            const std::string& cache_var,
                                            size_t idx, ir::Graph* graph) const {
+  // for(size_t i = idx; i < cfg_->Ops().size(); ++i) {
+  //   auto* op = cfg_->Ops()[i];
+  //   for(auto node : op->inputs) {
+  //     if (node->Name() == var) {
+  //       // node->Var()->SetName(cache_var);
+  //       node->SetName(cache_var);
+  //     }
+  //   }
+
+  //   for(auto node : op->outputs) {
+  //     if (node->Name() == var) {
+  //       // node->Var()->SetName(cache_var);
+  //       node->SetName(cache_var);
+  //     }
+  //   }
+  // }
   std::unordered_map<std::string, std::unordered_set<ir::Node*>> all_vars;
   if (var_nodes_.empty()) {
     for (auto* op : cfg_->Ops()) {
@@ -294,7 +328,7 @@ void AnalysisVarPass::RenameVarInGraphNode(const std::string& var,
     }
   }
 
-  // release node of var in graph
+  // release node of unused var in graph
   for (auto* node : var_nodes_[var]) {
     graph->RemoveNode(node);
   }
@@ -333,89 +367,210 @@ bool AnalysisVarPass::OpHasSubBlock(OpDesc* desc) const {
   return false;
 }
 
-std::vector<ir::Node*> SortOperationsInSequence(const ir::Graph& graph) {
+std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
   PADDLE_ENFORCE(graph.Has(kAllOpDescs),
                  "Graph has no attribute of kAllOpDescs.");
-  auto& ops = graph.Get<const std::vector<OpDesc*>>(kAllOpDescs);
-  std::vector<ir::Node*> op_node_list;
-  op_node_list.reserve(ops.size());
-  auto is_same_op_desc = [](OpDesc* op1, OpDesc* op2) {
-    return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
-           op1->Outputs() == op2->Outputs();
+  // 1. get op desc order
+  auto& op_descs = graph.Get<const std::vector<OpDesc*>>(kAllOpDescs);
+
+  // 2. topology sort order
+  auto nodes = graph.Nodes();
+  std::deque<ir::Node*> ops;
+  FilterVariables(nodes, [&](ir::Node* op) {
+    if (op->IsOp() && op->Op() != nullptr) {
+      ops.emplace_back(op);
+    }
+  });
+  std::unordered_map<ir::Node*, size_t> op_deps;
+  std::list<ir::Node*> ready_ops;
+  std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>> pending_ops;
+
+  for (auto* op : ops) {
+    std::unordered_set<ir::Node*> preceding_op;
+    for (auto* in : op->inputs) {
+      if (in->inputs.empty()) continue;
+      PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp());
+      preceding_op.emplace(in->inputs[0]);
+      pending_ops[in->inputs[0]].emplace(op);
+    }
+    op_deps[op] = preceding_op.size();
+    if (preceding_op.empty()) {
+      ready_ops.emplace_back(op);
+    }
+  }
+
+  // 3. generated op list based desc order and the topology order
+  std::vector<ir::Node*> ret;
+  std::list<OpDesc*> op_descs_list(op_descs.begin(), op_descs.end());
+
+  auto update_by_found_node = [&](ir::Node* found_node) {
+    for (auto* pending_op : pending_ops[found_node]) {
+      if (--op_deps[pending_op] == 0) {
+        ready_ops.emplace_back(pending_op);
+      }
+    }
+    ready_ops.remove(found_node);
+    ret.emplace_back(found_node);
   };
 
-  std::unordered_map<ir::Node*, size_t> op_deps;
-  std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>> pending_ops;
-  std::unordered_set<ir::Node*> ready_ops;
+  while (!ready_ops.empty()) {
+    bool all_of_ready_op_unmatched = true;
+    for (auto it = op_descs_list.begin(); it != op_descs_list.end();) {
+      auto op_desc = *it;
+      ir::Node* found_node = nullptr;
+      for (auto* op : ready_ops) {
+        if (IsSameDesc(op->Op(), op_desc)) {
+          found_node = op;
+          break;
+        }
+      }
 
-  for (ir::Node* node : graph.Nodes()) {
-    if (!node->IsOp() || node->Op() == nullptr) continue;
-    std::unordered_set<ir::Node*> preceding_ops;
-    for (auto* in : node->inputs) {
-      PADDLE_ENFORCE(in->IsVar(),
-                     "Preceding Node of Op Nodes must be Var Node");
+      // 3.1 op desc deleted by other pass
+      if (found_node == nullptr) {
+        ++it;
+        continue;
+      } else {
+        all_of_ready_op_unmatched = false;
+        it = op_descs_list.erase(it);
+      }
+      update_by_found_node(found_node);
+    }
+
+    // 3.2 op descs are added by other pass
+    // preceding op non empty means some new op descs are
+    // created, but not contained in return node list.
+    // these new op desc may depend on each other.
+    std::list<ir::Node*> prev_ready_ops(ready_ops);
+    if (all_of_ready_op_unmatched) {
+      for (auto op : prev_ready_ops) {
+        update_by_found_node(op);
+      }
+    }
+  }
+
+  PADDLE_ENFORCE(std::all_of(
+      op_deps.begin(), op_deps.end(),
+      [&](const std::pair<ir::Node*, size_t>& p) { return p.second == 0; }));
+
+  return ret;
+}
+
+std::vector<ir::Node*> BFSSortGraphOps(const ir::Graph& graph) {
+  std::list<ir::Node*> ops;  // for checking topology sort result.
+  std::vector<ir::Node*> ret;
+  // std::queue<ir::Node*> q;
+  std::queue<ir::Node*> q;
+  std::unordered_set<ir::Node*> visited;
+
+  for (auto* op : graph.Nodes()) {
+    if (!op->IsOp()) continue;
+    ops.emplace_back(op);
+    std::unordered_set<ir::Node*> preceding_op;
+    for (auto* in : op->inputs) {
       if (in->inputs.empty()) continue;
-      PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp(),
-                     "Preceding Op Node of Var Node must be unique");
-      preceding_ops.insert(in->inputs[0]);
-      pending_ops[in->inputs[0]].insert(node);
+      PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp());
+      preceding_op.emplace(in->inputs[0]);
     }
-    op_deps[node] = preceding_ops.size();
-    if (preceding_ops.empty()) {
-      ready_ops.insert(node);
+    if (preceding_op.empty()) {
+      visited.emplace(op);
+      q.emplace(op);
     }
   }
 
-  for (auto* op_desc : ops) {
-    ir::Node* found_node = nullptr;
-    for (auto* node : ready_ops) {
-      if (is_same_op_desc(op_desc, node->Op())) {
-        PADDLE_ENFORCE(found_node == nullptr,
-                       "Found multiple op_desc in graph: %s", op_desc->Type());
-        found_node = node;
+  while (!q.empty()) {
+    std::queue<ir::Node*> temp(q);
+    std::list<ir::Node*> debug;
+    while (!temp.empty()) {
+      debug.emplace_back(temp.front());
+      temp.pop();
+    }
+    std::cout << DebugString(debug) << std::endl;
+    ir::Node* node = q.front();
+    q.pop();
+    ret.emplace_back(node);
+    for (auto& var : node->outputs) {
+      for (auto& op : var->outputs) {
+        PADDLE_ENFORCE(op->IsOp());
+        if (visited.count(op) == 0) {
+          visited.emplace(op);
+          q.emplace(op);
+        }
       }
     }
-
-    PADDLE_ENFORCE_NOT_NULL(found_node, "Cannot find op_desc in graph: %s",
-                            op_desc->Type());
-    for (auto* pending_op : pending_ops[found_node]) {
-      if (--op_deps.at(pending_op) == 0) {
-        ready_ops.insert(pending_op);
-      }
-    }
-    ready_ops.erase(found_node);
-    op_node_list.push_back(found_node);
   }
-
-  return op_node_list;
+  PADDLE_ENFORCE(ret.size() == ops.size());
+  return ret;
 }
 
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
-  ops_ = SortOperationsInSequence(graph);
+  ops_ = SortOpLikeDescOrder(graph);
+  ConnectNodes();
+}
 
-  // NOTE(): IR Node always create new OpDesc, so modify the
-  // OpDesc underlying op is meaningless. We need to record
-  // the original OpDescs and do the reuse trick.
-  // To keep the op descs sequence same with op node sequence
-  // Add a checker after the mapping, to check op -> op_desc.
-  auto* block_desc = GetBlockDescFromOp(ops_);
-  auto op_descs = block_desc->AllOps();
-  for (auto& op : ops_) {
-    if (!op->IsOp() || op->Op() == nullptr) continue;
-    for (auto& desc : op_descs) {
-      if (IsSameDesc(desc, op->Op())) {
-        op_descs_.emplace_back(desc);
-        break;
-      }
+std::unique_ptr<ProgramDesc> ControlFlowGraph::ToProgramDesc(
+    const ir::Graph& graph) const {
+  // only recover the block 0 variables and ops
+  constexpr int kBlockIndex = 0;
+  std::unique_ptr<ProgramDesc> program(new ProgramDesc);
+  ProgramDesc* original = nullptr;
+  for (auto* op : ops_) {
+    if (op->Op() != nullptr && original == nullptr) {
+      original = op->Op()->Block()->Program();
     }
   }
+  PADDLE_ENFORCE(original != nullptr);
+  program->CopyFrom(*original->Proto());
 
-  std::transform(ops_.begin(), ops_.end(), op_descs_.begin(), op_descs_.begin(),
-                 [&](ir::Node* op, OpDesc* op_desc) {
-                   PADDLE_ENFORCE(IsSameDesc(op->Op(), op_desc));
-                   return op_desc;
-                 });
-  ConnectNodes();
+  std::unique_ptr<proto::ProgramDesc> program_pb(
+      new proto::ProgramDesc(*program->Proto()));
+  auto block = program_pb->mutable_blocks(kBlockIndex);
+  block->set_idx(kBlockIndex);
+  block->clear_vars();
+  block->clear_ops();
+
+  std::unordered_set<std::string> visited_vars;
+  auto add_var_to_block = [&](std::vector<ir::Node*> nodes) {
+    for (auto n : nodes) {
+      if (n->IsVar() && n->Var() && visited_vars.count(n->Var()->Name()) == 0) {
+        visited_vars.insert(n->Var()->Name());
+        block->add_vars()->MergeFrom(*n->Var()->Proto());
+      }
+    }
+  };
+
+  auto add_op_to_block = [&](ir::Node* op) {
+    if (op->IsOp() && op->Op()) {
+      block->add_ops()->MergeFrom(*op->Op()->Proto());
+    }
+  };
+
+  std::vector<ir::Node*> vars;
+  FilterVariables(graph.Nodes(), [&](ir::Node* var) {
+    if (var->IsVar() && !var->IsCtrlVar() && var->Var()) {
+      vars.emplace_back(var);
+    }
+  });
+  // std::vector<ir::Node*> ops = TopologySortOperations(graph);
+  // std::vector<ir::Node*> ops;
+  // FilterVariables(graph.Nodes(), [&](ir::Node* node){
+  //     if (node->IsOp() && node->Op() != nullptr) {
+  //       ops.emplace_back(node);
+  //     }
+  //   });
+
+  // for(auto op : ops) {
+  //   add_op_to_block(op);
+  // }
+
+  add_var_to_block(vars);
+  for (auto op : ops_) {
+    add_op_to_block(op);
+    add_var_to_block(op->inputs);
+    add_var_to_block(op->outputs);
+  }
+
+  program->CopyFrom(*program_pb);
+  return program;
 }
 
 void ControlFlowGraph::BuildCFGGraph() {
@@ -563,12 +718,6 @@ const std::set<std::string> ControlFlowGraph::Use(ir::Node* op) const {
 const std::vector<ir::Node*> ControlFlowGraph::Ops() const { return ops_; }
 
 std::vector<ir::Node*>& ControlFlowGraph::Ops() { return ops_; }
-
-const std::vector<OpDesc*> ControlFlowGraph::OpDescs() const {
-  return op_descs_;
-}
-
-std::vector<OpDesc*>& ControlFlowGraph::OpDescs() { return op_descs_; }
 
 ir::Node* ControlFlowGraph::GetNodeFromVarName(const std::string& name,
                                                ir::Node* op) const {

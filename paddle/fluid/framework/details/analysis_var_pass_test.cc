@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/analysis_var_pass.h"
+#include <algorithm>
 #include <iostream>
+#include <iterator>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -100,6 +102,11 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
+  return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
+         op1->Outputs() == op2->Outputs();
+}
+
 inline static ProgramDesc FillProgramDesc() {
   ProgramDesc prog;
   prog.MutableBlock(0)->Var("a")->SetType(proto::VarType::LOD_TENSOR);
@@ -169,6 +176,303 @@ TEST(CFGGraph, IRGraph) {
   // test assign op
   ASSERT_TRUE((std::set<std::string>{"d"} == cfg.LiveIn(cfg.Ops()[3])));
   ASSERT_TRUE((std::set<std::string>{} == cfg.LiveOut(cfg.Ops()[3])));
+}
+
+TEST(SortOpLikeDescOrder, NormalTest) {
+  auto prog = FillProgramDesc();
+  ir::Graph graph(prog);
+
+  auto find_node_in_graph = [&](std::string s) {
+    ir::Node* ret;
+    for (auto n : graph.Nodes()) {
+      if (n->Name() == s) {
+        ret = n;
+        break;
+      }
+    }
+    PADDLE_ENFORCE(ret != nullptr);
+    return ret;
+  };
+
+  // 1. normal test
+  {
+    auto prog = FillProgramDesc();
+    graph.ReleaseNodes();
+    graph.InitFromProgram(prog);
+    const std::vector<OpDesc*>* all_op_descs =
+        new std::vector<OpDesc*>(prog.Block(0).AllOps());
+    graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
+    auto nodes = SortOpLikeDescOrder(graph);
+    auto op_descs = prog.Block(0).AllOps();
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      auto node = nodes[i];
+      auto op_desc = op_descs[i];
+      ASSERT_TRUE(IsSameDesc(node->Op(), op_desc));
+    }
+  }
+
+  std::cout << "pass 1" << std::endl;
+
+  // 2. remove some op_desc
+  {
+    auto prog = FillProgramDesc();
+    graph.ReleaseNodes();
+    graph.InitFromProgram(prog);
+    const std::vector<OpDesc*>* all_op_descs =
+        new std::vector<OpDesc*>(prog.Block(0).AllOps());
+    graph.Erase<const std::vector<OpDesc*>>(details::kAllOpDescs);
+    graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
+    auto nodes = graph.Nodes();
+    auto op_descs = prog.Block(0).AllOps();
+    ir::Node* found_node = nullptr;
+    for (auto node : nodes) {
+      if (node->IsOp() && node->outputs.back()->Name() == "e") {
+        found_node = node;
+        break;
+      }
+    }
+    PADDLE_ENFORCE(found_node != nullptr);
+    for (auto it = op_descs.begin(); it != op_descs.end();) {
+      if (IsSameDesc(*it, found_node->Op())) {
+        it = op_descs.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    ir::Node* e = find_node_in_graph("e");
+    ir::Node* d = find_node_in_graph("d");
+    std::remove(d->outputs.begin(), d->outputs.end(), found_node);
+    graph.RemoveNode(found_node);
+    graph.RemoveNode(e);
+
+    // other node keeps the same order
+    auto remain_nodes = SortOpLikeDescOrder(graph);
+    for (size_t i = 0; i < remain_nodes.size(); ++i) {
+      auto node = remain_nodes[i];
+      auto op_desc = op_descs[i];
+      ASSERT_TRUE(IsSameDesc(node->Op(), op_desc));
+    }
+  }
+
+  std::cout << "pass 2" << std::endl;
+  // 3. add some op_desc
+  {
+    auto prog = FillProgramDesc();
+    const std::vector<OpDesc*>* all_op_descs =
+        new std::vector<OpDesc*>(prog.Block(0).AllOps());
+    graph.ReleaseNodes();
+    graph.InitFromProgram(prog);
+    // cached desc different with real one
+    // mimic the intermidiete pass modify the programdesc.
+    graph.Erase<const std::vector<OpDesc*>>(details::kAllOpDescs);
+    graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
+
+    auto op_descs = prog.Block(0).AllOps();
+
+    auto op = prog.MutableBlock(0)->AppendOp();
+    prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);
+    op->SetType("sum");
+    op->SetInput("X", {"b", "c"});
+    op->SetOutput("Out", {"d1"});
+    ir::Node* node = graph.CreateOpNode(op);
+    ir::Node* d1 = graph.CreateVarNode(prog.MutableBlock(0)->Var("d1"));
+    ir::Node* b = find_node_in_graph("b");
+    ir::Node* c = find_node_in_graph("c");
+    node->outputs.emplace_back(d1);
+    node->inputs.emplace_back(b);
+    node->inputs.emplace_back(c);
+    d1->inputs.emplace_back(node);
+    b->outputs.emplace_back(node);
+    c->outputs.emplace_back(node);
+    op_descs.insert(op_descs.begin() + 4, op);
+
+    auto nodes = SortOpLikeDescOrder(graph);
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      auto node = nodes[i];
+      auto op_desc = op_descs[i];
+      ASSERT_TRUE(IsSameDesc(node->Op(), op_desc));
+    }
+  }
+
+  std::cout << "pass 3" << std::endl;
+  // 4. add and delete some op_desc
+  {
+    auto prog = FillProgramDesc();
+    graph.ReleaseNodes();
+    graph.InitFromProgram(prog);
+    const std::vector<OpDesc*>* all_op_descs =
+        new std::vector<OpDesc*>(prog.Block(0).AllOps());
+    graph.Erase<const std::vector<OpDesc*>>(details::kAllOpDescs);
+    graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
+    // remove sum node
+    auto op_descs = prog.Block(0).AllOps();
+    ir::Node* found_node = nullptr;
+    auto nodes = graph.Nodes();
+    for (auto node : nodes) {
+      if (node->Name() == "sum") {
+        found_node = node;
+        break;
+      }
+    }
+    PADDLE_ENFORCE(found_node != nullptr);
+    for (auto it = op_descs.begin(); it != op_descs.end();) {
+      if (IsSameDesc(*it, found_node->Op())) {
+        it = op_descs.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    {
+      ir::Node* d = find_node_in_graph("d");
+      ir::Node* c = find_node_in_graph("c");
+      ir::Node* e = find_node_in_graph("e");
+      std::remove(d->outputs.begin(), d->outputs.end(), found_node);
+      std::remove(c->outputs.begin(), c->outputs.end(), found_node);
+      ir::Node* pending_op = found_node->outputs[0]->outputs[0];
+      graph.RemoveNode(e);
+      graph.RemoveNode(pending_op);
+      graph.RemoveNode(found_node);
+    }
+
+    // add node
+    auto op = prog.MutableBlock(0)->AppendOp();
+    prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);
+    op->SetType("sum");
+    op->SetInput("X", {"b", "c"});
+    op->SetOutput("Out", {"d1"});
+    {
+      ir::Node* node = graph.CreateOpNode(op);
+      ir::Node* d1 = graph.CreateVarNode(prog.MutableBlock(0)->Var("d1"));
+      ir::Node* b = find_node_in_graph("b");
+      ir::Node* c = find_node_in_graph("c");
+      node->outputs.emplace_back(d1);
+      node->inputs.emplace_back(b);
+      node->inputs.emplace_back(c);
+      b->outputs.emplace_back(node);
+      c->outputs.emplace_back(node);
+    }
+    op_descs.insert(op_descs.begin() + 2, op);
+
+    // check the order
+    auto mynodes = SortOpLikeDescOrder(graph);
+    for (size_t i = 0; i < mynodes.size(); ++i) {
+      auto node = mynodes[i];
+      auto op_desc = op_descs[i];
+      ASSERT_TRUE(IsSameDesc(node->Op(), op_desc));
+    }
+  }
+  std::cout << "pass 4" << std::endl;
+
+  // 5. add and replace some op_desc inplace.
+  {
+    auto prog = FillProgramDesc();
+    graph.ReleaseNodes();
+    graph.InitFromProgram(prog);
+    const std::vector<OpDesc*>* all_op_descs =
+        new std::vector<OpDesc*>(prog.Block(0).AllOps());
+    graph.Erase<const std::vector<OpDesc*>>(details::kAllOpDescs);
+    graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
+    auto op_descs = prog.Block(0).AllOps();
+    // add node
+    auto op = prog.MutableBlock(0)->AppendOp();
+    prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);
+    op->SetType("sum");
+    op->SetInput("X", {"b", "c"});
+    op->SetOutput("Out", {"d1"});
+    {
+      ir::Node* node = graph.CreateOpNode(op);
+      ir::Node* d1 = graph.CreateVarNode(prog.MutableBlock(0)->Var("d1"));
+      ir::Node* b = find_node_in_graph("b");
+      ir::Node* c = find_node_in_graph("c");
+      node->outputs.emplace_back(d1);
+      node->inputs.emplace_back(b);
+      node->inputs.emplace_back(c);
+      d1->inputs.emplace_back(node);
+      b->outputs.emplace_back(node);
+      c->outputs.emplace_back(node);
+    }
+
+    op_descs.emplace_back(op);
+
+    // replace op_desc inplace
+    auto nodes = graph.Nodes();
+    ir::Node* found_node = nullptr;
+    for (auto node : nodes) {
+      if (node->IsOp() && node->Op() && node->Name() == "assign") {
+        if (node->outputs.size() == 1 && node->outputs[0]->Name() == "e") {
+          found_node = node;
+          break;
+        }
+      }
+    }
+    {
+      ir::Node* d = find_node_in_graph("d");
+      ir::Node* e = find_node_in_graph("e");
+      std::remove(d->outputs.begin(), d->outputs.end(), found_node);
+      std::remove(e->inputs.begin(), e->inputs.end(), found_node);
+      graph.RemoveNode(found_node);
+    }
+    op_descs.erase(op_descs.begin() + 3);
+
+    auto replace_op = prog.MutableBlock(0)->AppendOp();
+    replace_op->SetType("sum");
+    replace_op->SetInput("X", {"d", "d1"});
+    replace_op->SetOutput("Out", {"e"});
+    {
+      ir::Node* sum2 = graph.CreateOpNode(replace_op);
+      ir::Node* e = find_node_in_graph("e");
+      ir::Node* d = find_node_in_graph("d");
+      ir::Node* d1 = find_node_in_graph("d1");
+      sum2->inputs.emplace_back(d);
+      sum2->inputs.emplace_back(d1);
+      sum2->outputs.emplace_back(e);
+      e->inputs.emplace_back(sum2);
+      d->outputs.emplace_back(sum2);
+      d1->outputs.emplace_back(sum2);
+    }
+
+    op_descs.emplace_back(replace_op);
+    // compare op order
+    auto graph_nodes = SortOpLikeDescOrder(graph);
+    for (size_t i = 0; i < graph_nodes.size(); ++i) {
+      auto node = graph_nodes[i];
+      auto op_desc = op_descs[i];
+      ASSERT_TRUE(IsSameDesc(node->Op(), op_desc));
+    }
+  }
+  std::cout << "pass 5" << std::endl;
+}
+
+TEST(BFSSortGraphOps, NormalTest) {
+  auto prog = FillProgramDesc();
+  {
+    auto op = prog.MutableBlock(0)->AppendOp();
+    prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);
+    op->SetType("sum");
+    op->SetInput("X", {"b", "c"});
+    op->SetOutput("Out", {"d1"});
+  }
+  {
+    prog.MutableBlock(0)->Var("e1")->SetType(proto::VarType::LOD_TENSOR);
+    auto op = prog.MutableBlock(0)->AppendOp();
+    op->SetType("sum");
+    op->SetInput("X", {"d", "d1"});
+    op->SetOutput("Out", {"e1"});
+  }
+  ir::Graph graph(prog);
+  // the op name are not unique
+  // use op output instead
+  std::vector<std::string> bfs_order = {
+      "c", "b", "d", "d1", "e", "e1",
+  };
+  auto ops = BFSSortGraphOps(graph);
+  PADDLE_ENFORCE(bfs_order.size() == ops.size());
+  for (size_t i = 0; i < bfs_order.size(); ++i) {
+    auto expect = bfs_order[i];
+    auto real = ops[i]->outputs[0]->Name();
+    ASSERT_EQ(expect, real);
+  }
 }
 
 }  // namespace details
