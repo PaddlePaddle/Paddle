@@ -27,6 +27,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+constexpr int kConvMKLDNNFP32 = 1;
+constexpr int kConvMKLDNNINT8 = 2;
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
