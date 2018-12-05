@@ -76,12 +76,24 @@ class TestDistRunnerBase(object):
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-        if args.is_dist:
+        if args.update_method == "pserver":
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
                                     args.sync_mode, args.dc_asgd)
             trainer_prog = t.get_trainer_program()
+        elif args.update_method == "nccl2":
+            # transpile for nccl2
+            config = fluid.DistributeTranspilerConfig()
+            config.mode = "nccl2"
+            nccl2_t = fluid.DistributeTranspiler(config=config)
+            nccl2_t.transpile(
+                args.trainer_id,
+                program=fluid.default_main_program(),
+                startup_program=fluid.default_startup_program(),
+                trainers=args.endpoints,
+                current_endpoint=args.current_endpoint)
+            trainer_prog = fluid.default_main_program()
         else:
             trainer_prog = fluid.default_main_program()
 
@@ -110,11 +122,20 @@ class TestDistRunnerBase(object):
                 len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
             mypass.set_int("num_repeats", args.batch_merge_repeat)
 
+        if args.update_method == "nccl2":
+            num_trainers = len(args.endpoints.split(","))
+            trainer_id = args.trainer_id
+        else:
+            num_trainers = 1
+            trainer_id = 0
+
         exe = fluid.ParallelExecutor(
             args.use_cuda,
             loss_name=avg_cost.name,
             exec_strategy=strategy,
-            build_strategy=build_stra)
+            build_strategy=build_stra,
+            num_trainers=num_trainers,
+            trainer_id=trainer_id)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -126,7 +147,7 @@ class TestDistRunnerBase(object):
 
         def get_data():
             origin_batch = next(reader_generator)
-            if args.is_dist and args.use_reader_alloc:
+            if args.update_method != "local" and args.use_reader_alloc:
                 new_batch = []
                 for offset, item in enumerate(origin_batch):
                     if offset % 2 == args.trainer_id:
@@ -151,7 +172,11 @@ def runtime_main(test_class):
     parser.add_argument(
         '--role', type=str, required=True, choices=['pserver', 'trainer'])
     parser.add_argument('--endpoints', type=str, required=False, default="")
-    parser.add_argument('--is_dist', action='store_true')
+    parser.add_argument(
+        '--update_method',
+        type=str,
+        default="local",
+        choices=["pserver", "nccl2", "local"])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument(
@@ -170,7 +195,7 @@ def runtime_main(test_class):
     args = parser.parse_args()
 
     model = test_class()
-    if args.role == "pserver" and args.is_dist:
+    if args.role == "pserver" and args.update_method == "pserver":
         model.run_pserver(args)
     else:
         model.run_trainer(args)
@@ -208,6 +233,7 @@ class TestDistBase(unittest.TestCase):
         self._use_reduce = False
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
+        self._nccl2_mode = False
         self._setup_config()
         self._after_setup_config()
 
@@ -218,7 +244,7 @@ class TestDistBase(unittest.TestCase):
 
     def start_pserver(self, model_file, check_error_log, required_envs):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        ps_cmd = "%s %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --is_dist"
+        ps_cmd = "%s %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
         ps0_cmd = ps_cmd % \
                   (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
                    self._trainers)
@@ -270,7 +296,7 @@ class TestDistBase(unittest.TestCase):
         else:
             env_local = {'CPU_NUM': '1'}
 
-        envs.update(env_local)
+        env_local.update(envs)
 
         if check_error_log:
             err_log = open("/tmp/trainer.err.log", "wb")
@@ -278,7 +304,7 @@ class TestDistBase(unittest.TestCase):
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=err_log,
-                env=envs)
+                env=env_local)
         else:
             local_proc = subprocess.Popen(
                 cmd.split(" "),
@@ -303,7 +329,7 @@ class TestDistBase(unittest.TestCase):
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
-        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist"
+        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver"
         tr0_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
                    0, ps0_ep, self._trainers)
@@ -357,12 +383,9 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-
         ps0_pipe.close()
         ps1_pipe.close()
-        # FIXME: use terminate() instead of sigkill.
-        os.kill(ps0.pid, signal.SIGKILL)
-        os.kill(ps1.pid, signal.SIGKILL)
+
         ps0.terminate()
         ps1.terminate()
 
@@ -372,7 +395,71 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_out))
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
 
-        # return tr0_losses, tr1_losses
+        return pickle.loads(tr0_out), pickle.loads(tr1_out)
+
+    def _run_cluster_nccl2(self, model, envs, check_error_log):
+        # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
+        worker_endpoints = self._ps_endpoints.split(",")
+        w0_ep, w1_ep = worker_endpoints
+
+        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method nccl2"
+        tr0_cmd = tr_cmd % \
+                  (self._python_interp, model, self._ps_endpoints,
+                   0, w0_ep)
+        tr1_cmd = tr_cmd % \
+                  (self._python_interp, model, self._ps_endpoints,
+                   1, w1_ep)
+
+        if self._mem_opt:
+            tr0_cmd += " --mem_opt"
+            tr1_cmd += " --mem_opt"
+        if self._use_reduce:
+            tr0_cmd += " --use_reduce"
+            tr1_cmd += " --use_reduce"
+        if self._use_reader_alloc:
+            tr0_cmd += " --use_reader_alloc"
+            tr1_cmd += " --use_reader_alloc"
+        if self.__use_cuda:
+            tr0_cmd += " --use_cuda"
+            tr1_cmd += " --use_cuda"
+            env0 = {"CUDA_VISIBLE_DEVICES": "0"}
+            env1 = {"CUDA_VISIBLE_DEVICES": "1"}
+        else:
+            env0 = {'CPU_NUM': '1'}
+            env1 = {'CPU_NUM': '1'}
+
+        env0.update(envs)
+        env1.update(envs)
+
+        print("tr0_cmd:{}, env: {}".format(tr0_cmd, env0))
+        print("tr1_cmd:{}, env: {}".format(tr1_cmd, env1))
+        tr0_pipe = open("/tmp/tr0_err.log", "wb")
+        tr1_pipe = open("/tmp/tr1_err.log", "wb")
+
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=tr0_pipe,
+            env=env0)
+        tr1_proc = subprocess.Popen(
+            tr1_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=tr1_pipe,
+            env=env1)
+
+        tr0_out, tr0_err = tr0_proc.communicate()
+        tr1_out, tr1_err = tr1_proc.communicate()
+
+        # close trainer file
+        tr0_pipe.close()
+        tr1_pipe.close()
+
+        # print log
+        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
+        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+        sys.stderr.write('trainer 0 stdout: %s\n' % tr0_out)
+        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_out)
+
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
     def check_with_place(self,
@@ -387,20 +474,25 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1",
-            "http_proxy": ""
+            "http_proxy": "",
+            "NCCL_P2P_DISABLE": "1"
         }
 
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses\
             = self._run_local(model_file, required_envs,
                                        check_error_log)
-        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs,
-                                                   check_error_log)
+        if self._nccl2_mode:
+            tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                model_file, required_envs, check_error_log)
+        else:
+            tr0_losses, tr1_losses = self._run_cluster(
+                model_file, required_envs, check_error_log)
 
         for step_id in range(RUN_STEP):
             local_loss = local_losses[step_id]
