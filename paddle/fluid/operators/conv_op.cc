@@ -74,6 +74,8 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  int customized_type_value =
+      framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   std::string data_format = ctx.Attr<std::string>("data_format");
@@ -89,6 +91,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
+    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
 
@@ -105,7 +108,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                 library);
+                                 library, customized_type_value);
 }
 
 void Conv2DOpMaker::Make() {
@@ -358,6 +361,8 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  int customized_type_value =
+      framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library_{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   std::string data_format = ctx.Attr<std::string>("data_format");
@@ -373,12 +378,13 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
+    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+      layout_, library_, customized_type_value);
 }
 
 }  // namespace operators

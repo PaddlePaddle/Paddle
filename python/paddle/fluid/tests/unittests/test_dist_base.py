@@ -291,8 +291,8 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
         sys.stderr.write('local_stderr: %s\n' % local_err)
+        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
 
         return pickle.loads(local_out)
 
