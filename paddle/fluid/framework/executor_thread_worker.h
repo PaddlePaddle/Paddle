@@ -171,7 +171,6 @@ class ExecutorThreadWorker {
   Scope* root_scope_;
   // a thread scope, father scope is global score which is shared
   Scope* thread_scope_;
-  //private:
   std::vector<std::string> fetch_var_names_;
   std::vector<std::vector<float>> fetch_values_;
   bool debug_;
@@ -185,10 +184,10 @@ public:
     void SetPullDenseThread(std::shared_ptr<DensePullThread> dpt);
     void BindingSlotVariableMemory();
     void SetParamConfig(AsyncWorkerParamConfig* pc);
-    void TrainFiles();  
+    void TrainFiles();
     void TrainOneNetwork();
     void PrepareParams();
-    void UpdateParams(); 
+    void UpdateParams();
     void PullSparse(int table_id);
     void FillSparse(int table_id);
     void PushSparse(int table_id);
