@@ -95,25 +95,24 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       weights_tz[3] = h;
       weights_tz[4] = w;
     }
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    std::vector<int> user_dst_tz =
+        paddle::framework::vectorize2int(output->dims());
+    std::vector<int> dst_tz(user_dst_tz);
     auto layout_string = ctx.Attr<std::string>("reorder_output_format");
-    if (!layout_string.empty() &&
-        framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
-      auto dst_tz_old = dst_tz;
+
+    bool reorder_to_nhwc =
+        !layout_string.empty() &&
+        framework::StringToDataLayout(layout_string) == DataLayout::kNHWC;
+
+    if (reorder_to_nhwc) {
+      // reverse the transposition to get what convolution should actually do
       // get back the nchw dimensions from nhwc for dst_md proper memory
       // allocation for mkldnn conv primitive to work
       std::vector<int> axis = {0, 3, 1, 2};
       for (size_t i = 0; i < axis.size(); i++) {
-        dst_tz[i] = dst_tz_old[axis[i]];
+        dst_tz[i] = user_dst_tz[axis[i]];
       }
-      auto xshape = ctx.Output<Tensor>("XShape");
-      std::vector<int64_t> x_shape_dim(dst_tz_old.size() + 1);
-      x_shape_dim[0] = 0;
-      for (int i = 0; i < dst_tz_old.size(); ++i) {
-        x_shape_dim[i + 1] = dst_tz_old[i];
-      }
-      xshape->Resize(framework::make_ddim(x_shape_dim));
-      std::cout << xshape->dims() << std::endl;
+      user_dst_tz = dst_tz;
     }
 
     // Get unique name for storing MKLDNN primitives
@@ -216,8 +215,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
     } else {
-      if (!layout_string.empty() &&
-          framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
+      if (reorder_to_nhwc) {
         dst_memory_p = handler.AcquireDstMemoryFromPrimitive();
       } else {
         auto output_data = output->mutable_data<T>(
@@ -251,14 +249,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // create reorder primitive if the output reorder format is specified to
     // "NHWC" for example by a fuse conv + transpose
-    if (!layout_string.empty() &&
-        framework::StringToDataLayout(layout_string) == DataLayout::kNHWC) {
+    if (reorder_to_nhwc) {
       auto output_data = output->mutable_data<T>(
           ctx.GetPlace(), paddle::memory::Allocator::kDefault,
           handler.GetDstMemorySize());
       // create user dst memory primitive in that format,
       auto user_dst_md = platform::MKLDNNMemDesc(
-          {dst_tz}, platform::MKLDNNGetDataType<T>(),
+          user_dst_tz, platform::MKLDNNGetDataType<T>(),
           platform::data_format_to_memory_format(layout_string));
 
       auto user_dst_memory_p = handler.AcquireUserDstMemoryFromDstMemory(
