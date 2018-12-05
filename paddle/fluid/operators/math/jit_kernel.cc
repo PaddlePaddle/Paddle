@@ -21,8 +21,6 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-namespace jit = platform::jit;
-
 KernelPool& KernelPool::Instance() {
   static thread_local KernelPool g_jit_kernels;
   return g_jit_kernels;

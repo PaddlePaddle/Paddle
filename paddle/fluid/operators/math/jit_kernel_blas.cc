@@ -30,7 +30,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
-namespace jit = platform::jit;
 
 #ifdef PADDLE_WITH_MKLML
 template <typename T>
@@ -125,7 +124,7 @@ bool VMulKernelImpl<float>::useJIT(int d) {
 #ifdef PADDLE_WITH_MKLML
 template <>
 bool VMulKernelImpl<float>::useMKL(int d) {
-  return jit::MayIUse(jit::avx512f) && d > 512;
+  return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
