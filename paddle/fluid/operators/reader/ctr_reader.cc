@@ -258,7 +258,7 @@ static inline void parse_csv_line(
     int slot_idx = data_desc.sparse_slot_index_[i];
     auto& slot_data = ret[slot_idx];
     std::vector<std::string> data_in_slot_str;
-    string_split(ret[slot_idx], ',', &data_in_slot_str);
+    string_split(slot_data, ',', &data_in_slot_str);
     std::vector<int64_t> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
       (*sparse_datas)[i].push_back(std::stol(data_str));
