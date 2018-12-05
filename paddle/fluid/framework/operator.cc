@@ -283,6 +283,7 @@ OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& outputs,
                            const AttributeMap& attrs)
     : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
+  for (auto attr : attrs_) LOG(ERROR) << attr.first;
   GenerateTemporaryNames();
   CheckAllInputOutputSet();
 }
