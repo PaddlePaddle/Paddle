@@ -12,27 +12,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jitkernels/jitcode/jitcode.h"
+#pragma once
+#include "paddle/fluid/operators/jit/kernel_base.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
+namespace refer {
 
-template <>
-size_t GetKey<int>(int d) {
-  return d;
+template <typename T>
+void VMul(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
 }
 
-// template <>
-// std::shared_ptr<const JitBase> CreateJitCode<KernelType::vmul, int>(int attr)
-// {
-//   if (UseJitCode<KernelType::vmul, int>(attr)) {
-//     return std::make_shared<jitcode::VMulJitCode<int>>(attr,
-//     CodeSize<KernelType::vmul, int>(attr)));
-//   }
-//   return nullptr;
-// }
+template <typename T>
+class VMulKernel : public ReferKernel<T, typename VMulTypes<T>::func_type,
+                                      typename VMulTypes<T>::attr_type> {
+ public:
+  VMulKernel() { this->func = VMul<T>; }
+};
 
-}  // namespace jitkernels
+}  // namespace refer
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

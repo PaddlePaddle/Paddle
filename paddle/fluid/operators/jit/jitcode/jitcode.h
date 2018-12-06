@@ -15,7 +15,7 @@
 #pragma once
 
 #include <type_traits>
-#include "paddle/fluid/operators/jitkernels/jitcode_base.h"
+#include "paddle/fluid/operators/jit/jitcode_base.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 #define XBYAK_USE_MMAP_ALLOCATOR
@@ -24,7 +24,7 @@
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 namespace jitcode {
 
 // Application Binary Interface
@@ -129,6 +129,6 @@ class JitCode : public JitBase, public Xbyak::CodeGenerator {
 };
 
 }  // namespace jitcode
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

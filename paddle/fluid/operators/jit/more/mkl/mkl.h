@@ -12,33 +12,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jitkernels/more/mkl/mkl.h"
-#include "paddle/fluid/operators/jitkernels/registry.h"
-#include "paddle/fluid/platform/dynload/mklml.h"
+#pragma once
+
+#include <type_traits>
+#include "paddle/fluid/operators/jit/kernel_base.h"
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 namespace more {
 namespace mkl {
 
-template <>
-void VMul<float>(const float* x, const float* y, float* z, int n) {
-  platform::dynload::vsMul(n, x, y, z);
-}
+template <typename T>
+void VMul(const T* x, const T* y, T* z, int n);
 
-template <>
-void VMul<double>(const double* x, const double* y, double* z, int n) {
-  platform::dynload::vdMul(n, x, y, z);
-}
+template <typename T>
+class VMulKernel : public KernelImpl<T, typename VMulTypes<T>::func_type,
+                                     typename VMulTypes<T>::attr_type> {
+ public:
+  VMulKernel() { this->func = VMul<T>; }
+  bool UseMe(int d) const override {
+    if (std::is_same<T, float>::value) {
+      return platform::MayIUse(platform::avx512f) && d > 512;
+    } else {
+      return true;
+    }
+  }
+};
 
 }  // namespace mkl
 }  // namespace more
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle
-
-namespace mkl = paddle::operators::jitkernels::more::mkl;
-
-REGISTER_JITKERNEL_MORE(vmul, mkl, mkl::VMulKernel<float>,
-                        mkl::VMulKernel<double>);

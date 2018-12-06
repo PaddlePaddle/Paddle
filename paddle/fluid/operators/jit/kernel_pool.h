@@ -18,14 +18,14 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/operators/jitkernels/jitcode_base.h"
-#include "paddle/fluid/operators/jitkernels/kernel_base.h"
-#include "paddle/fluid/operators/jitkernels/kernel_key.h"
+#include "paddle/fluid/operators/jit/jitcode_base.h"
+#include "paddle/fluid/operators/jit/kernel_base.h"
+#include "paddle/fluid/operators/jit/kernel_key.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 
 template <KernelType KT>
 class JitCodePool {
@@ -146,6 +146,6 @@ const Func Get(Attr attr) {
   return GetRefer<KT, T, Func, Attr>();
 }
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

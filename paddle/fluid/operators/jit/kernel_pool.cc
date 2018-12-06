@@ -12,10 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jitkernels/refer/refer.h"
-#include "paddle/fluid/operators/jitkernels/registry.h"
+#include "paddle/fluid/operators/jit/kernel_pool.h"
+#include <memory>  // for shared_ptr
+#include <string>
+#include <unordered_map>
 
-namespace refer = paddle::operators::jitkernels::refer;
+namespace paddle {
+namespace operators {
+namespace jit {
 
-REGISTER_JITKERNEL_REFER(vmul, refer::VMulKernel<float>,
-                         refer::VMulKernel<double>);
+KernelPool& KernelPool::Instance() {
+  static KernelPool g_kernel_pool;
+  return g_kernel_pool;
+}
+
+ReferKernelPool& ReferKernelPool::Instance() {
+  static ReferKernelPool g_refer_kernel_pool;
+  return g_refer_kernel_pool;
+}
+
+}  // namespace jit
+}  // namespace operators
+}  // namespace paddle

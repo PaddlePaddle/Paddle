@@ -11,12 +11,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License. */
-#include "paddle/fluid/operators/jitkernels/jitcode/blas.h"
-#include "paddle/fluid/operators/jitkernels/registry.h"
+#include "paddle/fluid/operators/jit/jitcode/blas.h"
+#include "paddle/fluid/operators/jit/registry.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 namespace jitcode {
 
 void VXXJitCode::genCode() {
@@ -113,6 +113,6 @@ std::unique_ptr<JitBase> CreateJitCode<KernelType::vmul, float, int>(int attr) {
   return nullptr;
 }
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

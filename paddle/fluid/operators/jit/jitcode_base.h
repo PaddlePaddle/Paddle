@@ -16,14 +16,14 @@
 
 #include <gflags/gflags.h>
 #include <memory>  // for shared_ptr
-#include "paddle/fluid/operators/jitkernels/kernel_base.h"
+#include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/macros.h"
 
 DECLARE_bool(dump_jitcode);
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 
 // TODO(TJ): make these functions as virtual of a class
 
@@ -64,6 +64,6 @@ class JitBase : public Kernel {
 template <KernelType KT, typename T, typename Attr>
 std::unique_ptr<JitBase> CreateJitCode(Attr attr);
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

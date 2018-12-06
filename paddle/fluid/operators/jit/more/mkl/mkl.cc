@@ -12,32 +12,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jitkernels/jitcode_base.h"
-#include <fstream>
-#include <iostream>
-#include <sstream>
-
-DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
+#include "paddle/fluid/operators/jit/more/mkl/mkl.h"
+#include "paddle/fluid/operators/jit/registry.h"
+#include "paddle/fluid/platform/dynload/mklml.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
+namespace more {
+namespace mkl {
 
-// refer do not need useme, it would be the last one.
-void JitBase::dumpCode(const unsigned char* code) const {
-  if (code) {
-    static int counter = 0;
-    std::ostringstream filename;
-    filename << "paddle_jitcode_" << name() << "." << counter << ".bin";
-    counter++;
-    std::ofstream fout(filename.str(), std::ios::out);
-    if (fout.is_open()) {
-      fout.write(reinterpret_cast<const char*>(code), this->getSize());
-      fout.close();
-    }
-  }
+template <>
+void VMul<float>(const float* x, const float* y, float* z, int n) {
+  platform::dynload::vsMul(n, x, y, z);
 }
 
-}  // namespace jitkernels
+template <>
+void VMul<double>(const double* x, const double* y, double* z, int n) {
+  platform::dynload::vdMul(n, x, y, z);
+}
+
+}  // namespace mkl
+}  // namespace more
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle
+
+namespace mkl = paddle::operators::jit::more::mkl;
+
+REGISTER_JITKERNEL_MORE(vmul, mkl, mkl::VMulKernel<float>,
+                        mkl::VMulKernel<double>);
