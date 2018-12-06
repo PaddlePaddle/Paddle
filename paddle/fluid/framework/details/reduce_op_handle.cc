@@ -108,6 +108,10 @@ void ReduceOpHandle::GatherSelectedRows(
     VLOG(4) << "gather from:" << var.String();
   }
 
+  // erase gathered vars
+  merged_dev_ctx->Wait();
+  scope->EraseVars(std::vector<std::string>{gathered_var_name});
+
   PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
   PADDLE_ENFORCE(remote.size() == vars.size());
 
@@ -126,7 +130,7 @@ void ReduceOpHandle::GatherSelectedRows(
   rpc_server->ClearVar(merged_var_name);
 
   // 5. clear mid vars
-  std::vector<std::string> tmp_vars{gathered_var_name, merged_var_name};
+  std::vector<std::string> tmp_vars{merged_var_name};
   for (auto r : vars) {
     tmp_vars.push_back(r.var_name_);
   }
