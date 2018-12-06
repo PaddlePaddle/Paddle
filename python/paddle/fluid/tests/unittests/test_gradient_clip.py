@@ -20,9 +20,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
-BATCH_SIZE = 128
-CLIP = 1
-
 
 def bow_net(data,
             label,
@@ -64,28 +61,31 @@ class TestGradientClip(unittest.TestCase):
         return places
 
     def check_operators(self, place):
+        CLIP = 1
+
         prog = fluid.framework.Program()
         startup_program = fluid.framework.Program()
         with fluid.program_guard(
                 main_program=prog, startup_program=startup_program):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
-            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
             hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
             hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
 
+            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(cost)
 
         prog_clip = prog.clone()
-
         avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 
         p_g = fluid.backward.append_backward(loss=avg_cost)
         p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
 
-        with fluid.program_guard(main_program=prog_clip):
+        with fluid.program_guard(
+                main_program=prog_clip, startup_program=startup_program):
             fluid.clip.set_gradient_clip(
                 fluid.clip.GradientClipByGlobalNorm(clip_norm=CLIP))
             p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
@@ -96,7 +96,7 @@ class TestGradientClip(unittest.TestCase):
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=8192),
-            batch_size=BATCH_SIZE)
+            batch_size=128)
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
