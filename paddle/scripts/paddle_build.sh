@@ -442,8 +442,6 @@ EOF
         make install -j 8
         if [ "$1" == "cp27-cp27m" ]; then
             pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-            set -e
-            python -c "import paddle.fluid"
         elif [ "$1" == "cp35-cp35m" ]; then
             pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp36-cp36m" ]; then
