@@ -128,6 +128,12 @@ class TestIdentityActivation(TestConv2dFusionOp):
         self.activation = 'identity'
 
 
+class TestIdentityActivation(TestConv2dFusionOp):
+    def init_activation(self):
+        self.activation = 'identity'
+        self.add_residual_data = False
+
+
 class TestWithGroup(TestConv2dFusionOp):
     def init_group(self):
         self.groups = 3
