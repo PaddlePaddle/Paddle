@@ -27,16 +27,9 @@ namespace mkl {
 template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);
 
-// template <typename T>
-// struct VMulTypes{
-// typedef T date_type;
-// typedef void (*func)(const T*, const T*, T*, int) func_type;
-//   typedef int attr_type;
-// };
-
 template <typename T>
-class VMulKernel
-    : public KernelImpl<T, void (*)(const T*, const T*, T*, int), int> {
+class VMulKernel : public KernelImpl<T, typename VMulTypes<T>::func_type,
+                                     typename VMulTypes<T>::attr_type> {
  public:
   VMulKernel() { this->func = VMul<T>; }
   bool UseMe(int d) const override {

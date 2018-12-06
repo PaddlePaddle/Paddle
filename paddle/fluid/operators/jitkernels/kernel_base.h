@@ -21,6 +21,13 @@ namespace jitkernels {
 
 typedef enum { vmul = 0, vadd = 1, vsub, vexp } KernelType;
 
+template <typename T>
+struct VMulTypes {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int);
+};
+
 // Just for adding to kernel pool without template
 class Kernel {
  public:
@@ -29,10 +36,10 @@ class Kernel {
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
-template <typename T, typename Func, typename Attr>  // TODO(TJ): use tuple
+template <typename T, typename Func, typename Attr>
 class KernelImpl : public Kernel {
  public:
-  using ELEMENT_TYPE = T;  // TODO(TJ): remove me?
+  using ELEMENT_TYPE = T;
   virtual Func GetFunc() const { return func; }
   virtual bool UseMe(Attr attr) const = 0;
 
@@ -40,7 +47,7 @@ class KernelImpl : public Kernel {
   Func func{nullptr};
 };
 
-template <typename T, typename Func, typename Attr>  // TODO(TJ): use tuple
+template <typename T, typename Func, typename Attr>
 class ReferKernel : public KernelImpl<T, Func, Attr> {
  public:
   // Refer code can always be used

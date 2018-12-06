@@ -62,11 +62,7 @@ class JitBase : public Kernel {
 };
 
 template <KernelType KT, typename T, typename Attr>
-std::unique_ptr<JitBase> CreateJitCode(Attr attr);  //{
-//   if (UseJitCode<KT,T,Attr>) {
-//     return make_unique<xxxxclass>(attr, CodeSize<KT,T,Attr>());
-//   }
-// }
+std::unique_ptr<JitBase> CreateJitCode(Attr attr);
 
 }  // namespace jitkernels
 }  // namespace operators

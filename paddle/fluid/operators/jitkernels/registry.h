@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 namespace jitkernels {
 
-// make_unique is supported from c++14
+// make_unique is supported since c++14
 template <typename T, typename... Args>
 inline std::unique_ptr<T> make_unique(Args&&... args) {
   static_assert(!std::is_array<T>::value, "T must not be array");

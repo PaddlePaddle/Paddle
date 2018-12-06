@@ -69,10 +69,10 @@ TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::jitkernels;
   // TODO(TJ): test more vector size
   for (int d = 1; d < 30; ++d) {
-    auto ref = jit::GetRefer<jit::vmul, T,
-                             void (*)(const T*, const T*, T*, int), int>();
-    auto tgt = jit::Get<jit::vmul, T, void (*)(const T*, const T*, T*, int),
-                        int, PlaceType>(d);
+    auto ref = jit::GetRefer<jit::vmul, T, jit::VMulTypes<T>::func_type,
+                             jit::VMulTypes<T>::attr_type>();
+    auto tgt = jit::Get<jit::vmul, T, jit::VMulTypes<T>::func_type,
+                        jit::VMulTypes<T>::attr_type, PlaceType>(d);
     EXPECT_TRUE(ref != nullptr);
     EXPECT_TRUE(tgt != nullptr);
 
