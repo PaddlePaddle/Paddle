@@ -67,6 +67,7 @@ void ReduceOpHandle::GatherSelectedRows(
       gathered_var_mid->GetMutable<framework::SelectedRows>();
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
+  // FIXME(gongwb): remove this Wait.
   Wait(dev_ctxes);
 
   // merge them
@@ -75,7 +76,6 @@ void ReduceOpHandle::GatherSelectedRows(
       GetRemoteVarName(out_var_handle->name_, collective_context.trainer_id_);
   auto merged_select_rows =
       scope->Var(merged_var_name)->GetMutable<SelectedRows>();
-  // FIXME(gongwb):get type?
   operators::math::scatter::MergeAdd<DevCtx, DataType> merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
 
