@@ -194,6 +194,8 @@ class NCEKernel : public framework::OpKernel<T> {
         sample_out_data[i] += result(0);
         sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
       }
+
+      context.scope().DeleteScope(&local_scope);
 #endif
     } else {
       auto weight_mat =
