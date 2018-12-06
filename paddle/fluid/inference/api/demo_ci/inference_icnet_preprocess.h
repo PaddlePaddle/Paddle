@@ -41,7 +41,7 @@ struct Record {
 
 class ImageProcess {
  public:
-  static bool Image_Read(std::string imagename, unsigned char*& imagebuf,
+  static bool image_read(std::string imagename, unsigned char*& imagebuf,
                          int& imagewidth, int& imageheight,
                          int& imagebitcount) {
     int imagelinebyte = 0;
@@ -82,7 +82,7 @@ class ImageProcess {
   }
 
   // save the data into BMP file
-  static bool Image_Save(const char* imagename, unsigned char* imagebuf,
+  static bool image_save(const char* imagename, unsigned char* imagebuf,
                          int imagewidth, int imageheight, int imagebitcount) {
     if (!imagebuf) return 0;
     int colorTablesize = 0;
@@ -134,7 +134,7 @@ class ImageProcess {
     return true;
   }
 
-  static void Save_Bmp(const char* filename, int64_t* resultimage,
+  static void bmp_save(const char* filename, int64_t* resultimage,
                        int image_size) {
     int imagelinebyte = (W * 8 / 8 + 3) / 4 * 4;
     unsigned char* imagebuffer = new unsigned char[imagelinebyte * H];
@@ -150,17 +150,17 @@ class ImageProcess {
       }
     }
 
-    Image_Save(filename, imagebuffer, W, H, 8);
+    image_save(filename, imagebuffer, W, H, 8);
   }
 
-  static bool ProcessAImage(Record& record, const char* filename) {
+  static bool preprocess_image(Record& record, const char* filename) {
     unsigned char* Image_Buf = nullptr;
     int Image_Width = 0;
     int Image_Height = 0;
     int Image_Bitcount = 0;
     int i = 0;
 
-    if (!Image_Read(filename, Image_Buf, Image_Width, Image_Height,
+    if (!image_read(filename, Image_Buf, Image_Width, Image_Height,
                     Image_Bitcount)) {
       return false;
     }

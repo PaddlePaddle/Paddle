@@ -105,7 +105,7 @@ API_REFERENCE void predict_file(void* handle, const char* bmp_name,
                                 void* output, int& output_length) {
   assert(handle != nullptr);
   Record record;
-  if (ImageProcess::ProcessAImage(record, bmp_name)) {
+  if (ImageProcess::preprocess_image(record, bmp_name)) {
     ((Predictor*)handle)
         ->predict(record.data, C, H, W, output, output_length, 1);
   }
@@ -120,5 +120,5 @@ API_REFERENCE void destory_predictor(void* handle) {
 
 API_REFERENCE void save_image(const char* filename, const void* output,
                               const int output_length) {
-  ImageProcess::Save_Bmp(filename, (int64_t*)output, output_length);
+  ImageProcess::bmp_save(filename, (int64_t*)output, output_length);
 }
