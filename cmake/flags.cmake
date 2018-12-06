@@ -129,6 +129,9 @@ set(COMMON_FLAGS
     -Wno-error=parentheses-equality # Warnings in pybind11
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
+    -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
+    -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
 )
 
 set(GPU_COMMON_FLAGS

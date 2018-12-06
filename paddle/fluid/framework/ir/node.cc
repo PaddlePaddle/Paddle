@@ -13,17 +13,45 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_info.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+// msvc15 don't support constexpr in correct way.
+#if !defined(_WIN32)
 constexpr char Node::kControlDepVarName[];
-int Node::count_ = 0;
+#else
+const char Node::kControlDepVarName[] = "__control_var";
+#endif
 
-std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+std::unique_ptr<Node> CreateNodeForTest(const std::string &name,
                                         Node::Type type) {
   return std::unique_ptr<Node>(new Node(name, type));
 }
+
+bool Node::RuntimeHasAttr(const std::string &name) const {
+  if (Op()->HasAttr(name)) {
+    return true;
+  } else {
+    auto &op_info = OpInfoMap::Instance();
+    auto op_type = Op()->Type();
+    if (op_info.Has(op_type)) {
+      auto op_info_ptr = op_info.Get(op_type);
+      if (op_info_ptr.HasOpProtoAndChecker()) {
+        const proto::OpProto &proto = op_info_ptr.Proto();
+        for (int i = 0; i != proto.attrs_size(); ++i) {
+          const proto::OpProto::Attr &attr = proto.attrs(i);
+          if (attr.name() == name) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

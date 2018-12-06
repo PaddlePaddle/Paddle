@@ -23,80 +23,81 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace {
 
-std::vector<std::string> FindDistTrainSendVars(
-    const std::vector<ir::Node *> &nodes) {
-  std::vector<std::string> send_vars;
-  // since parameters are all in block 0,
-  // it's enough to only scan send ops in block 0
-  for (auto &node : nodes) {
-    auto op_vars = node->Op()->InputArgumentNames();
-    send_vars.reserve(send_vars.size() +
-                      std::distance(op_vars.begin(), op_vars.end()));
-    send_vars.insert(send_vars.end(), op_vars.begin(), op_vars.end());
-  }
-  return send_vars;
-}
+void CheckProgram(const ProgramDesc &program) {
+#define _INT(role) static_cast<int>(role)
 
-std::vector<std::string> FindDistTrainRecvVars(
-    const std::vector<ir::Node *> &nodes) {
-  std::vector<std::string> recv_vars;
-  for (auto &node : nodes) {
-    auto op_vars = node->Op()->OutputArgumentNames();
-    recv_vars.reserve(recv_vars.size() +
-                      std::distance(op_vars.begin(), op_vars.end()));
-    recv_vars.insert(recv_vars.end(), op_vars.begin(), op_vars.end());
-  }
-  return recv_vars;
-}
-
-bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
-                   const std::vector<std::string> &recv_vars) {
-  if (send_vars.size() == 0 || recv_vars.size() == 0) {
-    return false;
-  }
-
-  /**
-   * Check any of opvars contains `.block` and in sendvars
-   */
-  auto checker = [](const std::vector<std::string> &opvars,
-                    const std::vector<std::string> &rpc_vars) -> bool {
-    for (auto &var : opvars) {
-      // a variable name with the suffix `.block` means it's a splited
-      // variable by (DistributeTranspiler)
-      // [python/paddle/fluid/transpiler/distribute_transpiler.py]
-      if (var.find(".block") != std::string::npos &&
-          std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
-        return true;
-      }
+  std::map<int, bool> visit;
+  for (OpDesc *op : program.Block(0).AllOps()) {
+    // For backward compatibility, some program doesn't have role added.
+    if (!op->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) continue;
+    int role_id =
+        boost::get<int>(op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
+    visit[role_id] = true;
+    switch (role_id) {
+      case _INT(OpRole::kForward):
+        if (visit.find(_INT(OpRole::kBackward)) != visit.end()) {
+          LOG(ERROR)
+              << "Cannot add backward operator before forward operator %s."
+              << op->Type();
+        }
+        break;
+      case _INT(OpRole::kBackward):
+      case _INT(OpRole::kBackward) | _INT(OpRole::kLoss):
+        PADDLE_ENFORCE(
+            visit.find(_INT(OpRole::kOptimize)) == visit.end(),
+            "Cannot add backward operator %s after optimize operator.",
+            op->Type());
+        break;
+      case _INT(OpRole::kForward) | _INT(OpRole::kLoss):
+        PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward) |
+                                  _INT(OpRole::kLoss)) == visit.end(),
+                       "Cannot add backward|loss operator before "
+                       "forward|loss operator %s.",
+                       op->Type());
+        PADDLE_ENFORCE(
+            visit.find(_INT(OpRole::kOptimize)) == visit.end(),
+            "Cannot add forward|loss operator %s after optimize operator.",
+            op->Type());
+        break;
+      case _INT(OpRole::kOptimize):
+      case _INT(OpRole::kOptimize) | _INT(OpRole::kLRSched):
+        PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward)) != visit.end(),
+                       "Optimize operators %s must follow backward operator.",
+                       op->Type());
+        break;
+      case _INT(OpRole::kLRSched):
+      case _INT(OpRole::kDist):
+      case _INT(OpRole::kRPC):
+      case _INT(OpRole::kNotSpecified):
+        break;
+      default:
+        LOG(FATAL) << "Unknown operator role. Don't add new role because "
+                      "you don't know what you are doing.";
     }
-    return false;
-  };
-
-  std::vector<std::string> input_var_names;
-  std::vector<std::string> output_var_names;
-  for (ir::Node *input : node->inputs) {
-    input_var_names.push_back(input->Name());
-  }
-  for (ir::Node *output : node->outputs) {
-    output_var_names.push_back(output->Name());
   }
 
-  return checker(output_var_names, send_vars) ||
-         checker(input_var_names, recv_vars);
+#undef _INT
 }
+}  // namespace
 
 Graph::Graph(const ProgramDesc &program) : program_(program) {
-  // Make the nodes id start from 0.
-  Node::ResetId();
+  CheckProgram(program_);
+  auto var_nodes = InitFromProgram(program_);
+  ResolveHazard(var_nodes);
+}
 
+std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
+    const ProgramDesc &program) {
   VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
+  // var nodes for each var name, will have multiple versions in SSA
+  std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *var : program.Block(0).AllVars()) {
     all_vars.emplace(var->Name(), var);
   }
 
-  std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *op : program.Block(0).AllOps()) {
     ir::Node *node = CreateOpNode(op);
     // For input args, reuse the same var name if it was created before.
@@ -134,7 +135,11 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       var->inputs.push_back(node);
     }
   }
+  return std::move(var_nodes);
+}
 
+void Graph::ResolveHazard(
+    const std::map<std::string, std::vector<ir::Node *>> &var_nodes) {
   /**
    * We should handle write after read(WAR) and write after write(WAW) here.
    * Because some of the operators of the program can be executed parallelly.
@@ -153,6 +158,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
     auto it_old = versions.rbegin();
     ++it_old;
     for (; it_old != versions.rend(); it_new = it_old, ++it_old) {
+      VLOG(3) << "deal with var: " << (*it_new)->Name();
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;

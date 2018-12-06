@@ -29,7 +29,7 @@ template <typename T>
 class GarbageCollector {
  public:
   GarbageCollector(const platform::Place &place, size_t max_memory_size)
-      : max_memory_size_(std::max(max_memory_size, static_cast<size_t>(1))) {
+      : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
     garbages_.reset(new std::deque<T *>());
     dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
   }

@@ -161,7 +161,8 @@ TEST(Analyzer_seq_conv1, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
@@ -183,7 +184,13 @@ TEST(Analyzer_seq_conv1, fuse_statis) {
   SetConfig(&cfg);
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  GetFuseStatis(predictor.get(), &num_ops);
+
+  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  ASSERT_TRUE(fuse_statis.count("seqconv_eltadd_relu_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 2);
+  EXPECT_EQ(fuse_statis.at("seqconv_eltadd_relu_fuse"), 6);
+  EXPECT_EQ(num_ops, 32);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
@@ -193,7 +200,8 @@ TEST(Analyzer_seq_conv1, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 }  // namespace inference

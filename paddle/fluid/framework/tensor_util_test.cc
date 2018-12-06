@@ -41,6 +41,11 @@ TEST(TensorCopy, Tensor) {
     EXPECT_EQ(src_ptr[i], dst_ptr[i]);
   }
 
+  TensorCopy(dst_tensor, *cpu_place, &dst_tensor);
+  for (size_t i = 0; i < 9; ++i) {
+    EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+  }
+
   EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
 
   Tensor slice_tensor = src_tensor.Slice(1, 2);
@@ -80,6 +85,15 @@ TEST(TensorCopy, Tensor) {
     EXPECT_NE(src_ptr, dst_ptr);
     for (size_t i = 0; i < 9; ++i) {
       EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+    }
+
+    // Copy the same tensor
+    TensorCopy(gpu_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
+    gpu_ctx.Wait();
+    const int* dst_ptr_tmp = dst_tensor.data<int>();
+    EXPECT_NE(src_ptr, dst_ptr_tmp);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], dst_ptr_tmp[i]);
     }
 
     Tensor slice_tensor = src_tensor.Slice(1, 2);
@@ -365,7 +379,9 @@ TEST(Tensor, FromAndToStream) {
     TensorToStream(oss, gpu_tensor, gpu_ctx);
 
     std::istringstream iss(oss.str());
-    TensorFromStream(iss, &dst_tensor, gpu_ctx);
+    TensorFromStream(
+        iss, &dst_tensor,
+        *platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 6; ++i) {

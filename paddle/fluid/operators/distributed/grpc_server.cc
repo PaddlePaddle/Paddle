@@ -20,6 +20,8 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
+DECLARE_bool(rpc_disable_reuse_port);
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -102,9 +104,10 @@ class RequestSend final : public RequestBase {
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
+    int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }
 
@@ -133,13 +136,14 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
+    int trainer_id = request_.trainer_id();
     VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
 
     if (outvar) {
       SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
@@ -179,6 +183,8 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
+    int trainer_id = request_->GetTrainerId();
     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
@@ -187,7 +193,8 @@ class RequestPrefetch final : public RequestBase {
     // out var must be created in local scope!
     framework::Variable* outvar = scope->Var(out_var_name);
 
-    request_handler_->Handle(in_var_name, scope, invar, &outvar, out_var_name);
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                             out_var_name, table_name);
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
@@ -225,12 +232,13 @@ class RequestCheckpointNotify final : public RequestBase {
 
     std::string checkpoint_notify = request_->Varname();
     std::string checkpoint_dir = request_->OutVarname();
+    int trainer_id = request_->GetTrainerId();
 
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                             checkpoint_dir);
+                             trainer_id, checkpoint_dir);
     Finish(reply_, &responder_);
   }
 
@@ -247,6 +255,20 @@ void AsyncGRPCServer::WaitServerReady() {
   VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
 
+// Define an option subclass in order to disable SO_REUSEPORT for the
+// server socket.
+// Come from:
+// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc
+class NoReusePortOption : public ::grpc::ServerBuilderOption {
+ public:
+  void UpdateArguments(::grpc::ChannelArguments* args) override {
+    args->SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
+
+  void UpdatePlugins(std::vector<std::unique_ptr<::grpc::ServerBuilderPlugin>>*
+                         plugins) override {}
+};
+
 void AsyncGRPCServer::StartServer() {
   ::grpc::ServerBuilder builder;
   builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
@@ -254,6 +276,10 @@ void AsyncGRPCServer::StartServer() {
 
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
+  if (FLAGS_rpc_disable_reuse_port) {
+    builder.SetOption(
+        std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+  }
   builder.RegisterService(&service_);
 
   for (auto t : rpc_call_map_) {

@@ -17,14 +17,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -46,44 +50,69 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
+template <typename RefCntMap>
+static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
+                                GarbageCollector<Tensor>* gc,
+                                RefCntMap* ref_cnts) {
+  std::unordered_set<Tensor*> erase_tensors;
+
+  auto handler = [&](const VariableNameMap& name_map) {
+    for (auto& name_pair : name_map) {
+      for (auto& name : name_pair.second) {
+        auto it = ref_cnts->find(name);
+        if (it == ref_cnts->end()) continue;
+        if ((it->second)-- == 1) {
+          auto* var = scope.FindVar(name);
+          if (var != nullptr) {
+            VLOG(10) << "Erase tensor \'" << name << "\'";
+            if (var->IsType<LoDTensor>()) {
+              erase_tensors.insert(var->GetMutable<LoDTensor>());
+            } else if (var->IsType<SelectedRows>()) {
+              erase_tensors.insert(
+                  var->GetMutable<SelectedRows>()->mutable_value());
+            }
+          }
+        }
+      }
+    }
+  };
+
+  handler(op->Inputs());
+  handler(op->Outputs());
+
+  if (!erase_tensors.empty()) {
+    gc->Add(erase_tensors);
+  }
+}
+
+static void EnableFusedOp(ExecutorPrepareContext* ctx) {
+#ifdef PADDLE_WITH_NGRAPH
+  VLOG(3) << "use_ngraph=True";
+  auto intervals = FusedOperator::FusedOpIntervals(&ctx->ops_);
+  for (auto& interval : intervals) {
+    auto* fused_op = new FusedOperator(ctx->prog_, ctx->block_id_,
+                                       interval.at(0), interval.at(1));
+    *interval[0] = std::unique_ptr<OperatorBase>(fused_op);
+  }
+  for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
+    ctx->ops_.erase(it->at(0) + 1, it->at(1));
+  }
+#else
+  LOG(WARNING)
+      << "'NGRAPH' is not supported, Please re-compile with WITH_NGRAPH option";
+#endif
+}
+
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
+  // TODO(typhoonzero): complete message will need to use real trainer_id,
+  // except 0.
   auto client =
-      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
   client->SendComplete();
 #endif
-}
-
-void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarType::READER) {
-    var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::RAW) {
-    // GetMutable will be called in operator
-  } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
-        var_type);
-  }
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
@@ -301,6 +330,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
+  if (FLAGS_use_ngraph) EnableFusedOp(ctx.get());
   return ctx;
 }
 
@@ -322,6 +352,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -331,9 +362,13 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
-
   std::unique_ptr<GarbageCollector<Tensor>> gc;
-  if (max_memory_size >= 0) {
+  // WhileOp would set keep_kids to true,
+  // because WhileGradOp needs the scopes created in WhileOp.
+  // Perhaps, we should not perform eager deletion in WhileOp
+  // The scopes and variables created by WhileOp would be deleted
+  // in WhileGradOp.
+  if (max_memory_size >= 0 && !keep_kids) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
@@ -352,50 +387,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     op->Run(*local_scope, place_);
 
     if (gc != nullptr) {
-      std::vector<std::string> erase_vars;
-      for (auto& input : op->Inputs()) {
-        for (auto& input_name : input.second) {
-          auto it = ctx->cur_ref_cnts_.find(input_name);
-          if (it == ctx->cur_ref_cnts_.end()) continue;
-          if (it->second == 1) {  // should delete it
-            erase_vars.emplace_back(input_name);
-            ctx->cur_ref_cnts_.erase(input_name);
-          } else {
-            --(it->second);
-          }
-        }
-      }
-
-      for (auto& output : op->Outputs()) {
-        for (auto& output_name : output.second) {
-          auto it = ctx->cur_ref_cnts_.find(output_name);
-          if (it == ctx->cur_ref_cnts_.end()) continue;
-          if (it->second == 1) {
-            erase_vars.emplace_back(output_name);
-            ctx->cur_ref_cnts_.erase(output_name);
-          } else {
-            --(it->second);
-          }
-        }
-      }
-
-      if (!erase_vars.empty()) {
-        std::vector<framework::LoDTensor*> erase_tensors;
-        for (auto& name : erase_vars) {
-          auto* var = local_scope->FindVar(name);
-          if (var == nullptr) continue;
-          if (var->IsType<framework::LoDTensor>()) {
-            auto* tensor = var->GetMutable<framework::LoDTensor>();
-            erase_tensors.push_back(tensor);
-          }
-        }
-        if (!erase_tensors.empty()) gc->Add(erase_tensors);
-      }
-    }
-
-    if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
+      DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
+                          &(ctx->cur_ref_cnts_));
     }
   }
 
@@ -417,13 +410,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
     }
-  }
-
-  if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
   }
 }
 
@@ -481,6 +467,5 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
 #endif
 }
-
 }  // namespace framework
 }  // namespace paddle

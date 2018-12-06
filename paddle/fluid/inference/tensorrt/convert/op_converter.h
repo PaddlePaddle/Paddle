@@ -61,7 +61,7 @@ class OpConverter {
       // TODO(xingzhaolong): all mul, sub, div
       // static std::unordered_set<std::string> add_weight_op_set {"add", "mul",
       // "sub", "div"};
-      static std::unordered_set<std::string> add_weight_op_set{"add"};
+      static std::unordered_set<std::string> add_weight_op_set{"add", "mul"};
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       int op_type_len = op_desc.Type().size();
       std::string op_type = op_desc.Type().substr(op_type_len - 3, op_type_len);

@@ -100,6 +100,9 @@ class ShrinkRNNMemoryInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"));
     PADDLE_ENFORCE(context->HasInput("RankTable"));
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    if (!context->IsRuntime()) {
+      context->DecreaseLoDLevel("X", /*->*/ "Out");
+    }
   }
 };
 
@@ -151,9 +154,9 @@ class ShrinkRNNMemoryGradInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"));
     PADDLE_ENFORCE(context->HasOutput(framework::GradVarName("X")));
-    context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
+
+    context->ShareDim("X", /*->*/ framework::GradVarName("X"));
+    context->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 };
 

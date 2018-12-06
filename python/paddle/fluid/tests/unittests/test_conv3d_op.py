@@ -335,6 +335,12 @@ class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+class TestCUDNNExhaustiveSearch(TestCUDNN):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.exhaustive_search = True
+
+
 # FIXME(typhoonzero): find a way to determine if
 # using cudnn > 6 in python
 # class TestWithDilationCUDNN(TestWithDilation):

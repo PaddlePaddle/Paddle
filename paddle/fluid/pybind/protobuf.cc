@@ -29,12 +29,21 @@ limitations under the License. */
 namespace pybind11 {
 namespace detail {
 
+#if !defined(PYBIND11_HIDDEN)
+#ifdef _WIN32
+#define PYBIND11_HIDDEN __declspec(dllexport)
+#else
+#define PYBIND11_HIDDEN __attribute__((visibility("hidden")))
+#endif
+#endif
+
 // Can be replaced by a generic lambda in C++14
-struct variant_caster_visitor : public boost::static_visitor<handle> {
+struct PYBIND11_HIDDEN paddle_variant_caster_visitor
+    : public boost::static_visitor<handle> {
   return_value_policy policy;
   handle parent;
 
-  variant_caster_visitor(return_value_policy policy, handle parent)
+  paddle_variant_caster_visitor(return_value_policy policy, handle parent)
       : policy(policy), parent(parent) {}
 
   template <class T>
@@ -44,10 +53,10 @@ struct variant_caster_visitor : public boost::static_visitor<handle> {
 };
 
 template <class Variant>
-struct variant_caster;
+struct paddle_variant_caster;
 
 template <template <class...> class V, class... Ts>
-struct variant_caster<V<Ts...>> {
+struct paddle_variant_caster<V<Ts...>> {
   using Type = V<Ts...>;
 
   template <typename T>
@@ -57,6 +66,18 @@ struct variant_caster<V<Ts...>> {
     auto caster = make_caster<T>();
     if (!load_success_ && caster.load(src, convert)) {
       load_success_ = true;
+
+      if (std::is_same<T, std::vector<float>>::value) {
+        auto caster_ints = make_caster<std::vector<int64_t>>();
+        if (caster_ints.load(src, convert)) {
+          VLOG(4) << "This value are floats and int64_ts satisfy "
+                     "simultaneously, will set it's type to "
+                     "std::vector<int64_t>";
+          value = cast_op<std::vector<int64_t>>(caster_ints);
+          return true;
+        }
+      }
+
       value = cast_op<T>(caster);
       return true;
     }
@@ -78,7 +99,7 @@ struct variant_caster<V<Ts...>> {
 
   static handle cast(Type const &src, return_value_policy policy,
                      handle parent) {
-    variant_caster_visitor visitor(policy, parent);
+    paddle_variant_caster_visitor visitor(policy, parent);
     return boost::apply_visitor(visitor, src);
   }
 
@@ -89,7 +110,7 @@ struct variant_caster<V<Ts...>> {
 // Add specialization for concrete variant type
 template <class... Args>
 struct type_caster<boost::variant<Args...>>
-    : variant_caster<boost::variant<Args...>> {};
+    : paddle_variant_caster<boost::variant<Args...>> {};
 
 }  // namespace detail
 }  // namespace pybind11
@@ -259,6 +280,8 @@ void BindOpDesc(pybind11::module *m) {
   pybind11::enum_<pd::proto::AttrType>(*m, "AttrType", "")
       .value("INT", pd::proto::AttrType::INT)
       .value("INTS", pd::proto::AttrType::INTS)
+      .value("LONG", pd::proto::AttrType::LONG)
+      .value("LONGS", pd::proto::AttrType::LONGS)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
       .value("STRING", pd::proto::AttrType::STRING)

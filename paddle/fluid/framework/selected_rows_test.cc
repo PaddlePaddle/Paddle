@@ -84,14 +84,18 @@ TEST(SelectedRows, SparseTable) {
       data[i * embedding_width + j] = static_cast<float>(i);
     }
   }
-  ASSERT_EQ(table.AutoGrownIndex(10, true), 0);
-  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
-  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
-  ASSERT_EQ(table.AutoGrownIndex(6, true), 2);
+  ASSERT_EQ(table.AutoGrownIndex(10, true, false), 0);
+  ASSERT_EQ(table.AutoGrownIndex(8, true, false), 1);
+  ASSERT_EQ(table.AutoGrownIndex(8, true, false), 1);
+  ASSERT_EQ(table.AutoGrownIndex(6, true, false), 2);
+  for (int64_t i = 11; i < 20; i++) {
+    ASSERT_EQ(table.AutoGrownIndex(i, true, true), -1);
+    ASSERT_TRUE(!table.HasKey(i));
+  }
   ASSERT_TRUE(table.HasKey(10));
   ASSERT_TRUE(table.HasKey(8));
   ASSERT_TRUE(table.HasKey(6));
-  ASSERT_EQ(table.rows().size(), 3);
+  ASSERT_EQ(table.rows().size(), 3UL);
 
   framework::Tensor ids;
   ids.Resize(framework::make_ddim({4}));

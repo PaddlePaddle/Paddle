@@ -75,6 +75,19 @@ TEST(Tensor, MutableData) {
                                         platform::CPUPlace());
     EXPECT_EQ(p1, p2);
   }
+  // Not sure if it's desired, but currently, Tensor type can be changed.
+  {
+    framework::Tensor src_tensor;
+    int8_t* p1 = src_tensor.mutable_data<int8_t>(framework::make_ddim({1}),
+                                                 platform::CPUPlace());
+    EXPECT_NE(p1, nullptr);
+    *p1 = 1;
+
+    uint8_t* p2 = src_tensor.mutable_data<uint8_t>(framework::make_ddim({1}),
+                                                   platform::CPUPlace());
+    EXPECT_NE(p2, nullptr);
+    EXPECT_EQ(static_cast<int>(p2[0]), 1);
+  }
 
 #ifdef PADDLE_WITH_CUDA
   {

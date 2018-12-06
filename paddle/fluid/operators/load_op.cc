@@ -40,8 +40,9 @@ class LoadOp : public framework::OperatorBase {
 
     auto out_var_name = Output("Out");
     auto *out_var = scope.FindVar(out_var_name);
-    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                   out_var_name);
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Output variable %s cannot be found in scope %p",
+                   out_var_name, &scope);
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoadLodTensor(fin, place, out_var);

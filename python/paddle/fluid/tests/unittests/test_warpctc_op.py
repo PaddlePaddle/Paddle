@@ -183,6 +183,7 @@ class TestWarpCTCOp(OpTest):
         self.labels_lod = [[3, 1, 4, 4]]
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.use_cudnn = False
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -215,7 +216,11 @@ class TestWarpCTCOp(OpTest):
             "Label": (labels, self.labels_lod)
         }
         self.outputs = {"Loss": loss}
-        self.attrs = {"blank": self.blank, "norm_by_times": self.norm_by_times}
+        self.attrs = {
+            "blank": self.blank,
+            "norm_by_times": self.norm_by_times,
+            "use_cudnn": self.use_cudnn
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -233,6 +238,22 @@ class TestWarpCTCOpCase1(TestWarpCTCOp):
         self.labels_lod = [[3, 1, 4, 4]]
         self.blank = 0
         self.norm_by_times = False
+        self.use_cudnn = False
+
+
+class TestCudnnCTCOp(TestWarpCTCOp):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[4, 1, 3, 3]]
+        self.labels_lod = [[3, 1, 4, 4]]
+        self.blank = 0
+        self.norm_by_times = False
+        self.use_cudnn = True
+
+    def test_check_grad(self):
+        self.outputs['WarpCTCGrad'] = self.gradient
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
 
 
 if __name__ == "__main__":

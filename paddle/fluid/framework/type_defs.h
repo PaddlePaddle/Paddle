@@ -36,7 +36,7 @@ using Attribute =
     boost::variant<boost::blank, int, float, std::string, std::vector<int>,
                    std::vector<float>, std::vector<std::string>, bool,
                    std::vector<bool>, BlockDesc*, int64_t,
-                   std::vector<BlockDesc*>>;
+                   std::vector<BlockDesc*>, std::vector<int64_t>>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 

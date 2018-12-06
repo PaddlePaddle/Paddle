@@ -74,7 +74,7 @@ PadConstantLikeOp Operator.
 
 Pad input(Y) with a pad_value, the number of values padded to the edges of each
 axis is specified by the difference of the shape of X and Y.
-((0, shape_x_0 - shape_y_0), … (0, shape_x_n - shape_y_n)) unique pad widths for
+((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n)) unique pad widths for
 each axis.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 

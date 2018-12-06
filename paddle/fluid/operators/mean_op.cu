@@ -15,11 +15,15 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 
 #include "paddle/fluid/operators/mean_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     mean, ops::MeanKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MeanKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MeanKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MeanKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     mean_grad, ops::MeanGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MeanGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MeanGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MeanGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);

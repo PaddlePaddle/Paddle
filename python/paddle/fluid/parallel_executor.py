@@ -31,15 +31,32 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    ParallelExecutor can run program in parallel.
+    ParallelExecutor is designed for data parallelism, which focuses on distributing
+    the data across different nodes and every node operates on the data in parallel.
+    If you use ParallelExecutor to run the current program on GPU, the node means GPU
+    device, and ParallelExecutor will get the available GPU device automatically on
+    the current machine. If you use ParallelExecutor to run the current program on CPU,
+    the node means the CPU device, and you can specify the CPU device number by adding
+    'CPU_NUM' environment variable, for example 'CPU_NUM=4', if the environment variable
+    is not found, ParallelExecutor will call `multiprocessing.cpu_count` to get the number
+    of CPUs in the system.
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.
         loss_name (str): The loss name must set in training. Default None.
         main_program (Program): The program that need to run, if not provided,
             then default_main_program will be used. Default None.
-        share_vars_from(ParallelExecutor): If provied, it will share variables
+        share_vars_from(ParallelExecutor): If provide, it will share variables
             from the specified ParallelExecutor. Default None.
+        exec_strategy(ExecutionStrategy): exec_strategy is used to control how to run
+            the program in ParallelExecutor, for example how many threads are used to
+            execute the program, how many iterations to clean up the temp variables
+            which is generated during execution. For more information, please refer
+            to fluid.ExecutionStrategy. Default None.
+        build_strategy(BuildStrategy): build_strategy is used to control how to
+            build the SSA Graph in ParallelExecutor by setting the property,
+            for example reduce_strategy, gradient_scale_strategy. For more information,
+            please refer to fluid.BuildStrategy. Default None.
         num_trainers(int): If greater than 1, NCCL will be initialized with
             multiple rank of nodes, each node should have same number of GPUs.
             Distributed training will be enabled then. Default 1.
@@ -78,7 +95,14 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in six.moves.range(core.get_cuda_device_count()):
+            gpus = []
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            if gpus_env:
+                gpus = [int(s) for s in gpus_env.split(",")]
+            else:
+                for i in six.moves.range(core.get_cuda_device_count()):
+                    gpus.append(i)
+            for i in gpus:
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
@@ -107,15 +131,10 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
-        # Set 1 thread num under nccl2 distribute 
-        #   env to make sure all gpus run ops in same order.
-        if num_trainers > 1:
-            assert (use_cuda)
-            # FIXME(gongwb): avoid this set.
-            exec_strategy.num_threads = 1
-
         if build_strategy is None:
             build_strategy = BuildStrategy()
+
+        build_strategy.num_trainers = num_trainers
 
         main = main_program
         main = main if main else framework.default_main_program()

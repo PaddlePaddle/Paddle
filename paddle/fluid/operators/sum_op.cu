@@ -11,10 +11,13 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     sum, ops::SumKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>);

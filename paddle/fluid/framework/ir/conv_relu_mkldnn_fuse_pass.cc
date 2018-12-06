@@ -46,6 +46,12 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
     GET_IR_NODE_FROM_SUBGRAPH(relu_out, relu_out, conv_relu_pattern);  // Out
     GET_IR_NODE_FROM_SUBGRAPH(relu, relu, conv_relu_pattern);  // ReLU op
 
+    FuseOptions fuse_option = FindFuseOption(*conv, *relu);
+    if (fuse_option == DO_NOT_FUSE) {
+      VLOG(3) << "do not perform conv+relu fuse";
+      return;
+    }
+
     // Transform Conv node into ConvReLU node.
     OpDesc* desc = conv->Op();
     desc->SetOutput("Output", std::vector<std::string>({relu_out->Name()}));

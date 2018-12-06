@@ -31,7 +31,10 @@ constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
-  explicit OpHandleBase(ir::Node *node) : node_(node) {}
+  // Owned by `node`. No need to be deleted explicitly.
+  explicit OpHandleBase(ir::Node *node) : node_(node) {
+    node_->WrappedBy(this);
+  }
 
   virtual ~OpHandleBase();
 
@@ -64,7 +67,8 @@ class OpHandleBase {
   virtual bool IsMultiDeviceTransfer() { return false; }
 
   const platform::DeviceContext *DeviceContext(platform::Place place) {
-    return dev_ctxes_[place];
+    auto it = dev_ctxes_.find(place);
+    return it != dev_ctxes_.end() ? it->second : nullptr;
   }
 
   void SetDeviceContext(platform::Place place, platform::DeviceContext *ctx_) {

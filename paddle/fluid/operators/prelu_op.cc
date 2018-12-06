@@ -49,7 +49,7 @@ class PReluOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_THROW("Unkown mode %s", mode);
     }
-    ctx->SetOutputDim("Out", x_dim);
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -58,7 +58,7 @@ class PReluOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 

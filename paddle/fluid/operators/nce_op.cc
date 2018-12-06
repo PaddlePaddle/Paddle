@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nce_op.h"
 
+#include <string>
 #include <vector>
 
 namespace paddle {
@@ -25,7 +26,7 @@ class NCEOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"));
     PADDLE_ENFORCE(ctx->HasInput("Label"));
     PADDLE_ENFORCE(ctx->HasInput("Weight"));
@@ -35,6 +36,7 @@ class NCEOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
+    auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
@@ -66,10 +68,10 @@ class NCEOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        ctx.GetPlace());
+        platform::CPUPlace());
   }
 };
 
@@ -98,6 +100,26 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
              "each sample. And it is a dispensable input. The default value of "
              "sample is 1.")
         .AsDispensable();
+
+    AddInput(
+        "CustomDistProbs",
+        "(Tensor) It is used in 'CostumDist' sampler. "
+        "It is a tensor with shape [num_total_classes]."
+        "The i-th element is the probsbility of the i-th class being sampled.")
+        .AsDispensable();
+    AddInput(
+        "CustomDistAlias",
+        "(Tensor) It is used in 'CostumDist' sampler. "
+        "It is a tensor with shape [num_total_classes]."
+        "The i-th element is the probsbility of the i-th class being sampled.")
+        .AsDispensable();
+    AddInput(
+        "CustomDistAliasProbs",
+        "(Tensor) It is used in 'CostumDist' sampler. "
+        "It is a tensor with shape [num_total_classes]."
+        "The i-th element is the probsbility of the i-th class being sampled.")
+        .AsDispensable();
+
     AddOutput("Cost",
               "(Tensor) A tensor of shape [batch_size, 1]. Cost of samples.");
     AddOutput("SampleLogits",
@@ -116,11 +138,23 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
               "kernel to compute grads."
               "")
         .AsIntermediate();
+
     AddAttr<int>("num_total_classes",
                  "Total number of classes in all samples.");
     AddAttr<int>("num_neg_samples",
                  "The number of negative classes. The default value is 10.")
         .SetDefault(10);
+    AddAttr<int>("sampler",
+                 "(int) Which sampler to be used to sample negative class."
+                 "0: Uniform; 1: LogUniform; 2: CostumDist.")
+        .SetDefault(0);
+    AddAttr<int>("seed",
+                 "(int) The seed used in sampler. If it is 0, "
+                 "the sampler will generate a seed randomly.")
+        .SetDefault(0);
+    AddAttr<bool>("is_sparse", "(boolean, default false) Sparse update.")
+        .SetDefault(false);
+
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
@@ -128,20 +162,28 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                               "user should avoid setting this attribute.")
         .SetDefault({});
     AddComment(R"DOC(
-Compute and return the noise-contrastive estimation training loss. See 
-`Noise-contrastive estimation: A new estimation principle for unnormalized 
-statistical models 
+Compute and return the noise-contrastive estimation training loss. See
+`Noise-contrastive estimation: A new estimation principle for unnormalized
+statistical models
  <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
 By default this operator uses a uniform distribution for sampling.
 )DOC");
   }
 };
 
+class NCEOpGradDescMaker : public framework::DefaultGradOpDescMaker<true> {
+  using ::paddle::framework::DefaultGradOpDescMaker<
+      true>::DefaultGradOpDescMaker;
+
+ protected:
+  virtual std::string GradOpType() const { return "nce_grad"; }
+};
+
 class NCEOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"));
     PADDLE_ENFORCE(ctx->HasInput("Weight"));
     PADDLE_ENFORCE(ctx->HasInput("Cost"));
@@ -171,10 +213,36 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        ctx.GetPlace());
+        platform::CPUPlace());
+  }
+};
+
+class NCEOpGradVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto weight_grad = op_desc.Output(framework::GradVarName("Weight")).front();
+    auto bias_grad = op_desc.Output(framework::GradVarName("Bias")).front();
+
+    auto attr = op_desc.GetAttr("is_sparse");
+    bool is_sparse = boost::get<bool>(attr);
+    if (is_sparse) {
+      VLOG(3) << "nce_op_grad op " << weight_grad << " and " << bias_grad
+              << " is set to SelectedRows";
+      block->Var(weight_grad)
+          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      block->Var(bias_grad)->SetType(framework::proto::VarType::SELECTED_ROWS);
+    } else {
+      VLOG(3) << "nce_op_grad op " << weight_grad << " and " << bias_grad
+              << " is set to LoDTensor";
+      block->Var(weight_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
+      block->Var(bias_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
+    }
+    block->Var(weight_grad)->SetDataType(block->Var("Input")->GetDataType());
+    block->Var(bias_grad)->SetDataType(block->Var("Input")->GetDataType());
   }
 };
 
@@ -182,9 +250,8 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad);
+REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpGradDescMaker, ops::NCEOpMaker);
+REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,

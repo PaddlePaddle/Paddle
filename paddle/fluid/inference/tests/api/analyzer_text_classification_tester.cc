@@ -74,7 +74,8 @@ TEST(Analyzer_Text_Classification, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1) {
     // Get output
@@ -101,20 +102,20 @@ TEST(Analyzer_Text_Classification, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   // Enable embedding_fc_lstm_fuse_pass (disabled by default)
-  auto it = std::find(cfg.ir_passes.begin(), cfg.ir_passes.end(),
-                      "embedding_fc_lstm_fuse_pass");
-  if (it != cfg.ir_passes.end()) cfg.ir_passes.erase(it);
+  cfg.pass_builder()->InsertPass(2, "embedding_fc_lstm_fuse_pass");
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 }  // namespace inference

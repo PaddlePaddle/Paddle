@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <cstddef>  // for size_t
 
 namespace paddle {
 namespace framework {
@@ -26,6 +27,7 @@ struct ExecutionStrategy {
   bool allow_op_delay_{false};
   size_t num_iteration_per_drop_scope_{100};
   ExecutorType type_{kDefault};
+  bool dry_run_{false};
 };
 
 }  //  namespace details

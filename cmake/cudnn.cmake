@@ -2,7 +2,12 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-set(CUDNN_ROOT "/usr" CACHE PATH "CUDNN ROOT")
+if(WIN32)
+    set(CUDNN_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
+else(WIN32)
+    set(CUDNN_ROOT "/usr" CACHE PATH "CUDNN ROOT")
+endif(WIN32)
+
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
     $ENV{CUDNN_ROOT} $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}

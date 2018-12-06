@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+size_t CpuTotalPhysicalMemory();
+
 //! Get the maximum allocation size for a machine.
 size_t CpuMaxAllocSize();
 
@@ -37,13 +39,12 @@ size_t CUDAPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t CUDAPinnedMaxChunkSize();
 
-namespace jit {
 typedef enum {
   isa_any,
   sse42,
   avx,
   avx2,
-  avx512_common,
+  avx512f,
   avx512_core,
   avx512_core_vnni,
   avx512_mic,
@@ -52,8 +53,6 @@ typedef enum {
 
 // May I use some instruction
 bool MayIUse(const cpu_isa_t cpu_isa);
-
-}  // namespace jit
 
 }  // namespace platform
 }  // namespace paddle

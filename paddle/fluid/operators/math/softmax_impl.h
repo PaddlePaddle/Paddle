@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 
+#include "paddle/fluid/operators/math/blas.h"
 namespace paddle {
 namespace operators {
 namespace math {
@@ -32,10 +33,10 @@ struct ValueClip {
   }
 };
 
-template <typename DeviceContext, typename T>
-void SoftmaxFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
-                                                  const framework::Tensor* X,
-                                                  framework::Tensor* Y) {
+template <typename DeviceContext, typename T, bool is_test, typename Enable>
+void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
+    const DeviceContext& context, const framework::Tensor* X,
+    framework::Tensor* Y) {
   auto logits = EigenMatrix<T>::From(*X);
   auto softmax = EigenMatrix<T>::From(*Y);
 
@@ -64,6 +65,46 @@ void SoftmaxFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                                  .reshape(batch_by_one)
                                                  .broadcast(one_by_class));
 }
+
+template <class DeviceContext>
+using enable_if_CPU = typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type;
+
+template <typename DeviceContext>
+class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
+  void operator()(const DeviceContext& context, const framework::Tensor* X,
+                  framework::Tensor* Y) {
+    auto in_dims = X->dims();
+    auto out_dims = Y->dims();
+    const float* in_data = X->data<float>();
+    float* out_data = Y->data<float>();
+    const int kBatchDim = 0;
+    const int kClassDim = 1;
+    // 2D data. Batch x C
+    const int batch_size = in_dims[kBatchDim];
+    const int num_classes = in_dims[kClassDim];
+    std::vector<float> entities(batch_size);
+    auto blas = math::GetBlas<DeviceContext, float>(context);
+    for (int n = 0; n < batch_size; ++n) {
+      entities[n] = in_data[n * num_classes];
+      for (int c = 1; c < num_classes; ++c) {
+        entities[n] = in_data[n * num_classes + c] > entities[n]
+                          ? in_data[n * num_classes + c]
+                          : entities[n];
+      }
+      for (int c = 0; c < num_classes; ++c) {
+        out_data[n * num_classes + c] =
+            in_data[n * num_classes + c] - entities[n];
+      }
+    }
+
+    blas.VEXP(num_classes * batch_size, out_data, out_data);
+    for (int n = 0; n < batch_size; ++n) {
+      auto sum = blas.ASUM(num_classes, &out_data[n * num_classes], 1);
+      blas.SCAL(num_classes, 1.0f / sum, &out_data[n * num_classes]);
+    }
+  }
+};
 
 template <typename DeviceContext, typename T>
 void SoftmaxGradFunctor<DeviceContext, T>::operator()(

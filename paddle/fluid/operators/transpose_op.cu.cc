@@ -16,15 +16,18 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    transpose,
-    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>);
+    transpose, ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
-    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
-    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, double>);

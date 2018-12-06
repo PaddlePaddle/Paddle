@@ -27,7 +27,7 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node, size_t num_dev,
       coeff_(static_cast<float>(1.0 / num_dev)),
       scope_(scope),
       place_(place) {
-  dev_ctxes_[place_] = dev_ctx;
+  this->SetDeviceContext(place_, dev_ctx);
 }
 
 ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
@@ -46,9 +46,9 @@ void ScaleLossGradOpHandle::RunImpl() {
   } else {
 #ifdef PADDLE_WITH_CUDA
     this->RunAndRecordEvent([&] {
-      auto stream =
-          static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
-              ->stream();
+      auto stream = static_cast<platform::CUDADeviceContext *>(
+                        this->dev_ctxes_.at(place_))
+                        ->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";

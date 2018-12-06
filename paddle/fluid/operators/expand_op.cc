@@ -47,6 +47,11 @@ class ExpandOp : public framework::OperatorWithKernel {
       out_shape[i] = x_dims[i] * expand_times[i];
     }
 
+    // set the first dim to -1 in compile time
+    if (!ctx->IsRuntime()) {
+      out_shape[0] = x_dims[0];
+    }
+
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
     if (out_shape[0] == x_dims[0]) {
       ctx->ShareLoD("X", "Out");
@@ -109,7 +114,16 @@ class ExpandGradOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<int>>("expand_times");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    for (size_t i = 0; i < expand_times.size(); ++i) {
+    size_t start_pos = 0u;
+    if (!ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], out_dims[0],
+          "The first dimension size of Input(Out@GRAD) should be "
+          "equal to the crroresponding dimension size of Input(X)");
+      start_pos = 1u;
+    }
+
+    for (size_t i = start_pos; i < expand_times.size(); ++i) {
       PADDLE_ENFORCE_EQ(x_dims[i] * expand_times[i], out_dims[i],
                         "Each dimension size of Input(Out@GRAD) should be "
                         "equal to multiplication of crroresponding dimension "

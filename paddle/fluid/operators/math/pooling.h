@@ -82,6 +82,19 @@ class AvgPoolGrad {
  * This is different from average pooling. So we rewrite the max_pool_grad:
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
  */
+#ifdef PADDLE_WITH_CUDA
+template <typename PoolProcess, typename T>
+class Pool2dDirectCUDAFunctor {
+ public:
+  void operator()(const T* input, const std::vector<int>& input_shape,
+                  const std::vector<int>& output_shape,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, PoolProcess pool_compute,
+                  bool exclusive, T* output, cudaStream_t stream);
+};
+#endif
+
 template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool2dFunctor {
  public:
@@ -89,7 +102,7 @@ class Pool2dFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* output);
+                  bool exclusive, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -101,7 +114,7 @@ class Pool2dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* input_grad);
+                  bool exclusive, framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, class T>
@@ -123,7 +136,7 @@ class Pool3dFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* output);
+                  bool exclusive, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -135,7 +148,7 @@ class Pool3dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  framework::Tensor* input_grad);
+                  bool exclusive, framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, class T>

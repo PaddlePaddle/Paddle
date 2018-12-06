@@ -31,7 +31,8 @@ class GatherOp : public framework::OperatorWithKernel {
                    "Output(Out) of GatherOp should not be null.");
 
     auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE(index_dims.size() == 1);
+    PADDLE_ENFORCE(index_dims.size() == 1 ||
+                   (index_dims.size() == 2 && index_dims[1] == 1));
     int batch_size = ctx->GetInputDim("Index")[0];
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
@@ -53,6 +54,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
   }
 
  protected:
@@ -75,7 +77,7 @@ Gather Operator.
 
 $Out = X[Index]$
 
-Out is obtained by gathering entries of the outer-most dimension 
+Out is obtained by gathering entries of the outer-most dimension
 of X indexed by Index and concatenate them together.
 
 Example:
@@ -102,7 +104,9 @@ REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
-                       ops::GatherOpKernel<int>, ops::GatherOpKernel<double>);
+                       ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
+                       ops::GatherOpKernel<int64_t>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
+                       ops::GatherGradientOpKernel<double>,
                        ops::GatherGradientOpKernel<int>,
-                       ops::GatherGradientOpKernel<double>);
+                       ops::GatherGradientOpKernel<int64_t>);

@@ -15,6 +15,7 @@
 from __future__ import print_function
 import contextlib
 import multiprocessing
+import os
 import six
 import threading
 
@@ -56,8 +57,12 @@ def data(name,
     Args:
        name(str): The name/alias of the function
        shape(list): Tuple declaring the shape.
-       append_batch_size(bool): Whether or not to append the data as a batch.
-       dtype(int|float): The type of data : float32, float_16, int etc
+       append_batch_size(bool):
+          1. If true, it prepends -1 to the shape.
+            For example if shape=[1], the resulting shape is [-1, 1].
+          2. If shape contains -1, such as shape=[1, -1],
+            append_batch_size will be enforced to be be False (ineffective).
+       dtype(basestring): The type of data : float32, float_16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
@@ -312,6 +317,7 @@ def _copy_reader_var_(block, var):
     new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
+    new_var.desc.set_lod_levels(var.desc.lod_levels())
     new_var.persistable = True
     return new_var
 
@@ -489,12 +495,12 @@ def _py_reader(capacity,
         ranks = []
         shapes = []
 
-        for data in feed_list:
-            dtypes.append(data.dtype)
-            shape_concat.extend(data.shape)
-            ranks.append(len(data.shape))
-            shapes.append(data.shape)
-            lod_levels.append(data.lod_level)
+        for feed_data in feed_list:
+            dtypes.append(feed_data.dtype)
+            shape_concat.extend(feed_data.shape)
+            ranks.append(len(feed_data.shape))
+            shapes.append(feed_data.shape)
+            lod_levels.append(feed_data.lod_level)
     else:
         dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
         shape_concat = []
@@ -594,6 +600,7 @@ def _py_reader(capacity,
                             lod_level=lod_level))
                     counter += 1
 
+            data_names = [feed_data.name for feed_data in actual_feed_list]
             feeder = DataFeeder(
                 feed_list=actual_feed_list, place=core.CPUPlace())
             paddle_reader = feeder.decorate_reader(
@@ -601,7 +608,7 @@ def _py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
+                yield [slots[data_name] for data_name in data_names]
 
         __set_tensor_provider__(__tensor_provider__)
 
@@ -936,7 +943,18 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 def shuffle(reader, buffer_size):
     """
-    Shuffle the reader.
+    Creates a data reader whose data output is shuffled.
+    Output from the iterator that created by original reader will be
+    buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
+    is determined by argument buf_size.
+
+    Args:
+        param reader: the original reader whose output will be shuffled.
+        type reader: callable
+        param buf_size: shuffle buffer size.
+        type buf_size: int
+        return: the new reader whose output is shuffled.
+        rtype: callable
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
@@ -1047,7 +1065,7 @@ def read_file(reader):
     """
     helper = LayerHelper('read_file')
     out = [
-        helper.create_tmp_variable(
+        helper.create_variable_for_type_inference(
             stop_gradient=True, dtype='float32')
         for _ in range(len(reader.desc.shapes()))
     ]

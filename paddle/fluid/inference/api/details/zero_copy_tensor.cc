@@ -51,7 +51,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
 }
 
 template <typename T>
-T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
+T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
   auto *res = tensor->data<T>();
 
@@ -67,8 +67,10 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
   return res;
 }
 
-template float *ZeroCopyTensor::data<float>(PaddlePlace *place, int *size);
-template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place, int *size);
+template float *ZeroCopyTensor::data<float>(PaddlePlace *place,
+                                            int *size) const;
+template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place,
+                                                int *size) const;
 template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
 
@@ -84,7 +86,7 @@ void *ZeroCopyTensor::FindTensor() const {
   return tensor;
 }
 
-std::vector<int64_t> ZeroCopyTensor::shape() {
+std::vector<int64_t> ZeroCopyTensor::shape() const {
   auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
   PADDLE_ENFORCE(tensor, "not found tensor called %s in the scope", name_);
   return framework::vectorize(tensor->dims());

@@ -324,10 +324,19 @@ class LayerHelper(object):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    def create_tmp_variable(self, dtype, stop_gradient=False):
+    def create_variable_for_type_inference(self, dtype, stop_gradient=False):
+        """Create a temporary variable that should be type inferred layer.
+
+        Note:
+            The default type will be set to LOD_TENSOR. However, when
+            the var is used as operator output, its type will be updated
+            based on operator's `VarTypeInference` implementation in
+            infer_var_type.
+        """
         return self.main_program.current_block().create_var(
             name=unique_name.generate(".".join([self.name, 'tmp'])),
             dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=stop_gradient)
 
@@ -388,7 +397,7 @@ class LayerHelper(object):
 
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
-        tmp = self.create_tmp_variable(dtype=input_var.dtype)
+        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
@@ -414,7 +423,7 @@ class LayerHelper(object):
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
         if not core.IsInplace(act_type):
-            tmp = self.create_tmp_variable(dtype=input_var.dtype)
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

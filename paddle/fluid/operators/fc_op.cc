@@ -27,11 +27,9 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
                  "Out(Output) of Fully Connected should not be null.");
   PADDLE_ENFORCE(ctx->HasInput("W"),
                  "W(Input) of Fully Connected should not be null.");
-  // NCHW
+
   auto in_dims = ctx->GetInputDim("Input");
-  // IO, I=C*H*W
   auto w_dims = ctx->GetInputDim("W");
-  std::vector<int64_t> output_shape({in_dims[0], w_dims[1]});
 
   if (ctx->HasInput("Bias")) {
     auto bias_dims = ctx->GetInputDim("Bias");
@@ -44,14 +42,32 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
                         "The shape of Bias must be [1, dim].");
     }
   }
-  PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
-                 "Fully Connected input should be 2-D or 4-D tensor.");
+
+  if (ctx->Attrs().Get<bool>("use_mkldnn")) {
+    PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
+                   "Fully Connected input should be 2-D or 4-D tensor.");
+  }
   PADDLE_ENFORCE_EQ(w_dims.size(), 2UL,
                     "Fully Connected input should be 2-D tensor.");
-  PADDLE_ENFORCE_EQ(framework::product(in_dims) / in_dims[0], w_dims[0],
-                    "Fully Connected input and weigth size do not match.");
+  int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
+  PADDLE_ENFORCE_GT(
+      in_dims.size(), in_num_col_dims,
+      "The input tensor Input's rank of FCOp should be larger than "
+      "in_num_col_dims.");
 
-  ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  auto in_mat_dims = framework::flatten_to_2d(in_dims, in_num_col_dims);
+  PADDLE_ENFORCE_EQ(
+      in_mat_dims[1], w_dims[0],
+      "Fully Connected input and weigth size do not match. %s, %s");
+
+  std::vector<int64_t> output_dims;
+  output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  for (int i = 0; i < in_num_col_dims; ++i) {
+    output_dims.push_back(in_dims[i]);
+  }
+  output_dims.push_back(w_dims[1]);
+
+  ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
   ctx->ShareLoD("Input", "Out");
 }
 
@@ -101,12 +117,15 @@ framework::OpKernelType FCOpGrad::GetExpectedKernelType(
 }
 
 void FCOpMaker::Make() {
-  AddInput("Input",
-           "(Tensor), The input tensor of fully connected operator with format "
-           "(NCHW). ");
+  AddInput("Input", "(Tensor), The input tensor of fully connected operator.");
   AddInput("W", "(Tensor), The weight fc op with shape (I, O).");
   AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x O")
       .AsDispensable();
+  AddAttr<int>("in_num_col_dims",
+               "(int, default 1), The fc op can take tensors with more than "
+               "two dimensions as its inputs.")
+      .SetDefault(1)
+      .EqualGreaterThan(1);
   AddOutput("Out", "(Tensor) The output tensor of fully connected operator. ");
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
@@ -131,13 +150,15 @@ class FCOpKernel : public framework::OpKernel<T> {
     auto output = ctx.Output<Tensor>("Out");
     auto in_dims = input->dims();
     auto w_dims = w->dims();
+    auto out_dims = output->dims();
+    int M = framework::product(out_dims) / out_dims[out_dims.size() - 1];
 
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
     math::FCCompute<platform::CPUDeviceContext, T>(
-        blas, in_dims[0], w_dims[1], w_dims[0], input_data, w_data, output_data,
+        blas, M, w_dims[1], w_dims[0], input_data, w_data, output_data,
         bias ? bias->data<T>() : NULL);
 
     // TODO(TJ): fuse act
