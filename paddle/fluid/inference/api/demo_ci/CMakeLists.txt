@@ -37,7 +37,7 @@ include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
 
 link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
-link_directories("${PADDLE_LIB}/third_party/install/snappy_stream/lib")
+link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
 link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
