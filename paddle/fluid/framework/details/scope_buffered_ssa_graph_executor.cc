@@ -16,7 +16,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/details/reference_count_op_handle.h"

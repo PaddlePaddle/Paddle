@@ -95,7 +95,14 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in six.moves.range(core.get_cuda_device_count()):
+            gpus = []
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            if gpus_env:
+                gpus = [int(s) for s in gpus_env.split(",")]
+            else:
+                for i in six.moves.range(core.get_cuda_device_count()):
+                    gpus.append(i)
+            for i in gpus:
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
