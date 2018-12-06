@@ -16,9 +16,11 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+#endif
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -46,6 +48,7 @@ void ReduceOpHandle::Wait(
   }
 }
 
+#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
 template <typename DevCtx, typename DataType>
 void ReduceOpHandle::GatherSelectedRows(
     const std::vector<const SelectedRows *> &src_selected_rows,
@@ -129,6 +132,7 @@ void ReduceOpHandle::GatherSelectedRows(
   }
   scope->EraseVars(tmp_vars);
 }
+#endif
 
 void ReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
@@ -209,7 +213,7 @@ void ReduceOpHandle::RunImpl() {
         return;
       }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
       if (framework::IsType<const float>(in_selected_rows[0]->value().type())) {
         GatherSelectedRows<platform::CUDADeviceContext, float>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
