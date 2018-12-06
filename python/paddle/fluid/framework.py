@@ -18,6 +18,7 @@ import collections
 import contextlib
 import re
 import six
+import sys
 
 import numpy as np
 
@@ -48,6 +49,16 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+_imperative_tracer_ = None
+
+
+def _in_imperative_mode():
+    return _imperative_tracer_ is not None
+
+
+def _imperative_tracer():
+    return _imperative_tracer_
 
 
 class NameScope(object):
@@ -202,7 +213,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-class Variable(object):
+class Variable(core.VarBase):
     """
     In Fluid, every input and output of an operator is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -266,6 +277,7 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  **kwargs):
+        core.VarBase.__init__(self)
         self.block = block
         self.error_clip = error_clip
 
@@ -345,6 +357,18 @@ class Variable(object):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+
+    def _numpy(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
+        tensor = core.get_variable_tensor(scope, self.desc.name())
+        return np.array(tensor)
+
+    def _backward(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
+        self._run_backward(scope)
+
+    def _gradient(self):
+        return np.array(self._grad())
 
     def __str__(self):
         return self.to_string(True)
@@ -492,7 +516,7 @@ class OpProtoHolder(object):
         }
 
 
-class Operator(object):
+class Operator(core.OpBase):
     """
     In Fluid, all the operation are represented by Operator, and Operator
     is regarded as a build in an instruction of a Block. Users can use the
@@ -548,6 +572,7 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
+        core.OpBase.__init__(self)
         self.block = block
         self.desc = desc
         # note: not add self.attrs here:
@@ -587,6 +612,7 @@ class Operator(object):
                     return True
             return False
 
+        self.inputs = []
         if inputs is not None:
             for in_proto in proto.inputs:
                 found = find_name(inputs, in_proto.name)
@@ -613,6 +639,13 @@ class Operator(object):
                 else:
                     self.desc.set_input(in_proto.name, [])
 
+            for inp in inputs.values():
+                if isinstance(inp, Variable):
+                    self.inputs.append(inp)
+                elif isinstance(inp, list) or isinstance(inp, tuple):
+                    self.inputs.extend(inp[:])
+
+        self.outputs = []
         if outputs is not None:
             given = set()
             need = set()
@@ -640,6 +673,12 @@ class Operator(object):
                     out_arg_names.append(cpt.to_text(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
+
+            for out in outputs.values():
+                if isinstance(out, Variable):
+                    self.outputs.append(out)
+                elif isinstance(out, list) or isinstance(out, tuple):
+                    self.outputs.extend(out[:])
 
         if op_attrs is not None:
             if not isinstance(op_attrs, dict):
@@ -1206,6 +1245,8 @@ class Block(object):
         """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op, op.inputs, op.outputs, self.desc)
         self.ops.append(op)
         return op
 
@@ -2209,3 +2250,12 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@contextlib.contextmanager
+def _imperative_guard(tracer):
+    global _imperative_tracer_
+    tmp_trace = _imperative_tracer_
+    _imperative_tracer_ = tracer
+    yield
+    _imperative_tracer_ = tmp_trace
