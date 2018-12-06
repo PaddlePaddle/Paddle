@@ -16,9 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -53,13 +51,6 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
           << " shape= " << tensor.dims();
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());
   return tensor;
-}
-
-LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
-  Variable* var = scope.FindVar(var_name);
-  PADDLE_ENFORCE(var, "%s no in scope", var_name);
-  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "Only support lod tensor now.");
-  return *var->GetMutable<LoDTensor>();
 }
 
 }  // namespace framework
