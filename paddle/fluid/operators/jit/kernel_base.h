@@ -17,7 +17,7 @@
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 
 typedef enum { vmul = 0, vadd = 1, vsub, vexp } KernelType;
 
@@ -54,6 +54,6 @@ class ReferKernel : public KernelImpl<T, Func, Attr> {
   bool UseMe(Attr attr) const override { return true; }
 };
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

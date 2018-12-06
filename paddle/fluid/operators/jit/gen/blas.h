@@ -15,12 +15,12 @@
 #pragma once
 
 #include <string>
-#include "paddle/fluid/operators/jitkernels/jitcode/jitcode.h"
+#include "paddle/fluid/operators/jit/gen/jitcode.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
-namespace jitcode {
+namespace jit {
+namespace gen {
 
 // function: vec = Operand(vec(or scalar), vec(or scalar)) (maybe with relu)
 class VXXJitCode : public JitCode {
@@ -82,7 +82,7 @@ class VMulJitCode : public VXXJitCode {
       : VXXJitCode(d, operand_type::mul, 0, false, code_size, code_ptr) {}
 };
 
-}  // namespace jitcode
-}  // namespace jitkernels
+}  // namespace gen
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

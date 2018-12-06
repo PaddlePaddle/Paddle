@@ -19,9 +19,9 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/jitkernels/kernel_pool.h"
+#include "paddle/fluid/operators/jit/kernel_pool.h"
 // TODO(TJ): remove me
-#include "paddle/fluid/operators/jitkernels/registry.h"
+#include "paddle/fluid/operators/jit/registry.h"
 
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
@@ -66,7 +66,7 @@ TEST(JitKernel, vmul) {
   using T = float;
   using PlaceType = paddle::platform::CPUPlace;
 
-  namespace jit = paddle::operators::jitkernels;
+  namespace jit = paddle::operators::jit;
   // TODO(TJ): test more vector size
   for (int d = 1; d < 30; ++d) {
     auto ref = jit::GetRefer<jit::vmul, T, jit::VMulTypes<T>::func_type,

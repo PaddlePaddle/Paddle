@@ -11,13 +11,14 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License. */
-#include "paddle/fluid/operators/jitkernels/jitcode/blas.h"
-#include "paddle/fluid/operators/jitkernels/registry.h"
+
+#include "paddle/fluid/operators/jit/gen/blas.h"
+#include "paddle/fluid/operators/jit/registry.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
-namespace jitcode {
+namespace jit {
+namespace gen {
 
 void VXXJitCode::genCode() {
   // do not need push stack, and do not need save avx512reg if do not use avx512
@@ -102,17 +103,17 @@ void VXXJitCode::genCode() {
   ret();
 }
 
-}  // namespace jitcode
+}  // namespace gen
 
 template <>
-std::unique_ptr<JitBase> CreateJitCode<KernelType::vmul, float, int>(int attr) {
+std::unique_ptr<GenBase> CreateJitCode<KernelType::vmul, float, int>(int attr) {
   if (UseJitCode<KernelType::vmul, float, int>(attr)) {
-    return make_unique<jitcode::VMulJitCode>(
+    return make_unique<gen::VMulJitCode>(
         attr, CodeSize<KernelType::vmul, float, int>(attr));
   }
   return nullptr;
 }
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle
