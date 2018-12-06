@@ -36,7 +36,7 @@ cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
 
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
-        DEPS paddle_inference_api ${GLOB_DISTRIBUTE_DEPS})
+        DEPS paddle_inference_api)
 
 if(WITH_TESTING)
   inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
