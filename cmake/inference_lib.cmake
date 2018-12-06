@@ -242,7 +242,7 @@ copy(third_party DEPS fluid_lib_dist
 
 # only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
 copy(inference_api_lib DEPS fluid_lib_dist
-  SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+  SRCS ${inference_lib_binary}
        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
