@@ -415,6 +415,7 @@ def yolov3_loss(x,
                 anchors,
                 class_num,
                 ignore_thresh,
+                input_size,
                 loss_weight_xy=None,
                 loss_weight_wh=None,
                 loss_weight_conf_target=None,
@@ -436,6 +437,7 @@ def yolov3_loss(x,
         anchors (list|tuple): ${anchors_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
+        input_size (int): ${input_size_comment}
         loss_weight_xy (float|None): ${loss_weight_xy_comment}
         loss_weight_wh (float|None): ${loss_weight_wh_comment}
         loss_weight_conf_target (float|None): ${loss_weight_conf_target_comment}
@@ -490,6 +492,7 @@ def yolov3_loss(x,
         "anchors": anchors,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
+        "input_size": input_size,
     }
 
     if loss_weight_xy is not None and isinstance(loss_weight_xy, float):

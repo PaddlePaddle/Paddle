@@ -99,6 +99,10 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("anchors",
                               "The anchor width and height, "
                               "it will be parsed pair by pair.");
+    AddAttr<int>("input_size",
+                 "The input size of YOLOv3 net, "
+                 "generally this is set as 320, 416 or 608.")
+        .SetDefault(406);
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.");
     AddAttr<float>("loss_weight_xy", "The weight of x, y location loss.")
