@@ -67,9 +67,12 @@ class BlockingQueue {
   }
 
   bool Receive(T* elem) {
+    VLOG(1) << "blocking queue::Receive ...";
     std::unique_lock<std::mutex> lock(mutex_);
     receive_cv_.wait(lock, [&] { return !queue_.empty() || closed_; });
+    VLOG(1) << "queue_.empty()=" << queue_.empty();
     if (!queue_.empty()) {
+      if (elem == nullptr) VLOG(1) << "elem is nullptr";
       PADDLE_ENFORCE_NOT_NULL(elem);
       *elem = queue_.front();
       if (LIKELY(!speed_test_mode_)) {

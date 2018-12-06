@@ -59,3 +59,47 @@ TEST(ThreadPool, ConcurrentRun) {
   }
   EXPECT_EQ(sum, ((n + 1) * n) / 2);
 }
+static int64_t GetTS() {
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return tp.tv_sec * 1000000 + tp.tv_usec;
+}
+
+void multi_call(std::function<void()> call) {
+  for (int i = 0; i < 500; ++i) {
+    call();
+  }
+}
+
+TEST(ThreadPool, PERFORMANCE) {
+  auto sum = [] {
+    int a = 0;
+    for (int i = 0; i < 1000; ++i) {
+      a += i;
+    }
+  };
+  // framework::ThreadPool *pool = new framework::ThreadPool(2);
+  int64_t start = GetTS();
+  for (int i = 0; i < 1000; ++i) {
+    // int64_t s = GetTS();
+    framework::Async(std::move(sum));
+    // pool->Run(std::move(sum));
+    // VLOG(5) << "push to pool spent : " << GetTS() - s << " (us).";
+  }
+  VLOG(5) << "pool spent: " << GetTS() - start << " (us).";
+  start = GetTS();
+  for (int i = 0; i < 1000; ++i) {
+    sum();
+  }
+  VLOG(5) << "sequence call spent: " << GetTS() - start << " (us).";
+  std::vector<std::thread> threads;
+  start = GetTS();
+  for (int i = 0; i < 2; ++i) {
+    std::thread t(multi_call, std::ref(sum));
+    threads.push_back(std::move(t));
+  }
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  VLOG(5) << "two threads spent: " << GetTS() - start << " (us).";
+}

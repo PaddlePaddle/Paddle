@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -53,6 +54,7 @@ class ParallelExecutorPrivate {
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
+  std::vector<std::unique_ptr<details::SSAGraphExecutor>> executors_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
@@ -84,6 +86,9 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_ENFORCE(places.size() > 1,
                    "If you set build_strategy.reduce with 'Reduce',"
                    "the number of places must be greater than 1.");
+    PADDLE_ENFORCE(exec_strategy.type_ != ExecutionStrategy::kParallelGraph,
+                   "You should set build_strategy.reduce with 'AllReduce' for "
+                   "ParallelGraph executor type");
   }
 
   // Step 1. Bcast the params to devs.
@@ -106,31 +111,55 @@ ParallelExecutor::ParallelExecutor(
 // Bcast Parameters to all GPUs
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
-    ncclUniqueId *nccl_id = nullptr;
+    std::unique_ptr<ncclUniqueId> nccl_id = nullptr;
+    bool need_group_call = true;
     if (nccl_id_var != nullptr) {
-      nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+      nccl_id.reset(nccl_id_var->GetMutable<ncclUniqueId>());
+    } else if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+      nccl_id.reset(new ncclUniqueId());
+      PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id.get()));
+      *member_->global_scope_->Var(NCCL_ID_VARNAME)
+           ->GetMutable<ncclUniqueId>() = *nccl_id.get();
+      need_group_call = false;
+    } else {
+      // init nccl_id in NCCLContextMap
     }
+
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
-        member_->places_, nccl_id, num_trainers, trainer_id));
+        member_->places_, nccl_id.get(), num_trainers, trainer_id,
+        need_group_call));
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
-
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-// Startup Program has been run. All local scopes has correct parameters.
+  // Startup Program has been run. All local scopes has correct parameters.
 
-// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
+  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+  std::vector<std::unique_ptr<ir::Graph>> graphs;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, params,
-      member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+  if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+    for (size_t i = 0; i < member_->places_.size(); ++i) {
+      std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+          main_program, {member_->places_[i]}, loss_var_name, params,
+          {member_->local_scopes_[i]}, member_->use_cuda_,
+          member_->nccl_ctxs_.get());
+      graphs.push_back(std::move(graph));
+    }
+  } else {
+    std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+        main_program, member_->places_, loss_var_name, params,
+        member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+    graphs.push_back(std::move(graph));
+  }
 
   auto max_memory_size = GetEagerDeletionThreshold();
-  if (max_memory_size >= 0) {
+  // FIXME(Yancey1989): need to fix on parallel graph mode
+  if (max_memory_size >= 0 &&
+      exec_strategy.type_ != ExecutionStrategy::kParallelGraph) {
     for (auto &place : member_->places_) {
       if (!platform::is_gpu_place(place)) continue;
       auto gpu_place = boost::get<platform::CUDAPlace>(place);
@@ -143,40 +172,48 @@ ParallelExecutor::ParallelExecutor(
       }
     }
     if (!gcs_.empty()) {
-      auto ref_cnt_pass =
-          ir::PassRegistry::Instance().Get("reference_count_pass");
-      ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
-      ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
-      ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-      graph = ref_cnt_pass->Apply(std::move(graph));
-      graph->SetNotOwned("garbage_collector", &gcs_);
+      for (size_t i = 0; i < graphs.size(); ++i) {
+        auto ref_cnt_pass =
+            ir::PassRegistry::Instance().Get("reference_count_pass");
+        ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
+        ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
+        ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+        graphs[0] = ref_cnt_pass->Apply(std::move(graphs[i]));
+        graphs[0]->SetNotOwned("garbage_collector", &gcs_);
+      }
     }
   }
 #else
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
+  graphs.push_back(std::move(graph));
 #endif
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
-  std::vector<details::VariableInfo> var_infos;
-  for (auto &node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      var_infos.emplace_back();
-      var_infos.back().name_ = node->Var()->Name();
-      var_infos.back().type_ = node->Var()->GetType();
-      var_infos.back().persistable_ = node->Var()->Persistable();
+  std::vector<std::vector<details::VariableInfo>> var_infos_list;
+  for (size_t i = 0; i < graphs.size(); ++i) {
+    std::vector<details::VariableInfo> var_infos;
+    for (auto &node : graphs[i]->Nodes()) {
+      if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+        var_infos.emplace_back();
+        var_infos.back().name_ = node->Var()->Name();
+        var_infos.back().type_ = node->Var()->GetType();
+        var_infos.back().persistable_ = node->Var()->Persistable();
+      }
     }
+    var_infos_list.emplace_back(std::move(var_infos));
   }
+
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graph);
+    size_t graph_num = ir::GraphNum(*graphs[0]);
     if (graph_num > 1) {
       LOG(WARNING)
           << "The number of graph should be only one, "
              "but the current graph has "
-          << ir::GraphNum(*graph)
+          << ir::GraphNum(*graphs[0])
           << " sub_graphs. If you want to see the nodes of the "
              "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
              "to specify the output dir. NOTES: if you not do training, "
@@ -185,15 +222,42 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+    /**
+    for (size_t i = 0; i < member_->places_.size(); ++i) {
+      std::vector<details::VariableInfo> var_infos;
+      for (auto &node : graphs[i]->Nodes()) {
+        if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+          var_infos.emplace_back();
+          var_infos.back().name_ = node->Var()->Name();
+          var_infos.back().type_ = node->Var()->GetType();
+          var_infos.back().persistable_ = node->Var()->Persistable();
+        }
+      }
+
+      std::vector<platform::Place> places = {member_->places_[i]};
+      std::vector<framework::Scope *> scopes = {member_->local_scopes_[i]};
+      std::unique_ptr<details::ThreadedSSAGraphExecutor> p(new
+    details::ThreadedSSAGraphExecutor(
+        exec_strategy, scopes, places, std::move(graphs[i])));
+
+      member_->executors_.push_back(std::move(p));
+
+      member_->executors_[i].reset(new details::ScopeBufferedSSAGraphExecutor(
+        exec_strategy, scopes, std::move(var_infos), places,
+        std::move(member_->executors_[i])));
+    }**/
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+        exec_strategy, member_->local_scopes_, places, std::move(graphs[0])));
+  } else if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+    member_->executor_.reset(new details::ParallelSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, graphs));
   } else {
     member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+        exec_strategy, member_->local_scopes_, places, std::move(graphs[0])));
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, std::move(var_infos),
+      exec_strategy, member_->local_scopes_, std::move(var_infos_list),
       member_->places_, std::move(member_->executor_)));
 }
 

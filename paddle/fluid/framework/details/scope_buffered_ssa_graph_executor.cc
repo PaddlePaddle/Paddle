@@ -27,39 +27,40 @@ namespace framework {
 namespace details {
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
-    std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
+    std::vector<std::vector<VariableInfo>> var_infos_list,
+    std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
-      var_infos_(std::move(var_infos)),
+      var_infos_list_(std::move(var_infos_list)),
       places_(std::move(places)) {}
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   if (drop_scope_counter_ == 0) {
     // Create local scopes.
-    for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
-      auto &scope = *it;
+    for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      auto &scope = local_scopes_[i];
       Scope &local_scope = scope->NewScope();
       *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
           &local_scope;
-
-      for (auto &info : var_infos_) {
-        if (scope->FindVar(info.name_) != nullptr) {
-          continue;
-        }
-
-        if (info.persistable_) {  // Persistable
-          InitializeVariable(scope->Var(info.name_), info.type_);
-        } else {
-          InitializeVariable(local_scope.Var(info.name_), info.type_);
+      for (auto &var_infos : var_infos_list_) {
+        for (auto &info : var_infos) {
+          if (scope->FindVar(info.name_) != nullptr) {
+            continue;
+          }
+          if (info.persistable_) {  // Persistable
+            InitializeVariable(scope->Var(info.name_), info.type_);
+          } else {
+            InitializeVariable(local_scope.Var(info.name_), info.type_);
+          }
         }
       }
     }
   }
   std::vector<framework::LoDTensor> fetch_data;
-  std::exception_ptr eptr;
+  std::exception_ptr eptr = nullptr;
   try {
     fetch_data = underlying_executor_->Run(fetch_tensors);
   } catch (...) {
@@ -71,9 +72,13 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 
 #ifdef PADDLE_WITH_CUDA
   const std::string gc_name = "garbage_collector";
-  DeviceGarbageCollectorMap *gc =
-      Graph().Has(gc_name) ? &(Graph().Get<DeviceGarbageCollectorMap>(gc_name))
-                           : nullptr;
+  DeviceGarbageCollectorMap *gc = nullptr;
+  // FIXME(Yancey1989): need to fix gc failed on parallel graph mode
+  if (strategy_.type_ != ExecutionStrategy::kParallelGraph) {
+    gc = Graph().Has(gc_name)
+             ? &(Graph().Get<DeviceGarbageCollectorMap>(gc_name))
+             : nullptr;
+  }
 #endif
 
   if (!fetch_tensors.empty() ||
