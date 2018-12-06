@@ -20,7 +20,7 @@ namespace details {
 
 VarHandleBase::~VarHandleBase() {}
 
-VarHandle::~VarHandle() { VLOG(4) << "deleting var handle " << DebugString(); }
+VarHandle::~VarHandle() { VLOG(5) << "deleting var handle " << DebugString(); }
 
 std::string VarHandle::DebugString() const {
   std::stringstream ss;

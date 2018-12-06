@@ -33,10 +33,18 @@ void ComputationOpHandle::RunImpl() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
   };
 
-  if (is_lock_and_record_event_free_) {
+  if (Name().compare("conv2d") || Name().compare("conv2d_grad")) {
+    int64_t start_ts = GetTS();
+    auto varname = DynamicCast<VarHandle>(this->Outputs())[0]->name_;
     run_func();
+    VLOG(5) << Name() << "_op_handle: " << varname
+            << " spent: " << GetTS() - start_ts << " (ns).";
   } else {
-    this->RunAndRecordEvent(run_func);
+    if (is_lock_and_record_event_free_) {
+      run_func();
+    } else {
+      this->RunAndRecordEvent(run_func);
+    }
   }
 }
 

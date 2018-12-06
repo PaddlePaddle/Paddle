@@ -24,6 +24,7 @@
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"

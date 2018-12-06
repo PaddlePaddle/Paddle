@@ -82,12 +82,15 @@ struct NCCLContext {
 struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
+  bool need_group_call_;
 
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
-                          size_t num_trainers = 1, size_t trainer_id = 0) {
+                          size_t num_trainers = 1, size_t trainer_id = 0,
+                          bool need_group_call = true) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
+    need_group_call_ = need_group_call;
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
       order_.emplace_back(dev_id);
@@ -102,7 +105,7 @@ struct NCCLContextMap {
     }
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if num_trainers == 1, should create a new nccl id for local comms.
-    if (num_trainers == 1) {
+    if (num_trainers == 1 && nccl_id != nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
       PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));

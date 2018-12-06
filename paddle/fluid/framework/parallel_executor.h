@@ -20,6 +20,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "ThreadPool.h"
+
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/executor.h"

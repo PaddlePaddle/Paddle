@@ -48,9 +48,18 @@ void ThreadPool::Init() {
 
 ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
-  for (auto& thread : threads_) {
+  for (int i = 0; i < num_threads; ++i) {
+    // for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU number
-    thread.reset(new std::thread(std::bind(&ThreadPool::TaskLoop, this)));
+    threads_[i].reset(
+        new std::thread(std::bind(&ThreadPool::TaskLoop, this, i)));
+    /**
+    sched_param sch;
+    int policy;
+    pthread_getschedparam(threads_[i]->native_handle(), &policy, &sch);
+    if (pthread_setschedparam(threads_[i]->native_handle(), SCHED_FIFO, &sch)) {
+      VLOG(1) << "Failed to setschedparam: " << errno;
+    }**/
   }
 }
 
@@ -68,7 +77,7 @@ ThreadPool::~ThreadPool() {
   }
 }
 
-void ThreadPool::TaskLoop() {
+void ThreadPool::TaskLoop(int i) {
   while (true) {
     Task task;
 
@@ -89,7 +98,6 @@ void ThreadPool::TaskLoop() {
       task = std::move(tasks_.front());
       tasks_.pop();
     }
-
     // run the task
     task();
   }

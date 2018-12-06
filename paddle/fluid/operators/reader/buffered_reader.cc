@@ -58,7 +58,9 @@ void BufferedReader::ReadAsync(size_t i) {
       TensorVec &gpu = gpu_buffer_[i];
       gpu.resize(cpu.size());
       for (size_t i = 0; i < cpu.size(); ++i) {
+        VLOG(1) << "launch tensor copy from cpu to cpu, idx: " << i;
         framework::TensorCopySync(cpu[i], place_, &gpu[i]);
+        VLOG(1) << "done " << i;
         gpu[i].set_lod(cpu[i].lod());
       }
     }
@@ -80,11 +82,13 @@ void BufferedReader::StartImpl() {
 }
 
 void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+  VLOG(1) << "ReadNextImpl start on place: " << place_;
   if (position_.empty()) {
     out->clear();
     return;
   }
   size_t i = position_.front().get();
+  VLOG(1) << "position front: " << i;
   position_.pop();
 
   if (i == -1UL) {
@@ -101,6 +105,7 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     ReadAsync(prev_pos_);
   }
   prev_pos_ = i;
+  VLOG(1) << "success ReadNextImpl";
 }
 
 }  // namespace reader

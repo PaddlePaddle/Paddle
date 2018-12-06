@@ -28,8 +28,10 @@ class PyReader : public framework::FileReader {
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
+    VLOG(1) << "come in PyReader::ReadNext function, out: " << out;
     bool success;
     *out = queue_->Pop(&success);
+    VLOG(1) << "call PyReader::ReadNext " << success;
     if (!success) out->clear();
   }
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <pthread.h>
 #include <condition_variable>  // NOLINT
 #include <functional>
 #include <future>  // NOLINT
@@ -27,7 +28,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
 struct ExceptionHandler {
   mutable std::future<std::unique_ptr<platform::EnforceNotMet>> future_;
   explicit ExceptionHandler(
@@ -99,7 +99,7 @@ class ThreadPool {
 
   // The constructor starts threads to run TaskLoop, which retrieves
   // and runs tasks from the queue.
-  void TaskLoop();
+  void TaskLoop(int i);
 
   // Init is called by GetInstance.
   static void Init();

@@ -300,7 +300,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
-  int num_trainers = Get<int>(kNumTrainers);
+  // int num_trainers = Get<int>(kNumTrainers);
 
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
@@ -329,6 +329,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   std::unordered_map<std::string, int> sharded_var_device;
 
   for (ir::Node *node : sorted_ops) {
+    VLOG(5) << "op name: " << node->Op()->Type();
     if (boost::get<int>(
             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
         static_cast<int>(OpRole::kRPC)) {
@@ -365,9 +366,11 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
       // is true only for the op that scale the final scalar loss.
       // It also assumes backward op will always follow the forward op in
       // the block.
+      VLOG(5) << "this is loss scale op!";
       is_forwarding = false;
     } else {
       int op_dev_id = GetOpDeviceID(result, node, sharded_var_device);
+      VLOG(5) << "on device id: " << op_dev_id;
       if (op_dev_id != -1) {  // This op only runs on one specific device.
         CreateComputationalOp(&result, node, op_dev_id);
         for (ir::Node *n : node->outputs) {
@@ -386,7 +389,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           CreateComputationalOps(&result, node, places_.size());
         }
 
-        if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
+        // if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
+        if (!is_forwarding && nccl_ctxs_->contexts_.size() > 1) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
           if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(

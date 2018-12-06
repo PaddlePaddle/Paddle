@@ -720,6 +720,11 @@ All parameter, weight, gradient are variables in Paddle.
 
         )DOC");
 
+  py::enum_<ExecutionStrategy::ExecutorType>(exec_strategy, "ExecutorType")
+      .value("Default", ExecutionStrategy::ExecutorType::kDefault)
+      .value("Experimental", ExecutionStrategy::ExecutorType::kExperimental)
+      .value("ParallelGraph", ExecutionStrategy::ExecutorType::kParallelGraph);
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -777,17 +782,14 @@ All parameter, weight, gradient are variables in Paddle.
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
                     [](ExecutionStrategy &self, bool dry_run) {
                       self.dry_run_ = dry_run;
-                    });
-
-  exec_strategy.def_property(
-      "use_experimental_executor",
-      [](const ExecutionStrategy &self) {
-        return self.type_ == ExecutionStrategy::kExperimental;
-      },
-      [](ExecutionStrategy &self, bool experimental) {
-        self.type_ = experimental ? ExecutionStrategy::kExperimental
-                                  : ExecutionStrategy::kDefault;
-      });
+                    })
+      .def_property(
+          "executor_type",
+          [](const ExecutionStrategy &self) { return self.type_; },
+          [](ExecutionStrategy &self, ExecutionStrategy::ExecutorType type) {
+            self.type_ = type;
+          },
+          R"DOC()DOC");
 
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
     BuildStrategy allows the user to more preciously control how to
