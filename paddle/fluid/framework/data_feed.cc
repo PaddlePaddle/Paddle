@@ -297,6 +297,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
           "the data, please check if the data contains unresolvable "
           "characters.\nplease check this error line: %s",
           str);
+
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
@@ -333,6 +334,7 @@ void MultiSlotDataFeed::AddInstanceToInsVec(
       (*ins_vec)[i].InitOffset();
     }
   }
+
   for (size_t i = 0; i < instance.size(); ++i) {
     (*ins_vec)[i].AddIns(instance[i]);
   }
@@ -344,6 +346,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
+
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
       float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
@@ -356,6 +359,7 @@ void MultiSlotDataFeed::PutToFeedVec(
           {total_instance, 1}, platform::CPUPlace());
       memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
     }
+
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
