@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/operators/impl/load_combine.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/pybind/pybind.h"
 
