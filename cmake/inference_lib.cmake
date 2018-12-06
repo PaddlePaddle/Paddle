@@ -32,10 +32,12 @@ function(copy TARGET)
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
         if (WIN32)
-            add_custom_command(TARGET ${TARGET} PRE_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
-                    )
             if(IS_DIRECTORY ${src})
+                get_filename_component(last_path ${src} NAME)
+                string(APPEND dst "/" ${last_path})
+                add_custom_command(TARGET ${TARGET} PRE_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
+                        )
                 if(EXISTS ${src})
                     add_custom_command(TARGET ${TARGET} PRE_BUILD
                             COMMAND cmake -E copy_directory "${src}" "${dst}"
@@ -50,6 +52,9 @@ function(copy TARGET)
                 if (NOT "${src_files}" STREQUAL "")
                     list(REMOVE_DUPLICATES src_files)
                 endif ()
+                add_custom_command(TARGET ${TARGET} PRE_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
+                        )
                 foreach (src_file ${src_files})
                     add_custom_command(TARGET ${TARGET} PRE_BUILD
                             COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
@@ -69,7 +74,7 @@ endfunction()
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
 copy(eigen3_lib
         SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
-        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen/src ${dst_dir}/unsupported
+        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported
         DEPS eigen3
         )
 
@@ -101,7 +106,7 @@ copy(xxhash_lib
         DEPS xxhash
         )
 
-if (NOT PROTOBUF_FOUND)
+if (NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/protobuf")
     copy(protobuf_lib
             SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
@@ -110,7 +115,7 @@ if (NOT PROTOBUF_FOUND)
             )
 endif ()
 
-if (NOT CBLAS_FOUND)
+if (NOT CBLAS_FOUND OR WIN32)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
     copy(openblas_lib
             SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include

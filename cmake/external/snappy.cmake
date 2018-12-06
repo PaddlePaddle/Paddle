@@ -24,12 +24,6 @@ set(SNAPPY_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy)
 set(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_INSTALL_DIR}/include" CACHE PATH "snappy include directory." FORCE)
 
-if (WIN32)
-    set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/snappy.lib")
-else(WIN32)
-    set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.a")
-endif (WIN32)
-
 ExternalProject_Add(
     extern_snappy
     GIT_REPOSITORY "https://github.com/google/snappy"
@@ -62,7 +56,10 @@ IF(WIN32)
                 COMMAND cmake -E copy ${SNAPPY_INSTALL_DIR}/lib/snappy.lib ${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib
                 )
     ENDIF()
-ENDIF(WIN32)
+    set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
+else(WIN32)
+    set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.a")
+endif (WIN32)
 
 add_library(snappy STATIC IMPORTED GLOBAL)
 set_property(TARGET snappy PROPERTY IMPORTED_LOCATION ${SNAPPY_LIBRARIES})
