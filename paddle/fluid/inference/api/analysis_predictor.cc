@@ -304,7 +304,6 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
-  LOG(INFO) << "optimization program";
   status_program_optimized_ = true;
 
   argument_.SetUseGPU(config_.use_gpu);
@@ -313,11 +312,13 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
-  } else if (!config_.param_file.empty() && !config_.prog_file.empty()) {
+  } else {
+    PADDLE_ENFORCE(
+        !config_.param_file.empty(),
+        "Either model_dir or (param_file, prog_file) should be set.");
+    PADDLE_ENFORCE(!config_.prog_file.empty());
     argument_.SetModelProgramPath(config_.prog_file);
     argument_.SetModelParamsPath(config_.param_file);
-  } else {
-    PADDLE_THROW("Either model_dir or (param_file, prog_file) should be set.");
   }
 
   if (config_.use_gpu && config_.use_tensorrt_) {
