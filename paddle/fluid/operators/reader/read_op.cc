@@ -36,7 +36,6 @@ class ReadInferShape : public framework::InferShapeBase {
       ctx->SetOutputsDim("Out", reader_dims);
       auto in_desc =
           boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Reader")[0]);
-      std::cout << in_desc->Proto()->SerializeAsString() << std::endl;
       auto in_lod_levels = in_desc->GetLoDLevels();
       auto out_var_ptrs = ctx->GetOutputVarPtrs("Out");
       PADDLE_ENFORCE_EQ(in_lod_levels.size(), out_var_ptrs.size(),

@@ -261,7 +261,8 @@ static inline void parse_csv_line(
     string_split(slot_data, ',', &data_in_slot_str);
     std::vector<int64_t> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
-      (*sparse_datas)[i].push_back(std::stol(data_str));
+      auto id = std::stol(data_str);
+      (*sparse_datas)[i].push_back(id);
     }
   }
 }
