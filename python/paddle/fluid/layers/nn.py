@@ -41,6 +41,7 @@ __all__ = [
     'crf_decoding',
     'cos_sim',
     'cross_entropy',
+    'bpr_loss',
     'square_error_cost',
     'chunk_eval',
     'sequence_conv',
@@ -1172,6 +1173,18 @@ def cross_entropy(input, label, soft_label=False, ignore_index=-100):
         outputs={'Y': [out]},
         attrs={"soft_label": soft_label,
                "ignore_index": ignore_index})
+    return out
+
+
+def bpr_loss(input, label_pos):
+
+    helper = LayerHelper('bpr_loss', **locals())
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='bpr_loss',
+        inputs={'X': [input],
+                'Label_Pos': [label_pos]},
+        outputs={'Y': [out]})
     return out
 
 
