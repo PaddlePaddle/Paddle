@@ -55,12 +55,14 @@ struct AnalysisConfig : public NativeConfig {
   // NOTE this is just for internal development, please not use it.
   // NOT stable yet.
   bool use_mkldnn() const { return use_mkldnn_; }
+  void SetMKLDNNOp(std::vector<std::string> op_list){ mkldnn_op_ = op_list;}
 
   friend class ::paddle::AnalysisPredictor;
 
  protected:
   bool use_tensorrt_{false};
   bool use_mkldnn_{false};
+  std::vector<std::string> mkldnn_op_;
   int tensorrt_workspace_size_;
   int tensorrt_max_batchsize_;
   std::unique_ptr<PassStrategy> pass_builder_;
