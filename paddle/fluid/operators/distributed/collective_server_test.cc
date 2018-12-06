@@ -63,7 +63,7 @@ std::unique_ptr<framework::Scope> GenerateVars(platform::Place place) {
   paddle::operators::math::set_constant(ctx, tensor, 32.7);
   for (int i = 0; i < 3; ++i) rows->push_back(i);
 
-  std::cout << "src:" << slr->Info();
+  std::cout << "src:" << distributed::GetSelectedRowsInfo(*slr);
 
   return std::unique_ptr<framework::Scope>(scope);
 }
@@ -79,7 +79,7 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
 
   std::vector<const framework::SelectedRows*> dst;
   client->Gather(vars, &dst, *dev_ctx, scope);
-  std::cout << "dst:" << dst[0]->Info();
+  std::cout << "dst:" << distributed::GetSelectedRowsInfo(*dst[0]);
 }
 
 TEST(PREFETCH, GPU) {
