@@ -308,7 +308,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.SetUseGPU(config_.use_gpu);
   argument_.SetGPUDeviceId(config_.device);
-  argument_.SetIsMemoryLoad(config_.is_memory_load_);
+  argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -451,11 +451,12 @@ bool AnalysisPredictor::LoadProgramDesc() {
 
   // Create ProgramDesc
   framework::proto::ProgramDesc proto;
-  if (!config_.is_memory_load()) {
+  if (!config_.model_from_memory()) {
     std::string pb_content;
     // Read binary
     std::ifstream fin(filename, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
+                   filename);
     fin.seekg(0, std::ios::end);
     pb_content.resize(fin.tellg());
     fin.seekg(0, std::ios::beg);

@@ -39,7 +39,7 @@ class IrGraphBuildPass : public AnalysisPass {
   std::unique_ptr<framework::ProgramDesc> LoadModel(
       const std::string &program_path, const std::string &params_path,
       framework::Scope *scope, const platform::Place &place,
-      bool is_memory_load);
+      bool model_from_memory);
 
   std::string model_binary_str_;
 };
