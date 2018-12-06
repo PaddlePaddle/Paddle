@@ -63,7 +63,7 @@ std::ostream &operator<<(std::ostream &os,
   os << GenSpaces(num_spaces) << "contrib::AnalysisConfig {\n";
   num_spaces++;
   os << *reinterpret_cast<const NativeConfig *>(&config);
-  if (!config.is_memory_load()) {
+  if (!config.model_from_memory()) {
     os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file << "\n";
     os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
   } else {

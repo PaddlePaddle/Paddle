@@ -32,12 +32,12 @@ class LoadCombineOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
-    auto is_memory_load = Attr<bool>("is_memory_load");
+    auto model_from_memory = Attr<bool>("model_from_memory");
     auto out_var_names = Outputs("Out");
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,
         "The number of output variables should be greater than 0.");
-    if (!is_memory_load) {
+    if (!model_from_memory) {
       std::ifstream fin(filename);
       PADDLE_ENFORCE(static_cast<bool>(fin),
                      "Cannot open file %s for load_combine op", filename);
@@ -112,7 +112,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          "LoDTensors will be loaded from \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddAttr<bool>("is_memory_load",
+    AddAttr<bool>("model_from_memory",
                   "(boolean, default false)"
                   "If true, file_path is in memory, and LoDTensors will be "
                   "loaded directly from memory")

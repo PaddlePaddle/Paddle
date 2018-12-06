@@ -55,11 +55,9 @@ struct AnalysisConfig : public NativeConfig {
   bool use_mkldnn() const { return use_mkldnn_; }
 
   // Specify the memory buffer of program and parameter
-  void SetProgBufferAndParamBuffer(const char* prog_buffer,
-                                   size_t prog_buffer_size,
-                                   const char* program_buffer,
-                                   size_t program_buffer_size);
-  bool is_memory_load() const { return is_memory_load_; }
+  void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
+                      const char* program_buffer, size_t program_buffer_size);
+  bool model_from_memory() const { return model_from_memory_; }
 
   friend class ::paddle::AnalysisPredictor;
 
@@ -69,7 +67,7 @@ struct AnalysisConfig : public NativeConfig {
   int tensorrt_workspace_size_;
   int tensorrt_max_batchsize_;
   std::unique_ptr<PassStrategy> pass_builder_;
-  bool is_memory_load_{false};
+  bool model_from_memory_{false};
 };
 
 // Configurations for Anakin engine.

@@ -98,8 +98,8 @@ void SetConfig(contrib::AnalysisConfig *cfg, bool memory_load = false) {
     std::string buffer_prog, buffer_param;
     ReadBinaryFile(FLAGS_infer_model + "/__model__", &buffer_prog);
     ReadBinaryFile(FLAGS_infer_model + "/param", &buffer_param);
-    cfg->SetProgBufferAndParamBuffer(&buffer_prog[0], buffer_prog.size(),
-                                     &buffer_param[0], buffer_param.size());
+    cfg->SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+                        buffer_param.size());
   } else {
     cfg->prog_file = FLAGS_infer_model + "/__model__";
     cfg->param_file = FLAGS_infer_model + "/param";
