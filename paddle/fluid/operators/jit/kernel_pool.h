@@ -18,19 +18,19 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/operators/jitkernels/jitcode_base.h"
-#include "paddle/fluid/operators/jitkernels/kernel_base.h"
-#include "paddle/fluid/operators/jitkernels/kernel_key.h"
+#include "paddle/fluid/operators/jit/gen_base.h"
+#include "paddle/fluid/operators/jit/kernel_base.h"
+#include "paddle/fluid/operators/jit/kernel_key.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 
 template <KernelType KT>
 class JitCodePool {
-  typedef std::unique_ptr<JitBase> JitBasePtr;
-  typedef std::unordered_map<size_t, JitBasePtr> JitBaseMap;
+  typedef std::unique_ptr<GenBase> GenBasePtr;
+  typedef std::unordered_map<size_t, GenBasePtr> JitCodeMap;
 
  public:
   JitCodePool() = default;
@@ -39,16 +39,16 @@ class JitCodePool {
     return g_jit_codes;
   }
 
-  const JitBaseMap& AllKernels() { return codes_; }
+  const JitCodeMap& AllKernels() { return codes_; }
 
   bool Has(size_t key) const { return codes_.find(key) != codes_.end(); }
 
-  void Insert(size_t key, JitBasePtr value) {
+  void Insert(size_t key, GenBasePtr value) {
     codes_.emplace(key, std::move(value));
   }
 
  private:
-  JitBaseMap codes_;
+  JitCodeMap codes_;
   DISABLE_COPY_AND_ASSIGN(JitCodePool);
 };
 
@@ -146,6 +146,6 @@ const Func Get(Attr attr) {
   return GetRefer<KT, T, Func, Attr>();
 }
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

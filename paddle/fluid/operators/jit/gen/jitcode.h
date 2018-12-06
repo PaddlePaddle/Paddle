@@ -15,7 +15,7 @@
 #pragma once
 
 #include <type_traits>
-#include "paddle/fluid/operators/jitkernels/jitcode_base.h"
+#include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 #define XBYAK_USE_MMAP_ALLOCATOR
@@ -24,8 +24,8 @@
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
-namespace jitcode {
+namespace jit {
+namespace gen {
 
 // Application Binary Interface
 constexpr Xbyak::Operand::Code abi_param1(Xbyak::Operand::RDI),
@@ -67,7 +67,7 @@ typedef enum {
 #define DECLARE_JIT_CODE(codename) \
   const char* name() const override { return #codename; }
 
-class JitCode : public JitBase, public Xbyak::CodeGenerator {
+class JitCode : public GenBase, public Xbyak::CodeGenerator {
  public:
   explicit JitCode(size_t code_size, void* code_ptr = nullptr)
       : Xbyak::CodeGenerator(code_size, code_ptr) {
@@ -128,7 +128,7 @@ class JitCode : public JitBase, public Xbyak::CodeGenerator {
   }
 };
 
-}  // namespace jitcode
-}  // namespace jitkernels
+}  // namespace gen
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

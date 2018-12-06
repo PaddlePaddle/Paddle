@@ -13,12 +13,12 @@
  * limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/operators/jitkernels/kernel_base.h"
+#include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 
 struct KernelKey {
   struct Hash {
@@ -44,6 +44,6 @@ struct KernelKey {
   bool operator!=(const KernelKey& o) const { return !(*this == o); }
 };
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

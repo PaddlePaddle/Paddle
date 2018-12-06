@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jitkernels/refer/refer.h"
-#include "paddle/fluid/operators/jitkernels/registry.h"
+#include "paddle/fluid/operators/jit/refer/refer.h"
+#include "paddle/fluid/operators/jit/registry.h"
 
-namespace refer = paddle::operators::jitkernels::refer;
+namespace refer = paddle::operators::jit::refer;
 
 REGISTER_JITKERNEL_REFER(vmul, refer::VMulKernel<float>,
                          refer::VMulKernel<double>);

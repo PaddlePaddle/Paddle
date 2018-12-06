@@ -12,25 +12,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jitkernels/kernel_pool.h"
-#include <memory>  // for shared_ptr
-#include <string>
-#include <unordered_map>
+#include "paddle/fluid/operators/jit/gen/jitcode.h"
 
 namespace paddle {
 namespace operators {
-namespace jitkernels {
+namespace jit {
 
-KernelPool& KernelPool::Instance() {
-  static KernelPool g_kernel_pool;
-  return g_kernel_pool;
+template <>
+size_t GetKey<int>(int d) {
+  return d;
 }
 
-ReferKernelPool& ReferKernelPool::Instance() {
-  static ReferKernelPool g_refer_kernel_pool;
-  return g_refer_kernel_pool;
-}
+// template <>
+// std::shared_ptr<const GenBase> CreateJitCode<KernelType::vmul, int>(int attr)
+// {
+//   if (UseJitCode<KernelType::vmul, int>(attr)) {
+//     return std::make_shared<gen::VMulJitCode<int>>(attr,
+//     CodeSize<KernelType::vmul, int>(attr)));
+//   }
+//   return nullptr;
+// }
 
-}  // namespace jitkernels
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle
