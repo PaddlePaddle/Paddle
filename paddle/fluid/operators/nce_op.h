@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <math.h>
+#include <iterator>
 #include <random>
 #include <set>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -144,15 +146,64 @@ class NCEKernel : public framework::OpKernel<T> {
     }
     // forward mul
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
-    auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-    for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-      Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
-          (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
-           weight_mat.chip(sample_labels_data[i], 0))
-              .sum();
-      sample_out_data[i] += result(0);
-      sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
+
+    // for remote prefetch
+    auto epmap = context.Attr<std::vector<std::string>>("epmap");
+
+    if (!epmap.empty()) {
+      // if epmap is not empty, then the parameter will be fetched from remote
+      // parameter
+      // server
+
+      std::vector<int64_t> labels;
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+        labels.push_back(sample_labels_data[i]);
+      }
+      std::set<T> st(labels.begin(), labels.end());
+      labels.assign(st.begin(), st.end());
+
+      auto &local_scope = context.scope().NewScope();
+      auto height_sections = context.Attr<std::vector<int>>("height_sections");
+      auto table_names = context.Attr<std::vector<std::string>>("table_names");
+
+      framework::Variable *ids = local_scope.Var("Ids");
+      framework::Variable *weight = local_scope.Var("Weight");
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+      operators::distributed::prefetch("Ids", "Weight", table_names, epmap,
+                                       height_sections, context);
+#else
+      PADDLE_THROW(
+          "paddle is not compiled with distribute support, can not do "
+          "parameter prefetch!");
+
+      auto weight_mat = EigenMatrix<T>::From(*(weight->Get<T>()));
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+        std::vector<int64_t>::iterator it =
+            std::find(labels.begin(), labels.end(), sample_labels_data[i]);
+        int idx = std::distance(labels.begin(), it);
+
+        Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+            (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
+             weight_mat.chip(idx, 0))
+                .sum();
+        sample_out_data[i] += result(0);
+        sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
+      }
+#endif
+    } else {
+      auto weight_mat =
+          EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+        Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+            (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
+             weight_mat.chip(sample_labels_data[i], 0))
+                .sum();
+        sample_out_data[i] += result(0);
+        sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
+      }
     }
+
     // forward cost
     for (int64_t i = 0; i < sample_labels->dims()[0]; ++i) {
       out_data[i] = 0;
