@@ -22,15 +22,17 @@ namespace ir {
 std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Aplies MKL-DNN placement strategy.";
-  const std::vector<std::string> op_list = Get<std::vector<std::string>>("mkldnn_op_list");
+  const std::vector<std::string> op_list = 
+      Get<std::vector<std::string>>("mkldnn_op_list");
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp() && n->RuntimeHasAttr("use_mkldnn")) {
-      if (op_list.empty()){
-          n->Op()->SetAttr("use_mkldnn", true);
-      }else{
-          if(std::find(op_list.begin(), op_list.end(), n->Name()) != op_list.end()){
-               n->Op()->SetAttr("use_mkldnn", true);
-          }
+      if (op_list.empty()) {
+        n->Op()->SetAttr("use_mkldnn", true);
+      } else {
+          if (std::find(op_list.begin(), op_list.end(), n->Name()) != 
+              op_list.end()){
+             n->Op()->SetAttr("use_mkldnn", true);
+        }
       }
     }
   }
