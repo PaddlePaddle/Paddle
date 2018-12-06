@@ -297,6 +297,7 @@ class TestDistBase(unittest.TestCase):
             env_local = {'CPU_NUM': '1'}
 
         env_local.update(envs)
+        print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
             err_log = open("/tmp/trainer.err.log", "wb")
@@ -310,7 +311,7 @@ class TestDistBase(unittest.TestCase):
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=envs)
+                env=env_local)
 
         local_out, local_err = local_proc.communicate()
 
@@ -361,8 +362,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print("tr0_cmd:{}".format(tr0_cmd))
-        print("tr1_cmd:{}".format(tr1_cmd))
+        print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
+        print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
