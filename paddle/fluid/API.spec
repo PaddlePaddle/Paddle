@@ -194,6 +194,8 @@ paddle.fluid.layers.grid_sampler ArgSpec(args=['x', 'grid', 'name'], varargs=Non
 paddle.fluid.layers.log_loss ArgSpec(args=['input', 'label', 'epsilon', 'name'], varargs=None, keywords=None, defaults=(0.0001, None))
 paddle.fluid.layers.add_position_encoding ArgSpec(args=['input', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.bilinear_tensor_product ArgSpec(args=['x', 'y', 'size', 'act', 'name', 'param_attr', 'bias_attr'], varargs=None, keywords=None, defaults=(None, None, None, None))
+paddle.fluid.layers.merge_selected_rows ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
+paddle.fluid.layers.get_tensor_from_selected_rows ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.lstm ArgSpec(args=['input', 'init_h', 'init_c', 'max_len', 'hidden_size', 'num_layers', 'dropout_prob', 'is_bidirec', 'is_test', 'name', 'default_initializer', 'seed'], varargs=None, keywords=None, defaults=(0.0, False, False, None, None, -1))
 paddle.fluid.layers.data ArgSpec(args=['name', 'shape', 'append_batch_size', 'dtype', 'lod_level', 'type', 'stop_gradient'], varargs=None, keywords=None, defaults=(True, 'float32', 0, VarType.LOD_TENSOR, True))
 paddle.fluid.layers.open_files ArgSpec(args=['filenames', 'shapes', 'lod_levels', 'dtypes', 'thread_num', 'buffer_size', 'pass_num', 'is_test'], varargs=None, keywords=None, defaults=(None, None, 1, None))
@@ -420,3 +422,17 @@ paddle.fluid.Scope.drop_kids drop_kids(self: paddle.fluid.core.Scope) -> None
 paddle.fluid.Scope.find_var find_var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
 paddle.fluid.Scope.new_scope new_scope(self: paddle.fluid.core.Scope) -> paddle.fluid.core.Scope
 paddle.fluid.Scope.var var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
+paddle.reader.map_readers ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None)
+paddle.reader.buffered ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None)
+paddle.reader.compose ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None)
+paddle.reader.chain ArgSpec(args=[], varargs='readers', keywords=None, defaults=None)
+paddle.reader.shuffle ArgSpec(args=['reader', 'buf_size'], varargs=None, keywords=None, defaults=None)
+paddle.reader.firstn ArgSpec(args=['reader', 'n'], varargs=None, keywords=None, defaults=None)
+paddle.reader.xmap_readers ArgSpec(args=['mapper', 'reader', 'process_num', 'buffer_size', 'order'], varargs=None, keywords=None, defaults=(False,))
+paddle.reader.PipeReader.__init__ ArgSpec(args=['self', 'command', 'bufsize', 'file_type'], varargs=None, keywords=None, defaults=(8192, 'plain'))
+paddle.reader.PipeReader.get_line ArgSpec(args=['self', 'cut_lines', 'line_break'], varargs=None, keywords=None, defaults=(True, '\n'))
+paddle.reader.multiprocess_reader ArgSpec(args=['readers', 'use_pipe', 'queue_size'], varargs=None, keywords=None, defaults=(True, 1000))
+paddle.reader.Fake.__init__ ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
+paddle.reader.creator.np_array ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
+paddle.reader.creator.text_file ArgSpec(args=['path'], varargs=None, keywords=None, defaults=None)
+paddle.reader.creator.recordio ArgSpec(args=['paths', 'buf_size'], varargs=None, keywords=None, defaults=(100,))

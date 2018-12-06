@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,28 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/jit_kernel.h"
-#include <iostream>
+#pragma once
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
-namespace math {
-namespace jitkernel {
 
-KernelPool& KernelPool::Instance() {
-  static thread_local KernelPool g_jit_kernels;
-  return g_jit_kernels;
-}
+template <typename DeviceContext, typename T>
+class MergeSelectedRowsKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::SelectedRows>("X");
+    auto* out = context.Output<framework::SelectedRows>("Out");
 
-std::shared_ptr<const Kernel> KernelPool::Get(const std::string& key) const {
-  if (kers_.find(key) == kers_.end()) {
-    return nullptr;
+    math::scatter::MergeAdd<DeviceContext, T> merge_func;
+    merge_func(context.template device_context<DeviceContext>(), *x, out);
   }
-  return kers_.at(key);
-}
+};
 
-}  // namespace jitkernel
-}  // namespace math
 }  // namespace operators
 }  // namespace paddle
