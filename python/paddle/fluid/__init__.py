@@ -20,6 +20,13 @@ from .framework import *
 # import all class inside executor into fluid module
 from . import executor
 from .executor import *
+
+from . import data_feed_desc
+from .data_feed_desc import *
+
+from . import async_executor
+from .async_executor import *
+
 from . import trainer
 from . import inferencer
 
@@ -54,7 +61,8 @@ Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-    parallel_executor.__all__ + lod_tensor.__all__ + [
+    parallel_executor.__all__ + lod_tensor.__all__ + \
+    data_feed_desc.__all__ + async_executor.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -139,7 +147,7 @@ def __bootstrap__():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search'
+            'cudnn_exhaustive_search', 'selected_gpus'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
