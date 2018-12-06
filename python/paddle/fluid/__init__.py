@@ -34,6 +34,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
+from . import imperative
 from . import contrib
 from . import nets
 from . import optimizer
@@ -67,6 +68,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'initializer',
         'layers',
         'contrib',
+        'imperative',
         'transpiler',
         'nets',
         'optimizer',
@@ -147,7 +149,7 @@ def __bootstrap__():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search'
+            'cudnn_exhaustive_search', 'selected_gpus'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
