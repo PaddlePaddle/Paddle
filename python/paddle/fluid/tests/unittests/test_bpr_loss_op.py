@@ -25,7 +25,7 @@ class TestBprLossOp1(OpTest):
 
     def setUp(self):
         self.op_type = "bpr_loss"
-        batch_size = 3
+        batch_size = 4
         class_num = 5
         X = randomize_probability(batch_size, class_num, dtype='float64')
         label_pos = np.random.randint(
