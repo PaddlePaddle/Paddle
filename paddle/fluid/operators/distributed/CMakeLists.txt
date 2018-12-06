@@ -27,9 +27,11 @@ if(WITH_GRPC)
 
   cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
 
+  if(WITH_CUDA)
   cc_test(collective_server_test SRCS collective_server_test.cc 
       DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor
       selected_rows_functor  scope math_function SERIAL)
+  endif()
 
   cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_grpc memory)
 else()
