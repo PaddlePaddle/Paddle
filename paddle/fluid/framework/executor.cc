@@ -91,11 +91,11 @@ static void DeleteUnusedTensors(const Scope& scope, const OperatorBase* op,
 static void EnableFusedOp(ExecutorPrepareContext* ctx) {
 #ifdef PADDLE_WITH_NGRAPH
   VLOG(3) << "use_ngraph=True";
-  auto intervals = FusedOperator::FusedOpIntervals(&ctx->ops_);
+  auto intervals = NgraphOperator::NgraphOpIntervals(&ctx->ops_);
   for (auto& interval : intervals) {
-    auto* fused_op = new FusedOperator(ctx->prog_, ctx->block_id_,
-                                       interval.at(0), interval.at(1));
-    *interval[0] = std::unique_ptr<OperatorBase>(fused_op);
+    auto* ng_op = new NgraphOperator(ctx->prog_, ctx->block_id_, interval.at(0),
+                                     interval.at(1));
+    *interval[0] = std::unique_ptr<OperatorBase>(ng_op);
   }
   for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
     ctx->ops_.erase(it->at(0) + 1, it->at(1));
