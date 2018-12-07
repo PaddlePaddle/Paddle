@@ -56,7 +56,7 @@ class DownpourSGD(object):
                                params_grads[0], params_grads[1])
         ps_param = pslib.PSParameter()
         ps_param.server_param.CopyFrom(server.get_desc())
-        ps_param.worker_param.CopyFrom(worker.get_desc())
+        ps_param.trainer_param.CopyFrom(worker.get_desc())
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]

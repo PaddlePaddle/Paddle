@@ -63,9 +63,11 @@ class AsyncExecutor {
                    const std::vector<std::string>& fetch_names,
                    const bool debug = false);
   //void ConfigPslib(const char* dist_desc, uint64_t* host_sign_list, int node_num, int index);
-  void ConfigPslib(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index);
+  void InitServer(const std::string& dist_desc, int index);
+  void InitWorker(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index);
   //void ConfigWorker() {}
-  void StartServer();
+  uint64_t StartServer();
+  void GatherServers(std::vector<uint64_t>& host_sign_list, int node_num);
   void InitModel();
   void SaveModel(const std::string& path);
   void InitParamConfig();

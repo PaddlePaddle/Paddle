@@ -158,8 +158,17 @@ class AsyncExecutor(object):
         return
 
 
+    def init_server(self, filename, index):
+        self.executor.init_server(filename, index)
+
+    def init_worker(self, filename, ips, nodes_cnt, index):
+        self.executor.init_worker(filename, ips, nodes_cnt, index)
+       
     def start_server(self):
-        self.executor.start_server()
+        return self.executor.start_server()
+    
+    def gather_servers(self, ips, nodes_cnt):
+        self.executor.gather_servers(ips, nodes_cnt)
 
     def init_model(self):
         self.executor.init_model()

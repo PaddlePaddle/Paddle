@@ -65,18 +65,35 @@ void PrepareReaders(std::vector<std::shared_ptr<DataFeed>>& readers,  // NOLINT
   readers[0]->SetFileList(filelist);
 }
 
-void AsyncExecutor::ConfigPslib(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index) {
+void AsyncExecutor::InitServer(const std::string& dist_desc, int index) {
     _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(new paddle::distributed::PSlib());
-    _pslib_ptr->init_and_config(dist_desc, host_sign_list, node_num, index);//TODO done
+    _pslib_ptr->init_server(dist_desc, index);//TODO done
+
+    InitParamConfig();
 }
 
-void AsyncExecutor::StartServer() {
+void AsyncExecutor::InitWorker(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index) {
+    _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(new paddle::distributed::PSlib());
+    _pslib_ptr->init_worker(dist_desc, host_sign_list.data(), node_num, index);//TODO done
+
     InitParamConfig();
-    _pslib_ptr->run_server();
+}
+
+uint64_t AsyncExecutor::StartServer() {
+    return _pslib_ptr->run_server();
+}
+
+void AsyncExecutor::GatherServers(std::vector<uint64_t>& host_sign_list, int node_num) {
+    _pslib_ptr->gather_servers(host_sign_list.data(), node_num);
 }
 
 void AsyncExecutor::InitParamConfig() {
-    _param_config.fea_dim = _pslib_ptr->get_param()->trainer_param().sparse_table(0).feature_dim(); //TODO
+    for (int i = 0; i < _pslib_ptr->get_param()->server_param().downpour_server_param().downpour_table_param_size(); ++i) {
+        if (_pslib_ptr->get_param()->server_param().downpour_server_param().downpour_table_param(i).table_class().find("SparseTable") != -1) {
+            _param_config.fea_dim = _pslib_ptr->get_param()->server_param().downpour_server_param().downpour_table_param(i).accessor().fea_dim(); //TODO
+            break;
+        }
+    }
     _param_config.slot_dim = _param_config.fea_dim - 2; //TODO
     _param_config.tmp_push_dense_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().pull_dense_per_batch());
     _param_config.tmp_push_sparse_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
@@ -176,6 +193,7 @@ void AsyncExecutor::PrepareDenseThread() {
     param.dense_params = &_param_config.dense_variable_name;
 
     _pull_dense_thread = std::shared_ptr<DensePullThread>(new DensePullThread(param));
+    _pull_dense_thread->start();
 
 }
 
@@ -238,6 +256,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                   fetch_var_names, root_scope_, thidx, debug);
   }
 
+  
   // start executing ops in multiple threads
   for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
     threads.push_back(
