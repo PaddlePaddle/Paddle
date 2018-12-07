@@ -223,7 +223,9 @@ class BRPCServiceImpl : public SendRecvService {
     PADDLE_ENFORCE(
         request_get_monomer_barrier_handler_h_ != nullptr,
         "RequestGetMonomerBarrier handler should be registed first!");
+
     brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     std::string varname = request->varname();
     VLOG(3) << "RequestGetMonomerBarrier var_name:" << varname

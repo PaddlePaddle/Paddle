@@ -37,15 +37,16 @@ void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
 
   // this channel can be used by other now.
   ch_ptr->Push(ch_ctx);
-  cls->DecreaseReqCount();
 
   if (cntl->Failed()) {
     LOG(FATAL) << "Fail to send SendVar: " << var_h->name()
                << ", error text: " << cntl->ErrorText();
     var_h->Finish(false);
+    cls->DecreaseReqCount();
     return;
   }
   var_h->Finish(true);
+  cls->DecreaseReqCount();
 
   VLOG(4) << "HandleSendResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
@@ -103,16 +104,18 @@ void HandleFetchBarrierResponse(brpc::Controller* cntl,
 
   // this channel can be used other now.
   ch_ptr->Push(ch_ctx);
-  cls->DecreaseReqCount();
 
   if (cntl->Failed()) {
     LOG(FATAL) << "Fail to get HandleFetchBarrierResponse: " << var_h->name()
                << ", error text: " << cntl->ErrorText();
     var_h->Finish(false);
+    cls->DecreaseReqCount();
     return;
   }
 
   var_h->Finish(true);
+  cls->DecreaseReqCount();
+
   VLOG(4) << "HandleFetchBarrierResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
           << ", latency: " << cntl->latency_us() << "us";
@@ -302,23 +305,27 @@ VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   if (UNLIKELY(platform::IsProfileEnabled())) {
     var_h->Wait();
   }
+
   return var_h;
 }
 
 bool BRPCClient::Wait() {
+  VLOG(9) << "begin to brpcclient wait";
   {
     std::unique_lock<std::mutex> lk(sync_mutex_);
     sync_cond_.wait(lk, [this] { return req_count_ == 0; });
   }
-
+  VLOG(9) << "end to brpcclient wait";
   return true;
 }
 
 ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
+  VLOG(4) << "begin to GetChannel:" << ep;
   {
     std::lock_guard<std::mutex> guard(chan_mutex_);
     auto it = channels_.find(ep);
     if (it != channels_.end()) {
+      VLOG(4) << "end to GetChannel:" << ep;
       return it->second;
     }
   }
@@ -355,6 +362,7 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
     channels_[ep] = q;
   }
 
+  VLOG(4) << "end to GetChannel:" << ep;
   return q;
 }
 

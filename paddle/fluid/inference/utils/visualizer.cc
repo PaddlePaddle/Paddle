@@ -26,9 +26,6 @@ DEFINE_string(model_dir, "", "model directory");
 DEFINE_string(model_program_path, "", "model program path");
 DEFINE_string(model_params_path, "", "model params path");
 
-USE_PASS(graph_viz_pass);
-USE_PASS(graph_to_program_pass);
-
 using paddle::inference::analysis::Argument;
 
 namespace paddle {
@@ -40,7 +37,6 @@ void Visualizer::SetArgument(Argument *argument) { argument_ = argument; }
 bool Visualizer::Run() {
   paddle::framework::InitDevices(false);
   paddle::inference::analysis::Analyzer().Run(argument_);
-
   return true;
 }
 
@@ -77,7 +73,7 @@ int main(int argc, char *argv[]) {
 
   // Only 1 pass, default filename is 0_ir_origin.dot
   // For more details, looking for paddle::inference::analysis::IRPassManager
-  argument.SetIrAnalysisPasses({"graph_viz_pass"});
+  argument.SetIrAnalysisPasses({"infer_clean_graph_pass", "graph_viz_pass"});
 
   std::unique_ptr<paddle::framework::Scope> scope{
       new paddle::framework::Scope()};
@@ -90,3 +86,7 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+USE_PASS(infer_clean_graph_pass);
+USE_PASS(graph_viz_pass);
+USE_PASS(graph_to_program_pass);
