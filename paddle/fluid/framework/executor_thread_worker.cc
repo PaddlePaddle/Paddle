@@ -345,9 +345,12 @@ void AsyncExecutorThreadWorker::TrainOneNetwork() {
         if (op->Type().find("sgd") != std::string::npos) {
             continue;
         }
+        if (op->Type().find("lookup_table") != std::string::npos || 
+            op->Type().find("lookup_table_grad") != std::string::npos) {
+            continue;
+        }
         op->Run(*thread_scope_, place_);
     }
-
     UpdateParams();
 }
 
@@ -416,8 +419,8 @@ void AsyncExecutorThreadWorker::UpdateParams() {
     for (auto i: _param_config->dense_table_id) {
         PushDense(i);
     }
-    int32_t tmp_push_dense_wait_times = _param_config->tmp_push_dense_wait_times; //TODO
-    int32_t tmp_push_sparse_wait_times = _param_config->tmp_push_sparse_wait_times; //TODO
+    int32_t tmp_push_dense_wait_times = -1;//_param_config->tmp_push_dense_wait_times; //TODO
+    int32_t tmp_push_sparse_wait_times = -1;//_param_config->tmp_push_sparse_wait_times; //TODO
     static uint32_t push_dense_wait_times = static_cast<uint32_t>(tmp_push_dense_wait_times);
     static uint32_t push_sparse_wait_times = static_cast<uint32_t>(tmp_push_sparse_wait_times);
 
@@ -430,7 +433,6 @@ void AsyncExecutorThreadWorker::UpdateParams() {
     if (tmp_push_dense_wait_times == -1) {
         _push_dense_status.resize(0);
     }
-
     if (_push_sparse_status.size() >= push_sparse_wait_times) {
         for (auto& t : _push_sparse_status) {
             t.wait();
@@ -440,7 +442,6 @@ void AsyncExecutorThreadWorker::UpdateParams() {
     if (tmp_push_sparse_wait_times == -1) {
         _push_sparse_status.resize(0);
     }
-
     //for (auto dense_table_id : GlobalConfig::instance().dense_table_id) {//TODO
     for (auto dense_table_id: _param_config->dense_table_id) {
         _pull_dense_thread->increase_thread_version(thread_id_, dense_table_id);
@@ -451,8 +452,8 @@ void AsyncExecutorThreadWorker::UpdateParams() {
 void AsyncExecutorThreadWorker::PushDense(int table_id) {
     std::vector<paddle::ps::Region> regions;
     //auto& variables = GlobalConfig::instance().dense_gradient_variable_name[table_id];
-    std::vector<std::string> variables;
-    for (auto& t : variables) {
+    //std::vector<std::string> variables;
+    for (auto& t : _param_config->dense_gradient_variable_name[table_id]) {
         Variable* var = thread_scope_->FindVar(t);
         CHECK(var != nullptr) << "var[" << t << "] not found";
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
@@ -469,7 +470,6 @@ void AsyncExecutorThreadWorker::PushDense(int table_id) {
 
 void AsyncExecutorThreadWorker::PullSparse(int table_id) {
 
-
     auto& features = _features[table_id];
     auto& feature_value = _feature_value[table_id];
     auto fea_dim = _param_config->fea_dim; //TODO
@@ -477,7 +477,6 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
     features.clear();
     features.resize(0);
     features.reserve(MAX_FEASIGN_NUM);
-
     const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
     // slot_idx = 0 is label TODO
     for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
@@ -493,14 +492,14 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
             features.push_back(static_cast<uint64_t>(ids[i]));
         }
     }
-
     check_pull_push_memory(features, feature_value, fea_dim);
 
     std::vector<float*> pull_feature_value;
     for (auto i = 0u; i < features.size(); ++i) {
         pull_feature_value.push_back(feature_value[i].data());
     }
-
+    for (int i = 0; i < features.size(); ++i) {
+    }
     auto status = _pslib_ptr->_worker_ptr->pull_sparse(
             pull_feature_value.data(), table_id, features.data(), features.size());
     _pull_sparse_status.push_back(std::move(status));
@@ -532,10 +531,15 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         int64_t* ids = tensor->data<int64_t>();
         int len = tensor->numel();
-        
         Variable* var_emb = thread_scope_->FindVar(_param_config->slot_input_vec[table_id][slot_idx - 1]);
         LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
-        float* ptr = tensor_emb->data<float>();
+        float* ptr = tensor_emb->mutable_data<float>({len, slot_dim}, platform::CPUPlace());
+        memset(ptr, 0, sizeof(float) * len * slot_dim);
+        auto& tensor_lod = tensor->lod()[0];
+        
+        LoD data_lod{tensor_lod};
+        tensor_emb->set_lod(data_lod);
+        //float* ptr = tensor_emb->data<float>();
 
         for (auto index = 0u; index < len; ++index){
             //if (_current_train_job.use_cvm_feature()) {
@@ -576,7 +580,6 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
     //}
 
     const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
-
     // slot_idx = 0 is label TODO
     for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
         if (_param_config->slot_alias_to_table[feed_vec[slot_idx]] != table_id) {

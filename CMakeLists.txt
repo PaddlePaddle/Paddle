@@ -217,7 +217,7 @@ include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
 include(external/libmct)
-#include(external/pslib_brpc)
+include(external/pslib_brpc)
 include(external/pslib)
 
 if(WITH_DISTRIBUTE)
@@ -280,7 +280,7 @@ set(EXTERNAL_LIBS
     zlib
     ${PYTHON_LIBRARIES}
     pslib
-    #pslib_brpc
+    pslib_brpc
     libmct
 )
 
