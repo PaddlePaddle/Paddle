@@ -25,7 +25,7 @@ if(WITH_GRPC)
   cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
   cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_grpc memory)
 else()
-  set_source_files_properties(brpc_server.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
+  set_source_files_properties(brpc_server.cc parameter_prefetch.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
       brpc_variable_response.cc brpc_sendrecvop_utils.cc brpc_rdma_pool.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
   brpc_library(sendrecvop_brpc SRCS brpc_client.cc brpc_server.cc rpc_server.cc rpc_client.cc request_handler_impl.cc brpc_sendrecvop_utils.cc
@@ -35,9 +35,10 @@ else()
 
   cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_brpc memory)
 
-  set(brpc_test_depends sendrecvop_brpc brpc ssl crypto protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy zlib)
+  set(brpc_test_depends sendrecvop_brpc brpc ssl crypto protobuf leveldb gflags glog executor
+      proto_desc lookup_sparse_table_op snappystream snappy zlib)
 
-  cc_test(brpc_server_test SRCS rpc_server_test.cc
+  cc_test(rpc_server_test SRCS rpc_server_test.cc
       DEPS ${brpc_test_depends} SERIAL)
 
   cc_test(brpc_serde_test SRCS brpc_serde_test.cc

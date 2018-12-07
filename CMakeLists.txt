@@ -73,7 +73,7 @@ option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better d
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
 option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
-option(WITH_GRPC     "Use grpc as the default rpc framework"            OFF)
+option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization."               OFF)
 option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
