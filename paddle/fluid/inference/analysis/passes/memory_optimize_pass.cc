@@ -659,6 +659,9 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   }
 }
 
+float MemoryOptimizePass::MemoryAllocation::GetSavingRatio() const {
+  return (saved / 1024.) / (allocated / 1024. + saved / 1024.);
+}
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
