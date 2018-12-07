@@ -331,7 +331,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
-
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.enable_ir_optim) passes.clear();
   argument_.SetIrAnalysisPasses(passes);

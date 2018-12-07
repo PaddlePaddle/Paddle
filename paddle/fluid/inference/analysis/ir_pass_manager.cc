@@ -64,9 +64,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass_num++;
     }
     if (pass_name == "mkldnn_placement_pass") {
-       pass->Set("mkldnn_enabled_op_types",
-                 new std::unordered_set<std::string>(
-                     argument->mkldnn_enabled_op_types()));
+      pass->Set("mkldnn_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->mkldnn_enabled_op_types()));
     }
 
     if (pass_name == "tensorrt_subgraph_pass") {

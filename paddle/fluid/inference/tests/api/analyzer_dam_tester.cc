@@ -194,6 +194,8 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    std::unordered_set<std::string> op_list = {"conv3d"};
+    cfg.SetMKLDNNOp(op_list);
   }
 
   std::vector<PaddleTensor> outputs;

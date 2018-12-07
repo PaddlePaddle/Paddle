@@ -16,8 +16,8 @@
 #include <cassert>
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_set>
+#include <vector>
 
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
@@ -55,7 +55,7 @@ struct AnalysisConfig : public NativeConfig {
   void EnableMKLDNN();
   bool use_mkldnn() const { return use_mkldnn_; }
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
-      mkldnn_enabled_op_types_ = op_list;
+    mkldnn_enabled_op_types_ = op_list;
   }
 
   // Specify the memory buffer of program and parameter
