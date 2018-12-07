@@ -82,13 +82,11 @@ void BufferedReader::StartImpl() {
 }
 
 void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
-  VLOG(1) << "ReadNextImpl start on place: " << place_;
   if (position_.empty()) {
     out->clear();
     return;
   }
   size_t i = position_.front().get();
-  VLOG(1) << "position front: " << i;
   position_.pop();
 
   if (i == -1UL) {
@@ -105,7 +103,6 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     ReadAsync(prev_pos_);
   }
   prev_pos_ = i;
-  VLOG(1) << "success ReadNextImpl";
 }
 
 }  // namespace reader

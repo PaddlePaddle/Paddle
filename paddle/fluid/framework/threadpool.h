@@ -99,7 +99,7 @@ class ThreadPool {
 
   // The constructor starts threads to run TaskLoop, which retrieves
   // and runs tasks from the queue.
-  void TaskLoop(int i);
+  void TaskLoop();
 
   // Init is called by GetInstance.
   static void Init();
