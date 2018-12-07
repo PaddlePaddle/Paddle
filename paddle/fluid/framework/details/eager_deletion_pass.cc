@@ -31,10 +31,11 @@ std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
   const auto &vars = graph->Get<GraphVars>(kGraphVars);
 
   auto &ref_cnts =
-      Get<std::vector<AtomicReferenceCountMap>>(kCurReferenceCount);
+      Get<std::vector<AtomicReferenceCountMap>>(kRuntimeReferenceCount);
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
-  auto &gcs = Get<GarbageCollectorList>(kGarbageCollector);
+  auto &gcs = Get<GarbageCollectorMap>(kGarbageCollector);
+  const auto &places = Get<std::vector<platform::Place>>(kAllPlaces);
 
   ref_cnts = std::vector<AtomicReferenceCountMap>(vars.size());
 
@@ -58,7 +59,7 @@ std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
         graph->CreateEmptyNode("eager_deletion", ir::Node::Type::kOperation);
     auto *eager_deletion_op = new EagerDeletionOpHandle(
         eager_deletion_node, op->GetScope(), op->GetPlace(),
-        std::move(var_names), gcs[op->GetScopeIdx()].get(),
+        std::move(var_names), gcs.at(places[op->GetScopeIdx()]).get(),
         &(ref_cnts[op->GetScopeIdx()]));
 
     auto it = std::find_if(
@@ -90,6 +91,7 @@ std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
 
 REGISTER_PASS(eager_deletion_pass,
               paddle::framework::details::EagerDeletionPass)
-    .RequirePassAttr(paddle::framework::details::kCurReferenceCount)
+    .RequirePassAttr(paddle::framework::details::kRuntimeReferenceCount)
     .RequirePassAttr(paddle::framework::details::kLastLiveOpsOfVars)
+    .RequirePassAttr(paddle::framework::details::kAllPlaces)
     .RequirePassAttr(paddle::framework::details::kGarbageCollector);

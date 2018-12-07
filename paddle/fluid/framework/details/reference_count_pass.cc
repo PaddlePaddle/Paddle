@@ -29,22 +29,22 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class OpConnectionDetector {
+class OpRelationDetector {
  public:
   enum RelationShip { kSame = 0, kNoDeps = 1, kBefore = 2, kAfter = 3 };
 
-  explicit OpConnectionDetector(const std::vector<OpHandleBase *> &all_ops)
+  explicit OpRelationDetector(const std::vector<OpHandleBase *> &all_ops)
       : graph_(all_ops) {}
 
   template <typename OpSet>
-  OpSet MaxNoDepOps(const OpSet &op_set) {
-    if (op_set.size() <= 1) return op_set;
+  OpSet MaxNoDepOps(const OpSet &op_set) const {
     using KeyType = typename OpSet::key_type;
     static_assert(
         std::is_base_of<OpHandleBase,
                         typename std::remove_pointer<KeyType>::type>::value,
-        "Key type of OpSet must be or derived of OpHandleBase");
+        "Key type of OpSet must be OpHandleBase, or derived of OpHandleBase");
 
+    if (op_set.size() <= 1) return op_set;
     std::vector<OpHandleBase *> ops(op_set.begin(), op_set.end());
     OpSet ret;
     auto rels = GetRelations(ops);
@@ -59,7 +59,7 @@ class OpConnectionDetector {
 
  private:
   std::vector<std::vector<RelationShip>> GetRelations(
-      const std::vector<OpHandleBase *> ops) {
+      const std::vector<OpHandleBase *> ops) const {
     std::unordered_map<OpHandleBase *, size_t> op_to_idx;
     for (size_t i = 0; i < ops.size(); ++i) {
       PADDLE_ENFORCE(graph_.HasOp(ops[i]), "Op does not exist in graph");
@@ -144,7 +144,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   last_live_ops_of_vars = std::vector<LastLiveOpsOfVars>(vars.size());
   ref_cnts = std::vector<ReferenceCountMap>(vars.size());
 
-  OpConnectionDetector detector(ir::FilterByNodeWrapper<OpHandleBase>(*graph));
+  OpRelationDetector detector(ir::FilterByNodeWrapper<OpHandleBase>(*graph));
 
   for (size_t i = 0; i < vars.size(); ++i) {
     for (auto &name_var_pair : vars[i]) {

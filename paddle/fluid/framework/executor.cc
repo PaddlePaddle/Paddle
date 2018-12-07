@@ -56,13 +56,7 @@ static std::unordered_map<std::string, size_t> GetNonPersistableReferenceCounts(
             type != proto::VarType::LOD_TENSOR_ARRAY) {
           continue;
         }
-
-        auto it = ref_cnts.find(name);
-        if (it != ref_cnts.end()) {
-          ++it->second;
-        } else {
-          ref_cnts[name] = 1;
-        }
+        ++ref_cnts[name];
       }
     }
   };
@@ -79,8 +73,8 @@ ExecutorPrepareContext::ExecutorPrepareContext(
     const std::vector<std::string>& skip_ref_cnt_vars)
     : prog_(prog), block_id_(block_id) {
   if (GetEagerDeletionThreshold() >= 0) {
-    ref_cnts_ = GetNonPersistableReferenceCounts(prog.Block(block_id),
-                                                 skip_ref_cnt_vars);
+    global_ref_cnts_ = GetNonPersistableReferenceCounts(prog.Block(block_id),
+                                                        skip_ref_cnt_vars);
   }
 }
 
@@ -443,7 +437,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), gc.get(),
-                          &(ctx->cur_ref_cnts_));
+                          &(ctx->runtime_ref_cnts_));
     }
   }
 

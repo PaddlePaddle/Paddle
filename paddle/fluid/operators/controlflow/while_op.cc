@@ -74,9 +74,7 @@ class WhileOp : public framework::OperatorBase {
 
     bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
-    if (framework::GetEagerDeletionThreshold() >= 0) {
-      VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
-    }
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
     while (cond.data<bool>()[0]) {
@@ -144,9 +142,7 @@ class WhileGradOp : public framework::OperatorBase {
     auto *program = block->Program();
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
-    if (framework::GetEagerDeletionThreshold() >= 0) {
-      VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
-    }
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
 
     auto *step_scopes =
@@ -369,7 +365,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     while_grad->SetAttr("original_output_grad", output_grads_list);
 
-    /* The followi_ng codes are used in eager deletion mode */
+    /* The following codes are used in eager deletion mode */
     std::unordered_set<std::string> bwd_skip_vars;
     if (framework::GetEagerDeletionThreshold() >= 0) {
       std::unordered_set<std::string> fwd_skip_vars;

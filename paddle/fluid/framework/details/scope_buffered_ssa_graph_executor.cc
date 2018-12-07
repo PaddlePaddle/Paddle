@@ -32,15 +32,15 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       var_infos_(std::move(var_infos)),
       places_(std::move(places)) {
   if (Graph().Has(details::kGarbageCollector)) {
-    gc_ = &(Graph().Get<GarbageCollectorList>(details::kGarbageCollector));
+    gc_ = &(Graph().Get<GarbageCollectorMap>(details::kGarbageCollector));
   }
 }
 
 void ScopeBufferedSSAGraphExecutor::WaitAllGarbageCollectors() {
   if (gc_) {
-    for (auto &gc : *gc_) {
-      gc->Wait();
-      gc->Reset();
+    for (auto &gc_pair : *gc_) {
+      gc_pair.second->Wait();
+      gc_pair.second->Reset();
     }
   }
 }
