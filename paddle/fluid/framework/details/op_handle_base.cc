@@ -41,7 +41,6 @@ OpHandleBase::~OpHandleBase() {
 
 void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  int64_t start_ts = 0;
   if (events_.empty() && use_cuda) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
@@ -125,7 +124,6 @@ bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
-    VLOG(5) << "events not empty";
     std::function<void()> method = callback;
     for (auto &p : dev_ctxes_) {
       method = [method, p, this]() {
