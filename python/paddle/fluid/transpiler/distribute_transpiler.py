@@ -242,8 +242,7 @@ class DistributeTranspiler(object):
         sparse_update_op_types = ["lookup_table", "nce"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
-                    'remote_prefetch') is True and not op.attr(
-                        'is_distributed'):
+                    'remote_prefetch') is True:
                 sparse_update_ops.append(op)
         return sparse_update_ops
 

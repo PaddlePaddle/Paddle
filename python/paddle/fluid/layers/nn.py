@@ -24,7 +24,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat
+from .tensor import concat, assign
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -4770,12 +4770,17 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
+    remote_prefetch = False
+    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
+        remote_prefetch = True
+
     attrs = {
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
         'sampler': sampler,
-        'is_sparse': is_sparse
+        'is_sparse': is_sparse,
+        'remote_prefetch': remote_prefetch
     }
 
     helper.append_op(

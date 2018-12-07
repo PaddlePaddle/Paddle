@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
-import math
-
-import unittest
-import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import traceback
+import math
 import collections
+
 import six
+import unittest
+import numpy as np
+
+import paddle.fluid as fluid
 
 
 class TranspilerTest(unittest.TestCase):
@@ -821,6 +822,56 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
             'recv', 'fetch_barrier'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+# test for remote prefetch
+class TestRemoteNce(TestDistLookupTableBase):
+    def network_with_table(self, is_sparse, is_distributed):
+
+        num_total_classes = 20
+        sampler = "uniform"
+        nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
+
+        input = fluid.layers.data(name="input", shape=[10], dtype="float32")
+        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+
+        w_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 10],
+            dtype='float32',
+            name='nce_w',
+            initializer=fluid.initializer.ConstantInitializer())
+        b_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 1],
+            dtype='float32',
+            name='nce_b',
+            initializer=fluid.initializer.ConstantInitializer())
+
+        cost = fluid.layers.nce(input=input,
+                                label=label,
+                                num_total_classes=num_total_classes,
+                                sampler=sampler,
+                                custom_dist=nid_freq_arr.tolist(),
+                                sample_weight=None,
+                                param_attr='nce_w',
+                                bias_attr='nce_b',
+                                seed=1,
+                                num_neg_samples=5,
+                                is_sparse=is_sparse)
+        avg_cost = fluid.layers.mean(cost)
+        # optimizer
+        optimizer = fluid.optimizer.Adam(learning_rate=0.003)
+        optimizer.minimize(avg_cost)
+
+    def net_conf(self):
+        import os
+        os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
+        self.network_with_table(is_sparse=True, is_distributed=False)
+
+    def transpiler_test_impl(self):
+        trainer, _ = self.get_trainer()
+        for op in trainer.blocks[0].ops:
+            if op.type == "recv":
+                pass
 
 
 if __name__ == "__main__":
