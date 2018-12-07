@@ -62,10 +62,11 @@ VarHandlePtr BRPCClient::AsyncSendVar(const std::string& ep,
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch_ptr = GetChannel(ep_val);
-  VarHandlePtr var_h(new VarHandle(ep, "Send", var_name_val, p_ctx, p_scope));
+  const std::string method = "SendRPC";
+  VarHandlePtr var_h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
 
   framework::AsyncIO(
-      [var_name_val, p_ctx, p_scope, time_out, ch_ptr, var_h, this] {
+      [var_name_val, p_ctx, p_scope, time_out, ch_ptr, method, var_h, this] {
         auto ch_ctx = ch_ptr->Pop();
         brpc::Controller* cntl = new brpc::Controller();
         sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
@@ -74,12 +75,19 @@ VarHandlePtr BRPCClient::AsyncSendVar(const std::string& ep,
         auto* var = p_scope->FindVar(var_name_val);
         sendrecv::VariableMessage request;
         distributed::SerializeToIOBuf(var_name_val, var, *p_ctx, &request,
-                                      &cntl->request_attachment(), "", false);
+                                      &cntl->request_attachment(), "", false,
+                                      trainer_id_);
 
         google::protobuf::Closure* done = brpc::NewCallback(
             &HandleSendResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
+        platform::RecordRPCEvent record_event(method, p_ctx);
+
         ch_ctx->stub->SendVariable(cntl, &request, response, done);
+
+        if (UNLIKELY(platform::IsProfileEnabled())) {
+          var_h->Wait();
+        }
       });
   req_count_++;
 
@@ -153,9 +161,10 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch_ptr = GetChannel(ep_val);
-  VarHandlePtr var_h(new VarHandle(ep, "Get", var_name_val, p_ctx, p_scope));
+  const std::string method = "GetRPC";
+  VarHandlePtr var_h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
 
-  framework::AsyncIO([var_name_val, time_out, ch_ptr, var_h, this] {
+  framework::AsyncIO([var_name_val, time_out, ch_ptr, method, var_h, this] {
     auto ch_ctx = ch_ptr->Pop();
 
     brpc::Controller* cntl = new brpc::Controller();
@@ -168,7 +177,13 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
+    platform::RecordRPCEvent record_event(method, p_ctx);
+
     ch_ctx->stub->GetVariable(cntl, &req, response, done);
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      var_h->Wait();
+    }
   });
 
   req_count_++;
@@ -191,11 +206,13 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch_ptr = GetChannel(ep_val);
 
+  const std::string method = "PrefetchRPC";
+
   VarHandlePtr var_h(
-      new VarHandle(ep, "Prefetch", out_var_name_val, p_ctx, p_scope));
+      new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      time_out, ch_ptr, var_h, table_name_val, this] {
+                      time_out, ch_ptr, method, var_h, table_name_val, this] {
     auto ch_ctx = ch_ptr->Pop();
 
     brpc::Controller* cntl = new brpc::Controller();
@@ -208,10 +225,16 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
                                   &cntl->request_attachment(), out_var_name_val,
                                   false, 0, table_name_val);
 
+    platform::RecordRPCEvent record_event(method, p_ctx);
+
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
     ch_ctx->stub->PrefetchVariable(cntl, &req, response, done);
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      var_h->Wait();
+    }
   });
 
   req_count_++;
@@ -220,7 +243,8 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
 
 VarHandlePtr BRPCClient::AsyncSendBatchBarrier(const std::string& ep,
                                                int64_t time_out) {
-  return AsyncSendMessage(ep, "BatchBarrier", BATCH_BARRIER_MESSAGE, time_out);
+  return AsyncSendMessage(ep, "BatchBarrierRPC", BATCH_BARRIER_MESSAGE,
+                          time_out);
 }
 
 VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
@@ -235,9 +259,12 @@ VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
 
+  const std::string method = "FetchBarrierRPC";
   // var handle
-  VarHandlePtr var_h(new VarHandle(ep, "FetchBarrier", FETCH_BARRIER_MESSAGE,
-                                   nullptr, nullptr));
+  VarHandlePtr var_h(
+      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+
+  platform::RecordRPCEvent record_event(method, nullptr);
 
   google::protobuf::Closure* done = brpc::NewCallback(
       &HandleFetchBarrierResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
@@ -245,6 +272,10 @@ VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   ch_ctx->stub->GetVariable(cntl, &req, response, done);
 
   req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    var_h->Wait();
+  }
   return var_h;
 }
 
@@ -303,7 +334,7 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
 
 VarHandlePtr BRPCClient::AsyncSendComplete(const std::string& ep,
                                            int64_t time_out) {
-  return AsyncSendMessage(ep, "SendComplete", COMPLETE_MESSAGE, time_out);
+  return AsyncSendMessage(ep, "SendCompleteRPC", COMPLETE_MESSAGE, time_out);
 }
 
 void BRPCClient::SendComplete() {
@@ -322,6 +353,8 @@ VarHandlePtr BRPCClient::AsyncSendVarMessage(
   sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
   cntl->set_timeout_ms(time_out);
 
+  platform::RecordRPCEvent record_event(method_name, nullptr);
+
   VarHandlePtr var_h(
       new VarHandle(ep, method_name, req.varname(), nullptr, nullptr));
 
@@ -330,6 +363,10 @@ VarHandlePtr BRPCClient::AsyncSendVarMessage(
 
   ch_ctx->stub->SendVariable(cntl, &req, response, done);
   req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    var_h->Wait();
+  }
 
   return var_h;
 }
@@ -351,7 +388,7 @@ VarHandlePtr BRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);
   req.set_out_varname(dir);
 
-  return AsyncSendVarMessage(ep, "CheckpointNotify", req, time_out);
+  return AsyncSendVarMessage(ep, "CheckPointNotifyRPC", req, time_out);
 }
 
 }  // namespace distributed
