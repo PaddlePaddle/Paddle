@@ -68,12 +68,11 @@ class TestGradientClip(unittest.TestCase):
         with fluid.program_guard(
                 main_program=prog, startup_program=startup_program):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
+            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
             hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
             hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
-
-            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(cost)
@@ -112,12 +111,12 @@ class TestGradientClip(unittest.TestCase):
                                feed=feeder.feed(data),
                                fetch_list=grad_clip_list)
             global_norm = 0
-            for v in out[1:]:
+            for v in out:
                 global_norm += np.sum(np.power(v, 2))
             global_norm = np.sqrt(global_norm)
 
             global_norm_clip = 0
-            for v in out_clip[1:]:
+            for v in out_clip:
                 global_norm_clip += np.sum(np.power(v, 2))
             global_norm_clip = np.sqrt(global_norm_clip)
 
