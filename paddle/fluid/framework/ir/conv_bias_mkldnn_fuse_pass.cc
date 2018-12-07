@@ -137,3 +137,5 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
 }  // namespace paddle
 REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
+REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv3DBiasFusePass);
