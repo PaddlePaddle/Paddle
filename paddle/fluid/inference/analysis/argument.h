@@ -114,7 +114,10 @@ struct Argument {
   // The ir passes to perform in analysis phase.
   DECL_ARGUMENT_FIELD(ir_analysis_passes, IrAnalysisPasses,
                       std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(mkldnn_op, MKLDNNOp, std::vector<std::string>); //Choose to enable mkldnn op
+
+  // Pass a set of op types to enable its mkldnn kernel
+  DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
+                      std::unordered_set<std::string>);
 
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
