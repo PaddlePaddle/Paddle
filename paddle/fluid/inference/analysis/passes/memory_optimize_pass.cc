@@ -489,7 +489,7 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapesByBatchSize(
     res.emplace_back(std::move(ele.second));
   }
 
-  LOG(INFO) << "Cluster by batch_size and get " << res.size() << " clusters";
+  VLOG(3) << "Cluster by batch_size and get " << res.size() << " clusters";
   return res;
 }
 
@@ -623,6 +623,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
             framework::ir::kGraphToProgramVarsToRemove);
 
     PerformReusePlan(reuse_table, memory_allocation.sort_kind, &vars2remove);
+    argument->SetMemoryOptimSortKind(memory_allocation.sort_kind);
   }
 }
 

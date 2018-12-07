@@ -129,6 +129,9 @@ struct Argument {
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
+  // Indicate which kind of sort algorithm is used for operators, the memory
+  // optimization relays on the sort algorithm.
+  DECL_ARGUMENT_FIELD(memory_optim_sort_kind, MemoryOptimSortKind, int);
 
   // The program transformed by IR analysis phase.
   DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,

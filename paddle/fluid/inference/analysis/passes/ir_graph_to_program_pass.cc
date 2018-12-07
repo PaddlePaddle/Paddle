@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
+#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -23,8 +24,13 @@ namespace analysis {
 void IrGraphToProgramPass::RunImpl(Argument *argument) {
   auto pass =
       framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
-  std::unique_ptr<Graph> graph(argument->main_graph_ptr());
 
+  if (argument->memory_optim_sort_kind_valid()) {
+    pass->Set(framework::ir::kGraphToProgramSortKind,
+              new int(argument->memory_optim_sort_kind()));
+  }
+
+  std::unique_ptr<Graph> graph(argument->main_graph_ptr());
   framework::ProgramDesc desc(argument->main_program());
   pass->SetNotOwned("program", &desc);
   auto thegraph = pass->Apply(std::move(graph));
