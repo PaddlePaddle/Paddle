@@ -134,14 +134,14 @@ void Conv2DOpMaker::Make() {
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
       .AsDispensable();
-  AddOutput("Output",
-            "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.");
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
            "Used with fuse_residual_connection fusion.")
       .AsDispensable();
+  AddOutput("Output",
+            "(Tensor) The output tensor of convolution operator. "
+            "The format of output tensor is also NCHW.");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -251,14 +251,14 @@ void Conv3DOpMaker::Make() {
            "is the width of the filter."
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
-  AddOutput("Output",
-            "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.");
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
            "Used with fuse_residual_connection fusion.")
       .AsDispensable();
+  AddOutput("Output",
+            "(Tensor) The output tensor of convolution operator."
+            "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "
