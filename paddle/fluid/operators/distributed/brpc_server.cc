@@ -68,9 +68,10 @@ class BRPCServiceImpl : public SendRecvService {
 
     auto scope = resp.GetMutableLocalScope();
     auto invar = resp.GetVar();
+    int trainer_id = request->trainer_id();
     paddle::framework::Variable* outvar = nullptr;
 
-    request_send_h_->Handle(varname, scope, invar, &outvar);
+    request_send_h_->Handle(varname, scope, invar, &outvar, trainer_id);
   }
 
   void GetVariable(google::protobuf::RpcController* cntl_butil,
@@ -87,9 +88,10 @@ class BRPCServiceImpl : public SendRecvService {
 
     auto scope = request_get_h_->scope();
     auto invar = scope->FindVar(varname);
+    int trainer_id = request->trainer_id();
     paddle::framework::Variable* outvar = nullptr;
 
-    request_get_h_->Handle(varname, scope, invar, &outvar);
+    request_get_h_->Handle(varname, scope, invar, &outvar, trainer_id);
 
     if (outvar) {
       distributed::SerializeToIOBuf(varname, outvar, *request_get_h_->dev_ctx(),
@@ -122,10 +124,12 @@ class BRPCServiceImpl : public SendRecvService {
 
     auto scope = resp.GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
+    std::string table_name = request->table_name();
+    int trainer_id = request->trainer_id();
     paddle::framework::Variable* outvar = scope->Var(out_var_name);
 
-    request_prefetch_h_->Handle(in_var_name, scope, invar, &outvar,
-                                out_var_name);
+    request_prefetch_h_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                                out_var_name, table_name);
 
     distributed::SerializeToIOBuf(out_var_name, outvar,
                                   *request_prefetch_h_->dev_ctx(), response,

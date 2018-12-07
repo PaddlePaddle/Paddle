@@ -134,8 +134,10 @@ void HandleGetResponse(brpc::Controller* cntl,
           << ", latency: " << cntl->latency_us() << "us";
 
   framework::Variable* outvar = nullptr;
+  int trainer_id;
   distributed::DeserializeFromIOBuf(*response, cntl->response_attachment(),
-                                    *var_h->ctx(), var_h->scope(), &outvar);
+                                    *var_h->ctx(), var_h->scope(), &outvar,
+                                    &trainer_id);
   VLOG(4) << "Finish HandleGetResponse";
   cls->DecreaseReqCount();
   var_h->Finish(true);
@@ -179,11 +181,13 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
                                           const framework::Scope& scope,
                                           const std::string& in_var_name,
                                           const std::string& out_var_name,
+                                          const std::string& table_name,
                                           int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
   const std::string out_var_name_val = out_var_name;
+  const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch_ptr = GetChannel(ep_val);
 
@@ -191,7 +195,7 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
       new VarHandle(ep, "Prefetch", out_var_name_val, p_ctx, p_scope));
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      time_out, ch_ptr, var_h, this] {
+                      time_out, ch_ptr, var_h, table_name_val, this] {
     auto ch_ctx = ch_ptr->Pop();
 
     brpc::Controller* cntl = new brpc::Controller();
@@ -202,7 +206,7 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
     sendrecv::VariableMessage req;
     distributed::SerializeToIOBuf(in_var_name_val, var, *p_ctx, &req,
                                   &cntl->request_attachment(), out_var_name_val,
-                                  false);
+                                  false, 0, table_name_val);
 
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);

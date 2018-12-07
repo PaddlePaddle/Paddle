@@ -36,12 +36,13 @@ namespace distributed {
 void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,
                       butil::IOBuf* iobuf, const std::string& out_varname,
-                      bool var_is_not_stable);
+                      bool var_is_not_stable, const int trainer_id = 0,
+                      const std::string& table_name = std::string());
 
 void DeserializeFromIOBuf(const VarMsg& meta, const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
-                          framework::Variable** var);
+                          framework::Variable** var, int* trainer_id);
 
 }  // namespace distributed
 }  // namespace operators

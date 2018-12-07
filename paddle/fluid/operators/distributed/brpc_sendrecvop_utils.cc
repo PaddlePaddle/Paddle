@@ -31,17 +31,6 @@ namespace distributed {
 
 class IOBufWriter {
  public:
-  static void FreeMemory(void* p) {
-#ifdef PADDLE_WITH_CUDA
-    VLOG(7) << "FreeMemory data:" << p;
-
-    // GPU data is copied to CPU buffer when sending,
-    // free the buffer when possible.
-    platform::CUDAPinnedPlace cuda_pinned;
-    memory::Free(cuda_pinned, p);
-#endif
-  }
-
   static void Append(butil::IOBuf* iobuf, int k, const char* v, int64_t vlen) {
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
@@ -57,11 +46,16 @@ class IOBufWriter {
 
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
+
+    // FIXME(gongwb): use append_zerocopy
+    /*
     if (in_cuda_pinned) {
       iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);
     } else {
       iobuf->append_zerocopy(v, vlen, nullptr);
     }
+    */
+    iobuf->append(v, vlen);
   }
 
 #ifdef PADDLE_WITH_BRPC_RDMA
@@ -78,8 +72,9 @@ class IOBufWriter {
     RdmaMemPool::Instance().Register(
         varname, static_cast<void*>(const_cast<char*>(v)), vlen);
 
-    iobuf->append_zerocopy(v, vlen, nullptr);
-    // iobuf->append(v, vlen);
+    // FIXME(gongwb): use append_zerocopy
+    // iobuf->append_zerocopy(v, vlen, nullptr);
+    iobuf->append(v, vlen);
     return;
   }
 #endif
@@ -98,11 +93,12 @@ class IOBufWriter {
 void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,
                       butil::IOBuf* iobuf, const std::string& out_varname,
-                      bool var_is_not_stable) {
-  void* payload = nullptr;
-  size_t payload_size = 0;
+                      bool var_is_not_stable, int trainer_id,
+                      const std::string& table_name) {
+  TensorPayload* payload = nullptr;
 
   request->set_varname(name);
+  request->set_trainer_id(trainer_id);
   // Note: normally the profiler is enabled in 1 trainer, hence only
   // 1 trainer returns true for ShouldSendProfileState(). It tells PS
   // servers the trainer's profiling state so that PS can follow the
@@ -117,12 +113,17 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   if (!out_varname.empty()) {
     request->set_out_varname(out_varname);
   }
+  if (!table_name.empty()) {
+    request->set_table_name(table_name);
+  }
   if (var->IsType<framework::LoDTensor>()) {
     request->set_type(::sendrecv::LOD_TENSOR);
-    GetTensorPayload(var, ctx, request, &payload, &payload_size);
+    // GetTensorPayload(var, ctx, request, &payload, &payload_size);
+    payload = new TensorPayload(GetTensorPayload(var, ctx, request));
   } else if (var->IsType<framework::SelectedRows>()) {
     request->set_type(::sendrecv::SELECTED_ROWS);
-    GetSelectedRowsPayload(var, ctx, request, &payload, &payload_size);
+    // GetSelectedRowsPayload(var, ctx, request, &payload, &payload_size);
+    payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, request));
 #ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     request->set_type(::sendrecv::NCCL_ID);
@@ -138,23 +139,23 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
-  // FIXME(gongwb): brpc need support to call callback when context is not
-  // useful.
   if (var_is_not_stable) {
-    IOBufWriter::Append(iobuf,
-                        ::sendrecv::VariableMessage::kSerializedFieldNumber,
-                        static_cast<char*>(payload), payload_size);
+    IOBufWriter::Append(
+        iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
+        static_cast<const char*>(payload->ptr()), payload->memory_size());
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
       IOBufWriter::AppendZeroCopy(
           name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
-          static_cast<char*>(payload), payload_size, true);
+          static_cast<const char*>(payload->ptr()), payload->memory_size(),
+          true);
 #endif
     } else {
       IOBufWriter::AppendZeroCopy(
           name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
-          static_cast<char*>(payload), payload_size, false);
+          static_cast<const char*>(payload->ptr()), payload->memory_size(),
+          false);
     }
   }
 
@@ -173,10 +174,11 @@ void DeserializeFromIOBuf(const ::sendrecv::VariableMessage& meta,
                           const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
-                          framework::Variable** var) {
+                          framework::Variable** var, int* trainer_id) {
   operators::distributed::BRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(iobuf, meta) == 0, "parse iobuf to tensor error!");
   *var = resp.GetVar();
+  *trainer_id = resp.GetTrainerId();
 }
 
 }  // namespace distributed
