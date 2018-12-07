@@ -111,7 +111,7 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
 
   // 2. copy forward backward
   ir::Node* prev_repeat_last_op_node = nullptr;
-  // record origin_grad -> repeated grad list map.
+  // record origin_grad -> repeated_grad_list map.
   std::map<ir::Node*, std::vector<ir::Node*>> grad_repeated_map;
   std::map<std::string, std::vector<ir::Node*>> created;
   std::unordered_set<std::string> bn_vars_need_rename;
@@ -133,7 +133,9 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
         }
       }
       // 3.5 let batch_norm ops use independent vars, note batch_norm_grad do
-      // not need this update
+      // not need this update, because only moving mean and variance should be
+      // differ, trainable parameter scale and bias is the same as other
+      // parameters.
       if (node->Name() == "batch_norm") {
         // NOTE: assume bn op created by layers use save var as output mean and
         // variance
@@ -232,7 +234,8 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     }
   }  // end copy forward backward
 
-  // 5. create GRAD merge op node
+  // 5. create GRAD merge op node: sum(repeat.0...repeat.n) ->
+  // scale(1/num_repeats)
   for (auto kv : grad_repeated_map) {
     OpDesc sum_op;
     sum_op.SetType("sum");
@@ -240,10 +243,14 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     std::vector<std::string> param_grad_op_role_var;
     for (auto r : kv.second) {
       repeated_grad_names.push_back(r->Var()->Name());
-      param_grad_op_role_var.push_back(
-          gradname2paramname.at(kv.first->Var()->Name()));        // param
-      param_grad_op_role_var.push_back(kv.first->Var()->Name());  // grad
     }
+    // NOTE: use op_role_var to control allreduce op appending in
+    //       multi_devices_graph_pass, we want to append op_role_var
+    //       only once for the merged gradient, so break after first call.
+    param_grad_op_role_var.push_back(
+        gradname2paramname.at(kv.first->Var()->Name()));        // param
+    param_grad_op_role_var.push_back(kv.first->Var()->Name());  // grad
+
     sum_op.SetInput("X", repeated_grad_names);
     sum_op.SetOutput("Out", {kv.first->Var()->Name()});
     sum_op.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
