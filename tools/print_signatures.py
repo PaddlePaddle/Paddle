@@ -27,8 +27,6 @@ import pydoc
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.imperative"}
-
 
 def visit_member(parent_name, member):
     cur_name = ".".join([parent_name, member.__name__])
@@ -53,8 +51,6 @@ def visit_member(parent_name, member):
 
 
 def visit_all_module(mod):
-    if (mod.__name__ in experimental_namespace):
-        return
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
