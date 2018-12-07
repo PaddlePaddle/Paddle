@@ -36,6 +36,9 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 // Topological sort, but try to DFS.
 std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph);
 
+// Several kinds of topological sort.
+std::vector<Node *> TopologyVarientSort(const Graph &graph, int sort_kind);
+
 // Clean the nodes that doesn't connect to others.
 void CleanIndividualNodes(Graph *graph);
 

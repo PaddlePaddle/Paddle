@@ -320,6 +320,15 @@ void CleanIndividualNodes(Graph *graph) {
   }
 }
 
+std::vector<Node *> TopologyVarientSort(const Graph &graph, int sort_kind) {
+  switch (sort_kind) {
+    case 0:
+      return framework::ir::TopologySortOperations(graph);
+    default:
+      return framework::ir::TopologyDfsSortOperations(graph);
+  }
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -28,17 +28,8 @@ namespace analysis {
 
 using framework::ir::Graph;
 using framework::ir::Node;
+using framework::ir::TopologyVarientSort;
 using space_table_t = MemoryOptimizePass::space_table_t;
-
-// Several kinds of topological sort.
-std::vector<Node*> TopoSort(const Graph& graph, int sort_kind) {
-  switch (sort_kind) {
-    case 0:
-      return framework::ir::TopologySortOperations(graph);
-    default:
-      return framework::ir::TopologyDfsSortOperations(graph);
-  }
-}
 
 // Collect the lifecycles of the tensors.
 // Traverse the graph in topological order.
@@ -48,7 +39,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
   max_lifecycle_ = 0;
-  for (auto* op_node : TopoSort(*graph_, sort_kind)) {
+  for (auto* op_node : framework::ir::TopologyVarientSort(*graph_, sort_kind)) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
@@ -358,7 +349,7 @@ void UpdateOpDescsByReuse(
     const std::unordered_map<std::string, std::string>& reuse_table,
     int sort_kind) {
   // TODO(Superjomn) change here to be compatible with the runtime order.
-  for (auto* node : TopoSort(*graph, sort_kind)) {
+  for (auto* node : TopologyVarientSort(*graph, sort_kind)) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
       std::unordered_map<std::string, std::vector<std::string>> in_args,
@@ -402,7 +393,6 @@ void MemoryOptimizePass::PerformReusePlan(
     int sort_kind, std::unordered_set<std::string>* vars2remove) const {
   std::unordered_map<std::string, Node*> var_node_table;
   BuildVarNodeTable(graph_, &var_node_table);
-  // UpdateIrGraphByReuse(graph_, reuse_table, var_node_table);
   UpdateOpDescsByReuse(graph_, reuse_table, sort_kind);
 
   for (auto& item : reuse_table) {
