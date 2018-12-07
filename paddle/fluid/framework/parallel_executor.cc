@@ -97,8 +97,8 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     if (gcs_.count(place) > 0) {
       continue;
     }
-#ifdef PADDLE_WITH_CUDA
     GarbageCollector<Tensor> *gc = nullptr;
+#ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc = new UnsafeFastGPUGarbageCollector<Tensor>(
@@ -122,7 +122,7 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     }
   }
 
-  if (gcs_.empty()) {
+  if (!gcs_.empty()) {
     std::vector<details::LastLiveOpsOfVars> last_live_ops_of_vars;
 
     auto ref_cnt_pass =
