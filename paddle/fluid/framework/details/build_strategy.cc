@@ -118,7 +118,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(5) << "run pass: " << pass->Type();
     if (pass->Type() == "multi_devices_pass") {
       pass->Erase("places");
       pass->SetNotOwned<const std::vector<platform::Place>>("places", &places);

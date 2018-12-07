@@ -58,10 +58,7 @@ int64_t GetEagerDeletionThreshold() {
                                     (static_cast<int64_t>(1) << 30));
 }
 
-Scope::~Scope() {
-  VLOG(5) << "~Scope()";
-  DropKids();
-}
+Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
   SCOPE_LOCK_GUARD

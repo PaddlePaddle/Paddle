@@ -25,15 +25,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    VLOG(1) << "find var in scope: " << &scope;
-    auto* out_var = scope.FindVar(Output("Out"));
-    VLOG(1) << "var " << Output("Out") << " -> " << out_var;
-    auto* out = out_var->GetMutable<framework::ReaderHolder>();
-
-    // auto* out = scope.Var(Output("Out"))
-    //                ->template GetMutable<framework::ReaderHolder>();
+    auto* out = scope.Var(Output("Out"))
+                    ->template GetMutable<framework::ReaderHolder>();
     if (out->Get() != nullptr) {
-      VLOG(1) << Output("Out") << " is not nullptr.";
       return;
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
@@ -52,11 +46,8 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
       sin >> num;
       place = platform::CUDAPlace(static_cast<int>(num));
     }
-    VLOG(1) << "create buffered reader on " << place;
     out->Reset(framework::MakeDecoratedReader<BufferedReader>(underlying_reader,
                                                               place, 2));
-    VLOG(1) << "Reset Buffered Reader in var: "
-            << scope.FindVar(Input("UnderlyingReader"));
   }
 };
 
