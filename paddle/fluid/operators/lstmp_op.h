@@ -169,17 +169,10 @@ class LSTMPKernel : public framework::OpKernel<T> {
         // Since the batch computing for LSTMP reorders the input sequence
         // according to their length. The initialized hidden state also needs
         // to reorder.
-
-        Tensor ordered_h0;
+        VLOG(1) << "qxz h0 used";
         ordered_proj0->mutable_data<T>(ctx.GetPlace());
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
-                                           &ordered_h0, true);
-        blas.MatMul(ordered_h0, false, *proj_weight, false, static_cast<T>(1.0),
-                    ordered_proj0, static_cast<T>(0.0));
-        if (proj_act != math::detail::ActivationType::kIdentity) {
-          auto proj0_dev = EigenMatrix<T>::From(*ordered_proj0);
-          ActCompute(cell_act, place, proj0_dev, proj0_dev);
-        }
+                                           ordered_proj0, true);
         blas.MatMul(*ordered_proj0, false, *weight, false, static_cast<T>(1.0),
                     &gate_t, static_cast<T>(1.0));
       }
@@ -194,6 +187,12 @@ class LSTMPKernel : public framework::OpKernel<T> {
       lstmp_value.prev_state_value = lstmp_value.state_value;
       blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
                   &proj_t, static_cast<T>(0.0));
+      VLOG(1) << "qxz print proj_t";
+      size_t size = proj_t.numel();
+      auto *d = reinterpret_cast<T *>(proj_t.data<T>());
+      for (size_t i = 0; i < size; i++) {
+           std::cout<< d[i] << ",";
+      }      
       if (proj_act != math::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev);

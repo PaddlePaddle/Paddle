@@ -75,9 +75,6 @@ class LSTMPOp : public framework::OperatorWithKernel {
                      "Input(H0) provided.");
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE(h_dims == c_dims,
-                     "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
       ctx->SetOutputDim("OrderedP0", {h_dims[0], proj_dims[1]});
     }
 

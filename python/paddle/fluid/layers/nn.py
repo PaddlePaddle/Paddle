@@ -648,6 +648,8 @@ def lstm(input,
 def dynamic_lstmp(input,
                   size,
                   proj_size,
+                  h_0=None,
+                  c_0=None,
                   param_attr=None,
                   bias_attr=None,
                   use_peepholes=True,
@@ -725,6 +727,12 @@ def dynamic_lstmp(input,
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
         proj_size(int): The size of projection output.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the projection size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weight and projection weight.
 
@@ -820,15 +828,25 @@ def dynamic_lstmp(input,
     batch_hidden = helper.create_variable_for_type_inference(dtype)
     batch_gate = helper.create_variable_for_type_inference(dtype)
     batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+    inputs={
+	'Input': input,
+	'Weight': weight,
+	'ProjWeight': proj_weight,
+	'Bias': bias
+    }
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, proj_size), \
+            'The shape of h0 should be (batch_size, %d)' % proj_size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
 
     helper.append_op(
         type='lstmp',
-        inputs={
-            'Input': input,
-            'Weight': weight,
-            'ProjWeight': proj_weight,
-            'Bias': bias
-        },
+        inputs=inputs,
         outputs={
             'Projection': projection,
             'Cell': cell,
