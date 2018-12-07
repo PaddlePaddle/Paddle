@@ -137,14 +137,15 @@ class ParallelExecutor(object):
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
 
-        trainers_endpoints = main_program._trainers_endpoints
+        main = main_program
+        main = main if main else framework.default_main_program()
+
+        trainers_endpoints = main._trainers_endpoints
         if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
                 trainers_endpoints), "num_trainers == len(end_points)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
-        main = main_program
-        main = main if main else framework.default_main_program()
         if scope == None:
             scope = executor.global_scope()
 
