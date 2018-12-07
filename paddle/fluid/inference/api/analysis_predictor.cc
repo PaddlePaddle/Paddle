@@ -308,6 +308,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.SetUseGPU(config_.use_gpu);
   argument_.SetGPUDeviceId(config_.device);
+  argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -453,20 +454,24 @@ bool AnalysisPredictor::LoadProgramDesc() {
     return false;
   }
 
-  std::string pb_content;
-  // Read binary
-  std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
-  fin.seekg(0, std::ios::end);
-
-  pb_content.resize(fin.tellg());
-  fin.seekg(0, std::ios::beg);
-  fin.read(&(pb_content.at(0)), pb_content.size());
-  fin.close();
-
   // Create ProgramDesc
   framework::proto::ProgramDesc proto;
-  proto.ParseFromString(pb_content);
+  if (!config_.model_from_memory()) {
+    std::string pb_content;
+    // Read binary
+    std::ifstream fin(filename, std::ios::in | std::ios::binary);
+    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
+                   filename);
+    fin.seekg(0, std::ios::end);
+    pb_content.resize(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    fin.read(&(pb_content.at(0)), pb_content.size());
+    fin.close();
+
+    proto.ParseFromString(pb_content);
+  } else {
+    proto.ParseFromString(config_.prog_file);
+  }
   inference_program_.reset(new framework::ProgramDesc(proto));
   return true;
 }
@@ -474,6 +479,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
 bool AnalysisPredictor::LoadParameters() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           "The inference program should be loaded first.");
+
   const auto &global_block = inference_program_->MutableBlock(0);
 
   // create a temporary program to load parameters.

@@ -49,8 +49,6 @@ std::ostream &operator<<(std::ostream &os, const NativeConfig &config) {
   os << GenSpaces(num_spaces) << "device: " << config.device << "\n";
   os << GenSpaces(num_spaces)
      << "fraction_of_gpu_memory: " << config.fraction_of_gpu_memory << "\n";
-  os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file << "\n";
-  os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
   os << GenSpaces(num_spaces)
      << "specify_input_name: " << config.specify_input_name << "\n";
   os << GenSpaces(num_spaces)
@@ -65,6 +63,13 @@ std::ostream &operator<<(std::ostream &os,
   os << GenSpaces(num_spaces) << "contrib::AnalysisConfig {\n";
   num_spaces++;
   os << *reinterpret_cast<const NativeConfig *>(&config);
+  if (!config.model_from_memory()) {
+    os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file << "\n";
+    os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
+  } else {
+    os << GenSpaces(num_spaces)
+       << "prog_file and param_file: load from memory \n";
+  }
   os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.enable_ir_optim
      << "\n";
   os << GenSpaces(num_spaces)
