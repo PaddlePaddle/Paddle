@@ -23,15 +23,23 @@ from op_test import OpTest
 from paddle.fluid import core
 
 
-def mse(x, y, weight, num):
-    return ((y - x)**2 * weight).sum() / num
+def mse(x, y, weight):
+    n = x.shape[0]
+    x = x.reshape((n, -1))
+    y = y.reshape((n, -1))
+    weight = weight.reshape((n, -1))
+    return ((y - x)**2 * weight).sum(axis=1)
 
 
-def sce(x, label, weight, num):
+def sce(x, label, weight):
+    n = x.shape[0]
+    x = x.reshape((n, -1))
+    label = label.reshape((n, -1))
+    weight = weight.reshape((n, -1))
     sigmoid_x = expit(x)
     term1 = label * np.log(sigmoid_x)
     term2 = (1.0 - label) * np.log(1.0 - sigmoid_x)
-    return ((-term1 - term2) * weight).sum() / num
+    return ((-term1 - term2) * weight).sum(axis=1)
 
 
 def box_iou(box1, box2):
@@ -131,18 +139,24 @@ def YoloV3Loss(x, gtbox, gtlabel, attrs):
     tx, ty, tw, th, tweight, tconf, tcls, obj_mask, noobj_mask = build_target(
         gtbox, gtlabel, attrs, x.shape[2])
 
+    # print("obj_mask: ", obj_mask[0, 0, :, :])
+    # print("noobj_mask: ", noobj_mask[0, 0, :, :])
     obj_weight = obj_mask * tweight
     obj_mask_expand = np.tile(
         np.expand_dims(obj_mask, 4), (1, 1, 1, 1, int(attrs['class_num'])))
-    box_f = an_num * h * w
-    class_f = an_num * h * w * class_num
-    loss_x = sce(pred_x, tx, obj_weight, box_f)
-    loss_y = sce(pred_y, ty, obj_weight, box_f)
-    loss_w = mse(pred_w, tw, obj_weight, box_f)
-    loss_h = mse(pred_h, th, obj_weight, box_f)
-    loss_conf_target = sce(pred_conf, tconf, obj_mask, box_f)
-    loss_conf_notarget = sce(pred_conf, tconf, noobj_mask, box_f)
-    loss_class = sce(pred_cls, tcls, obj_mask_expand, class_f)
+    loss_x = sce(pred_x, tx, obj_weight)
+    loss_y = sce(pred_y, ty, obj_weight)
+    loss_w = mse(pred_w, tw, obj_weight)
+    loss_h = mse(pred_h, th, obj_weight)
+    loss_conf_target = sce(pred_conf, tconf, obj_mask)
+    loss_conf_notarget = sce(pred_conf, tconf, noobj_mask)
+    loss_class = sce(pred_cls, tcls, obj_mask_expand)
+
+    # print("loss_xy: ", loss_x + loss_y)
+    # print("loss_wh: ", loss_w + loss_h)
+    # print("loss_conf_target: ", loss_conf_target)
+    # print("loss_conf_notarget: ", loss_conf_notarget)
+    # print("loss_class: ", loss_class)
 
     return attrs['loss_weight_xy'] * (loss_x + loss_y) \
             + attrs['loss_weight_wh'] * (loss_w + loss_h) \
@@ -178,10 +192,7 @@ class TestYolov3LossOp(OpTest):
         }
 
         self.inputs = {'X': x, 'GTBox': gtbox, 'GTLabel': gtlabel}
-        self.outputs = {
-            'Loss': np.array(
-                [YoloV3Loss(x, gtbox, gtlabel, self.attrs)]).astype('float32')
-        }
+        self.outputs = {'Loss': YoloV3Loss(x, gtbox, gtlabel, self.attrs)}
 
     def test_check_output(self):
         place = core.CPUPlace()
@@ -193,20 +204,20 @@ class TestYolov3LossOp(OpTest):
             place, ['X'],
             'Loss',
             no_grad_set=set(["GTBox", "GTLabel"]),
-            max_relative_error=0.3)
+            max_relative_error=0.31)
 
     def initTestCase(self):
-        self.anchors = [10, 13, 12, 12]
-        self.class_num = 10
-        self.ignore_thresh = 0.7
+        self.anchors = [12, 12]
+        self.class_num = 5
+        self.ignore_thresh = 0.3
         self.input_size = 416
-        self.x_shape = (5, len(self.anchors) // 2 * (5 + self.class_num), 7, 7)
-        self.gtbox_shape = (5, 10, 4)
-        self.loss_weight_xy = 1.4
+        self.x_shape = (3, len(self.anchors) // 2 * (5 + self.class_num), 5, 5)
+        self.gtbox_shape = (3, 5, 4)
+        self.loss_weight_xy = 1.2
         self.loss_weight_wh = 0.8
-        self.loss_weight_conf_target = 1.1
-        self.loss_weight_conf_notarget = 0.9
-        self.loss_weight_class = 1.2
+        self.loss_weight_conf_target = 2.0
+        self.loss_weight_conf_notarget = 1.0
+        self.loss_weight_class = 1.5
 
 
 if __name__ == "__main__":
