@@ -102,7 +102,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-        if args.is_dist:
+        if args.update_method == "pserver":
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
@@ -147,7 +147,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         def get_data():
             origin_batch = next(reader_generator)
-            if args.is_dist and args.use_reader_alloc:
+            if args.update_method == "pserver" and args.use_reader_alloc:
                 new_batch = []
                 for offset, item in enumerate(origin_batch):
                     if offset % 2 == args.trainer_id:
