@@ -23,21 +23,40 @@ namespace analysis {
 /*
  * Memory optimization pass for inference with pre-analysis of memory usage
  * without GC.
- * It should work with both the LoD or Non-LoD models.
-*/
+ * Different from training, the inference memory reuse strategies doesn't
+ * include GC for that overhead is too much when batch size equals one.
+ *
+ * The inference memory reuse tries to pre-determine the tensor reusing strategy
+ * without runtime overhead.
+ *
+ * To improve the strategy's performance, a warm-up running is introduced:
+ *   - Before officially deploy the inference program, one should warm it up and
+ *     generate some runtime cache,
+ *   - Run the inference program with several batches of data, it will persist
+ *     some runtime information about memory of tensors to disk, we call the
+ *     information the memory reusing cache,
+ *   - With the memory reusing cache, user can deploy the inference to a
+ *     service, before running the model, the inference program will load the
+ *     memory cache, analysis it and generate the best memory reusing strategy,
+ *     and adjust the execution of the network.
+ *
+ * With the warm-up and memory reusing cache design, the memory reusing
+ * algorithm can analysis the real memory consume of the tensors, even with the
+ * flexible LoDTensor and special shape changing operators such as
+ * sequence-pooling.
+ */
 class MemoryOptimizePass : public AnalysisPass {
  public:
   using space_table_t = std::unordered_map<std::string, size_t>;
   using lifecycle_t = std::pair<int, int>;
 
   struct MemoryAllocation {
-    size_t allocated;
-    size_t saved;
-    int sort_kind;
+    size_t allocated;  // allocated memory in byte.
+    size_t saved;      // saved memory in byte.
+    int sort_kind;     // the kind of the corresponding sorting algorithm.
 
-    float GetSavingRatio() const {
-      return (saved / 1024.) / (allocated / 1024. + saved / 1024.);
-    }
+    // Get the memory saving ratio of temporary variables.
+    float GetSavingRatio() const;
   };
 
   virtual ~MemoryOptimizePass() = default;
