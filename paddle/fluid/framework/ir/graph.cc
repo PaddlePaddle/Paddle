@@ -38,8 +38,9 @@ void CheckProgram(const ProgramDesc &program) {
     switch (role_id) {
       case _INT(OpRole::kForward):
         if (visit.find(_INT(OpRole::kBackward)) != visit.end()) {
-          LOG(ERROR) << "Cannot add backward operator before forward operator "
-                     << op->Type();
+          LOG(ERROR)
+              << "Cannot add backward operator before forward operator %s."
+              << op->Type();
         }
         break;
       case _INT(OpRole::kBackward):
