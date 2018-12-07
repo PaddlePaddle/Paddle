@@ -302,6 +302,7 @@ class DistributeTranspiler(object):
 
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
+            self.origin_program._trainers_endpoints = trainers.split(",")
             self._transpile_nccl2(
                 trainer_id,
                 trainers,

@@ -63,8 +63,6 @@ class ParallelExecutor(object):
         trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
         scope(Scope): scope to run with, default use fluid.global_scope().
-        trainers_endpoints(list[string]): Trainer's endpoint. It's used for reduce selected rows
-            since nccl can't support reduce sparse tensors.
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -93,8 +91,7 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
-                 scope=None,
-                 trainers_endpoints=None):
+                 scope=None):
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -140,6 +137,7 @@ class ParallelExecutor(object):
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
 
+        trainers_endpoints = main_program._trainers_endpoints
         if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
                 trainers_endpoints), "num_trainers == len(end_points)"
