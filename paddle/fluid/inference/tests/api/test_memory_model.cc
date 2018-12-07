@@ -1,14 +1,29 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <numeric>
+#include <chrono>
 #include <iostream>
 #include <memory>
-#include <chrono>
+#include <numeric>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 namespace paddle {
 using paddle::contrib::AnalysisConfig;
-DEFINE_string(dirname, "/home/chunwei/project2/models/paddle-transmodel", "Directory of the inference model.");
+DEFINE_string(dirname, "/home/chunwei/project2/models/paddle-transmodel",
+              "Directory of the inference model.");
 using Time = decltype(std::chrono::high_resolution_clock::now());
 Time time() { return std::chrono::high_resolution_clock::now(); };
 double time_diff(Time t1, Time t2) {
@@ -22,7 +37,7 @@ void PrepareTRTConfig(AnalysisConfig *config, int batch_size) {
   config->param_file = FLAGS_dirname + "/params";
   config->device = 0;
   config->fraction_of_gpu_memory = 0.05;
-  //config->EnableTensorRtEngine(1 << 20, batch_size);
+  // config->EnableTensorRtEngine(1 << 20, batch_size);
   config->pass_builder()->DeletePass("conv_bn_fuse_pass");
   config->pass_builder()->DeletePass("fc_fuse_pass");
   config->pass_builder()->TurnOnDebug();
@@ -75,7 +90,7 @@ bool test_map_cnn(int batch_size, int repeat) {
   memset(input, 0, input_num * sizeof(float));
   PaddleTensor img;
   img.shape = {batch_size, channels, height, width};
-  img.data = PaddleBuf(static_cast<void*>(input), input_num * sizeof(float));
+  img.data = PaddleBuf(static_cast<void *>(input), input_num * sizeof(float));
   img.dtype = PaddleDType::FLOAT32;
   inputs.emplace_back(img);
   // create predictor
@@ -88,7 +103,9 @@ bool test_map_cnn(int batch_size, int repeat) {
     CHECK(predictor->Run(inputs, &outputs, batch_size));
   }
   auto time2 = time();
-  std::cout <<"batch: " << batch_size << " predict cost: " << time_diff(time1, time2) / 10.0 << "ms" << std::endl;
+  std::cout << "batch: " << batch_size
+            << " predict cost: " << time_diff(time1, time2) / 10.0 << "ms"
+            << std::endl;
   /*
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); ++j) {

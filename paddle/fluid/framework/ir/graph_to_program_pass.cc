@@ -54,13 +54,20 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
       }
     }
   }
-
   block->clear_ops();
-  std::vector<ir::Node*> nodes = TopologySortOperations(*graph);
+
+  std::vector<ir::Node*> nodes;
+  if (Has(kGraphToProgramSortKind)) {
+    // Inference Memory Optimize relays on this branch.
+    int sort_kind = Get<int>(kGraphToProgramSortKind);
+    nodes = TopologyVarientSort(*graph, sort_kind);
+  } else {
+    nodes = TopologySortOperations(*graph);
+  }
+
   for (ir::Node* n : nodes) {
-    if (!n->Op()) {
-      continue;
-    }
+    if (!n->Op()) continue;
+
     block->add_ops()->MergeFrom(*n->Op()->Proto());
   }
 

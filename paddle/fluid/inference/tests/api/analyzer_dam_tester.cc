@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gperftools/heap-profiler.h>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
-#include <gperftools/heap-profiler.h>
 
 //#define USE_GPERF
 
@@ -217,7 +217,6 @@ TEST(Analyzer_dam, profile) {
   HeapProfilerDump("final");
   HeapProfilerStop();
 #endif
-
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(), 0);
