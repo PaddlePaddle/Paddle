@@ -124,14 +124,13 @@ def __bootstrap__():
         'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_mkldnn',
         'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'allocator_strategy',
+        'eager_delete_tensor_gb', 'allocator_strategy', 'warpctc_dir',
         'reader_queue_speed_test_mode', 'print_sub_graph_dir'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
 
     if os.name != 'nt':
-        read_env_flags.append('warpctc_dir')
         read_env_flags.append('cpu_deterministic')
 
     if core.is_compiled_with_dist():
