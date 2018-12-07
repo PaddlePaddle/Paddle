@@ -107,6 +107,7 @@ void AllReduceOpHandle::RunImpl() {
           PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
               buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
               ncclSum, comm, stream));
+          if (!nccl_ctxs_->need_group_call_) cudaStreamSynchronize(stream);
         });
       }
 
