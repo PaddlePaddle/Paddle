@@ -297,18 +297,19 @@ class NCEGradKernel : public framework::OpKernel<T> {
       sample_grad_data[i] *= d_out_data[sample_idx];
     }
 
+    // get d_bias
+    auto d_bias = context.Output<Tensor>(framework::GradVarName("Bias"));
+    if (d_bias != nullptr) {
+      T *d_bias_data = d_bias->mutable_data<T>(context.GetPlace());
+      std::fill(d_bias_data, d_bias_data + d_bias->numel(), 0.0);
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+        d_bias_data[sample_labels_data[i]] += sample_grad_data[i];
+      }
+    }
+
     bool is_sparse = context.Attr<bool>("is_sparse");
 
     if (!is_sparse) {
-      // get d_bias
-      auto d_bias = context.Output<Tensor>(framework::GradVarName("Bias"));
-      if (d_bias != nullptr) {
-        T *d_bias_data = d_bias->mutable_data<T>(context.GetPlace());
-        std::fill(d_bias_data, d_bias_data + d_bias->numel(), 0.0);
-        for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-          d_bias_data[sample_labels_data[i]] += sample_grad_data[i];
-        }
-      }
       // get d_w
       auto d_w = context.Output<Tensor>(framework::GradVarName("Weight"));
       if (d_w != nullptr) {
@@ -329,34 +330,6 @@ class NCEGradKernel : public framework::OpKernel<T> {
       }
       std::set<T> st(labels.begin(), labels.end());
       labels.assign(st.begin(), st.end());
-
-      auto *bias_var = context.InputVar("Bias");
-      DDim bias_dim;
-      if (bias_var->IsType<LoDTensor>()) {
-        bias_dim = context.Input<LoDTensor>("Bias")->dims();
-      } else if (bias_var->IsType<SelectedRows>()) {
-        auto *table_t = context.Input<SelectedRows>("Bias");
-        bias_dim = table_t->value().dims();
-      } else {
-        PADDLE_THROW(
-            "The parameter Bias of a NCE_OP "
-            "must be either LoDTensor or SelectedRows");
-      }
-
-      auto d_bias =
-          context.Output<SelectedRows>(framework::GradVarName("Bias"));
-      d_bias->set_rows(labels);
-      d_bias->set_height(bias_dim[0]);
-
-      d_bias->mutable_value()->Resize(
-          {static_cast<int64_t>(labels.size()), bias_dim[1]});
-      T *d_bias_data =
-          d_bias->mutable_value()->mutable_data<T>(context.GetPlace());
-      std::fill(d_bias_data, d_bias_data + labels.size(), 0.0);
-      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-        d_bias_data[d_bias->Index(sample_labels_data[i])] +=
-            sample_grad_data[i];
-      }
 
       auto *table_var = context.InputVar("Weight");
       DDim table_dim;
