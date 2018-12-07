@@ -620,8 +620,8 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
     auto memory_allocation = (*best_strategy)();
 
     string::PrettyLogH2(
-        "--- Saved %.2f\% memory for workspace(temporary variables)",
-        memory_allocation.GetSavingRatio() * 100);
+        "--- Saved %.2f%s memory for workspace(temporary variables)",
+        memory_allocation.GetSavingRatio() * 100, "%");
     string::PrettyLogDetail("--- Allocated %d MB",
                             memory_allocation.allocated / 1024. / 1024.);
     string::PrettyLogDetail("--- Saved %d MB",
