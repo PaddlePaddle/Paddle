@@ -116,7 +116,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
-  if (platform::jit::MayIUse(platform::jit::avx)) {
+  if (platform::MayIUse(platform::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
 #endif
@@ -131,10 +131,10 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
          " version or compile from source code."
 
 #ifdef __AVX512F__
-  if (!platform::jit::MayIUse(platform::jit::avx512f)) {
-    if (platform::jit::MayIUse(platform::jit::avx2)) {
+  if (!platform::MayIUse(platform::avx512f)) {
+    if (platform::MayIUse(platform::avx2)) {
       AVX_GUIDE(AVX512, AVX2);
-    } else if (platform::jit::MayIUse(platform::jit::avx)) {
+    } else if (platform::MayIUse(platform::avx)) {
       AVX_GUIDE(AVX512, AVX);
     } else {
       AVX_GUIDE(AVX512, NonAVX);
@@ -143,8 +143,8 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #ifdef __AVX2__
-  if (!platform::jit::MayIUse(platform::jit::avx2)) {
-    if (platform::jit::MayIUse(platform::jit::avx)) {
+  if (!platform::MayIUse(platform::avx2)) {
+    if (platform::MayIUse(platform::avx)) {
       AVX_GUIDE(AVX2, AVX);
     } else {
       AVX_GUIDE(AVX2, NonAVX);
@@ -153,7 +153,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #ifdef __AVX__
-  if (!platform::jit::MayIUse(platform::jit::avx)) {
+  if (!platform::MayIUse(platform::avx)) {
     AVX_GUIDE(AVX, NonAVX);
   }
 #endif
