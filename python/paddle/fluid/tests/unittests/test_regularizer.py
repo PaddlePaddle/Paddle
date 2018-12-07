@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-from functools import partial
+
 import unittest
+from functools import partial
 import contextlib
 import numpy as np
 import paddle
@@ -26,40 +27,8 @@ import paddle.fluid.regularizer as regularizer
 from paddle.fluid.backward import append_backward
 
 
-def bow_net(data,
-            label,
-            dict_dim,
-            is_sparse=False,
-            emb_dim=128,
-            hid_dim=128,
-            hid_dim2=96,
-            class_dim=2):
-    """
-    BOW net
-    This model is from https://github.com/PaddlePaddle/models:
-    fluid/PaddleNLP/text_classification/nets.py
-    """
-    emb = fluid.layers.embedding(
-        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim])
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
-    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
-    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
-    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
-
-    return avg_cost
-
-
 class TestL2DecayRegularizer(unittest.TestCase):
-    def setUp(self):
-        self.word_dict = paddle.dataset.imdb.word_dict()
-        reader = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict), batch_size=8)()
-        self.train_data = [next(reader) for _ in range(5)]
-
-    def t1est_l2decay_regularizer_ops(self):
+    def test_l2decay_regularizer(self):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
@@ -93,6 +62,78 @@ class TestL2DecayRegularizer(unittest.TestCase):
         self.assertEqual(len(block.ops), count_ops + 2)
         self.assertEqual(block.ops[-1].type, 'sum')
         self.assertEqual(block.ops[-2].type, 'scale')
+
+
+class TestL1DecayRegularizer(unittest.TestCase):
+    def test_l2decay_regularizer(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            regularizer=regularizer.L1DecayRegularizer(0.5))
+        self.assertTrue(mul_x.regularizer is not None)
+        self.assertTrue(
+            isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer))
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+        params_grads = append_backward(mean_out)
+        self.assertEqual(len(params_grads), 1)
+        count_ops = len(block.ops)
+        params_grads = optimizer.append_regularization_ops(params_grads)
+        self.assertEqual(len(params_grads), 1)
+        self.assertEqual(len(block.ops), count_ops + 3)
+        self.assertEqual(block.ops[-1].type, 'sum')
+        self.assertEqual(block.ops[-2].type, 'scale')
+        self.assertEqual(block.ops[-3].type, 'sign')
+
+
+def bow_net(data,
+            label,
+            dict_dim,
+            is_sparse=False,
+            emb_dim=128,
+            hid_dim=128,
+            hid_dim2=96,
+            class_dim=2):
+    """
+    BOW net
+    This model is from https://github.com/PaddlePaddle/models:
+    fluid/PaddleNLP/text_classification/nets.py
+    """
+    emb = fluid.layers.embedding(
+        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim])
+    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow_tanh = fluid.layers.tanh(bow)
+    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
+    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
+    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
+    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_cost = fluid.layers.mean(x=cost)
+
+    return avg_cost
+
+
+class TestRegularizer(unittest.TestCase):
+    def setUp(self):
+        self.word_dict = paddle.dataset.imdb.word_dict()
+        reader = paddle.batch(
+            paddle.dataset.imdb.train(self.word_dict), batch_size=8)()
+        self.train_data = [next(reader) for _ in range(5)]
 
     def get_places(self):
         places = [core.CPUPlace()]
@@ -139,7 +180,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
 
             avg_cost = model(data, label, len(self.word_dict))
 
-            optimizer = fluid.optimizer.SGD(
+            optimizer = fluid.optimizer.Adagrad(
                 learning_rate=0.1,
                 regularization=fluid.regularizer.L2Decay(1.0))
             optimizer.minimize(avg_cost)
@@ -165,12 +206,12 @@ class TestL2DecayRegularizer(unittest.TestCase):
                 para_sum.append(fluid.layers.reduce_sum(input=para_mul))
             avg_cost_l2 += fluid.layers.sums(para_sum) * .5
 
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)
             param_sum = self.run_program(place, [data, label])
         return param_sum
 
-    def test_dense_l2(self):
+    def test_l2(self):
         for place in self.get_places():
             dense_sparse_p_sum = []
             for sparse in [True, False]:
@@ -188,44 +229,6 @@ class TestL2DecayRegularizer(unittest.TestCase):
                     a=dense_sparse_p_sum[0][i],
                     b=dense_sparse_p_sum[1][i],
                     rtol=5e-5)
-
-
-class TestL1DecayRegularizer(unittest.TestCase):
-    def test_l2decay_regularizer(self):
-        program = framework.Program()
-        block = program.global_block()
-        mul_x = block.create_parameter(
-            dtype="float32",
-            shape=[5, 10],
-            lod_level=0,
-            name="mul.x",
-            regularizer=regularizer.L1DecayRegularizer(0.5))
-        self.assertTrue(mul_x.regularizer is not None)
-        self.assertTrue(
-            isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer))
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-        block.append_op(
-            type="mul",
-            inputs={"X": mul_x,
-                    "Y": mul_y},
-            outputs={"Out": mul_out},
-            attrs={"x_num_col_dims": 1})
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out")
-        block.append_op(
-            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        params_grads = append_backward(mean_out)
-        self.assertEqual(len(params_grads), 1)
-        count_ops = len(block.ops)
-        params_grads = optimizer.append_regularization_ops(params_grads)
-        self.assertEqual(len(params_grads), 1)
-        self.assertEqual(len(block.ops), count_ops + 3)
-        self.assertEqual(block.ops[-1].type, 'sum')
-        self.assertEqual(block.ops[-2].type, 'scale')
-        self.assertEqual(block.ops[-3].type, 'sign')
 
 
 if __name__ == '__main__':
