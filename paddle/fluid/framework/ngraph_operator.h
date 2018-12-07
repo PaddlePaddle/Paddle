@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_NGRAPH
-
 #include <algorithm>
 #include <string>
 #include <unordered_map>
@@ -64,4 +62,3 @@ class FusedOperator : public OperatorBase {
 };
 }  // namespace framework
 }  // namespace paddle
-#endif
