@@ -173,6 +173,7 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
 
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
+    req.set_trainer_id(trainer_id_);
 
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
