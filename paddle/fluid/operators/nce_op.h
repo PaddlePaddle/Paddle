@@ -170,18 +170,31 @@ class NCEKernel : public framework::OpKernel<T> {
       auto height_sections = context.Attr<std::vector<int>>("height_sections");
       auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
-      local_scope.Var("Ids");
-      local_scope.Var("Weight");
+      auto *ids = local_scope.Var("Ids");
+      auto *x_tensor = ids->GetMutable<framework::LoDTensor>();
+      x_tensor->mutable_data<int64_t>(
+          framework::make_ddim({static_cast<int64_t>(labels.size()), 1}),
+          context.GetPlace());
+      // copy.
+      std::memcpy(x_tensor->data<int64_t>(), labels.data(),
+                  labels.size() * sizeof(int64_t));
+
+      local_scope.Var("Weight@Local")
+          ->GetMutable<framework::Tensor>()
+          ->mutable_data<T>(context.GetPlace());
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch("Ids", "Weight", table_names, epmap,
-                                       height_sections, context);
+      operators::distributed::prefetch("Ids", "Weight@Local", table_names,
+                                       epmap, height_sections, context,
+                                       &local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "
           "parameter prefetch!");
+#endif
 
-      auto weight_mat = EigenMatrix<T>::From(*(weight->Get<T>()));
+      auto weight_mat = EigenMatrix<T>::From(
+          (local_scope.Var("Weight@Local")->Get<framework::Tensor>()));
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         std::vector<int64_t>::iterator it =
             std::find(labels.begin(), labels.end(), sample_labels_data[i]);
@@ -196,7 +209,7 @@ class NCEKernel : public framework::OpKernel<T> {
       }
 
       context.scope().DeleteScope(&local_scope);
-#endif
+
     } else {
       auto weight_mat =
           EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
