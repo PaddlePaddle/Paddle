@@ -1356,7 +1356,7 @@ def bpr_loss(input, label_pos):
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
-                'Label_Pos': [label_pos]},
+                'LabelPos': [label_pos]},
         outputs={'Y': [out]})
     return out
 
