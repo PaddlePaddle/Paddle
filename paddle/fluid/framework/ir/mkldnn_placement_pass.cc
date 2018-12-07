@@ -19,7 +19,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-
 std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Aplies MKL-DNN placement strategy.";
@@ -30,8 +29,8 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
       if (op_types_list.empty()) {
         n->Op()->SetAttr("use_mkldnn", true);
       } else if (std::find(op_types_list.begin(), op_types_list.end(),
-                 n->Name()) != op_types_list.end()) {
-             n->Op()->SetAttr("use_mkldnn", true);
+                           n->Name()) != op_types_list.end()) {
+        n->Op()->SetAttr("use_mkldnn", true);
       }
     }
   }
@@ -42,6 +41,5 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(mkldnn_placement_pass,
-              paddle::framework::ir::MKLDNNPlacementPass)
-     .RequirePassAttr("mkldnn_enabled_op_types");
+REGISTER_PASS(mkldnn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
+    .RequirePassAttr("mkldnn_enabled_op_types");
