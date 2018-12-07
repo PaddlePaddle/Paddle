@@ -39,22 +39,22 @@ class BprLossOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-    auto* labels_Pos = ctx.Input<Tensor>("Label_Pos");
+    auto* label_pos = ctx.Input<Tensor>("LabelPos");
     auto* y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
     int rank = x->dims().size();
 
     Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_Pos_2d = framework::ReshapeToMatrix(*labels_Pos, rank - 1);
+    Tensor labels_Pos_2d = framework::ReshapeToMatrix(*label_pos, rank - 1);
     Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
 
-    const framework::Tensor* prob = &x_2d;
+    const framework::Tensor* logits = &x_2d;
     const framework::Tensor* labels_pos = &labels_Pos_2d;
     framework::Tensor* out = &y_2d;
 
-    const int step_size = prob->dims()[0];
-    const int class_num = prob->dims()[1];
-    const T* prob_data = prob->data<T>();
+    const int step_size = logits->dims()[0];
+    const int class_num = logits->dims()[1];
+    const T* logits_data = logits->data<T>();
     T* loss_data = out->data<T>();
 
     const int64_t* label_pos_data = labels_pos->data<int64_t>();
@@ -68,52 +68,12 @@ class BprLossOpKernel : public framework::OpKernel<T> {
         if (j == lbl_pos) continue;
         int index_neg = i * class_num + j;
         sum += TolerableValue<T>()(-std::log(
-            1.0f + TolerableValue<T>()(
-                       std::exp(prob_data[index_neg] - prob_data[index_pos]))));
+            1.0f + TolerableValue<T>()(std::exp(logits_data[index_neg] -
+                                                logits_data[index_pos]))));
       }
       loss_data[i] = -sum / (class_num - 1);
     }
   }
-};
-
-template <typename T>
-class XeGradFunctor {
- public:
-  XeGradFunctor(T* dx,
-                const T* dy,               // NOLINT
-                const T* x,                // NOLINT
-                const int64_t* label_pos,  // NOLINT
-                size_t num_classes)
-      : dx_(dx),
-        dy_(dy),
-        x_(x),
-        label_pos_(label_pos),
-        num_classes_(num_classes) {}
-
-  HOSTDEVICE void operator()(size_t sample_id) {
-    for (size_t x_offset = sample_id * num_classes_;
-         x_offset < (sample_id + 1) * num_classes_; ++x_offset) {
-      dx_[x_offset] = static_cast<T>(0);
-    }
-    auto p_index = sample_id * num_classes_ + label_pos_[sample_id];
-    for (size_t ni = 0; ni < num_classes_; ni++) {
-      if (label_pos_[sample_id] == ni) continue;
-      auto n_index = sample_id * num_classes_ + ni;
-      auto grad_ =
-          -dy_[sample_id] /
-          ((num_classes_ - 1) *
-           (1.0f + TolerableValue<T>()(std::exp(x_[p_index] - x_[n_index]))));
-      dx_[p_index] += grad_;
-      dx_[n_index] -= grad_;
-    }
-  }
-
- private:
-  T* dx_;
-  const T* dy_;
-  const T* x_;
-  const int64_t* label_pos_;
-  size_t num_classes_;
 };
 
 template <typename DeviceContext, typename T>
@@ -122,19 +82,33 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* label_pos = ctx.Input<Tensor>("Label_Pos");
+    auto* label_pos = ctx.Input<Tensor>("LabelPos");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
-    int rank = x->dims().size();
-    int64_t class_num = x->dims()[rank - 1];
-    XeGradFunctor<T> functor(dx_data, dy->data<T>(), x->data<T>(),
-                             label_pos->data<int64_t>(),
-                             static_cast<size_t>(class_num));
-    platform::ForRange<DeviceContext> for_range(
-        ctx.template device_context<DeviceContext>(),
-        static_cast<size_t>(dy->numel()));
-    for_range(functor);
+    const int step_size = x->dims()[0];
+    const int num_classes_ = x->dims()[1];
+    T* dx_ = dx->mutable_data<T>(ctx.GetPlace());
+    const T* dy_ = dy->data<T>();
+    const T* x_ = x->data<T>();
+    const int64_t* label_pos_ = label_pos->data<int64_t>();
+
+    for (size_t sample_id = 0; sample_id < step_size; sample_id++) {
+      for (size_t x_offset = sample_id * num_classes_;
+           x_offset < (sample_id + 1) * num_classes_; x_offset++) {
+        dx_[x_offset] = static_cast<T>(0);
+      }
+      auto p_index = sample_id * num_classes_ + label_pos_[sample_id];
+      for (size_t ni = 0; ni < num_classes_; ni++) {
+        if (label_pos_[sample_id] == ni) continue;
+        auto n_index = sample_id * num_classes_ + ni;
+        auto grad_ =
+            -dy_[sample_id] /
+            ((num_classes_ - 1) *
+             (1.0f + TolerableValue<T>()(std::exp(x_[p_index] - x_[n_index]))));
+        dx_[p_index] += grad_;
+        dx_[n_index] -= grad_;
+      }
+    }
   }
 };
 

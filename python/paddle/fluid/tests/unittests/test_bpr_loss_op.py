@@ -39,7 +39,7 @@ class TestBprLossOp1(OpTest):
                 sum += (-np.log(1.0 + np.exp(X[i][j] - X[i][label_pos[i][0]])))
             bpr_loss_result.append(-sum / (class_num - 1))
         bpr_loss = np.asmatrix([[x] for x in bpr_loss_result], dtype="float64")
-        self.inputs = {"X": X, "Label_Pos": label_pos}
+        self.inputs = {"X": X, "LabelPos": label_pos}
         self.outputs = {"Y": bpr_loss}
 
     def test_check_output(self):
