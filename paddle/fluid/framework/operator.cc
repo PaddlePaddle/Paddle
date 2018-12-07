@@ -695,6 +695,12 @@ static void CheckTensorNANOrInf(const std::string& name,
                  "Tensor %s contains NAN", name);
 }
 
+void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
+                                           const platform::Place& place) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
