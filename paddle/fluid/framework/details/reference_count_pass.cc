@@ -29,15 +29,17 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class OpRelationDetector {
- public:
+// A functor to shrink/remove operators who depend on other operators in a set
+class ShrinkDepsOpFunctor {
+ private:
   enum RelationShip { kSame = 0, kNoDeps = 1, kBefore = 2, kAfter = 3 };
 
-  explicit OpRelationDetector(const std::vector<OpHandleBase *> &all_ops)
+ public:
+  explicit ShrinkDepsOpFunctor(const std::vector<OpHandleBase *> &all_ops)
       : graph_(all_ops) {}
 
   template <typename OpSet>
-  OpSet MaxNoDepOps(const OpSet &op_set) const {
+  OpSet operator()(const OpSet &op_set) const {
     using KeyType = typename OpSet::key_type;
     static_assert(
         std::is_base_of<OpHandleBase,
@@ -51,7 +53,7 @@ class OpRelationDetector {
     auto not_before = [](RelationShip r) { return r != kBefore; };
     for (size_t i = 0; i < rels.size(); ++i) {
       if (std::all_of(rels[i].begin(), rels[i].end(), not_before)) {
-        ret.insert(static_cast<KeyType>(ops[i]));
+        ret.emplace(static_cast<KeyType>(ops[i]));
       }
     }
     return ret;
@@ -59,7 +61,7 @@ class OpRelationDetector {
 
  private:
   std::vector<std::vector<RelationShip>> GetRelations(
-      const std::vector<OpHandleBase *> ops) const {
+      const std::vector<OpHandleBase *> &ops) const {
     std::unordered_map<OpHandleBase *, size_t> op_to_idx;
     for (size_t i = 0; i < ops.size(); ++i) {
       PADDLE_ENFORCE(graph_.HasOp(ops[i]), "Op does not exist in graph");
@@ -112,6 +114,10 @@ class OpRelationDetector {
   const OpGraphView graph_;
 };
 
+/**
+ * Find the nearest downstream computation op handle. If the op is a
+ * computation op, just return itself.
+ */
 static ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
     OpHandleBase *op, size_t scope_idx) {
   std::queue<OpHandleBase *> q;
@@ -134,33 +140,87 @@ static ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
   return nullptr;
 }
 
+static std::unordered_set<ComputationOpHandle *>
+ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
+                                     const ShrinkDepsOpFunctor &shrink_func,
+                                     bool *ok) {
+  // stage one. Get last op for variable.
+  std::unordered_set<OpHandleBase *> candidates;
+  {
+    if (var->PendingOps().empty() && var->GeneratedOp()) {
+      // No operator depends on this variable. So the last operator is the op
+      // who generates this variable.
+      candidates.emplace(var->GeneratedOp());
+    } else {
+      candidates = var->PendingOps();
+    }
+
+    // No pending ops or generated op is nullptr
+    if (candidates.empty()) {
+      *ok = false;
+      return {};
+    }
+  }
+
+  // stage two. Try to cast them to computation op.
+  // return (*ok=false) when failed.
+  //
+  // The reason why we cannot make any types of op handle to be the last lived
+  // op is:
+  //    some op handle may operate on many DeviceContext, however, our garbage
+  //    collector can only wait one DeviceContext for now. So currently, we wait
+  //    the nearest compute op.
+  std::unordered_set<ComputationOpHandle *> computation_op;
+  {
+    for (auto *op : candidates) {
+      auto *compute_op =
+          FindNextComputationOpHandleOrReturnItself(op, scope_idx);
+      if (compute_op == nullptr) {
+        *ok = false;
+        return {};
+      }
+      computation_op.emplace(compute_op);
+    }
+  }
+
+  // stage three. Try to shrink computation op if they depend on each other.
+  // Get the smallest set of the most ops.
+  *ok = true;
+  return shrink_func(computation_op);
+}
+
+static VarDesc *TryGetLatestVarDesc(const std::vector<VarHandle *> &vars) {
+  VarDesc *var_desc = nullptr;
+  std::find_if(vars.rbegin(), vars.rend(), [&](VarHandle *var_handle) -> bool {
+    var_desc = var_handle->Node()->Var();
+    return var_desc != nullptr;
+  });
+  return var_desc;
+}
+
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  auto &vars = graph->Get<GraphVars>(kGraphVars);
   auto &ref_cnts = Get<std::vector<ReferenceCountMap>>(kGlobalReferenceCount);
   auto &last_live_ops_of_vars =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
-  last_live_ops_of_vars = std::vector<LastLiveOpsOfVars>(vars.size());
-  ref_cnts = std::vector<ReferenceCountMap>(vars.size());
+  PADDLE_ENFORCE(last_live_ops_of_vars.empty() && ref_cnts.empty(),
+                 "Last Live Ops and Reference Counts of vars should be "
+                 "initialized at here.");
 
-  OpRelationDetector detector(ir::FilterByNodeWrapper<OpHandleBase>(*graph));
+  const auto &vars = graph->Get<GraphVars>(kGraphVars);
+
+  last_live_ops_of_vars.resize(vars.size());
+  ref_cnts.resize(vars.size());
+
+  ShrinkDepsOpFunctor shrink_func(
+      ir::FilterByNodeWrapper<OpHandleBase>(*graph));
 
   for (size_t i = 0; i < vars.size(); ++i) {
     for (auto &name_var_pair : vars[i]) {
-      if (name_var_pair.second.empty()) {
-        continue;
-      }
-
-      const std::string &var_name = name_var_pair.first;
-      auto *last_ver_var = name_var_pair.second.back();
-
-      VarDesc *var_desc = nullptr;
-      std::find_if(name_var_pair.second.rbegin(), name_var_pair.second.rend(),
-                   [&](VarHandle *var_handle) -> bool {
-                     var_desc = var_handle->Node()->Var();
-                     return var_desc != nullptr;
-                   });
+      // Whether this variable can be reused or deleted? If not, we do not
+      // compute reference counts and dependencies.
+      VarDesc *var_desc = TryGetLatestVarDesc(name_var_pair.second);
 
       if (var_desc == nullptr || var_desc->Persistable()) {
         continue;
@@ -170,50 +230,20 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
       if (var_type != proto::VarType::LOD_TENSOR &&
           var_type != proto::VarType::SELECTED_ROWS &&
           var_type != proto::VarType::LOD_TENSOR_ARRAY) {
+        // Var type cannot be deleted
         continue;
       }
 
-      std::unordered_set<ComputationOpHandle *> last_live_op;
-      auto add_last_live_op = [&](OpHandleBase *op) -> bool {
-        auto *compute_op = FindNextComputationOpHandleOrReturnItself(op, i);
-        if (compute_op) {
-          last_live_op.insert(compute_op);
-          return true;
-        } else {
-          return false;
-        }
-      };
+      bool ok;
+      auto result = ExtractComputationOpFromLastLivedVar(
+          name_var_pair.second.back(), i, shrink_func, &ok);
 
-      bool can_delete = false;
-      auto &pending_ops = last_ver_var->PendingOps();
-      if (pending_ops.empty()) {
-        auto *generated_op = last_ver_var->GeneratedOp();
-        if (generated_op && add_last_live_op(generated_op)) {
-          can_delete = true;
-        }
-      } else {
-        can_delete = true;
-        for (auto *pending_op : pending_ops) {
-          if (!add_last_live_op(pending_op)) {
-            can_delete = false;
-            break;
-          }
-        }
-      }
-
-      if (can_delete) {
-        size_t original_size = last_live_op.size();
-        last_live_op = detector.MaxNoDepOps(last_live_op);
-        if (last_live_op.size() != original_size) {
-          VLOG(10) << "Shrink last living op number of " << var_name << " from "
-                   << original_size << " to " << last_live_op.size();
-        }
-
-        PADDLE_ENFORCE(!last_live_op.empty(),
-                       "Last living ops of %s cannot be empty", var_name);
-
-        ref_cnts[i].emplace(var_name, last_live_op.size());
-        last_live_ops_of_vars[i].emplace(var_name, std::move(last_live_op));
+      if (ok) {
+        auto &var_name = name_var_pair.first;
+        PADDLE_ENFORCE(!result.empty(), "Last living ops of %s cannot be empty",
+                       var_name);
+        ref_cnts[i].emplace(var_name, result.size());
+        last_live_ops_of_vars[i].emplace(var_name, std::move(result));
       }
     }
   }

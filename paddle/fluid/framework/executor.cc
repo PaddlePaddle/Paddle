@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
+#include <deque>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -83,31 +84,37 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 static void DeleteUnusedTensors(
-    const Scope& scope, const OperatorBase* op, GarbageCollector<Tensor>* gc,
+    const Scope& scope, const OperatorBase* op, GarbageCollector* gc,
     std::unordered_map<std::string, size_t>* ref_cnts) {
-  std::unordered_set<Tensor*> erase_tensors;
+  std::deque<std::shared_ptr<memory::Allocation>> garbages;
 
   auto handler = [&](const VariableNameMap& name_map) {
     for (auto& name_pair : name_map) {
       for (auto& name : name_pair.second) {
         auto it = ref_cnts->find(name);
         if (it == ref_cnts->end()) continue;
-        if (--(it->second) == 0) {
-          auto* var = scope.FindVar(name);
-          if (var != nullptr) {
-            VLOG(2) << "Erase tensor \'" << name << "\'";
-            if (var->IsType<LoDTensor>()) {
-              erase_tensors.insert(var->GetMutable<LoDTensor>());
-            } else if (var->IsType<SelectedRows>()) {
-              erase_tensors.insert(
-                  var->GetMutable<SelectedRows>()->mutable_value());
-            } else if (var->IsType<LoDTensorArray>()) {
-              auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
-              for (auto& t : *lod_tensor_arr) {
-                erase_tensors.insert(&t);
-              }
-            }
+        if (--(it->second) != 0) {
+          continue;
+        }
+        auto* var = scope.FindVar(name);
+        if (var != nullptr) {
+          continue;
+        }
+
+        VLOG(2) << "Erase variable " << name;
+        if (var->IsType<LoDTensor>()) {
+          garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemory());
+        } else if (var->IsType<SelectedRows>()) {
+          garbages.emplace_back(
+              var->GetMutable<SelectedRows>()->mutable_value()->MoveMemory());
+        } else if (var->IsType<LoDTensorArray>()) {
+          auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+          for (auto& t : *lod_tensor_arr) {
+            garbages.emplace_back(t.MoveMemory());
           }
+        } else {
+          PADDLE_THROW("Type %s of %s is not supported eager deletion",
+                       var->Type().name(), name);
         }
       }
     }
@@ -116,8 +123,8 @@ static void DeleteUnusedTensors(
   handler(op->Inputs());
   handler(op->Outputs());
 
-  if (!erase_tensors.empty()) {
-    gc->Add(erase_tensors);
+  if (!garbages.empty()) {
+    gc->Add(std::move(garbages));
   }
 }
 
@@ -411,22 +418,22 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
-  std::unique_ptr<GarbageCollector<Tensor>> gc;
+  std::unique_ptr<GarbageCollector> gc;
   if (max_memory_size >= 0) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector<Tensor>(
+        gc.reset(new UnsafeFastGPUGarbageCollector(
             boost::get<platform::CUDAPlace>(place_), max_memory_size));
       } else {
-        gc.reset(new DefaultStreamGarbageCollector<Tensor>(
+        gc.reset(new DefaultStreamGarbageCollector(
             boost::get<platform::CUDAPlace>(place_), max_memory_size));
       }
     } else if (platform::is_cpu_place(place_)) {
 #endif
-      gc.reset(new CPUGarbageCollector<Tensor>(
-          boost::get<platform::CPUPlace>(place_), max_memory_size));
+      gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place_),
+                                       max_memory_size));
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
@@ -442,7 +449,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  if (gc) gc->Wait();
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);

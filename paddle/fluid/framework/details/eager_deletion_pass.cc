@@ -28,17 +28,21 @@ namespace details {
 
 std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  const auto &vars = graph->Get<GraphVars>(kGraphVars);
-
   auto &ref_cnts =
       Get<std::vector<AtomicReferenceCountMap>>(kRuntimeReferenceCount);
+  PADDLE_ENFORCE(ref_cnts.empty(),
+                 "kRuntimeReferenceCount should be initialized here!");
+
+  const auto &vars = graph->Get<GraphVars>(kGraphVars);
+  ref_cnts.resize(vars.size());
+
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
-  auto &gcs = Get<GarbageCollectorMap>(kGarbageCollector);
+  const auto &gcs = Get<GarbageCollectorMap>(kGarbageCollector);
   const auto &places = Get<std::vector<platform::Place>>(kAllPlaces);
 
-  ref_cnts = std::vector<AtomicReferenceCountMap>(vars.size());
-
+  // a reverse map of last_live_ops
+  //   i.e., last op --> variable names which can be deleted.
   std::unordered_map<ComputationOpHandle *, std::unordered_set<std::string>>
       op_vars_map;
 
@@ -58,8 +62,8 @@ std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
     auto *eager_deletion_node =
         graph->CreateEmptyNode("eager_deletion", ir::Node::Type::kOperation);
     auto *eager_deletion_op = new EagerDeletionOpHandle(
-        eager_deletion_node, op->GetScope(), op->GetPlace(),
-        std::move(var_names), gcs.at(places[op->GetScopeIdx()]).get(),
+        eager_deletion_node, op->GetScope(), op->GetPlace(), var_names,
+        gcs.at(places[op->GetScopeIdx()]).get(),
         &(ref_cnts[op->GetScopeIdx()]));
 
     auto it = std::find_if(

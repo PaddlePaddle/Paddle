@@ -42,6 +42,7 @@ void OpGraphView::Build(const std::vector<OpHandleBase *> &ops) {
 
 std::unordered_set<OpHandleBase *> OpGraphView::AllOps() const {
   std::unordered_set<OpHandleBase *> ret;
+  ret.reserve(preceding_ops_.size());
   for (auto &pair : preceding_ops_) {
     ret.insert(pair.first);
   }

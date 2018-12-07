@@ -26,8 +26,8 @@ namespace details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node, const Scope *scope, const platform::Place &place,
-    const std::unordered_set<std::string> &var_names,
-    GarbageCollector<Tensor> *gc, AtomicReferenceCountMap *ref_cnts)
+    const std::unordered_set<std::string> &var_names, GarbageCollector *gc,
+    AtomicReferenceCountMap *ref_cnts)
     : OpHandleBase(node),
       scope_(scope),
       var_names_(var_names),
@@ -35,9 +35,9 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       ref_cnts_(ref_cnts) {
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place)) {
-    dev_ctx_ = static_cast<platform::CUDADeviceContext *>(
+    dev_ctx_ = reinterpret_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
-    if (dynamic_cast<StreamGarbageCollector<Tensor> *>(gc_)) {
+    if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(
           boost::get<platform::CUDAPlace>(place).device);
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
@@ -61,10 +61,11 @@ std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
   auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  std::vector<Tensor *> tensors;
+  std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {
     auto it = ref_cnts_->find(name);
-    if (it == ref_cnts_->end()) {
+    // Var not found, not reference count has not decreased to 0
+    if (it == ref_cnts_->end() || it->second.fetch_sub(1) != 1) {
       continue;
     }
 
@@ -73,43 +74,44 @@ void EagerDeletionOpHandle::RunImpl() {
       continue;
     }
 
+    VLOG(2) << "Erase variable " << name;
+
     if (var->IsType<LoDTensor>()) {
-      if (it->second.fetch_sub(1) == 1) {
-        tensors.emplace_back(var->GetMutable<LoDTensor>());
-      }
+      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemory());
     } else if (var->IsType<SelectedRows>()) {
-      if (it->second.fetch_sub(1) == 1) {
-        tensors.emplace_back(var->GetMutable<SelectedRows>()->mutable_value());
-      }
+      garbages.emplace_back(
+          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemory());
     } else if (var->IsType<LoDTensorArray>()) {
-      if (it->second.fetch_sub(1) == 1) {
-        auto *tensor_arr = var->GetMutable<LoDTensorArray>();
-        for (auto &t : *tensor_arr) {
-          tensors.emplace_back(&t);
-        }
+      auto *tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto &t : *tensor_arr) {
+        garbages.emplace_back(t.MoveMemory());
       }
+    } else {
+      PADDLE_THROW("Type %s of %s is not supported eager deletion",
+                   var->Type().name(), name);
     }
   }
 
-  if (!tensors.empty()) {
-    ClearTensors(tensors);
+  if (!garbages.empty()) {
+    ClearGarbages(&garbages);
   }
 }
 
-void EagerDeletionOpHandle::ClearTensors(const std::vector<Tensor *> &tensors) {
+void EagerDeletionOpHandle::ClearGarbages(
+    std::deque<std::shared_ptr<memory::Allocation>> *garbages) {
 #ifdef PADDLE_WITH_CUDA
   if (event_) {
     auto compute_stream = dev_ctx_->stream();
     auto callback_stream =
-        static_cast<StreamGarbageCollector<Tensor> *>(gc_)->stream();
+        reinterpret_cast<StreamGarbageCollector *>(gc_)->stream();
     auto callback_func = [=]() {
       PADDLE_ENFORCE(cudaEventRecord(event_, compute_stream));
       PADDLE_ENFORCE(cudaStreamWaitEvent(callback_stream, event_, 0));
     };
-    gc_->Add(tensors, callback_func);
+    gc_->Add(std::move(*garbages), callback_func);
   } else {
 #endif
-    gc_->Add(tensors);
+    gc_->Add(std::move(*garbages));
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
