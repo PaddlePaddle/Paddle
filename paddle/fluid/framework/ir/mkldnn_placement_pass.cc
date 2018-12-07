@@ -22,7 +22,7 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Aplies MKL-DNN placement strategy.";
   for (const Node* n : graph->Nodes()) {
-    if (n->IsOp() && n->Op()->HasAttr("use_mkldnn")) {
+    if (n->IsOp() && n->RuntimeHasAttr("use_mkldnn")) {
       n->Op()->SetAttr("use_mkldnn", true);
     }
   }
