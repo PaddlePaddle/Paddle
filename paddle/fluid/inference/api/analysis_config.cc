@@ -53,6 +53,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
+  model_from_memory_ = other.model_from_memory_;
 
   if (use_gpu) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -80,6 +81,8 @@ contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
+  model_from_memory_ = other.model_from_memory_;
+
   pass_builder_ = std::move(other.pass_builder_);
 }
 
@@ -100,6 +103,15 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   tensorrt_max_batchsize_ = max_batch_size;
   // Append after the infer_clean pass.
   pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+}
+
+void contrib::AnalysisConfig::SetModelBuffer(const char *prog_buffer,
+                                             size_t prog_buffer_size,
+                                             const char *param_buffer,
+                                             size_t param_buffer_size) {
+  prog_file = std::string(prog_buffer, prog_buffer + prog_buffer_size);
+  param_file = std::string(param_buffer, param_buffer + param_buffer_size);
+  model_from_memory_ = true;
 }
 
 }  // namespace paddle
