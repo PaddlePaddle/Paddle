@@ -21,19 +21,20 @@ namespace details {
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    std::vector<std::unique_ptr<ir::Graph>> graphs)
+    std::vector<std::unique_ptr<ir::Graph>> &&graphs)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
+      pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
-      graphs_(std::move(graphs)),
-      pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr) {
+      graphs_(std::move(graphs)) {
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  // do not use threadpool for each graph execution.
+  strategy_.num_threads_ = 1UL;
   for (size_t i = 0; i < places.size(); ++i) {
-    std::vector<framework::Scope *> scopes = {local_scopes_[i]};
-    std::vector<platform::Place> places = {places_[i]};
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
-        strategy_, scopes, places, std::move(graphs_[i])));
+        strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i])));
   }
+  VLOG(1) << "pool size: " << places_.size();
 }
 
 FeedFetchList ParallelSSAGraphExecutor::Run(

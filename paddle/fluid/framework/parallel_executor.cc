@@ -54,7 +54,6 @@ class ParallelExecutorPrivate {
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
-  std::vector<std::unique_ptr<details::SSAGraphExecutor>> executors_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
@@ -142,6 +141,7 @@ ParallelExecutor::ParallelExecutor(
   std::vector<std::unique_ptr<ir::Graph>> graphs;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+    VLOG(1) << "kParallelGraph mode!!";
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
           main_program, {member_->places_[i]}, loss_var_name, params,
@@ -222,38 +222,17 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-    /**
-    for (size_t i = 0; i < member_->places_.size(); ++i) {
-      std::vector<details::VariableInfo> var_infos;
-      for (auto &node : graphs[i]->Nodes()) {
-        if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-          var_infos.emplace_back();
-          var_infos.back().name_ = node->Var()->Name();
-          var_infos.back().type_ = node->Var()->GetType();
-          var_infos.back().persistable_ = node->Var()->Persistable();
-        }
-      }
-
-      std::vector<platform::Place> places = {member_->places_[i]};
-      std::vector<framework::Scope *> scopes = {member_->local_scopes_[i]};
-      std::unique_ptr<details::ThreadedSSAGraphExecutor> p(new
-    details::ThreadedSSAGraphExecutor(
-        exec_strategy, scopes, places, std::move(graphs[i])));
-
-      member_->executors_.push_back(std::move(p));
-
-      member_->executors_[i].reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy, scopes, std::move(var_infos), places,
-        std::move(member_->executors_[i])));
-    }**/
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graphs[0])));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graphs[0])));
   } else if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, graphs));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graphs)));
   } else {
     member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graphs[0])));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graphs[0])));
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(

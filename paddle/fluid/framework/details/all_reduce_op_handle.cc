@@ -46,9 +46,6 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #endif
 
 void AllReduceOpHandle::RunImpl() {
-  int64_t start_ts = GetTS();
-  int64_t func_ts = GetTS();
-  VLOG(5) << "all_reduce_op_handle::RunImpl start";
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
 // FIXME(typhoonzero): If scope0(global scope) have NCCL_ID_VAR,
@@ -62,11 +59,7 @@ void AllReduceOpHandle::RunImpl() {
     return;  // No need to all reduce when GPU count = 1;
   } else {
     // Wait input done
-    start_ts = GetTS();
     WaitInputVarGenerated();
-    VLOG(5) << "all_reduce_op_handle wait input var spent: "
-            << GetTS() - start_ts << " (ns).";
-    start_ts = GetTS();
     auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
     auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
     PADDLE_ENFORCE_EQ(
@@ -107,8 +100,6 @@ void AllReduceOpHandle::RunImpl() {
         }
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        VLOG(5) << "call allreduce: " << in_var_handles[i]->name_
-                << " on dev: " << dev_id;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
         auto stream = nccl_ctx.stream();
         auto comm = nccl_ctx.comm_;
@@ -118,6 +109,7 @@ void AllReduceOpHandle::RunImpl() {
               ncclSum, comm, stream));
         });
       }
+
       this->RunAndRecordEvent([&] {
         // TODO(Yancey1989): need allreduce operator to avoid this flag
         if (nccl_ctxs_->need_group_call_) {
@@ -162,8 +154,6 @@ void AllReduceOpHandle::RunImpl() {
       }
     }
   }
-  VLOG(5) << "all_reduce_op_handle Impl spent: " << GetTS() - func_ts
-          << " (ns).";
 }
 
 std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
