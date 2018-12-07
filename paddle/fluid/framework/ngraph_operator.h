@@ -32,14 +32,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class FusedOperator : public OperatorBase {
+class NgraphOperator : public OperatorBase {
  public:
   static std::vector<
       std::vector<std::vector<std::unique_ptr<OperatorBase>>::iterator>>
-  FusedOpIntervals(
+  NgraphOpIntervals(
       std::vector<std::unique_ptr<paddle::framework::OperatorBase>>* ops);
 
-  explicit FusedOperator(
+  explicit NgraphOperator(
       const ProgramDesc& prog, size_t block_id,
       std::vector<std::unique_ptr<OperatorBase>>::iterator start,
       std::vector<std::unique_ptr<OperatorBase>>::iterator end,
