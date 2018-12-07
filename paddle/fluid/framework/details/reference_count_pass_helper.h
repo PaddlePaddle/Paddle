@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -33,12 +34,13 @@ using ReferenceCountMap = std::unordered_map<std::string, size_t>;
 using AtomicReferenceCountMap =
     std::unordered_map<std::string, std::atomic<size_t>>;
 
-using GarbageCollectorList =
-    std::vector<std::unique_ptr<GarbageCollector<Tensor>>>;
+using GarbageCollectorMap =
+    std::map<platform::Place, std::unique_ptr<GarbageCollector<Tensor>>>;
 
-const char kGlobalReferenceCount[] = "reference_count";
-const char kCurReferenceCount[] = "current_reference_count";
+const char kGlobalReferenceCount[] = "global_reference_count";
+const char kRuntimeReferenceCount[] = "runtime_reference_count";
 const char kGarbageCollector[] = "garbage_collector";
+const char kAllPlaces[] = "all_places";
 
 using LastLiveOpsOfVars =
     std::unordered_map<std::string, std::unordered_set<ComputationOpHandle*>>;

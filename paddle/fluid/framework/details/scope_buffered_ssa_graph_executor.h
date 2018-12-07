@@ -60,7 +60,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
 
-  GarbageCollectorList* gc_{nullptr};
+  GarbageCollectorMap* gc_{nullptr};
 };
 }  // namespace details
 }  // namespace framework
