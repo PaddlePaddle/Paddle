@@ -362,7 +362,11 @@ VarHandlePtr BRPCClient::AsyncSendVarMessage(
   google::protobuf::Closure* done = brpc::NewCallback(
       &HandleSendResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
-  ch_ctx->stub->SendVariable(cntl, &req, response, done);
+  if (method_name == "CheckPointNotifyRPC") {
+    ch_ctx->stub->CheckpointNotify(cntl, &req, response, done);
+  } else {
+    ch_ctx->stub->SendVariable(cntl, &req, response, done);
+  }
   req_count_++;
 
   if (UNLIKELY(platform::IsProfileEnabled())) {

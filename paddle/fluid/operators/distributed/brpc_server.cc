@@ -45,6 +45,11 @@ class BRPCServiceImpl : public SendRecvService {
     if (it != rpc_call_map.end()) {
       request_prefetch_h_ = it->second;
     }
+
+    it = rpc_call_map.find(distributed::kRequestCheckpoint);
+    if (it != rpc_call_map.end()) {
+      request_checkpoint_h_ = it->second;
+    }
   }
 
   virtual ~BRPCServiceImpl() {}
@@ -136,10 +141,37 @@ class BRPCServiceImpl : public SendRecvService {
                                   &cntl->response_attachment(), "", true);
   }
 
+  void CheckpointNotify(google::protobuf::RpcController* cntl_butil,
+                        const VariableMessage* request, VoidMessage* response,
+                        google::protobuf::Closure* done) override {
+    PADDLE_ENFORCE(
+        request_checkpoint_h_ != nullptr,
+        "kRequestCheckpointNotify handler should be registed first!");
+
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+
+    distributed::BRPCVariableResponse resp(request_checkpoint_h_->scope(),
+                                           request_checkpoint_h_->dev_ctx());
+
+    auto scope = resp.GetMutableLocalScope();
+
+    std::string checkpoint_notify = request->varname();
+    std::string checkpoint_dir = request->out_varname();
+    int trainer_id = request->trainer_id();
+
+    VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
+            << ", dir: " << checkpoint_dir;
+
+    request_checkpoint_h_->Handle(checkpoint_notify, scope, nullptr, nullptr,
+                                  trainer_id, checkpoint_dir);
+  }
+
  private:
   distributed::RequestHandler* request_send_h_;
   distributed::RequestHandler* request_get_h_;
   distributed::RequestHandler* request_prefetch_h_;
+  distributed::RequestHandler* request_checkpoint_h_;
 };
 }  // namespace sendrecv
 
