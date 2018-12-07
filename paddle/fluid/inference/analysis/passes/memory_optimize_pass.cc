@@ -31,6 +31,8 @@ using framework::ir::Node;
 
 const int kBatchSize = 13;  // replace the placement -1 in shape
 
+using space_table_t = MemoryOptimizePass::space_table_t;
+
 // Several kinds of topological sort.
 std::vector<Node*> TopoSort(const Graph& graph, int sort_kind) {
   switch (sort_kind) {
@@ -115,10 +117,11 @@ int ShapeToSpace(const std::vector<int64_t>& shape,
   return space;
 }
 
-// Collect the shape information of the tensors.
-void MemoryOptimizePass::CollectShapes(
+// Collect the memory size of the tensors.
+void MemoryOptimizePass::CollectVarMemorySize(
+    const std::unordered_map<std::string, size_t>& batch_var_ave_dim,
     std::unordered_map<std::string, Node*>* tensor_nodes,
-    std::unordered_map<std::string, int>* space_table) const {
+    space_table_t* space_table) const {
   // Collect tensors from graph.
   for (auto* node : graph_->Nodes()) {
     if (node->IsVar() &&
@@ -128,7 +131,8 @@ void MemoryOptimizePass::CollectShapes(
       if (node->Var()->Persistable()) continue;
       (*tensor_nodes)[node->Name()] = node;
       (*space_table)[node->Name()] =
-          ShapeToSpace(node->Var()->GetShape(), node->Var()->GetDataType());
+          DataTypeToSpace(node->Var()->GetDataType()) *
+          batch_var_ave_dim.at(node->Name());
     }
   }
 }
@@ -151,7 +155,7 @@ bool FindSuitableTensorToReuse(
     const std::string& tensor, int space_required,
     const std::unordered_map<std::string, Node*>& tensor_nodes,
     std::unordered_set<std::string>* free_existing_tensors,
-    const std::unordered_map<std::string, int>& space_table,
+    const space_table_t& space_table,
     const std::vector<std::unordered_set<std::string>>& var_clusters,
     std::string* tensor2use) __SHOULD_USE_RESULT__;
 
@@ -159,7 +163,7 @@ bool FindSuitableTensorToReuse(
     const std::string& tensor, int space_required,
     const std::unordered_map<std::string, Node*>& tensor_nodes,
     std::unordered_set<std::string>* free_existing_tensors,
-    const std::unordered_map<std::string, int>& space_table,
+    const space_table_t& space_table,
     const std::vector<std::unordered_set<std::string>>& var_clusters,
     std::string* tensor2use) {
   std::pair<std::string, int> best_fit;
@@ -174,15 +178,20 @@ bool FindSuitableTensorToReuse(
       break;
     }
   }
-  PADDLE_ENFORCE_NOT_NULL(
-      cluster,
-      "something wrong in memory optimization, the variable cluster phase.");
+  PADDLE_ENFORCE_NOT_NULL(cluster,
+                          "something wrong in memory optimization, the "
+                          "variable %s not in the clusters.",
+                          tensor);
 
   for (auto& candidate : *free_existing_tensors) {
+    // This is not a temporary tensor.
     if (!space_table.count(candidate)) continue;
+    // Not in the same cluster.
+    if (!cluster->count(candidate)) continue;
+
     int space = space_table.at(candidate);
     int space_diff = std::abs(space - space_required);
-    if (space_diff < best_fit.second && cluster->count(candidate)) {
+    if (space_diff < best_fit.second) {
       best_fit.first = candidate;
       best_fit.second = space_diff;
     }
@@ -197,15 +206,18 @@ bool FindSuitableTensorToReuse(
 
 // Allocate new tensor instead of reusing the existing one.
 void AllocateNewTensor(
-    const std::string& name, int space_required,
+    const std::string& name, size_t space_required,
     const std::unordered_map<std::string, Node*>& tensor_nodes,
     std::unordered_set<std::string>* free_existing_tensors,
-    std::unordered_map<std::string, int>* space_table,
+    space_table_t* space_table,
     std::unordered_map<std::string, std::string>* reuse_table) {
   // The newly born tensor is free to be used.
   free_existing_tensors->insert(name);
   // Register the space it has.
-  space_table->emplace(name, space_required);
+  PADDLE_ENFORCE(space_table->count(name));
+  space_table->at(name) = std::max(space_table->at(name), space_required);
+  // LOG(INFO) << space_table->at(name) << " " << space_required;
+  // space_table->emplace(name, space_required);
   // The allocated new tensor use the memory of itself.
   (*reuse_table)[name] = name;
 }
@@ -226,42 +238,59 @@ void FreeATensor(const std::string& tensor,
 
 // Reuse a free existing tensor.
 void ReuseATensor(const std::string& tensor, const std::string& tensor2reuse,
+                  size_t memory_size,
                   std::unordered_set<std::string>* free_existing_tensors,
-                  std::unordered_map<std::string, std::string>* reuse_table) {
+                  std::unordered_map<std::string, std::string>* reuse_table,
+                  space_table_t* reused_space_table) {
   auto it = free_existing_tensors->find(tensor2reuse);
   PADDLE_ENFORCE(it != free_existing_tensors->end());
   free_existing_tensors->erase(it);
   (*reuse_table)[tensor] = tensor2reuse;
+  // Update the memory size of a reused tensor, the memory will grow if the
+  // required memory is larger.
+  (*reused_space_table)[tensor2reuse] =
+      std::max(reused_space_table->at(tensor2reuse), memory_size);
 }
 
 // Calculate the memory usage.
-void MemoryEvaluate(
+void EvaluateMemoryUsage(
     const std::unordered_map<std::string, std::string>& reuse_table,
-    const std::unordered_map<std::string, int>& space_table,
+    const space_table_t& space_table,
     const std::unordered_map<std::string, size_t>& var_batch_ave_size,
     size_t* allocated, size_t* saved) {
   *allocated = 0;
   *saved = 0;
 
   for (auto elem : reuse_table) {
-    // if (elem.first == "feed" || elem.second == "second") continue;
     if (elem.first == elem.second) {
-      *allocated += var_batch_ave_size.at(elem.first);
+      *allocated += space_table.at(elem.first);
+      VLOG(4) << elem.first << " <-> " << elem.second << " "
+              << space_table.at(elem.first) << " "
+              << space_table.at(elem.second);
     } else {
-      *saved += var_batch_ave_size.at(elem.first);
+      *saved += space_table.at(elem.first);
       VLOG(4) << "reuse " << elem.first << " -> " << elem.second;
     }
   }
+  VLOG(4) << "allocated " << *allocated;
+  VLOG(4) << "saved " << *saved;
 }
 
 // Return saved ratio.
 void MemoryOptimizePass::MakeReusePlan(
     const std::vector<std::unordered_set<std::string>>& var_clusters,
     const std::unordered_map<std::string, size_t>& var_batch_ave_size,
+    const space_table_t& space_table,
     std::unordered_map<std::string, std::string>* reuse_table, int sort_kind,
     MemoryAllocation* memory_allocation) const {
   // Clear the existing plan.
   reuse_table->clear();
+
+  // The `space_table` stores the real memory size for each tensor.
+  // The `reused_space_table` stores the maximum memory size required by a
+  // tensor during the memory reusing, the small tensor might be reused by a
+  // larger tensor, and the memory size of the small one will grow.
+  auto reused_space_table = space_table;
 
   std::unordered_map<std::string, lifecycle_t> life_cycles;
   std::unordered_map<std::string, Node*> tensor_nodes;
@@ -270,10 +299,9 @@ void MemoryOptimizePass::MakeReusePlan(
   std::unordered_set<std::string> existing_tensors;
   // The existing tensor that has been allocated, and is also free to reuse.
   std::unordered_set<std::string> free_existing_tensors;
-  std::unordered_map<std::string, int> space_table;
 
   CollectLifeCycle(&life_cycles, sort_kind);
-  CollectShapes(&tensor_nodes, &space_table);
+  // CollectVarMemorySize(var_batch_ave_size, &tensor_nodes, &space_table);
 
   for (int age = 0; age < max_lifecycle_; ++age) {
     std::unordered_set<std::string> born_tensors;
@@ -306,17 +334,20 @@ void MemoryOptimizePass::MakeReusePlan(
       if (!space_table.count(tensor)) continue;
       int space_required = space_table.at(tensor);
       if (FindSuitableTensorToReuse(tensor, space_required, tensor_nodes,
-                                    &free_existing_tensors, space_table,
+                                    &free_existing_tensors, reused_space_table,
                                     var_clusters, &tensor2reuse)) {
         if (tensor != tensor2reuse) {
           VLOG(4) << tensor << " -> " << tensor2reuse;
         }
-        ReuseATensor(tensor, tensor2reuse, &free_existing_tensors, reuse_table);
+        ReuseATensor(tensor, tensor2reuse, space_required,
+                     &free_existing_tensors, reuse_table, &reused_space_table);
       } else {
         VLOG(4) << "allocate " << tensor;
         AllocateNewTensor(tensor, space_required, tensor_nodes,
-                          &free_existing_tensors, &space_table, reuse_table);
-        ReuseATensor(tensor, tensor, &free_existing_tensors, reuse_table);
+                          &free_existing_tensors, &reused_space_table,
+                          reuse_table);
+        ReuseATensor(tensor, tensor, space_required, &free_existing_tensors,
+                     reuse_table, &reused_space_table);
       }
     }
 
@@ -326,14 +357,9 @@ void MemoryOptimizePass::MakeReusePlan(
     }
   }
 
-  size_t allocated, saved_memory;
-  MemoryEvaluate(*reuse_table, space_table, var_batch_ave_size, &allocated,
-                 &saved_memory);
-  float saved_ratio =
-      static_cast<float>(saved_memory) / (saved_memory + allocated);
-  memory_allocation->allocated = allocated / 1024. / 1024.;
-  memory_allocation->saved = saved_memory / 1024. / 1024.;
-  memory_allocation->saving_ratio = saved_ratio;
+  EvaluateMemoryUsage(*reuse_table, reused_space_table, var_batch_ave_size,
+                      &(memory_allocation->allocated),
+                      &(memory_allocation->saved));
   memory_allocation->sort_kind = sort_kind;
 }
 
@@ -441,8 +467,7 @@ std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
   return batch_shapes;
 }
 
-// Calculate the average memory size of each variable from the batch shape
-// cache.
+// Calculate the average dim of each tensor from the batch shape cache.
 std::unordered_map<std::string, size_t> GetBatchAverageSize(
     const std::vector<std::map<std::string, std::vector<int>>>& batches) {
   std::unordered_map<std::string, size_t> var2size;
@@ -453,10 +478,14 @@ std::unordered_map<std::string, size_t> GetBatchAverageSize(
     for (const auto& item : batch) {
       int dim = std::accumulate(item.second.begin(), item.second.end(), 1,
                                 [](int a, int b) { return a * b; });
-      var2size[item.first] =
-          var2size[item.first] * (num_batch - 1) / num_batch + dim / num_batch;
+      var2size[item.first] += dim;
     }
   }
+
+  for (auto& item : var2size) {
+    item.second /= num_batch;
+  }
+
   return var2size;
 }
 
@@ -489,6 +518,8 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapesByBatchSize(
   for (auto& ele : shape_sets) {
     res.emplace_back(std::move(ele.second));
   }
+
+  LOG(INFO) << "Cluster by batch_size and get " << res.size() << " clusters";
   return res;
 }
 
@@ -496,22 +527,24 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapesByBatchSize(
 // different clusters by their size.
 // This should works fine for the overall models.
 std::vector<std::unordered_set<std::string>> AnalysisBatchShapesBySimilarSize(
+    const space_table_t& space_table,
     const std::vector<std::map<std::string, std::vector<int>>>& batches,
-    int interval = 2000 /*1kb*/) {
+    int interval = 200000) {
+  PADDLE_ENFORCE_GT(interval, 0);
   // cluster to different clusters.
   size_t max_size = 0;
-  auto var2size = GetBatchAverageSize(batches);
-  for (auto& item : var2size) {
+  for (auto& item : space_table) {
     max_size = std::max(item.second, max_size);
   }
+  VLOG(4) << "tensor max size " << max_size;
 
   std::vector<std::unordered_set<std::string>> res;
 
   // cluster by intervals.
-  for (size_t interval_size = 0; interval_size < max_size;
+  for (size_t interval_size = 0; interval_size <= max_size;
        interval_size += interval) {
     std::unordered_set<std::string> cluster;
-    for (auto& item : var2size) {
+    for (auto& item : space_table) {
       if (interval_size <= item.second &&
           interval_size + interval > item.second) {
         cluster.insert(item.first);
@@ -532,6 +565,9 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   if (!argument->enable_memory_optim()) {
     return;
   }
+
+  graph_ = argument->main_graph_ptr();
+
   auto path = GetMemoryCachePath(
       argument->model_dir_valid() ? argument->model_dir() : "",
       argument->model_program_path_valid() ? argument->model_program_path()
@@ -540,11 +576,12 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   if (inference::IsFileExists(path)) {
     VLOG(4) << "Performing memory optimize";
     auto batches = DeseralizeBatchVarShapes(path);
-    auto clustered_vars_by_batch_size = AnalysisBatchShapesByBatchSize(batches);
-    auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(batches);
     auto var_batch_ave_size = GetBatchAverageSize(batches);
 
-    graph_ = argument->main_graph_ptr();
+    std::unordered_map<std::string, Node*> tensor_nodes;
+    space_table_t space_table;
+    CollectVarMemorySize(var_batch_ave_size, &tensor_nodes, &space_table);
+
     std::unordered_map<std::string, std::string> reuse_table;
     float max_saving_ratio = 0.;
 
@@ -552,16 +589,39 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
 
     for (int sort_kind = 0; sort_kind < 2; sort_kind++) {
       strategies.emplace_back([&, sort_kind] {
+        auto clustered_vars_by_batch_size =
+            AnalysisBatchShapesByBatchSize(batches);
         MemoryAllocation allocation;
         MakeReusePlan(clustered_vars_by_batch_size, var_batch_ave_size,
-                      &reuse_table, sort_kind, &allocation);
+                      space_table, &reuse_table, sort_kind, &allocation);
         return allocation;
       });
 
       strategies.emplace_back([&, sort_kind] {
+        auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
+            space_table, batches, 1024);  // interval 1kb
         MemoryAllocation allocation;
         MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
-                      &reuse_table, sort_kind, &allocation);
+                      space_table, &reuse_table, sort_kind, &allocation);
+        return allocation;
+      });
+
+      strategies.emplace_back([&, sort_kind] {
+        auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
+            space_table, batches, 1024 * 1024);  // interval 1MB
+        MemoryAllocation allocation;
+        MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
+                      space_table, &reuse_table, sort_kind, &allocation);
+        return allocation;
+      });
+
+      strategies.emplace_back([&, sort_kind] {
+        auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
+            space_table, batches,
+            std::numeric_limits<int>::max());  // no intervals
+        MemoryAllocation allocation;
+        MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
+                      space_table, &reuse_table, sort_kind, &allocation);
         return allocation;
       });
     }
@@ -571,20 +631,24 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
     // Try all strategies to get the best result.
     for (auto& strategy : strategies) {
       auto allocation = strategy();
-      LOG(INFO) << "get strategy saving " << allocation.saving_ratio;
-      if (allocation.saving_ratio > max_saving_ratio) {
-        max_saving_ratio = allocation.saving_ratio;
+      LOG(INFO) << "get strategy saving " << allocation.GetSavingRatio();
+      LOG(INFO) << "allocate " << allocation.allocated;
+      LOG(INFO) << "saved " << allocation.saved;
+      if (allocation.GetSavingRatio() > max_saving_ratio) {
+        max_saving_ratio = allocation.GetSavingRatio();
         best_strategy = &strategy;
       }
-      break;
     }
 
     auto memory_allocation = (*best_strategy)();
 
     string::PrettyLogDetail(
         "---  Saved %f memory for workspace(temporary variables)",
-        memory_allocation.saving_ratio);
-
+        memory_allocation.GetSavingRatio());
+    string::PrettyLogDetail("---  Allocated %d MB",
+                            memory_allocation.allocated / 1024. / 1024.);
+    string::PrettyLogDetail("---  Saved %d MB",
+                            memory_allocation.saved / 1024. / 1024.);
     argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
                                new std::unordered_set<std::string>);
     auto& vars2remove =

@@ -27,11 +27,17 @@ namespace analysis {
 */
 class MemoryOptimizePass : public AnalysisPass {
  public:
+  using space_table_t = std::unordered_map<std::string, size_t>;
+  using lifecycle_t = std::pair<int, int>;
+
   struct MemoryAllocation {
-    long long allocated;
-    long long saved;
-    float saving_ratio;
+    size_t allocated;
+    size_t saved;
     int sort_kind;
+
+    float GetSavingRatio() const {
+      return (saved / 1024.) / (allocated / 1024. + saved / 1024.);
+    }
   };
 
   virtual ~MemoryOptimizePass() = default;
@@ -40,19 +46,20 @@ class MemoryOptimizePass : public AnalysisPass {
   void RunImpl(Argument *argument) override;
 
  private:
-  using lifecycle_t = std::pair<int, int>;
   void CollectLifeCycle(
       std::unordered_map<std::string, lifecycle_t> *lifecycles,
       int sort_kind) const;
 
-  void CollectShapes(
+  void CollectVarMemorySize(
+      const std::unordered_map<std::string, size_t> &batch_var_ave_dim,
       std::unordered_map<std::string, framework::ir::Node *> *tensor_nodes,
-      std::unordered_map<std::string, int> *space_table) const;
+      space_table_t *space_table) const;
 
   // Returns percentage of saved memory.
   void MakeReusePlan(
       const std::vector<std::unordered_set<std::string>> &var_clusters,
       const std::unordered_map<std::string, size_t> &var_batch_ave_size,
+      const space_table_t &space_table,
       std::unordered_map<std::string, std::string> *reuse_table, int sort_kind,
       MemoryAllocation *memory_allocation) const;
 

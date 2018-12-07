@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
+#include <gperftools/heap-profiler.h>
+
+//#define USE_GPERF
 
 namespace paddle {
 namespace inference {
@@ -172,14 +176,48 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_dam, profile) {
-  contrib::AnalysisConfig cfg;
+#ifdef USE_GPERF
+  HeapProfilerStart("/home/chunwei/project/dam-heap-no-memory-reuse");
+#endif
+  contrib::AnalysisConfig cfg(false);
   SetConfig(&cfg);
+  cfg.pass_builder()->DeletePass("fc_lstm_fuse_pass");
+  cfg.pass_builder()->DeletePass("mul_lstm_fuse_pass");
+  cfg.pass_builder()->DeletePass("mul_gru_fuse_pass");
+  cfg.pass_builder()->DeletePass("fc_gru_fuse_pass");
+  cfg.pass_builder()->DeletePass("fc_fuse_pass");
+  cfg.EnableMemoryOptim();
+  cfg.Build();
 
-  std::vector<PaddleTensor> outputs;
+#ifdef USE_GPERF
+  HeapProfilerDump("config done");
+#endif
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+
+  input_slots_all.resize(1);
+
+#ifdef USE_GPERF
+  HeapProfilerDump("set input");
+#endif
+  auto predictor = CreatePaddlePredictor(cfg);
+  std::vector<PaddleTensor> outputs;
+
+#ifdef USE_GPERF
+  HeapProfilerDump("before run");
+#endif
+  for (int i = 0; i < 10; i++) {
+    for (auto &input : input_slots_all) {
+      predictor->Run(input, &outputs);
+      HeapProfilerDump("run");
+    }
+  }
+
+#ifdef USE_GPERF
+  HeapProfilerDump("final");
+  HeapProfilerStop();
+#endif
+
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(), 0);

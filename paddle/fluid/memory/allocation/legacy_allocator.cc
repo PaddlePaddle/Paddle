@@ -92,7 +92,6 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
     memset(p, 0xEF, size);
   }
   VLOG(10) << "  pointer=" << p;
-  LOG(INFO) << "memory used " << GetCPUBuddyAllocator()->Used();
   return p;
 }
 
@@ -151,6 +150,7 @@ size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 template <>
 void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                                  size_t size) {
+  LOG(INFO) << "gpu used " << GetGPUBuddyAllocator(0)->Used();
 #ifdef PADDLE_WITH_CUDA
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);

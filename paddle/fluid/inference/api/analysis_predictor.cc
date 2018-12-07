@@ -560,6 +560,7 @@ void AnalysisPredictor::CollectVarShapes() {
   std::map<std::string, std::vector<int>> var_shapes;
   for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
     auto *var = sub_scope_->FindVar(var_name);
+    LOG(INFO) << "var_name: " << var_name;
     PADDLE_ENFORCE_NOT_NULL(var);
     if (var->Type() == typeid(framework::LoDTensor) ||
         var->Type() == typeid(framework::Tensor)) {
