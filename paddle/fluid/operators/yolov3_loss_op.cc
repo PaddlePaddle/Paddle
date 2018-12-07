@@ -57,7 +57,7 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(class_num, 0,
                       "Attr(class_num) should be an integer greater then 0.");
 
-    std::vector<int64_t> dim_out({1});
+    std::vector<int64_t> dim_out({dim_x[0]});
     ctx->SetOutputDim("Loss", framework::make_ddim(dim_out));
   }
 
@@ -94,7 +94,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "box class id.");
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
-              "This is a 1-D tensor with shape of [1]");
+              "This is a 1-D tensor with shape of [N]");
 
     AddAttr<int>("class_num", "The number of classes to predict.");
     AddAttr<std::vector<int>>("anchors",
