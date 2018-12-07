@@ -38,7 +38,7 @@ DEFINE_double(
     "Memory size threshold (GB) when the garbage collector clear tensors."
     "Disabled when this value is less than 0");
 
-DEFINE_bool(fast_eager_deletion_mode, true,
+DEFINE_bool(fast_eager_deletion_mode, false,
             "Fast eager deletion mode. If enabled, memory would release "
             "immediately without waiting GPU kernel ends.");
 

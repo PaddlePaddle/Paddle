@@ -18,10 +18,10 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -35,7 +35,7 @@ using AtomicReferenceCountMap =
     std::unordered_map<std::string, std::atomic<size_t>>;
 
 using GarbageCollectorMap =
-    std::map<platform::Place, std::unique_ptr<GarbageCollector<Tensor>>>;
+    std::map<platform::Place, std::unique_ptr<GarbageCollector>>;
 
 const char kGlobalReferenceCount[] = "global_reference_count";
 const char kRuntimeReferenceCount[] = "runtime_reference_count";

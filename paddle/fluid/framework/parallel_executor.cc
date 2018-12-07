@@ -97,29 +97,31 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     if (gcs_.count(place) > 0) {
       continue;
     }
-    GarbageCollector<Tensor> *gc = nullptr;
+    std::unique_ptr<GarbageCollector> gc;
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place)) {
       if (IsFastEagerDeletionModeEnabled()) {
-        gc = new UnsafeFastGPUGarbageCollector<Tensor>(
-            boost::get<platform::CUDAPlace>(place), max_memory_size);
+        gc.reset(new UnsafeFastGPUGarbageCollector(
+            boost::get<platform::CUDAPlace>(place), max_memory_size));
       } else {
-        gc = new StreamGarbageCollector<Tensor>(
-            boost::get<platform::CUDAPlace>(place), max_memory_size);
+        gc.reset(new StreamGarbageCollector(
+            boost::get<platform::CUDAPlace>(place), max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
-    } else if (platform::is_cpu_place(place)) {
+    } else {
 #endif
-      gc = new CPUGarbageCollector<Tensor>(
-          boost::get<platform::CPUPlace>(place), max_memory_size);
-      VLOG(10) << "Created GarbageCollector at " << place;
+      if (platform::is_cpu_place(place)) {
+        gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place),
+                                         max_memory_size));
+        VLOG(10) << "Created GarbageCollector at " << place;
+      } else {
+        PADDLE_THROW("Unsupported place for garbage collection");
+      }
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
 
-    if (gc) {
-      gcs_[place] = std::unique_ptr<GarbageCollector<Tensor>>(gc);
-    }
+    gcs_.emplace(place, std::move(gc));
   }
 
   if (!gcs_.empty()) {
@@ -144,8 +146,6 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(std::move(graph));
     VLOG(10) << "EagerDeletionPass Applied";
-
-    graph->SetNotOwned(details::kGarbageCollector, &gcs_);
   }
 
   return graph;

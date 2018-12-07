@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include <deque>
 #include <string>
-#include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 
@@ -30,7 +30,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
   EagerDeletionOpHandle(ir::Node *node, const Scope *scope,
                         const platform::Place &place,
                         const std::unordered_set<std::string> &var_names,
-                        GarbageCollector<Tensor> *gc,
+                        GarbageCollector *gc,
                         AtomicReferenceCountMap *ref_cnts);
 
   ~EagerDeletionOpHandle();
@@ -41,11 +41,11 @@ class EagerDeletionOpHandle : public OpHandleBase {
   void RunImpl() override;
 
  private:
-  void ClearTensors(const std::vector<Tensor *> &tensors);
+  void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
   const Scope *scope_;
   std::unordered_set<std::string> var_names_;
-  GarbageCollector<Tensor> *gc_;       // not own
+  GarbageCollector *gc_;               // not own
   AtomicReferenceCountMap *ref_cnts_;  // not own
 #ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceContext *dev_ctx_{nullptr};
