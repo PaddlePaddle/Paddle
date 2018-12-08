@@ -3,30 +3,23 @@
 # We create a hidden file and compile it instead of origin source file.
 function(windows_symbolic TARGET)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs SRCS PATH)
   cmake_parse_arguments(windows_symbolic "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(final_path ${CMAKE_CURRENT_SOURCE_DIR}/${windows_symbolic_PATH})
   foreach(src ${windows_symbolic_SRCS})
-  get_filename_component(src ${src} NAME_WE)
-  if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc OR NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cu)
-      message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
-  endif()
+    get_filename_component(src ${src} NAME_WE)
+    if (NOT EXISTS ${final_path}/${src}.cc OR NOT EXISTS ${final_path}/${src}.cu)
+        message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
+    endif()
 
-  # only copy the xx.cu to .xx.cu when the content are modified
-  set(copy_flag 1)
-  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc SOURCE_STR)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu TARGET_STR)
-  if (SOURCE_STR STREQUAL TARGET_STR)
-    set(copy_flag 0)
-  endif()
-  endif()
-  if (copy_flag)
-  add_custom_command(OUTPUT .${src}.cu
-          COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu
-          COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc" "${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu"
-          COMMENT "create hidden file of ${src}.cu")
-  endif(copy_flag)
-  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
+    file(READ ${final_path}/${src}.cc SOURCE_STR)
+    file(WRITE ${final_path}/.${src}.cpp SOURCE_STR)
+
+    add_custom_target(${TARGET} ALL DEPENDS ${final_path}/.${src}.cu)
+    add_custom_target(TARGET ${TARGET} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E remove ${final_path}/.${src}.cu
+            COMMAND ${CMAKE_COMMAND} -E copy "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
+            COMMENT "create hidden file of ${src}.cu")
   endforeach()
 endfunction()
 
