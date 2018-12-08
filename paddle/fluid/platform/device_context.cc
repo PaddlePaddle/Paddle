@@ -119,6 +119,10 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     return *device_prop_;
   }
 
+  /**
+   * allocate and deallocate would be called by eval(),
+   * so that allocate and deallocate would not occur in two threads
+   */
   void* allocate(size_t num_bytes) const override {
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
@@ -126,17 +130,15 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     auto buf = paddle::memory::Alloc(place_, num_bytes,
                                      memory::Allocator::kScratchpad);
     void* retv = buf->ptr();
-    {
-      std::lock_guard<std::mutex> lock(mtx_);
-      allocations_.emplace(retv, std::move(buf));
-    }
+    ((*Allocations())[this]).emplace(retv, std::move(buf));
     return retv;
   }
 
   void deallocate(void* buffer) const override {
     if (LIKELY(buffer)) {
-      std::lock_guard<std::mutex> lock(mtx_);
-      allocations_.erase(buffer);
+      PADDLE_ENFORCE(
+          Allocations()->at(this).erase(buffer) > 0,
+          "Maybe double free or free allocations allocated by other threads");
     }
   }
 
@@ -164,8 +166,15 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
-  mutable std::mutex mtx_;  // to protect allocations_
-  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
+
+  // this -> thread_local allocations
+  using ThreadLocalAllocationMap =
+      std::unordered_map<const EigenCudaStreamDevice*,
+                         std::unordered_map<void*, memory::AllocationPtr>>;
+  static ThreadLocalAllocationMap* Allocations() {
+    thread_local ThreadLocalAllocationMap allocations;
+    return &allocations;
+  }
 };
 
 CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
