@@ -180,7 +180,7 @@ class NCEKernel : public framework::OpKernel<T> {
                   labels.size() * sizeof(int64_t));
 
       local_scope.Var("Weight@Local")
-          ->GetMutable<framework::Tensor>()
+          ->GetMutable<framework::LoDTensor>()
           ->mutable_data<T>(context.GetPlace());
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -194,7 +194,7 @@ class NCEKernel : public framework::OpKernel<T> {
 #endif
 
       auto weight_mat = EigenMatrix<T>::From(
-          (local_scope.Var("Weight@Local")->Get<framework::Tensor>()));
+          (local_scope.Var("Weight@Local")->Get<framework::LoDTensor>()));
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         std::vector<int64_t>::iterator it =
             std::find(labels.begin(), labels.end(), sample_labels_data[i]);
@@ -208,8 +208,9 @@ class NCEKernel : public framework::OpKernel<T> {
         sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
       }
 
-      context.scope().DeleteScope(&local_scope);
-
+      if (context.scope().HasKid(&local_scope)) {
+        context.scope().DeleteScope(&local_scope);
+      }
     } else {
       auto weight_mat =
           EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
