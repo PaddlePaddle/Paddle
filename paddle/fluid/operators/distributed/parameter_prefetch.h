@@ -27,7 +27,8 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
               const std::vector<int>& height_sections,
-              const framework::ExecutionContext& context);
+              const framework::ExecutionContext& context,
+              const framework::Scope& scope);
 
 };  // namespace distributed
 };  // namespace operators

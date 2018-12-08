@@ -104,7 +104,7 @@ static void MergeMultipleVarsIntoOneBySection(
     const std::vector<std::vector<int64_t>>& splited_ids,
     const framework::ExecutionContext& context,
     const framework::Scope& actual_scope, framework::Scope* scope,
-    platform::DeviceContext* actual_ctx, ) {
+    platform::DeviceContext* actual_ctx) {
   PADDLE_ENFORCE_EQ(out_var_names.size(), height_section.size(), "");
 
   auto cpu_place = platform::CPUPlace();
@@ -175,7 +175,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<int>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  auto& local_scope = scope.NewScope();
+  auto& local_scope = context.scope().NewScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -192,7 +192,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     out_var_names.push_back(out_name + "@" + epmap[i]);
   }
 
-  auto& id_tensor = local_scope.FindVar(id_name)->Get<framework::LoDTensor>();
+  auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
   std::vector<int64_t> ids_vector;
   if (platform::is_cpu_place(id_tensor.place())) {
     auto* id_data = id_tensor.data<int64_t>();
@@ -248,7 +248,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
                                     context, scope, &local_scope, &actual_ctx);
-  scope.DeleteScope(&local_scope);
+  context.scope().DeleteScope(&local_scope);
 }
 
 };  // namespace distributed
