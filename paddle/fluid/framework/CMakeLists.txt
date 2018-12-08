@@ -12,10 +12,8 @@ function(windows_symbolic TARGET)
         message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
     endif()
 
-    file(READ ${final_path}/${src}.cc SOURCE_STR)
-    file(WRITE ${final_path}/.${src}.cpp SOURCE_STR)
+    file(GENERATE OUTPUT ${final_path}/.${src}.cu INPUT ${final_path}/${src}.cc)
 
-    add_custom_target(${TARGET} ALL DEPENDS ${final_path}/.${src}.cu)
     add_custom_target(TARGET ${TARGET} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E remove ${final_path}/.${src}.cu
             COMMAND ${CMAKE_COMMAND} -E copy "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
