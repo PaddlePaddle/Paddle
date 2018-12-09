@@ -176,9 +176,9 @@ class RequestGetWithoutBarrier final : public RequestBase {
 
   void Process() override {
     // proc request.
-    std::string in_var_name = request_->Varname();
-    std::string out_var_name = request_->OutVarname();
-    int trainer_id = request_->GetTrainerId();
+    std::string in_var_name = request_.Varname();
+    std::string out_var_name = request_.OutVarname();
+    int trainer_id = request_.GetTrainerId();
     VLOG(4) << "RequestGetWithoutBarrier, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
@@ -416,7 +416,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
   } else if (rpc_name == kRequestCheckpoint) {
     b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kGetVariableWithoutBarrier) {
-    b = new RequestGet(&service_, cq.get(), handler, req_id);
+    b = new RequestGetWithoutBarrier(&service_, cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }

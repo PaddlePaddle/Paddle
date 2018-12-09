@@ -217,12 +217,10 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   return h;
 }
 
-VarHandlePtr AsyncGetVarWithoutBarrier(const std::string& ep,
-                                       const platform::DeviceContext& ctx,
-                                       const framework::Scope& scope,
-                                       const std::string& in_var_name,
-                                       const std::string& out_var_name,
-                                       int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncGetVarWithoutBarrier(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& in_var_name,
+    const std::string& out_var_name, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
@@ -248,7 +246,7 @@ VarHandlePtr AsyncGetVarWithoutBarrier(const std::string& ep,
     VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
-    s->response_call_back_ = ProcGetWithoutBarrierResponse;
+    s->response_call_back_ = ProcGetResponse;
 
     platform::RecordRPCEvent record_event(method, p_ctx);
 
