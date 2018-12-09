@@ -149,7 +149,6 @@ class BRPCServiceImpl : public SendRecvService {
         "kRequestCheckpointNotify handler should be registed first!");
 
     brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     distributed::BRPCVariableResponse resp(request_checkpoint_h_->scope(),
                                            request_checkpoint_h_->dev_ctx());
