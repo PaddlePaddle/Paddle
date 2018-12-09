@@ -38,6 +38,7 @@ void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -342,6 +343,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestSendHandler(sync_mode, dc_sgd));
   request_get_handler_.reset(
       new distributed::RequestGetHandler(sync_mode, dc_sgd));
+  request_get_without_barrier_handler_.reset(
+      new distributed::RequestGetVarWithoutBarrierHandler(sync_mode, dc_sgd));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
@@ -353,9 +356,13 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestGet,
                             request_get_handler_.get(),
                             FLAGS_rpc_get_thread_num);
-  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
-                            request_prefetch_handler_.get(),
-                            FLAGS_rpc_prefetch_thread_num);
+  rpc_service_
+      ->RegisterRPC(distributed::kGetVariableWithoutBarrier,
+                    request_get_without_barrier_handler_.get(),
+                    FLAGS_rpc_get_thread_num)
+          rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
+                                    request_prefetch_handler_.get(),
+                                    FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
 
@@ -412,6 +419,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_get_handler_.get());
   f(request_prefetch_handler_.get());
   f(request_checkpoint_handler_.get());
+  f(request_get_without_barrier_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));

@@ -27,33 +27,61 @@ namespace operators {
 
 class RecvOp : public framework::OperatorBase {
  public:
-  RecvOp(const std::string& type, const framework::VariableNameMap& inputs,
-         const framework::VariableNameMap& outputs,
-         const framework::AttributeMap& attrs)
+  RecvOp(const std::string &type, const framework::VariableNameMap &inputs,
+         const framework::VariableNameMap &outputs,
+         const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    auto outs = Outputs("Out");
-    std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_mode = Attr<int>("sync_mode");
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    bool without_barrier = Attr<bool>("without_barrier");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
+    if (!without_barrier) {
+      std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+      auto outs = Outputs("Out");
+      int sync_mode = Attr<int>("sync_mode");
 
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-            Attr<int>("trainer_id"));
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &ctx = *pool.Get(place);
 
-    std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
-    }
-    if (sync_mode) {
+      distributed::RPCClient *rpc_client =
+          distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+              Attr<int>("trainer_id"));
+
+      std::vector<distributed::VarHandlePtr> rets;
+      for (size_t i = 0; i < outs.size(); i++) {
+        VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+        rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
+      }
+      if (sync_mode) {
+        for (size_t i = 0; i < rets.size(); i++) {
+          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+        }
+      }
+    } else {
+      std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+      auto outs = Outputs("Out");
+
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &ctx = *pool.Get(place);
+
+      distributed::RPCClient *rpc_client =
+          distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+              Attr<int>("trainer_id"));
+
+      std::vector<distributed::VarHandlePtr> rets;
+      for (size_t i = 0; i < outs.size(); i++) {
+        VLOG(3) << "getting without_barrier " << outs[i] << " from "
+                << epmap[i];
+        rets.push_back(rpc_client->AsyncGetVarWithoutBarrier(
+            epmap[i], ctx, scope, outs[i], outs[i]));
+      }
       for (size_t i = 0; i < rets.size(); i++) {
         PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
       }
+      VLOG(3) << "getting without_barrier done.";
     }
   }
 };
@@ -79,12 +107,16 @@ This operator can get variables from server side.
                  "(int, default 0)"
                  "sync recv or async recv.")
         .SetDefault(0);
+    AddAttr<bool>("without_barrier",
+                  "(bool, default False) if without_barrier=True, will use "
+                  "GetVariableWithoutBarrier else use GetVariable")
+        .SetDefault(false);
   }
 };
 
 class RecvOpShapeInference : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext* ctx) const override {}
+  void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
 }  // namespace operators
