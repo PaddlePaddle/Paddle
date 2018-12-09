@@ -268,6 +268,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_get_without_barrier_handler_->SetGradToPreparedCtx(
+      &grad_to_prepared_ctx);
 
   while (true) {
     if (rpc_service_->IsExit()) {
