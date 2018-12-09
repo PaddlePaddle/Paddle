@@ -176,8 +176,8 @@ class RequestGetWithoutBarrier final : public RequestBase {
 
   void Process() override {
     // proc request.
-    std::string in_var_name = request_.Varname();
-    std::string out_var_name = request_.OutVarname();
+    std::string in_var_name = request_.varname();
+    std::string out_var_name = request_.out_varname();
     int trainer_id = request_.GetTrainerId();
     VLOG(4) << "RequestGetWithoutBarrier, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;

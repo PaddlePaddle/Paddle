@@ -238,7 +238,7 @@ VarHandlePtr GRPCClient::AsyncGetVarWithoutBarrier(
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(in_var_name_val);
-    req.set_outvarname(out_var_name_val);
+    req.set_out_varname(out_var_name_val);
     req.set_trainer_id(trainer_id_);
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
