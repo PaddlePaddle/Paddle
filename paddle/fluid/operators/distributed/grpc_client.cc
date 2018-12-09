@@ -259,6 +259,7 @@ VarHandlePtr GRPCClient::AsyncGetVarWithoutBarrier(
     if (UNLIKELY(platform::IsProfileEnabled())) {
       h->Wait();
     }
+    VLOG(3) << s->GetVarHandlePtr()->String() << " end";
   });
 
   req_count_++;
