@@ -120,7 +120,7 @@ def _save_persistables_on_pserver(executor, dirname, main_program):
                 inputs={"X": [var[0]]},
                 outputs={"Out": slice_var},
                 attrs={"epmap": [endpoint],
-                       "sync_mode": True})
+                       "without_barrier": True})
 
             block.append_op(
                 type='save',
