@@ -344,7 +344,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_get_handler_.reset(
       new distributed::RequestGetHandler(sync_mode, dc_sgd));
   request_get_without_barrier_handler_.reset(
-      new distributed::RequestGetVarWithoutBarrierHandler(sync_mode, dc_sgd));
+      new distributed::RequestGetVarWithoutBarrierHandler(sync_mode));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
@@ -356,13 +356,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestGet,
                             request_get_handler_.get(),
                             FLAGS_rpc_get_thread_num);
-  rpc_service_
-      ->RegisterRPC(distributed::kGetVariableWithoutBarrier,
-                    request_get_without_barrier_handler_.get(),
-                    FLAGS_rpc_get_thread_num)
-          rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
-                                    request_prefetch_handler_.get(),
-                                    FLAGS_rpc_prefetch_thread_num);
+  rpc_service_->RegisterRPC(distributed::kGetVariableWithoutBarrier,
+                            request_get_without_barrier_handler_.get(),
+                            FLAGS_rpc_get_thread_num);
+  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
+                            request_prefetch_handler_.get(),
+                            FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
 
