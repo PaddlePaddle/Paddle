@@ -103,7 +103,6 @@ class BuddyAllocator {
  private:
   /*! Unify the metadata format between GPU and CPU allocations */
   MetadataCache cache_;
-  size_t real_used_{0};
 
  private:
   /*! Allocate CPU/GPU memory from system */

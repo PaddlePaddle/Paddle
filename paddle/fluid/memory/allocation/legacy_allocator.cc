@@ -293,12 +293,12 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
-  void *ptr = boost::apply_visitor(memory::legacy::AllocVisitor(size), place_);
+  void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   return new Allocation(ptr, size, place_);
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
-  boost::apply_visitor(memory::legacy::FreeVisitor(allocation->ptr()),
+  boost::apply_visitor(legacy::FreeVisitor(allocation->ptr()),
                        allocation->place());
   delete allocation;
 }

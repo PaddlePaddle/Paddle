@@ -50,7 +50,6 @@ inline size_t align(size_t size, size_t alignment) {
 }
 
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
-  real_used_ += unaligned_size;
   // adjust allocation alignment
   size_t size =
       align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
@@ -112,8 +111,6 @@ void BuddyAllocator::Free(void* p) {
 
   block->mark_as_free(&cache_);
 
-  real_used_ -= block->total_size(cache_);
-
   total_used_ -= block->total_size(cache_);
   total_free_ += block->total_size(cache_);
 
@@ -169,7 +166,7 @@ void BuddyAllocator::Free(void* p) {
   }
 }
 
-size_t BuddyAllocator::Used() { return real_used_; }
+size_t BuddyAllocator::Used() { return total_used_; }
 size_t BuddyAllocator::GetMinChunkSize() { return min_chunk_size_; }
 size_t BuddyAllocator::GetMaxChunkSize() { return max_chunk_size_; }
 

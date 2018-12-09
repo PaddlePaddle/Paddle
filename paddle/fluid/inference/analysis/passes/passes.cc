@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/passes.h"
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
+#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
