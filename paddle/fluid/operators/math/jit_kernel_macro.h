@@ -92,7 +92,6 @@ namespace jitkernel {
                           JITKERNEL_DECLARE, JITKERNEL_FIND_KEY,     \
                           JITKERNEL_IMPL)
 
-namespace jit = platform::jit;
 // TODO(TJ): below defines are deprecated, would be remove recently
 #define SEARCH_BLOCK(macro_, ker, dtype, isa)              \
   if (d < YMM_FLOAT_BLOCK) {                               \
@@ -107,15 +106,15 @@ namespace jit = platform::jit;
     macro_(ker, dtype, isa, kGT16);                        \
   }
 
-#define SEARCH_ISA_BLOCK(macro_, ker, dtype)        \
-  if (jit::MayIUse(jit::avx512f)) {                 \
-    SEARCH_BLOCK(macro_, ker, dtype, jit::avx512f); \
-  } else if (jit::MayIUse(jit::avx2)) {             \
-    SEARCH_BLOCK(macro_, ker, dtype, jit::avx2);    \
-  } else if (jit::MayIUse(jit::avx)) {              \
-    SEARCH_BLOCK(macro_, ker, dtype, jit::avx);     \
-  } else {                                          \
-    SEARCH_BLOCK(macro_, ker, dtype, jit::isa_any); \
+#define SEARCH_ISA_BLOCK(macro_, ker, dtype)             \
+  if (platform::MayIUse(platform::avx512f)) {            \
+    SEARCH_BLOCK(macro_, ker, dtype, platform::avx512f); \
+  } else if (platform::MayIUse(platform::avx2)) {        \
+    SEARCH_BLOCK(macro_, ker, dtype, platform::avx2);    \
+  } else if (platform::MayIUse(platform::avx)) {         \
+    SEARCH_BLOCK(macro_, ker, dtype, platform::avx);     \
+  } else {                                               \
+    SEARCH_BLOCK(macro_, ker, dtype, platform::isa_any); \
   }
 
 #define JITKERNEL_KEY(ker_key, dtype_key) \
@@ -156,10 +155,10 @@ namespace jit = platform::jit;
                                   marco_declare, macro_key, macro_impl)
 
 #define FOR_EACH_ISA(macro_, block) \
-  macro_(jit::avx512f, block);      \
-  macro_(jit::avx2, block);         \
-  macro_(jit::avx, block);          \
-  macro_(jit::isa_any, block)
+  macro_(platform::avx512f, block); \
+  macro_(platform::avx2, block);    \
+  macro_(platform::avx, block);     \
+  macro_(platform::isa_any, block)
 
 #define FOR_EACH_BLOCK(macro_, isa) \
   macro_(isa, kLT8);                \
@@ -168,11 +167,11 @@ namespace jit = platform::jit;
   macro_(isa, kEQ16);               \
   macro_(isa, kGT16)
 
-#define FOR_EACH_ISA_BLOCK(macro_)      \
-  FOR_EACH_BLOCK(macro_, jit::avx512f); \
-  FOR_EACH_BLOCK(macro_, jit::avx2);    \
-  FOR_EACH_BLOCK(macro_, jit::avx);     \
-  FOR_EACH_BLOCK(macro_, jit::isa_any)
+#define FOR_EACH_ISA_BLOCK(macro_)           \
+  FOR_EACH_BLOCK(macro_, platform::avx512f); \
+  FOR_EACH_BLOCK(macro_, platform::avx2);    \
+  FOR_EACH_BLOCK(macro_, platform::avx);     \
+  FOR_EACH_BLOCK(macro_, platform::isa_any)
 
 }  // namespace jitkernel
 }  // namespace math

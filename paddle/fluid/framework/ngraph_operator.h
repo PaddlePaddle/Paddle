@@ -17,24 +17,19 @@ limitations under the License. */
 #ifdef PADDLE_WITH_NGRAPH
 
 #include <algorithm>
-#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/ngraph_bridge.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/variant.h"
 
-#include "ngraph/ngraph.hpp"
+#include "ngraph/type/element_type.hpp"
 
 namespace paddle {
 namespace framework {
