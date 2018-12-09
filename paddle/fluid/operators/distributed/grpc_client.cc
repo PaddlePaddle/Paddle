@@ -217,6 +217,56 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   return h;
 }
 
+VarHandlePtr AsyncGetVarWithoutBarrier(const std::string& ep,
+                                       const platform::DeviceContext& ctx,
+                                       const framework::Scope& scope,
+                                       const std::string& in_var_name,
+                                       const std::string& out_var_name,
+                                       int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string in_var_name_val = in_var_name;
+  const std::string out_var_name_val = out_var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
+  GetProcessor* s = new GetProcessor(ch);
+
+  const std::string method = "GetVarWithoutBarrierRPC";
+  VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
+
+  framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
+                      s, method, h, this] {
+    // prepare input
+    sendrecv::VariableMessage req;
+    req.set_varname(in_var_name_val);
+    req.set_outvarname(out_var_name_val);
+    req.set_trainer_id(trainer_id_);
+    ::grpc::ByteBuffer buf;
+    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+
+    // stub context
+    s->response_call_back_ = ProcGetWithoutBarrierResponse;
+
+    platform::RecordRPCEvent record_event(method, p_ctx);
+
+    auto call = s->stub_g_.PrepareUnaryCall(
+        s->context_.get(),
+        "/sendrecv.SendRecvService/GetVariableWithoutBarrier", buf, &cq_);
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      h->Wait();
+    }
+  });
+
+  req_count_++;
+  return h;
+}
+
 VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);

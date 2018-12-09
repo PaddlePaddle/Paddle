@@ -27,7 +27,8 @@ from . import core
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model'
+    'load_persistables', 'save_inference_model', 'load_inference_model',
+    '_save_persistables_on_pserver'
 ]
 
 
@@ -84,6 +85,114 @@ def _clone_var_in_block_(block, var):
         type=var.type,
         lod_level=var.lod_level,
         persistable=True)
+
+
+def _save_persistables_on_pserver(executor, dirname, main_program):
+    """
+    get persistables on pserver through rpc.
+    :return:
+    """
+    optimizer_varmap = main_program.optimizer_varmap
+
+    prog = Program()
+    block = prog.global_block()
+
+    # recv
+    for var_name, var_s in optimizer_varmap.items():
+        dim0 = 0
+        for idx, var_t in enumerate(var_s):
+            var = var_t[0]
+            start = var_t[1]
+            end = start + var[2][0]
+            endpoint = var_t[2]
+
+            slice_var_name = "{}.recv.{}".format(var[0], idx)
+
+            slice_var = block.create_var(
+                name="{}".format(var[0]),
+                type=var[1],
+                shape=var[2],
+                dtype=var[3],
+                persistable=var[4])
+
+            block.append_op(
+                type='recv',
+                inputs={"X": [var[0]]},
+                outputs={"Out": slice_var},
+                attrs={"epmap": [endpoint],
+                       "sync_mode": True})
+
+            block.append_op(
+                type='save',
+                inputs={'X': [slice_var]},
+                outputs={},
+                attrs={'file_path': os.path.join(dirname, slice_var_name)})
+
+            dim0 += var[2][0]
+
+    executor.run(prog)
+    print("save optimizer vars done.")
+
+    prog = Program()
+    block = prog.global_block()
+
+    # merge and save
+    for var_name, var_s in optimizer_varmap.items():
+        dim0 = 0
+        start = -1
+        merges = []
+        for idx, var_t in enumerate(var_s):
+            var = var_t[0]
+            start = var_t[1]
+            end = start + var[2][0]
+            endpoint = var_t[2]
+
+            slice_var_name = "{}.recv.{}".format(var[0], idx)
+
+            slice_var = block.create_var(
+                name=slice_var_name,
+                type=var[1],
+                shape=var[2],
+                dtype=var[3],
+                persistable=var[4])
+            merges.append(slice_var)
+
+            block.append_op(
+                type='load',
+                inputs={},
+                outputs={'Out': [slice_var]},
+                attrs={'file_path': os.path.join(dirname, slice_var.name)})
+
+            dim0 += var[2][0]
+
+        var = var_s[0][0]
+        shape = list(var[2])
+        shape[0] = dim0
+        origin_var_name = var[0]
+
+        if start != -1:
+            origin_var = block.create_var(
+                name=var[0],
+                type=var[1],
+                shape=shape,
+                dtype=var[3],
+                persistable=var[4])
+
+            block.append_op(
+                type='concat',
+                inputs={'X': merges},
+                outputs={'Out': origin_var},
+                attrs={})
+        else:
+            origin_var = merges[0]
+        block.append_op(
+            type='save',
+            inputs={'X': [origin_var]},
+            outputs={},
+            attrs={'file_path': os.path.join(dirname, origin_var_name)})
+
+    executor.run(prog)
+    print("save optimizer vars done.")
 
 
 def save_vars(executor,

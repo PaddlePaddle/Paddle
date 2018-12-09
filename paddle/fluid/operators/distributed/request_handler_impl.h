@@ -67,6 +67,23 @@ class RequestGetHandler final : public RequestHandler {
   bool enable_dc_asgd_;
 };
 
+class RequestGetVarWithoutBarrierHandler final : public RequestHandler {
+ public:
+  explicit RequestGetVarWithoutBarrierHandler(bool sync_mode,
+                                              bool enable_dc_asgd = false)
+      : RequestHandler(sync_mode) {
+    enable_dc_asgd_ = enable_dc_asgd;
+  }
+  virtual ~RequestGetVarWithoutBarrierHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
+
+ private:
+  bool enable_dc_asgd_;
+};
+
 static inline void BuildVar(const std::string& param_name,
                             std::initializer_list<const char*> arguments,
                             paddle::framework::proto::OpDesc::Var* var) {

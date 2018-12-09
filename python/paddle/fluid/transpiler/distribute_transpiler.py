@@ -171,7 +171,7 @@ class DistributeTranspiler(object):
             trainer_id = 0
             trainers = 4
             role = os.getenv("PADDLE_TRAINING_ROLE")
-	     
+
             t = fluid.DistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
@@ -528,6 +528,9 @@ class DistributeTranspiler(object):
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
+
+        self.origin_program.optimizer_varmap = self._get_slice_optimizer_vars()
+
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
@@ -652,9 +655,9 @@ class DistributeTranspiler(object):
         # NOTE: assume blocks of the same variable is not distributed
         # on the same pserver, only change param/grad varnames for
         # trainers to fetch.
-        sys.stderr.write("get_pserver_program() is deprecated, call \
-get_pserver_programs() to get pserver main and startup \
-in a single call.")
+        sys.stderr.write(
+            "get_pserver_program() is deprecated, call get_pserver_programs() to get pserver main and startup in a single call.\n"
+        )
         # step1
         pserver_program = Program()
         pserver_program.random_seed = self.origin_program.random_seed
@@ -1016,6 +1019,62 @@ to transpile() call.")
         return slice_vars_and_attrs
 
     # ====================== private transpiler functions =====================
+    def _get_slice_optimizer_vars(self):
+        optimize_vars_map = {}
+        for ep in self.pserver_endpoints:
+            opt_op_on_pserver = []
+            for _, op in enumerate(self.optimize_ops):
+                if self._is_optimizer_op(op) and self._is_opt_op_on_pserver(ep,
+                                                                            op):
+                    opt_op_on_pserver.append(op)
+
+            var_map = {}
+            for var_tuple in self._get_slice_vars_and_attrs(ep).values():
+                var_map[var_tuple[0].name] = var_tuple
+
+            optimize_vars = []
+            for opt_op in opt_op_on_pserver:
+                param_var_tuple = None
+                for key in opt_op.input_names:
+                    if key == "Param":
+                        param_var_tuple = var_map.get(opt_op.input(key)[0])
+                        if not param_var_tuple:
+                            param_var = self.origin_program.global_block().vars[
+                                opt_op.input(key)[0]]
+                            param_var_tuple = (param_var, 0, param_var)
+                        break
+                for key in opt_op.input_names:
+                    new_shape = None
+                    if key in ["Param", "Grad", "LearningRate"]:
+                        continue
+                    var = self.origin_program.global_block().vars[opt_op.input(
+                        key)[0]]
+                    # update accumulator variable shape
+                    new_shape = self._get_optimizer_input_shape(
+                        opt_op.type, key, var.shape, param_var_tuple[2].shape)
+
+                    if new_shape == param_var_tuple[2].shape:
+                        optimize_var = (var.name, var.type, new_shape,
+                                        var.dtype, var.persistable,
+                                        param_var_tuple[1])
+                    else:
+                        optimize_var = (var.name, var.type, new_shape,
+                                        var.dtype, var.persistable, -1)
+                    optimize_vars.append(optimize_var)
+            optimize_vars_map[ep] = optimize_vars
+
+            optimize_map = {}
+
+            for ep, all_vars in optimize_vars_map.items():
+                for var in all_vars:
+                    var_t = (var[0], var[1], var[2], var[3], var[4])
+                    var_e = optimize_map.get(var[0])
+                    var_e = var_e if var_e else []
+                    var_e.append((var_t, var[5], ep))
+                    var_e = sorted(var_e, key=lambda var: var[1])
+                    optimize_map[var[0]] = var_e
+
+        return optimize_map
 
     def _update_dist_lookup_table_vars(self, param_list, grad_list,
                                        params_grads):
@@ -1762,8 +1821,8 @@ to transpile() call.")
                 # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
                     # only param or grads have splited blocks
-                    if self._orig_varname(g.name) in self.grad_name_to_param_name or\
-                        self._orig_varname(g.name) in self.param_name_to_grad_name:
+                    if self._orig_varname(g.name) in self.grad_name_to_param_name or \
+                            self._orig_varname(g.name) in self.param_name_to_grad_name:
                         grad_block = g
                         break
         return grad_block
@@ -1908,7 +1967,7 @@ to transpile() call.")
         for op in block.ops:
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                    role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)

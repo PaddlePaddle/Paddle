@@ -81,10 +81,11 @@ enum class GrpcMethod {
   kGetVariable,
   kPrefetchVariable,
   kCheckpointNotify,
+  kGetVariableWithoutBarrier,
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kCheckpointNotify) + 1;
+    static_cast<int>(GrpcMethod::kGetVariableWithoutBarrier) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
@@ -96,6 +97,8 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/PrefetchVariable";
     case GrpcMethod::kCheckpointNotify:
       return "/sendrecv.SendRecvService/CheckpointNotify";
+    case GrpcMethod::kGetVariableWithoutBarrier:
+      return "/sendrecv.SendRecvService/GetVariableWithoutBarrier";
   }
 
   // Shouldn't be reached.

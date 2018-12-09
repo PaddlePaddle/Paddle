@@ -158,6 +158,49 @@ class RequestGet final : public RequestBase {
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 
+class RequestGetWithoutBarrier final : public RequestBase {
+ public:
+  explicit RequestGetWithoutBarrier(GrpcService::AsyncService* service,
+                                    ::grpc::ServerCompletionQueue* cq,
+                                    RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestGetWithoutBarrier() {}
+
+  std::string GetReqName() override { return request_.varname(); }
+
+  void Process() override {
+    // proc request.
+    std::string in_var_name = request_->Varname();
+    std::string out_var_name = request_->OutVarname();
+    int trainer_id = request_->GetTrainerId();
+    VLOG(4) << "RequestGetWithoutBarrier, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name;
+
+    auto scope = request_handler_->scope();
+    auto invar = scope->FindVar(out_var_name);
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(out_var_name, scope, invar, &outvar, trainer_id);
+
+    if (outvar) {
+      SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
+                            &reply_);
+    }
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+};
+
 class RequestPrefetch final : public RequestBase {
  public:
   explicit RequestPrefetch(GrpcService::AsyncService* service,
@@ -372,6 +415,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {
     b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
+  } else if (rpc_name == kGetVariableWithoutBarrier) {
+    b = new RequestGet(&service_, cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }
