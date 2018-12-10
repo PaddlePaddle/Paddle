@@ -61,6 +61,7 @@ void ExpectEQ(const T* target, const T* refer, int n) {
 // TODO(TJ): remove me
 USE_JITKERNEL_MORE(vmul, mkl);
 USE_JITKERNEL_REFER(vmul);
+USE_JITKERNEL_GEN(vmul);
 
 TEST(JitKernel, vmul) {
   using T = float;

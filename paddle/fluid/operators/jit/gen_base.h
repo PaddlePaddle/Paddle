@@ -15,9 +15,8 @@
 #pragma once
 
 #include <gflags/gflags.h>
-#include <memory>  // for shared_ptr
+#include <memory>  // for unique_ptr
 #include "paddle/fluid/operators/jit/kernel_base.h"
-#include "paddle/fluid/platform/macros.h"
 
 DECLARE_bool(dump_jitcode);
 
@@ -25,29 +24,12 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-// TODO(TJ): make these functions as virtual of a class
-
-// Every JitCode should estimate the code size itself
-template <KernelType KT, typename T, typename Attr>
-size_t CodeSize(Attr attr) {
-  return 4096;
-}
-
-// Every JitCode should have a condition when to use this JitCode
-template <KernelType KT, typename T, typename Attr>
-bool UseJitCode(Attr attr) {
-  return false;
-}
-
-// Every JitCode should have a method to get the key from attribution
-template <typename Attr>
-size_t GetKey(Attr attr);
-
 class GenBase : public Kernel {
  public:
+  virtual ~GenBase() = default;
   virtual const char* name() const = 0;
-  virtual const unsigned char* getCodeInternal() = 0;
   virtual size_t getSize() const = 0;
+  virtual const unsigned char* getCodeInternal() = 0;
   template <typename FUNC>
   const FUNC getCode() {
     const unsigned char* code = this->getCodeInternal();
@@ -61,8 +43,31 @@ class GenBase : public Kernel {
   void dumpCode(const unsigned char* code) const;
 };
 
-template <KernelType KT, typename T, typename Attr>
-std::unique_ptr<GenBase> CreateJitCode(Attr attr);
+// Every JitCode should have a method to get the key from attribution
+template <typename Attr>
+size_t JitCodeKey(Attr attr);
+
+// Creator is used to creat the jitcode and save in pool.
+// Every JitCode should have one creator.
+class GenCreator {
+ public:
+  virtual ~GenCreator() = default;
+};
+
+template <typename Attr>
+class JitCodeCreator : public GenCreator {
+ public:
+  virtual ~JitCodeCreator() = default;
+
+  // condition when this jit code can be used.
+  virtual bool UseMe(const Attr& attr) const = 0;
+
+  // estimate this code size
+  virtual size_t CodeSize(const Attr& attr) const = 0;
+
+  // create this code
+  virtual std::unique_ptr<GenBase> CreateJitCode(const Attr& attr) const = 0;
+};
 
 }  // namespace jit
 }  // namespace operators

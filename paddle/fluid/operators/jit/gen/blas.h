@@ -25,7 +25,18 @@ namespace gen {
 // function: vec = Operand(vec(or scalar), vec(or scalar)) (maybe with relu)
 class VXXJitCode : public JitCode {
  public:
-  const char* name() const override {
+  explicit VXXJitCode(int d, operand_type type, int scalar_index,
+                      bool with_relu, size_t code_size = 256 * 1024,
+                      void* code_ptr = nullptr)
+      : JitCode(code_size, code_ptr),
+        num_(d),
+        type_(type),
+        scalar_index_(scalar_index),
+        with_relu_(with_relu) {
+    this->genCode();
+  }
+
+  virtual const char* name() const {
     std::string base = "VXXJitCode";
     if (scalar_index_ == 1) {
       base += "_Scalar";
@@ -45,15 +56,6 @@ class VXXJitCode : public JitCode {
     base += (with_relu_ ? "_Relu" : "");
     return base.c_str();
   }
-  explicit VXXJitCode(int d, operand_type type, int scalar_index,
-                      bool with_relu, size_t code_size = 256 * 1024,
-                      void* code_ptr = nullptr)
-      : JitCode(code_size, code_ptr),
-        num_(d),
-        type_(type),
-        scalar_index_(scalar_index),
-        with_relu_(with_relu) {}
-  // static bool init(int d, int scalar_index = 0);
   void genCode() override;
 
  private:

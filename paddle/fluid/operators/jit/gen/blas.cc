@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/jit/gen/blas.h"
 #include "paddle/fluid/operators/jit/registry.h"
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -103,17 +104,24 @@ void VXXJitCode::genCode() {
   ret();
 }
 
-}  // namespace gen
-
-template <>
-std::unique_ptr<GenBase> CreateJitCode<KernelType::vmul, float, int>(int attr) {
-  if (UseJitCode<KernelType::vmul, float, int>(attr)) {
-    return make_unique<gen::VMulJitCode>(
-        attr, CodeSize<KernelType::vmul, float, int>(attr));
+class VMulCreator : public JitCodeCreator<int> {
+ public:
+  bool UseMe(const int& attr) const override {
+    return platform::MayIUse(platform::avx);
   }
-  return nullptr;
-}
+  size_t CodeSize(const int& d) const override {
+    return 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
+  }
+  std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
+    return make_unique<VMulJitCode>(attr, CodeSize(attr));
+  }
+};
 
+}  // namespace gen
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
+
+namespace gen = paddle::operators::jit::gen;
+
+REGISTER_JITKERNEL_GEN(vmul, gen::VMulCreator);
