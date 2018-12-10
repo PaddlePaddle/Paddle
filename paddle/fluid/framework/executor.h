@@ -26,7 +26,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 
 template <typename T>
 std::unordered_map<std::string, T> GetNonPersistableReferenceCount(

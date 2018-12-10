@@ -623,6 +623,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
+  void DecreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  }
+
   bool IsRuntime() const override { return true; }
 
  protected:
@@ -688,6 +693,12 @@ static void CheckTensorNANOrInf(const std::string& name,
                  "Tensor %s contains Inf", name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
                  "Tensor %s contains NAN", name);
+}
+
+void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
+                                           const platform::Place& place) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,

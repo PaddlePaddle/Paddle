@@ -42,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/protobuf.h"
@@ -398,7 +399,26 @@ All parameter, weight, gradient are variables in Paddle.
             },
         py::return_value_policy::copy);
 
-  py::class_<Scope>(m, "Scope", "")
+  py::class_<Scope>(m, "Scope", R"DOC(
+    Scope is an association of a name to Variable. All variables belong to Scope.
+
+    Variables in a parent scope can be retrieved from local scope.
+
+    You need to specify a scope to run a Net, i.e., `exe.Run(&scope)`.
+    One net can run in different scopes and update different variable in the
+    scope.
+
+    You can create var in a scope and get it from the scope.
+
+    Examples:
+        .. code-block:: python
+
+          # create tensor from a scope and set value to it.
+          param = scope.var('Param').get_tensor()
+          param_array = np.full((height, row_numel), 5.0).astype("float32")
+          param.set(param_array, place)
+
+        )DOC")
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
@@ -867,6 +887,18 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_trainers_ = num_trainers;
           })
       .def_property(
+          "trainers_endpoints",
+          [](const BuildStrategy &self) { return self.trainers_endpoints_; },
+          [](BuildStrategy &self,
+             const std::vector<std::string> &trainers_endpoints) {
+            self.trainers_endpoints_ = trainers_endpoints;
+          })
+      .def_property("trainer_id",
+                    [](const BuildStrategy &self) { return self.trainer_id_; },
+                    [](BuildStrategy &self, int trainer_id) {
+                      self.trainer_id_ = trainer_id;
+                    })
+      .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
@@ -913,6 +945,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
+  BindAsyncExecutor(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

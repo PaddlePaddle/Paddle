@@ -167,6 +167,19 @@ $$T = A[i]$$
 };
 
 class ReadFromArrayInferShape : public WriteToArrayInferShape {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    WriteToArrayInferShape::operator()(context);
+    if (!context->HasInput("X")) {
+      return;
+    }
+
+    // FIXME: just for compile time.
+    if (!context->IsRuntime()) {
+      context->ShareLoD("X", /*->*/ "Out");
+    }
+  }
+
  protected:
   const char *NotHasXError() const override {
     return "The input array X must be set";
