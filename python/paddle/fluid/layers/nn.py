@@ -4822,7 +4822,8 @@ def hsigmoid(input,
         3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
          means label of each binary classification, using 1 indicate true, 0 indicate false.
         4. now, each word should has its path and code along the path, you can pass a batch of path and code 
-        related to the same batch of inputs.
+        related to the same batch of inputs, usually, we pass context words as inputs and send their target words' path and code
+        as path_code and path_table.
 
 
     Args:
@@ -4845,11 +4846,11 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+        path_table: (Variable|None) this variable can store each batch of target-word of samples' path to root, 
             it should be in leaf -> root order
             path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
             structure and each element in this array is indexes in parent nodes' Weight Matrix. 
-        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+        path_code:  (Variable|None) this variable can store each batch of target-word of samples' code, 
             each code consist with every code of parent nodes. it should be in leaf -> root order
         is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
              set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
