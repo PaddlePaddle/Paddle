@@ -569,7 +569,6 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
 }
 
 void AsyncExecutorThreadWorker::PushSparse(int table_id) {
-
     auto slot_dim = _param_config->slot_dim; //TODO
     auto fea_dim = _param_config->fea_dim;//_current_train_job.fea_dim();TODO
     auto& features = _features[table_id];
@@ -592,19 +591,20 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
         }
         Variable* g_var = thread_scope_->FindVar(_param_config->gradient_var[table_id][slot_idx - 1]);
         LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
-        //int count = g_tensor->numel();
-        float* g = g_tensor->data<float>();
-        /*
-        if (FLAGS_scale_sparse_gradient_with_batch_size) {
-            Eigen::Map<Eigen::MatrixXf> g_mat(g, 1, tensor->numel());
-            g_mat *= _batch_size;
+        if (g_tensor == NULL) {
+            LOG(ERROR) << "var[" << _param_config->gradient_var[table_id][slot_idx - 1] << "] not found";
+            exit(-1);
         }
-        */
+        float* g = g_tensor->data<float>();
 
         Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        if (tensor == NULL) {
+            LOG(ERROR) << "var[" << feed_vec[slot_idx] << "] not found";
+            exit(-1);
+        }
         int len = tensor->lod()[0].back();
-        //assert(slot_dim * len == count);
+        assert(slot_dim * len == g_tensor->numel());
         int64_t* ids = tensor->data<int64_t>();
         for (auto id_idx = 0u; id_idx < len; ++id_idx){
             if (ids[id_idx] == 0) {

@@ -151,7 +151,10 @@ class AsyncExecutor(object):
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, debug)
-        self.instance.barrier_all()
+        self.instance.barrier_all() #worker do all things
+        if self.instance.is_first_worker():
+            self.executor.stop_server()
+        self.instance.barrier_all() #sync
 
     def config_distributed_nodes(self, dist_opt):
 
@@ -164,6 +167,9 @@ class AsyncExecutor(object):
     def get_instance(self):
         return self.instance
 
+    #def stop_server(self):
+    #    self.executor.stop_server()
+
     def init_server(self, dist_desc):
         self.executor.init_server(dist_desc, self.instance._rankid)
         ip = self.executor.start_server()
@@ -174,6 +180,7 @@ class AsyncExecutor(object):
         self.instance.barrier_all() #wait all worker start
         self.instance.barrier_all() #wait init model
         self.instance.barrier_all() #wait worker do all things 
+        self.instance.barrier_all() #sync
 
     def init_worker(self, dist_desc):
         self.instance.barrier_all() #wait all server start

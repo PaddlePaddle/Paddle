@@ -83,6 +83,10 @@ uint64_t AsyncExecutor::StartServer() {
     return _pslib_ptr->run_server();
 }
 
+void AsyncExecutor::StopServer() {
+    _pslib_ptr->stop_server();
+}
+
 void AsyncExecutor::GatherServers(std::vector<uint64_t>& host_sign_list, int node_num) {
     _pslib_ptr->gather_servers(host_sign_list.data(), node_num);
 }

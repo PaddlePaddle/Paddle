@@ -67,6 +67,7 @@ class AsyncExecutor {
   void InitWorker(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index);
   //void ConfigWorker() {}
   uint64_t StartServer();
+  void StopServer();
   void GatherServers(std::vector<uint64_t>& host_sign_list, int node_num);
   void InitModel();
   void SaveModel(const std::string& path);
