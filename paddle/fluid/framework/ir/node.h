@@ -108,18 +108,6 @@ class Node {
            Name().find(ir::Node::kControlDepVarName) != std::string::npos;
   }
 
-  // RuntimeHasAttr is different with HasAttr now.
-  // 1. For Op()->HasAttr(), it judges whether a stored program_desc_ has attr,
-  // thus, if stored program_desc_ are old which don't have an attr, a new
-  // library which adds the attr already will fail on this function.
-  // Details:
-  // https://github.com/PaddlePaddle/Paddle/pull/14608#issuecomment-442309087
-  // 2. For Op()->RuntimeHasAttr, it judges the attr in runtime to avoid above
-  // problem.
-  // TODO(luotao): Maybe we should enhance HasAttr later, instead of adding
-  // RuntimeHasAttr.
-  bool RuntimeHasAttr(const std::string& name) const;
-
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
