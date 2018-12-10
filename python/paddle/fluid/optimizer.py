@@ -477,7 +477,7 @@ class LarsMomentumOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
-        
+
 
     Examples:
         .. code-block:: python
@@ -739,26 +739,27 @@ class AdamOptimizer(Optimizer):
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        for param, grad in param_and_grads:
-            if grad is None:
-                continue
-            with param.block.program._optimized_guard(
-                [param, grad]), name_scope("optimizer"):
-                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                                      param)
-                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                                      param)
-                main_block.append_op(
-                    type="scale",
-                    inputs={"X": beta1_pow_acc},
-                    outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1})
+        #  for param, grad in param_and_grads:
 
-                main_block.append_op(
-                    type="scale",
-                    inputs={"X": beta2_pow_acc},
-                    outputs={"Out": beta2_pow_acc},
-                    attrs={"scale": self._beta2})
+    #  if grad is None:
+    #  continue
+    #  with param.block.program._optimized_guard(
+    #  [param, grad]), name_scope("optimizer"):
+    #  beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+    #  param)
+    #  beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+    #  param)
+    #  main_block.append_op(
+    #  type="scale",
+    #  inputs={"X": beta1_pow_acc},
+    #  outputs={"Out": beta1_pow_acc},
+    #  attrs={"scale": self._beta1})
+
+    #  main_block.append_op(
+    #  type="scale",
+    #  inputs={"X": beta2_pow_acc},
+    #  outputs={"Out": beta2_pow_acc},
+    #  attrs={"scale": self._beta2})
 
 
 class AdamaxOptimizer(Optimizer):
