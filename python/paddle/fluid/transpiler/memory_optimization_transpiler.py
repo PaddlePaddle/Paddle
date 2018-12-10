@@ -487,6 +487,7 @@ def memory_optimize(input_program,
         else:
             skip_opt_set.update(grad_set)
     cfgs = _get_cfgs(input_program)
+    input_program.is_optimized = True
     for cfg in cfgs:
         cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
 
@@ -506,5 +507,6 @@ def release_memory(input_program, skip_opt_set=None):
         None
     """
     cfgs = _get_cfgs(input_program)
+    input_program.is_optimized = True
     for cfg in cfgs:
         cfg.release_memory(skip_opt_set=skip_opt_set)

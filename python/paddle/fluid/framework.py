@@ -1444,6 +1444,13 @@ class Program(object):
         self._endpoints = []
         self._trainers_endpoints = []
         self._distributed_lookup_table = None
+        self._is_optimized = False
+
+    @property
+    def is_optimized(self):
+        # if the program is optimized, operator input/outputs
+        # maybe same, which conflict with save_inference_model.
+        return self._is_optimized
 
     @property
     def op_role(self):
