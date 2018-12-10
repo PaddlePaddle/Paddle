@@ -378,6 +378,18 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1)
 
+        # Wait until trainer process terminate
+        while True:
+            stat0 = tr0_proc.poll()
+            time.sleep(0.1)
+            if stat0 is not None:
+                break
+        while True:
+            stat1 = tr1_proc.poll()
+            time.sleep(0.1)
+            if stat1 is not None:
+                break
+
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
 
@@ -390,11 +402,21 @@ class TestDistBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
+        # print server log
+        with open("/tmp/ps0_err.log", "r") as fn:
+            sys.stderr.write("ps0 stderr: %s\n" % fn.read())
+        with open("/tmp/ps1_err.log", "r") as fn:
+            sys.stderr.write("ps1 stderr: %s\n" % fn.read())
+
         # print log
-        sys.stderr.write('trainer 0 stdout: %s\n' % pickle.loads(tr0_out))
-        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_out))
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+        if stat0 == 0:
+            sys.stderr.write('trainer 0 stdout: %s\n' % pickle.loads(tr0_out))
+        with open("/tmp/tr0_err.log", "r") as fn:
+            sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
+        if stat1 == 0:
+            sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_out))
+        with open("/tmp/tr1_err.log", "r") as fn:
+            sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
@@ -474,6 +496,7 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1"
