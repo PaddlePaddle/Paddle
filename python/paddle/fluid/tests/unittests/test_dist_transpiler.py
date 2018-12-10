@@ -769,6 +769,7 @@ class TestNCCL2Transpile(TranspilerTest):
 
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
+            config.wait_port = False
             t = fluid.DistributeTranspiler(config=config)
             t.transpile(
                 0,

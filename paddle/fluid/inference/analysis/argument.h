@@ -103,6 +103,7 @@ struct Argument {
   // Model specified with program and parameters files.
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
+  DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -118,7 +119,11 @@ struct Argument {
   DECL_ARGUMENT_FIELD(analysis_passes, AnalysisPasses,
                       std::vector<std::string>);
 
-  // Some fields passed from AnalysisConfig
+  // Pass a set of op types to enable its mkldnn kernel
+  DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
+                      std::unordered_set<std::string>);
+
+  // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);

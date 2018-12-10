@@ -49,12 +49,17 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   cpu_math_library_num_threads_ = other.cpu_math_library_num_threads_;
   // fields from this.
   enable_ir_optim = other.enable_ir_optim;
+  // For mkldnn
+  use_mkldnn_ = other.use_mkldnn_;
+  mkldnn_enabled_op_types_ = other.mkldnn_enabled_op_types_;
+
   use_feed_fetch_ops = other.use_feed_fetch_ops;
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
   enable_memory_optim_ = other.enable_memory_optim_;
   memory_optim_force_update_ = other.memory_optim_force_update_;
+  model_from_memory_ = other.model_from_memory_;
 
   if (use_gpu) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -98,6 +103,14 @@ void contrib::AnalysisConfig::Build() const {
   if (enable_memory_optim_) {
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
+}
+void contrib::AnalysisConfig::SetModelBuffer(const char *prog_buffer,
+                                             size_t prog_buffer_size,
+                                             const char *param_buffer,
+                                             size_t param_buffer_size) {
+  prog_file = std::string(prog_buffer, prog_buffer + prog_buffer_size);
+  param_file = std::string(param_buffer, param_buffer + param_buffer_size);
+  model_from_memory_ = true;
 }
 
 }  // namespace paddle

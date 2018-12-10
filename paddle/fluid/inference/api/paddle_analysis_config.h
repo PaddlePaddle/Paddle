@@ -16,6 +16,7 @@
 #include <cassert>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 // Here we include some header files with relative paths, for that in deploy,
@@ -51,9 +52,15 @@ struct AnalysisConfig : public NativeConfig {
   bool use_tensorrt() const { return use_tensorrt_; }
 
   void EnableMKLDNN();
-  // NOTE this is just for internal development, please not use it.
-  // NOT stable yet.
   bool use_mkldnn() const { return use_mkldnn_; }
+  void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
+    mkldnn_enabled_op_types_ = op_list;
+  }
+
+  // Specify the memory buffer of program and parameter
+  void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
+                      const char* program_buffer, size_t program_buffer_size);
+  bool model_from_memory() const { return model_from_memory_; }
 
   void EnableMemoryOptim(bool force_update_cache = false);
   bool enable_memory_optim() const;
@@ -67,9 +74,11 @@ struct AnalysisConfig : public NativeConfig {
   bool use_mkldnn_{false};
   bool enable_memory_optim_{false};
   bool memory_optim_force_update_{false};
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
   int tensorrt_workspace_size_;
   int tensorrt_max_batchsize_;
   std::unique_ptr<PassStrategy> pass_builder_;
+  bool model_from_memory_{false};
 };
 
 // Configurations for Anakin engine.
