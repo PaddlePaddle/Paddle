@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/prepare_executor.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -109,9 +110,10 @@ bool NativePaddlePredictor::Init(
     return false;
   }
 
-  ctx_ = executor_->Prepare(*inference_program_, 0);
-  executor_->CreateVariables(*inference_program_,
-                             sub_scope_ ? sub_scope_ : scope_.get(), 0);
+  framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
+  inference::api::details::PrepareExecutor(
+      inference_program_.get(), executor_.get(), scope, &place_, &ctx_);
+  executor_->CreateVariables(*inference_program_, scope, 0);
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
@@ -143,7 +145,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Run the inference program
   // if share variables, we need not create variables
   VLOG(4) << "Run prepared context";
-  executor_->RunPreparedContext(ctx_.get(), scope,
+  executor_->RunPreparedContext(ctx_[0].get(), scope,
                                 false, /* don't create local scope each time*/
                                 false /* don't create variable each time */);
   VLOG(4) << "Finish prepared context";
@@ -297,6 +299,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);
       VLOG(3) << "set flag: " << flag;
+      flags.push_back("--scratch_kernel_type=1");
       framework::InitGflags(flags);
     }
   }

@@ -30,6 +30,8 @@ DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
+DEFINE_bool(scratch_kernel_type, false,
+            "Whether to save choosed kernel type in the operator.");
 
 namespace paddle {
 namespace framework {
@@ -139,7 +141,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << place << " " << DebugStringEx(&scope);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -159,7 +161,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } else {
     RunImpl(scope, place);
   }
-  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -701,12 +702,13 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
-  this->InferShape(&infer_shape_ctx);
+void OperatorWithKernel::ChooseKernel(
+    const Scope& scope, const platform::Place& place,
+    std::shared_ptr<OpKernelType>* kernel_type,
+    std::shared_ptr<OpKernelFunc>* kernel_func) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
+  VLOG(3) << "type: " << Type() << ", kernel_type is not set.";
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
@@ -745,20 +747,44 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
+  kernel_type->reset(new OpKernelType(expected_kernel_key));
+  kernel_func->reset(new OpKernelFunc(kernel_iter->second));
+}
+
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place) const {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
+
+  std::shared_ptr<OpKernelType> kernel_type = kernel_type_;
+  std::shared_ptr<OpKernelFunc> kernel_func = kernel_func_;
+  if (!kernel_type_) {
+    if (FLAGS_scratch_kernel_type) {
+      ChooseKernel(scope, place, &kernel_type_, &kernel_func_);
+      kernel_type = kernel_type_;
+      kernel_func = kernel_func_;
+    } else {
+      ChooseKernel(scope, place, &kernel_type, &kernel_func);
+    }
+  }
+
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      TryTransferData(scope, expected_kernel_key, &transfered_inplace_vars);
+  Scope* transfer_scope =
+      TryTransferData(scope, *kernel_type, &transfered_inplace_vars);
 
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
 
-  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(expected_kernel_key.place_);
+  if (!(kernel_type->place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(kernel_type->place_);
   }
 
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  (*kernel_func)(ExecutionContext(*this, exec_scope, *dev_ctx));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -782,6 +808,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
   }
 }
+
 void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {

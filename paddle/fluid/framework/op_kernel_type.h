@@ -62,6 +62,12 @@ class OpKernelType {
     size_t operator()(const OpKernelType& key) const;
   };
 
+  OpKernelType(const OpKernelType& copy)
+      : data_type_(copy.data_type_),
+        data_layout_(copy.data_layout_),
+        place_(copy.place_),
+        library_type_(copy.library_type_) {}
+
   size_t hash_key() const { return Hash()(*this); }
 
   bool operator==(const OpKernelType& o) const;
