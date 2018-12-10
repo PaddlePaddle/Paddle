@@ -437,13 +437,11 @@ EOF
         export http_proxy=
         export https_proxy=
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $1
+        ctest --output-on-failure -j $2
         # make install should also be test when unittest
         make install -j 8
         if [ "$1" == "cp27-cp27m" ]; then
             pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-            set -e
-            python -c "import paddle.fluid"
         elif [ "$1" == "cp35-cp35m" ]; then
             pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp36-cp36m" ]; then
@@ -918,7 +916,7 @@ function main() {
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
-        run_mac_test ${PROC_RUN:-1}
+        run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
