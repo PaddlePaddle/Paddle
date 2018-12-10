@@ -159,7 +159,7 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=['libwarpctc' + ext_name]
+package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 if '${WITH_MKL}' == 'ON':

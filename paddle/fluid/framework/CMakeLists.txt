@@ -14,7 +14,7 @@ function(windows_symbolic TARGET)
 
     file(GENERATE OUTPUT ${final_path}/.${src}.cu INPUT ${final_path}/${src}.cc)
 
-    add_custom_target(TARGET ${TARGET} PRE_BUILD
+    add_custom_target(${TARGET} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E remove ${final_path}/.${src}.cu
             COMMAND ${CMAKE_COMMAND} -E copy "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
             COMMENT "create hidden file of ${src}.cu")
