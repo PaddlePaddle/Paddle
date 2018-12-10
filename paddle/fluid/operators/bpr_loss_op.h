@@ -41,17 +41,17 @@ class BprLossOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-    auto* label_pos = ctx.Input<Tensor>("LabelPos");
+    auto* label = ctx.Input<Tensor>("Label");
     auto* y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
     int rank = x->dims().size();
 
     Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_Pos_2d = framework::ReshapeToMatrix(*label_pos, rank - 1);
+    Tensor labels_2d = framework::ReshapeToMatrix(*label, rank - 1);
     Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
 
     const framework::Tensor* logits = &x_2d;
-    const framework::Tensor* labels_pos = &labels_Pos_2d;
+    const framework::Tensor* labels = &labels_2d;
     framework::Tensor* out = &y_2d;
 
     const int step_size = logits->dims()[0];
@@ -59,9 +59,9 @@ class BprLossOpKernel : public framework::OpKernel<T> {
     const T* logits_data = logits->data<T>();
     T* loss_data = out->data<T>();
 
-    const int64_t* label_pos_data = labels_pos->data<int64_t>();
+    const int64_t* label_data = labels->data<int64_t>();
     for (int i = 0; i < step_size; ++i) {
-      int lbl_pos = label_pos_data[i];
+      int lbl_pos = label_data[i];
       PADDLE_ENFORCE_GE(lbl_pos, 0);
       PADDLE_ENFORCE_LT(lbl_pos, class_num);
       int index_pos = i * class_num + lbl_pos;
@@ -84,7 +84,7 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* label_pos = ctx.Input<Tensor>("LabelPos");
+    auto* label = ctx.Input<Tensor>("Label");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     const int step_size = x->dims()[0];
@@ -92,16 +92,16 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
     const T* dy_data = dy->data<T>();
     const T* x_data = x->data<T>();
-    const int64_t* label_pos_data = label_pos->data<int64_t>();
+    const int64_t* label_data = label->data<int64_t>();
 
     for (size_t sample_id = 0; sample_id < step_size; sample_id++) {
       for (size_t x_offset = sample_id * num_classes;
            x_offset < (sample_id + 1) * num_classes; x_offset++) {
         dx_data[x_offset] = static_cast<T>(0);
       }
-      auto p_index = sample_id * num_classes + label_pos_data[sample_id];
+      auto p_index = sample_id * num_classes + label_data[sample_id];
       for (size_t ni = 0; ni < num_classes; ni++) {
-        if (label_pos_data[sample_id] == ni) continue;
+        if (label_data[sample_id] == ni) continue;
         auto n_index = sample_id * num_classes + ni;
         auto grad_ = -dy_data[sample_id] /
                      ((num_classes - 1) *

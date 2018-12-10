@@ -28,18 +28,17 @@ class TestBprLossOp1(OpTest):
         batch_size = 40
         class_num = 5
         X = randomize_probability(batch_size, class_num, dtype='float64')
-        label_pos = np.random.randint(
-            0, class_num, (batch_size, 1), dtype="int64")
+        label = np.random.randint(0, class_num, (batch_size, 1), dtype="int64")
         bpr_loss_result = []
         for i in range(batch_size):
             sum = 0.0
             for j in range(class_num):
-                if j == label_pos[i][0]:
+                if j == label[i][0]:
                     continue
-                sum += (-np.log(1.0 + np.exp(X[i][j] - X[i][label_pos[i][0]])))
+                sum += (-np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]])))
             bpr_loss_result.append(-sum / (class_num - 1))
         bpr_loss = np.asmatrix([[x] for x in bpr_loss_result], dtype="float64")
-        self.inputs = {"X": X, "LabelPos": label_pos}
+        self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": bpr_loss}
 
     def test_check_output(self):
