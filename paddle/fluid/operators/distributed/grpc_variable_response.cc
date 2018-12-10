@@ -301,6 +301,20 @@ int GRPCVariableResponse::Parse(Source* source) {
         meta_.set_trainer_id(trainer_id);
         break;
       }
+      case sendrecv::VariableMessage::kTableNameFieldNumber: {
+        uint32_t length;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
+          return tag;
+        }
+
+        std::string temp;
+        if (!input.ReadString(&temp, length)) {
+          return tag;
+        }
+
+        meta_.set_table_name(temp);
+        break;
+      }
       default: {
         // Unknown tag, return unknown error.
         return -1;
