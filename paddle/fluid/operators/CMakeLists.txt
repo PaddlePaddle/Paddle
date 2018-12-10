@@ -82,7 +82,7 @@ endif()
 # op_library(unstack_op DEPS stack_op)
 # op_library(tensor_array_to_tensor_op DEPS concat_op)
 
-set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
+set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS} python pybind)
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
