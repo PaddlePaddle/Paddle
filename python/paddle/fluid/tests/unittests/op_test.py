@@ -21,6 +21,7 @@ import six
 import time
 import itertools
 import collections
+import contextlib
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -38,6 +39,22 @@ def randomize_probability(batch_size, class_num, dtype='float32'):
     for i in six.moves.xrange(len(prob)):
         prob[i] /= prob_sum[i]
     return prob
+
+
+def get_places():
+    places = [core.CPUPlace()]
+    if core.is_compiled_with_cuda():
+        places.append(core.CUDAPlace(0))
+    return places
+
+
+@contextlib.contextmanager
+def prog_scope_guard(main_prog, startup_prog):
+    scope = fluid.core.Scope()
+    with fluid.unique_name.guard():
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(main_prog, startup_prog):
+                yield
 
 
 def get_numeric_gradient(place,
