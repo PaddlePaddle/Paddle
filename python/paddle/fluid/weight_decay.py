@@ -43,7 +43,7 @@ def append_weight_decay(param_and_grads, weight_decay=None):
         weight_decay(param_and_grads)
     yield
     if weight_decay is not None:
-        weight_decay.decay()
+        weight_decay.apply()
 
 
 class WeightDecayBase(object):
@@ -53,7 +53,7 @@ class WeightDecayBase(object):
     def __call__(self, params_and_grads):
         raise NotImplementedError()
 
-    def decay(self):
+    def apply(self):
         raise NotImplementedError()
 
 
@@ -96,16 +96,15 @@ class WeightDecay(WeightDecayBase):
             # If no gradient then we don't need to do anything
             if grad is None:
                 continue
-            if self.attempt_decay_param_fun_ is not None and not self.attempt_decay_param_fun_(
-                    param.name):
+            if self.attempt_decay_param_fun_ is not None \
+                    and not self.attempt_decay_param_fun_(param.name):
                 continue
 
             coeff = self.coeff_
-            if isinstance(
-                    coeff,
-                    float) and param.dtype is not core.VarDesc.VarType.FP32:
-                coeff = framework.convert_dtype_np_dtype_to_(param.dtype)(
-                    self.coeff_)
+            if isinstance(coeff, float) and \
+                            param.dtype is not core.VarDesc.VarType.FP32:
+                dtype = framework.convert_dtype_np_dtype_to_(param.dtype)
+                coeff = dtype(self.coeff_)
 
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
@@ -113,7 +112,7 @@ class WeightDecay(WeightDecayBase):
                 self.scaled_params_[param.name] = (param, grad, param * coeff)
                 self.params_name_.append(param.name)
 
-    def decay(self):
+    def apply(self):
         """
         Update the optimized parameters.
         """
