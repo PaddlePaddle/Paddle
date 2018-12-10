@@ -46,14 +46,20 @@ class DownpourSGD(object):
         sparse_table_index = 0
         # currently merge all dense parameters into one dense table
         dense_table_index = 1
+        params = []
+        grads = []
+        for i in params_grads:
+            params.append(i[0])
+        for i in params_grads:
+            grads.append(i[1])
         server.add_sparse_table(sparse_table_index, self.learning_rate_,
                                 prefetch_slots, prefetch_slots_emb)
         server.add_dense_table(dense_table_index, self.learning_rate_, 
-                               params_grads[0], params_grads[1])
+                               params, grads)
         worker.add_sparse_table(sparse_table_index, self.learning_rate_,
                                 prefetch_slots, prefetch_slots_emb)
         worker.add_dense_table(dense_table_index, self.learning_rate_, 
-                               params_grads[0], params_grads[1])
+                               params, grads)
         ps_param = pslib.PSParameter()
         ps_param.server_param.CopyFrom(server.get_desc())
         ps_param.trainer_param.CopyFrom(worker.get_desc())
@@ -61,4 +67,4 @@ class DownpourSGD(object):
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
         ps_param_str = text_format.MessageToString(ps_param)
-        return [ps_param_str, worker_skipped_ops]
+        return [ps_param, worker_skipped_ops]
