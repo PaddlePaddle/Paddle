@@ -97,7 +97,7 @@ void ExecutorThreadWorker::SetDevice() {
   static unsigned concurrency_cap = std::thread::hardware_concurrency();
   int thread_id = this->thread_id_;
 
-  if (thread_id < static_cast<int>(concurrency_cap)) {
+  if (static_cast<unsigned>(thread_id) < concurrency_cap) {
     unsigned proc = thread_id;
 
     cpu_set_t mask;

@@ -43,13 +43,13 @@ set(SHARED_INFERENCE_SRCS
 
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
-    analysis_config paddle_pass_builder)
+              prepare_executor analysis_config paddle_pass_builder)
   if(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_fluid ${cuda_modules})
   endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
-  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
-    analysis_config paddle_pass_builder)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
+             zero_copy_tensor reset_tensor_array prepare_executor analysis_config paddle_pass_builder)
 endif(WIN32)
 
 if(NOT APPLE)

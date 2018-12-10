@@ -111,8 +111,8 @@ bool NativePaddlePredictor::Init(
   }
 
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
-  inference::api::details::PrepareExecutor(
-      inference_program_.get(), executor_.get(), scope, &place_, &ctx_);
+  inference::api::details::PrepareExecutor(inference_program_.get(),
+                                           executor_.get(), scope, &ctx_);
   executor_->CreateVariables(*inference_program_, scope, 0);
 
   // Get the feed_target_names and fetch_target_names
