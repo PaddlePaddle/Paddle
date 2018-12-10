@@ -47,6 +47,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
@@ -985,6 +986,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
+
+  BindGraph(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
