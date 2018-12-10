@@ -80,8 +80,8 @@ class ConcatPrimitiveFactory {
   concat CreateConcatPrimitive(const concat::primitive_desc& concat_pd,
                                Tensor* output, platform::CPUPlace place) {
     CreateSourcePrimitiveAts();
-    auto dst_mem = CreateDstMemory(concat_pd, output, place);
-    return concat(concat_pd, inputs, dst_mem);
+    dst_mem = CreateDstMemory(concat_pd, output, place);
+    return concat(concat_pd, inputs, dst_mem.get());
   }
 
  private:
@@ -118,7 +118,8 @@ class ConcatPrimitiveFactory {
   std::vector<memory::primitive_desc> srcs_pd;
   std::vector<memory> srcs;
   std::vector<primitive::at> inputs;
-};
+  boost::optional<memory> dst_mem;  // TODO(mgallus): change to std::optional
+};                                  // upon introduction of C++17 to paddle
 
 template <typename T>
 class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
