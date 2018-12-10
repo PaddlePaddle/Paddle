@@ -9117,7 +9117,8 @@ def psroi_pool(input, rois, output_channels, spatial_scale, pooled_height,
         raise TypeError("pooled_height must be int type")
     if not isinstance(pooled_width, int):
         raise TypeError("pooled_width must be int type")
-    out = helper.create_tmp_variable(dtype=helper.input_type())
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='psroi_pool',
         inputs={'X': input,
