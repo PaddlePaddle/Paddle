@@ -188,9 +188,15 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_dam, profile) {
+void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+    std::unordered_set<std::string> op_list = {"conv3d"};
+    cfg.SetMKLDNNOp(op_list);
+  }
 
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -209,6 +215,11 @@ TEST(Analyzer_dam, profile) {
   }
 }
 
+TEST(Analyzer_dam, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_dam, fuse_statis) {
   contrib::AnalysisConfig cfg;
@@ -222,9 +233,14 @@ TEST(Analyzer_dam, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_dam, compare) {
-  contrib::AnalysisConfig cfg;
+void compare(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
   SetConfig(&cfg);
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+    std::unordered_set<std::string> op_list = {"conv3d"};
+    cfg.SetMKLDNNOp(op_list);
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -232,6 +248,11 @@ TEST(Analyzer_dam, compare) {
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
+
+TEST(Analyzer_dam, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 }  // namespace inference
 }  // namespace paddle
