@@ -108,12 +108,11 @@ class TestWeightDecay(unittest.TestCase):
 
             avg_cost = model(data, label, len(self.word_dict))
 
-            weight_decay = fluid.weight_decay.WeightDecay(
-                fluid.default_main_program(), coeff=0.1)
-
-            optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
-
-            weight_decay.decay()
+            learning_rate = 0.1
+            optimizer = fluid.optimizer.Adagrad(
+                learning_rate=learning_rate,
+                weight_decay=fluid.weight_decay.WeightDecay(
+                    coeff=learning_rate))
 
             optimizer.minimize(avg_cost)
             param_sum = self.run_program(place, [data, label])

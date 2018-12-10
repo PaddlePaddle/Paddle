@@ -13,79 +13,113 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import contextlib
 from . import layers
 from . import framework
 
 __all__ = ['WeightDecay', ]
 
 
+@contextlib.contextmanager
+def append_weight_decay(param_and_grads, weight_decay=None):
+    """Add decay for the weight.
+
+    Creates and appends weight decay operators in the BlockDesc.
+    This will update the optimized parameters by using the
+    parameters before optimization.
+
+    Args:
+        param_and_grads: A list of (parameters, gradients) pairs
+            that need to be updated.
+        weight_decay(WeightDecayBase): A WeightDecay Objection, such as
+            fluid.weight_decay.WeightDecay.
+
+    Raises:
+        Exception: Unknown weight decay type.
+    """
+
+    if weight_decay is not None:
+        weight_decay(param_and_grads)
+    yield
+
+    if weight_decay is not None:
+        weight_decay.decay()
+
+
 class WeightDecayBase(object):
     def __str__(self):
         raise NotImplementedError()
 
-    def _append_weight_decay_op(self, param):
+    def __call__(self, params_and_grads):
+        raise NotImplementedError()
+
+    def decay(self):
         raise NotImplementedError()
 
 
 class WeightDecay(WeightDecayBase):
     """
-    WeightDecay is used to decay the weight.
-
-    Given a tensor t, this operation clips its value to min and max inplace.
-
-    - Any values less than min are set to min.
-    - Any values greater than max are set to max.
+    WeightDecay is used to update the optimized parameters by using the
+    parameters before optimization.
 
     Args:
-        max (float): The maximum value to clip by.
-        min (float, optional): The minimum value to clip by. if not set by user, \
-        will be set to -max by framework.
+        coeff (float|Variable): The maximum value to clip by.
+        attempt_decay_param_fun (function|None): If it is not None,
+            only variables that makes attempt_decay_param_fun(variable)==True
+            will be updated. It only works when we want to specify variables.
+            Default: None.
 
     Examples:
         .. code-block:: python
-
-            var = fluid.framework.Variable(..., error_clip=ErrorClipByValue(max=5.0), ...)
+            learning_rate = 0.1
+            optimizer = fluid.optimizer.Adagrad(
+                learning_rate=learning_rate,
+                weight_decay=fluid.weight_decay.WeightDecay(
+                    coeff=learning_rate))
     """
 
-    def __init__(self,
-                 main_program=None,
-                 attempt_decay_param_fun=None,
-                 coeff=0.0):
-
-        if main_program is None:
-            main_program = fluid.default_main_program()
-
-        self.param_list_ = main_program.block(0).all_parameters()
-        self.scaled_params_ = dict()
-        self.params_name_ = []
-        self.attempt_decay_param_fun_ = attempt_decay_param_fun
+    def __init__(self, coeff=0.0, attempt_decay_param_fun=None):
 
         if not isinstance(coeff, float) and \
                 not isinstance(coeff, framework.Variable):
             raise TypeError("coeff should be float or Variable.")
 
-        for p in self.param_list_:
-            assert isinstance(p, framework.Parameter)
-            if self.attempt_decay_param_fun_ is not None and not self.attempt_decay_param_fun_(
-                    p.name):
+        self.scaled_params_ = dict()
+        self.params_name_ = []
+        self.attempt_decay_param_fun_ = attempt_decay_param_fun
+        self.coeff_ = coeff
+
+    def __call__(self, params_and_grads):
+        if self.coeff_ == 0.0:
+            return
+        for param, grad in params_and_grads:
+            # If no gradient then we don't need to do anything
+            if grad is None:
                 continue
 
-            with framework.name_scope('weight_decay'):
-                assert p.name not in self.params_name_
-                self.scaled_params_[p.name] = (p, p * coeff)
-                self.params_name_.append(p.name)
+            assert isinstance(param, framework.Parameter)
+            if self.attempt_decay_param_fun_ is not None and not self.attempt_decay_param_fun_(
+                    param.name):
+                continue
+
+            with param.block.program._optimized_guard(
+                [param, grad]), framework.name_scope('weight decay'):
+                assert param.name not in self.params_name_
+                self.scaled_params_[param.name] = (param, grad,
+                                                   param * self.coeff_)
+                self.params_name_.append(param.name)
 
     def decay(self):
-        """Add weight decay ops to network
-
         """
+        Update the optimized parameters.
+        """
+        if self.coeff_ == 0.0:
+            return
         for p_name in self.scaled_params_.keys():
-            with framework.name_scope('weight_decay'):
-                layers.elementwise_sub(
-                    x=self.scaled_params_[p_name][0],
-                    y=self.scaled_params_[p_name][1],
-                    out=self.scaled_params_[p_name][0])
+            param, grad, scaled_param = self.scaled_params_[p_name]
+            with param.block.program._optimized_guard(
+                [param, grad]), framework.name_scope('weight decay'):
+                layers.elementwise_sub(x=param, y=scaled_param, out=param)
 
     def __str__(self):
         info = "Weight Decay, params: "
