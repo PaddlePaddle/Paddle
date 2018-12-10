@@ -26,10 +26,18 @@ namespace ir {
 class ConvBiasFusePass : public FusePassBase {
  public:
   virtual ~ConvBiasFusePass() {}
+  virtual bool is_conv3d() const { return false; }
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
   const std::string name_scope_{"conv_bias_mkldnn_fuse"};
+};
+/*
+* Fuse the Conv3D and Elementwise_add to a Conv3DBiasOp.
+*/
+class Conv3DBiasFusePass : public ConvBiasFusePass {
+ public:
+  bool is_conv3d() const override { return true; }
 };
 }  // namespace ir
 }  // namespace framework
