@@ -1040,19 +1040,15 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
-    def _var_recursive(self, name):
+    def _find_var_recursive(self, name):
         """
         Get a Variable by name from this block recursively.
 
         Args:
             name(str): the Variable's name.
 
-        Raises:
-            ValueError: this block and this parent block doesn't
-                have a Variable with the giving name.
-
         Returns:
-            Variable: the Variable with the giving name.
+            Variable: the Variable with the giving name. Or None if not found.
         """
         frontier = list()
         visited = set()
@@ -1078,8 +1074,27 @@ class Block(object):
                 frontier.append(prog.block(cur.forward_block_idx))
 
             visited.add(id(cur))
+        return None
 
-        raise ValueError("Var {0} is not found recursively".format(name))
+    def _var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
+        var = self._find_var_recursive(name)
+        if var:
+            return var
+        else:
+            raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
