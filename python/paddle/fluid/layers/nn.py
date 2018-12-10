@@ -18,10 +18,12 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import six
 import os
+import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable, OpProtoHolder
+from ..framework import Variable, OpProtoHolder, Program
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat
@@ -172,6 +174,7 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
+    'py_func',
 ]
 
 kIgnoreIndex = -100
@@ -9081,4 +9084,111 @@ def get_tensor_from_selected_rows(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={})
+    return out
+
+
+@templatedoc()
+def py_func(func, x, out, backward_func=None):
+    """
+    """
+
+    class PyFuncRegister(object):
+        _main_program_to_register = dict()
+
+        @classmethod
+        def get_instance(cls, prog=None):
+            if prog is None:
+                prog = fluid.default_main_program()
+
+            if not isinstance(prog, Program):
+                raise ValueError("prog must be None or type of Program")
+
+            ret = cls._main_program_to_register.get(prog, None)
+            if ret is None:
+                ret = PyFuncRegister()
+                ret._idx = core.append_python_callable_object_and_return_id(ret)
+                ret._token_func_dict = dict()
+                ret._func_token_dict = dict()
+                cls._main_program_to_register[prog] = ret
+
+            return ret
+
+        @property
+        def handle_idx(self):
+            return self._idx
+
+        def unique_token(self, func):
+            return self._register_func(func)
+
+        def _register_func(self, func):
+            if func is None:
+                raise ValueError("func cannot be None")
+
+            token = self._func_token_dict.get(func, None)
+            if token is not None:
+                return token
+
+            token = unique_name.generate('py_func_op_token')
+            self._token_func_dict[token] = func
+            self._func_token_dict[func] = token
+            return token
+
+        def __call__(self, token, *args):
+            func = self._token_func_dict.get(token, None)
+            if func is None:
+                raise ValueError("func has not been registered")
+
+            arg_list = inspect.getargspec(func)
+            kwargs = dict()
+            idx = 0
+            for arg in arg_list[0]:
+                kwargs[arg] = args[idx]
+                idx += 1
+
+            args = args[idx:]
+            ret0 = func(*args, **kwargs)
+            if ret0 is None:
+                return None
+
+            if not isinstance(ret0, (list, tuple)):
+                ret0 = (ret0, )
+
+            ret = []
+            for i in six.moves.range(len(ret0)):
+                if isinstance(ret0[i], core.LoDTensor):
+                    ret.append(ret0[i])
+                    continue
+
+                if isinstance(ret0[i], np.ndarray):
+                    r = ret0[i]
+                else:
+                    r = np.array(ret0[i])
+
+                t = core.LoDTensor()
+                t.set(r, core.CPUPlace())
+                ret.append(t)
+
+            return tuple(ret)
+
+    helper = LayerHelper('py_func', **locals())
+    if isinstance(x, Variable):
+        x = [x]
+
+    if isinstance(out, Variable):
+        out = [out]
+
+    for each_out in out:
+        if len(each_out.shape) == 0:
+            raise ValueError(
+                'users should infer shapes of outputs of py_func op manually')
+
+    py_func_reg = PyFuncRegister.get_instance(helper.main_program)
+    token = py_func_reg.unique_token(func)
+
+    helper.append_op(
+        type='py_func',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'handle_idx': py_func_reg.handle_idx,
+               'token': token})
     return out
