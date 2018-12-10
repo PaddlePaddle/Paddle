@@ -95,8 +95,12 @@ void AsyncExecutor::InitParamConfig() {
         }
     }
     _param_config.slot_dim = _param_config.fea_dim - 2; //TODO
-    _param_config.tmp_push_dense_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().pull_dense_per_batch());
-    _param_config.tmp_push_sparse_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
+    _param_config.tmp_push_dense_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
+    _param_config.tmp_push_sparse_wait_times = (int32_t)(_pslib_ptr->get_param()->trainer_param().push_sparse_per_batch());
+
+    for (auto t = 0u; t < _pslib_ptr->get_param()->trainer_param().skip_op_size(); ++t) {
+        _param_config.skip_op.push_back(_pslib_ptr->get_param()->trainer_param().skip_op(t));
+    }
     //sparse
     for (auto t = 0u; t < _pslib_ptr->get_param()->trainer_param().sparse_table_size(); ++t) {
         auto& table = _pslib_ptr->get_param()->trainer_param().sparse_table(t);

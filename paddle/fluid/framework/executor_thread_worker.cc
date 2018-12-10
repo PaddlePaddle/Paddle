@@ -340,16 +340,21 @@ void AsyncExecutorThreadWorker::SetPullDenseThread(std::shared_ptr<DensePullThre
 }
 void AsyncExecutorThreadWorker::TrainOneNetwork() {
     PrepareParams();
-
+    
     for (auto& op : ops_) {
         if (op->Type().find("sgd") != std::string::npos) {
             continue;
         }
-        if (op->Type().find("lookup_table") != std::string::npos || 
-            op->Type().find("lookup_table_grad") != std::string::npos) {
-            continue;
+        bool need_skip = false;
+        for (auto t = 0u; t < _param_config->skip_op.size(); ++t) {
+            if (op->Type().find(_param_config->skip_op[t]) != std::string::npos) { 
+                need_skip = true;
+                break;
+            }
         }
-        op->Run(*thread_scope_, place_);
+        if (!need_skip) {
+            op->Run(*thread_scope_, place_);
+        }
     }
     UpdateParams();
 }

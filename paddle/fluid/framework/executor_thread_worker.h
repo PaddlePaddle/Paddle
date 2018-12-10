@@ -39,6 +39,8 @@ struct AsyncWorkerParamConfig {
     int fea_dim; 
     int32_t tmp_push_dense_wait_times;
     int32_t tmp_push_sparse_wait_times;
+    
+    std::vector<std::string> skip_op;
 
     std::map<uint64_t, std::vector<std::string>> dense_variable_name;
     std::map<uint64_t, std::vector<std::string>> dense_gradient_variable_name;
