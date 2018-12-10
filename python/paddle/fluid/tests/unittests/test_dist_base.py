@@ -496,7 +496,7 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_rpc_deadline": "1000",  # 1sec to fail fast
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1"
