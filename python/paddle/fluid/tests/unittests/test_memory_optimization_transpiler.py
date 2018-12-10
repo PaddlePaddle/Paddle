@@ -24,7 +24,11 @@ from paddle.fluid.transpiler import memory_optimize
 
 def _get_vars(prog):
     assert (isinstance(prog, Program))
-    return prog.block(0).vars.keys()
+    all_vars = set()
+    for op in prog.global_block().ops:
+        all_vars.update(op.input_arg_names)
+        all_vars.update(op.output_arg_names)
+    return all_vars
 
 
 class TestControlFlowGraph(unittest.TestCase):
