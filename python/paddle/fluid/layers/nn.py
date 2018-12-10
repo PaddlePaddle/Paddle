@@ -1349,21 +1349,30 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     return out
 
 
-def bpr_loss(input, label_pos):
+def bpr_loss(input, label):
     """
     Bayesian Personalized Ranking Loss Operator.
 
-    This operator belongs to pairwise ranking loss. LabelPos is the desired item.
+    This operator belongs to pairwise ranking loss. Label is the desired item.
     The loss at a given point in one session is defined as:
     $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
 
     Learn more details by reading paper <session-based recommendations with recurrent
     neural networks>(https://arxiv.org/abs/1511.06939)
 
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
+                                batch size and D is the number of classes.
+                                This input is not probability but logits.
+        label (Variable|list):  the ground truth which is a 2-D tensor.  `label`
+                                is a tensor<int64> with shape [N x 1].
+    Returns:
+        A 2-D tensor with shape [N x 1], the bpr loss.
+
     Examples:
         .. code-block:: python
 
-          cost = fluid.layers.bpr_loss(input=predict, label_pos=label)
+          cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
 
     helper = LayerHelper('bpr_loss', **locals())
@@ -1371,7 +1380,7 @@ def bpr_loss(input, label_pos):
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
-                'LabelPos': [label_pos]},
+                'Label': [label]},
         outputs={'Y': [out]})
     return out
 
