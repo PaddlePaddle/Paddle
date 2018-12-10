@@ -89,12 +89,13 @@ def name_scope(prefix=None):
 
     Examples:
         .. code-block:: python
+
           with name_scope("encoder"):
              ...
           with name_scope("decoder"):
              ...
-             with name_scope("attention"):
-                ...
+          with name_scope("attention"):
+             ...
     """
     # TODO(panyx0718): Only [0-9a-z].
     assert prefix, "namescope prefix cannot be empty."
@@ -1441,6 +1442,7 @@ class Program(object):
         self._is_chief = False
         self._slice_vars_and_attrs = []
         self._endpoints = []
+        self._trainers_endpoints = []
         self._distributed_lookup_table = None
 
     @property
