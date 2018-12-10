@@ -114,9 +114,15 @@ static void MergeMultipleVarsIntoOneBySection(
     id_to_offset[ids_vector[i]].push_back(i);
   }
 
-  auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
+  auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
   auto* out_tensor =
-      scope.FindVar(out_name)->GetMutable<framework::LoDTensor>();
+      scope->FindVar(out_name)->GetMutable<framework::LoDTensor>();
+
+  PADDLE_ENFORCE_GT(
+      out_tensor->numel(), 0,
+      "When calling this method, the Tensor's numel must larger than zero. "
+      "Please check Tensor::Resize has been called first.");
+
   auto* out_tensor_data = out_tensor->mutable_data<float>(id_tensor.place());
 
   bool is_on_cpu_place = true;
