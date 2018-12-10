@@ -56,6 +56,7 @@ from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from . import weight_decay
 
 Tensor = LoDTensor
 
@@ -87,6 +88,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'recordio_writer',
         'Scope',
+        'WeightDecay',
     ]
 
 
