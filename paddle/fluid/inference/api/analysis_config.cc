@@ -49,6 +49,10 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   cpu_math_library_num_threads_ = other.cpu_math_library_num_threads_;
   // fields from this.
   enable_ir_optim = other.enable_ir_optim;
+  // For mkldnn
+  use_mkldnn_ = other.use_mkldnn_;
+  mkldnn_enabled_op_types_ = other.mkldnn_enabled_op_types_;
+
   use_feed_fetch_ops = other.use_feed_fetch_ops;
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
@@ -77,6 +81,10 @@ contrib::AnalysisConfig::AnalysisConfig(contrib::AnalysisConfig &&other) {
   cpu_math_library_num_threads_ = other.cpu_math_library_num_threads_;
   // fields from this.
   enable_ir_optim = other.enable_ir_optim;
+  // For mkldnn
+  use_mkldnn_ = other.use_mkldnn_;
+  mkldnn_enabled_op_types_ = other.mkldnn_enabled_op_types_;
+
   use_feed_fetch_ops = other.use_feed_fetch_ops;
   use_tensorrt_ = other.use_tensorrt_;
   tensorrt_max_batchsize_ = other.tensorrt_max_batchsize_;
