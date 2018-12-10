@@ -9107,7 +9107,7 @@ def psroi_pool(input, rois, output_channels, spatial_scale, pooled_height,
 
             pool_out = fluid.layers.psroi_pool(input=x, rois=rois, 490, 1.0, 7, 7)
     """
-    helper = LayerHelper('psroi_pool', **local())
+    helper = LayerHelper('psroi_pool', **locals())
     # check attrs
     if not isinstance(output_channels, int):
         raise TypeError("output_channels must be int type")
