@@ -9109,13 +9109,13 @@ def psroi_pool(input, rois, output_channels, spatial_scale, pooled_height,
     """
     helper = LayerHelper('psroi_pool', **local())
     # check attrs
-    if isinstance(output_channels, int) is False:
+    if not isinstance(output_channels, int):
         raise TypeError("output_channels must be int type")
-    if isinstance(spatial_scale, float) is False:
+    if not isinstance(spatial_scale, float):
         raise TypeError("spatial_scale must be float type")
-    if isinstance(pooled_height, int) is False:
+    if not isinstance(pooled_height, int):
         raise TypeError("pooled_height must be int type")
-    if isinstance(pooled_width, int) is False:
+    if not isinstance(pooled_width, int):
         raise TypeError("pooled_width must be int type")
     out = helper.create_tmp_variable(dtype=helper.input_type())
     helper.append_op(
