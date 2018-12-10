@@ -24,6 +24,7 @@ from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 from . import io
 from .data_feed_desc import DataFeedDesc
+from .distributed import ps_instance
 
 __all__ = ['AsyncExecutor']
 
@@ -85,6 +86,7 @@ class AsyncExecutor(object):
 
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
+        self.instance = ps_instance.PaddlePSInstance("init_param", 1, 2)
 
     def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
         """
@@ -149,27 +151,39 @@ class AsyncExecutor(object):
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, debug)
+        self.instance.barrier_all()
 
     def config_distributed_nodes(self, dist_opt):
+
         # get total rank
         # get rank index
         # get iplists
         # get hadoop info
-        return
+        pass
 
+    def get_instance(self):
+        return self.instance
 
-    def init_server(self, filename, index):
-        self.executor.init_server(filename, index)
+    def init_server(self, dist_desc):
+        self.executor.init_server(dist_desc, self.instance._rankid)
+        ip = self.executor.start_server()
+        self.instance.set_ip(ip)
+        self.instance.barrier_all() #wait all server start
+        ips = self.instance.gather_ips()
+        self.executor.gather_servers(ips, self.instance.get_node_cnt())
+        self.instance.barrier_all() #wait all worker start
+        self.instance.barrier_all() #wait init model
+        self.instance.barrier_all() #wait worker do all things 
 
-    def init_worker(self, filename, ips, nodes_cnt, index):
-        self.executor.init_worker(filename, ips, nodes_cnt, index)
+    def init_worker(self, dist_desc):
+        self.instance.barrier_all() #wait all server start
+        ips = self.instance.gather_ips()
+        self.executor.init_worker(dist_desc, ips, self.instance.get_node_cnt(), self.instance._rankid)
+        self.instance.barrier_all() #wait all worker start
+        if self.instance.is_first_worker():
+            self.executor.init_model()
+        self.instance.barrier_all() #wait init model
        
-    def start_server(self):
-        return self.executor.start_server()
-    
-    def gather_servers(self, ips, nodes_cnt):
-        self.executor.gather_servers(ips, nodes_cnt)
-
     def init_model(self):
         self.executor.init_model()
 

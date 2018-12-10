@@ -1,4 +1,5 @@
 from mpi4py import MPI
+import ps_pb2 as pslib
 
 class FileSystem(object):
     def __init__(self, fs_type="afs",
@@ -7,20 +8,23 @@ class FileSystem(object):
                  passwd=None,
                  hadoop_bin="",
                  afs_conf=None):
-        assert user not None
-        assert passwd not None
-        assert hadoop_bin not None
-        fs_client = pslib.FsClientParameter()
-        if fs_type == "afs":
-            fs_client.fs_type = pslib.FsApiType.AFS
-        else:
-            fs_client.fs_type = pslib.FsApiType.HDFS
-        fs_client.uri = uri
-        fs_client.user = user
-        fs_client.passwd = passwd
-        fs_client.buffer_size = 0
-        fs_client.afs_conf = afs_conf if not afs_conf else ""
+        assert user != None
+        assert passwd != None
+        assert hadoop_bin != None
+        self.fs_client = pslib.FsClientParameter()
+        #if fs_type == "afs":
+        #    fs_client.fs_type = pslib.FsApiType.AFS
+        #else:
+        #    fs_client.fs_type = pslib.FsApiType.HDFS
+        self.fs_client.uri = uri
+        self.fs_client.user = user
+        self.fs_client.passwd = passwd
+        #self.fs_client.buffer_size = 0
+        self.fs_client.hadoop_bin = hadoop_bin
+        #self.fs_client.afs_conf = afs_conf if not afs_conf else ""
 
+    def get_desc(self):
+        return self.fs_client
 
 class MPIHelper(object):
     def __init__(self):
