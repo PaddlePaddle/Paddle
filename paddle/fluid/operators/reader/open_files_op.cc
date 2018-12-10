@@ -115,12 +115,10 @@ class PreemptiveReaderContainer : public IReaderContainer {
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    VLOG(1) << "flag";
     if (!pending_.empty()) {
       auto future_it = complete_queue_.Pop();
       FutureItem item = future_it->get();
       if (item.exception_) {
-        VLOG(1) << "item has exception!!!";
         for (auto it = futures_.begin(); it != futures_.end(); ++it) {
           if (it != future_it) {
             it->wait();  // Wait all other threads complete.
