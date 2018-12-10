@@ -19,6 +19,9 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#ifdef PADDLE_WITH_PPROF
+#include <gperftools/profiler.h>
+#endif
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
@@ -42,6 +45,7 @@ DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
 
 DECLARE_bool(profile);
+// DECLARE_bool(infer_shape_everytime);
 DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
@@ -183,15 +187,22 @@ void TestOneThreadPrediction(
     }
   }
 
+  // FLAGS_infer_shape_everytime = false;
   LOG(INFO) << "Run " << num_times << " times...";
   {
     Timer run_timer;
     run_timer.tic();
+#ifdef PADDLE_WITH_PPROF
+    ProfilerStart("paddle.prof");
+#endif
     for (int i = 0; i < num_times; i++) {
       for (size_t j = 0; j < inputs.size(); j++) {
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
+#ifdef PADDLE_WITH_PPROF
+    ProfilerStop();
+#endif
     PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
               inputs.size());
   }
