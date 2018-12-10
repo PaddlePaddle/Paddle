@@ -90,7 +90,7 @@ class TestWeightDecay(unittest.TestCase):
 
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=self.learning_rate,
-                weight_decay=fluid.weight_decay.WeightDecay(
+                weight_decay=fluid.regularizer.WeightDecay(
                     coeff=self.learning_rate))
 
             optimizer.minimize(avg_cost)

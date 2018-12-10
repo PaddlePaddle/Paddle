@@ -29,8 +29,7 @@ from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
-from .regularizer import append_regularization_ops
-from .weight_decay import append_weight_decay
+from .regularizer import append_regularization_ops, append_weight_decay
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
