@@ -23,6 +23,14 @@ from op_test import OpTest
 from paddle.fluid import core
 
 
+def l1loss(x, y, weight):
+    n = x.shape[0]
+    x = x.reshape((n, -1))
+    y = y.reshape((n, -1))
+    weight = weight.reshape((n, -1))
+    return (np.abs(y - x) * weight).sum(axis=1)
+
+
 def mse(x, y, weight):
     n = x.shape[0]
     x = x.reshape((n, -1))
@@ -146,8 +154,8 @@ def YoloV3Loss(x, gtbox, gtlabel, attrs):
         np.expand_dims(obj_mask, 4), (1, 1, 1, 1, int(attrs['class_num'])))
     loss_x = sce(pred_x, tx, obj_weight)
     loss_y = sce(pred_y, ty, obj_weight)
-    loss_w = mse(pred_w, tw, obj_weight)
-    loss_h = mse(pred_h, th, obj_weight)
+    loss_w = l1loss(pred_w, tw, obj_weight)
+    loss_h = l1loss(pred_h, th, obj_weight)
     loss_conf_target = sce(pred_conf, tconf, obj_mask)
     loss_conf_notarget = sce(pred_conf, tconf, noobj_mask)
     loss_class = sce(pred_cls, tcls, obj_mask_expand)
