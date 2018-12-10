@@ -1349,7 +1349,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     return out
 
 
-def bpr_loss(input, label):
+def bpr_loss(input, label, name=None):
     """
     Bayesian Personalized Ranking Loss Operator.
 
@@ -1366,6 +1366,8 @@ def bpr_loss(input, label):
                                 This input is not probability but logits.
         label (Variable|list):  the ground truth which is a 2-D tensor.  `label`
                                 is a tensor<int64> with shape [N x 1].
+        name (str|None):        A name for this layer(optional). If set None, the
+                                layer will be named automatically. Default: None.
     Returns:
         A 2-D tensor with shape [N x 1], the bpr loss.
 
