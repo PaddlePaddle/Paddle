@@ -33,6 +33,49 @@ static inline bool isZero(T x) {
 }
 
 template <typename T>
+static inline void CalcL1LossWithWeight(const Tensor& x, const Tensor& y,
+                                        const Tensor& weight,
+                                        const T loss_weight, T* loss) {
+  int n = x.dims()[0];
+  int stride = x.numel() / n;
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+  const T* weight_data = weight.data<T>();
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < stride; j++) {
+      loss[i] += fabs(y_data[j] - x_data[j]) * weight_data[j] * loss_weight;
+    }
+    x_data += stride;
+    y_data += stride;
+    weight_data += stride;
+  }
+}
+
+template <typename T>
+static void CalcL1LossGradWithWeight(const T* loss_grad, Tensor* grad,
+                                     const Tensor& x, const Tensor& y,
+                                     const Tensor& weight) {
+  int n = x.dims()[0];
+  int stride = x.numel() / n;
+  T* grad_data = grad->data<T>();
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+  const T* weight_data = weight.data<T>();
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < stride; j++) {
+      grad_data[j] = weight_data[j] * loss_grad[i];
+      if (x_data[j] < y_data[j]) grad_data[j] *= -1.0;
+    }
+    grad_data += stride;
+    x_data += stride;
+    y_data += stride;
+    weight_data += stride;
+  }
+}
+
+template <typename T>
 static inline void CalcMSEWithWeight(const Tensor& x, const Tensor& y,
                                      const Tensor& weight, const T loss_weight,
                                      T* loss) {
@@ -374,8 +417,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     memset(loss_data, 0, n * sizeof(T));
     CalcSCEWithWeight<T>(pred_x, tx, obj_weight, loss_weight_xy, loss_data);
     CalcSCEWithWeight<T>(pred_y, ty, obj_weight, loss_weight_xy, loss_data);
-    CalcMSEWithWeight<T>(pred_w, tw, obj_weight, loss_weight_wh, loss_data);
-    CalcMSEWithWeight<T>(pred_h, th, obj_weight, loss_weight_wh, loss_data);
+    CalcL1LossWithWeight<T>(pred_w, tw, obj_weight, loss_weight_wh, loss_data);
+    CalcL1LossWithWeight<T>(pred_h, th, obj_weight, loss_weight_wh, loss_data);
     CalcSCEWithWeight<T>(pred_conf, tconf, obj_mask, loss_weight_conf_target,
                          loss_data);
     CalcSCEWithWeight<T>(pred_conf, tconf, noobj_mask,
@@ -471,8 +514,10 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     grad_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
     CalcSCEGradWithWeight<T>(loss_grad_data, &grad_x, pred_x, tx, obj_weight);
     CalcSCEGradWithWeight<T>(loss_grad_data, &grad_y, pred_y, ty, obj_weight);
-    CalcMSEGradWithWeight<T>(loss_grad_data, &grad_w, pred_w, tw, obj_weight);
-    CalcMSEGradWithWeight<T>(loss_grad_data, &grad_h, pred_h, th, obj_weight);
+    CalcL1LossGradWithWeight<T>(loss_grad_data, &grad_w, pred_w, tw,
+                                obj_weight);
+    CalcL1LossGradWithWeight<T>(loss_grad_data, &grad_h, pred_h, th,
+                                obj_weight);
     CalcSCEGradWithWeight<T>(loss_grad_data, &grad_conf_target, pred_conf,
                              tconf, obj_mask);
     CalcSCEGradWithWeight<T>(loss_grad_data, &grad_conf_notarget, pred_conf,
