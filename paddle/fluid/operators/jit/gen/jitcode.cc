@@ -16,23 +16,6 @@
 
 namespace paddle {
 namespace operators {
-namespace jit {
-
-template <>
-size_t GetKey<int>(int d) {
-  return d;
-}
-
-// template <>
-// std::shared_ptr<const GenBase> CreateJitCode<KernelType::vmul, int>(int attr)
-// {
-//   if (UseJitCode<KernelType::vmul, int>(attr)) {
-//     return std::make_shared<gen::VMulJitCode<int>>(attr,
-//     CodeSize<KernelType::vmul, int>(attr)));
-//   }
-//   return nullptr;
-// }
-
-}  // namespace jit
+namespace jit {}  // namespace jit
 }  // namespace operators
 }  // namespace paddle

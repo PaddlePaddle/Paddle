@@ -70,18 +70,16 @@ typedef enum {
 class JitCode : public GenBase, public Xbyak::CodeGenerator {
  public:
   explicit JitCode(size_t code_size, void* code_ptr = nullptr)
-      : Xbyak::CodeGenerator(code_size, code_ptr) {
-    this->genCode();
-  }
+      : Xbyak::CodeGenerator(code_size, code_ptr) {}
+
+  virtual const char* name() const = 0;
+  virtual void genCode() = 0;
 
   size_t getSize() const override { return CodeGenerator::getSize(); }
   const unsigned char* getCodeInternal() override {
     const Xbyak::uint8* code = CodeGenerator::getCode();
     return code;
   }
-
-  virtual const char* name() const = 0;
-  virtual void genCode() = 0;
 
  protected:
   Xbyak::Reg64 param1{abi_param1};

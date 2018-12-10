@@ -116,7 +116,30 @@ class JitKernelRegistrar {
 #define REGISTER_GPUKERNEL_MORE(kernel_type, impl_type, ...) \
   REGISTER_KERNEL_MORE(kernel_type, impl_type, GPUPlace, __VA_ARGS__)
 
-// REGISTER_JITKERNEL_JITCODE(vmul, JitKernelCode<vmul, int>);
+#define REGISTER_JITKERNEL_GEN(kernel_type, ...)                    \
+  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                         \
+      __reg_jitkernel_gen_##kernel_type##_CPUPlace_,                \
+      "REGISTER_JITKERNEL_GEN must be called in global namespace"); \
+  extern int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_();   \
+  static int __assert_gen_##kernel_type##_has_refer_ UNUSED =       \
+      TouchJitKernelReg_##kernel_type##_refer_CPUPlace_();          \
+  static ::paddle::operators::jit::JitKernelRegistrar<              \
+      ::paddle::operators::jit::JitCodeCreatorPool,                 \
+      ::paddle::platform::CPUPlace, __VA_ARGS__>                    \
+      __jit_kernel_registrar_gen_##kernel_type##_CPUPlace_(         \
+          ::paddle::operators::jit::KernelType::kernel_type);       \
+  int TouchJitKernelReg_gen_##kernel_type##_CPUPlace_() {           \
+    __jit_kernel_registrar_gen_##kernel_type##_CPUPlace_.Touch();   \
+    return 0;                                                       \
+  }
+
+#define USE_JITKERNEL_GEN(kernel_type)                            \
+  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                       \
+      __reg_jitkernel_gen_##kernel_type##_CPUPlace_,              \
+      "USE_JITKERNEL_GEN must be called in global namespace");    \
+  extern int TouchJitKernelReg_gen_##kernel_type##_CPUPlace_();   \
+  static int use_jitkernel_gen_##kernel_type##_CPUPlace_ UNUSED = \
+      TouchJitKernelReg_gen_##kernel_type##_CPUPlace_()
 
 #define USE_JITKERNEL_REFER(kernel_type)                            \
   STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                         \

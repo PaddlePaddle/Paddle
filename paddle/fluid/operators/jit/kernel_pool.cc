@@ -21,6 +21,11 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+JitCodeCreatorPool& JitCodeCreatorPool::Instance() {
+  static JitCodeCreatorPool g_creator_pool;
+  return g_creator_pool;
+}
+
 KernelPool& KernelPool::Instance() {
   static KernelPool g_kernel_pool;
   return g_kernel_pool;

@@ -23,6 +23,11 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+template <>
+size_t JitCodeKey<int>(int d) {
+  return d;
+}
+
 // refer do not need useme, it would be the last one.
 void GenBase::dumpCode(const unsigned char* code) const {
   if (code) {
