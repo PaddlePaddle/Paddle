@@ -170,7 +170,7 @@ class NCEKernel : public framework::OpKernel<T> {
       auto height_sections = context.Attr<std::vector<int>>("height_sections");
       auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
-      auto *ids = local_scope.Var("Ids");
+      auto *ids = local_scope.Var("Ids@Local");
       auto *x_tensor = ids->GetMutable<framework::LoDTensor>();
       x_tensor->mutable_data<int64_t>(
           framework::make_ddim({static_cast<int64_t>(labels.size()), 1}),
@@ -179,12 +179,10 @@ class NCEKernel : public framework::OpKernel<T> {
       std::memcpy(x_tensor->data<int64_t>(), labels.data(),
                   labels.size() * sizeof(int64_t));
 
-      local_scope.Var("Weight@Local")
-          ->GetMutable<framework::LoDTensor>()
-          ->mutable_data<T>(context.GetPlace());
+      local_scope.Var("Weight@Local");
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch("Ids", "Weight@Local", table_names,
+      operators::distributed::prefetch("Ids@Local", "Weight@Local", table_names,
                                        epmap, height_sections, context,
                                        &local_scope);
 #else
@@ -207,10 +205,7 @@ class NCEKernel : public framework::OpKernel<T> {
         sample_out_data[i] += result(0);
         sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
       }
-
-      if (context.scope().HasKid(&local_scope)) {
-        context.scope().DeleteScope(&local_scope);
-      }
+      context.scope().DeleteScope(&local_scope);
     } else {
       auto weight_mat =
           EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
