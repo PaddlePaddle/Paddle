@@ -145,7 +145,7 @@ def save_vars(executor,
 
             prog = fluid.default_main_program()
             fluid.io.save_vars(executor=exe, dirname=path, main_program=prog,
-                               vars=None)
+                               vars=None, predicate = name_has_fc)
             # All variables in `main_program` whose name includes "fc" will be saved.
             # And variables are going to be saved separately.
 
@@ -369,7 +369,7 @@ def load_vars(executor,
 
             prog = fluid.default_main_program()
             fluid.io.load_vars(executor=exe, dirname=path, main_program=prog,
-                               vars=None)
+                               vars=None, predicate=name_has_fc)
             # All variables in `main_program` whose name includes "fc" will be loaded.
             # And all the variables are supposed to have been saved in differnet files.
 
