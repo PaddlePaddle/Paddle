@@ -45,7 +45,6 @@ DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
 
 DECLARE_bool(profile);
-// DECLARE_bool(infer_shape_everytime);
 DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
@@ -187,7 +186,6 @@ void TestOneThreadPrediction(
     }
   }
 
-  // FLAGS_infer_shape_everytime = false;
   LOG(INFO) << "Run " << num_times << " times...";
   {
     Timer run_timer;

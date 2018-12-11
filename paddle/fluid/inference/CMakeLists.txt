@@ -61,14 +61,16 @@ endif()
 # Create shared library
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
+              DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
+                   prepare_executor analysis_config paddle_pass_builder)
   target_link_libraries(paddle_fluid_shared shlwapi)
   if(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_fluid_origin ${cuda_modules})
   endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
+             DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
+                  prepare_executor analysis_config paddle_pass_builder)
 endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
