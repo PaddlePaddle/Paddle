@@ -146,7 +146,7 @@ class RequestGet final : public RequestBase {
     framework::Variable* outvar = nullptr;
 
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
-                             out_var_name);
+                             out_varname);
 
     if (outvar) {
       SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
