@@ -178,6 +178,7 @@ TEST(CFGGraph, IRGraph) {
   ASSERT_TRUE((std::set<std::string>{} == cfg.LiveOut(cfg.Ops()[3])));
 }
 
+/* InitProgram is disabled.
 TEST(SortOpLikeDescOrder, NormalTest) {
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
@@ -474,6 +475,7 @@ TEST(BFSSortGraphOps, NormalTest) {
     ASSERT_EQ(expect, real);
   }
 }
+*/
 
 }  // namespace details
 }  // namespace framework
