@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
 """
 from __future__ import print_function
 
@@ -26,6 +26,8 @@ import sys
 import pydoc
 
 member_dict = collections.OrderedDict()
+
+experimental_namespace = {"paddle.fluid.imperative"}
 
 
 def visit_member(parent_name, member):
@@ -43,13 +45,16 @@ def visit_member(parent_name, member):
                 line.strip() for line in pydoc.render_doc(member).split('\n')
                 if "->" in line
             ])
-
+    elif inspect.isgetsetdescriptor(member):
+        return
     else:
         raise RuntimeError("Unsupported generate signature of member, type {0}".
                            format(str(type(member))))
 
 
 def visit_all_module(mod):
+    if (mod.__name__ in experimental_namespace):
+        return
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
@@ -63,7 +68,9 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
-visit_all_module(importlib.import_module(sys.argv[1]))
+modules = sys.argv[1].split(",")
+for m in modules:
+    visit_all_module(importlib.import_module(m))
 
 for name in member_dict:
     print(name, member_dict[name])
