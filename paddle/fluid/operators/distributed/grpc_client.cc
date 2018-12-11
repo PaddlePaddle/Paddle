@@ -293,8 +293,7 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
   const auto ch = GetChannel(ep);
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   const std::string method = "SendMonomerFetchBarrierRPC";
-  VarHandlePtr h(
-      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+  VarHandlePtr h(new VarHandle(ep, method, var_name, nullptr, nullptr));
   s->Prepare(h, time_out);
 
   VLOG(30) << s->GetVarHandlePtr()->String() << " begin";

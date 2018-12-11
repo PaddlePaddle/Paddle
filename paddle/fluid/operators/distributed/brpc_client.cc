@@ -207,8 +207,7 @@ VarHandlePtr BRPCClient::AsyncGetMonomerVariable(
 VarHandlePtr BRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
                                                 const std::string& var_name,
                                                 int64_t time_out) {
-  return AsyncSendMessage(ep, "GetMonomerBarrier", FETCH_BARRIER_MESSAGE,
-                          time_out);
+  return AsyncSendMessage(ep, "GetMonomerBarrier", var_name, time_out);
 }
 
 VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
