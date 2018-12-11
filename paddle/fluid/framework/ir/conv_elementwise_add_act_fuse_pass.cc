@@ -37,10 +37,12 @@ framework::proto::OpDesc PrepareOpDesc(
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
+  LOG(INFO) << "input " << desc.Input("Input")[0];
   desc.SetInput("Bias", {bias});
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
+  desc.Flush();
 
   return *desc.Proto();
 }
@@ -56,6 +58,8 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
+
+  LOG(INFO) << "dot\n" << pattern.pattern->DotString();
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -76,6 +80,9 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
     // Link inputs and outputs.
     PADDLE_ENFORCE(subgraph.count(x));
     auto* conv_in_node = subgraph.at(x);
+    auto dims = conv_in_node->Var()->Proto()->type().lod_tensor().tensor().dims().size();
+    PADDLE_ENFORCE_EQ(dims, 4);
+    LOG(INFO) << "conv in " << conv_in_node->Name() << " " << dims;
 
     IR_NODE_LINK_TO(conv_in_node, conv_op);          // Input
     IR_NODE_LINK_TO(conv_filter, conv_op);           // Filter

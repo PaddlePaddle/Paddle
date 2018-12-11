@@ -135,7 +135,7 @@ TEST(TensorRT_resnext50, compare) {
 
 TEST(TensorRT_resnext50, profile) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
-  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
+  profile(model_dir, /* use_analysis */ true, false);
 }
 
 TEST(TensorRT_mobilenet, analysis) {

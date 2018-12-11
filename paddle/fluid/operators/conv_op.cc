@@ -38,6 +38,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
 
+  LOG(INFO) << "op Input " << ctx->Inputs("Input")[0] << " dims " << ctx->GetInputDim("Input").size() << " : " << ctx->GetInputDim("Input")[0];
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
