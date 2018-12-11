@@ -202,21 +202,6 @@ ParallelExecutor::ParallelExecutor(
       }
     }
   }
-  /**
-  std::vector<std::vector<details::VariableInfo>> var_infos_list;
-  for (size_t i = 0; i < graphs.size(); ++i) {
-    std::vector<details::VariableInfo> var_infos;
-    for (auto &node : graphs[i]->Nodes()) {
-      if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-        var_infos.emplace_back();
-        var_infos.back().name_ = node->Var()->Name();
-        var_infos.back().type_ = node->Var()->GetType();
-        var_infos.back().persistable_ = node->Var()->Persistable();
-      }
-    }
-    var_infos_list.push_back(std::move(var_infos));
-  }
-  **/
 
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {

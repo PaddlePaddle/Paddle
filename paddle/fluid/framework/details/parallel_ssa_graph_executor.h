@@ -44,6 +44,7 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<std::unique_ptr<ir::Graph>> graphs_;
 
   std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
+  ExceptionHolder exception_holder_;
 };
 
 }  // namespace details
