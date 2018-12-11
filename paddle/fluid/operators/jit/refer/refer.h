@@ -29,8 +29,8 @@ void VMul(const T* x, const T* y, T* z, int n) {
 }
 
 template <typename T>
-class VMulKernel : public ReferKernel<T, typename VMulTypes<T>::func_type,
-                                      typename VMulTypes<T>::attr_type> {
+class VMulKernel : public ReferKernel<T, typename VMulTuples<T>::func_type,
+                                      typename VMulTuples<T>::attr_type> {
  public:
   VMulKernel() { this->func = VMul<T>; }
 };

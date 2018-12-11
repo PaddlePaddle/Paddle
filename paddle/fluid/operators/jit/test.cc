@@ -19,10 +19,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/jit/kernel_pool.h"
-// TODO(TJ): remove me
-#include "paddle/fluid/operators/jit/registry.h"
-
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -58,11 +55,6 @@ void ExpectEQ(const T* target, const T* refer, int n) {
   }
 }
 
-// TODO(TJ): remove me
-USE_JITKERNEL_MORE(vmul, mkl);
-USE_JITKERNEL_REFER(vmul);
-USE_JITKERNEL_GEN(vmul);
-
 TEST(JitKernel, vmul) {
   using T = float;
   using PlaceType = paddle::platform::CPUPlace;
@@ -70,10 +62,10 @@ TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::jit;
   // TODO(TJ): test more vector size
   for (int d = 1; d < 30; ++d) {
-    auto ref = jit::GetRefer<jit::vmul, T, jit::VMulTypes<T>::func_type,
-                             jit::VMulTypes<T>::attr_type>();
-    auto tgt = jit::Get<jit::vmul, T, jit::VMulTypes<T>::func_type,
-                        jit::VMulTypes<T>::attr_type, PlaceType>(d);
+    auto ref = jit::GetRefer<jit::vmul, T, jit::VMulTuples<T>::func_type,
+                             jit::VMulTuples<T>::attr_type>();
+    auto tgt = jit::Get<jit::vmul, T, jit::VMulTuples<T>::func_type,
+                        jit::VMulTuples<T>::attr_type, PlaceType>(d);
     EXPECT_TRUE(ref != nullptr);
     EXPECT_TRUE(tgt != nullptr);
 
