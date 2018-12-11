@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <paddle/fluid/framework/framework.pb.h>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -67,7 +68,7 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : type_(typeid(float)), offset_(0) {}
+  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>
@@ -88,7 +89,7 @@ class Tensor {
                   memory::Allocator::Attr attr = memory::Allocator::kDefault,
                   size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, std::type_index type,
+  void* mutable_data(platform::Place place, proto::VarType::Type type,
                      memory::Allocator::Attr attr = memory::Allocator::kDefault,
                      size_t requested_size = 0);
 
@@ -138,7 +139,7 @@ class Tensor {
     return holder_->place();
   }
 
-  std::type_index type() const {
+  proto::VarType::Type type() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::type() is called.");
     return type_;
@@ -161,7 +162,7 @@ class Tensor {
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;
-  std::type_index type_;
+  proto::VarType::Type type_;
   /**
    * @brief points to elements dimensions.
    *

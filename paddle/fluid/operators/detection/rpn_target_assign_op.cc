@@ -78,8 +78,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("Anchor")->type()),
+        ctx.Input<framework::LoDTensor>("Anchor")->type(),
         platform::CPUPlace());
   }
 };
