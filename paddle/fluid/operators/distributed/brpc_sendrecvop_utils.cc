@@ -38,7 +38,8 @@ class IOBufWriter {
   }
 
   static void AppendTCPZeroCopy(butil::IOBuf* iobuf, int k, const char* v,
-                                int64_t vlen, bool in_cuda_pinned) {
+                                int64_t vlen, bool in_cuda_pinned,
+                                void (*destroy)(void*), void* user_data) {
     VLOG(7) << "AppendTCPZeroCopy "
             << " k:" << k
             << " data:" << static_cast<void*>(const_cast<char*>(v))
@@ -56,12 +57,14 @@ class IOBufWriter {
     }
     */
     iobuf->append(v, vlen);
+    destroy(user_data);
   }
 
 #ifdef PADDLE_WITH_BRPC_RDMA
   static void AppendRdmaZeroCopy(const std::string varname, butil::IOBuf* iobuf,
                                  int k, const char* v, int64_t vlen,
-                                 bool in_cuda_pinned) {
+                                 bool in_cuda_pinned, void (*destroy)(void*),
+                                 void* user_data) {
     VLOG(7) << "AppendRdmaZeroCopy varname:" << varname << " k:" << k
             << " data:" << static_cast<void*>(const_cast<char*>(v))
             << " data_size:" << vlen << " in_cuda_pinned:" << in_cuda_pinned;
@@ -75,17 +78,21 @@ class IOBufWriter {
     // FIXME(gongwb): use append_zerocopy
     // iobuf->append_zerocopy(v, vlen, nullptr);
     iobuf->append(v, vlen);
+    destroy(user_data);
     return;
   }
 #endif
 
   static void AppendZeroCopy(const std::string varname, butil::IOBuf* iobuf,
                              int k, const char* v, int64_t vlen,
-                             bool in_cuda_pinned) {
+                             bool in_cuda_pinned, void (*destroy)(void*),
+                             void* user_data) {
 #ifdef PADDLE_WITH_BRPC_RDMA
-    IOBufWriter::AppendRdmaZeroCopy(varname, iobuf, k, v, vlen, in_cuda_pinned);
+    IOBufWriter::AppendRdmaZeroCopy(varname, iobuf, k, v, vlen, in_cuda_pinned,
+                                    destroy, user_data);
 #else
-    IOBufWriter::AppendTCPZeroCopy(iobuf, k, v, vlen, in_cuda_pinned);
+    IOBufWriter::AppendTCPZeroCopy(iobuf, k, v, vlen, in_cuda_pinned, destroy,
+                                   user_data);
 #endif
   }
 };
@@ -95,7 +102,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       butil::IOBuf* iobuf, const std::string& out_varname,
                       bool var_is_not_stable, int trainer_id,
                       const std::string& table_name) {
-  TensorPayload* payload = nullptr;
+  std::unique_ptr<TensorPayload> payload;
 
   request->set_varname(name);
   request->set_trainer_id(trainer_id);
@@ -118,12 +125,10 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   }
   if (var->IsType<framework::LoDTensor>()) {
     request->set_type(::sendrecv::LOD_TENSOR);
-    // GetTensorPayload(var, ctx, request, &payload, &payload_size);
-    payload = new TensorPayload(GetTensorPayload(var, ctx, request));
+    payload.reset(new TensorPayload(GetTensorPayload(var, ctx, request)));
   } else if (var->IsType<framework::SelectedRows>()) {
     request->set_type(::sendrecv::SELECTED_ROWS);
-    // GetSelectedRowsPayload(var, ctx, request, &payload, &payload_size);
-    payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, request));
+    payload.reset(new TensorPayload(GetSelectedRowsPayload(var, ctx, request)));
 #ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     request->set_type(::sendrecv::NCCL_ID);
@@ -139,6 +144,9 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
+  PADDLE_ENFORCE_NOT_NULL(payload);
+
+  // FIXME(gongwb): it seems that can use zero copy.
   if (var_is_not_stable) {
     IOBufWriter::Append(
         iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
@@ -149,13 +157,15 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
       IOBufWriter::AppendZeroCopy(
           name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
           static_cast<const char*>(payload->ptr()), payload->memory_size(),
-          true);
+          true, SerializeDestroyCallback, static_cast<void*>(payload.get()));
+      payload.release();
 #endif
     } else {
       IOBufWriter::AppendZeroCopy(
           name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
           static_cast<const char*>(payload->ptr()), payload->memory_size(),
-          false);
+          false, SerializeDestroyCallback, static_cast<void*>(payload.get()));
+      payload.release();
     }
   }
 
