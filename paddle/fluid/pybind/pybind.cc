@@ -298,6 +298,8 @@ PYBIND11_MODULE(core, m) {
       .def("get_tensor",
            [](SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
+      .def("numel",
+           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
       .def("set_rows",
