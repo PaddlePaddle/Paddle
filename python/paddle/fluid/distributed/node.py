@@ -60,7 +60,7 @@ class DownpourServer(Server):
         table.accessor.dense_sgd_param.adam.mom_decay_rate = 0.99
         table.accessor.dense_sgd_param.naive.learning_rate = 0.0002
         fea_dim = 0
-        for param in param_var:
+        for param in filter(lambda x: x.name.find("embedding") == -1, param_var):
             fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
         table.accessor.fea_dim = fea_dim
 

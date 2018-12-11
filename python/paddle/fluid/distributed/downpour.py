@@ -66,5 +66,6 @@ class DownpourSGD(object):
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
+        ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
         ps_param_str = text_format.MessageToString(ps_param)
         return [ps_param, worker_skipped_ops]
