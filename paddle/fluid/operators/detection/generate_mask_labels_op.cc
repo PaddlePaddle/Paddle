@@ -289,8 +289,8 @@ std::vector<Tensor> SampleMaskForOneImage(
     rois_fg.mutable_data<T>({bg_num, 4}, context.GetPlace());
     Gather<T>(rois->data<T>(), 4, bg_inds.data(), bg_inds.size(),
               rois_fg.data<T>());
-    masks.mutable_data<int>({bg_num, resolution * resolution},
-                            context.GetPlace());
+    masks.mutable_data<uint8_t>({bg_num, resolution * resolution},
+                                context.GetPlace());
     math::set_constant(context, &masks, -1);
     int* mask_class_labels_data =
         mask_class_labels.mutable_data<int>({bg_num, 1}, context.GetPlace());

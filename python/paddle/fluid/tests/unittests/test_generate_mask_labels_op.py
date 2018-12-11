@@ -145,10 +145,10 @@ def _sample_mask(num_classes, im_info, gt_classes, is_crowd, label_int32,
             masks[i, :] = np.reshape(mask, resolution**2)
     else:
         bg_inds = np.where(label_int32 == 0)[0]
-        rois_fg = sampled_boxes[bg_inds[0]].reshape((1, -1))
+        rois_fg = sample_boxes[bg_inds[0]].reshape((1, -1))
         masks = -np.ones((1, resolution**2), dtype=np.int32)
         mask_class_labels = np.zeros((1, ))
-        np.append(roi_has_mask, 0)
+        roi_has_mask = np.append(roi_has_mask, 0)
     masks = expand_mask_targets(masks, mask_class_labels, resolution,
                                 num_classes)
     rois_fg *= im_scale
@@ -194,6 +194,7 @@ class TestGenerateMaskLabels(OpTest):
         self.num_classes = 81
         self.resolution = 14
         self.batch_size = 4
+        self.batch_size_per_im = 64
         self.images_shape = [100, 200]
         np.random.seed(0)
 
@@ -202,20 +203,23 @@ class TestGenerateMaskLabels(OpTest):
         self.rois_lod = [[]]
         self.label_int32 = []
         for bno in range(self.batch_size):
-            self.rois_lod[0].append(2 * (bno + 1))
-            for i in range(2 * (bno + 1)):
+            self.rois_lod[0].append(self.batch_size_per_im)
+            for i in range(self.batch_size_per_im):
                 xywh = np.random.rand(4)
                 xy1 = xywh[0:2] * 2
                 wh = xywh[2:4] * (self.images_shape[0] - xy1)
                 xy2 = xy1 + wh
                 roi = [xy1[0], xy1[1], xy2[0], xy2[1]]
                 rois.append(roi)
-        self.rois_num = len(rois)
         self.rois = np.array(rois).astype("float32")
-        for roi_num in self.rois_lod[0]:
+        for idx, roi_num in enumerate(self.rois_lod[0]):
             for roi_id in range(roi_num):
                 class_id = np.random.random_integers(self.num_classes - 1)
-                self.label_int32.append(class_id)
+                if idx == 0:
+                    # set an image with no foreground, to test the empty case
+                    self.label_int32.append(0)
+                else:
+                    self.label_int32.append(class_id)
         label_np = np.array(self.label_int32)
         self.label_int32 = label_np[:, np.newaxis]
 
