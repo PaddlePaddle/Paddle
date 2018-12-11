@@ -143,7 +143,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
           case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL: {
             auto *kernel =
                 reinterpret_cast<const CUpti_ActivityKernel3 *>(record);
-            tracer->AddKernelRecords(kernel->start, kernel->end,
+            tracer->AddKernelRecords(kernel->name, kernel->start, kernel->end,
                                      kernel->deviceId, kernel->streamId,
                                      kernel->correlationId);
             break;
@@ -224,8 +224,9 @@ class DeviceTracerImpl : public DeviceTracer {
                                      stream_id, correlation_id, bytes});
   }
 
-  void AddKernelRecords(uint64_t start, uint64_t end, int64_t device_id,
-                        int64_t stream_id, uint32_t correlation_id) {
+  void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
+                        int64_t device_id, int64_t stream_id,
+                        uint32_t correlation_id) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start == 0 || end == 0) {
       VLOG(3) << correlation_id << " cannot be traced";
@@ -233,7 +234,7 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.push_back(
-        KernelRecord{start, end, device_id, stream_id, correlation_id});
+        KernelRecord{name, start, end, device_id, stream_id, correlation_id});
   }
 
   bool IsEnabled() {
@@ -276,13 +277,13 @@ class DeviceTracerImpl : public DeviceTracer {
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
     for (const KernelRecord &r : kernel_records_) {
-      if (correlations_.find(r.correlation_id) == correlations_.end()) {
-        fprintf(stderr, "cannot relate a kernel activity\n");
-        continue;
-      }
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
-      event->set_name(correlations_.at(r.correlation_id));
+      if (correlations_.find(r.correlation_id) != correlations_.end()) {
+        event->set_name(correlations_.at(r.correlation_id));
+      } else {
+        event->set_name(r.name);
+      }
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
       event->set_sub_device_id(r.stream_id);

@@ -177,14 +177,13 @@ class Graph {
     return nullptr;
   }
 
-  const ProgramDesc &program() const { return program_; }
-  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
-
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
 
  private:
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
+
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
