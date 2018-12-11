@@ -151,11 +151,12 @@ void HandleGetResponse(brpc::Controller* cntl,
   var_h->Finish(true);
 }
 
-VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
-                                     const framework::Scope& scope,
-                                     const std::string& var_name,
-                                     int64_t time_out) {
+VarHandlePtr BRPCClient::_AsyncGetVar(const std::string& ep,
+                                      const platform::DeviceContext& ctx,
+                                      const framework::Scope& scope,
+                                      const std::string& var_name,
+                                      const std::string& method_name,
+                                      int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -180,7 +181,11 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
 
     platform::RecordRPCEvent record_event(method, p_ctx);
 
-    ch_ctx->stub->GetVariable(cntl, &req, response, done);
+    if (method_name == "GetMonomerVariable") {
+      ch_ctx->stub->GetMonomerVariable(cntl, &req, response, done);
+    } else {
+      ch_ctx->stub->GetVariable(cntl, &req, response, done);
+    }
 
     if (UNLIKELY(platform::IsProfileEnabled())) {
       var_h->Wait();
@@ -190,6 +195,28 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
   req_count_++;
 
   return var_h;
+}
+
+VarHandlePtr BRPCClient::AsyncGetMonomerVariable(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& var_name,
+    int64_t time_out) {
+  return _AsyncGetVar(ep, ctx, scope, var_name, "GetMonomerVariable", time_out);
+}
+
+VarHandlePtr BRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
+                                                const std::string& var_name,
+                                                int64_t time_out) {
+  return AsyncSendMessage(ep, "GetMonomerBarrier", FETCH_BARRIER_MESSAGE,
+                          time_out);
+}
+
+VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
+                                     const platform::DeviceContext& ctx,
+                                     const framework::Scope& scope,
+                                     const std::string& var_name,
+                                     int64_t time_out) {
+  return _AsyncGetVar(ep, ctx, scope, var_name, "GetVariable", time_out);
 }
 
 VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
@@ -363,6 +390,8 @@ VarHandlePtr BRPCClient::AsyncSendVarMessage(
 
   if (method_name == "CheckPointNotifyRPC") {
     ch_ctx->stub->CheckpointNotify(cntl, &req, response, done);
+  } else if (method_name == "GetMonomerBarrier") {
+    ch_ctx->stub->GetMonomerBarrier(cntl, &req, response, done);
   } else {
     ch_ctx->stub->SendVariable(cntl, &req, response, done);
   }

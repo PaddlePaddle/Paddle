@@ -17,7 +17,7 @@ if(WITH_GPU)
             dynload_cuda variable_visitor)
     if(WITH_DISTRIBUTE)
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-            ddim dynload_cuda selected_rows_functor sendrecvop_grpc)
+            ddim dynload_cuda selected_rows_functor sendrecvop_rpc)
     else()
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim dynload_cuda selected_rows_functor)

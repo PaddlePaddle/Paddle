@@ -26,10 +26,9 @@ typedef std::unordered_map<std::string, distributed::RequestHandler*>
 
 class BRPCServiceImpl : public SendRecvService {
  public:
-  explicit BRPCServiceImpl(const HandlerMap& rpc_call_map)
-      : request_send_h_(nullptr),
-        request_get_h_(nullptr),
-        request_prefetch_h_(nullptr) {
+  explicit BRPCServiceImpl(const HandlerMap& rpc_call_map,
+                           distributed::RPCServer* rpc_server)
+      : rpc_server_(rpc_server) {
     VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map.size();
     auto it = rpc_call_map.find(distributed::kRequestSend);
     if (it != rpc_call_map.end()) {
@@ -49,6 +48,16 @@ class BRPCServiceImpl : public SendRecvService {
     it = rpc_call_map.find(distributed::kRequestCheckpoint);
     if (it != rpc_call_map.end()) {
       request_checkpoint_h_ = it->second;
+    }
+
+    it = rpc_call_map.find(distributed::kRequestGetMonomerVariable);
+    if (it != rpc_call_map.end()) {
+      request_get_monomer_handler_h_ = it->second;
+    }
+
+    it = rpc_call_map.find(distributed::kRequestGetMonomerBarrier);
+    if (it != rpc_call_map.end()) {
+      request_get_monomer_barrier_handler_h_ = it->second;
     }
   }
 
@@ -166,11 +175,68 @@ class BRPCServiceImpl : public SendRecvService {
                                   trainer_id, checkpoint_dir);
   }
 
+  void GetMonomerVariable(google::protobuf::RpcController* cntl_butil,
+                          const VariableMessage* request,
+                          VariableMessage* response,
+                          google::protobuf::Closure* done) override {
+    PADDLE_ENFORCE(
+        request_get_monomer_handler_h_ != nullptr,
+        "kRequestGetMonomerVariable handler should be registed first!");
+
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+
+    // proc request.
+    std::string varname = request->varname();
+    VLOG(3) << "GetMonomerVariable " << varname;
+
+    rpc_server_->WaitVarCond(varname);
+    distributed::MonomerHandle h = rpc_server_->GetMonomer(varname);
+
+    auto scope = h.scope_;
+    auto invar = scope->FindVar(varname);
+    paddle::framework::Variable* outvar = nullptr;
+
+    request_get_monomer_handler_h_->Handle(varname, scope, invar, &outvar,
+                                           request->trainer_id());
+
+    if (outvar) {
+      distributed::SerializeToIOBuf(varname, outvar, *h.dev_ctx_, response,
+                                    &cntl->response_attachment(), "", false);
+    }
+  }
+
+  void GetMonomerBarrier(google::protobuf::RpcController* cntl_butil,
+                         const VariableMessage* request, VoidMessage* response,
+                         google::protobuf::Closure* done) override {
+    PADDLE_ENFORCE(
+        request_get_monomer_barrier_handler_h_ != nullptr,
+        "RequestGetMonomerBarrier handler should be registed first!");
+    brpc::ClosureGuard done_guard(done);
+
+    std::string varname = request->varname();
+    VLOG(3) << "RequestGetMonomerBarrier var_name:" << varname;
+
+    rpc_server_->WaitVarCond(varname);
+    distributed::MonomerHandle h = rpc_server_->GetMonomer(varname);
+
+    paddle::framework::Scope* scope = nullptr;
+    paddle::framework::Variable* invar = nullptr;
+    paddle::framework::Variable* outvar = nullptr;
+
+    request_get_monomer_barrier_handler_h_->Handle(
+        varname, scope, invar, &outvar, request->trainer_id());
+  }
+
  private:
-  distributed::RequestHandler* request_send_h_;
-  distributed::RequestHandler* request_get_h_;
-  distributed::RequestHandler* request_prefetch_h_;
-  distributed::RequestHandler* request_checkpoint_h_;
+  distributed::RequestHandler* request_send_h_{nullptr};
+  distributed::RequestHandler* request_get_h_{nullptr};
+  distributed::RequestHandler* request_prefetch_h_{nullptr};
+  distributed::RequestHandler* request_checkpoint_h_{nullptr};
+  distributed::RequestHandler* request_get_monomer_handler_h_{nullptr};
+  distributed::RequestHandler* request_get_monomer_barrier_handler_h_{nullptr};
+
+  distributed::RPCServer* rpc_server_{nullptr};
 };
 }  // namespace sendrecv
 
@@ -180,7 +246,7 @@ namespace distributed {
 
 void AsyncBRPCServer::StartServer() {
   // Instance of your service.
-  sendrecv::BRPCServiceImpl service_impl(rpc_call_map_);
+  sendrecv::BRPCServiceImpl service_impl(rpc_call_map_, this);
 
   // Add the service into server. Notice the second parameter, because the
   // service is put on stack, we don't want server to delete it, otherwise
