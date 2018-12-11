@@ -358,9 +358,6 @@ class OperatorWithKernel : public OperatorBase {
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
-  void ChooseKernel(const Scope& scope, const platform::Place& place,
-                    std::shared_ptr<OpKernelType>* kernel_type,
-                    std::shared_ptr<OpKernelFunc>* kernel_func) const;
 
  private:
   // indicate kernel DataType by input data. By default all input data must be
@@ -381,10 +378,6 @@ class OperatorWithKernel : public OperatorBase {
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
-
- protected:
-  mutable std::shared_ptr<OpKernelType> kernel_type_;
-  mutable std::shared_ptr<OpKernelFunc> kernel_func_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

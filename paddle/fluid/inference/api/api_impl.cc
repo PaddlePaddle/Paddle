@@ -299,7 +299,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);
       VLOG(3) << "set flag: " << flag;
-      flags.push_back("--scratch_kernel_type=1");
       framework::InitGflags(flags);
     }
   }

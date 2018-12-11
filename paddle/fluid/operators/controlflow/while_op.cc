@@ -62,7 +62,8 @@ class WhileOp : public framework::OperatorBase {
     bool is_test = Attr<bool>("is_test");
     std::unique_ptr<framework::ExecutorPrepareContext> ctx;
     framework::ExecutorPrepareContext *ctx_ptr;
-    if (Inputs().find("ExecutorPrepareContext") != Inputs().end()) {
+    if (Inputs().find("ExecutorPrepareContext") != Inputs().end() &&
+        Input("ExecutorPrepareContext") != framework::kEmptyVarName) {
       auto &context =
           scope.FindVar(Input("ExecutorPrepareContext"))->Get<LoDTensor>();
       PADDLE_ENFORCE_EQ(context.numel(), 1UL);
