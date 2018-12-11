@@ -1,4 +1,7 @@
 
+function(USE_JITKERNEL_MORE TARGET TYPE)
+    file(APPEND ${jit_file} "USE_JITKERNEL_MORE(${TARGET} ${TYPE});\n")
+endfunction()
 
 if(WITH_MKLML)
     add_subdirectory(mkl)
