@@ -87,9 +87,8 @@ class AsyncExecutor(object):
 
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
-        self.instance = ps_instance.PaddlePSInstance(1, 2)
 
-    def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
+    def run(self, program, data_feed, filelist, thread_num, fetch, mode="", debug=False):
         """
         Run program by this AsyncExecutor. Training dataset will be in filelist.
         Users can also inspect certain variables by naming them in parameter
@@ -151,10 +150,11 @@ class AsyncExecutor(object):
 
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
-                                     fetch_var_names, debug)
+                                     fetch_var_names, mode, debug)
 
     def download_data(self, afs_path, local_path, fs_default_name, ugi, process_num=12):
-        hadoop_home = "$HADOOP_HOME"
+        #hadoop_home = "$HADOOP_HOME"
+        hadoop_home = "~/tools/hadoop-xingtian/hadoop/"
 
         configs = {
             "fs.default.name": fs_default_name,
@@ -169,8 +169,11 @@ class AsyncExecutor(object):
             self.instance.get_worker_index(),
             self.instance.get_node_cnt() / 2,
             multi_processes=process_num)
+        self.instance.barrier_all() #wait for download_data #TODO only barriere worker
 
-    def config_distributed_nodes(self, dist_opt):
+    def config_distributed_nodes(self):
+        self.instance = ps_instance.PaddlePSInstance(1, 2)
+        return self.instance
 
         # get total rank
         # get rank index
@@ -196,11 +199,15 @@ class AsyncExecutor(object):
         self.executor.gather_servers(ips, self.instance.get_node_cnt())
         self.instance.barrier_all() #wait all worker start
         self.instance.barrier_all() #wait init model
-        self.instance.barrier_all() #wait for download_data
+        self.instance.barrier_all() #wait for download_data #TODO remove this after only barrier worker
         self.instance.barrier_all() #wait worker do all things 
         self.instance.barrier_all() #sync
 
-    def init_worker(self, dist_desc, afs_path, local_path, fs_default_name, ugi):
+    def init_worker(self, dist_desc, startup_program):
+        place = core.CPUPlace()
+        executor = Executor(place)
+        executor.run(startup_program)
+
         self.instance.barrier_all() #wait all server start
         ips = self.instance.gather_ips()
         self.executor.init_worker(dist_desc, ips, self.instance.get_node_cnt(), self.instance._rankid)
@@ -208,8 +215,6 @@ class AsyncExecutor(object):
         if self.instance.is_first_worker():
             self.executor.init_model()
         self.instance.barrier_all() #wait init model
-        self.download_data(afs_path, local_path, fs_default_name, ugi, process_num=12)
-        self.instance.barrier_all() #wait for download_data
        
     def init_model(self):
         self.executor.init_model()

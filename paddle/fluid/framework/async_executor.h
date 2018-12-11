@@ -61,6 +61,7 @@ class AsyncExecutor {
                    const std::vector<std::string>& filelist,
                    const int thread_num,
                    const std::vector<std::string>& fetch_names,
+                   const std::string& mode, 
                    const bool debug = false);
   //void ConfigPslib(const char* dist_desc, uint64_t* host_sign_list, int node_num, int index);
   void InitServer(const std::string& dist_desc, int index);
@@ -79,7 +80,7 @@ class AsyncExecutor {
                      const std::vector<std::string>& fetch_var_names,
                      Scope* root_scope, const int thread_index,
                      const bool debug);
-  void PrepareDenseThread();
+  void PrepareDenseThread(const std::string& mode);
  public:
   std::shared_ptr<paddle::distributed::PSlib>  _pslib_ptr;
   std::shared_ptr<DensePullThread>  _pull_dense_thread;

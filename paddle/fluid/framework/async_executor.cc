@@ -191,18 +191,19 @@ void AsyncExecutor::SaveModel(const std::string& path) {
     }
 }
 
-void AsyncExecutor::PrepareDenseThread() {
-    DensePullThreadParam param;
-    param.ps_client = _pslib_ptr->_worker_ptr;;
-    param.threshold = 1;//GlobalConfig::instance().pull_dense_per_batch; //TODO
-    param.training_thread_num = actual_thread_num;
-    param.root_scope = root_scope_;
-    //param.dense_params = &GlobalConfig::instance().dense_variable_name; //TODO
-    param.dense_params = &_param_config.dense_variable_name;
+void AsyncExecutor::PrepareDenseThread(const std::string& mode) {
+    if (mode == "mpi") {
+        DensePullThreadParam param;
+        param.ps_client = _pslib_ptr->_worker_ptr;;
+        param.threshold = 1;//GlobalConfig::instance().pull_dense_per_batch; //TODO
+        param.training_thread_num = actual_thread_num;
+        param.root_scope = root_scope_;
+        //param.dense_params = &GlobalConfig::instance().dense_variable_name; //TODO
+        param.dense_params = &_param_config.dense_variable_name;
 
-    _pull_dense_thread = std::shared_ptr<DensePullThread>(new DensePullThread(param));
-    _pull_dense_thread->start();
-
+        _pull_dense_thread = std::shared_ptr<DensePullThread>(new DensePullThread(param));
+        _pull_dense_thread->start();
+    }
 }
 
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
@@ -210,6 +211,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::vector<std::string>& filelist,
                                 const int thread_num,
                                 const std::vector<std::string>& fetch_var_names,
+                                const std::string& mode,
                                 const bool debug) {
   std::vector<std::thread> threads;
 
@@ -251,11 +253,15 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed>> readers;
   PrepareReaders(readers, actual_thread_num, data_feed_desc, filelist);
-  PrepareDenseThread();
+  PrepareDenseThread(mode);
   std::vector<std::shared_ptr<ExecutorThreadWorker>> workers;
   workers.resize(actual_thread_num);
   for (auto& worker : workers) {
-    worker.reset(new AsyncExecutorThreadWorker);
+    if (mode == "mpi") {
+        worker.reset(new AsyncExecutorThreadWorker);
+    } else {
+        worker.reset(new ExecutorThreadWorker);
+    }
   }
 
   // prepare thread resource here
@@ -274,7 +280,9 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& th : threads) {
     th.join();
   }
-  _pull_dense_thread->stop();
+  if (mode == "mpi") {
+    _pull_dense_thread->stop();
+  }
   root_scope_->DropKids();
 
   return;
