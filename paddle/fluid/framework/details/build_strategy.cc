@@ -58,6 +58,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 
+    CollectiveContext *context = CollectiveContext::GetInstance();
+    context->endpoints_ = strategy_.trainers_endpoints_;
+    context->trainer_id_ = strategy_.trainer_id_;
+    PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
+    if (strategy_.trainer_id_ > 0) {
+      PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
+                         strategy_.trainers_endpoints_.size(),
+                     "trainer_id_ < endpoints_ size");
+    }
+    VLOG(1) << "CollectiveContext:" << context->String();
+
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -135,16 +146,16 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
     } else if (pass->Type() == "sequential_execution_pass") {
-      VLOG(1) << "set enable_sequential_execution:"
-              << enable_sequential_execution_;
+      LOG(INFO) << "set enable_sequential_execution:"
+                << enable_sequential_execution_;
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "all_reduce_deps_pass") {
-      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-              << ", num_trainers:" << num_trainers_;
+      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+                << ", num_trainers:" << num_trainers_;
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(

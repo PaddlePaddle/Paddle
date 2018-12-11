@@ -152,19 +152,13 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
       std::map<std::string, const paddle::framework::LoDTensor*>
           lodtensor_targets;
-      std::map<std::string, const paddle::framework::Tensor*> tensor_targets;
       for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
         const auto& slot = multi_slot_desc.slots(i);
         if (slot.is_used()) {
           const auto& name = slot.name();
           readers[idx]->AddFeedVar(scope->Var(name), name);
-          if (slot.is_dense()) {
-            tensor_targets[name] =
-                &scope->FindVar(name)->Get<paddle::framework::Tensor>();
-          } else {
-            lodtensor_targets[name] =
-                &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
-          }
+          lodtensor_targets[name] =
+              &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
         }
       }
       readers[idx]->Start();
@@ -175,8 +169,9 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
           if (!slot.is_used()) {
             continue;
           }
+          const paddle::framework::LoDTensor* tens =
+              lodtensor_targets[slot.name()];
           if (slot.is_dense()) {  // dense branch
-            const paddle::framework::Tensor* tens = tensor_targets[slot.name()];
             if (slot.type() == "uint64") {
               const int64_t* data = tens->data<int64_t>();
               int batch_size = tens->dims()[0];
@@ -202,8 +197,6 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
               PADDLE_THROW("Error type in proto file.");
             }
           } else {  // sparse branch
-            const paddle::framework::LoDTensor* tens =
-                lodtensor_targets[slot.name()];
             if (slot.type() == "uint64") {
               const int64_t* data = tens->data<int64_t>();
               for (size_t i = 0; i < tens->NumElements(); ++i) {
