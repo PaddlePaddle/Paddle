@@ -137,8 +137,8 @@ static inline Tensor CropAndResize(const platform::CPUDeviceContext& context,
   uint8_t* result_data = result.mutable_data<uint8_t>({resolution, resolution},
                                                       context.GetPlace());
 
-  T w = rois_fg_data[roi_idx + 2] - rois_fg_data[roi_idx + 0];
-  T h = rois_fg_data[roi_idx + 3] - rois_fg_data[roi_idx + 1];
+  T w = rois_fg_data[roi_idx + 2] - rois_fg_data[roi_idx + 0] + 1;
+  T h = rois_fg_data[roi_idx + 3] - rois_fg_data[roi_idx + 1] + 1;
   w = std::max<T>(w, (T)1.);
   h = std::max<T>(h, (T)1.);
   for (int i = 0; i < resolution; ++i) {

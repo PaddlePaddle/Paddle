@@ -61,8 +61,8 @@ def bbox_overlaps(boxes, query_boxes):
 
 def crop_and_resize(mask_gt, roi_fg, resolution):
     result = np.zeros((resolution, resolution))
-    w = roi_fg[2] - roi_fg[0]
-    h = roi_fg[3] - roi_fg[1]
+    w = roi_fg[2] - roi_fg[0] + 1
+    h = roi_fg[3] - roi_fg[1] + 1
     w = np.maximum(w, 1)
     h = np.maximum(h, 1)
     for i in range(resolution):
