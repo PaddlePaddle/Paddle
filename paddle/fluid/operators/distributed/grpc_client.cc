@@ -121,28 +121,32 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
-                                     const framework::Scope& scope,
-                                     const std::string& var_name,
-                                     const std::string& barrier,
-                                     int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncGetVar(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& var_name,
+    const std::string& out_varname, const bool with_barrier, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
-  const std::string barrier_val = barrier;
+  const std::string out_varname_val = out_varname;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
   const std::string method = "GetRPC";
-  VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
+
+  var_name_val =
+      with_barrier ? var_name_val : string::Sprintf("%s%s", var_name_val,
+                                                    WITHOUT_BARRIER_MESSAGE);
+
+  VarHandlePtr h(new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, barrier_val, s, method, p_ctx, h, this] {
+  framework::AsyncIO([var_name_val, out_varname_val, s, method, p_ctx, h,
+                      this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
-    req.set_out_varname(barrier_val);
+    req.set_out_varname(out_varname_val);
     req.set_trainer_id(trainer_id_);
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);

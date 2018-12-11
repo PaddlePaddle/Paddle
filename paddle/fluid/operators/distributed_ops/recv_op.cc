@@ -22,8 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#define WITHOUT_BARRIER_MESSAGE "WITHOUT_BARRIER@RECV"
-
 namespace paddle {
 namespace operators {
 
@@ -37,13 +35,10 @@ class RecvOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    auto outs = Outputs("Out");
-
+    std::vector<std::string> varnames =
+        Attr<std::vector<std::string>>("varnames");
     bool with_barrier = Attr<bool>("with_barrier");
-    string barrier = "";
-    if (!with_barrier) {
-      barrier = WITHOUT_BARRIER_MESSAGE;
-    }
+    auto outs = Outputs("Out");
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
@@ -55,8 +50,9 @@ class RecvOp : public framework::OperatorBase {
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting without_barrier " << outs[i] << " from " << epmap[i];
-      rets.push_back(
-          rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i], barrier));
+      std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+      rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname,
+                                             outs[i], with_barrier));
     }
     for (size_t i = 0; i < rets.size(); i++) {
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
@@ -90,6 +86,11 @@ This operator can get variables from server side.
                   "(bool, default True) if without_barrier=False, will use "
                   "GetVariable get variable from pserver immediately")
         .SetDefault(true);
+    AddAttr<std::vector<std::string>>(
+        "varnames",
+        "(string vector, default {})"
+        "sometimes we need to put received var in another name")
+        .SetDefault({});
   }
 };
 

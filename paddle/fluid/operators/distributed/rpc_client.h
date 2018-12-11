@@ -43,7 +43,8 @@ class RPCClient {
                                    const platform::DeviceContext& ctx,
                                    const framework::Scope& scope,
                                    const std::string& var_name,
-                                   const std::string& barrier = "",
+                                   const std::string& out_varname,
+                                   const bool with_barrier = false,
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncPrefetchVar(

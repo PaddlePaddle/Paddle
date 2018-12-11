@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -81,10 +82,19 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                const int trainer_id,
                                const std::string& out_var_name,
                                const std::string& table_name) {
-  VLOG(4) << "RequestGetHandler:" << varname;
+  VLOG(4) << "RequestGetHandler:" << varname
+          << " out_var_name: " << out_var_name;
+
   // get var from pserver immediately without sync or async
-  if (out_var_name == WITHOUT_BARRIER_MESSAGE) {
-    *outvar = scope_->FindVar(varname);
+  string::Piece without_barrier_piece = string::Piece(WITHOUT_BARRIER_MESSAGE);
+  string::Piece var_name_piece = string::Piece(varname);
+
+  if (string::Contains(var_name_piece, without_barrier_piece)) {
+    var_name_piece = string::TrimPrefix(var_name_piece, without_barrier_piece);
+    VLOG(4) << "Get var " << var_name_piece << " with "
+            << WITHOUT_BARRIER_MESSAGE;
+    *outvar = scope_->FindVar(var_name_piece.ToString());
+    return true;
   }
 
   if (sync_mode_) {

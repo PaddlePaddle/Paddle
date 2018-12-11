@@ -136,17 +136,20 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
+    std::string out_varname = request_.out_varname();
     int trainer_id = request_.trainer_id();
-    VLOG(4) << "RequestGet " << varname;
+
+    VLOG(4) << "RequestGet " << out_varname << " from " << varname;
 
     auto scope = request_handler_->scope();
-    auto invar = scope->FindVar(varname);
+    framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
+                             out_var_name);
 
     if (outvar) {
-      SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
+      SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);
     }
     Finish(reply_, &responder_);

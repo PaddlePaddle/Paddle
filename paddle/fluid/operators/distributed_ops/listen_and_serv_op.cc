@@ -412,7 +412,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_get_handler_.get());
   f(request_prefetch_handler_.get());
   f(request_checkpoint_handler_.get());
-  f(request_get_without_barrier_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
