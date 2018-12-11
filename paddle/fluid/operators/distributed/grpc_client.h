@@ -189,6 +189,11 @@ class GRPCClient : public RPCClient {
                            const std::string& var_name,
                            int64_t time_out = FLAGS_rpc_deadline) override;
 
+  VarHandlePtr AsyncGetMonomerVariable(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) override;
+
   VarHandlePtr AsyncPrefetchVar(const std::string& ep,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope& scope,
@@ -200,8 +205,12 @@ class GRPCClient : public RPCClient {
   VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
-  VarHandlePtr AsyncSendFetchBarrier(
-      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncSendFetchBarrier(const std::string& ep,
+                                     int64_t time_out) override;
+
+  VarHandlePtr AsyncGetMonomerBarrier(
+      const std::string& ep, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
@@ -214,21 +223,22 @@ class GRPCClient : public RPCClient {
 
   void SendComplete() override;
 
- protected:
   void InitImpl() override;
 
  private:
-  // InitEventLoop should only be called by Init()
-  void InitEventLoop();
-
   void Proceed();
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
+  VarHandlePtr _AsyncGetVar(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name, const std::string& rpc,
+                            int64_t time_out);
 
  private:
   grpc::CompletionQueue cq_;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  std::unique_ptr<std::thread> client_thread_;
+  std::unique_ptr<std::thread> client_thread_{nullptr};
 
   // mutex for Wait client sync
   std::mutex sync_mutex_;

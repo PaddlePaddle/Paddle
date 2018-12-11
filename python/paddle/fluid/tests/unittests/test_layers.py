@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -844,6 +845,15 @@ class TestBook(unittest.TestCase):
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
+
+    def test_bpr_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            out = layers.bpr_loss(x, label)
+            self.assertIsNotNone(out)
+        print(str(program))
 
     def test_expand(self):
         program = Program()

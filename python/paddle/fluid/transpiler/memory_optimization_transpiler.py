@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import six
 from collections import defaultdict, MutableSet
 from .. import core
 from ... import compat as cpt
@@ -470,8 +471,21 @@ def memory_optimize(input_program,
     Returns:
         None
     """
+
+    def to_name_str(var):
+        if isinstance(var, Variable):
+            return var.desc.name()
+        elif isinstance(var, str):
+            return var
+        elif isinstance(var, six.string_types):
+            return str(var)
+        else:
+            raise TypeError(str(var) + " should be Variable or str")
+
     if level != 0 and level != 1:
         raise ValueError("only support opt_level 0 or 1.")
+    if skip_opt_set is not None and not isinstance(skip_opt_set, set):
+        raise ValueError("only support skip_opt_set as set.")
     global PRINT_LOG
     PRINT_LOG = print_log
     if skip_grads:
@@ -486,6 +500,8 @@ def memory_optimize(input_program,
             skip_opt_set = grad_set
         else:
             skip_opt_set.update(grad_set)
+    if skip_opt_set is not None:
+        skip_opt_set = set(map(to_name_str, skip_opt_set))
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
