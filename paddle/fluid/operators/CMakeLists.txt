@@ -67,8 +67,10 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_ten
 if (NOT WIN32)
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 endif()
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax vol2col im2col sampler)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale
+    cos_sim_functor memory jit_kernel concat_and_split cross_entropy softmax
+    vol2col im2col sampler beam_search sequence2batch lstm_compute matrix_bit_code
+    gru_compute activation_functions)
 if (WITH_GPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu)
 endif()
@@ -88,7 +90,6 @@ set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
-cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_search_op)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
