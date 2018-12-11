@@ -5,9 +5,8 @@ import sys
 
 
 class PaddlePSInstance(object):
-    def __init__(self, init_param, server_worker_mode, proc_per_node):
+    def __init__(self, server_worker_mode, proc_per_node):
         self.dh = dist_helper.MPIHelper()
-        self._config = init_param
         self._rankid = self.dh.get_rank()
         self._server_worker_mode = server_worker_mode
         self._proc_per_node = proc_per_node
