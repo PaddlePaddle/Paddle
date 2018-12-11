@@ -41,6 +41,7 @@ __all__ = [
     'crf_decoding',
     'cos_sim',
     'cross_entropy',
+    'bpr_loss',
     'square_error_cost',
     'chunk_eval',
     'sequence_conv',
@@ -1345,6 +1346,44 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         outputs={'Y': [out]},
         attrs={"soft_label": soft_label,
                "ignore_index": ignore_index})
+    return out
+
+
+def bpr_loss(input, label, name=None):
+    """
+    Bayesian Personalized Ranking Loss Operator.
+
+    This operator belongs to pairwise ranking loss. Label is the desired item.
+    The loss at a given point in one session is defined as:
+    $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
+
+    Learn more details by reading paper <session-based recommendations with recurrent
+    neural networks>(https://arxiv.org/abs/1511.06939)
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
+                                batch size and D is the number of classes.
+                                This input is not probability but logits.
+        label (Variable|list):  the ground truth which is a 2-D tensor.  `label`
+                                is a tensor<int64> with shape [N x 1].
+        name (str|None):        A name for this layer(optional). If set None, the
+                                layer will be named automatically. Default: None.
+    Returns:
+        A 2-D tensor with shape [N x 1], the bpr loss.
+
+    Examples:
+        .. code-block:: python
+
+          cost = fluid.layers.bpr_loss(input=predict, label=label)
+    """
+
+    helper = LayerHelper('bpr_loss', **locals())
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='bpr_loss',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out]})
     return out
 
 
@@ -6623,7 +6662,8 @@ def relu(x, name=None):
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
+    helper.append_op(
+        type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
     return out
 
 
