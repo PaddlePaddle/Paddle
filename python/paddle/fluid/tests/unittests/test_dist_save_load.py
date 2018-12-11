@@ -33,7 +33,6 @@ class TestDistSaveLoadDense2x2(TestDistBase):
                          delta=1e-3,
                          check_error_log=False,
                          need_envs={}):
-
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -50,6 +49,7 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         model_dir = tempfile.mkdtemp()
 
         local_env = {}
+        local_env["SAVE_MODE"] = "LOCAL"
         local_env["SAVE"] = "1"
         local_env["MODEL_DIR"] = model_dir
         local_env.update(required_envs)
@@ -78,6 +78,74 @@ class TestDistSaveLoadDense2x2(TestDistBase):
             "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '0',
             'IS_SELF_CONTAINED_LR': '1'
+        }
+        self.check_with_place(
+            "dist_save_load.py",
+            delta=0,
+            check_error_log=False,
+            need_envs=need_envs)
+
+
+class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._enforce_place = "CPU"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "http_proxy": ""
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        model_dir = tempfile.mkdtemp()
+
+        save_env = {}
+        save_env["SAVE_MODE"] = "DIST"
+        save_env["SAVE"] = "1"
+        save_env["MODEL_DIR"] = model_dir
+        save_env.update(required_envs)
+
+        tr0_var_1, tr1_var_1 = self._run_cluster(model_file, save_env,
+                                                 check_error_log)
+
+        load_env = {}
+        load_env["LOAD"] = "1"
+        load_env["MODEL_DIR"] = model_dir
+        load_env.update(required_envs)
+        tr0_var_2, tr1_var_2 = self._run_cluster(model_file, load_env,
+                                                 check_error_log)
+
+        shutil.rmtree(model_dir)
+
+        train0_1_np = np.array(tr0_var_1)
+        train1_1_np = np.array(tr1_var_1)
+        train0_2_np = np.array(tr0_var_2)
+        train1_2_np = np.array(tr1_var_2)
+
+        self.assertAlmostEqual(
+            train0_1_np.all(), train0_2_np.all(), delta=delta)
+        self.assertAlmostEqual(
+            train1_1_np.all(), train1_2_np.all(), delta=delta)
+
+    def test_dist(self):
+        need_envs = {
+            "IS_DISTRIBUTED": '0',
+            "IS_SPARSE": '0',
+            'IS_SELF_CONTAINED_LR': '1',
+            'SKIP_STEPS': np.random.randint(1, 10),
+            'OPTIMIZER': 'ADAM'
         }
         self.check_with_place(
             "dist_save_load.py",

@@ -158,19 +158,47 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         need_save = bool(int(os.getenv("SAVE", "0")))
         model_dir = os.getenv("MODEL_DIR", "")
+        save_mode = os.getenv("SAVE_MODE", "")
 
-        if need_save:
-            for _ in six.moves.xrange(RUN_STEP):
-                loss, = exe.run(fetch_list=[avg_cost.name],
-                                feed=feeder.feed(get_data()))
-            if need_save and model_dir:
-                io.save_persistables(startup_exe, model_dir, trainer_prog)
+        if save_mode == "LOCAL":
+            if need_save:
+                for _ in six.moves.xrange(RUN_STEP):
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+                if need_save and model_dir:
+                    io.save_persistables(startup_exe, model_dir, trainer_prog)
 
-        var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor())
-        if six.PY2:
-            print(pickle.dumps(np.ravel(var).tolist()))
+            var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor(
+            ))
+            if six.PY2:
+                print(pickle.dumps(np.ravel(var).tolist()))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
+
+        elif save_mode == "DIST":
+            skip_steps = int(os.getenv("SKIP_STEPS"))
+
+            if need_save:
+                for idx in six.moves.xrange(RUN_STEP):
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+                    if need_save and model_dir and idx == skip_steps:
+                        io.save_persistables(startup_exe, model_dir,
+                                             trainer_prog)
+                        io._save_persistables_on_pserver(startup_exe, model_dir,
+                                                         trainer_prog)
+            else:
+                for idx in six.moves.xrange(RUN_STEP):
+                    if idx <= skip_steps:
+                        continue
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+            if six.PY2:
+                print(pickle.dumps(loss.tolist()))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(loss.tolist()))
         else:
-            sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
+            raise Exception("save_mode must be LOCAL or DIST")
 
 
 if __name__ == "__main__":
