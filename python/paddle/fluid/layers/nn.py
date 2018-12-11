@@ -2506,7 +2506,7 @@ def adaptive_pool2d(input,
                     pool_size,
                     pool_type="max",
                     require_index=False,
-                    use_cudnn=True,
+                    use_cudnn=False,
                     name=None):
     """
     ${comment}
@@ -2521,7 +2521,7 @@ def adaptive_pool2d(input,
         pool_type: ${pooling_type_comment}
         require_index (bool): If true, the index of max pooling point along with outputs.
             it cannot be set in average pooling type.
-        use_cudnn (bool): ${use_cudnn_comment}
+        use_cudnn (bool, default False): adaptive pool currently not supported in cudnn.
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2531,6 +2531,7 @@ def adaptive_pool2d(input,
     Raises:
         ValueError: 'pool_type' is not 'max' nor 'avg'.
         ValueError: 'use_cudnn' is not a bool value.
+        ValueError: adaptive pool currently not supported in cudnn.
         ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
         ValueError: 'pool_size' should be a list or tuple with length as 2.
 
@@ -2540,11 +2541,11 @@ def adaptive_pool2d(input,
 
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.pool2d(
+          pool_out = fluid.layers.adaptive_pool2d(
                             input=data,
                             pool_size=[3, 3],
                             pool_type='max',
-                            require_index=True)
+                            require_index=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -2564,6 +2565,9 @@ def adaptive_pool2d(input,
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False.")
+
+    if use_cudnn:
+        raise ValueError("adaptive pool currently not supported in cudnn.")
 
     if pool_type == "max":
         l_type = 'max_pool2d_with_index'
@@ -2590,7 +2594,7 @@ def adaptive_pool2d(input,
             "adaptive": True,
         })
 
-    return pool_out
+    return (pool_out, mask) if require_index else pool_out
 
 
 @templatedoc(op_type="pool3d")
@@ -2598,7 +2602,7 @@ def adaptive_pool3d(input,
                     pool_size,
                     pool_type="max",
                     require_index=False,
-                    use_cudnn=True,
+                    use_cudnn=False,
                     name=None):
     """
     ${comment}
@@ -2613,7 +2617,7 @@ def adaptive_pool3d(input,
         pool_type: ${pooling_type_comment}
         require_index (bool): If true, the index of max pooling point along with outputs.
             it cannot be set in average pooling type.
-        use_cudnn (bool): ${use_cudnn_comment}
+        use_cudnn (bool, default False): adaptive pool currently not supported in cudnn.
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2623,6 +2627,7 @@ def adaptive_pool3d(input,
     Raises:
         ValueError: 'pool_type' is not 'max' nor 'avg'.
         ValueError: 'use_cudnn' is not a bool value.
+        ValueError: adaptive pool currently not supported in cudnn.
         ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
         ValueError: 'pool_size' should be a list or tuple with length as 2.
 
@@ -2632,7 +2637,7 @@ def adaptive_pool3d(input,
 
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.pool2d(
+          pool_out, mask = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3],
                             pool_type='max',
@@ -2656,6 +2661,9 @@ def adaptive_pool3d(input,
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False.")
+
+    if use_cudnn:
+        raise ValueError("adaptive pool currently not supported in cudnn.")
 
     if pool_type == "max":
         l_type = 'max_pool3d_with_index'
@@ -2682,7 +2690,7 @@ def adaptive_pool3d(input,
             "adaptive": True,
         })
 
-    return pool_out
+    return (pool_out, mask) if require_index else pool_out
 
 
 def batch_norm(input,

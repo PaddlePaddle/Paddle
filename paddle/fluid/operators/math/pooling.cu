@@ -21,18 +21,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-__device__ __forceinline__ int ADAPT_START_INDEX(int ph, int input_size,
-                                                 int output_size) {
-  return static_cast<int>(
-      floor(static_cast<double>(ph * input_size) / output_size));
-}
-
-__device__ __forceinline__ int ADAPT_END_INDEX(int ph, int input_size,
-                                               int output_size) {
-  return static_cast<int>(
-      ceil(static_cast<double>((ph + 1) * input_size) / output_size));
-}
-
 template <typename PoolProcess, typename T>
 __global__ void KernelPool2D(const int nthreads, const T* input_data,
                              const int channels, const int input_height,
@@ -52,11 +40,11 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
     int hstart, hend;
     int wstart, wend;
     if (adaptive) {
-      hstart = ADAPT_START_INDEX(ph, input_height, output_height);
-      hend = ADAPT_END_INDEX(ph, input_height, output_height);
+      hstart = AdaptStartIndex(ph, input_height, output_height);
+      hend = AdaptEndIndex(ph, input_height, output_height);
 
-      wstart = ADAPT_START_INDEX(pw, input_width, output_width);
-      wend = ADAPT_END_INDEX(pw, input_width, output_width);
+      wstart = AdaptStartIndex(pw, input_width, output_width);
+      wend = AdaptEndIndex(pw, input_width, output_width);
     } else {
       hstart = ph * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
@@ -91,28 +79,29 @@ __global__ void KernelPool2DGrad(
     PoolProcess pool_process, bool exclusive, bool adaptive, T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
-    int offsetW = index % input_width + padding_width;
-    int offsetH = (index / input_width) % input_height + padding_height;
+    int w_offset = index % input_width + padding_width;
+    int h_offset = (index / input_width) % input_height + padding_height;
     int offsetC = (index / input_width / input_height) % channels;
     int batch_idx = index / input_width / input_height / channels;
 
     int phstart, phend;
     int pwstart, pwend;
     if (adaptive) {
-      phstart = offsetH * output_height / input_height;
+      phstart = h_offset * output_height / input_height;
       phend =
-          min((offsetH + 1) * output_height / input_height + 1, output_height);
-      pwstart = offsetW * output_width / input_width;
-      pwend = min((offsetW + 1) * output_width / input_width + 1, output_width);
+          min((h_offset + 1) * output_height / input_height + 1, output_height);
+      pwstart = w_offset * output_width / input_width;
+      pwend =
+          min((w_offset + 1) * output_width / input_width + 1, output_width);
     } else {
-      phstart = (offsetH < ksize_height)
+      phstart = (h_offset < ksize_height)
                     ? 0
-                    : (offsetH - ksize_height) / stride_height + 1;
-      pwstart = (offsetW < ksize_width)
+                    : (h_offset - ksize_height) / stride_height + 1;
+      pwstart = (w_offset < ksize_width)
                     ? 0
-                    : (offsetW - ksize_width) / stride_width + 1;
-      phend = min(offsetH / stride_height + 1, output_height);
-      pwend = min(offsetW / stride_width + 1, output_width);
+                    : (w_offset - ksize_width) / stride_width + 1;
+      phend = min(h_offset / stride_height + 1, output_height);
+      pwend = min(w_offset / stride_width + 1, output_width);
     }
     T gradient = 0;
     T input = input_data[index];
@@ -414,14 +403,14 @@ __global__ void KernelPool3D(
     int hstart, hend;
     int wstart, wend;
     if (adaptive) {
-      dstart = ADAPT_START_INDEX(pd, input_depth, output_depth);
-      dend = ADAPT_END_INDEX(pd, input_depth, output_depth);
+      dstart = AdaptStartIndex(pd, input_depth, output_depth);
+      dend = AdaptEndIndex(pd, input_depth, output_depth);
 
-      hstart = ADAPT_START_INDEX(ph, input_height, output_height);
-      hend = ADAPT_END_INDEX(ph, input_height, output_height);
+      hstart = AdaptStartIndex(ph, input_height, output_height);
+      hend = AdaptEndIndex(ph, input_height, output_height);
 
-      wstart = ADAPT_START_INDEX(pw, input_width, output_width);
-      wend = ADAPT_END_INDEX(pw, input_width, output_width);
+      wstart = AdaptStartIndex(pw, input_width, output_width);
+      wend = AdaptEndIndex(pw, input_width, output_width);
     } else {
       dstart = pd * stride_depth - padding_depth;
       hstart = ph * stride_height - padding_height;
@@ -464,9 +453,9 @@ __global__ void KernelPool3DGrad(
     bool exclusive, bool adaptive, T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
-    int offsetW = index % input_width + padding_width;
-    int offsetH = (index / input_width) % input_height + padding_height;
-    int offsetD =
+    int w_offset = index % input_width + padding_width;
+    int h_offset = (index / input_width) % input_height + padding_height;
+    int d_offset =
         (index / input_width / input_height) % input_depth + padding_depth;
     int offsetC = (index / input_width / input_height / input_depth) % channels;
     int batch_idx = index / input_width / input_height / input_depth / channels;
@@ -475,26 +464,28 @@ __global__ void KernelPool3DGrad(
     int phstart, phend;
     int pwstart, pwend;
     if (adaptive) {
-      pdstart = offsetD * output_depth / input_depth;
-      pdend = min((offsetD + 1) * output_depth / input_depth + 1, output_depth);
-      phstart = offsetH * output_height / input_height;
+      pdstart = d_offset * output_depth / input_depth;
+      pdend =
+          min((d_offset + 1) * output_depth / input_depth + 1, output_depth);
+      phstart = h_offset * output_height / input_height;
       phend =
-          min((offsetH + 1) * output_height / input_height + 1, output_height);
-      pwstart = offsetW * output_width / input_width;
-      pwend = min((offsetW + 1) * output_width / input_width + 1, output_width);
+          min((h_offset + 1) * output_height / input_height + 1, output_height);
+      pwstart = w_offset * output_width / input_width;
+      pwend =
+          min((w_offset + 1) * output_width / input_width + 1, output_width);
     } else {
-      pdstart = (offsetD < ksize_depth)
+      pdstart = (d_offset < ksize_depth)
                     ? 0
-                    : (offsetD - ksize_depth) / stride_depth + 1;
-      phstart = (offsetH < ksize_height)
+                    : (d_offset - ksize_depth) / stride_depth + 1;
+      phstart = (h_offset < ksize_height)
                     ? 0
-                    : (offsetH - ksize_height) / stride_height + 1;
-      pwstart = (offsetW < ksize_width)
+                    : (h_offset - ksize_height) / stride_height + 1;
+      pwstart = (w_offset < ksize_width)
                     ? 0
-                    : (offsetW - ksize_width) / stride_width + 1;
-      pdend = min((offsetD) / stride_depth + 1, output_depth);
-      phend = min((offsetH) / stride_height + 1, output_height);
-      pwend = min((offsetW) / stride_width + 1, output_width);
+                    : (w_offset - ksize_width) / stride_width + 1;
+      pdend = min((d_offset) / stride_depth + 1, output_depth);
+      phend = min((h_offset) / stride_height + 1, output_height);
+      pwend = min((w_offset) / stride_width + 1, output_width);
     }
 
     T gradient = 0;
@@ -795,11 +786,11 @@ __global__ void KernelMaxPool2dWithIdx(
     int hstart, hend;
     int wstart, wend;
     if (adaptive) {
-      hstart = ADAPT_START_INDEX(ph, input_height, output_height);
-      hend = ADAPT_END_INDEX(ph, input_height, output_height);
+      hstart = AdaptStartIndex(ph, input_height, output_height);
+      hend = AdaptEndIndex(ph, input_height, output_height);
 
-      wstart = ADAPT_START_INDEX(pw, input_width, output_width);
-      wend = ADAPT_END_INDEX(pw, input_width, output_width);
+      wstart = AdaptStartIndex(pw, input_width, output_width);
+      wend = AdaptEndIndex(pw, input_width, output_width);
     } else {
       hstart = ph * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
@@ -837,35 +828,36 @@ __global__ void KernelMaxPool2DWithIdxGrad(
     T1* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
-    int offsetW = index % input_width;
-    int offsetH = (index / input_width) % input_height;
+    int w_offset = index % input_width;
+    int h_offset = (index / input_width) % input_height;
     int offsetC = (index / input_width / input_height) % channels;
     int batch_idx = index / input_width / input_height / channels;
 
     int phstart, phend;
     int pwstart, pwend;
     if (adaptive) {
-      phstart = offsetH * output_height / input_height;
+      phstart = h_offset * output_height / input_height;
       phend =
-          min((offsetH + 1) * output_height / input_height + 1, output_height);
-      pwstart = offsetW * output_width / input_width;
-      pwend = min((offsetW + 1) * output_width / input_width + 1, output_width);
+          min((h_offset + 1) * output_height / input_height + 1, output_height);
+      pwstart = w_offset * output_width / input_width;
+      pwend =
+          min((w_offset + 1) * output_width / input_width + 1, output_width);
     } else {
       phstart =
-          (offsetH + padding_height < ksize_height)
+          (h_offset + padding_height < ksize_height)
               ? 0
-              : (offsetH + padding_height - ksize_height) / stride_height + 1;
+              : (h_offset + padding_height - ksize_height) / stride_height + 1;
       pwstart =
-          (offsetW + padding_width < ksize_width)
+          (w_offset + padding_width < ksize_width)
               ? 0
-              : (offsetW + padding_width - ksize_width) / stride_width + 1;
+              : (w_offset + padding_width - ksize_width) / stride_width + 1;
       phend =
-          min((offsetH + padding_height) / stride_height + 1, output_height);
-      pwend = min((offsetW + padding_width) / stride_width + 1, output_width);
+          min((h_offset + padding_height) / stride_height + 1, output_height);
+      pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
     }
 
     T1 gradient = 0;
-    int input_current_featuremap_idx = offsetH * input_width + offsetW;
+    int input_current_featuremap_idx = h_offset * input_width + w_offset;
     int output_idx =
         (batch_idx * channels + offsetC) * output_height * output_width;
 
@@ -1000,14 +992,14 @@ __global__ void KernelMaxPool3DWithIdx(
     int hstart, hend;
     int wstart, wend;
     if (adaptive) {
-      dstart = ADAPT_START_INDEX(pd, input_depth, output_depth);
-      dend = ADAPT_END_INDEX(pd, input_depth, output_depth);
+      dstart = AdaptStartIndex(pd, input_depth, output_depth);
+      dend = AdaptEndIndex(pd, input_depth, output_depth);
 
-      hstart = ADAPT_START_INDEX(ph, input_height, output_height);
-      hend = ADAPT_END_INDEX(ph, input_height, output_height);
+      hstart = AdaptStartIndex(ph, input_height, output_height);
+      hend = AdaptEndIndex(ph, input_height, output_height);
 
-      wstart = ADAPT_START_INDEX(pw, input_width, output_width);
-      wend = ADAPT_END_INDEX(pw, input_width, output_width);
+      wstart = AdaptStartIndex(pw, input_width, output_width);
+      wend = AdaptEndIndex(pw, input_width, output_width);
     } else {
       dstart = pd * stride_depth - padding_depth;
       hstart = ph * stride_height - padding_height;
@@ -1051,9 +1043,9 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     const int padding_width, bool adaptive, T1* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
-    int offsetW = index % input_width;
-    int offsetH = (index / input_width) % input_height;
-    int offsetD = (index / input_width / input_height) % input_depth;
+    int w_offset = index % input_width;
+    int h_offset = (index / input_width) % input_height;
+    int d_offset = (index / input_width / input_height) % input_depth;
     int offsetC = (index / input_width / input_height / input_depth) % channels;
     int batch_idx = index / input_width / input_height / input_depth / channels;
 
@@ -1061,35 +1053,37 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     int phstart, phend;
     int pwstart, pwend;
     if (adaptive) {
-      pdstart = offsetD * output_depth / input_depth;
-      pdend = min((offsetD + 1) * output_depth / input_depth + 1, output_depth);
-      phstart = offsetH * output_height / input_height;
+      pdstart = d_offset * output_depth / input_depth;
+      pdend =
+          min((d_offset + 1) * output_depth / input_depth + 1, output_depth);
+      phstart = h_offset * output_height / input_height;
       phend =
-          min((offsetH + 1) * output_height / input_height + 1, output_height);
-      pwstart = offsetW * output_width / input_width;
-      pwend = min((offsetW + 1) * output_width / input_width + 1, output_width);
+          min((h_offset + 1) * output_height / input_height + 1, output_height);
+      pwstart = w_offset * output_width / input_width;
+      pwend =
+          min((w_offset + 1) * output_width / input_width + 1, output_width);
     } else {
       pdstart =
-          (offsetD + padding_depth < ksize_depth)
+          (d_offset + padding_depth < ksize_depth)
               ? 0
-              : (offsetD + padding_depth - ksize_depth) / stride_depth + 1;
+              : (d_offset + padding_depth - ksize_depth) / stride_depth + 1;
       phstart =
-          (offsetH + padding_height < ksize_height)
+          (h_offset + padding_height < ksize_height)
               ? 0
-              : (offsetH + padding_height - ksize_height) / stride_height + 1;
+              : (h_offset + padding_height - ksize_height) / stride_height + 1;
       pwstart =
-          (offsetW + padding_width < ksize_width)
+          (w_offset + padding_width < ksize_width)
               ? 0
-              : (offsetW + padding_width - ksize_width) / stride_width + 1;
-      pdend = min((offsetD + padding_depth) / stride_depth + 1, output_depth);
+              : (w_offset + padding_width - ksize_width) / stride_width + 1;
+      pdend = min((d_offset + padding_depth) / stride_depth + 1, output_depth);
       phend =
-          min((offsetH + padding_height) / stride_height + 1, output_height);
-      pwend = min((offsetW + padding_width) / stride_width + 1, output_width);
+          min((h_offset + padding_height) / stride_height + 1, output_height);
+      pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
     }
 
     T1 gradient = 0;
     int input_current_feature_map_idx =
-        (offsetD * input_height + offsetH) * input_width + offsetW;
+        (d_offset * input_height + h_offset) * input_width + w_offset;
     int output_idx = (batch_idx * channels + offsetC) * output_depth *
                      output_height * output_width;
     mask += output_idx;
