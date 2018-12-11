@@ -23,10 +23,13 @@
 #include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 
 #include "glog/logging.h"
+
+using paddle::memory::allocation::AllocationPtr;
 
 namespace paddle {
 namespace framework {

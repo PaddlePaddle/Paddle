@@ -35,6 +35,8 @@
 // solve static linking error in windows
 // https://github.com/google/glog/issues/301
 #define GOOGLE_GLOG_DLL_DECL
+#include <winsock2.h>
+#define WIN32_LEAN_AND_MEAN
 #include <io.h>  // _popen, _pclose
 #include <stdio.h>
 #include <windows.h>

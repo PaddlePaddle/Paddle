@@ -13,9 +13,6 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 namespace paddle {
 namespace operators {
@@ -216,6 +213,7 @@ class LayerNormKernelImpl : public LayerNormKernel<T> {
     }                                                                          \
   }
 
+#ifndef _WIN32  // fix me
 #ifdef __AVX__
 INTRIAVX_FLOAT(platform::avx, kEQ8);
 INTRIAVX_FLOAT(platform::avx, kGT8LT16);
@@ -228,6 +226,7 @@ INTRIAVX_FLOAT(platform::avx2, kGT8LT16);
 INTRIAVX_FLOAT(platform::avx2, kEQ16);
 INTRIAVX_FLOAT(platform::avx2, kGT16);
 #endif
+#endif  //_WIN32
 
 #undef INTRIAVX_FLOAT
 

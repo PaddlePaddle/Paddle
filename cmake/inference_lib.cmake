@@ -202,12 +202,12 @@ endif ()
 
 set(module "inference")
 if(WIN32)
-    set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
 else(WIN32)
-    set(inference_lib_binary ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
 endif(WIN32)
 copy(inference_lib DEPS ${inference_deps}
-  SRCS ${src_dir}/${module}/*.h ${inference_lib_binary}
+  SRCS ${src_dir}/${module}/*.h ${paddle_fluid_lib}
        ${src_dir}/${module}/api/paddle_*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
         )
@@ -247,7 +247,7 @@ copy(third_party DEPS fluid_lib_dist
 
 # only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
 copy(inference_api_lib DEPS fluid_lib_dist
-  SRCS ${inference_lib_binary}
+  SRCS ${paddle_fluid_lib}
        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
