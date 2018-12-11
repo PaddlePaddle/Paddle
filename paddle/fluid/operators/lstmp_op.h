@@ -59,7 +59,25 @@ class LSTMPKernel : public framework::OpKernel<T> {
     else
       PADDLE_THROW("unsupported activation type");
   }
-
+  void Print(Tensor & t, std::string name) {
+      VLOG(1) << "qxz print "<< name;
+      VLOG(1) << name << "size = " << t.numel();
+      size_t size = t.numel();
+      T *d = t.data<T>();
+#ifdef PADDLE_WITH_CUDA
+	std::vector<T> vec;
+	platform::DeviceContextPool::Instance().Get(t.place())->Wait();
+	if (platform::is_gpu_place(t.place())) {
+		vec.resize(size);
+		cudaMemcpy(vec.data(), d, sizeof(T) * size, cudaMemcpyDeviceToHost);
+		d = vec.data();
+	}
+#endif
+      VLOG(1) << name << " data_ptr = " << static_cast<void*>(d);
+      for (size_t i = 0; i < size; i++) {
+           VLOG(1)<< d[i] << ",";
+      }   
+   }
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
@@ -67,7 +85,6 @@ class LSTMPKernel : public framework::OpKernel<T> {
     auto* bias = ctx.Input<Tensor>("Bias");
 
     auto* hidden_t0 = ctx.Input<Tensor>("H0");
-    auto* ordered_proj0 = ctx.Output<Tensor>("OrderedP0");
     auto* cell_t0 = ctx.Input<Tensor>("C0");
 
     auto* batch_gate = ctx.Output<LoDTensor>("BatchGate");
@@ -110,6 +127,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     }
     lstmp_value.prev_state_value = nullptr;
     Tensor ordered_c0;
+    Tensor ordered_h0;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -170,10 +188,9 @@ class LSTMPKernel : public framework::OpKernel<T> {
         // according to their length. The initialized hidden state also needs
         // to reorder.
         VLOG(1) << "qxz h0 used";
-        ordered_proj0->mutable_data<T>(ctx.GetPlace());
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
-                                           ordered_proj0, true);
-        blas.MatMul(*ordered_proj0, false, *weight, false, static_cast<T>(1.0),
+                                           &ordered_h0, true);
+        blas.MatMul(ordered_h0, false, *weight, false, static_cast<T>(1.0),
                     &gate_t, static_cast<T>(1.0));
       }
 
@@ -187,12 +204,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       lstmp_value.prev_state_value = lstmp_value.state_value;
       blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
                   &proj_t, static_cast<T>(0.0));
-      VLOG(1) << "qxz print proj_t";
-      size_t size = proj_t.numel();
-      auto *d = reinterpret_cast<T *>(proj_t.data<T>());
-      for (size_t i = 0; i < size; i++) {
-           std::cout<< d[i] << ",";
-      }      
+      //Print(proj_t, "proj_t");    
       if (proj_act != math::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev);
@@ -252,7 +264,6 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     auto* bias_g = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     auto* h0 = ctx.Input<Tensor>("H0");
-    auto* ordered_proj0 = ctx.Input<Tensor>("OrderedP0");
     auto* c0 = ctx.Input<Tensor>("C0");
 
     auto* h0_g = ctx.Output<Tensor>(framework::GradVarName("H0"));
@@ -425,31 +436,14 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
           ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
                                              &ordered_h0, true);
           if (weight_g) {
-            blas.MatMul(*ordered_proj0, true, gate_g, false,
+            blas.MatMul(ordered_h0, true, gate_g, false,
                         static_cast<T>(1.0), weight_g, static_cast<T>(1.0));
           }
         }
         if (h0 && (h0_g || proj_weight_g)) {
           ordered_h0_g.mutable_data<T>(h0_g->dims(), ctx.GetPlace());
-          Tensor proj0_g;
-          proj0_g.Resize({in_dims[0], proj_weight->dims()[1]});
-          proj0_g.mutable_data<T>(ctx.GetPlace());
           blas.MatMul(gate_g, false, *weight, true, static_cast<T>(1.0),
-                      &proj0_g, static_cast<T>(0.0));
-          if (proj_act != math::detail::ActivationType::kIdentity) {
-            auto proj0_dev = EigenMatrix<T>::From(*ordered_proj0);
-            auto proj0_g_dev = EigenMatrix<T>::From(proj0_g);
-            ActGradCompute(cell_act, place, proj0_dev, proj0_dev, proj0_g_dev,
-                           proj0_g_dev);
-          }
-          if (h0_g) {
-            blas.MatMul(proj0_g, false, *proj_weight, true, static_cast<T>(1.0),
-                        &ordered_h0_g, static_cast<T>(0.0));
-          }
-          if (proj_weight_g) {
-            blas.MatMul(ordered_h0, true, proj0_g, false, static_cast<T>(1.0),
-                        proj_weight_g, static_cast<T>(1.0));
-          }
+                      &ordered_h0_g, static_cast<T>(0.0));
         }
       }
     }

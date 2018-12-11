@@ -75,7 +75,6 @@ class LSTMPOp : public framework::OperatorWithKernel {
                      "Input(H0) provided.");
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      ctx->SetOutputDim("OrderedP0", {h_dims[0], proj_dims[1]});
     }
 
     auto b_dims = ctx->GetInputDim("Bias");
@@ -176,11 +175,6 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) the hidden state reorganized in batch. "
               "This LoDTensor is obtained in the forward and used in the "
               "backward.")
-        .AsIntermediate();
-    AddOutput("OrderedP0",
-              "(Tensor) the projection of the initial hidden state "
-              "H0. This is a tensor with shape (N x P), where N is the "
-              "batch size and P is the hidden size.")
         .AsIntermediate();
     AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "

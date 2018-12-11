@@ -171,7 +171,6 @@ class TestLstmpOp(LstmTest.TestLstmOp):
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -188,7 +187,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -200,7 +198,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
     def test_check_grad_ingore_bias(self):
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -212,7 +209,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
     def test_check_grad_ingore_weight(self):
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -224,7 +220,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
     def test_check_grad_ingore_proj_weight(self):
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -236,7 +231,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
     def test_check_grad_ingore_input(self):
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -248,7 +242,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
     def test_check_grad_ingore_h0(self):
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -260,7 +253,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
     def test_check_grad_ingore_c0(self):
         N = len(self.lod[0])
-        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
