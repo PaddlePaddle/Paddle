@@ -39,6 +39,7 @@ inline uint64_t PosixInNsec() {
 class DeviceTracer {
  public:
   struct KernelRecord {
+    std::string name;
     uint64_t start_ns;
     uint64_t end_ns;
     int64_t device_id;
@@ -84,8 +85,9 @@ class DeviceTracer {
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.
-  virtual void AddKernelRecords(uint64_t start, uint64_t end, int64_t device_id,
-                                int64_t stream_id, uint32_t correlation_id) = 0;
+  virtual void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
+                                int64_t device_id, int64_t stream_id,
+                                uint32_t correlation_id) = 0;
 
   // Generate a proto after done (Disabled).
   virtual proto::Profile GenProfile(const std::string& profile_path) = 0;

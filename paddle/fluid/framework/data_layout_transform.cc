@@ -151,19 +151,22 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   auto out_format =
       platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
 
-  void* in_data = GetDataFromTensor(in, in_type);
-
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
+  if (in_format != out_format) {
+    void* in_data = GetDataFromTensor(in, in_type);
+    auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
 
-  auto in_memory = memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
-  auto out_memory =
-      memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
+    auto in_memory =
+        memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
+    auto out_memory =
+        memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
 
-  platform::Reorder(in_memory, out_memory);
-
+    platform::Reorder(in_memory, out_memory);
+  } else {
+    out->ShareDataWith(in);
+  }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(memory::format::format_undef);
