@@ -92,7 +92,8 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     config_file = 'nvprof_config_file'
     with open(config_file, 'wb') as fp:
         fp.writelines([six.b("%s\n" % item) for item in config])
-    core.nvprof_init(output_file, output_mode, config_file)
+    #Comment this for nvprof
+    #core.nvprof_init(output_file, output_mode, config_file)
     # Enables profiler collection by the active CUDA profiling tool.
     core.nvprof_start()
     yield
