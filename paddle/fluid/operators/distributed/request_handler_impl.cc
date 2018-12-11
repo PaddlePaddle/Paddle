@@ -82,6 +82,10 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                const std::string& out_var_name,
                                const std::string& table_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
+  // get var from pserver immediately without sync or async
+  if (out_var_name == WITHOUT_BARRIER_MESSAGE) {
+    *outvar = scope_->FindVar(varname);
+  }
 
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {

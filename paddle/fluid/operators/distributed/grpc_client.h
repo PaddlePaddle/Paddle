@@ -187,6 +187,7 @@ class GRPCClient : public RPCClient {
                            const platform::DeviceContext& ctx,
                            const framework::Scope& scope,
                            const std::string& var_name,
+                           const std::string& barrier = "",
                            int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncPrefetchVar(const std::string& ep,
