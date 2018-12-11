@@ -49,7 +49,6 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         model_dir = tempfile.mkdtemp()
 
         local_env = {}
-        local_env["SAVE_MODE"] = "LOCAL"
         local_env["SAVE"] = "1"
         local_env["MODEL_DIR"] = model_dir
         local_env.update(required_envs)
@@ -77,7 +76,8 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         need_envs = {
             "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '0',
-            'IS_SELF_CONTAINED_LR': '1'
+            'IS_SELF_CONTAINED_LR': '1',
+            'SAVE_MODE': 'LOCAL',
         }
         self.check_with_place(
             "dist_save_load.py",
@@ -144,7 +144,8 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
             "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '0',
             'IS_SELF_CONTAINED_LR': '1',
-            'SKIP_STEPS': np.random.randint(1, 10),
+            'SAVE_MODE': 'DIST',
+            'SKIP_STEPS': str(np.random.randint(1, 10)),
             'OPTIMIZER': 'ADAM'
         }
         self.check_with_place(
