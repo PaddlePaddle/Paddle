@@ -39,12 +39,15 @@ std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
 std::vector<ir::Node*> BFSSortGraphOps(const ir::Graph& graph);
 
 class ControlFlowGraph;
+
 class AnalysisVarPass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
+  // fill the variable map(var_nodes) by version.
+  void InitSSAGraphNodes() const;
   // update program descs
   void RenameVarInGraphDesc(const std::string& var,
                             const std::string& cache_var, size_t idx) const;
@@ -52,6 +55,7 @@ class AnalysisVarPass : public ir::Pass {
   void RenameVarInGraphNode(const std::string& var,
                             const std::string& cache_var, size_t idx,
                             ir::Graph* graph) const;
+
   void SubGraphOptimize(OpDesc* op_desc) const;
   // valid a tensor can be reuse or not
   bool NodeCanReused(ir::Node* node) const;
@@ -91,8 +95,6 @@ class ControlFlowGraph {
 
   // for ssa-graph nodes
   ir::Node* GetNodeFromVarName(const std::string& name, ir::Node* op) const;
-  // convert graph to ProgramDesc
-  std::unique_ptr<ProgramDesc> ToProgramDesc(const ir::Graph& graph) const;
 
  private:
   void BuildCFGGraph();

@@ -119,7 +119,7 @@ void OrderedNodePairPool::Insert(ir::Node* var, ir::Node* op) {
   mark_table_[var->Name()] = it;
 }
 
-int OrderedNodePairPool::GetPosition(ir::Node* var) {
+int OrderedNodePairPool::GetIndex(ir::Node* var) {
   return std::distance(nodes_.begin(), mark_table_[var->Name()]);
 }
 

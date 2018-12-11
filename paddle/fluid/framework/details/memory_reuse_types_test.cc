@@ -66,7 +66,7 @@ TEST(OrderedNodePairPool, Normal) {
   std::cout << pool.ToString() << std::endl;
 
   ASSERT_EQ(pool.size(), static_cast<size_t>(COUNT - 1));
-  ASSERT_EQ(pool.GetPosition(nodes.back().get()), 0);
+  ASSERT_EQ(pool.GetIndex(nodes.back().get()), 0);
 
   {
     auto v1 = block_desc->Var("11");
@@ -82,7 +82,7 @@ TEST(OrderedNodePairPool, Normal) {
     std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v2);
     node1->inputs.emplace_back(op.get());
     auto* cache = pool.NodeMatch(node1.get());
-    ASSERT_EQ(pool.GetPosition(cache), 2);  // match 6:[-1,2,5]
+    ASSERT_EQ(pool.GetIndex(cache), 2);  // match 6:[-1,2,5]
   }
   {
     auto v3 = block_desc->Var("13");
@@ -90,7 +90,7 @@ TEST(OrderedNodePairPool, Normal) {
     std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v3);
     node1->inputs.emplace_back(op.get());
     auto* cache = pool.NodeMatch(node1.get());
-    ASSERT_EQ(pool.GetPosition(cache), 5);  // match  4:[5,2]
+    ASSERT_EQ(pool.GetIndex(cache), 5);  // match  4:[5,2]
   }
 }
 

@@ -57,7 +57,7 @@ class OrderedNodePairPool {
 
   ir::Node* NodeMatch(ir::Node* var) const;
   // map store non-const iterator, can not promise const
-  int GetPosition(ir::Node* var);
+  int GetIndex(ir::Node* var);
   // pool all node to string
   std::string ToString() const;
 
