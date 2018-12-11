@@ -24,6 +24,7 @@ import six
 import argparse
 import pickle
 import numpy as np
+import datetime
 
 import paddle.fluid as fluid
 
@@ -362,8 +363,11 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
-        print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
+        print("[{}], tr0_cmd: {}, env: {}".format(datetime.datetime.now(),
+                                                  tr0_cmd, env0))
+        print("[{}] tr1_cmd: {}, env: {}".format(datetime.datetime.now(),
+                                                 tr1_cmd, env1))
+        sys.stdout.flush()
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
@@ -390,6 +394,14 @@ class TestDistBase(unittest.TestCase):
             if stat1 is not None:
                 break
 
+        if stat0 != 0 or stat1 != 0:
+            # print server log
+            with open("/tmp/ps0_err.log", "r") as fn:
+                sys.stderr.write("ps0 stderr: %s\n" % fn.read())
+            with open("/tmp/ps1_err.log", "r") as fn:
+                sys.stderr.write("ps1 stderr: %s\n" % fn.read())
+            sys.stderr.flush()
+
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
 
@@ -401,12 +413,6 @@ class TestDistBase(unittest.TestCase):
 
         ps0.terminate()
         ps1.terminate()
-
-        # print server log
-        with open("/tmp/ps0_err.log", "r") as fn:
-            sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "r") as fn:
-            sys.stderr.write("ps1 stderr: %s\n" % fn.read())
 
         # print log
         if stat0 == 0:
