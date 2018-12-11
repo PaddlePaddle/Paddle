@@ -30,13 +30,13 @@ class GenBase : public Kernel {
   virtual const char* name() const = 0;
   virtual size_t getSize() const = 0;
   virtual const unsigned char* getCodeInternal() = 0;
-  template <typename FUNC>
-  const FUNC getCode() {
+  template <typename Func>
+  Func getCode() {
     const unsigned char* code = this->getCodeInternal();
     if (FLAGS_dump_jitcode) {
       this->dumpCode(code);
     }
-    return reinterpret_cast<const FUNC>(code);
+    return reinterpret_cast<Func>(const_cast<unsigned char*>(code));
   }
 
  protected:
