@@ -49,7 +49,6 @@ void PrepareSamples(const framework::ExecutionContext &context,
   auto label = context.Input<Tensor>("Label");
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
-  //  int num_total_classes = context.Attr<int>("num_total_classes");
   // for unitest
   std::vector<int> custom_neg_classes =
       context.Attr<std::vector<int>>("custom_neg_classes");
