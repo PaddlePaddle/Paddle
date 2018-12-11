@@ -26,6 +26,7 @@ using vr = ::sendrecv::VariableMessage;
 int BRPCVariableResponse::Parse(Source* source) {
   pb::io::ZeroCopyInputStream* input_stream = source->contents();
   pb::io::CodedInputStream input(input_stream);
+  input.SetTotalBytesLimit(INT_MAX, INT_MAX);
 
   while (1) {
     unsigned int tag = 0;
