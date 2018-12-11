@@ -22,6 +22,7 @@ __all__ = [
     "glu",
     "scaled_dot_product_attention",
     "img_conv_group",
+    "bidirectional_gru",
 ]
 
 
@@ -524,3 +525,22 @@ def scaled_dot_product_attention(queries,
             weights, dropout_prob=dropout_rate, is_test=False)
     ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)
+
+
+def bidirectional_gru(input,
+                      size,
+                      fw_param_attr=None,
+                      fw_bias_attr=None,
+                      fw_gate_activation='sigmoid',
+                      fw_candidate_activation='tanh',
+                      fw_h_0=None,
+                      bw_param_attr=None,
+                      bw_bias_attr=None,
+                      bw_gate_activation='sigmoid',
+                      bw_candidate_activation='tanh',
+                      bw_h_0=None):
+    fw = layers.dynamic_gru(input, size, fw_param_attr, fw_bias_attr, False,
+                            fw_gate_activation, fw_candidate_activation, fw_h_0)
+    bw = layers.dynamic_gru(input, size, bw_param_attr, bw_bias_attr, True,
+                            bw_gate_activation, bw_candidate_activation, bw_h_0)
+    return fw, bw
