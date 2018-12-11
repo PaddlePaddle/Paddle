@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <pthread.h>
 #include <condition_variable>  // NOLINT
 #include <functional>
 #include <future>  // NOLINT
