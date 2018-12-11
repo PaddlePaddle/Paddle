@@ -25,12 +25,15 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
   for (const Node* n : graph->Nodes()) {
-    if (n->IsOp() && n->RuntimeHasAttr("use_mkldnn")) {
-      if (op_types_list.empty()) {
-        n->Op()->SetAttr("use_mkldnn", true);
-      } else if (std::find(op_types_list.begin(), op_types_list.end(),
-                           n->Name()) != op_types_list.end()) {
-        n->Op()->SetAttr("use_mkldnn", true);
+    if (n->IsOp()) {
+      auto* op = n->Op();
+      if (op->HasAttr("use_mkldnn") || op->HasProtoAttr("use_mkldnn")) {
+        if (op_types_list.empty()) {
+          op->SetAttr("use_mkldnn", true);
+        } else if (std::find(op_types_list.begin(), op_types_list.end(),
+                             n->Name()) != op_types_list.end()) {
+          op->SetAttr("use_mkldnn", true);
+        }
       }
     }
   }
