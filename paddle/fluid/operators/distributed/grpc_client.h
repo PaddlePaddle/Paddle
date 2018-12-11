@@ -197,12 +197,6 @@ class GRPCClient : public RPCClient {
                                 const std::string& table_name = "",
                                 int64_t time_out = FLAGS_rpc_deadline) override;
 
-  VarHandlePtr AsyncGetVarWithoutBarrier(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& in_var_name,
-      const std::string& out_var_name,
-      int64_t time_out = FLAGS_rpc_deadline) override;
-
   VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 

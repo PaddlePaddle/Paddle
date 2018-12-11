@@ -38,7 +38,6 @@ void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
-
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -268,8 +267,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
-  request_get_without_barrier_handler_->SetGradToPreparedCtx(
-      &grad_to_prepared_ctx);
 
   while (true) {
     if (rpc_service_->IsExit()) {
@@ -345,8 +342,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestSendHandler(sync_mode, dc_sgd));
   request_get_handler_.reset(
       new distributed::RequestGetHandler(sync_mode, dc_sgd));
-  request_get_without_barrier_handler_.reset(
-      new distributed::RequestGetVarWithoutBarrierHandler(sync_mode));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
@@ -357,9 +352,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             FLAGS_rpc_send_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestGet,
                             request_get_handler_.get(),
-                            FLAGS_rpc_get_thread_num);
-  rpc_service_->RegisterRPC(distributed::kGetVariableWithoutBarrier,
-                            request_get_without_barrier_handler_.get(),
                             FLAGS_rpc_get_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get(),

@@ -33,13 +33,13 @@ namespace distributed {
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
-bool RequestSendHandler::Handle(const std::string &varname,
-                                framework::Scope *scope,
-                                framework::Variable *invar,
-                                framework::Variable **outvar,
+bool RequestSendHandler::Handle(const std::string& varname,
+                                framework::Scope* scope,
+                                framework::Variable* invar,
+                                framework::Variable** outvar,
                                 const int trainer_id,
-                                const std::string &out_var_name,
-                                const std::string &table_name) {
+                                const std::string& out_var_name,
+                                const std::string& table_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
   // Sync
@@ -56,7 +56,7 @@ bool RequestSendHandler::Handle(const std::string &varname,
       try {
         executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                       scope);
-      } catch (std::exception &e) {
+      } catch (std::exception& e) {
         LOG(ERROR) << "async: run sub program error " << e.what();
         return false;
       }
@@ -74,13 +74,13 @@ bool RequestSendHandler::Handle(const std::string &varname,
   return true;
 }
 
-bool RequestGetHandler::Handle(const std::string &varname,
-                               framework::Scope *scope,
-                               framework::Variable *invar,
-                               framework::Variable **outvar,
+bool RequestGetHandler::Handle(const std::string& varname,
+                               framework::Scope* scope,
+                               framework::Variable* invar,
+                               framework::Variable** outvar,
                                const int trainer_id,
-                               const std::string &out_var_name,
-                               const std::string &table_name) {
+                               const std::string& out_var_name,
+                               const std::string& table_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
 
   if (sync_mode_) {
@@ -112,29 +112,13 @@ bool RequestGetHandler::Handle(const std::string &varname,
   return true;
 }
 
-bool RequestGetVarWithoutBarrierHandler::Handle(const std::string &varname,
-                                                framework::Scope *scope,
-                                                framework::Variable *invar,
-                                                framework::Variable **outvar,
-                                                const int trainer_id,
-                                                const std::string &out_var_name,
-                                                const std::string &table_name) {
-  VLOG(4) << "RequestGetVarWithoutBarrier:" << varname;
-
-  if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
-    *outvar = scope_->FindVar(varname);
-  }
-
-  return true;
-}
-
-bool RequestPrefetchHandler::Handle(const std::string &varname,
-                                    framework::Scope *scope,
-                                    framework::Variable *invar,
-                                    framework::Variable **outvar,
+bool RequestPrefetchHandler::Handle(const std::string& varname,
+                                    framework::Scope* scope,
+                                    framework::Variable* invar,
+                                    framework::Variable** outvar,
                                     const int trainer_id,
-                                    const std::string &out_var_name,
-                                    const std::string &table_name) {
+                                    const std::string& out_var_name,
+                                    const std::string& table_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
   if (table_name.empty()) {
@@ -152,19 +136,19 @@ bool RequestPrefetchHandler::Handle(const std::string &varname,
   return true;
 }
 
-bool RequestCheckpointHandler::Handle(const std::string &varname,
-                                      framework::Scope *scope,
-                                      framework::Variable *invar,
-                                      framework::Variable **outvar,
+bool RequestCheckpointHandler::Handle(const std::string& varname,
+                                      framework::Scope* scope,
+                                      framework::Variable* invar,
+                                      framework::Variable** outvar,
                                       const int trainer_id,
-                                      const std::string &out_var_name,
-                                      const std::string &table_name) {
+                                      const std::string& out_var_name,
+                                      const std::string& table_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
   // TODO(tangwei12): find out why scope will be error.
-  auto *lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "

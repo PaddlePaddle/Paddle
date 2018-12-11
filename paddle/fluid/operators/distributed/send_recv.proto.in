@@ -28,8 +28,6 @@ service SendRecvService {
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
-
-  rpc GetVariableWithoutBarrier(VariableMessage) returns (VariableMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.
