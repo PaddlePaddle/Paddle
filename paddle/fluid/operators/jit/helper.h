@@ -30,7 +30,7 @@ namespace jit {
 
 template <KernelType KT, typename T, typename Func, typename Attr,
           typename PlaceType>
-inline const Func GetJitCode(Attr attr) {
+inline Func GetJitCode(Attr attr) {
   size_t key = JitCodeKey<Attr>(attr);
   auto& codes = JitCodePool<KT>().Instance();
   if (codes.Has(key)) {
@@ -80,7 +80,7 @@ inline Func GetRefer() {
 
 template <KernelType KT, typename T, typename Func, typename Attr,
           typename PlaceType = platform::CPUPlace>
-const Func Get(Attr attr) {
+Func Get(Attr attr) {
   auto jitfunc = GetJitCode<KT, T, Func, Attr, PlaceType>(attr);
   if (jitfunc) {
     return jitfunc;
