@@ -28,7 +28,39 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-// Refer code do not related with attr, and always on CPUPlace
+template <KernelType KT, typename T, typename Func, typename Attr,
+          typename PlaceType>
+inline const Func GetJitCode(Attr attr) {
+  size_t key = JitCodeKey<Attr>(attr);
+  auto& codes = JitCodePool<KT>().Instance();
+  if (codes.Has(key)) {
+    return codes.AllKernels().at(key)->template getCode<Func>();
+  }
+
+  // creator is not related with attr, so can use KernelKey as key
+  KernelKey kkey(KT, PlaceType());
+  if (std::is_same<PlaceType, platform::CPUPlace>::value) {
+    // pool: (KernelKey(type, place), vector<GenCreatorPtr>)
+    auto& creator_map = JitCodeCreatorPool().Instance().AllCreators();
+    auto iter = creator_map.find(kkey);
+    auto& creators = iter->second;
+    for (auto& cur : creators) {
+      auto i = dynamic_cast<const JitCodeCreator<Attr>*>(cur.get());
+      if (i && i->UseMe(attr)) {
+        auto p = i->CreateJitCode(attr);
+        if (p) {
+          auto f = p->template getCode<Func>();
+          codes.Insert(key, std::move(p));
+          return f;
+        }
+      }
+    }
+  }
+  return nullptr;
+}
+
+// Refer code do not related with attr, which is just for cast
+// Refer is always on CPUPlace
 template <KernelType KT, typename T, typename Func, typename Attr>
 inline Func GetRefer() {
   auto& ref_pool = ReferKernelPool().Instance().AllKernels();
@@ -49,32 +81,13 @@ inline Func GetRefer() {
 template <KernelType KT, typename T, typename Func, typename Attr,
           typename PlaceType = platform::CPUPlace>
 const Func Get(Attr attr) {
-  size_t key = JitCodeKey<Attr>(attr);
-  auto& codes = JitCodePool<KT>().Instance();
-  if (codes.Has(key)) {
-    return codes.AllKernels().at(key)->template getCode<Func>();
-  }
-
-  KernelKey kkey(KT, PlaceType());
-  if (std::is_same<PlaceType, platform::CPUPlace>::value) {
-    // pool: (KernelKey(type, place), vector<GenCreatorPtr>)
-    auto& creator_map = JitCodeCreatorPool().Instance().AllCreators();
-    auto iter = creator_map.find(kkey);
-    auto& creators = iter->second;
-    for (auto& cur : creators) {
-      auto i = dynamic_cast<const JitCodeCreator<Attr>*>(cur.get());
-      if (i && i->UseMe(attr)) {
-        auto p = i->CreateJitCode(attr);
-        if (p) {
-          auto f = p->template getCode<Func>();
-          codes.Insert(key, std::move(p));
-          return f;
-        }
-      }
-    }
+  auto jitfunc = GetJitCode<KT, T, Func, Attr, PlaceType>(attr);
+  if (jitfunc) {
+    return jitfunc;
   }
 
   // pool: (KernelKey(type, place), vector<KernelPtr>)
+  KernelKey kkey(KT, PlaceType());
   auto& pool = KernelPool().Instance().AllKernels();
   auto iter = pool.find(kkey);
   if (iter != pool.end()) {
