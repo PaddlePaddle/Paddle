@@ -39,8 +39,11 @@ DEFINE_string(pe_profile_fname, "",
 
 namespace paddle {
 namespace framework {
+
 static std::once_flag gProfileOnce;
+#ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
+#endif
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
