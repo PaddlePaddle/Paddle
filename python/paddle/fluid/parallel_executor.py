@@ -156,10 +156,6 @@ class ParallelExecutor(object):
                 if var.persistable and var.type != core.VarDesc.VarType.RAW
             ]
         ])
-        parameter_vars = set([
-            cpt.to_text(p.name) for p in main.global_block().iter_parameters()
-            if not p.stop_gradient
-        ])
 
         def place_obj(place):
             p = core.Place()
@@ -170,7 +166,7 @@ class ParallelExecutor(object):
 
         # step6: init ParallelExecutor
         self.executor = core.ParallelExecutor(
-            places, parameter_vars, persistable_vars, main.desc,
+            places, persistable_vars, main.desc,
             cpt.to_text(loss_name)
             if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)

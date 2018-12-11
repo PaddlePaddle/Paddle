@@ -130,7 +130,6 @@ void AddOutputToLeafOps(ir::Graph *graph) {
 
 static const char kLossVarName[] = "loss_var_name";
 static const char kPlaces[] = "places";
-static const char kParams[] = "params";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
 static const char kNumTrainers[] = "num_trainers";
@@ -147,9 +146,6 @@ void MultiDevSSAGraphBuilder::Init() const {
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
 
-  for (auto &p : Get<const std::unordered_set<std::string>>(kParams)) {
-    grad_names_.insert(GradVarName(p));
-  }
   balance_vars_.resize(places_.size(), 0);
   if (strategy_.enable_data_balance_ && places_.size() == 1) {
     LOG(WARNING) << "It is no need to enable data balance when there is only "
@@ -896,7 +892,6 @@ REGISTER_PASS(multi_devices_pass,
               paddle::framework::details::MultiDevSSAGraphBuilder)
     .RequirePassAttr(paddle::framework::details::kLossVarName)
     .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kParams)
     .RequirePassAttr(paddle::framework::details::kLocalScopes)
     .RequirePassAttr(paddle::framework::details::kStrategy)
     .RequirePassAttr(paddle::framework::details::kNumTrainers);
