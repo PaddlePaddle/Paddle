@@ -80,6 +80,8 @@ class BatchNormOp : public framework::OperatorWithKernel {
     auto bn_param_type = framework::proto::VarType::FP32;
     if (input_data_type == framework::proto::VarType::FP64) {
       bn_param_type = framework::proto::VarType::FP64;
+    } else if (input_data_type == framework::proto::VarType::FP16) {
+      bn_param_type = framework::proto::VarType::FP32;
     }
     PADDLE_ENFORCE_EQ(bn_param_type,
                       framework::ToDataType(ctx.Input<Tensor>("Scale")->type()),

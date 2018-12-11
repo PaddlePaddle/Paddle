@@ -22,6 +22,7 @@
 #include <vector>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -37,6 +38,8 @@ inline ncclDataType_t ToNCCLDataType(std::type_index type) {
     return ncclInt;
   } else if (type == typeid(int64_t)) {  // NOLINT
     return ncclInt64;
+  } else if (type == typeid(paddle::platform::float16)) {  // NOLINT
+    return ncclFloat16;
   } else {
     PADDLE_THROW("Not supported");
   }
