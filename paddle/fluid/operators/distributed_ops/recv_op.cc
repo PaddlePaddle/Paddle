@@ -38,6 +38,7 @@ class RecvOp : public framework::OperatorBase {
     std::vector<std::string> varnames =
         Attr<std::vector<std::string>>("varnames");
     bool with_barrier = Attr<bool>("with_barrier");
+    int sync_mode = Attr<int>("sync_mode");
     auto outs = Outputs("Out");
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -49,15 +50,16 @@ class RecvOp : public framework::OperatorBase {
 
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting without_barrier " << outs[i] << " from " << epmap[i];
       std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
       rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname,
                                              outs[i], with_barrier));
     }
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+
+    if (sync_mode) {
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      }
     }
-    VLOG(3) << "getting without_barrier done.";
   }
 };
 

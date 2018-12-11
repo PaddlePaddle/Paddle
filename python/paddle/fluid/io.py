@@ -20,7 +20,6 @@ import time
 import shutil
 import six
 
-from paddle import fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
@@ -93,109 +92,89 @@ def _save_persistables_on_pserver(executor, dirname, main_program):
     get persistables on pserver through rpc.
     :return:
     """
-    scope = core.Scope()
-    with fluid.scope_guard(scope):
-        optimizer_varmap = main_program.optimizer_varmap
 
-        prog = Program()
-        block = prog.global_block()
+    optimizer_varmap = main_program.optimizer_varmap
 
-        # recv
-        for var_name, var_s in optimizer_varmap.items():
-            dim0 = 0
-            for idx, var_t in enumerate(var_s):
-                var = var_t[0]
-                start = var_t[1]
-                end = start + var[2][0]
-                endpoint = var_t[2]
+    if not optimizer_varmap:
+        return
 
-                slice_var_name = "{}.recv.{}".format(var[0], idx)
+    prog = Program()
+    block = prog.global_block()
 
-                slice_var = block.create_var(
-                    name="{}".format(var[0]),
-                    type=var[1],
-                    shape=var[2],
-                    dtype=var[3],
-                    persistable=var[4])
+    # recv
+    for var_name, var_s in optimizer_varmap.items():
 
-                block.append_op(
-                    type='recv',
-                    inputs={"X": [var[0]]},
-                    outputs={"Out": slice_var},
-                    attrs={"epmap": [endpoint],
-                           "without_barrier": True})
+        origin_var_name = ""
+        origin_var_dim0 = 0
+        slice_vars = []
+        slice_var_names = []
+        slice_start = -1
+        endpoints = []
 
-                block.append_op(
-                    type='save',
-                    inputs={'X': [slice_var]},
-                    outputs={},
-                    attrs={'file_path': os.path.join(dirname, slice_var_name)})
+        for idx, var_t in enumerate(var_s):
+            var = var_t[0]
+            slice_start = var_t[1]
+            endpoint = var_t[2]
 
-                dim0 += var[2][0]
-
-        executor.run(prog)
-        print("save optimizer vars done.")
-
-        prog = Program()
-        block = prog.global_block()
-
-        # merge and save
-        for var_name, var_s in optimizer_varmap.items():
-            dim0 = 0
-            start = -1
-            merges = []
-            for idx, var_t in enumerate(var_s):
-                var = var_t[0]
-                start = var_t[1]
-                end = start + var[2][0]
-                endpoint = var_t[2]
-
-                slice_var_name = "{}.recv.{}".format(var[0], idx)
-
-                slice_var = block.create_var(
-                    name=slice_var_name,
-                    type=var[1],
-                    shape=var[2],
-                    dtype=var[3],
-                    persistable=var[4])
-                merges.append(slice_var)
-
-                block.append_op(
-                    type='load',
-                    inputs={},
-                    outputs={'Out': [slice_var]},
-                    attrs={'file_path': os.path.join(dirname, slice_var.name)})
-
-                dim0 += var[2][0]
-
-            var = var_s[0][0]
-            shape = list(var[2])
-            shape[0] = dim0
             origin_var_name = var[0]
+            slice_var_name = "{}.recv.{}".format(var[0], idx)
 
-            if start != -1:
-                origin_var = block.create_var(
-                    name=var[0],
-                    type=var[1],
-                    shape=shape,
-                    dtype=var[3],
-                    persistable=var[4])
+            slice_var = block.create_var(
+                name="{}".format(slice_var_name),
+                type=var[1],
+                shape=var[2],
+                dtype=var[3],
+                persistable=var[4])
 
-                block.append_op(
-                    type='concat',
-                    inputs={'X': merges},
-                    outputs={'Out': origin_var},
-                    attrs={})
-            else:
-                origin_var = merges[0]
+            origin_var_dim0 += var[2][0]
+            slice_vars.append(slice_var)
+            endpoints.append(endpoint)
+            slice_var_names.append(var[0])
+
+        var = var_t[0]
+
+        shape = list(var[2])
+        shape[0] = origin_var_dim0
+
+        origin_var = block.create_var(
+            name=var[0],
+            type=var[1],
+            shape=shape,
+            dtype=var[3],
+            persistable=var[4])
+
+        block.append_op(
+            type='recv',
+            inputs={"X": []},
+            outputs={"Out": slice_vars},
+            attrs={
+                "epmap": endpoints,
+                "with_barrier": False,
+                "varnames": slice_var_names
+            })
+
+        if slice_start != -1:
+            block.append_op(
+                type='concat',
+                inputs={'X': slice_vars},
+                outputs={'Out': origin_var},
+                attrs={})
+
             block.append_op(
                 type='save',
                 inputs={'X': [origin_var]},
                 outputs={},
                 attrs={'file_path': os.path.join(dirname, origin_var_name)})
+        else:
+            block.append_op(
+                type='save',
+                inputs={'X': slice_vars[:1]},
+                outputs={},
+                attrs={'file_path': os.path.join(dirname, origin_var_name)})
 
-        executor.run(prog)
-        print("save optimizer vars done.")
+        block.append_op(type='delete_var', inputs={'X': slice_vars})
+
+    executor.run(prog)
 
 
 def save_vars(executor,

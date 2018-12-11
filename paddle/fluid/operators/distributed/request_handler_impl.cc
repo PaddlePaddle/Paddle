@@ -90,7 +90,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
   string::Piece var_name_piece = string::Piece(varname);
 
   if (string::Contains(var_name_piece, without_barrier_piece)) {
-    var_name_piece = string::TrimPrefix(var_name_piece, without_barrier_piece);
+    var_name_piece = string::TrimSuffix(var_name_piece, without_barrier_piece);
     VLOG(4) << "Get var " << var_name_piece << " with "
             << WITHOUT_BARRIER_MESSAGE;
     *outvar = scope_->FindVar(var_name_piece.ToString());
