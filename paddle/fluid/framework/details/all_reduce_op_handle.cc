@@ -50,7 +50,7 @@ void AllReduceOpHandle::RunImpl() {
 
 // FIXME(typhoonzero): If scope0(global scope) have NCCL_ID_VAR,
 // this is a distributed or inter-process call, find a better way.
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (NoDummyInputSize() == 1 &&
       local_scopes_[0]->FindLocalVar(NCCL_ID_VARNAME) == nullptr) {
 #else
