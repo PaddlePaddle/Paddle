@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+#include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
@@ -85,17 +85,32 @@ class CudnnHolder {
 
   template <typename Callback>
   void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
-    if (required_workspace_len > workspace_len_) {
+    if (required_workspace_len > WorkspaceSize()) {
       ReallocateWorkspace(required_workspace_len);
     }
-    cudnn_func(workspace_);
+    cudnn_func(WorkspacePtr());
+  }
+
+  inline void* WorkspacePtr() {
+    if (workspace_) {
+      return workspace_->ptr();
+    } else {
+      return nullptr;
+    }
+  }
+
+  inline size_t WorkspaceSize() {
+    if (workspace_) {
+      return workspace_->size();
+    } else {
+      return 0;
+    }
   }
 
   std::mutex& Mutex() { return mtx_; }
 
   cudnnHandle_t cudnn_handle_;
-  void* workspace_;
-  size_t workspace_len_;
+  memory::AllocationPtr workspace_;
 
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;
@@ -127,6 +142,39 @@ class CudnnWorkspaceHandle {
   CudnnHolder* holder_;  // not own
   std::unique_ptr<std::lock_guard<std::mutex>> guard_;
 };
+
+#if CUDA_VERSION >= 9000
+class ScopedCublasMathMode {
+ public:
+  ScopedCublasMathMode(cublasHandle_t handle, cublasMath_t new_math_mode)
+      : handle_(handle) {
+    need_reset = false;
+    PADDLE_ENFORCE(
+        platform::dynload::cublasGetMathMode(handle_, &old_math_mode_),
+        "Failed to get old cublas math mode");
+    if (old_math_mode_ != new_math_mode) {
+      PADDLE_ENFORCE(
+          platform::dynload::cublasSetMathMode(handle_, new_math_mode),
+          "Failed to set old cublas math mode");
+      need_reset = true;
+    }
+  }
+
+  ~ScopedCublasMathMode() {
+    if (need_reset) {
+      PADDLE_ENFORCE(
+          platform::dynload::cublasSetMathMode(handle_, old_math_mode_),
+          "Failed to set old cublas math mode");
+    }
+  }
+
+ private:
+  cublasHandle_t handle_;
+  cublasMath_t old_math_mode_;
+  bool need_reset;
+};
+
+#endif
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -184,6 +232,18 @@ class CUDADeviceContext : public DeviceContext {
     callback_manager_->Wait();
   }
 
+#if CUDA_VERSION >= 9000
+  /*! \brief CublasCall may need to change cublas's config,
+   *  but the cublas may be hold by multi-thread, so we should
+   *  add lock here. */
+  template <typename Callback>
+  void CublasCall(Callback callback, cublasMath_t new_math) {
+    std::lock_guard<std::mutex> guard(cublas_mtx_);
+    ScopedCublasMathMode scoped_cublas_math(cublas_handle_, new_math);
+    callback();
+  }
+#endif
+
  private:
   CUDAPlace place_;
 
@@ -205,6 +265,8 @@ class CUDADeviceContext : public DeviceContext {
   // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
   mutable std::mutex callback_mtx_;
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+
+  mutable std::mutex cublas_mtx_;
 };
 
 template <>

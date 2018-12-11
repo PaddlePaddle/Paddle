@@ -183,24 +183,27 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   const int total_T = x_dims[0];           \
   const int D3 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                     \
-  auto* h0 = ctx.Input<Tensor>("H0");                                          \
-  auto* wx = ctx.Input<Tensor>("WeightX");                                     \
-  auto* bias = ctx.Input<Tensor>("Bias");                                      \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");                          \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");                              \
-  const int M = x_dims[1];                                                     \
-  const int D = wh_dims[0];                                                    \
-  const int D2 = D * 2;                                                        \
-  const auto& ker = math::jitkernel::KernelPool::Instance()                    \
-                        .template Get<math::jitkernel::GRUKernel<T>,           \
-                                      const std::string&, const std::string&>( \
-                            ctx.Attr<std::string>("gate_activation"),          \
-                            ctx.Attr<std::string>("activation"), D);           \
-  const T* x_data = x->data<T>();                                              \
-  const T* wx_data = wx->data<T>();                                            \
-  const T* wh_data = wh->data<T>();                                            \
-  auto place = ctx.GetPlace();                                                 \
+#define INIT_OTHER_DEFINES                                         \
+  auto* h0 = ctx.Input<Tensor>("H0");                              \
+  auto* wx = ctx.Input<Tensor>("WeightX");                         \
+  auto* bias = ctx.Input<Tensor>("Bias");                          \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");              \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");                  \
+  const int M = x_dims[1];                                         \
+  const int D = wh_dims[0];                                        \
+  const int D2 = D * 2;                                            \
+  const math::jitkernel::gru_attr_t attr(                          \
+      D, ctx.Attr<std::string>("gate_activation"),                 \
+      ctx.Attr<std::string>("activation"));                        \
+  math::jitkernel::gru_t one_step;                                 \
+  const auto& ker =                                                \
+      math::jitkernel::KernelPool::Instance()                      \
+          .template Get<math::jitkernel::GRUKernel<T>,             \
+                        const math::jitkernel::gru_attr_t&>(attr); \
+  const T* x_data = x->data<T>();                                  \
+  const T* wx_data = wx->data<T>();                                \
+  const T* wh_data = wh->data<T>();                                \
+  auto place = ctx.GetPlace();                                     \
   T* xx_data = xx->mutable_data<T>(place)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
@@ -237,7 +240,9 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       if (h0_data) {
         prev_hidden_data = h0_data + bid * D;
       } else {
-        ker->ComputeH1(xx_data, hidden_out_data);
+        one_step.gates = xx_data;
+        one_step.ht = hidden_out_data;
+        ker->ComputeH1(&one_step, &attr);
         prev_hidden_data = hidden_out_data;
         tstart = 1;
         move_step();
@@ -247,12 +252,15 @@ class FusionGRUKernel : public framework::OpKernel<T> {
         blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D2, D, static_cast<T>(1),
                   prev_hidden_data, D, wh_data, D2, static_cast<T>(1), xx_data,
                   D3);
-        ker->ComputeHtPart1(xx_data, prev_hidden_data, hidden_out_data);
+        one_step.gates = xx_data;
+        one_step.ht_1 = prev_hidden_data;
+        one_step.ht = hidden_out_data;
+        ker->ComputeHtPart1(&one_step, &attr);
         // gemm rt * Ws
         blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D, D, static_cast<T>(1),
                   hidden_out_data, D, wh_state_data, D, static_cast<T>(1),
                   xx_data + D2, D3);
-        ker->ComputeHtPart2(xx_data, prev_hidden_data, hidden_out_data);
+        ker->ComputeHtPart2(&one_step, &attr);
         // save prev
         prev_hidden_data = hidden_out_data;
         move_step();
@@ -314,7 +322,9 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       T* cur_out_data = batched_out_data;
       // W: {W_update, W_reset; W_state}
       for (int i = 0; i < max_bs; ++i) {
-        ker->ComputeH1(cur_in_data, cur_out_data);
+        one_step.gates = cur_in_data;
+        one_step.ht = cur_out_data;
+        ker->ComputeH1(&one_step, &attr);
         // add offset
         cur_in_data += D3;
         cur_out_data += D;
@@ -339,8 +349,11 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       T* cur_out_data = batched_out_data;
       T* cur_prev_hidden_data = prev_hidden_data;
       for (int i = 0; i < cur_bs; ++i) {
-        ker->ComputeHtPart1(cur_batched_data, cur_prev_hidden_data,
-                            cur_out_data);
+        one_step.gates = cur_batched_data;
+        one_step.ht_1 = cur_prev_hidden_data;
+        one_step.ht = cur_out_data;
+        ker->ComputeHtPart1(&one_step, &attr);
+
         cur_batched_data += D3;
         cur_prev_hidden_data += D;
         cur_out_data += D;
@@ -354,8 +367,10 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 
       cur_prev_hidden_data = prev_hidden_data;
       for (int i = 0; i < cur_bs; ++i) {
-        ker->ComputeHtPart2(cur_batched_data, cur_prev_hidden_data,
-                            cur_out_data);
+        one_step.gates = cur_batched_data;
+        one_step.ht_1 = cur_prev_hidden_data;
+        one_step.ht = cur_out_data;
+        ker->ComputeHtPart2(&one_step, &attr);
         cur_batched_data += D3;
         cur_prev_hidden_data += D;
         cur_out_data += D;

@@ -114,7 +114,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // it is either an OP's input or an OP's output.
 
   auto &subgraph_nodes = *Agent(node).subgraph();
-  for (size_t index = 0; index < block_desc.OpSize(); index++) {
+  for (size_t index = 0; index < block_desc.OpSize(); ++index) {
     framework::proto::OpDesc *op = block_desc.Op(index)->Proto();
     auto correspond_node = subgraph_nodes[index];
     PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
@@ -178,11 +178,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     output_mapping.push_back(output_name_map[name]);
   }
 
-  *block_desc.Proto()->mutable_vars() =
-      const_cast<framework::ProgramDesc *>(&graph->program())
-          ->Proto()
-          ->blocks(0)
-          .vars();
+  auto *vars = block_desc.Proto()->mutable_vars();
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      *vars->Add() = *node->Var()->Proto();
+    }
+  }
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());

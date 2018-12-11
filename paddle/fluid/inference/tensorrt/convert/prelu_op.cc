@@ -54,7 +54,7 @@ class PReluOpConverter : public OpConverter {
     TensorRTEngine::Weight alpha_rt(nvinfer1::DataType::kFLOAT,
                                     static_cast<void*>(alpha_data),
                                     alpha_tensor_device->numel());
-    PReluPlugin* plugin = new PReluPlugin(alpha_rt, mode);
+    plugin::PReluPlugin* plugin = new plugin::PReluPlugin(alpha_rt, mode);
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);
     // keep alpha tensor to avoid release it's memory

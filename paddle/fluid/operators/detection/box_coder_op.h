@@ -43,6 +43,9 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     const T* prior_box_var_data = nullptr;
     if (prior_box_var) prior_box_var_data = prior_box_var->data<T>();
 
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(2)
+#endif
     for (int64_t i = 0; i < row; ++i) {
       for (int64_t j = 0; j < col; ++j) {
         T prior_box_width = prior_box_data[j * len + 2] -
@@ -96,6 +99,9 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     const T* prior_box_var_data = nullptr;
     if (prior_box_var) prior_box_var_data = prior_box_var->data<T>();
 
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(2)
+#endif
     for (int64_t i = 0; i < row; ++i) {
       for (int64_t j = 0; j < col; ++j) {
         size_t offset = i * col * len + j * len;

@@ -18,12 +18,6 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
 
-#if defined(_WIN32)
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#define GOOGLE_GLOG_DLL_DECL
-#endif
-
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -127,14 +121,14 @@ struct EOFException : public std::exception {
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #else
 // there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition == 0)
+#define UNLIKELY(condition) (condition)
 #endif
 
 #if !defined(_WIN32)
 #define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
 #else
 // there is no equivalent intrinsics in msvc.
-#define LIKELY(condition) (condition != 0)
+#define LIKELY(condition) (condition)
 #endif
 
 template <typename... Args>
@@ -248,7 +242,6 @@ inline void throw_on_error(T e) {
   throw_on_error(e, "");
 }
 
-#if !defined(_WIN32)
 #define PADDLE_THROW(...)                                              \
   do {                                                                 \
     throw ::paddle::platform::EnforceNotMet(                           \
@@ -272,17 +265,6 @@ inline void throw_on_error(T e) {
 #define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif  // REPLACE_ENFORCE_GLOG
 
-#else  // !_WIN32
-// disable enforce, caused by the varardic macro exception error
-#define PADDLE_THROW(x)                                      \
-  do {                                                       \
-    throw std::make_exception_ptr(                           \
-        std::runtime_error("Windows disable the enforce.")); \
-  } while (false)
-
-#define PADDLE_ENFORCE(x, ...) x
-#endif  // !_WIN32
-
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \
     throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
@@ -302,20 +284,6 @@ inline void throw_on_error(T e) {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-#if !defined(_WIN32)
-#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
-#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
-#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
-#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
-#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
-#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
-
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
   do {                                                       \
     if (UNLIKELY(nullptr == (__VAL))) {                      \
@@ -335,27 +303,19 @@ inline void throw_on_error(T e) {
                    paddle::string::Sprintf("" __VA_ARGS__));            \
     }                                                                   \
   } while (0)
-#else
-#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) ((__VAL0) == (__VAL1))
-#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) ((__VAL0) != (__VAL1))
-#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) ((__VAL0) > (__VAL1))
-#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) ((__VAL0) >= (__VAL1))
-#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) ((__VAL0) < (__VAL1))
-#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) ((__VAL0) <= (__VAL1))
 
-#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...) \
-  do {                                                                 \
-    if (!((__VAL0)__CMP(__VAL1))) {                                    \
-      PADDLE_THROW("Windows disable the enforce. Enforce failed.");    \
-    }                                                                  \
-  } while (0)
-#define PADDLE_ENFORCE_NOT_NULL(__VAL1, ...)                       \
-  do {                                                             \
-    if (nullptr == (__VAL1)) {                                     \
-      PADDLE_THROW("Windows disable the enforce. Enforce failed"); \
-    }                                                              \
-  } while (0)
-#endif  // !_WIN32
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
 }  // namespace platform
 }  // namespace paddle

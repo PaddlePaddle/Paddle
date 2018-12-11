@@ -153,6 +153,37 @@ __global__ void KernelMaxPool2DGrad(
   }
 }
 
+template <typename PoolProcess, typename T>
+void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
+    const T* input, const std::vector<int>& input_shape,
+    const std::vector<int>& output_shape, const std::vector<int>& ksize,
+    const std::vector<int>& strides, const std::vector<int>& paddings,
+    PoolProcess pool_compute, bool exclusive, T* output, cudaStream_t stream) {
+  const int batch_size = input_shape[0];
+  const int input_channels = input_shape[1];
+  const int input_height = input_shape[2];
+  const int input_width = input_shape[3];
+  const int output_channels = output_shape[1];
+  const int output_height = output_shape[2];
+  const int output_width = output_shape[3];
+  const int ksize_height = ksize[0];
+  const int ksize_width = ksize[1];
+  const int stride_height = strides[0];
+  const int stride_width = strides[1];
+  const int padding_height = paddings[0];
+  const int padding_width = paddings[1];
+
+  int nthreads = batch_size * output_channels * output_height * output_width;
+  int blocks = (nthreads + 1024 - 1) / 1024;
+  dim3 threads(1024, 1);
+  dim3 grid(blocks, 1);
+
+  KernelPool2D<PoolProcess, T><<<grid, threads, 0, stream>>>(
+      nthreads, input, input_channels, input_height, input_width, output_height,
+      output_width, ksize_height, ksize_width, stride_height, stride_width,
+      padding_height, padding_width, pool_compute, exclusive, output);
+}
+
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings are two elements. These two elements represent
@@ -290,6 +321,11 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
         input_grad_data);
   }
 };
+
+template class Pool2dDirectCUDAFunctor<paddle::operators::math::MaxPool<float>,
+                                       float>;
+template class Pool2dDirectCUDAFunctor<paddle::operators::math::AvgPool<float>,
+                                       float>;
 
 template class MaxPool2dGradFunctor<platform::CUDADeviceContext, float>;
 template class MaxPool2dGradFunctor<platform::CUDADeviceContext, double>;

@@ -100,26 +100,27 @@ Examples:
     >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
 """
 
-if os.name != 'nt':
-    __all__ += ['cumsum']
+__all__ += ['cumsum']
 
-    _cum_sum_ = generate_layer_fn('cumsum')
+_cum_sum_ = generate_layer_fn('cumsum')
 
-    def cumsum(x, axis=None, exclusive=None, reverse=None):
-        locals_var = locals().keys()
-        kwargs = dict()
-        for name in locals_var:
-            val = locals()[name]
-            if val is not None:
-                kwargs[name] = val
-        return _cum_sum_(**kwargs)
 
-    cumsum.__doc__ = _cum_sum_.__doc__ + """
-    Examples:
-    
-        >>> data = fluid.layers.data(name="input", shape=[32, 784])
-        >>> result = fluid.layers.cumsum(data, axis=0)
-    """
+def cumsum(x, axis=None, exclusive=None, reverse=None):
+    locals_var = locals().keys()
+    kwargs = dict()
+    for name in locals_var:
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+    return _cum_sum_(**kwargs)
+
+
+cumsum.__doc__ = _cum_sum_.__doc__ + """
+Examples:
+
+    >>> data = fluid.layers.data(name="input", shape=[32, 784])
+    >>> result = fluid.layers.cumsum(data, axis=0)
+"""
 
 __all__ += ['thresholded_relu']
 

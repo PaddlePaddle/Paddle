@@ -45,7 +45,8 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
       std::unordered_set<std::string> teller_set(
           {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
            "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-           "elementwise_add", "dropout", "split", "prelu", "conv2d_transpose"});
+           "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
+           "conv2d_transpose", "leaky_relu"});
       if (!node->IsOp()) return false;
 
       if (teller_set.count(node->Op()->Type())) {
@@ -60,6 +61,7 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
 void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {
   std::vector<std::string> passes({
       "ir_graph_build_pass", "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
   });
   for (const auto &pass : passes) {
     VLOG(2) << "Run pass " << pass;

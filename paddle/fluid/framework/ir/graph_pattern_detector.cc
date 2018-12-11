@@ -92,19 +92,19 @@ void GraphPatternDetector::operator()(Graph *graph,
   PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
   int id = 0;
   for (auto &g : subgraphs) {
-    VLOG(30) << "optimizing #" << id++ << " subgraph";
+    VLOG(3) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
 
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
-  VLOG(30) << "mark pdnodes in graph";
+  VLOG(3) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(40) << "pdnode " << pdnode->name() << " marked";
+        VLOG(4) << "pdnode " << pdnode->name() << " marked";
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -112,7 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   // Check to early stop if some PDNode can't find matched Node.
   for (auto &pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
-      VLOG(40) << pdnode->name() << " can't find matched Node, early stop";
+      VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
       // return false;
     }
   }
@@ -121,7 +121,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
       GetMarkedNodes(const_cast<Graph *>(&graph)).insert(n);
     }
   }
-  VLOG(30) << pdnodes2nodes_.size() << " nodes marked";
+  VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
 
   return !pdnodes2nodes_.empty();
 }
@@ -215,7 +215,7 @@ GraphPatternDetector::DetectPatterns() {
   // Extend a PDNode to subgraphs by deducing the connection relations defined
   // in edges of PDNodes.
   for (const auto &edge : pattern_.edges()) {
-    VLOG(40) << "check " << edge.first->name() << " -> " << edge.second->name();
+    VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();
     // TODO(Superjomn) Fix bug here, the groups might be duplicate here.
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
@@ -226,7 +226,7 @@ GraphPatternDetector::DetectPatterns() {
     // source -> target
     for (Node *source : pdnodes2nodes_[edge.first]) {
       for (Node *target : pdnodes2nodes_[edge.second]) {
-        VLOG(80) << "check " << source->id() << " -- " << target->id();
+        VLOG(8) << "check " << source->id() << " -- " << target->id();
         // TODO(Superjomn) add some prune strategies.
         for (const auto &group : pre_groups) {
           if (IsNodesLink(source, target)) {
@@ -243,13 +243,12 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    VLOG(30) << "step " << step << " get records: " << cur_groups.size();
+    VLOG(3) << "step " << step << " get records: " << cur_groups.size();
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
-        VLOG(40) << "node " << item.second->id() << " as "
-                 << item.first->name();
+        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
       }
-      VLOG(40) << "=========================================================";
+      VLOG(4) << "=========================================================";
     }
   }
 
@@ -1031,10 +1030,11 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
 }
 
 PDNode *patterns::ConvBias::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
+    paddle::framework::ir::PDNode *conv_input, bool is_conv3d) {
+  std::string type = is_conv3d ? "conv3d" : "conv2d";
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(type);
   auto *eltiwse_op =
       pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
   // Create variables
@@ -1042,11 +1042,11 @@ PDNode *patterns::ConvBias::operator()(
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_only_output_of_op(type)
                            ->assert_is_op_input("elementwise_add");
   // Bias stored in elementwise_add
   auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
@@ -1084,16 +1084,12 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var) {
+PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
 
-  x_var->assert_is_op_input("elementwise_add", "X");
-
-  auto y_var = pattern->NewNode(elementwise_add_x_repr())
-                   ->AsInput()
-                   ->assert_is_op_input("elementwise_add", "Y");
-
+  x_var->AsInput()->assert_is_op_input("elementwise_add", "X");
+  y_var->AsInput()->assert_is_op_input("elementwise_add", "Y");
   auto out_var = pattern->NewNode(elementwise_add_out_repr())
                      ->AsOutput()
                      ->assert_is_op_output("elementwise_add", "Out");

@@ -20,6 +20,7 @@ from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
+from ..framework import Variable
 from . import tensor
 from . import nn
 from . import ops
@@ -46,6 +47,7 @@ __all__ = [
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
+    'yolov3_loss',
 ]
 
 
@@ -283,11 +285,7 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    compile_shape = scores.shape
-    run_shape = nn.shape(scores)
-    scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
@@ -403,6 +401,113 @@ def polygon_box_transform(input, name=None):
         attrs={},
         outputs={"Output": output})
     return output
+
+
+@templatedoc(op_type="yolov3_loss")
+def yolov3_loss(x,
+                gtbox,
+                gtlabel,
+                anchors,
+                class_num,
+                ignore_thresh,
+                loss_weight_xy=None,
+                loss_weight_wh=None,
+                loss_weight_conf_target=None,
+                loss_weight_conf_notarget=None,
+                loss_weight_class=None,
+                name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        gtbox (Variable): groud truth boxes, should be in shape of [N, B, 4],
+                          in the third dimenstion, x, y, w, h should be stored 
+                          and x, y, w, h should be relative value of input image.
+                          N is the batch number and B is the max box number in 
+                          an image.
+        gtlabel (Variable): class id of ground truth boxes, shoud be ins shape
+                            of [N, B].
+        anchors (list|tuple): ${anchors_comment}
+        class_num (int): ${class_num_comment}
+        ignore_thresh (float): ${ignore_thresh_comment}
+        loss_weight_xy (float|None): ${loss_weight_xy_comment}
+        loss_weight_wh (float|None): ${loss_weight_wh_comment}
+        loss_weight_conf_target (float|None): ${loss_weight_conf_target_comment}
+        loss_weight_conf_notarget (float|None): ${loss_weight_conf_notarget_comment}
+        loss_weight_class (float|None): ${loss_weight_class_comment}
+        name (string): the name of yolov3 loss
+
+    Returns:
+        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+
+    Raises:
+        TypeError: Input x of yolov3_loss must be Variable
+        TypeError: Input gtbox of yolov3_loss must be Variable"
+        TypeError: Input gtlabel of yolov3_loss must be Variable"
+        TypeError: Attr anchors of yolov3_loss must be list or tuple
+        TypeError: Attr class_num of yolov3_loss must be an integer
+        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+
+    Examples:
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+        gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
+        gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
+        anchors = [10, 13, 16, 30, 33, 23]
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
+                                        anchors=anchors, ignore_thresh=0.5)
+    """
+    helper = LayerHelper('yolov3_loss', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError("Input x of yolov3_loss must be Variable")
+    if not isinstance(gtbox, Variable):
+        raise TypeError("Input gtbox of yolov3_loss must be Variable")
+    if not isinstance(gtlabel, Variable):
+        raise TypeError("Input gtlabel of yolov3_loss must be Variable")
+    if not isinstance(anchors, list) and not isinstance(anchors, tuple):
+        raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr class_num of yolov3_loss must be an integer")
+    if not isinstance(ignore_thresh, float):
+        raise TypeError(
+            "Attr ignore_thresh of yolov3_loss must be a float number")
+
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    attrs = {
+        "anchors": anchors,
+        "class_num": class_num,
+        "ignore_thresh": ignore_thresh,
+    }
+
+    if loss_weight_xy is not None and isinstance(loss_weight_xy, float):
+        self.attrs['loss_weight_xy'] = loss_weight_xy
+    if loss_weight_wh is not None and isinstance(loss_weight_wh, float):
+        self.attrs['loss_weight_wh'] = loss_weight_wh
+    if loss_weight_conf_target is not None and isinstance(
+            loss_weight_conf_target, float):
+        self.attrs['loss_weight_conf_target'] = loss_weight_conf_target
+    if loss_weight_conf_notarget is not None and isinstance(
+            loss_weight_conf_notarget, float):
+        self.attrs['loss_weight_conf_notarget'] = loss_weight_conf_notarget
+    if loss_weight_class is not None and isinstance(loss_weight_class, float):
+        self.attrs['loss_weight_class'] = loss_weight_class
+
+    helper.append_op(
+        type='yolov3_loss',
+        inputs={"X": x,
+                "GTBox": gtbox,
+                "GTLabel": gtlabel},
+        outputs={'Loss': loss},
+        attrs=attrs)
+    return loss
 
 
 @templatedoc()
@@ -1033,6 +1138,7 @@ def density_prior_box(input,
                       clip=False,
                       steps=[0.0, 0.0],
                       offset=0.5,
+                      flatten_to_2d=False,
                       name=None):
     """
     **Density Prior Box Operator**
@@ -1069,22 +1175,24 @@ def density_prior_box(input,
             height/weight of the input will be automatically calculated.
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
+       flatten_to_2d(bool): Whether to flatten output prior boxes and variance
+           to 2D shape, the second dim is 4. Default: False.
        name(str): Name of the density prior box op. Default: None.
 
     Returns:
         tuple: A tuple with two Variable (boxes, variances)
 
         boxes: the output density prior boxes of PriorBox.
-        The layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input,
-        num_priors is the total
-        box count of each position of input.
+            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input,
+            num_priors is the total box count of each position of input.
 
         variances: the expanded variances of PriorBox.
-        The layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input
-        num_priors is the total
-        box count of each position of input
+            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input
+            num_priors is the total box count of each position of input.
 
 
     Examples:
@@ -1093,14 +1201,11 @@ def density_prior_box(input,
             box, var = fluid.layers.density_prior_box(
                 input=conv1,
                 image=images,
-                min_sizes=[100.],
-                max_sizes=[200.],
-                aspect_ratios=[1.0, 1.0 / 2.0, 2.0],
-                densities=[3, 4],
-                fixed_sizes=[50., 60.],
-                fixed_ratios=[1.0, 3.0, 1.0 / 3.0],
-                flip=True,
-                clip=True)
+                densities=[4, 2, 1],
+                fixed_sizes=[32.0, 64.0, 128.0],
+                fixed_ratios=[1.],
+                clip=True,
+                flatten_to_2d=True)
     """
     helper = LayerHelper("density_prior_box", **locals())
     dtype = helper.input_dtype()
@@ -1131,14 +1236,11 @@ def density_prior_box(input,
         'step_w': steps[0],
         'step_h': steps[1],
         'offset': offset,
+        'densities': densities,
+        'fixed_sizes': fixed_sizes,
+        'fixed_ratios': fixed_ratios,
+        'flatten_to_2d': flatten_to_2d,
     }
-    if densities is not None and len(densities) > 0:
-        attrs['densities'] = densities
-    if fixed_sizes is not None and len(fixed_sizes) > 0:
-        attrs['fixed_sizes'] = fixed_sizes
-    if fixed_ratios is not None and len(fixed_ratios) > 0:
-        attrs['fixed_ratios'] = fixed_ratios
-
     box = helper.create_variable_for_type_inference(dtype)
     var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

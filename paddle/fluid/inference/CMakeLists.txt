@@ -4,6 +4,7 @@ endif()
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.
 add_subdirectory(analysis)
+add_subdirectory(utils)
 if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()

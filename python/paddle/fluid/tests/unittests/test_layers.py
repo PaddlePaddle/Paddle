@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -184,6 +185,25 @@ class TestBook(unittest.TestCase):
                 layers.hsigmoid(
                     input=x, label=y, num_classes=2))
         print(str(program))
+
+        # test hsigmod with custom tree structure
+        program2 = Program()
+        with program_guard(program2):
+            x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
+            y2 = layers.data(name='y2', shape=[4], dtype='int64')
+            path_table = layers.data(
+                name='path_table', shape=[4, 6], dtype='int64')
+            path_code = layers.data(
+                name='path_code', shape=[4, 6], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x2,
+                    label=y2,
+                    num_classes=6,
+                    path_table=path_table,
+                    path_code=path_code,
+                    is_custom=True))
+            print(str(program2))
 
     def test_sequence_expand(self):
         program = Program()
@@ -201,6 +221,17 @@ class TestBook(unittest.TestCase):
             length = layers.data(name='length', shape=[1], dtype='int64')
             self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
         print(str(program))
+
+    def test_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.pool2d(
+                    x,
+                    pool_size=[5, 3],
+                    pool_stride=[1, 2],
+                    pool_padding=(2, 1)))
 
     def test_lstm_unit(self):
         program = Program()
@@ -606,13 +637,21 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
+            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
             out = layers.pad2d(
                 input,
                 paddings=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape")
+            out_1 = layers.pad2d(
+                input,
+                paddings=paddings,
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
             self.assertIsNotNone(out)
+            self.assertIsNotNone(out_1)
         print(str(program))
 
     def test_prelu(self):
@@ -807,6 +846,15 @@ class TestBook(unittest.TestCase):
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
 
+    def test_bpr_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            out = layers.bpr_loss(x, label)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_expand(self):
         program = Program()
         with program_guard(program):
@@ -922,6 +970,15 @@ class TestBook(unittest.TestCase):
 
             theta = layers.data(name="theta", shape=[5], dtype="float32")
             out = layers.bilinear_tensor_product(data, theta, 6)
+
+        print(str(program))
+
+    def test_batch_norm(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.batch_norm(data)
 
         print(str(program))
 

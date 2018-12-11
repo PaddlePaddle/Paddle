@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 TEST(selected_rows_functor, gpu_add) {
   paddle::platform::CUDAPlace gpu_place(0);
@@ -38,6 +38,7 @@ TEST(selected_rows_functor, gpu_add) {
           {static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   functor(ctx, in1_value, 1.0);
+  PADDLE_ENFORCE(cudaDeviceSynchronize());
 
   std::vector<int64_t> rows2{0, 5, 7, 9};
   std::unique_ptr<paddle::framework::SelectedRows> selected_rows2{

@@ -13,17 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#if !defined(_WIN32)
-#include <sys/time.h>
-#else
-#include <windows.h>
-#endif  // !_WIN32
-
-#include <time.h>
 #include <chrono>  // NOLINT
 #include <string>
 
 #include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 
 namespace paddle {
@@ -32,15 +26,11 @@ namespace platform {
 ///////////////////////
 // WARN: Under Development. Don't depend on it yet.
 //////////////////////
-#if !defined(_WIN32)
 inline uint64_t PosixInNsec() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
-#else
-inline uint64_t PosixInNsec() { return static_cast<uint64_t>(0); }
-#endif  // !_WIN32
 
 // DeviceTracer performs the following tasks:
 // 1. Register cuda callbacks for various events: kernel, memcpy, etc.
@@ -49,6 +39,7 @@ inline uint64_t PosixInNsec() { return static_cast<uint64_t>(0); }
 class DeviceTracer {
  public:
   struct KernelRecord {
+    std::string name;
     uint64_t start_ns;
     uint64_t end_ns;
     int64_t device_id;
@@ -94,8 +85,9 @@ class DeviceTracer {
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.
-  virtual void AddKernelRecords(uint64_t start, uint64_t end, int64_t device_id,
-                                int64_t stream_id, uint32_t correlation_id) = 0;
+  virtual void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
+                                int64_t device_id, int64_t stream_id,
+                                uint32_t correlation_id) = 0;
 
   // Generate a proto after done (Disabled).
   virtual proto::Profile GenProfile(const std::string& profile_path) = 0;

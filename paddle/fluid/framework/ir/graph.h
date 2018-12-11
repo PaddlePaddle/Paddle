@@ -89,7 +89,7 @@ class Graph {
                    attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(30) << "deleting " << attr_name;
+      VLOG(3) << "deleting " << attr_name;
       delete attr;
     };
   }
@@ -177,14 +177,13 @@ class Graph {
     return nullptr;
   }
 
-  const ProgramDesc &program() const { return program_; }
-  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
-
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
 
  private:
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
+
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());

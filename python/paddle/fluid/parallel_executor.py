@@ -95,7 +95,14 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in six.moves.range(core.get_cuda_device_count()):
+            gpus = []
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            if gpus_env:
+                gpus = [int(s) for s in gpus_env.split(",")]
+            else:
+                for i in six.moves.range(core.get_cuda_device_count()):
+                    gpus.append(i)
+            for i in gpus:
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
@@ -124,18 +131,21 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
-        # Set 1 thread num under nccl2 distribute 
-        #   env to make sure all gpus run ops in same order.
-        if num_trainers > 1:
-            assert (use_cuda)
-            # FIXME(gongwb): avoid this set.
-            exec_strategy.num_threads = 1
-
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
+        build_strategy.num_trainers = num_trainers
+        build_strategy.trainer_id = trainer_id
+
         main = main_program
         main = main if main else framework.default_main_program()
+
+        trainers_endpoints = main._trainers_endpoints
+        if num_trainers > 1 and trainers_endpoints:
+            assert num_trainers == len(
+                trainers_endpoints), "num_trainers == len(end_points)"
+            build_strategy.trainers_endpoints = trainers_endpoints
+
         if scope == None:
             scope = executor.global_scope()
 

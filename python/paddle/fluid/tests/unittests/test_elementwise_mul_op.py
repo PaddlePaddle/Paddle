@@ -21,13 +21,24 @@ from paddle.fluid.op import Operator
 
 
 class ElementwiseMulOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.dtype = np.float32
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
         self.check_output()
@@ -40,6 +51,17 @@ class ElementwiseMulOp(OpTest):
 
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def init_dtype(self):
+        pass
+
+    def init_axis(self):
+        pass
 
 
 class TestElementwiseMulOp_scalar(ElementwiseMulOp):
@@ -63,17 +85,13 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float64),
-            'Y': np.random.rand(2).astype(np.float64)
-        }
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(2).astype(self.dtype)
+        self.out = self.x * self.y.reshape(2, 1, 1)
 
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': self.inputs['X'] * self.inputs['Y'].reshape(2, 1, 1)
-        }
+    def init_axis(self):
+        self.axis = 0
 
 
 class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):

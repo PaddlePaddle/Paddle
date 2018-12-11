@@ -42,7 +42,7 @@ struct TestBroadcastOpHandle {
   std::vector<std::unique_ptr<ir::Node>> nodes_;
   std::vector<p::Place> place_list_;
   bool use_gpu_;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -50,7 +50,7 @@ struct TestBroadcastOpHandle {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -60,7 +60,7 @@ struct TestBroadcastOpHandle {
   void InitCtxOnGpu(bool use_gpu) {
     use_gpu_ = use_gpu;
     if (use_gpu_) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -84,7 +84,7 @@ struct TestBroadcastOpHandle {
         place_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -106,14 +106,14 @@ struct TestBroadcastOpHandle {
     nodes_.emplace_back(
         ir::CreateNodeForTest("node0", ir::Node::Type::kOperation));
     if (use_gpu_) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_, nccl_ctxs_.get());
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_, nccl_ctxs_.get());
 #else

@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
-
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -18,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 namespace paddle {
@@ -120,11 +120,24 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    return paddle::memory::Alloc(place_, num_bytes);
+    if (UNLIKELY(num_bytes == 0)) {
+      return nullptr;
+    }
+    auto buf = paddle::memory::Alloc(place_, num_bytes,
+                                     memory::Allocator::kScratchpad);
+    void* retv = buf->ptr();
+    {
+      std::lock_guard<std::mutex> lock(mtx_);
+      allocations_.emplace(retv, std::move(buf));
+    }
+    return retv;
   }
 
   void deallocate(void* buffer) const override {
-    paddle::memory::Free(place_, buffer);
+    if (LIKELY(buffer)) {
+      std::lock_guard<std::mutex> lock(mtx_);
+      allocations_.erase(buffer);
+    }
   }
 
   void* scratchpad() const override {
@@ -151,37 +164,36 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
+  mutable std::mutex mtx_;  // to protect allocations_
+  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
 CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
-    : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+    : workspace_(nullptr), stream_(stream), place_(place) {
   PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
   PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
 }
 
 CudnnHolder::~CudnnHolder() {
   PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-  if (workspace_ != nullptr) {
-    paddle::memory::Free(place_, workspace_);
-  }
 }
 
 void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
-  if (required_workspace_len <= workspace_len_) {
+  if (required_workspace_len <= WorkspaceSize()) {
     return;
   }
   if (workspace_ != nullptr) {
     // Maybe someone is using the current workspace
     PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-    paddle::memory::Free(place_, workspace_);
+    workspace_.reset();
   }
-  workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
-  workspace_len_ = required_workspace_len;
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
+                                     paddle::memory::Allocator::kScratchpad);
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
-  SetDeviceId(place_.device);
+  CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
@@ -208,6 +220,40 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
                           << (cudnn_dso_ver % 100) / 10 << ".";
+
+  {
+    // Check CUDA/CUDNN version compatiblity
+    auto local_cuda_version = runtime_version_ / 100;
+    auto compile_cuda_version = CUDA_VERSION / 100;
+    if (local_cuda_version < compile_cuda_version) {
+      LOG_FIRST_N(WARNING, 1)
+          << "WARNING: device: " << place_.device
+          << ". The installed Paddle is compiled with CUDA "
+          << compile_cuda_version / 10 << "." << compile_cuda_version % 10
+          << ", but CUDA runtime version in your machine is "
+          << local_cuda_version / 10 << "." << local_cuda_version % 10
+          << ", which may cause serious incompatible bug. "
+          << "Please recompile or reinstall Paddle with compatible CUDA "
+             "version.";
+    }
+
+    if (dynload::HasCUDNN()) {
+      auto local_cudnn_version = cudnn_dso_ver / 100;
+      auto compile_cudnn_version = CUDNN_VERSION / 100;
+      if (local_cuda_version < compile_cuda_version) {
+        LOG_FIRST_N(WARNING, 1)
+            << "WARNING: device: " << place_.device
+            << ". The installed Paddle is compiled with CUDNN "
+            << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
+            << ", but CUDNN version in your machine is "
+            << local_cudnn_version / 10 << "." << local_cudnn_version % 10
+            << ", which may cause serious incompatible bug. "
+            << "Please recompile or reinstall Paddle with compatible CUDNN "
+               "version.";
+      }
+    }
+  }
+
   callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
