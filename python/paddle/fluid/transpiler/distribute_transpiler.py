@@ -142,6 +142,7 @@ class DistributeTranspilerConfig(object):
     # supported modes: pserver, nccl2
     mode = "pserver"
     print_log = False
+    wait_port = True
 
 
 class DistributeTranspiler(object):
@@ -171,7 +172,6 @@ class DistributeTranspiler(object):
             trainer_id = 0
             trainers = 4
             role = os.getenv("PADDLE_TRAINING_ROLE")
-
             t = fluid.DistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
@@ -1967,7 +1967,7 @@ to transpile() call.")
         for op in block.ops:
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                    role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
