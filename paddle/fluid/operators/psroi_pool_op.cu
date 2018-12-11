@@ -188,7 +188,7 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
         rois_batch_size, batch_size,
-        "The rois_batch_size and imgs batch_size must be the same.");
+        "The rois_batch_size and input(X) batch_size must be the same.");
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
                       "The rois_num from input and lod must be the same.");

@@ -9086,8 +9086,13 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
-def psroi_pool(input, rois, output_channels, spatial_scale, pooled_height,
-               pooled_width):
+def psroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale,
+               pooled_height,
+               pooled_width,
+               name=None):
     """
     ${comment}
 
@@ -9098,6 +9103,7 @@ def psroi_pool(input, rois, output_channels, spatial_scale, pooled_height,
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
+        name (str, default None): The name of this layer.
 
     Returns:
         Variable: ${out_comment}.
