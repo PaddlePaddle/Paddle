@@ -189,10 +189,11 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                                                          trainer_prog)
             else:
                 for idx in six.moves.xrange(RUN_STEP):
+                    data = get_data()
                     if idx <= skip_steps:
                         continue
                     loss, = exe.run(fetch_list=[avg_cost.name],
-                                    feed=feeder.feed(get_data()))
+                                    feed=feeder.feed(data))
             if six.PY2:
                 print(pickle.dumps(loss.tolist()))
             else:
