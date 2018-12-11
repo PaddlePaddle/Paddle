@@ -343,6 +343,10 @@ class SGDOptimizer(Optimizer):
         Can be a float value or a Variable with one float value as data element.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -409,6 +413,10 @@ class MomentumOptimizer(Optimizer):
         use_nesterov (bool): enables Nesterov momentum
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -490,6 +498,10 @@ class LarsMomentumOptimizer(Optimizer):
         lars_weight_decay (float): weight decay coefficient for decaying using LARS.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
         
 
@@ -577,6 +589,10 @@ class AdagradOptimizer(Optimizer):
         epsilon (float): a small float value for numerical stability.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -661,6 +677,10 @@ class AdamOptimizer(Optimizer):
         epsilon (float): a small float value for numerical stability.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -814,6 +834,10 @@ class AdamaxOptimizer(Optimizer):
         epsilon (float): a small float value for numerical stability.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -939,6 +963,10 @@ class DecayedAdagradOptimizer(Optimizer):
         epsilon (float): a small float value for numerical stability.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -1023,6 +1051,10 @@ class AdadeltaOptimizer(Optimizer):
         epsilon(float): epsilon in equation
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Examples:
@@ -1159,6 +1191,10 @@ class RMSPropOptimizer(Optimizer):
             computation and memory. Defaults to False.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Raises:
@@ -1296,6 +1332,10 @@ class FtrlOptimizer(Optimizer):
         lr_power (float):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
 
     Raises:
@@ -1407,6 +1447,10 @@ class ModelAverage(Optimizer):
         max_average_window: The maximum size of average window.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
+        weight_decay: A WeightDecay, such as fluid.regularizer.WeightDecay. it is used
+                        to update the optimized parameters by the using parameters
+                        before optimization. weigth_decay can receive a float
+                        value as coeff. Default None.
         name: A optional name prefix.
     Examples:
 

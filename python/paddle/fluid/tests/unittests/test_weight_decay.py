@@ -73,7 +73,6 @@ class TestWeightDecay(unittest.TestCase):
             for v in out:
                 p_sum += np.sum(np.abs(v))
             param_sum.append(p_sum)
-            print(p_sum)
         return param_sum
 
     def check_weight_decay(self, place, model):

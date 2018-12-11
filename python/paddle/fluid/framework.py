@@ -164,41 +164,6 @@ def convert_np_dtype_to_dtype_(np_dtype):
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
-def convert_dtype_np_dtype_to_(dtype):
-    """
-    Convert the dtype of variable in Paddle to the data type in numpy.
-
-    Args:
-        dtype(core.VarDesc.VarType): the data type in Paddle.
-
-    Returns:
-        np_dtype(np.dtype): the data type in numpy.
-
-    """
-    if dtype == core.VarDesc.VarType.FP32:
-        return np.float32
-    elif dtype == core.VarDesc.VarType.FP64:
-        return np.float64
-    elif dtype == core.VarDesc.VarType.FP16:
-        return np.float16
-    elif dtype == core.VarDesc.VarType.INT32:
-        return np.int32
-    elif dtype == core.VarDesc.VarType.INT16:
-        return np.int16
-    elif dtype == core.VarDesc.VarType.INT64:
-        return np.int64
-    elif dtype == core.VarDesc.VarType.BOOL:
-        return np.bool
-    elif dtype == core.VarDesc.VarType.INT16:
-        return np.uint16
-    elif dtype == core.VarDesc.VarType.UINT8:
-        return np.uint8
-    elif dtype == core.VarDesc.VarType.INT8:
-        return np.int8
-    else:
-        raise ValueError("Not supported dtype dtype %s" % dtype)
-
-
 def dtype_is_floating(dtype):
     """
     Check the data type is floating or not.
