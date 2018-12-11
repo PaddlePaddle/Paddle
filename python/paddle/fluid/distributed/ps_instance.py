@@ -1,8 +1,18 @@
-#import paddle.fluid.distributed.helper as dist_helper
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+
 import helper as dist_helper
 import sys
-#from mpi4py import MPI
-
 
 class PaddlePSInstance(object):
     def __init__(self, server_worker_mode, proc_per_node):
@@ -83,17 +93,11 @@ class PaddlePSInstance(object):
         return self._nodes
 
     def barrier_all(self):
-        #print self._rankid, "begin"
-        #sys.stdout.flush()
         self.dh.comm.barrier()
-        #print self._rankid, "end"
 
     def barrier_worker(self):
         if self.is_worker():
-            #print "worker: ", self._rankid, "begin"
-            #sys.stdout.flush()
             self._comm.barrier()
-            #print "worker: ", self._rankid, "end"
         pass
 
     def finalize(self):
@@ -104,5 +108,3 @@ class PaddlePSInstance(object):
 if __name__ == "__main__":
     instance = PaddlePSInstance(1, 1, 2, 50)
     instance.barrier_all()
-    #print "-----" 
-    #instance.barrier_worker()

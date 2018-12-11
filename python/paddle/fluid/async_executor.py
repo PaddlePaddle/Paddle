@@ -76,7 +76,7 @@ class AsyncExecutor(object):
     Note: Only running on CPUPlace supported.
     """
 
-    def __init__(self, place=None):
+    def __init__(self, place=None, run_mode=""):
         if place is None:
             place = core.CPUPlace()
         if not isinstance(place, core.CPUPlace):
@@ -88,6 +88,7 @@ class AsyncExecutor(object):
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
         self.instance = None
+
 
     def run(self, program, data_feed, filelist, thread_num, fetch, mode="", debug=False):
         """
