@@ -150,7 +150,8 @@ def _save_persistables_on_pserver(executor, dirname, main_program):
             attrs={
                 "epmap": endpoints,
                 "with_barrier": False,
-                "varnames": slice_var_names
+                "varnames": slice_var_names,
+                "sync_mode": True
             })
 
         if slice_start != -1:
