@@ -419,7 +419,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  if (max_memory_size >= 0) {
+  // skip while_op and while_grad_op temporarily
+  if (max_memory_size >= 0 && !keep_kids) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
