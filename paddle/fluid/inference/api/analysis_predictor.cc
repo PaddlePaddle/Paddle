@@ -317,6 +317,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetUseGPU(config_.use_gpu);
   argument_.SetGPUDeviceId(config_.device);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  argument_.SetMemoryOptimForceUpdate(config_.memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
@@ -566,11 +567,11 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
 }
 
 void AnalysisPredictor::CollectVarShapes() {
+  LOG(INFO) << "Collecting var shapes";
   if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
   std::map<std::string, std::vector<int>> var_shapes;
   for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
     auto *var = sub_scope_->FindVar(var_name);
-    LOG(INFO) << "var_name: " << var_name;
     PADDLE_ENFORCE_NOT_NULL(var);
     if (var->Type() == typeid(framework::LoDTensor) ||
         var->Type() == typeid(framework::Tensor)) {

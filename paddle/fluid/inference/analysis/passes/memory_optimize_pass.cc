@@ -532,7 +532,9 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapesBySimilarSize(
 std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
 
 void MemoryOptimizePass::RunImpl(Argument* argument) {
-  if (!argument->enable_memory_optim()) return;
+  // When force update, should not optimize memory.
+  if (!argument->enable_memory_optim() || argument->memory_optim_force_update())
+    return;
   graph_ = argument->main_graph_ptr();
 
   auto path = GetMemoryCachePath(

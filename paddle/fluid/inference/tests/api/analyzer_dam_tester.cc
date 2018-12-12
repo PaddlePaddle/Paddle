@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gperftools/heap-profiler.h>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
-
-//#define USE_GPERF
 
 DEFINE_int32(max_turn_num, 9,
              "The max turn number: 1 for the small and 9 for the normal.");
@@ -130,6 +126,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   std::string turn_mask_pre = "turn_mask_";
 
   auto one_batch = data->NextBatch();
+  PADDLE_ENFORCE(!one_batch.response.empty());
   int size = one_batch.response[0].size();
   CHECK_EQ(size, kMaxTurnLen);
   // turn tensor assignment
@@ -195,11 +192,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.pass_builder()->DeletePass("fc_lstm_fuse_pass");
-  cfg.pass_builder()->DeletePass("mul_lstm_fuse_pass");
-  cfg.pass_builder()->DeletePass("mul_gru_fuse_pass");
-  cfg.pass_builder()->DeletePass("fc_gru_fuse_pass");
-  cfg.pass_builder()->DeletePass("fc_fuse_pass");
   cfg.EnableMemoryOptim();
   cfg.Build();
 
@@ -213,28 +205,8 @@ void profile(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
-  input_slots_all.resize(1);
-
-#ifdef USE_GPERF
-  HeapProfilerDump("set input");
-#endif
-  auto predictor = CreatePaddlePredictor(cfg);
-  std::vector<PaddleTensor> outputs;
-
-#ifdef USE_GPERF
-  HeapProfilerDump("before run");
-#endif
-  for (int i = 0; i < 10; i++) {
-    for (auto &input : input_slots_all) {
-      predictor->Run(input, &outputs);
-      HeapProfilerDump("run");
-    }
-  }
-
-#ifdef USE_GPERF
-  HeapProfilerDump("final");
-  HeapProfilerStop();
-#endif
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(), 0);
@@ -284,21 +256,23 @@ void compare(bool use_mkldnn = false) {
 // Compare result of NativeConfig and AnalysisConfig with memory optimization.
 TEST(Analyzer_dam, compare_with_memory_optim) {
   contrib::AnalysisConfig cfg, cfg1;
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
   // Run the first time to force to update memory cache
   SetConfig(&cfg);
   cfg.EnableMemoryOptim(true);
   cfg.Build();
 
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 
-  // Run second time to use the memory cache and perform memory optimaztion.
+  // Run second time to use the memory cache and perform memory optimization.
   SetConfig(&cfg1);
-  cfg1.EnableMemoryOptim(false);
+  cfg1.EnableMemoryOptim();
   cfg1.Build();
+
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg1),
       input_slots_all);
