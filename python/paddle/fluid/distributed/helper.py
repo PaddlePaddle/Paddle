@@ -44,5 +44,8 @@ class MPIHelper(object):
     def get_hostname(self):
         import socket
         return socket.gethostname()
+
+    def finalize(self):
+        MPI.Finalize()
     
         
