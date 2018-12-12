@@ -8,3 +8,8 @@ endfunction()
 
 # use refer kernel by name
 USE_JITKERNEL_REFER(vmul)
+USE_JITKERNEL_REFER(vadd)
+USE_JITKERNEL_REFER(vaddrelu)
+USE_JITKERNEL_REFER(vsub)
+USE_JITKERNEL_REFER(vscal)
+USE_JITKERNEL_REFER(vaddbias)

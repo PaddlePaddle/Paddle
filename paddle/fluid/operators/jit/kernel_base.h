@@ -19,7 +19,15 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-typedef enum { vmul = 0, vadd = 1, vaddrelu, vsub, vscal, vexp } KernelType;
+typedef enum {
+  vmul = 0,
+  vadd = 1,
+  vaddrelu,
+  vsub,
+  vscal,
+  vaddbias,
+  vexp
+} KernelType;
 
 template <typename T>
 struct XYZNTuples {
@@ -27,6 +35,9 @@ struct XYZNTuples {
   typedef int attr_type;
   typedef void (*func_type)(const T*, const T*, T*, int);
 };
+
+template <typename T>
+struct AXYNTuples : public XYZNTuples<T> {};
 
 // Just for adding to kernel pool without template
 class Kernel {
