@@ -99,6 +99,10 @@ def append_weight_decay(param_and_grads, weight_decay=None):
     This will update the optimized parameters by using the
     parameters before optimization.
 
+    .. math::
+
+        new\_param = new\_param - coeff * param
+
     Args:
         param_and_grads: A list of (parameters, gradients) pairs
             that need to be updated.
@@ -266,7 +270,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 class WeightDecay(object):
     """
     WeightDecay is used to update the optimized parameters by using the
-    parameters before optimization.
+    parameters before optimization. For more information, please refer:
+    https://arxiv.org/pdf/1711.05101.pdf
 
     Args:
         coeff (float|Variable): The weight decay coefficient, it can be float
@@ -295,10 +300,10 @@ class WeightDecay(object):
                 not isinstance(coeff, framework.Variable):
             raise TypeError("coeff should be float or Variable.")
 
-        self.scaled_params_ = []
-        self.params_name_ = set()
-        self.attempt_decay_param_fun_ = attempt_decay_param_fun
-        self.coeff_ = coeff
+        self._scaled_params = []
+        self._params_name = set()
+        self._attempt_decay_param_fun = attempt_decay_param_fun
+        self._coeff = coeff
 
     def __call__(self, params_and_grads):
         """
@@ -314,29 +319,29 @@ class WeightDecay(object):
             Exception: The type of coeff and parameter is not consistent.
         """
         from . import layers
-        if isinstance(self.coeff_, float) and np.isclose(self.coeff_, 0.0):
+        if isinstance(self._coeff, float) and np.isclose(self._coeff, 0.0):
             return
 
         for param, grad in params_and_grads:
             # If no gradient then we don't need to do anything
             if grad is None:
                 continue
-            if self.attempt_decay_param_fun_ is not None \
-                    and not self.attempt_decay_param_fun_(param.name):
+            if self._attempt_decay_param_fun is not None \
+                    and not self._attempt_decay_param_fun(param.name):
                 continue
 
-            if isinstance(self.coeff_, float):
+            if isinstance(self._coeff, float):
                 assert param.dtype is not core.VarDesc.VarType.FP32, \
-                    "the type of coeff(float) and parameter(%s) is not consistent."%(self.coeff_.dtype)
+                    "the type of coeff(float) and parameter(%s) is not consistent."%(self._coeff.dtype)
             else:
-                assert self.coeff_.dtype == param.dtype, \
-                    "the type of coeff(%s) and parameter(%s) is not consistent."%(self.coeff_.dtype, param.dtype)
+                assert self._coeff.dtype == param.dtype, \
+                    "the type of coeff(%s) and parameter(%s) is not consistent."%(self._coeff.dtype, param.dtype)
 
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
-                assert param.name not in self.params_name_
-                self.scaled_params_.append((param, grad, param * self.coeff_))
-                self.params_name_.add(param.name)
+                assert param.name not in self._params_name
+                self._scaled_params.append((param, grad, param * self._coeff))
+                self._params_name.add(param.name)
 
     def apply(self):
         """
@@ -346,9 +351,9 @@ class WeightDecay(object):
         
         """
         from . import layers
-        if isinstance(self.coeff_, float) and np.isclose(self.coeff_, 0.0):
+        if isinstance(self._coeff, float) and np.isclose(self._coeff, 0.0):
             return
-        for p_grad_sgrad in self.scaled_params_:
+        for p_grad_sgrad in self._scaled_params:
             param, grad, scaled_param = p_grad_sgrad
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
@@ -356,7 +361,7 @@ class WeightDecay(object):
                 layers.assign(input=updated_param, output=param)
 
     def __str__(self):
-        return " ".join(["Weight Decay, params:", ",".join(self.params_name_)])
+        return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
 
 
 # We short the class name, since users will use the regulaizer with the package
