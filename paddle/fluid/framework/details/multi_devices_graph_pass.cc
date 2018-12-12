@@ -300,7 +300,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
-  // int num_trainers = Get<int>(kNumTrainers);
+  int num_trainers = Get<int>(kNumTrainers);
 
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
@@ -387,7 +387,11 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         }
 
         // if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
-        if (!is_forwarding && nccl_ctxs_->contexts_.size() > 1) {
+        // insert synchronous ops at the backpropagation; and
+        // insert synchronous ops if the graph contains mutilple places.
+        if (!is_forwarding &&
+            (places_.size() > 1 || num_trainers > 1 ||
+             (nccl_ctxs_ && nccl_ctxs_->contexts_.size() > 1))) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
           if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(

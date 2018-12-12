@@ -17,7 +17,7 @@ from __future__ import print_function
 import paddle.fluid as fluid
 import transformer_model
 import numpy as np
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, ExecutorType
 import unittest
 import paddle
 import paddle.fluid.core as core
@@ -173,6 +173,10 @@ class TestTransformer(TestParallelExecutorBase):
     def test_main(self):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(transformer, use_cuda=True)
+            self.check_network_convergence(
+                transformer,
+                use_cuda=True,
+                exec_type=ExecutorType.ParallelGraph)
             self.check_network_convergence(
                 transformer, use_cuda=True, enable_sequential_execution=True)
         self.check_network_convergence(transformer, use_cuda=False, iter=5)

@@ -87,7 +87,7 @@ ParallelExecutor::ParallelExecutor(
                    "the number of places must be greater than 1.");
     PADDLE_ENFORCE(exec_strategy.type_ != ExecutionStrategy::kParallelGraph,
                    "You should set build_strategy.reduce with 'AllReduce' for "
-                   "ParallelGraph executor type");
+                   "the ParallelGraph executor type");
   }
 
   // Step 1. Bcast the params to devs.

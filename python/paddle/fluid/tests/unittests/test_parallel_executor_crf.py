@@ -181,6 +181,9 @@ class TestCRFModel(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
                 is_sparse=True, build_strategy=build_strategy, use_cuda=True)
+            self.check_network_convergence(
+                is_sparse=True, build_strategy=build_strategy, use_cuda=True)
+
         self.check_network_convergence(
             is_sparse=True, build_strategy=build_strategy, use_cuda=False)
 
