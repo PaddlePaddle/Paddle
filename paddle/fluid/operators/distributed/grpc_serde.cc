@@ -46,7 +46,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const std::string& table_name) {
   platform::RecordRPCEvent record_event("serial", &ctx);
   VarMsg request;
-  TensorPayload* payload = nullptr;
+  std::unique_ptr<TensorPayload> payload;
 
   request.set_varname(name);
   request.set_trainer_id(trainer_id);
@@ -67,12 +67,14 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   if (!table_name.empty()) {
     request.set_table_name(table_name);
   }
+
   if (var->IsType<framework::LoDTensor>()) {
     request.set_type(::sendrecv::LOD_TENSOR);
-    payload = new TensorPayload(GetTensorPayload(var, ctx, &request));
+    payload.reset(new TensorPayload(GetTensorPayload(var, ctx, &request)));
   } else if (var->IsType<framework::SelectedRows>()) {
     request.set_type(::sendrecv::SELECTED_ROWS);
-    payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, &request));
+    payload.reset(
+        new TensorPayload(GetSelectedRowsPayload(var, ctx, &request)));
 #ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     request.set_type(::sendrecv::NCCL_ID);
@@ -116,8 +118,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   memcpy(const_cast<uint8_t*>(slices[0].begin()), e.data(), e.size());
   slices[1] = ::grpc::Slice(
       grpc_slice_new_with_user_data(payload->ptr(), payload->memory_size(),
-                                    SerializeDestroyCallback, payload),
+                                    SerializeDestroyCallback, payload.get()),
       ::grpc::Slice::STEAL_REF);
+  payload.release();
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
