@@ -22,7 +22,7 @@
 namespace paddle {
 namespace operators {
 
-namespace py = pybind11;
+namespace py = ::pybind11;
 
 static std::vector<py::object> g_py_callables;
 
@@ -30,7 +30,7 @@ const char kForwardPythonCallableId[] = "forward_callable_id";
 const char kBackwardPythonCallableId[] = "backward_callable_id";
 const char kPyFuncBackwardSkipVars[] = "backward_skip_vars";
 
-size_t AppendPythonCallableObjectAndReturnId(py::object py_obj) {
+size_t AppendPythonCallableObjectAndReturnId(const py::object &py_obj) {
   g_py_callables.emplace_back(py_obj);
   return g_py_callables.size() - 1;
 }

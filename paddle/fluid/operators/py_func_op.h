@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-size_t AppendPythonCallableObjectAndReturnId(pybind11::object py_obj);
+size_t AppendPythonCallableObjectAndReturnId(const ::pybind11::object &py_obj);
 
 }  // namespace operators
 }  // namespace paddle
