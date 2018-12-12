@@ -23,12 +23,14 @@ void MatrixBitCodeFunctor<T>::Add(const framework::Tensor& vec,
                                   framework::Tensor* tmat) {
   size_t batch_size = tmat->dims()[0];
   size_t width = tmat->dims()[1];
+  auto* tmat_data = tmat->data<T>();
+  auto* vec_data = vec.data<T>();
   for (size_t i = 0; i < batch_size; ++i) {
     auto code = code_table_->get_code(i);
     int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
       size_t index = code->calc_index(j);
-      tmat->data<T>()[i * width + j] += vec.data<T>()[index];
+      tmat_data[i * width + j] += vec_data[index];
     }
   }
 }
@@ -38,12 +40,14 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
                                       framework::Tensor* vec) {
   size_t batch_size = tmat.dims()[0];
   size_t width = tmat.dims()[1];
+  auto* vec_data = vec->data<T>();
+  auto* tmat_data = tmat.data<T>();
   for (size_t i = 0; i < batch_size; ++i) {
     auto code = code_table_->get_code(i);
     int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
       size_t index = code->calc_index(j);
-      vec->data<T>()[index] += tmat.data<T>()[i * width + j];
+      vec_data[index] += tmat_data[i * width + j];
     }
   }
 }
@@ -53,14 +57,15 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
                                       framework::SelectedRows* vec) {
   size_t batch_size = tmat.dims()[0];
   size_t width = tmat.dims()[1];
+  auto* vec_data = vec->mutable_value()->data<T>();
+  auto* tmat_data = tmat.data<T>();
   for (size_t i = 0; i < batch_size; ++i) {
     auto code = code_table_->get_code(i);
     int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
       size_t index = code->calc_index(j);
       int64_t row_index = vec->GetIndexFromId(static_cast<int64_t>(index));
-      vec->mutable_value()->data<T>()[row_index] +=
-          tmat.data<T>()[i * width + j];
+      vec_data[row_index] += tmat_data[i * width + j];
     }
   }
 }
@@ -70,6 +75,8 @@ void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
                                   framework::Tensor* sum, T scale_sum) {
   size_t num_samples = tmat.dims()[0];
   size_t o_width = tmat.dims()[1];
+  auto* tmat_data = tmat.data<T>();
+  auto* sum_data = sum->data<T>();
   for (size_t i = 0; i < num_samples; ++i) {
     T sm = static_cast<T>(0.0);
     auto code = code_table_->get_code(i);
@@ -78,10 +85,10 @@ void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
       if (code->calc_bit(j)) {
         // calc_bit starts from right most bit, while data in tmat[i] is in the
         // reverse order.
-        sm += tmat.data<T>()[i * o_width + j];
+        sm += tmat_data[i * o_width + j];
       }
     }
-    sum->data<T>()[i] = scale_sum * sm;
+    sum_data[i] = scale_sum * sm;
   }
 }
 
@@ -217,12 +224,13 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::Sub(framework::Tensor* tmat) {
   size_t num_samples = tmat->dims()[0];
   size_t o_width = tmat->dims()[1];
+  auto* tmat_data = tmat->data<T>();
   for (size_t i = 0; i < num_samples; ++i) {
     auto code = code_table_->get_code(i);
     int code_length = code->get_length();
     for (int j = 0; j < code_length; ++j) {
       if (code->calc_bit(j)) {
-        tmat->data<T>()[i * o_width + j] -= 1;
+        tmat_data[i * o_width + j] -= 1;
       }
     }
   }

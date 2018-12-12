@@ -140,13 +140,13 @@ template <typename T>
 class CustomCode : public Code {
  public:
   CustomCode(const framework::Tensor& ptable, const framework::Tensor& pcode,
-             const int64_t* ids, int index)
-      : ids_(ids), index_(index) {
-    ptable_ = ptable.Slice(index, index + 1);
-    pcode_ = pcode.Slice(index, index + 1);
+             const int64_t* ids, int index) {
+    seq_len_ = ptable.dims()[1];
+    ptable_data_ = ptable.data<T>() + seq_len_ * index;
+    pcode_data_ = pcode.data<T>() + seq_len_ * index;
   }
   /**
-   * Here the id of root shoud be 1 rather than 0, thus the encoding of class c
+   * Here the id of root should be 1 rather than 0, thus the encoding of class c
    * is `c + num_classes` and all siblings can get the same weight indice using
    * prefixes.
    * Weight index is the prefixes of encoding, thus leave out the right most
@@ -154,26 +154,26 @@ class CustomCode : public Code {
    * Binary classification path is the suffixes of encoding, thus leave out the
    * left most bit in calc_bit.
    */
-  size_t calc_index(int bit) const { return ptable_.data<T>()[bit]; }
-  bool calc_bit(int bit) const { return pcode_.data<T>()[bit]; }
-  int get_length() const {
-    int length = 0;
+  size_t calc_index(int bit) const override { return ptable_data_[bit]; }
+  bool calc_bit(int bit) const override { return pcode_data_[bit]; }
 
-    for (int i = 0; i < static_cast<int>(ptable_.dims()[1]); i++) {
-      if (ptable_.data<T>()[i] >= 0) {
-        length++;
-      } else {
-        return length;
-      }
+  // NOTE: this function is not thread-safe.
+  int get_length() const override {
+    if (length_ < 0) {
+      auto len = seq_len_;
+      length_ =
+          static_cast<int>(std::find_if(ptable_data_, ptable_data_ + len,
+                                        [](const T& val) { return val < 0; }) -
+                           ptable_data_);
     }
-    return length;
+    return length_;
   }
 
  private:
-  framework::Tensor ptable_;
-  framework::Tensor pcode_;
-  const int64_t* ids_;
-  const int index_;
+  int64_t seq_len_;
+  const T* ptable_data_;
+  const T* pcode_data_;
+  mutable int length_{-1};
 };
 
 class SimpleCodeTable : public CodeTable {
