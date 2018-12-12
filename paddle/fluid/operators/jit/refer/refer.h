@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/jit/helper.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -21,6 +22,7 @@ namespace operators {
 namespace jit {
 namespace refer {
 
+// Refer code only focus on correctness
 template <typename T>
 void VMul(const T* x, const T* y, T* z, int n) {
   for (int i = 0; i < n; ++i) {
@@ -29,10 +31,47 @@ void VMul(const T* x, const T* y, T* z, int n) {
 }
 
 template <typename T>
-class VMulKernel : public ReferKernel<VMulTuples<T>> {
- public:
-  VMulKernel() { this->func = VMul<T>; }
-};
+void VAdd(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] + y[i];
+  }
+}
+
+template <typename T>
+void VAddRelu(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] + y[i];
+    z[i] = z[i] > 0 ? z[i] : 0;
+  }
+}
+
+template <typename T>
+void VSub(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
+}
+
+template <typename T>
+void VScal(const T* a, const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = a[0] * x[i];
+  }
+}
+
+#define DECLARE_REFER_KERNEL(name, tuples)             \
+  template <typename T>                                \
+  class name##Kernel : public ReferKernel<tuples<T>> { \
+   public:                                             \
+    name##Kernel() { this->func = name<T>; }           \
+  }
+
+DECLARE_REFER_KERNEL(VMul, XYZNTuples);
+DECLARE_REFER_KERNEL(VAdd, XYZNTuples);
+DECLARE_REFER_KERNEL(VAddRelu, XYZNTuples);
+DECLARE_REFER_KERNEL(VSub, XYZNTuples);
+
+#undef DECLARE_REFER_KERNEL
 
 }  // namespace refer
 }  // namespace jit

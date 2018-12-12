@@ -17,5 +17,13 @@
 
 namespace refer = paddle::operators::jit::refer;
 
-REGISTER_JITKERNEL_REFER(vmul, refer::VMulKernel<float>,
-                         refer::VMulKernel<double>);
+#define REGISTER_REFER_KERNEL(key, func)                    \
+  REGISTER_JITKERNEL_REFER(key, refer::func##Kernel<float>, \
+                           refer::func##Kernel<double>)
+
+REGISTER_REFER_KERNEL(vmul, VMul);
+REGISTER_REFER_KERNEL(vadd, VAdd);
+REGISTER_REFER_KERNEL(vaddrelu, VAddRelu);
+REGISTER_REFER_KERNEL(vsub, VSub);
+
+#undef REGISTER_REFER_KERNEL

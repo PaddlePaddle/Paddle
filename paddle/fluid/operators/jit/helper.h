@@ -112,6 +112,8 @@ typename KernelTuples::func_type Get(typename KernelTuples::attr_type attr) {
   return GetRefer<KT, KernelTuples>();
 }
 
+const char* to_string(KernelType kt);
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle

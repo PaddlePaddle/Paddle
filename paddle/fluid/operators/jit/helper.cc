@@ -12,36 +12,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#pragma once
-
-#include <type_traits>
-#include "paddle/fluid/operators/jit/kernel_base.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/operators/jit/helper.h"
 
 namespace paddle {
 namespace operators {
 namespace jit {
-namespace more {
-namespace mkl {
 
-template <typename T>
-void VMul(const T* x, const T* y, T* z, int n);
-
-template <typename T>
-class VMulKernel : public KernelImpl<XYZNTuples<T>> {
- public:
-  VMulKernel() { this->func = VMul<T>; }
-  bool UseMe(int d) const override {
-    if (std::is_same<T, float>::value) {
-      return platform::MayIUse(platform::avx512f) && d > 512;
-    } else {
-      return true;
-    }
+const char* to_string(KernelType kt) {
+  switch (kt) {
+    case vmul:
+      return "vmul";
+    case vadd:
+      return "vadd";
+    case vaddrelu:
+      return "vaddrelu";
+    case vsub:
+      return "vsub";
+    case vscal:
+      return "vscal";
+    case vexp:
+      return "vexp";
+    default:
+      return "NOT JITKernel";
   }
-};
+  return nullptr;
+}
 
-}  // namespace mkl
-}  // namespace more
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
