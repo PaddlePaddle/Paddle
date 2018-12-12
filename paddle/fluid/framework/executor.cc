@@ -359,7 +359,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
-      local_scope = &scope->NewScope();
+      local_scope = &scope->NewTmpScope();
     }
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
@@ -402,7 +402,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   if (local_scope != scope) {
-    scope->DeleteScope(local_scope);
+    delete local_scope;
   } else {
     if (!keep_kids) {
       // By default, we should delete all kid scopes after run executor because
