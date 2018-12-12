@@ -8,7 +8,7 @@ file(APPEND ${jit_file} "\#include \"paddle/fluid/operators/jit/registry.h\"\n\n
 set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place)
 
 file(GLOB jit_kernel_cc_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cc")
-list(REMOVE_ITEM jit_kernel_cc_srcs test.cc)
+list(REMOVE_ITEM jit_kernel_cc_srcs test.cc benchmark.cc)
 cc_library(jit_kernel_base SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 
 # refer must go first
@@ -20,3 +20,4 @@ endif()
 
 cc_library(jit_kernel_helper SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS test.cc DEPS jit_kernel_helper)
+cc_binary(jit_kernel_benchmark SRCS benchmark.cc DEPS jit_kernel_helper)

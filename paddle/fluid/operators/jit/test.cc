@@ -21,15 +21,6 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
-
-constexpr int repeat = 20000;
-
-inline double GetCurrentUS() {
-  struct timeval time;
-  gettimeofday(&time, NULL);
-  return 1e+6 * time.tv_sec + time.tv_usec;
-}
 
 template <typename T>
 void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
