@@ -44,9 +44,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
     argument->SetMainProgram(program.release());
   } else if (argument->model_program_path_valid() &&
              argument->model_params_path_valid()) {
-    auto program =
-        LoadModel(argument->model_program_path(), argument->model_params_path(),
-                  argument->scope_ptr(), place, argument->model_from_memory());
+    auto program = LoadModel(
+        argument->model_program_path(), argument->model_params_path(),
+        argument->scope_ptr(), place,
+        argument->model_from_memory_valid() && argument->model_from_memory());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
