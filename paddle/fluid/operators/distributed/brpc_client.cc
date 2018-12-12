@@ -158,7 +158,7 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   for (int i = 0; i < FLAGS_brpc_channel_num; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());
     if (c->channel.Init(ep.c_str(), &options) != 0) {
-      LOG(ERROR) << "Fail to initialize channel";
+      LOG(FATAL) << "Fail to initialize channel";
       return nullptr;
     }
 
