@@ -49,7 +49,7 @@ struct AsyncWorkerParamConfig {
     std::vector<int>               sparse_table_id;
     std::map<uint64_t, std::vector<std::string>> slot_input_vec; //6048slot 6050slot //name
     std::map<uint64_t, std::vector<std::string>> gradient_var;   //6048slot_embed 
-    std::unordered_map<std::string, uint64_t>       slot_alias_to_table; //TODO done
+    std::map<std::string, uint64_t>       slot_alias_to_table; //TODO done
 };
 
 struct DensePullThreadParam {

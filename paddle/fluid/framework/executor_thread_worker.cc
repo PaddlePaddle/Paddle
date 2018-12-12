@@ -330,6 +330,7 @@ void AsyncExecutorThreadWorker::TrainFiles() {
       print_fetch_var(thread_scope_, fetch_var_names_[i]);
     }  // end for (int i = 0...)
   }    // end while ()
+  LOG(ERROR) << "TRAIN DONE";
 }
 
 void AsyncExecutorThreadWorker::SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {
@@ -571,25 +572,30 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
 void AsyncExecutorThreadWorker::PushSparse(int table_id) {
     auto slot_dim = _param_config->slot_dim; //TODO
     auto fea_dim = _param_config->fea_dim;//_current_train_job.fea_dim();TODO
-    auto& features = _features[table_id];
+    auto& features = _features[table_id]; 
+    CHECK(features.size() < 1000000) << "features size:" << features.size();
     //std::vector<std::string> gradient_var;
     //auto& gradient_var = GlobalConfig::instance().input_gradient_variable_name; //TODO
-    auto& push_g = _feature_push_value[table_id];
+    auto& push_g = _feature_push_value[table_id]; 
     check_pull_push_memory(features, push_g, fea_dim);
+    CHECK(push_g.size() == features.size() + 1) << "push_g size:" << push_g.size() << " features size:" << features.size();
     uint64_t fea_idx = 0u;
-    auto& fea_info = _fea_info[table_id]; //TODO
+    auto& fea_info = _fea_info[table_id]; 
     int offset = 0;
     //if (!_current_train_job.use_cvm_feature()) { //TODO
         offset = 2;
     //}
-
     const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
     // slot_idx = 0 is label TODO
     for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
-        if (_param_config->slot_alias_to_table[feed_vec[slot_idx]] != table_id) {
+        if (_param_config->slot_alias_to_table.find(feed_vec[slot_idx]) == _param_config->slot_alias_to_table.end()) { 
+            LOG(ERROR) << "ERROR slot_idx:" << slot_idx << " name:" << feed_vec[slot_idx];
+        } else if (_param_config->slot_alias_to_table[feed_vec[slot_idx]] != table_id) {
+            LOG(ERROR) << "ERROR continue";
             continue;
         }
-        Variable* g_var = thread_scope_->FindVar(_param_config->gradient_var[table_id][slot_idx - 1]);
+        Variable* g_var = thread_scope_->FindVar(_param_config->gradient_var[table_id][slot_idx - 1]); 
+        CHECK(g_var != nullptr) << "var[" << _param_config->gradient_var[table_id][slot_idx - 1] << "] not found";
         LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
         if (g_tensor == NULL) {
             LOG(ERROR) << "var[" << _param_config->gradient_var[table_id][slot_idx - 1] << "] not found";
@@ -598,13 +604,16 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
         float* g = g_tensor->data<float>();
 
         Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
+        CHECK(var != nullptr) << "var[" << feed_vec[slot_idx] << "] not found";
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         if (tensor == NULL) {
             LOG(ERROR) << "var[" << feed_vec[slot_idx] << "] not found";
             exit(-1);
         }
-        int len = tensor->lod()[0].back();
-        assert(slot_dim * len == g_tensor->numel());
+        //int len = tensor->lod()[0].back();
+        int len = tensor->numel();
+        CHECK(slot_dim * len == g_tensor->numel()) << "len:" << len << " g_numel:" << g_tensor->numel();
+        CHECK(len == tensor->numel()) << "len:" << len << "t_numel:" << tensor->numel();
         int64_t* ids = tensor->data<int64_t>();
         for (auto id_idx = 0u; id_idx < len; ++id_idx){
             if (ids[id_idx] == 0) {
@@ -613,12 +622,13 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
             }
             memcpy(push_g[fea_idx].data() + offset, g, sizeof(float) * slot_dim);
             push_g[fea_idx][0] = 1.0f;
+            CHECK(fea_idx < fea_info.size()) << "fea_idx:" << fea_idx << " size:" << fea_info.size();
             push_g[fea_idx][1] = static_cast<float>(fea_info[fea_idx].label);
             g += slot_dim;
             fea_idx++;
         }
     }
-    assert(fea_idx == features.size());
+    CHECK(fea_idx == features.size()) << "fea_idx:" << fea_idx << " features size:" << features.size();
     CHECK(features.size() > 0);
 
     std::vector<float*> push_g_vec;
