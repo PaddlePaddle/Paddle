@@ -28,6 +28,10 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+#define SIGMOID_THRESHOLD_MIN -40.0
+#define SIGMOID_THRESHOLD_MAX 13.0
+#define EXP_MAX_INPUT 40.0
+
 template <KernelType KT, typename T, typename Func, typename Attr,
           typename PlaceType>
 inline Func GetJitCode(Attr attr) {

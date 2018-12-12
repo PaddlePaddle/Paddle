@@ -60,10 +60,6 @@ typedef enum {
 #define YMM_FLOAT_BLOCK 8
 #define ZMM_FLOAT_BLOCK 16
 
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-
 #define DECLARE_JIT_CODE(codename) \
   const char* name() const override { return #codename; }
 
