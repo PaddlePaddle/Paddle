@@ -352,7 +352,8 @@ class WeightDecay(object):
             param, grad, scaled_param = p_grad_sgrad
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
-                layers.elementwise_sub(x=param, y=scaled_param, out=param)
+                updated_param = layers.elementwise_sub(x=param, y=scaled_param)
+                layers.assign(input=updated_param, output=param)
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self.params_name_)])

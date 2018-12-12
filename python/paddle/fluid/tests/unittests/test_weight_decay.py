@@ -117,8 +117,9 @@ class TestWeightDecay(unittest.TestCase):
 
             optimizer.minimize(avg_cost)
             for params in param_list:
-                fluid.layers.elementwise_sub(
-                    x=params[0], y=params[1], out=params[0])
+                updated_p = fluid.layers.elementwise_sub(
+                    x=params[0], y=params[1])
+                fluid.layers.assign(input=updated_p, output=params[0])
 
             param_sum = self.run_program(place, [data, label])
         return param_sum
