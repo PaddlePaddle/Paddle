@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <algorithm>
+#include <deque>
 #include <fstream>
 #include <string>
 #include <utility>
@@ -240,6 +241,59 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
   return dev_id;
 }
 
+std::vector<ir::Node *> BFSSortOpFromFeed(const ir::Graph &graph) {
+  std::vector<ir::Node *> ret_ops;
+  std::unordered_set<ir::Node *> ready_vars;
+  std::deque<ir::Node *> queue;
+  // find feed entrance. hard core for experimental.
+  for (auto *node : graph.Nodes()) {
+    if (node->Name() == "image") {
+      VLOG(3) << "find entrance feed";
+      for (auto *op : node->outputs) {
+        for (auto *in_var : op->inputs) {
+          PADDLE_ENFORCE(in_var->inputs.empty());
+          ready_vars.insert(in_var);
+        }
+        queue.emplace_back(op);
+      }
+      break;
+    }
+  }
+
+  auto dry_run = [&queue, &ready_vars, &ret_ops](ir::Node *op) {
+    for (auto *out_var : op->outputs) {
+      ready_vars.emplace(out_var);
+    }
+    ret_ops.emplace_back(op);
+  };
+
+  auto vars_are_ready = [&](ir::Node *node) {
+    PADDLE_ENFORCE(node->IsVar());
+    if (node->IsCtrlVar()) return true;
+    if (ready_vars.count(node) || node->inputs.empty()) {
+      ready_vars.emplace(node);
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  while (!queue.empty()) {
+    for (auto it = queue.begin(); it != queue.end();) {
+      ir::Node *op = *it;
+      if (op->inputs.empty() ||
+          std::all_of(op->inputs.begin(), op->inputs.end(), vars_are_ready)) {
+        dry_run(op);
+        VLOG(3) << "op " << op->Name() << " ptr " << op;
+        it = queue.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+  return ret_ops;
+}
+
 // Topology sort the graph nodes from inputs to outputs.
 // Since SSAGraphBuilder depends on forward/backward nodes to assign devices
 // to parameter/gradients before optimizer ops, topo sort is insufficient. (
@@ -247,7 +301,8 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
 // optimizer nodes after last backward nodes.
 // However, the assumption by SSAGraphBuilder should be relaxed in the future.
 std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
-  std::vector<ir::Node *> ret = ir::TopologySortOperations(graph);
+  std::vector<ir::Node *> ret = BFSSortOpFromFeed(graph);
+  // std::vector<ir::Node *> ret = ir::TopologySortOperations(graph);
   size_t last_backward = 0;
   for (size_t i = 0; i < ret.size(); ++i) {
     if (boost::get<int>(
@@ -300,7 +355,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
-  int num_trainers = Get<int>(kNumTrainers);
+  // int num_trainers = Get<int>(kNumTrainers);
 
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
@@ -386,7 +441,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           CreateComputationalOps(&result, node, places_.size());
         }
 
-        if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
+        // if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
+        if (!is_forwarding && nccl_ctxs_->contexts_.size() > 1) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
           if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
