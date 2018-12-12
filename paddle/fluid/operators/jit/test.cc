@@ -89,8 +89,7 @@ TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::jit;
   const auto KT = jit::vmul;
   for (int d : TestSizes()) {
-    auto ref = jit::GetRefer<KT, T, jit::VMulTuples<T>::func_type,
-                             jit::VMulTuples<T>::attr_type>();
+    auto ref = jit::GetRefer<KT, jit::VMulTuples<T>>();
     EXPECT_TRUE(ref != nullptr);
 
     std::vector<T> x(d), y(d), zref(d);
@@ -115,8 +114,7 @@ TEST(JitKernel, vmul) {
     ExpectEQ<T>(yinp_data, zref_data, d);
 
     // test jitcode
-    auto jitcode = jit::GetJitCode<KT, T, jit::VMulTuples<T>::func_type,
-                                   jit::VMulTuples<T>::attr_type, PlaceType>(d);
+    auto jitcode = jit::GetJitCode<KT, jit::VMulTuples<T>, PlaceType>(d);
     if (jitcode) {
       VLOG(10) << "Test jitcode, size: " << d;
       TestTartgetFunc<T, jit::VMulTuples<T>::func_type>(jitcode, x, y, zref);
@@ -129,10 +127,8 @@ TEST(JitKernel, vmul) {
     if (iter != pool.end()) {
       auto& impls = iter->second;
       for (auto& impl : impls) {
-        auto i =
-            dynamic_cast<const jit::KernelImpl<T, jit::VMulTuples<T>::func_type,
-                                               jit::VMulTuples<T>::attr_type>*>(
-                impl.get());
+        auto i = dynamic_cast<const jit::KernelImpl<jit::VMulTuples<T>>*>(
+            impl.get());
         if (i && i->UseMe(d)) {
           auto more = i->GetFunc();
           VLOG(10) << "Test More Kernel, size: " << d;
@@ -142,8 +138,7 @@ TEST(JitKernel, vmul) {
     }
     // Test result from Get function
     VLOG(10) << "Test Get function, size: " << d;
-    auto tgt = jit::Get<KT, T, jit::VMulTuples<T>::func_type,
-                        jit::VMulTuples<T>::attr_type, PlaceType>(d);
+    auto tgt = jit::Get<KT, jit::VMulTuples<T>, PlaceType>(d);
     TestTartgetFunc<T, jit::VMulTuples<T>::func_type>(tgt, x, y, zref);
   }
 }
