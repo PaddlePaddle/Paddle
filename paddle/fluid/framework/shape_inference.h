@@ -25,7 +25,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class OperatorBase;
+
 using InferShapeVarPtr = boost::variant<VarDesc *, Variable *>;
+using InferShapeOpPtr = boost::variant<const OpDesc *, const OperatorBase *>;
 
 class InferShapeContext {
  public:
@@ -37,6 +40,8 @@ class InferShapeContext {
       const std::string &name) const;
   std::vector<proto::VarType::Type> GetOutputsVarType(
       const std::string &name) const;
+
+  virtual InferShapeOpPtr GetOp() const = 0;
 
   virtual bool HasInputs(const std::string &name) const = 0;
   virtual bool HasOutputs(const std::string &name) const = 0;

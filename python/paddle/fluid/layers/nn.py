@@ -9096,12 +9096,9 @@ def py_func(func, x, out, backward_func=None):
         _main_program_to_register = dict()
 
         @classmethod
-        def get_instance(cls, prog=None):
-            if prog is None:
-                prog = fluid.default_main_program()
-
+        def get_instance(cls, prog):
             if not isinstance(prog, Program):
-                raise ValueError("prog must be None or type of Program")
+                raise TypeError("prog must be type of Program")
 
             ret = cls._main_program_to_register.get(prog, None)
             if ret is None:
@@ -9155,6 +9152,10 @@ def py_func(func, x, out, backward_func=None):
 
             ret = []
             for i in six.moves.range(len(ret0)):
+                if ret0[i] is None:
+                    ret.append(None)
+                    continue
+
                 if isinstance(ret0[i], core.LoDTensor):
                     ret.append(ret0[i])
                     continue
@@ -9175,20 +9176,34 @@ def py_func(func, x, out, backward_func=None):
         x = [x]
 
     if isinstance(out, Variable):
-        out = [out]
+        out_list = [out]
+    else:
+        out_list = out
 
-    for each_out in out:
+    if func is None or not hasattr(func, '__call__'):
+        raise TypeError('Input func must be a function')
+
+    if backward_func is not None and not hasattr(backward_func, '__call__'):
+        raise TypeError('Input backward_func must be a function')
+
+    for each_out in out_list:
         if len(each_out.shape) == 0:
             raise ValueError(
-                'users should infer shapes of outputs of py_func op manually')
+                'Output shapes of py_func op should be provided by users manually'
+            )
 
     py_func_reg = PyFuncRegister.get_instance(helper.main_program)
-    token = py_func_reg.unique_token(func)
+    forward_token = py_func_reg.unique_token(func)
+    backward_token = py_func_reg.unique_token(
+        backward_func) if backward_func is not None else ''
 
     helper.append_op(
         type='py_func',
         inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'handle_idx': py_func_reg.handle_idx,
-               'token': token})
+        outputs={'Out': out_list},
+        attrs={
+            'handle_idx': py_func_reg.handle_idx,
+            'token': forward_token,
+            'backward_token': backward_token
+        })
     return out

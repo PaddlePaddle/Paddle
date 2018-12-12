@@ -481,6 +481,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
+  InferShapeOpPtr GetOp() const override { return &op_; }
+
   bool HasInput(const std::string& name) const override {
     // has only one input
     const auto& ins = op_.Inputs();
@@ -879,6 +881,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
+          PADDLE_ENFORCE(t->IsInitialized(),
+                         "Input %s(%s) does not exist in Operator %s",
+                         input.first, ipt_name, DebugString());
           int tmp = static_cast<int>(ToDataType(t->type()));
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
