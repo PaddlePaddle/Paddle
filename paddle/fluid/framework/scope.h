@@ -48,6 +48,10 @@ class Scope {
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
+  /// Create a sub-scope that the parant is this Scope. Return a pointer of
+  /// the new Scope, you need to delete it your self.
+  std::unique_ptr<Scope> NewTmpScope() const;
+
   /// Create a variable with given name if it doesn't exist.
   /// Caller doesn't own the returned Variable.
   Variable* Var(const std::string& name);
