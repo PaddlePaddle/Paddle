@@ -57,7 +57,7 @@ void CheckProgram(const ProgramDesc &program) {
         } else {
           if (visit.find(_INT(OpRole::kOptimize)) != visit.end()) {
             LOG(ERROR)
-                << "Cannot add backward operator %s after optimize operator.",
+                << "Cannot add backward operator %s after optimize operator."
                 << op->Type();
           }
         }
@@ -82,8 +82,8 @@ void CheckProgram(const ProgramDesc &program) {
 
           if (visit.find(_INT(OpRole::kOptimize)) != visit.end()) {
             LOG(ERROR) << "Cannot add forward|loss operator %s after optimize "
-                          "operator.",
-                << op->Type();
+                          "operator."
+                       << op->Type();
           }
         }
         break;
@@ -95,9 +95,8 @@ void CheckProgram(const ProgramDesc &program) {
                          op->Type());
         } else {
           if (visit.find(_INT(OpRole::kBackward)) == visit.end()) {
-            LOG(ERROR)
-                << "Optimize operators %s must follow backward operator.",
-                << op->Type();
+            LOG(ERROR) << "Optimize operators %s must follow backward operator."
+                       << op->Type();
           }
         }
         break;
