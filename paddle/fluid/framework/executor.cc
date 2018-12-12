@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
@@ -26,6 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_NGRAPH
+#include "paddle/fluid/framework/ngraph_operator.h"
+#endif
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
@@ -131,11 +134,11 @@ static void DeleteUnusedTensors(
 static void EnableFusedOp(ExecutorPrepareContext* ctx) {
 #ifdef PADDLE_WITH_NGRAPH
   VLOG(3) << "use_ngraph=True";
-  auto intervals = FusedOperator::FusedOpIntervals(&ctx->ops_);
+  auto intervals = NgraphOperator::NgraphOpIntervals(&ctx->ops_);
   for (auto& interval : intervals) {
-    auto* fused_op = new FusedOperator(ctx->prog_, ctx->block_id_,
-                                       interval.at(0), interval.at(1));
-    *interval[0] = std::unique_ptr<OperatorBase>(fused_op);
+    auto* ng_op = new NgraphOperator(ctx->prog_, ctx->block_id_, interval.at(0),
+                                     interval.at(1));
+    *interval[0] = std::unique_ptr<OperatorBase>(ng_op);
   }
   for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
     ctx->ops_.erase(it->at(0) + 1, it->at(1));
