@@ -182,7 +182,7 @@ inline void PyCPUTensorSetFromArray(
     paddle::platform::CPUPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (int i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
