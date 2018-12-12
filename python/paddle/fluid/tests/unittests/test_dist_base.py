@@ -56,6 +56,7 @@ class TestDistRunnerBase(object):
         return t
 
     def run_pserver(self, args):
+        self.lr = args.lr
         self.get_model(batch_size=args.batch_size)
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
