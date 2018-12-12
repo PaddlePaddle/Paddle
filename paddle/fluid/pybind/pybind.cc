@@ -572,20 +572,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
-      .def("is_cpu_place",
-           [](platform::Place &self) { return platform::is_cpu_place(self); })
-      .def("is_gpu_place",
-           [](platform::Place &self) { return platform::is_gpu_place(self); })
-      .def("is_cuda_pinned_place",
-           [](platform::Place &self) {
-             return platform::is_cuda_pinned_place(self);
-           })
-      .def("gpu_device_id",
-           [](platform::Place &self) {
-             PADDLE_ENFORCE(platform::is_gpu_place(self),
-                            "gpu_device_id() only supports in CUDAPlace");
-             return boost::get<platform::CUDAPlace>(self).device;
-           })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
