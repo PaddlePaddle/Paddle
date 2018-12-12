@@ -52,9 +52,10 @@ class HDFSClient(object):
         ret_code = 0
         ret_out = None
         ret_err = None
+        whole_commands = " ".join(whole_commands)
         for x in range(retry_times + 1):
             proc = subprocess.Popen(
-                whole_commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                whole_commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             (output, errors) = proc.communicate()
             ret_code, ret_out, ret_err = proc.returncode, output, errors
             if ret_code:
