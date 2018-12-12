@@ -41,6 +41,6 @@ PaddlePaddle/Paddle/paddle/fluid/
 - 性能测试
 
 # 如何添加新的算子
-TBD
-## Use me
-Add USE_JIT_KERNEL(yourname) to CMakefile.
+
+- 在`KernelType` 中添加 `your_key` 
+- 实现Reference 的逻辑，每个jitkernel的Reference 实现是必须的。不要依赖任何第三方库。并在`refer/CmakeLists.txt`中`USE_JITKERNEL_REFER(your_key)`

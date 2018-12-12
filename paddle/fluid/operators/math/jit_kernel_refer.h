@@ -23,36 +23,6 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 namespace refer {
-/* Refer code only focus on correctness */
-
-template <typename T>
-void VMul(const T* x, const T* y, T* z, int n) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] * y[i];
-  }
-}
-
-template <typename T>
-void VAdd(const T* x, const T* y, T* z, int n) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] + y[i];
-  }
-}
-
-template <typename T>
-void VAddRelu(const T* x, const T* y, T* z, int n) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] + y[i];
-    z[i] = z[i] > 0 ? z[i] : 0;
-  }
-}
-
-template <typename T>
-void VScal(const T* a, const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = a[0] * x[i];
-  }
-}
 
 template <typename T>
 void VAddBias(const T* a, const T* x, T* y, int n) {

@@ -48,18 +48,20 @@ void ExpectEQ(const T* target, const T* refer, int n) {
 
 std::vector<int> TestSizes() {
   std::vector<int> s;
-  for (int i = 1; i < 30; ++i) {
+  for (int i = 1; i < 10; ++i) {
     s.push_back(i);
   }
-  // test some large size
-  s.push_back(100);
-  s.push_back(1000);
+  // // test some large size
+  // s.push_back(100);
+  // s.push_back(1000);
+  // s.push_back(2000);
   return s;
 }
 
-template <typename T, typename Func>
-void TestTartgetFunc(const Func tgt, const std::vector<T>& x,
-                     const std::vector<T>& y, const std::vector<T>& zref) {
+template <typename T, typename KernelTuples>
+void TestTartgetFunc(const typename KernelTuples::func_type tgt,
+                     const std::vector<T>& x, const std::vector<T>& y,
+                     const std::vector<T>& zref) {
   EXPECT_TRUE(tgt != nullptr);
   EXPECT_EQ(zref.size(), x.size());
   EXPECT_EQ(zref.size(), y.size());
@@ -83,13 +85,13 @@ void TestTartgetFunc(const Func tgt, const std::vector<T>& x,
   ExpectEQ<T>(ztgt_data, zref_data, d);
 }
 
-TEST(JitKernel, vmul) {
-  using T = float;
-  using PlaceType = paddle::platform::CPUPlace;
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestXYZNKernel() {
   namespace jit = paddle::operators::jit;
-  const auto KT = jit::vmul;
   for (int d : TestSizes()) {
-    auto ref = jit::GetRefer<KT, jit::VMulTuples<T>>();
+    VLOG(10) << "===== Test JITKernel " << jit::to_string(KT)
+             << ", size: " << d;
+    auto ref = jit::GetRefer<KT, jit::XYZNTuples<T>>();
     EXPECT_TRUE(ref != nullptr);
 
     std::vector<T> x(d), y(d), zref(d);
@@ -114,10 +116,10 @@ TEST(JitKernel, vmul) {
     ExpectEQ<T>(yinp_data, zref_data, d);
 
     // test jitcode
-    auto jitcode = jit::GetJitCode<KT, jit::VMulTuples<T>, PlaceType>(d);
+    auto jitcode = jit::GetJitCode<KT, jit::XYZNTuples<T>, PlaceType>(d);
     if (jitcode) {
-      VLOG(10) << "Test jitcode, size: " << d;
-      TestTartgetFunc<T, jit::VMulTuples<T>::func_type>(jitcode, x, y, zref);
+      VLOG(10) << "Test Jitcode Kernel, size: " << d;
+      TestTartgetFunc<T, jit::XYZNTuples<T>>(jitcode, x, y, zref);
     }
 
     // test all impls in more
@@ -127,20 +129,45 @@ TEST(JitKernel, vmul) {
     if (iter != pool.end()) {
       auto& impls = iter->second;
       for (auto& impl : impls) {
-        auto i = dynamic_cast<const jit::KernelImpl<jit::VMulTuples<T>>*>(
+        auto i = dynamic_cast<const jit::KernelImpl<jit::XYZNTuples<T>>*>(
             impl.get());
         if (i && i->UseMe(d)) {
           auto more = i->GetFunc();
           VLOG(10) << "Test More Kernel, size: " << d;
-          TestTartgetFunc<T, jit::VMulTuples<T>::func_type>(more, x, y, zref);
+          TestTartgetFunc<T, jit::XYZNTuples<T>>(more, x, y, zref);
         }
       }
     }
     // Test result from Get function
     VLOG(10) << "Test Get function, size: " << d;
-    auto tgt = jit::Get<KT, jit::VMulTuples<T>, PlaceType>(d);
-    TestTartgetFunc<T, jit::VMulTuples<T>::func_type>(tgt, x, y, zref);
+    auto tgt = jit::Get<KT, jit::XYZNTuples<T>, PlaceType>(d);
+    TestTartgetFunc<T, jit::XYZNTuples<T>>(tgt, x, y, zref);
   }
 }
 
-TEST(JitKernel, pool) {}
+TEST(JITKernel, vmul) {
+  namespace jit = paddle::operators::jit;
+  TestXYZNKernel<jit::vmul, float, paddle::platform::CPUPlace>();
+  // TODO(TJ): fix double issue
+  // TestXYZNKernel<jit::vmul, double, paddle::platform::CPUPlace>();
+}
+
+TEST(JITKernel, vadd) {
+  namespace jit = paddle::operators::jit;
+  TestXYZNKernel<jit::vadd, float, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::vadd, double, paddle::platform::CPUPlace>();
+}
+
+TEST(JITKernel, vaddrelu) {
+  namespace jit = paddle::operators::jit;
+  TestXYZNKernel<jit::vaddrelu, float, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::vaddrelu, double, paddle::platform::CPUPlace>();
+}
+
+TEST(JITKernel, vsub) {
+  namespace jit = paddle::operators::jit;
+  TestXYZNKernel<jit::vsub, float, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::vsub, double, paddle::platform::CPUPlace>();
+}
+
+TEST(JITKernel, pool) {}

@@ -19,10 +19,10 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-typedef enum { vmul = 0, vadd = 1, vsub, vexp } KernelType;
+typedef enum { vmul = 0, vadd = 1, vaddrelu, vsub, vscal, vexp } KernelType;
 
 template <typename T>
-struct VMulTuples {
+struct XYZNTuples {
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const T*, const T*, T*, int);
