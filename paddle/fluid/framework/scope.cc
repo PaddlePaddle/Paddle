@@ -46,13 +46,10 @@ DEFINE_double(
 #define SCOPE_READER_LOCK
 #define SCOPE_WRITER_LOCK
 #else
-// TODO(minqiyang): use reader lock and writer lock in all platforms
-#define SCOPE_READER_LOCK
-#define SCOPE_WRITER_LOCK
-// #define SCOPE_READER_LOCK boost::shared_lock<boost::shared_mutex>
-// lock(mutex_);
-// #define SCOPE_WRITER_LOCK boost::unique_lock<boost::shared_mutex>
-// lock(mutex_);
+// TODO(minqiyang): use rwlock in all platforms, now rwlock is a fake one
+// in _WIN32 platform
+#define SCOPE_READER_LOCK RWLockGuard(&rw_lock_, RWLockGuard::Status::kRDLock);
+#define SCOPE_WRITER_LOCK RWLockGuard(&rw_lock_, RWLockGuard::Status::kWRLock);
 #endif
 
 namespace paddle {
