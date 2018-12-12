@@ -16,7 +16,9 @@ limitations under the License. */
 
 #if !defined(_WIN32)
 #include <pthread.h>
-#endif  // !_WIN32
+#else
+#include <mutex>  // NOLINT
+#endif            // !_WIN32
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -51,9 +53,15 @@ struct RWLock {
 // https://stackoverflow.com/questions/7125250/making-pthread-rwlock-wrlock-recursive
 // In windows, rw_lock seems like a hack. Use empty object and do nothing.
 struct RWLock {
-  void RDLock() {}
-  void WRLock() {}
-  void UNLock() {}
+  // FIXME(minqiyang): use mutex here to do fake lock
+  void RDLock() { mutex_.lock(); }
+
+  void WRLock() { mutex_.lock(); }
+
+  void UNLock() { mutex_.unlock(); }
+
+ private:
+  std::mutex mutex_;
 };
 #endif
 
