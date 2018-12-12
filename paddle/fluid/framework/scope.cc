@@ -66,9 +66,7 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
-std::unique_ptr<Scope> Scope::NewTmpScope() const {
-  return std::unique_ptr<Scope>(new Scope(this));
-}
+Scope* Scope::NewTmpScope() const { return new Scope(this); }
 
 Variable* Scope::Var(const std::string& name) {
   SCOPE_LOCK_GUARD

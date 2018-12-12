@@ -173,7 +173,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<std::string>& epmap,
               const std::vector<int>& height_sections,
               const framework::ExecutionContext& context) {
-  std::unique_ptr<framework::Scope> local_scope = context.scope().NewTmpScope();
+  framework::Scope* local_scope = context.scope().NewTmpScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -217,9 +217,9 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 #endif
   }
 
-  auto splited_ids = SplitIds(ids_vector, height_sections, local_scope.get());
+  auto splited_ids = SplitIds(ids_vector, height_sections, local_scope);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
-                                    local_scope.get());
+                                    local_scope);
 
   // create output var in local scope
   for (auto& name : out_var_names) {
@@ -245,7 +245,9 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
-                                    context, local_scope.get(), &actual_ctx);
+                                    context, local_scope, &actual_ctx);
+
+  delete local_scope;
 }
 
 };  // namespace distributed

@@ -64,7 +64,7 @@ class VariableResponse {
     }
   }
 
-  virtual ~VariableResponse() {}
+  virtual ~VariableResponse() { delete local_scope_; }
 
   int Parse(Source* source, const sendrecv::VariableMessage& meta) {
     meta_ = meta;
@@ -78,9 +78,7 @@ class VariableResponse {
   virtual int Parse(Source* source) = 0;
 
   inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
-  inline framework::Scope* GetMutableLocalScope() const {
-    return local_scope_.get();
-  }
+  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
@@ -119,7 +117,7 @@ class VariableResponse {
   const framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
   bool create_scope_ = false;
-  std::unique_ptr<framework::Scope> local_scope_ = nullptr;
+  framework::Scope* local_scope_ = nullptr;
 
   sendrecv::VariableMessage meta_;
 };
