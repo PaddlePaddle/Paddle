@@ -71,9 +71,6 @@ struct float16;
 }  // namespace platform
 }  // namespace paddle
 
-// NOTE():
-// Do not move the eigen.h header, otherwise the eigen_vector<bool> will failed.
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
