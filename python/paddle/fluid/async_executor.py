@@ -153,13 +153,10 @@ class AsyncExecutor(object):
                                      data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, mode, debug)
 
-    def download_data(self, afs_path, local_path, fs_default_name, ugi, process_num=12):
-        #hadoop_home = "$HADOOP_HOME"
+    def download_data(self, afs_path, local_path, fs_default_name, ugi, hadoop_home="$HADOOP_HOME", process_num=12):
         if self.instance is None:
             raise ValueError('instance is None, please run config_distributed_nodes init instance')
             
-        hadoop_home = "~/tools/hadoop-xingtian/hadoop/"
-
         configs = {
             "fs.default.name": fs_default_name,
             "hadoop.job.ugi": ugi
