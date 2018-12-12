@@ -59,13 +59,12 @@ struct ScaleLossGradFunctor {
     } else {
 #ifdef PADDLE_WITH_CUDA
       OutT cast_coeff = static_cast<OutT>(coeff_);
-      // op_handle_->RunAndRecordEvent([&] {
       auto stream = cuda_ctx_->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), out_data,
                    platform::CPUPlace(), &cast_coeff,
                    SizeOfType(ToTypeIndex(out_dtype_)), stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";
-// });
+
 #endif
     }
   }
