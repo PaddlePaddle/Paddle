@@ -427,6 +427,7 @@ def multi_download(client,
                    local_path,
                    trainer_id,
                    trainers,
+                   file_cnt,
                    multi_processes=5):
     """
     multi_download
@@ -435,6 +436,7 @@ def multi_download(client,
     :param local_path: path on local
     :param trainer_id: current trainer id
     :param trainers: all trainers number
+    :param file_cnt: all file number
     :param multi_processes: the download data process at the same time, default=5
     :return: None
     """
@@ -450,7 +452,7 @@ def multi_download(client,
     client.make_local_dirs(local_path)
     _logger.info("Make local dir {} successfully".format(local_path))
 
-    all_need_download = client.lsr(hdfs_path, sort=True)
+    all_need_download = client.lsr(hdfs_path, sort=True)[:file_cnt]
     need_download = all_need_download[trainer_id::trainers]
     _logger.info("Get {} files From all {} files need to be download from {}".
                  format(len(need_download), len(all_need_download), hdfs_path))
@@ -501,6 +503,7 @@ if __name__ == "__main__":
         "/home/xx/data1",
         1,
         5,
+        100,
         multi_processes=5)
 
     multi_upload(client, "/user/com/train-25/model", "/home/xx/data1")

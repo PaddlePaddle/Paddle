@@ -153,7 +153,7 @@ class AsyncExecutor(object):
                                      data_feed.desc(), filelist, thread_num,
                                      fetch_var_names, mode, debug)
 
-    def download_data(self, afs_path, local_path, fs_default_name, ugi, hadoop_home="$HADOOP_HOME", process_num=12):
+    def download_data(self, afs_path, local_path, fs_default_name, ugi, file_cnt, hadoop_home="$HADOOP_HOME", process_num=12):
         if self.instance is None:
             raise ValueError('instance is None, please run config_distributed_nodes init instance')
             
@@ -169,6 +169,7 @@ class AsyncExecutor(object):
             local_path, 
             self.instance.get_worker_index(),
             self.instance.get_node_cnt() / 2,
+            file_cnt,
             multi_processes=process_num)
         #self.instance.barrier_all() #wait for download_data #TODO only barriere worker
         self.instance.barrier_worker() #wait for download_data #TODO only barriere worker

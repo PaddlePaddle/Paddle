@@ -111,7 +111,7 @@ void AsyncExecutor::InitParamConfig() {
         std::vector<std::string> tmp_sparse_variable_name;
         for (int i = 0u; i < table.slot_value_size(); ++i) {
             tmp_sparse_variable_name.push_back(table.slot_value(i));
-            _param_config.slot_alias_to_table[table.slot_value(i)] = table.table_id();
+            _param_config.slot_alias_to_table[table.slot_key(i)] = table.table_id();
         }
         std::vector<std::string> tmp_sparse_gradient_variable_name;
         for (auto i = 0u; i < table.slot_gradient_size(); ++i) {
