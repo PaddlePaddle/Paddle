@@ -49,15 +49,17 @@ inline typename KernelTuples::func_type GetJitCode(
     // pool: (KernelKey(type, place), vector<GenCreatorPtr>)
     auto& creator_map = JitCodeCreatorPool().Instance().AllCreators();
     auto iter = creator_map.find(kkey);
-    auto& creators = iter->second;
-    for (auto& cur : creators) {
-      auto i = dynamic_cast<const JitCodeCreator<Attr>*>(cur.get());
-      if (i && i->UseMe(attr)) {
-        auto p = i->CreateJitCode(attr);
-        if (p) {
-          auto f = p->template getCode<Func>();
-          codes.Insert(key, std::move(p));
-          return f;
+    if (iter != creator_map.end()) {
+      auto& creators = iter->second;
+      for (auto& cur : creators) {
+        auto i = dynamic_cast<const JitCodeCreator<Attr>*>(cur.get());
+        if (i && i->UseMe(attr)) {
+          auto p = i->CreateJitCode(attr);
+          if (p) {
+            auto f = p->template getCode<Func>();
+            codes.Insert(key, std::move(p));
+            return f;
+          }
         }
       }
     }
