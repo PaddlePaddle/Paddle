@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include <iostream>
+#include <map>
 namespace paddle {
 namespace operators {
 namespace math {
@@ -133,8 +134,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor& tmat,
   auto weight_value = weight->data<T>();
   auto input_value = input.data<T>();
 
-  std::unordered_map<int, std::vector<std::pair<T, const T*>>> ops;
-
+  std::map<int, std::vector<std::pair<T, const T*>>> ops;
   for (size_t i = 0; i < num_samples; ++i) {
     auto code = code_table_->get_code(i);
     int code_length = code->get_length();
