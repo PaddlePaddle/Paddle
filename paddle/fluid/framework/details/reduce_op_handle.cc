@@ -218,18 +218,18 @@ void ReduceOpHandle::RunImpl() {
       }
 
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
-      if (framework::IsType<const float>(in_selected_rows[0]->value().type())) {
+      if (in_selected_rows[0]->value().type() ==
+          framework::proto::VarType::FP32) {
         GatherSelectedRows<platform::CUDADeviceContext, float>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
-      } else if (framework::IsType<const double>(
-                     in_selected_rows[0]->value().type())) {
+      } else if (in_selected_rows[0]->value().type() ==
+                 framework::proto::VarType::FP64) {
         GatherSelectedRows<platform::CUDADeviceContext, double>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
       } else {
-        PADDLE_ENFORCE(false,
-                       "only support double or float when gahter SelectedRows");
+        PADDLE_THROW("only support double or float when gather SelectedRows");
       }
 #endif
     });
