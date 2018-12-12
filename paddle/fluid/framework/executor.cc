@@ -359,7 +359,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
-      local_scope = &scope->NewTmpScope();
+      local_scope = scope->NewTmpScope();
     }
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
