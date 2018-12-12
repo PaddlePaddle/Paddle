@@ -12,9 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-// #include <cstring>  // for memcpy
-// #include <random>
 #include <iostream>
+#include <random>
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
