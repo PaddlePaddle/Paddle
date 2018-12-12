@@ -645,7 +645,10 @@ def save_inference_model(dirname,
         main_program = default_main_program()
         if main_program.is_optimized:
             raise RuntimeError(
-                "save_inference_model must put before you call memory_optimize.")
+                "save_inference_model must put before you call memory_optimize. \
+                the memory_optimize will modify the original program, \
+                is not suitable for saving inference model \
+                we save the original program as inference model.")
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     try:

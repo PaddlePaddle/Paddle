@@ -1452,6 +1452,10 @@ class Program(object):
         # maybe same, which conflict with save_inference_model.
         return self._is_optimized
 
+    @is_optimized.setter
+    def set_is_optimized(self, target):
+        self._is_optimized = target
+
     @property
     def op_role(self):
         """
