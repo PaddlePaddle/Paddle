@@ -533,4 +533,3 @@ using Vector = CPUVector<T>;
 
 };  // namespace framework
 }  // namespace paddle
-        
