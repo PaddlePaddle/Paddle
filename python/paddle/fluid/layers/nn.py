@@ -9173,31 +9173,22 @@ class PyFuncWrapper(object):
             kwargs[arg] = args[idx]
             idx += 1
 
-        ret0 = self._func(*args[idx:], **kwargs)
-        if ret0 is None:
-            return None
-
-        if not isinstance(ret0, (list, tuple)):
-            ret0 = (ret0, )
+        func_ret = self._func(*args[idx:], **kwargs)
+        if not isinstance(func_ret, (list, tuple)):
+            func_ret = (func_ret, )
 
         ret = []
-        for i in six.moves.range(len(ret0)):
-            if ret0[i] is None:
-                ret.append(None)
+        for each_ret in func_ret:
+            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+                ret.append(each_ret)
                 continue
 
-            if isinstance(ret0[i], core.LoDTensor):
-                ret.append(ret0[i])
-                continue
+            if not isinstance(each_ret, np.ndarray):
+                each_ret = np.array(each_ret)
 
-            if isinstance(ret0[i], np.ndarray):
-                r = ret0[i]
-            else:
-                r = np.array(ret0[i])
-
-            t = core.LoDTensor()
-            t.set(r, core.CPUPlace())
-            ret.append(t)
+            tensor = core.LoDTensor()
+            tensor.set(each_ret, core.CPUPlace())
+            ret.append(tensor)
 
         return tuple(ret)
 
