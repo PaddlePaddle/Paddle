@@ -97,6 +97,7 @@ class PaddlePSInstance(object):
         pass
 
     def finalize(self):
+        self.dh.finalize()
         pass
 
 
