@@ -28,15 +28,14 @@ class DeQuantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override{
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim("Output", ctx->GetInputDim("Input"));
     ctx->ShareLoD("Input", /*->*/ "Output");
-  } 
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
-
 };
 
 class DeQuantOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -53,4 +52,3 @@ class DeQuantGradOp : public framework::OperatorWithKernel {
 
 }  // namespace operators
 }  // namespace paddle
-

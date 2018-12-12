@@ -28,28 +28,19 @@ class QuantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override{
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim("Output", ctx->GetInputDim("Input"));
     ctx->ShareLoD("Input", /*->*/ "Output");
-  } 
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
-  
 };
 
 class QuantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
-//void Make() {
-//  AddInput("Input","input");
-//  AddInput("Scale","scale...");
-//  AddOutput("Output","output");
-//} 
 };
-
-
 }  // namespace operators
 }  // namespace paddle
-
