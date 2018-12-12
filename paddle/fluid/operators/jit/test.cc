@@ -48,13 +48,13 @@ void ExpectEQ(const T* target, const T* refer, int n) {
 
 std::vector<int> TestSizes() {
   std::vector<int> s;
-  for (int i = 1; i < 10; ++i) {
+  for (int i = 1; i < 32; ++i) {
     s.push_back(i);
   }
-  // // test some large size
-  // s.push_back(100);
-  // s.push_back(1000);
-  // s.push_back(2000);
+  // test some large size
+  s.push_back(100);
+  s.push_back(1000);
+  s.push_back(2000);
   return s;
 }
 
@@ -148,8 +148,7 @@ void TestXYZNKernel() {
 TEST(JITKernel, vmul) {
   namespace jit = paddle::operators::jit;
   TestXYZNKernel<jit::vmul, float, paddle::platform::CPUPlace>();
-  // TODO(TJ): fix double issue
-  // TestXYZNKernel<jit::vmul, double, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::vmul, double, paddle::platform::CPUPlace>();
 }
 
 TEST(JITKernel, vadd) {
