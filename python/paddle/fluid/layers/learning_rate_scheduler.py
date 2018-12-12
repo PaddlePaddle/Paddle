@@ -248,7 +248,7 @@ def polynomial_decay(learning_rate,
         return decayed_lr
 
 
-def piecewise_decay(boundaries, values):
+def piecewise_decay(boundaries, values, linear_interpolation=False):
     """Applies piecewise decay to the initial learning rate.
 
       The algorithm can be described as the code below.
@@ -267,6 +267,10 @@ def piecewise_decay(boundaries, values):
         boundaries: A list of steps numbers.
         values: A list of learning rate values that will be picked during
             different step boundaries.
+        linear_interpolation: A bool value(default False). If True, 
+            linear interpolation will be performed between gaps. The learning
+            rate will be values[0] at step 0, and values[i+1] at step 
+            boundaries[i].
 
     Returns:
         The decayed learning rate.
@@ -295,6 +299,16 @@ def piecewise_decay(boundaries, values):
                     force_cpu=True)
                 value_var = tensor.fill_constant(
                     shape=[1], dtype='float32', value=float(values[i]))
+                if linear_interpolation:
+                    value2_var = tensor.fill_constant(
+                        shape=[1], dtype='float32', value=float(values[i + 1]))
+                    pre_boundary_val = tensor.fill_constant(
+                        shape=[1],
+                        dtype='float32',
+                        value=float(0 if i == 0 else boundaries[i - 1]))
+                    value_var = value_var + \
+                        (global_step - pre_boundary_val) / \
+                        (boundary_val - pre_boundary_val) * (value2_var - value_var)
                 with switch.case(global_step < boundary_val):
                     tensor.assign(value_var, lr)
             last_value_var = tensor.fill_constant(
