@@ -151,40 +151,15 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
-  OpDesc op_desc;
-  op_desc.SetType("conv2d");
+  conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
+  conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
+  conv_op->Op()->SetAttr("fuse_residual_connection", true);
 
-  op_desc.SetInput("Input", {conv_input->Name()});
-  op_desc.SetInput("Filter", {conv_filter->Name()});
-  op_desc.SetInput("ResidualData", {elementwise_add_identity->Name()});
-  op_desc.SetOutput("Output", {conv_output->Name()});
+  GraphSafeRemoveNodes(graph, {conv_output, elementwise_add_op});
 
-  auto conv_bias = HasBias(*conv_op, "Bias");
+  IR_NODE_LINK_TO(elementwise_add_identity, conv_op);
+  IR_NODE_LINK_TO(conv_op, elementwise_add_out);
 
-  if (conv_bias) {
-    op_desc.SetInput("Bias", {(*conv_bias)->Name()});
-  }
-
-  for (const auto& attr : conv_op->Op()->GetAttrMap()) {
-    op_desc.SetAttr(attr.first, attr.second);
-  }
-
-  op_desc.SetAttr("fuse_residual_connection", true);
-
-  auto fused_conv_op = graph->CreateOpNode(&op_desc);
-
-  IR_NODE_LINK_TO(conv_input, fused_conv_op);
-  IR_NODE_LINK_TO(conv_filter, fused_conv_op);
-  IR_NODE_LINK_TO(elementwise_add_identity, fused_conv_op);
-  IR_NODE_LINK_TO(fused_conv_op, conv_output);
-
-  if (conv_bias) {
-    IR_NODE_LINK_TO((*conv_bias), fused_conv_op);
-  }
-
-  CorrectGraphEdges(graph, elementwise_add_out, conv_output);
-  GraphSafeRemoveNodes(graph,
-                       {elementwise_add_out, conv_op, elementwise_add_op});
   (*fusion_stats)++;
 }
 
@@ -229,60 +204,29 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
 
   Node* projection_node;
   Node* residual_conv_op;
-  Node* residual_conv_input;
-  Node* residual_conv_filter;
   Node* residual_conv_output;
 
   if (IsReachable(graph, conv_x_input, conv_y_output)) {
     projection_node = conv_x_output;
     residual_conv_op = conv_y_op;
-    residual_conv_input = conv_y_input;
-    residual_conv_filter = conv_y_filter;
     residual_conv_output = conv_y_output;
   } else if (IsReachable(graph, conv_y_input, conv_x_output)) {
     projection_node = conv_y_output;
     residual_conv_op = conv_x_op;
-    residual_conv_input = conv_x_input;
-    residual_conv_filter = conv_x_filter;
     residual_conv_output = conv_x_output;
   } else {
     return;
   }
 
-  OpDesc op_desc;
-  op_desc.SetType("conv2d");
+  residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
+  residual_conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
 
-  op_desc.SetInput("Input", {residual_conv_input->Name()});
-  op_desc.SetInput("Filter", {residual_conv_filter->Name()});
-  op_desc.SetInput("ResidualData", {projection_node->Name()});
-  op_desc.SetOutput("Output", {residual_conv_output->Name()});
+  residual_conv_op->Op()->SetAttr("fuse_residual_connection", true);
 
-  auto residual_conv_bias = HasBias(*residual_conv_op, "Bias");
+  IR_NODE_LINK_TO(projection_node, residual_conv_op);
+  IR_NODE_LINK_TO(residual_conv_op, elementwise_add_out);
 
-  if (residual_conv_bias) {
-    op_desc.SetInput("Bias", {(*residual_conv_bias)->Name()});
-  }
-
-  for (const auto& attr : residual_conv_op->Op()->GetAttrMap()) {
-    op_desc.SetAttr(attr.first, attr.second);
-  }
-
-  op_desc.SetAttr("fuse_residual_connection", true);
-
-  auto fused_conv_op = graph->CreateOpNode(&op_desc);
-
-  IR_NODE_LINK_TO(residual_conv_input, fused_conv_op);
-  IR_NODE_LINK_TO(residual_conv_filter, fused_conv_op);
-  IR_NODE_LINK_TO(projection_node, fused_conv_op);
-  IR_NODE_LINK_TO(fused_conv_op, residual_conv_output);
-
-  if (residual_conv_bias) {
-    IR_NODE_LINK_TO((*residual_conv_bias), fused_conv_op);
-  }
-
-  CorrectGraphEdges(graph, elementwise_add_out, residual_conv_output);
-  GraphSafeRemoveNodes(
-      graph, {elementwise_add_out, residual_conv_op, elementwise_add_op});
+  GraphSafeRemoveNodes(graph, {residual_conv_output, elementwise_add_op});
   (*fusion_stats)++;
 }
 
