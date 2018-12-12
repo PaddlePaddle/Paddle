@@ -177,7 +177,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         elif save_mode == "DIST":
             skip_steps = int(os.getenv("SKIP_STEPS"))
-
+            loss = None
             if need_save:
                 for idx in six.moves.xrange(RUN_STEP):
                     loss, = exe.run(fetch_list=[avg_cost.name],
