@@ -42,9 +42,7 @@ class RefByTrainerIdOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.MultiInput<framework::Tensor>("X")[0]->type()),
-        ctx.GetPlace());
+        ctx.MultiInput<framework::Tensor>("X")[0]->type(), ctx.GetPlace());
   }
 };
 
