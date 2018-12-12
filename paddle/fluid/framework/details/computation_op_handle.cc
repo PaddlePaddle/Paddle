@@ -26,46 +26,17 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
       scope_(scope),
       place_(place) {}
 
-struct RecordTime {
-  RecordTime(const std::string &name, const std::string &type)
-      : name_(name), type_(type), start_(std::chrono::system_clock::now()) {}
-
-  ~RecordTime() {
-    if (type_ == "elementsize_add") {
-      end_ = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end_ - start_;
-      VLOG(1) << name_ << " " << type_ << " time record: " << diff.count();
-    }
-  }
-
-  std::string name_;
-  std::string type_;
-  std::chrono::system_clock::time_point start_;
-  std::chrono::system_clock::time_point end_;
-};
-
 void ComputationOpHandle::RunImpl() {
-  {
-    RecordTime rt("ComputationOpHandle::RunImpl", "Wait");
-    WaitInputVarGenerated(place_);
-  }
+  WaitInputVarGenerated(place_);
 
-  Scope *scope = nullptr;
-  {
-    RecordTime rt("ComputationOpHandle::RunImpl", "PrepareScope");
-    scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  }
+  auto run_func = [this]() {
+    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
+  };
 
-  {
-    RecordTime rt("ComputationOpHandle::RunImpl", "ReallyRun " + op_->Type());
-
-    auto run_func = [this, scope]() { op_->Run(*scope, place_); };
-
-    if (is_lock_and_record_event_free_) {
-      run_func();
-    } else {
-      this->RunAndRecordEvent(run_func);
-    }
+  if (is_lock_and_record_event_free_) {
+    run_func();
+  } else {
+    this->RunAndRecordEvent(run_func);
   }
 }
 
