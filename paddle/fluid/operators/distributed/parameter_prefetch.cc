@@ -32,7 +32,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
@@ -120,8 +120,8 @@ static void MergeMultipleVarsIntoOneBySection(
 
   PADDLE_ENFORCE_GT(
       out_tensor->numel(), 0,
-      "When calling this method, the Tensor's numel must larger than zero. "
-      "Please check Tensor::Resize has been called first.");
+      "When calling this method, the LoDTensor's numel must larger than zero. "
+      "Please check LoDTensor::Resize has been called first.");
 
   auto* out_tensor_data = out_tensor->mutable_data<float>(id_tensor.place());
 
@@ -144,7 +144,7 @@ static void MergeMultipleVarsIntoOneBySection(
 
       auto row_numel = dims[1];
 
-      for (size_t i = 0; i < dims[0]; ++i) {
+      for (int64_t i = 0; i < dims[0]; ++i) {
         auto id = ids_in_this_section[i];
         auto origin_id = id + abs_sections[section_idx];
         auto& offsets = id_to_offset[origin_id];
@@ -201,7 +201,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   std::vector<int64_t> ids_vector;
   if (platform::is_cpu_place(id_tensor.place())) {
     auto* id_data = id_tensor.data<int64_t>();
-    for (size_t i = 0; i < id_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
       ids_vector.push_back(id_data[i]);
     }
   } else {
@@ -209,7 +209,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     PADDLE_THROW("paddle is not compiled with CUDA!");
 #else
     auto cpu_place = platform::CPUPlace();
-    framework::Tensor cpu_tensor;
+    framework::LoDTensor cpu_tensor;
     auto* cpu_tensor_data =
         cpu_tensor.mutable_data<int64_t>(id_tensor.dims(), cpu_place);
     auto stream =

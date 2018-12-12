@@ -49,23 +49,6 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
 }
 
 template <typename T>
-void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor& tmat,
-                                      framework::SelectedRows* vec) {
-  size_t batch_size = tmat.dims()[0];
-  size_t width = tmat.dims()[1];
-  for (size_t i = 0; i < batch_size; ++i) {
-    auto code = code_table_->get_code(i);
-    int code_length = code->get_length();
-    for (int j = 0; j < code_length; ++j) {
-      size_t index = code->calc_index(j);
-      int64_t row_index = vec->GetIndexFromId(static_cast<int64_t>(index));
-      vec->mutable_value()->data<T>()[row_index] +=
-          tmat.data<T>()[i * width + j];
-    }
-  }
-}
-
-template <typename T>
 void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
                                   framework::Tensor* sum, T scale_sum) {
   size_t num_samples = tmat.dims()[0];

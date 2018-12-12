@@ -4931,6 +4931,9 @@ def hsigmoid(input,
         pass
 
     weights = None
+    remote_prefetch = False
+    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
+        remote_prefetch = True
 
     if not is_custom:
         weights = helper.create_parameter(
@@ -4947,7 +4950,7 @@ def hsigmoid(input,
     inputs = {
         "X": input,
         "W": weights,
-        "PTable": path_table,
+        "PathTable": path_table,
         "PathCode": path_code,
         "Label": label
     }
@@ -4970,9 +4973,13 @@ def hsigmoid(input,
         type="hierarchical_sigmoid",
         inputs=inputs,
         outputs={"Out": out,
-                 "PreOut": pre_out},
-        attrs={"num_classes": num_classes,
-               "is_sparse": is_sparse})
+                 "PreOut": pre_out,
+                 "W_Out": weights},
+        attrs={
+            "num_classes": num_classes,
+            "is_sparse": is_sparse,
+            "remote_prefetch": remote_prefetch
+        })
     return out
 
 
@@ -7440,7 +7447,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
 
     Examples:
 
-        .. code-block:: python
+    .. code-block:: python
 
         x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
         y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
