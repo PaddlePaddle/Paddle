@@ -92,8 +92,7 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
 
 // Compare result between two PaddleTensor
 void CompareResult(const std::vector<PaddleTensor> &outputs,
-                   const std::vector<PaddleTensor> &ref_outputs,
-                   const bool use_mkldnn = false) {
+                   const std::vector<PaddleTensor> &ref_outputs) {
   EXPECT_GT(outputs.size(), 0UL);
   EXPECT_EQ(outputs.size(), ref_outputs.size());
   for (size_t i = 0; i < outputs.size(); i++) {
@@ -114,10 +113,6 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         break;
       }
       case PaddleDType::FLOAT32: {
-        float tolerance = 1e-3;
-        if (use_mkldnn) {
-          tolerance = 2e-3;
-        }
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
