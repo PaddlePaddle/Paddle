@@ -69,6 +69,7 @@ ExternalProject_Add(
     CMAKE_ARGS          -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
     CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    CMAKE_ARGS          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}
     CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
     CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
@@ -77,7 +78,7 @@ ExternalProject_Add(
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )
 if(WIN32)
-    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/mkldnn.dll" CACHE FILEPATH "mkldnn library." FORCE)
+    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
 else(WIN32)
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
 endif(WIN32)
@@ -100,13 +101,13 @@ ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
 if(WIN32)
-    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/mkldnn.dll)
+    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/lib/mkldnn.dll)
 else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
+    ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
+            DEPENDS mkldnn)
 endif(WIN32)
-ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
-    COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-    DEPENDS mkldnn)
 ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
 
 IF(WITH_C_API)

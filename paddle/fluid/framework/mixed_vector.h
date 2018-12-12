@@ -216,7 +216,7 @@ class Vector {
       void *src = gpu_->ptr();
       void *dst = cpu_.data();
       paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
-                   gpu_->size(), stream);
+                           gpu_->size(), stream);
       dev_ctx->Wait();
     }
 
@@ -262,7 +262,7 @@ class Vector {
           platform::DeviceContextPool::Instance().Get(place));
       auto stream = dev_ctx->stream();
       paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
-                   gpu_->size(), stream);
+                           gpu_->size(), stream);
     }
 
     void ImmutableCPU() const {

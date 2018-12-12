@@ -240,7 +240,7 @@ void* GetMKLMLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "mkldnn.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mkldnn.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
