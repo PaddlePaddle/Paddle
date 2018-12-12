@@ -139,11 +139,11 @@ class SimpleCode : public Code {
 template <typename T>
 class CustomCode : public Code {
  public:
-  CustomCode(const framework::Tensor& ptable, const framework::Tensor& pcode,
-             const int64_t* ids, int index)
+  CustomCode(const framework::Tensor& path_table,
+             const framework::Tensor& path_code, const int64_t* ids, int index)
       : ids_(ids), index_(index) {
-    ptable_ = ptable.Slice(index, index + 1);
-    pcode_ = pcode.Slice(index, index + 1);
+    ptable_ = path_table.Slice(index, index + 1);
+    pcode_ = path_code.Slice(index, index + 1);
   }
   /**
    * Here the id of root shoud be 1 rather than 0, thus the encoding of class c
@@ -195,9 +195,9 @@ class SimpleCodeTable : public CodeTable {
 template <typename T>
 class CustomCodeTable : public CodeTable {
  public:
-  CustomCodeTable(const framework::Tensor& ptable,
-                  const framework::Tensor& pcode, const int64_t* ids)
-      : ptable_(ptable), pcode_(pcode), ids_(ids) {}
+  CustomCodeTable(const framework::Tensor& path_table,
+                  const framework::Tensor& path_code, const int64_t* ids)
+      : ptable_(path_table), pcode_(path_code), ids_(ids) {}
 
   std::unique_ptr<Code> get_code(int64_t code) const {
     std::unique_ptr<Code> coder(new CustomCode<T>(ptable_, pcode_, ids_, code));
@@ -223,11 +223,11 @@ class MatrixBitCodeFunctor {
         ids_(ids),
         code_table_(new SimpleCodeTable(num_classes, ids)) {}
 
-  MatrixBitCodeFunctor(const framework::Tensor& ptable,
-                       const framework::Tensor& pcode, const int64_t* ids)
-      : num_classes_(static_cast<size_t>(ptable.dims()[1])),
+  MatrixBitCodeFunctor(const framework::Tensor& path_table,
+                       const framework::Tensor& path_code, const int64_t* ids)
+      : num_classes_(static_cast<size_t>(path_table.dims()[1])),
         ids_(ids),
-        code_table_(new CustomCodeTable<int64_t>(ptable, pcode, ids)) {}
+        code_table_(new CustomCodeTable<int64_t>(path_table, path_code, ids)) {}
   /* For j < code_length
        tmat(i, j) += vec(0, index(i, j))
   */
@@ -237,11 +237,6 @@ class MatrixBitCodeFunctor {
        vec(0, index(i, j)) += tmat(i, j)
   */
   void AddGrad(const framework::Tensor& tmat, framework::Tensor* vec);
-
-  /* For selected rows For j < code_length
-       vec(0, index(i, j)) += tmat(i, j)
-  */
-  void AddGrad(const framework::Tensor& tmat, framework::SelectedRows* vec);
 
   /* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)

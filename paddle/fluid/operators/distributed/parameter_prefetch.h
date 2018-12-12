@@ -30,6 +30,30 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const framework::ExecutionContext& context,
               const framework::Scope& scope);
 
+template <typename T>
+void prefetch_with_reconstruct(const std::string& id_name,
+                               const std::string& out_name,
+                               const std::vector<std::string>& table_names,
+                               const std::vector<std::string>& epmap,
+                               const std::vector<int>& height_sections,
+                               const framework::ExecutionContext& context,
+                               const framework::Scope& scope,
+                               framework::LoDTensor* original) {
+  prefetch(id_name, out_name, table_names, epmap, height_sections, context,
+           scope);
+  auto& out = scope.FindVar(out_name)->Get<framework::LoDTensor>();
+  auto& ids = scope.FindVar(id_name)->Get<framework::LoDTensor>();
+  auto* original_value = original->data<T>();
+  auto* out_value = out.data<T>();
+  size_t original_width = original->numel() / original->dims()[0];
+
+  for (int64_t i = 0; i < ids.numel(); i++) {
+    const T* out_rows = out_value + original_width * i;
+    T* original_row = original_value + original_width * ids.data<int64_t>()[i];
+    std::memcpy(original_row, out_rows, original_width * sizeof(T));
+  }
+}
+
 };  // namespace distributed
 };  // namespace operators
 };  // namespace paddle
