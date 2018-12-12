@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/temporal_allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
