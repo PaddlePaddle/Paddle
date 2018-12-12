@@ -9087,104 +9087,140 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
+class PyFuncWrapper(object):
+    _register_funcs = []
+
+    def __init__(self, func):
+        if func is None or not hasattr(func, '__call__'):
+            raise TypeError('func must be a Python function')
+
+        self._func = func
+        # find named args using reflection 
+        self._named_args = inspect.getargspec(self._func)[0]
+        self._id = core.append_python_callable_object_and_return_id(self)
+        '''
+        Why record self here?
+
+        1. For debug usage. Users can call 
+           :code:`py_func.registered_func(idx)` method 
+           to find the registered function coresponding
+           to :code:`idx`. 
+
+        2. For increasing reference count of self. 
+           It seems that to release Python object 
+           whose reference count is 1 would cause
+           segmentation fault error in C++ side. 
+           May be lack of Python GC in C++ side?
+        '''
+        PyFuncWrapper._register_funcs.append(self)
+
+    @classmethod
+    def registered_func(cls, idx):
+        return cls._register_funcs[idx]._func
+
+    @classmethod
+    def registered_func_num(cls):
+        return len(cls._register_funcs)
+
+    @property
+    def id(self):
+        return self._id
+
+    def __call__(self, *args):
+        kwargs = dict()
+        idx = 0
+        for arg in self._named_args:
+            kwargs[arg] = args[idx]
+            idx += 1
+
+        ret0 = self._func(*args[idx:], **kwargs)
+        if ret0 is None:
+            return None
+
+        if not isinstance(ret0, (list, tuple)):
+            ret0 = (ret0, )
+
+        ret = []
+        for i in six.moves.range(len(ret0)):
+            if ret0[i] is None:
+                ret.append(None)
+                continue
+
+            if isinstance(ret0[i], core.LoDTensor):
+                ret.append(ret0[i])
+                continue
+
+            if isinstance(ret0[i], np.ndarray):
+                r = ret0[i]
+            else:
+                r = np.array(ret0[i])
+
+            t = core.LoDTensor()
+            t.set(r, core.CPUPlace())
+            ret.append(t)
+
+        return tuple(ret)
+
+
 @templatedoc()
-def py_func(func, x, out, backward_func=None):
+def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
+    PyFunc Operator.
+    
+    User can use :code:`py_func` to register operators in Python side.
+    The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
+    numpy array or :code:`LoDTensor`. Paddle would call the registered
+    :code:`func` in forward part, and call :code:`backward_func` in
+    backward part (if :code:`backward_func` is not None).
+
+    User should set the right data type and shape of :code:`out` before
+    calling this function. However, data types and shapes of gradients of
+    :code:`out` and :code:`x` would be infered automatically.
+
+    The orders of inputs of :code:`backward_func` would be: forward input
+    :code:`x`, forward output :code:`out` and backward input gradient of
+    :code:`out`. If some variables of :code:`out` have no gradient, the input
+    tensor would be None in Python side. If some variables of :code:`in` have
+    no gradient, users should return None.
+
+    Args:
+        func (callable): forward Python function.
+        x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
+        out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
+            Paddle cannot infer shapes and data types of :code:`out`. Users
+            should create :code:`out` beforehand. 
+        backward_func (callable|None): backward Python function.
+                                       None means no backward. Default None. 
+        skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
+            Variables that are not needed in :code:`backward_func` inputs. 
+            These variables must be any of :code:`x` and :code:`out`.
+            If set, these vars would not be inputs of :code:`backward_func`,
+            Only useful when :code:`backward_func` is not None. Default None. 
+
+    Returns:
+        out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
     """
-
-    class PyFuncRegister(object):
-        _main_program_to_register = dict()
-
-        @classmethod
-        def get_instance(cls, prog):
-            if not isinstance(prog, Program):
-                raise TypeError("prog must be type of Program")
-
-            ret = cls._main_program_to_register.get(prog, None)
-            if ret is None:
-                ret = PyFuncRegister()
-                ret._idx = core.append_python_callable_object_and_return_id(ret)
-                ret._token_func_dict = dict()
-                ret._func_token_dict = dict()
-                cls._main_program_to_register[prog] = ret
-
-            return ret
-
-        @property
-        def handle_idx(self):
-            return self._idx
-
-        def unique_token(self, func):
-            return self._register_func(func)
-
-        def _register_func(self, func):
-            if func is None:
-                raise ValueError("func cannot be None")
-
-            token = self._func_token_dict.get(func, None)
-            if token is not None:
-                return token
-
-            token = unique_name.generate('py_func_op_token')
-            self._token_func_dict[token] = func
-            self._func_token_dict[func] = token
-            return token
-
-        def __call__(self, token, *args):
-            func = self._token_func_dict.get(token, None)
-            if func is None:
-                raise ValueError("func has not been registered")
-
-            arg_list = inspect.getargspec(func)
-            kwargs = dict()
-            idx = 0
-            for arg in arg_list[0]:
-                kwargs[arg] = args[idx]
-                idx += 1
-
-            args = args[idx:]
-            ret0 = func(*args, **kwargs)
-            if ret0 is None:
-                return None
-
-            if not isinstance(ret0, (list, tuple)):
-                ret0 = (ret0, )
-
-            ret = []
-            for i in six.moves.range(len(ret0)):
-                if ret0[i] is None:
-                    ret.append(None)
-                    continue
-
-                if isinstance(ret0[i], core.LoDTensor):
-                    ret.append(ret0[i])
-                    continue
-
-                if isinstance(ret0[i], np.ndarray):
-                    r = ret0[i]
-                else:
-                    r = np.array(ret0[i])
-
-                t = core.LoDTensor()
-                t.set(r, core.CPUPlace())
-                ret.append(t)
-
-            return tuple(ret)
-
     helper = LayerHelper('py_func', **locals())
-    if isinstance(x, Variable):
+    if x is None:
+        x = []
+    elif isinstance(x, Variable):
         x = [x]
+    elif not isinstance(x, (list, tuple)):
+        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
 
-    if isinstance(out, Variable):
+    if out is None:
+        out_list = []
+    elif isinstance(out, Variable):
         out_list = [out]
-    else:
+    elif isinstance(out, (list, tuple)):
         out_list = out
+    else:
+        raise TypeError(
+            'Output must be Variable/list(Variable)/tuple(Variable)')
 
-    if func is None or not hasattr(func, '__call__'):
-        raise TypeError('Input func must be a function')
-
-    if backward_func is not None and not hasattr(backward_func, '__call__'):
-        raise TypeError('Input backward_func must be a function')
+    fwd_func_id = PyFuncWrapper(func).id
+    bwd_func_id = PyFuncWrapper(
+        backward_func).id if backward_func is not None else -1
 
     for each_out in out_list:
         if len(each_out.shape) == 0:
@@ -9192,18 +9228,34 @@ def py_func(func, x, out, backward_func=None):
                 'Output shapes of py_func op should be provided by users manually'
             )
 
-    py_func_reg = PyFuncRegister.get_instance(helper.main_program)
-    forward_token = py_func_reg.unique_token(func)
-    backward_token = py_func_reg.unique_token(
-        backward_func) if backward_func is not None else ''
+    backward_skip_vars = set()
+    if backward_func is not None and skip_vars_in_backward_input is not None:
+        if isinstance(skip_vars_in_backward_input, Variable):
+            skip_vars_in_backward_input = [skip_vars_in_backward_input]
+
+        fwd_in_out = [v.name for v in x]
+        fwd_in_out.extend([v.name for v in out_list])
+        fwd_in_out = set(fwd_in_out)
+        backward_skip_vars = set()
+        for v in skip_vars_in_backward_input:
+            if not v.name in fwd_in_out:
+                raise ValueError(
+                    'Variable {} is not found in forward inputs and outputs'
+                    .format(v.name))
+            backward_skip_vars.add(v.name)
 
     helper.append_op(
         type='py_func',
         inputs={'X': x},
         outputs={'Out': out_list},
         attrs={
-            'handle_idx': py_func_reg.handle_idx,
-            'token': forward_token,
-            'backward_token': backward_token
+            'forward_callable_id': fwd_func_id,
+            'backward_callable_id': bwd_func_id,
+            'backward_skip_vars': list(backward_skip_vars)
         })
     return out
+
+
+# For debug usage
+py_func.registered_func = PyFuncWrapper.registered_func
+py_func.registered_func_num = PyFuncWrapper.registered_func_num
