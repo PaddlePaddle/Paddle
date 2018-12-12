@@ -72,7 +72,9 @@ class BRPCServiceImpl : public SendRecvService {
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     std::string varname = request->varname();
-    VLOG(3) << "RequestSend var_name:" << varname;
+    VLOG(3) << "RequestSend var_name:" << varname
+            << ", trainer_id:" << request->trainer_id()
+            << ", from:" << cntl->remote_side();
 
     distributed::BRPCVariableResponse resp(request_send_h_->scope(),
                                            request_send_h_->dev_ctx(),
@@ -98,7 +100,9 @@ class BRPCServiceImpl : public SendRecvService {
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     std::string varname = request->varname();
-    VLOG(3) << "RequestGet " << varname;
+    VLOG(3) << "RequestGet varname:" << varname
+            << ", trainer_id:" << request->trainer_id()
+            << ", from:" << cntl->remote_side();
 
     auto scope = request_get_h_->scope();
     auto invar = scope->FindVar(varname);
@@ -128,7 +132,9 @@ class BRPCServiceImpl : public SendRecvService {
     std::string in_var_name = request->varname();
     std::string out_var_name = request->out_varname();
     VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
-            << ", out_var_name: " << out_var_name;
+            << ", out_var_name: " << out_var_name
+            << ", trainer_id:" << request->trainer_id()
+            << ", from:" << cntl->remote_side();
 
     distributed::BRPCVariableResponse resp(
         request_prefetch_h_->scope(), request_prefetch_h_->dev_ctx(), true);
@@ -158,6 +164,7 @@ class BRPCServiceImpl : public SendRecvService {
         "kRequestCheckpointNotify handler should be registed first!");
 
     brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     distributed::BRPCVariableResponse resp(request_checkpoint_h_->scope(),
                                            request_checkpoint_h_->dev_ctx());
@@ -169,7 +176,9 @@ class BRPCServiceImpl : public SendRecvService {
     int trainer_id = request->trainer_id();
 
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
-            << ", dir: " << checkpoint_dir;
+            << ", dir: " << checkpoint_dir
+            << ", trainer_id:" << request->trainer_id()
+            << ", from:" << cntl->remote_side();
 
     request_checkpoint_h_->Handle(checkpoint_notify, scope, nullptr, nullptr,
                                   trainer_id, checkpoint_dir);
@@ -188,7 +197,9 @@ class BRPCServiceImpl : public SendRecvService {
 
     // proc request.
     std::string varname = request->varname();
-    VLOG(3) << "GetMonomerVariable " << varname;
+    VLOG(3) << "GetMonomerVariable " << varname
+            << ", trainer_id:" << request->trainer_id()
+            << ", from:" << cntl->remote_side();
 
     rpc_server_->WaitVarCond(varname);
     distributed::MonomerHandle h = rpc_server_->GetMonomer(varname);
@@ -215,7 +226,9 @@ class BRPCServiceImpl : public SendRecvService {
     brpc::ClosureGuard done_guard(done);
 
     std::string varname = request->varname();
-    VLOG(3) << "RequestGetMonomerBarrier var_name:" << varname;
+    VLOG(3) << "RequestGetMonomerBarrier var_name:" << varname
+            << ", trainer_id:" << request->trainer_id()
+            << ", from:" << cntl->remote_side();
 
     rpc_server_->WaitVarCond(varname);
     distributed::MonomerHandle h = rpc_server_->GetMonomer(varname);

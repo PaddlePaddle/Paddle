@@ -47,7 +47,7 @@ void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
   }
   var_h->Finish(true);
 
-  VLOG(4) << "Received SendResponse from: " << cntl->remote_side()
+  VLOG(4) << "HandleSendResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
           << ", latency: " << cntl->latency_us() << "us";
   VLOG(4) << "Finish HandleSendResponse";
@@ -113,7 +113,7 @@ void HandleFetchBarrierResponse(brpc::Controller* cntl,
   }
 
   var_h->Finish(true);
-  VLOG(4) << "Received HandleFetchBarrierResponse from: " << cntl->remote_side()
+  VLOG(4) << "HandleFetchBarrierResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
           << ", latency: " << cntl->latency_us() << "us";
   VLOG(4) << "Finish HandleFetchBarrierResponse";
@@ -130,14 +130,14 @@ void HandleGetResponse(brpc::Controller* cntl,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(FATAL) << "Fail to send SendVar: " << var_h->name()
+    LOG(FATAL) << "Fail to GetVar: " << var_h->name()
                << ", error text: " << cntl->ErrorText();
     cls->DecreaseReqCount();
     var_h->Finish(false);
     return;
   }
 
-  VLOG(4) << "Received SendResponse from: " << cntl->remote_side()
+  VLOG(4) << "HandleGetResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
           << ", latency: " << cntl->latency_us() << "us";
 
