@@ -25,13 +25,6 @@ namespace jitkernel {
 namespace refer {
 
 template <typename T>
-void VAddBias(const T* a, const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = a[0] + x[i];
-  }
-}
-
-template <typename T>
 void VRelu(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] > 0 ? x[i] : 0;

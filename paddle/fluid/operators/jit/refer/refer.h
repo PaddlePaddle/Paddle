@@ -59,6 +59,13 @@ void VScal(const T* a, const T* x, T* y, int n) {
   }
 }
 
+template <typename T>
+void VAddBias(const T* a, const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = a[0] + x[i];
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -66,10 +73,15 @@ void VScal(const T* a, const T* x, T* y, int n) {
     name##Kernel() { this->func = name<T>; }           \
   }
 
+// const T* x, const T* y, T* z, int n
 DECLARE_REFER_KERNEL(VMul, XYZNTuples);
 DECLARE_REFER_KERNEL(VAdd, XYZNTuples);
 DECLARE_REFER_KERNEL(VAddRelu, XYZNTuples);
 DECLARE_REFER_KERNEL(VSub, XYZNTuples);
+
+// const T* a, const T* x, T* y, int n
+DECLARE_REFER_KERNEL(VScal, AXYNTuples);
+DECLARE_REFER_KERNEL(VAddBias, AXYNTuples);
 
 #undef DECLARE_REFER_KERNEL
 

@@ -37,10 +37,12 @@ PaddlePaddle/Paddle/paddle/fluid/
 ## 测试
 
 - 逻辑测试
-    所有实现都要与refer的code对比，需要满足精度要求
+    所有实现都要与refer的code对比，需要满足精度要求， 包括float和double的数据类型
 - 性能测试
+    所有实现的性能对比，并且与最终的`jit::Get`方法对比，该方法拿到的性能需要是最好的。
 
 # 如何添加新的算子
 
-- 在`KernelType` 中添加 `your_key` 
-- 实现Reference 的逻辑，每个jitkernel的Reference 实现是必须的。不要依赖任何第三方库。并在`refer/CmakeLists.txt`中`USE_JITKERNEL_REFER(your_key)`
+- 在`KernelType` 中添加 `your_key` .
+- 实现Reference 的逻辑，每个jitkernel的Reference 实现是必须的。不要依赖任何第三方库。并在`refer/CmakeLists.txt`中`USE_JITKERNEL_REFER(your_key)`.
+- 必要时可以添加新的`KernelTuples`，可以参考`XYZNTuples`.

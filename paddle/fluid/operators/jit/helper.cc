@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +33,10 @@ const char* to_string(KernelType kt) {
       return "vscal";
     case vexp:
       return "vexp";
+    case vaddbias:
+      return "vaddbias";
     default:
+      PADDLE_THROW("Not support type: %d", kt);
       return "NOT JITKernel";
   }
   return nullptr;
