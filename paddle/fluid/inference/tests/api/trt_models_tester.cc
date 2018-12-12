@@ -136,7 +136,10 @@ TEST(TensorRT_resnext50, compare) {
 
 TEST(TensorRT_resnext50, profile) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
-  profile(model_dir, /* use_analysis */ true, false);
+  // Set FLAGS_record_benchmark to true to record benchmark to file.
+  // FLAGS_record_benchmark=true;
+  FLAGS_model_name = "resnext50";
+  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
 }
 
 TEST(resnext50, compare_analysis_native) {

@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_NGRAPH
-
 #include <algorithm>
 #include <map>
 #include <string>
@@ -53,4 +51,3 @@ class NgraphBridge {
 
 }  // namespace framework
 }  // namespace paddle
-#endif

@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#define EIGEN_USE_GPU
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
