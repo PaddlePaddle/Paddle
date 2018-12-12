@@ -9086,6 +9086,7 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
+@templatedoc()
 def psroi_pool(input,
                rois,
                output_channels,
