@@ -38,14 +38,15 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
 
-  LOG(INFO) << "op Input " << ctx->Inputs("Input")[0] << " dims " << ctx->GetInputDim("Input").size() << " : " << ctx->GetInputDim("Input")[0];
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
 
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
-                 "Conv intput should be 4-D or 5-D tensor, get %u", in_dims.size());
+                 "Conv intput should be 4-D or 5-D tensor, get %u",
+                 in_dims.size());
+
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "Conv input dimension and filter dimension should be the same.");

@@ -1,3 +1,17 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <string>
 #include "paddle/fluid/framework/ir/conv_elementwise_add2_act_fuse_pass.h"
 
@@ -31,6 +45,7 @@ framework::proto::OpDesc PrepareOpDesc(
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
+  desc.SetAttr("use_cudnn", false);
 
   return *desc.Proto();
 }
@@ -62,17 +77,17 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
 
     // Create a new node for the fused op.
-    graph->CreateOpNode(&new_op_desc);
+    auto new_conv_op = graph->CreateOpNode(&new_op_desc);
 
     // Link inputs and outputs.
     PADDLE_ENFORCE(subgraph.count(x));
     auto* conv_in_node = subgraph.at(x);
 
-    IR_NODE_LINK_TO(conv_in_node, conv_op);            // Input
-    IR_NODE_LINK_TO(conv_filter, conv_op);             // Filter
-    IR_NODE_LINK_TO(conv_op, conv_out);                // Output
-    IR_NODE_LINK_TO(elementwise_add_in_y, conv_op);    // Bias
-    IR_NODE_LINK_TO(elementwise_add_in_y_1, conv_op);  // Bias
+    IR_NODE_LINK_TO(conv_in_node, new_conv_op);            // Input
+    IR_NODE_LINK_TO(conv_filter, new_conv_op);             // Filter
+    IR_NODE_LINK_TO(elementwise_add_in_y, new_conv_op);    // Bias
+    IR_NODE_LINK_TO(elementwise_add_in_y_1, new_conv_op);  // ResidualData
+    IR_NODE_LINK_TO(new_conv_op, act_out);                 // Output
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph.get(),

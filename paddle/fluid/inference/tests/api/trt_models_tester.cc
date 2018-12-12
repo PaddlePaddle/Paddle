@@ -78,6 +78,7 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
   std::vector<PaddleTensor> outputs;
   if (use_analysis || use_tensorrt) {
     contrib::AnalysisConfig config(true);
+    config.pass_builder()->TurnOnDebug();
     SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
                                        FLAGS_batch_size);
     TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
@@ -138,9 +139,14 @@ TEST(TensorRT_resnext50, profile) {
   profile(model_dir, /* use_analysis */ true, false);
 }
 
+TEST(resnext50, compare_analysis_native) {
+  std::string model_dir = FLAGS_infer_model + "/resnext50";
+  compare(model_dir, false /*use tensorrt*/);
+}
+
 TEST(TensorRT_mobilenet, analysis) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  compare(model_dir, /* use_tensorrt */ false);
+  compare(model_dir, false /* use_tensorrt */);
 }
 
 TEST(AnalysisPredictor, use_gpu) {

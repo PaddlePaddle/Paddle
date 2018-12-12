@@ -106,7 +106,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "pdnode " << pdnode->name() << " marked";
+        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -1107,6 +1107,7 @@ std::unordered_set<std::string> conv_act_set({"identity", "sigmoid", "relu",
                                               "band_pass"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+  conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
                       ->assert_is_op_output("conv2d")
@@ -1115,7 +1116,8 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d", "Filter")
                          ->AsInput();
-  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr());
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
@@ -1129,6 +1131,7 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
                       auto op_type = node->Name();
                       return conv_act_set.count(op_type);
                     });
+
   auto act_out = pattern->NewNode(act_out_repr())
                      ->assert_is_var()
                      // is activation op's output.
@@ -1143,7 +1146,7 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
                      ->AsOutput();
 
   conv_op->LinksFrom({conv_in, conv_filter});
-  conv_out->LinksFrom({conv_op}).LinksTo({elementwise_add_op});
+  conv_out->LinksFrom({conv_op});
   elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
       .LinksTo({elementwise_add_out});
   act_op->LinksFrom({elementwise_add_out}).LinksTo({act_out});
@@ -1160,7 +1163,8 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
                       ->assert_is_op_output("conv2d")
                       ->assert_is_op_input("elementwise_add", "X")
                       ->AsIntermediate();
-  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr());
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
@@ -1169,7 +1173,8 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
                                  ->assert_is_op_input("elementwise_add", "X")
                                  ->AsIntermediate();
 
-  auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr());
+  auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr())
+                                  ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
                                     ->assert_is_op_input("elementwise_add", "Y")
                                     ->AsInput();

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
 #include <string>
+#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -37,13 +38,13 @@ framework::proto::OpDesc PrepareOpDesc(
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
-  LOG(INFO) << "input " << desc.Input("Input")[0];
   desc.SetInput("Bias", {bias});
+  desc.SetInput("ResidualData", {});
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
+  desc.SetAttr("use_cudnn", false);
   desc.Flush();
-
   return *desc.Proto();
 }
 
@@ -53,13 +54,13 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
   FusePassBase::Init(pattern_name, graph.get());
 
   GraphPatternDetector gpd;
-  auto* x = gpd.mutable_pattern()->NewNode("x")->AsInput()->assert_is_op_input(
-      "conv2d", "Input");
+  auto* x = gpd.mutable_pattern()
+                ->NewNode("x")
+                ->assert_is_op_input("conv2d", "Input")
+                ->AsInput();
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
-
-  LOG(INFO) << "dot\n" << pattern.pattern->DotString();
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -75,24 +76,22 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
 
     // Create a new node for the fused op.
-    graph->CreateOpNode(&new_op_desc);
+    auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 
     // Link inputs and outputs.
     PADDLE_ENFORCE(subgraph.count(x));
     auto* conv_in_node = subgraph.at(x);
-    auto dims = conv_in_node->Var()->Proto()->type().lod_tensor().tensor().dims().size();
-    PADDLE_ENFORCE_EQ(dims, 4);
-    LOG(INFO) << "conv in " << conv_in_node->Name() << " " << dims;
 
-    IR_NODE_LINK_TO(conv_in_node, conv_op);          // Input
-    IR_NODE_LINK_TO(conv_filter, conv_op);           // Filter
-    IR_NODE_LINK_TO(conv_op, conv_out);              // Output
-    IR_NODE_LINK_TO(elementwise_add_in_y, conv_op);  // Bias
+    IR_NODE_LINK_TO(conv_in_node, new_conv_op);          // Input
+    IR_NODE_LINK_TO(conv_filter, new_conv_op);           // Filter
+    IR_NODE_LINK_TO(elementwise_add_in_y, new_conv_op);  // Bias
+    IR_NODE_LINK_TO(new_conv_op, act_out);               // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(),
-                         {conv_op, elementwise_add_op, elementwise_add_out, act_op});
+    GraphSafeRemoveNodes(graph.get(), {conv_op, conv_out, elementwise_add_op,
+                                       elementwise_add_out, act_op});
   };
+
   gpd(graph.get(), handler);
   return graph;
 }
