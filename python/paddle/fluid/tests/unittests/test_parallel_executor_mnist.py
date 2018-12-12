@@ -20,7 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 import os
 import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, ExecutorType
 
 
 def simple_fc_net(use_feed):
@@ -99,7 +99,10 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-4)
 
     # simple_fc
-    def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
+    def check_simple_fc_convergence(self,
+                                    use_cuda,
+                                    use_reduce=False,
+                                    exec_type=ExecutorType.Default):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -110,19 +113,21 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            use_reduce=use_reduce)
+            use_reduce=use_reduce,
+            exec_type=exec_type)
 
     def test_simple_fc(self):
         # use_cuda
-        self.check_simple_fc_convergence(True)
+        self.check_simple_fc_convergence(True, ExecutorType.Default)
+        self.check_simple_fc_convergence(True, ExecutorType.ParallelGraph)
         self.check_simple_fc_convergence(False)
 
     def test_simple_fc_with_new_strategy(self):
-        # use_cuda, use_reduce
+        # use_cuda, use_reducea
         self._compare_reduce_and_allreduce(simple_fc_net, True)
         self._compare_reduce_and_allreduce(simple_fc_net, False)
 
-    def check_simple_fc_parallel_accuracy(self, use_cuda):
+    def check_simple_fc_parallel_accuracy(self, use_cuda, exec_type):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -134,14 +139,16 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            use_parallel_executor=False)
+            use_parallel_executor=False,
+            exec_type=exec_type)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             method=simple_fc_net,
             seed=1,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            use_parallel_executor=True)
+            use_parallel_executor=True,
+            exec_type=exec_type)
 
         self.assertAlmostEquals(
             np.mean(parallel_first_loss),
@@ -151,10 +158,12 @@ class TestMNIST(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy(True)
-        self.check_simple_fc_parallel_accuracy(False)
+        self.check_simple_fc_parallel_accuracy(True, ExecutorType.Default)
+        self.check_simple_fc_parallel_accuracy(True, ExecutorType.ParallelGraph)
+        # FIXME(Yancey1989): ParallelGraph executor type support CPU mode
+        self.check_simple_fc_parallel_accuracy(False, ExecutorType.Default)
 
-    def check_batchnorm_fc_convergence(self, use_cuda, use_fast_executor):
+    def check_batchnorm_fc_convergence(self, use_cuda, exec_type):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -165,12 +174,13 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            use_fast_executor=use_fast_executor)
+            exec_type=exec_type)
 
     def test_batchnorm_fc(self):
         for use_cuda in (False, True):
-            for use_fast_executor in (False, True):
-                self.check_batchnorm_fc_convergence(use_cuda, use_fast_executor)
+            for exec_type in (ExecutorType.Default, ExecutorType.Experimental,
+                              ExecutorType.ParallelGraph):
+                self.check_batchnorm_fc_convergence(use_cuda, exec_type)
 
     def test_batchnorm_fc_with_new_strategy(self):
         # FIXME(zcd): close this test temporally.

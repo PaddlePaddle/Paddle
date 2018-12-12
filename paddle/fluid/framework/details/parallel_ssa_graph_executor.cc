@@ -49,18 +49,18 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto call = [this, i, &fetch_tensors]() -> FeedFetchList {
-      return executors_[i]->Run(fetch_tensors);
+      try {
+        return executors_[i]->Run(fetch_tensors);
+      } catch (...) {
+        exception_holder_.Catch(std::current_exception());
+      }
+      return FeedFetchList();
     };
 
     if (pool_) {
       run_futures.emplace_back(pool_->enqueue(std::move(call)));
     } else {
-      try {
-        fetch_datas.emplace_back(std::move(call()));
-      } catch (...) {
-        exception_holder_.Catch(std::current_exception());
-        break;
-      }
+      call();
     }
   }
 
@@ -69,11 +69,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
       if (exception_holder_.IsCaught()) {
         f.wait();
       } else {
-        try {
-          fetch_datas.emplace_back(std::move(f.get()));
-        } catch (...) {
-          exception_holder_.Catch(std::current_exception());
-        }
+        fetch_datas.emplace_back(std::move(f.get()));
       }
     }
   }

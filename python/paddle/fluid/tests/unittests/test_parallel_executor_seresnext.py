@@ -19,7 +19,7 @@ import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
 import paddle.fluid.core as core
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, ExecutorType
 import unittest
 import math
 import os
@@ -167,13 +167,17 @@ def cosine_decay(learning_rate, step_each_epoch, epochs=120):
     return decayed_lr
 
 
-def optimizer(learning_rate=0.01):
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=cosine_decay(
-            learning_rate=learning_rate, step_each_epoch=2, epochs=1),
-        momentum=0.9,
-        regularization=fluid.regularizer.L2Decay(1e-4))
-    return optimizer
+def optimizer(learning_rate=0.01, lr_scale=1.0):
+    def _opt():
+        return fluid.optimizer.Momentum(
+            learning_rate=cosine_decay(
+                learning_rate=learning_rate / lr_scale,
+                step_each_epoch=2,
+                epochs=1),
+            momentum=0.9,
+            regularization=fluid.regularizer.L2Decay(1e-4))
+
+    return _opt
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -216,7 +220,7 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=False,
-            optimizer=optimizer)
+            optimizer=optimizer())
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -225,7 +229,7 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=True,
-            optimizer=optimizer)
+            optimizer=optimizer())
 
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
@@ -243,7 +247,7 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=False,
-            optimizer=optimizer,
+            optimizer=optimizer(),
             enable_sequential_execution=True)
 
         reduce_first_loss_seq, reduce_last_loss_seq = self.check_network_convergence(
@@ -254,7 +258,7 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=True,
-            optimizer=optimizer,
+            optimizer=optimizer(),
             enable_sequential_execution=True)
 
         for loss in zip(all_reduce_first_loss, all_reduce_first_loss_seq):
@@ -277,7 +281,9 @@ class TestResnet(TestParallelExecutorBase):
                                   use_cuda=True,
                                   use_reduce=False,
                                   iter=20,
-                                  delta2=1e-6):
+                                  delta2=1e-6,
+                                  exec_type=ExecutorType.Default,
+                                  lr_scale=1.0):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -295,8 +301,9 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=use_reduce,
-            optimizer=optimizer,
-            use_parallel_executor=False)
+            optimizer=optimizer(),
+            use_parallel_executor=False,
+            exec_type=exec_type)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -305,7 +312,8 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=use_reduce,
-            optimizer=optimizer)
+            optimizer=optimizer(lr_scale=lr_scale),
+            exec_type=exec_type)
 
         self.assertAlmostEquals(
             np.mean(parallel_first_loss), single_first_loss[0], delta=1e-6)
@@ -313,7 +321,14 @@ class TestResnet(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss[0], delta=delta2)
 
     def test_seresnext_with_learning_rate_decay(self):
-        self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
+        if core.is_compiled_with_cuda():
+            self._check_resnet_convergence(
+                model=SE_ResNeXt50Small, use_cuda=True)
+            self._check_resnet_convergence(
+                model=SE_ResNeXt50Small,
+                use_cuda=True,
+                exec_type=ExecutorType.ParallelGraph,
+                lr_scale=core.get_cuda_device_count())
         self._check_resnet_convergence(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 
