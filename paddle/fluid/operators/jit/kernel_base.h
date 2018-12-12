@@ -36,10 +36,13 @@ class Kernel {
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
-template <typename T, typename Func, typename Attr>
+template <typename KernelTuples>
 class KernelImpl : public Kernel {
+  using T = typename KernelTuples::data_type;
+  using Func = typename KernelTuples::func_type;
+  using Attr = typename KernelTuples::attr_type;
+
  public:
-  using ELEMENT_TYPE = T;
   virtual Func GetFunc() const { return func; }
   virtual bool UseMe(Attr attr) const = 0;
 
@@ -47,11 +50,13 @@ class KernelImpl : public Kernel {
   Func func{nullptr};
 };
 
-template <typename T, typename Func, typename Attr>
-class ReferKernel : public KernelImpl<T, Func, Attr> {
+template <typename KernelTuples>
+class ReferKernel : public KernelImpl<KernelTuples> {
  public:
   // Refer code can always be used
-  bool UseMe(Attr attr) const override { return true; }
+  bool UseMe(typename KernelTuples::attr_type attr) const override {
+    return true;
+  }
 };
 
 }  // namespace jit

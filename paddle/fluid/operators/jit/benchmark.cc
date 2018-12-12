@@ -94,8 +94,7 @@ int main(int argc, char* argv[]) {
     RandomVec<T>(d, x.data());
     RandomVec<T>(d, y.data());
     // refer
-    auto refer = jit::GetRefer<KT, T, jit::VMulTuples<T>::func_type,
-                               jit::VMulTuples<T>::attr_type>();
+    auto refer = jit::GetRefer<KT, jit::VMulTuples<T>>();
     if (refer) {
       auto res =
           BenchTartgetFunc<T, jit::VMulTuples<T>::func_type>(refer, x, y, z);
@@ -103,8 +102,7 @@ int main(int argc, char* argv[]) {
     }
 
     // test jitcode
-    auto jitcode = jit::GetJitCode<KT, T, jit::VMulTuples<T>::func_type,
-                                   jit::VMulTuples<T>::attr_type, PlaceType>(d);
+    auto jitcode = jit::GetJitCode<KT, jit::VMulTuples<T>, PlaceType>(d);
     if (jitcode) {
       auto res =
           BenchTartgetFunc<T, jit::VMulTuples<T>::func_type>(jitcode, x, y, z);
@@ -118,10 +116,8 @@ int main(int argc, char* argv[]) {
     if (iter != pool.end()) {
       auto& impls = iter->second;
       for (auto& impl : impls) {
-        auto i =
-            dynamic_cast<const jit::KernelImpl<T, jit::VMulTuples<T>::func_type,
-                                               jit::VMulTuples<T>::attr_type>*>(
-                impl.get());
+        auto i = dynamic_cast<const jit::KernelImpl<jit::VMulTuples<T>>*>(
+            impl.get());
         if (i && i->UseMe(d)) {
           auto more = i->GetFunc();
           auto res =
@@ -132,8 +128,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Test result from Get function
-    auto tgt = jit::Get<KT, T, jit::VMulTuples<T>::func_type,
-                        jit::VMulTuples<T>::attr_type, PlaceType>(d);
+    auto tgt = jit::Get<KT, jit::VMulTuples<T>, PlaceType>(d);
     if (!tgt) {
       LOG(ERROR) << "Target can not be empty!";
     }
