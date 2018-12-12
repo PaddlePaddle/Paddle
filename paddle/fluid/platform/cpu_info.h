@@ -33,7 +33,7 @@ limitations under the License. */
 #define ALIGN32_END
 #else
 #define ALIGN32_BEG
-#define ALIGN32 __attribute__((aligned(32)))
+#define ALIGN32_END __attribute__((aligned(32)))
 #endif  // _WIN32
 
 #if defined(_WIN32)

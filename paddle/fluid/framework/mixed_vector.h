@@ -23,13 +23,10 @@
 #include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 
 #include "glog/logging.h"
-
-using paddle::memory::allocation::AllocationPtr;
 
 namespace paddle {
 namespace framework {
@@ -218,7 +215,7 @@ class Vector {
       auto stream = dev_ctx->stream();
       void *src = gpu_->ptr();
       void *dst = cpu_.data();
-      memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
+      paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
                    gpu_->size(), stream);
       dev_ctx->Wait();
     }
@@ -264,7 +261,7 @@ class Vector {
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place));
       auto stream = dev_ctx->stream();
-      memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
+      paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
                    gpu_->size(), stream);
     }
 
@@ -287,7 +284,7 @@ class Vector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     mutable std::vector<T> cpu_;
-    mutable memory::AllocationPtr gpu_;
+    mutable paddle::memory::AllocationPtr gpu_;
     mutable int flag_;
 
     mutable std::mutex mtx_;
@@ -536,3 +533,4 @@ using Vector = CPUVector<T>;
 
 };  // namespace framework
 }  // namespace paddle
+        
