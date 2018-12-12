@@ -16,8 +16,9 @@ import inspect
 import funcsigs
 import yaml
 from collections import OrderedDict
-from prune import *
-from core import *
+from ..prune import *
+from .compress_pass import *
+from .strategy import *
 
 __all__ = ['ConfigFactory']
 

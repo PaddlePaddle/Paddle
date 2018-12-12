@@ -1,4 +1,6 @@
-import paddle.fluid as fluid
+from ....framework import Program
+
+__all__ = ['Graph', 'ImitationGraph', 'IRGraph']
 
 class Graph(object):
     """
@@ -17,7 +19,7 @@ class Graph(object):
 class ImitationGraph(Graph):
     def __init__(self, program=None):
         super(ImitationGraph, self).__init__()
-        self.program = fluid.Program() if program is None else program
+        self.program = Program() if program is None else program
 
     def all_parameters(self):
         return self.program.global_block().all_parameters()

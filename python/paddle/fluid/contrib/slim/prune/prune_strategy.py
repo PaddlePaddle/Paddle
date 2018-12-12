@@ -1,9 +1,9 @@
-import paddle.fluid as fluid
-import paddle
-from core import *
+from ..core.strategy import Strategy
+from ....framework import Program, program_guard
+from .... import layers
 import numpy as np
 
-
+__all__ = ['SensetivePruneStrategy', 'PruneStrategy']
 class SensetivePruneStrategy(Strategy):
     def __init__(self,
                  pruner=None, 
@@ -34,12 +34,12 @@ class PruneStrategy(Strategy):
 
     def on_batch_end(self, context):
         if self._triger(context):
-            prune_program = fluid.Program()
-            with fluid.program_guard(prune_program):
+            prune_program = Program()
+            with program_guard(prune_program):
                 for param in context.graph.all_parameters():
                     prune_program.global_block().clone_variable(param)
                     p = prune_program.global_block().var(param.name)
                     zeros_mask = self.pruner.prune(p)
                     pruned_param = p * zeros_mask
-                    fluid.layers.assign(input=pruned_param, output=param)
+                    layers.assign(input=pruned_param, output=param)
             context.program_exe.run(prune_program, scope=context.scope)

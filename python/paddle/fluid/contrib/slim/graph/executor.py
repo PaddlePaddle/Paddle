@@ -14,7 +14,7 @@
 
 import abc
 from abc import abstractmethod
-import paddle.fluid as fluid
+from .... import executor
 from .graph import IRGraph, ImitationGraph
 
 __all__ = ['get_executor']
@@ -44,7 +44,7 @@ class ImitationGraphExecutor(GraphExecutor):
     
     def __init__(self, place):
        super(ImitationGraphExecutor, self).__init__(place)
-       self.exe = fluid.executor.Executor(place)
+       self.exe = executor.Executor(place)
 
     def run(self,
             graph,

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from graph import get_executor
+from ....core import CPUPlace
+from ..graph import get_executor
 
 __all__ = ['Context', 'CompressPass']
 
@@ -47,7 +46,7 @@ class CompressPass(object):
             strategies: Strategies to be applied on target model when 'apply()' was called.
         """
         self.strategies = []
-        self.place = fluid.CPUPlace() if place is None else place
+        self.place = CPUPlace() if place is None else place
         self.data_reader = data_reader
         self.data_feeder = data_feeder
         self.scope = scope
@@ -73,7 +72,7 @@ class CompressPass(object):
         self.executor = get_executor(graph, self.place)
         context = Context(self.executor,
                           graph,
-                          scope,
+                          self.scope,
                           program_exe=self.program_exe)
 
         for strategy in self.strategies:

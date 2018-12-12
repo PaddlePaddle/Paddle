@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = ['GraphPass', 'PruneParameterPass']
+
 class GraphPass(object):
     """
     Base class for all graph pass.
@@ -33,8 +35,5 @@ class PruneParameterPass(GraphPass):
         self.default_threshold = thresholds['*']
 
     def apply(self, graph):
-        pruning_graph = graph.create_graph()
-        pruning_graph.share_variables(graph)
-        for param in  pruning_graph:
-            threshold = thresholds[param] is param in thresholds else self.default_threshold
+        pass
             

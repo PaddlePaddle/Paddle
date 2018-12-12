@@ -15,7 +15,7 @@ from . import core
 from .core import *
 from . import graph
 from .graph import *
-from . import prun
+from . import prune
 from .prune import *
 __all__ = core.__all__ 
 __all__ = graph.__all__ 

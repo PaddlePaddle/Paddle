@@ -1,6 +1,5 @@
-import paddle.fluid as fluid
-import paddle
 import numpy as np
+from .... import layers
 
 __all__=['Pruner', 'MagnitudePruner', 'RatioPruner']
 
@@ -23,10 +22,10 @@ class MagnitudePruner(Pruner):
 
     def prune(self, param, threshold=None):
         if threshold is None:
-            thres = fluid.layers.fill_constant(shape=[1], dtype='float32', value=self.threshold)
+            thres = layers.fill_constant(shape=[1], dtype='float32', value=self.threshold)
         else:
             thres = threshold
-        zeros_mask = fluid.layers.less_than(x=param, y=thres)
+        zeros_mask = layers.less_than(x=param, y=thres)
         return zeros_mask
 
 class RatioPruner(Pruner):
@@ -51,12 +50,12 @@ class RatioPruner(Pruner):
             rat = ratio
         if rat < 1.0:
             k = max(int(rat * np.prod(param.shape)), 1)
-            param_vec = fluid.layers.reshape(x=param, shape=[1, -1])
-            param_topk,_ = fluid.layers.topk(param_vec, k=k)
-            threshold = fluid.layers.slice(param_topk, axes=[1], starts=[-1], ends=[k])
-            threshold = fluid.layers.reshape(x=threshold, shape=[1])
-            zeros_mask = fluid.layers.less_than(x=param, y=threshold)
+            param_vec = layers.reshape(x=param, shape=[1, -1])
+            param_topk,_ = layers.topk(param_vec, k=k)
+            threshold = layers.slice(param_topk, axes=[1], starts=[-1], ends=[k])
+            threshold = layers.reshape(x=threshold, shape=[1])
+            zeros_mask = layers.less_than(x=param, y=threshold)
         else:
-            zeros_mask = fluid.layers.ones(param.shape)
+            zeros_mask = layers.ones(param.shape)
         return zeros_mask
 
