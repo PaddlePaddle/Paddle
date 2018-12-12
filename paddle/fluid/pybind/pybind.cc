@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -46,6 +47,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
@@ -106,6 +108,42 @@ PYBIND11_MODULE(core, m) {
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
+
+  py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def("_run_backward",
+           [](imperative::VarBase &self, framework::Scope *scope) {
+             self.RunBackward(scope);
+           })
+      .def("_grad", &imperative::VarBase::Grad)
+      .def_property(
+          "desc",
+          [](const imperative::VarBase &self) { return self.var_desc_; },
+          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
+            self.var_desc_ = var_desc;
+          },
+          py::return_value_policy::reference);
+
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def_property(
+          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
+          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
+            if (op_desc) {
+              self.op_desc_ = op_desc;
+            }
+          },
+          py::return_value_policy::reference);
+
+  py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
+  layer.def(py::init<>())
+      .def("forward",
+           [](imperative::Layer &self,
+              const std::vector<imperative::VarBase> &inputs) {
+             return self.Forward(inputs);
+           })
+      .def("backward", &imperative::Layer::Backward);
+  BindTracer(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -305,6 +343,8 @@ PYBIND11_MODULE(core, m) {
       .def("get_tensor",
            [](SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
+      .def("numel",
+           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
       .def("set_rows",
@@ -622,6 +662,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+  m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
 
