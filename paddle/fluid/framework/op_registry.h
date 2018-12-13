@@ -319,7 +319,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)
-// clang-format off
+// clang-format on
 
 }  // namespace framework
 }  // namespace paddle
