@@ -56,9 +56,16 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
+nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+IF(WITH_GPU)
+  set(STREAM_CALLBACK_DEPS stream_callback_manager)
+ELSE()
+  set(STREAM_CALLBACK_DEPS)
+ENDIF()
+
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc
+cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)

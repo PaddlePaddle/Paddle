@@ -36,7 +36,7 @@ class TestDistMnistNCCL2(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist.py", delta=1)
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 class TestDistMnist2x2Lars(TestDistBase):
