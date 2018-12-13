@@ -122,27 +122,38 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-VarHandlePtr GRPCClient::AsyncGetVar(
+VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
+                                     const platform::DeviceContext& ctx,
+                                     const framework::Scope& scope,
+                                     const std::string& var_name,
+                                     const std::string& out_varname,
+                                     int64_t time_out) {
+  return _AsyncGetVar(ep, ctx, scope, "GetRPC", var_name, out_varname, true,
+                      "/sendrecv.SendRecvService/GetVariable", time_out);
+}
+
+VarHandlePtr GRPCClient::AsyncGetVarNoBarrier(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& var_name,
-    const std::string& out_varname, const bool with_barrier, int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, var_name, out_varname, with_barrier,
-                      "/sendrecv.SendRecvService/GetVariable", time_out);
+    const std::string& out_varname, int64_t time_out) {
+  return _AsyncGetVar(ep, ctx, scope, "GetNoBarrierRPC", var_name, var_name,
+                      false, "/sendrecv.SendRecvService/GetVariableNoBarrier",
+                      time_out);
 }
 
 VarHandlePtr GRPCClient::AsyncGetMonomerVariable(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& var_name,
     int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, var_name, var_name, true,
+  return _AsyncGetVar(ep, ctx, scope, "GetMonomerRPC", var_name, var_name, true,
                       "/sendrecv.SendRecvService/GetMonomerVariable", time_out);
 }
 
 VarHandlePtr GRPCClient::_AsyncGetVar(
     const std::string& ep, const platform::DeviceContext& ctx,
-    const framework::Scope& scope, const std::string& var_name,
-    const std::string& out_varname, const bool with_barrier,
-    const std::string& rpc_path, int64_t time_out) {
+    const framework::Scope& scope, const std::string& method,
+    const std::string& var_name, const std::string& out_varname,
+    const bool with_barrier, const std::string& rpc_path, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -150,41 +161,38 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
-  const std::string method = "GetRPC";
+  const std::string method_val = method;
 
-  std::string var_name_with_barrier =
-      with_barrier ? var_name_val : string::Sprintf("%s%s", var_name_val,
-                                                    WITHOUT_BARRIER_MESSAGE);
-
-  VarHandlePtr h(new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
+  VarHandlePtr h(
+      new VarHandle(ep, method_val, out_varname_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_with_barrier, out_varname_val, s, method, p_ctx,
-                      h, rpc_path, this] {
-    // prepare input
-    sendrecv::VariableMessage req;
-    req.set_varname(var_name_with_barrier);
-    req.set_out_varname(out_varname_val);
-    req.set_trainer_id(trainer_id_);
-    ::grpc::ByteBuffer buf;
-    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+  framework::AsyncIO(
+      [var_name_val, out_varname_val, s, method_val, p_ctx, h, rpc_path, this] {
+        // prepare input
+        sendrecv::VariableMessage req;
+        req.set_varname(var_name_val);
+        req.set_out_varname(out_varname_val);
+        req.set_trainer_id(trainer_id_);
+        ::grpc::ByteBuffer buf;
+        RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+        VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
-    // stub context
-    s->response_call_back_ = ProcGetResponse;
+        // stub context
+        s->response_call_back_ = ProcGetResponse;
 
-    platform::RecordRPCEvent record_event(method, p_ctx);
+        platform::RecordRPCEvent record_event(method_val, p_ctx);
 
-    auto call =
-        s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
-    call->StartCall();
-    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+        auto call =
+            s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
+        call->StartCall();
+        call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
-    if (UNLIKELY(platform::IsProfileEnabled())) {
-      h->Wait();
-    }
-  });
+        if (UNLIKELY(platform::IsProfileEnabled())) {
+          h->Wait();
+        }
+      });
 
   req_count_++;
 

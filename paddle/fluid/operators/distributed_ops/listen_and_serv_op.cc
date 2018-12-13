@@ -358,6 +358,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kGetVariableWithoutBarrier,
+                            request_get_no_barrier_handler_.get());
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -412,6 +414,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_get_handler_.get());
   f(request_prefetch_handler_.get());
   f(request_checkpoint_handler_.get());
+  f(request_get_no_barrier_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));

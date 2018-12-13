@@ -161,6 +161,50 @@ class RequestGet final : public RequestBase {
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 
+class RequestGetNoBarrier final : public RequestBase {
+ public:
+  explicit RequestGetNoBarrier(GrpcService::AsyncService* service,
+                               ::grpc::ServerCompletionQueue* cq,
+                               RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestGetNoBarrier() {}
+
+  std::string GetReqName() override { return request_.varname(); }
+
+  void Process() override {
+    // proc request.
+    std::string varname = request_.varname();
+    std::string out_varname = request_.out_varname();
+    int trainer_id = request_.trainer_id();
+
+    VLOG(4) << "RequestGetNoBarrier " << out_varname << " from " << varname;
+
+    auto scope = request_handler_->scope();
+    framework::Variable* invar = nullptr;
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
+                             out_varname);
+
+    if (outvar) {
+      SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
+                            &reply_);
+    }
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+};
+
 class RequestGetMonomerVariable final : public RequestBase {
  public:
   explicit RequestGetMonomerVariable(GrpcService::AsyncService* service,
