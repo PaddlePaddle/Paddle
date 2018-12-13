@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -510,6 +511,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_psroi_pool(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_roi_align(self):
         program = Program()
         with program_guard(program):
@@ -636,13 +647,21 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
+            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
             out = layers.pad2d(
                 input,
                 paddings=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape")
+            out_1 = layers.pad2d(
+                input,
+                paddings=paddings,
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
             self.assertIsNotNone(out)
+            self.assertIsNotNone(out_1)
         print(str(program))
 
     def test_prelu(self):
@@ -836,6 +855,15 @@ class TestBook(unittest.TestCase):
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
+
+    def test_bpr_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            out = layers.bpr_loss(x, label)
+            self.assertIsNotNone(out)
+        print(str(program))
 
     def test_expand(self):
         program = Program()

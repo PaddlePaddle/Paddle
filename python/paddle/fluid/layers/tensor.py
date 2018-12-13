@@ -622,7 +622,7 @@ def reverse(x, axis):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reverse',
-        inputs={'Input': x},
+        inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out

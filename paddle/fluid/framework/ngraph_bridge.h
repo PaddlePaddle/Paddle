@@ -14,21 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_NGRAPH
-
 #include <algorithm>
 #include <map>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#include "ngraph/ngraph.hpp"
+#include "ngraph/node.hpp"
 
 namespace paddle {
 namespace framework {
+
+class OperatorBase;
 
 class NgraphBridge {
  public:
@@ -43,16 +39,15 @@ class NgraphBridge {
       std::shared_ptr<
           std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
           var_node_map)
-      : ngb_node_map(var_node_map) {}
+      : ngb_node_map_(var_node_map) {}
 
-  void build_graph(const std::shared_ptr<OperatorBase>& op);
+  void BuildNgNode(const std::shared_ptr<OperatorBase>& op);
 
  private:
   std::shared_ptr<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-      ngb_node_map;
+      ngb_node_map_;
 };
 
 }  // namespace framework
 }  // namespace paddle
-#endif
