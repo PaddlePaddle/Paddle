@@ -27,7 +27,8 @@ class TestTransposeOp(OpTest):
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
-            'is_test': self.is_test
+            'is_test': self.is_test,
+            'data_format': self.data_format
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
@@ -38,6 +39,7 @@ class TestTransposeOp(OpTest):
         self.op_type = "transpose2"
         self.use_mkldnn = False
         self.is_test = False
+        self.data_format = "AnyLayout"
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])

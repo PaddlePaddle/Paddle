@@ -42,10 +42,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
     const T* input_data = input->data<T>();
 
-    // TODO: Any layout support
-    // TODO: make it working for other inputs. Eg. analyze entry data itp
-    std::vector<int> nchw_tz = paddle::framework::vectorize2int(input->dims());
-
     if (ndims == 1) {
       output->ShareDataWith(*input);
       return;
@@ -56,13 +52,21 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       nchw_axis[i] = i;
     }
 
+    std::vector<int> nchw_tz = paddle::framework::vectorize2int(input->dims());
+    std::string data_format = ctx.Attr<std::string>("data_format");
+
+    auto src_md =
+        data_format.compare("AnyLayout") == 0
+            ? platform::MKLDNNMemDesc(nchw_tz, platform::MKLDNNGetDataType<T>(),
+                                      mkldnn::memory::format::any)
+            : Axis2MemoryDesc(nchw_tz, nchw_axis);
+
     this->TransposeKernel(ctx.GetPlace(), Axis2MemoryDesc(nchw_tz, axis),
-                          Axis2MemoryDesc(nchw_tz, nchw_axis), output,
-                          input_data, nchw_tz, mkldnn_engine);
+                          src_md, output, input_data, nchw_tz, mkldnn_engine);
   }
 
  protected:
-  mkldnn_memory_desc_t Axis2MemoryDesc(std::vector<int>& nchw_tz,
+  mkldnn::memory::desc Axis2MemoryDesc(std::vector<int>& nchw_tz,
                                        std::vector<int>& axis) const {
     mkldnn_memory_desc_t mem_fmt;
 
@@ -90,11 +94,9 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     return mem_fmt;
   }
 
-  void TransposeKernel(platform::Place place, mkldnn_memory_desc_t md_o,
-                       mkldnn_memory_desc_t md_i,
-                       // mkldnn::memory::format fmt_i,
-                       Tensor* output, const T* data_i,
-                       std::vector<int>& nchw_dims,
+  void TransposeKernel(platform::Place place, mkldnn::memory::desc md_o,
+                       mkldnn::memory::desc md_i, Tensor* output,
+                       const T* data_i, std::vector<int>& nchw_dims,
                        const mkldnn::engine& eng) const {
     // Make Memory primitive descriptors
     auto mpd_o = mkldnn::memory::primitive_desc(md_o, eng);

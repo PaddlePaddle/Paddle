@@ -24,6 +24,7 @@ class TestTransposeMKLDNN(TestTransposeOp):
         self.op_type = "transpose2"
         self.use_mkldnn = True
         self.is_test = True
+        self.data_format = "NCHW"
         return
 
     def test_check_grad(self):
