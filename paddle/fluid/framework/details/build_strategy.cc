@@ -38,15 +38,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
-    // NOTE(dzh): memory optimize should be a runtime pass.
-    // However, after multi_devices_pass, VarHandle, OpHandle is
-    // the de-fact IR, any reuse on Graph is meaningless.
-    // A side-effect of that, memory optimize cannot forsee the fetched vars
-    // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy.memory_optimize_) {
-      auto analysis_var_pass = AppendPass("analysis_var_pass");
-    }
-
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
     }
@@ -83,6 +74,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     VLOG(1) << "CollectiveContext:" << context->String();
 
+    // NOTE(dzh): memory optimize should be a runtime pass.
+    // However, after multi_devices_pass, VarHandle, OpHandle is
+    // the de-fact IR, any reuse on Graph is meaningless.
+    // A side-effect of that, memory optimize cannot forsee the fetched vars
+    // , so fetchlist should be set persistable before call the Run interface.
+    if (strategy.memory_optimize_) {
+      auto analysis_var_pass = AppendPass("analysis_var_pass");
+    }
     // Convert graph to run on multi-devices.
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -164,16 +163,13 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     } else if (pass->Type() == "analysis_var_pass") {
       const std::vector<OpDesc *> *all_op_descs =
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
-      GraphNodePool *graph_pool = new GraphNodePool;
       graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
                                               all_op_descs);  // take ownership
-      graph->Set<const GraphNodePool>(kGraphNodePool,
-                                      graph_pool);  // take ownership
+      graph->Set<GraphNodePool>(kGraphNodePool,
+                                new GraphNodePool);  // take ownership
 
       pass->Erase(kAllOpDescs);
       pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
-      pass->Erase(kGraphNodePool);
-      pass->SetNotOwned<GraphNodePool>(kGraphNodePool, graph_pool);
 
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"

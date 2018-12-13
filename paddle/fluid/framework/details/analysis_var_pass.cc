@@ -48,13 +48,41 @@ static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
          op1->Outputs() == op2->Outputs();
 }
 
+template <typename Container, typename Callback>
+class FilterVariableImpl {
+ public:
+  void operator()(const Container& nodes, Callback callback) {
+    for (auto* node : nodes) {
+      callback(node);
+    }
+  }
+};
+
+// filter var node for op->inputs/outputs
+template <typename Callback>
+class FilterVariableImpl<std::vector<ir::Node*>, Callback> {
+ public:
+  void operator()(const std::vector<ir::Node*>& nodes, Callback callback) {
+    for (auto* var : nodes) {
+      if (var->IsVar() && !var->IsCtrlVar()) {
+        callback(var);
+      }
+    }
+  }
+};
+
+template <typename Container, typename Callback>
+void FilterVariables(const Container& nodes, Callback callback) {
+  FilterVariableImpl<Container, Callback>()(nodes, callback);
+}
+
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto nodes = graph->Nodes();
   auto subblock_vars = GetSubBlockVars(nodes);
   skip_set_.insert(subblock_vars.begin(), subblock_vars.end());
 
-  cfg_.reset(new details::ControlFlowGraph(*graph.get()));
+  cfg_.reset(new details::ControlFlowGraph(*graph));
   cfg_->LiveVariableAnalysis();
   InitSSAGraphNodes();
 
@@ -85,7 +113,6 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
                   << ((cache == nullptr) ? "False" : "True");
         }
         if (cache != nullptr) {
-          // data_type should be same.
           if (var->Name() == cache->Name()) {
             VLOG(3) << "The same cache variable is cascade reused."
                     << var->Name() << " is re-filled to the pool after"
@@ -93,24 +120,19 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
                     << "replace it again. Skip this candidate.";
             continue;
           }
-          // if (var->Name() == cache->Name() ||
-          //     var->Var()->GetDataType() != cache->Var()->GetDataType()) {
-          //   continue;
-          // }
+
           int node_idx_in_pool = pool_.GetIndex(cache);
           VLOG(3) << string::Sprintf(
               "!!! %s,  %s => %s, cache idx %d, pool size %d",
               std::to_string(reuse_id++), DebugString(var), DebugString(cache),
               node_idx_in_pool, static_cast<int>(pool_.size()));
-
-          // update CFG Graph on the fly. then reused var can be re-fill into
-          // the pool
+          // update CFG Graph on the fly.
+          // reused var maybe re-fill into the pool
           cfg_->RenameVarInCFGGraph(var->Name(), cache->Name(), idx);
-          // NOTE(dzhwinter): we need to both update the ProgramDesc and IR
-          // Graph
-          // because op_desc/var_desc is used in CreateOp, CreateVar when
-          // running happens.
-          // and IR Graph define the dependence relationship between nodes.
+          // NOTE(dzhwinter): we need to both update the ProgramDesc
+          // and IR Graph. because op_desc/var_desc is used in CreateOp,
+          // CreateVar when running happens. But IR Graph
+          // define the dependence relationship between nodes.
           RenameVarInGraphDesc(var->Name(), cache->Name(), idx);
           RenameVarInGraphNode(var->Name(), cache->Name(), idx, graph.get());
 
@@ -142,7 +164,7 @@ std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
   }
   // 2. convert ir node based memory pool to graph node
   // because Node* maybe released bettwen passes.
-  auto& graph_pool = Get<GraphNodePool>(kGraphNodePool);
+  auto& graph_pool = graph->Get<GraphNodePool>(kGraphNodePool);
   for (auto it = pool_.begin(); it != pool_.end(); ++it) {
     std::unordered_set<OpDesc*> descs;
     for (auto& op : it->second) {
@@ -165,13 +187,8 @@ void AnalysisVarPass::SubGraphOptimize(OpDesc* op_desc) const {
   auto* copy_block = prog.MutableBlock(0);
   for (auto* op : sub_block_desc->AllOps()) {
     auto* copy_op = copy_block->AppendOp();
-    copy_op->SetType(op->Type());
-    for (auto& name_pair : op->Inputs()) {
-      copy_op->SetInput(name_pair.first, name_pair.second);
-    }
-    for (auto& name_pair : op->Outputs()) {
-      copy_op->SetOutput(name_pair.first, name_pair.second);
-    }
+    copy_op->CopyFrom(*op);
+    copy_op->Flush();
   }
 
   for (auto* var : sub_block_desc->AllVars()) {
@@ -462,52 +479,6 @@ std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
   return ret;
 }
 
-std::vector<ir::Node*> BFSSortGraphOps(const ir::Graph& graph) {
-  std::list<ir::Node*> ops;  // for checking topology sort result.
-  std::vector<ir::Node*> ret;
-  // std::queue<ir::Node*> q;
-  std::queue<ir::Node*> q;
-  std::unordered_set<ir::Node*> visited;
-
-  for (auto* op : graph.Nodes()) {
-    if (!op->IsOp()) continue;
-    ops.emplace_back(op);
-    std::unordered_set<ir::Node*> preceding_op;
-    for (auto* in : op->inputs) {
-      if (in->inputs.empty()) continue;
-      PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp());
-      preceding_op.emplace(in->inputs[0]);
-    }
-    if (preceding_op.empty()) {
-      visited.emplace(op);
-      q.emplace(op);
-    }
-  }
-
-  while (!q.empty()) {
-    std::queue<ir::Node*> temp(q);
-    std::list<ir::Node*> debug;
-    while (!temp.empty()) {
-      debug.emplace_back(temp.front());
-      temp.pop();
-    }
-    ir::Node* node = q.front();
-    q.pop();
-    ret.emplace_back(node);
-    for (auto& var : node->outputs) {
-      for (auto& op : var->outputs) {
-        PADDLE_ENFORCE(op->IsOp());
-        if (visited.count(op) == 0) {
-          visited.emplace(op);
-          q.emplace(op);
-        }
-      }
-    }
-  }
-  PADDLE_ENFORCE(ret.size() == ops.size());
-  return ret;
-}
-
 ControlFlowGraph::ControlFlowGraph(const ir::Graph& graph) {
   ops_ = SortOpLikeDescOrder(graph);
   ConnectNodes();
@@ -681,5 +652,5 @@ ir::Node* ControlFlowGraph::GetNodeFromVarName(const std::string& name,
 }  // namespace paddle
 
 REGISTER_PASS(analysis_var_pass, paddle::framework::details::AnalysisVarPass)
-    .RequirePassAttr(paddle::framework::details::kGraphNodePool)
+    .RequireGraphAttr(paddle::framework::details::kGraphNodePool)
     .RequireGraphAttr(paddle::framework::details::kAllOpDescs);
