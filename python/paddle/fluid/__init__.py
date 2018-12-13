@@ -14,6 +14,12 @@
 
 from __future__ import print_function
 import os
+import sys
+if os.name == 'nt':
+    third_lib_path = os.path.abspath(os.path.dirname(__file__)) + os.sep + '..' + os.sep + 'libs'
+    os.environ['path'] += ';' + third_lib_path
+    sys.path.append(third_lib_path)
+
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
