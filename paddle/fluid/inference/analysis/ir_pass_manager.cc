@@ -70,6 +70,12 @@ void IRPassManager::CreatePasses(Argument *argument,
                         argument->tensorrt_node_teller_ptr());
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
+
+      pass->Set(
+          "program",
+          new framework::ProgramDesc *(
+              const_cast<framework::ProgramDesc *>(&argument->main_program())));
+      Pass->Set("precision_mode", "FP32");
     }
 
     // graph_ = pass->Apply(std::move(graph_));
@@ -97,7 +103,8 @@ framework::proto::ProgramDesc IRPassManager::AcquireProgram(
   auto pass =
       framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
 
-  ProgramDesc desc(program);
+  ProgramDesc desc;
+  desc.CopyFrom(*const_cast<ProgramDesc &>(program).Proto());
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
   *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));

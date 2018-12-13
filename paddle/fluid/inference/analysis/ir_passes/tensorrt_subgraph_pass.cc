@@ -67,13 +67,24 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
+  framework::ProgramDesc *program_desc =
+      Get<framework::ProgramDesc *>("program");
+  // Add new block for TensorRTEngineOP
+  const framework::BlockDesc &main_block =
+      program_desc->Block(framework::kRootBlockIndex);
+  // const framework::BlockDesc& main_block = program_desc->Block(0);
+  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
+
   // An fake block desc.
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
+
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   for (auto *node : subgraph) {
+    auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
+    *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
   }
 
@@ -173,7 +184,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // to Tensor.
   std::vector<std::string> output_mapping;
   for (auto name : output_names) {
-    // LOG(INFO) << name << " " << output_name_map.size();
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
   }
@@ -187,7 +197,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
+
   // Set attrs
+  op_desc->SetBlockAttr("sub_block", new_block);
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));

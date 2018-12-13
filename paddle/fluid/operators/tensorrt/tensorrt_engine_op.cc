@@ -34,6 +34,10 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("engine_uniq_key", "unique key for the TRT engine.");
     AddAttr<int>("max_batch_size", "the maximum batch size.");
     AddAttr<int>("workspace_size", "the workspace size.");
+    AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
+    AddAttr<std::string>("calibration_data", "the calibration data for int8");
+    AddAttr<std::string>("precision_mode",
+                         "the precision mode: 'FP32', 'INT8' ");
     AddComment("TensorRT engine operator.");
   }
 };
@@ -50,6 +54,7 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(tensorrt_engine, ops::TensorRTEngineOp,
-                  ops::TensorRTEngineOpMaker, ops::TensorRTEngineOpMaker);
+                  ops::TensorRTEngineOpMaker);
+// ops::TensorRTEngineOpMaker, ops::TensorRTEngineOpMaker);
 
 #endif  // PADDLE_WITH_CUDA
