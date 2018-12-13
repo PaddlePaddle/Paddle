@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <time.h>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -22,8 +23,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <typeinfo>
 #include <vector>
-#include <random> //local_random_engine
-#include <time.h> //local_random_engine
+#include <random>  // local_random_engine
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_thread_worker.h"
@@ -43,9 +43,10 @@ inline std::default_random_engine& local_random_engine() {
     struct engine_wrapper_t {
         std::default_random_engine engine;
         engine_wrapper_t() {
-            static std::atomic<unsigned long> x(0);
-            std::seed_seq sseq = {x++, x++, x++, (unsigned long)(current_realtime() * 1000)};
-            engine.seed(sseq);
+          static std::atomic<uint64> x(0);
+          std::seed_seq sseq = {x++, x++, x++,
+                                static_cast<uint64>(current_realtime() * 1000)};
+          engine.seed(sseq);
         }
     };
     thread_local engine_wrapper_t r;
@@ -61,18 +62,20 @@ class AsyncExecutor {
                    const std::vector<std::string>& filelist,
                    const int thread_num,
                    const std::vector<std::string>& fetch_names,
-                   const std::string& mode, 
+                   const std::string& mode,
                    const bool debug = false);
-  //void ConfigPslib(const char* dist_desc, uint64_t* host_sign_list, int node_num, int index);
   void InitServer(const std::string& dist_desc, int index);
-  void InitWorker(const std::string& dist_desc, std::vector<uint64_t>& host_sign_list, int node_num, int index);
-  //void ConfigWorker() {}
+  void InitWorker(
+      const std::string& dist_desc,
+      const std::vector<uint64_t>& host_sign_list,
+      int node_num, int index);
   uint64_t StartServer();
   void StopServer();
-  void GatherServers(std::vector<uint64_t>& host_sign_list, int node_num);
+  void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
   void InitModel();
   void SaveModel(const std::string& path);
   void InitParamConfig();
+
  private:
   void CreateThreads(ExecutorThreadWorker* worker,
                      const ProgramDesc& main_program,
@@ -81,6 +84,7 @@ class AsyncExecutor {
                      Scope* root_scope, const int thread_index,
                      const bool debug);
   void PrepareDenseThread(const std::string& mode);
+
  public:
   std::shared_ptr<paddle::distributed::PSlib>  _pslib_ptr;
   std::shared_ptr<DensePullThread>  _pull_dense_thread;
@@ -88,6 +92,7 @@ class AsyncExecutor {
   platform::Place place_;
   
   AsyncWorkerParamConfig _param_config;
+
  private:
   int actual_thread_num;
 
