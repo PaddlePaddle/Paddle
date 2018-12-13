@@ -40,16 +40,12 @@ struct ScaleLossGradFunctor {
   platform::Place place_;
   OpHandleBase *op_handle_;
   proto::VarType::Type out_dtype_;
-  platform::CUDADeviceContext *cuda_ctx_;
+  platform::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff, Tensor *out, platform::Place place,
                        OpHandleBase *op_handle, proto::VarType::Type dtype,
-                       platform::CUDADeviceContext *cuda_ctx)
-      : coeff_(coeff),
-        out_(out),
-        place_(place),
-        out_dtype_(dtype),
-        cuda_ctx_(cuda_ctx) {}
+                       platform::DeviceContext *ctx)
+      : coeff_(coeff), out_(out), place_(place), out_dtype_(dtype), ctx_(ctx) {}
 
   template <typename OutT>
   void apply() const {
@@ -59,7 +55,7 @@ struct ScaleLossGradFunctor {
     } else {
 #ifdef PADDLE_WITH_CUDA
       OutT cast_coeff = static_cast<OutT>(coeff_);
-      auto stream = cuda_ctx_->stream();
+      auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), out_data,
                    platform::CPUPlace(), &cast_coeff,
                    SizeOfType(ToTypeIndex(out_dtype_)), stream);
@@ -79,9 +75,8 @@ void ScaleLossGradOpHandle::RunImpl() {
   tensor->Resize(make_ddim({1}));
 
 #ifdef PADDLE_WITH_CUDA
-  auto *ctx =
-      static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_.at(place_));
-  ScaleLossGradFunctor func(coeff_, tensor, place_, this, out_dtype_, ctx);
+  ScaleLossGradFunctor func(coeff_, tensor, place_, this, out_dtype_,
+                            this->dev_ctxes_.at(place_));
   this->RunAndRecordEvent([&] { framework::VisitDataType(out_dtype_, func); });
 #else
   ScaleLossGradFunctor func(coeff_, tensor, place_, this, out_dtype_, nullptr);
