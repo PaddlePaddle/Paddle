@@ -70,7 +70,7 @@ inline mkldnn::memory::format GetWeightsFormat(mkldnn::memory::format format,
   }
 }
 
-template <typename T>
+template <typename T, typename K>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
 struct ConvInfo{
@@ -172,7 +172,7 @@ struct MkldnnInfo{
     const int MaxKeyLength = 256;
     std::string key;
     key.reserve(MaxKeyLength);
-    AppendKey(key, src_tz, weights_tz, strides, paddings, dilations, groups,
+    platform::ConvMKLDNNHandler::AppendKey(key, src_tz, weights_tz, strides, paddings, dilations, groups,
                      ctx.op().Output("Output"));
 
     const std::string key_conv_pd = key + "@conv_pd";
@@ -327,7 +327,7 @@ struct MkldnnInfo{
     const paddle::framework::Tensor* bias, paddle::framework::Tensor* output,
     ConvInfo* convinfo, MkldnnInfo* mkldnninfo) const{
       const T* input_data = input->data<T>();
-      const float* filter_data = filter->data<float>();
+      const K* filter_data = filter->data<K>();
 	  auto src_format = input->format();
 	  mkldnn::memory::format weights_format = 
 	      GetWeightsFormat(filter->format(), convinfo->g, mkldnninfo->is_conv3d);
@@ -388,7 +388,7 @@ struct MkldnnInfo{
       mkldnninfo->user_src_memory_p =
           mkldnninfo->handler->AcquireSrcMemory(user_src_md, to_void_cast<T>(input_data));
       auto user_weights_memory_p = mkldnninfo->handler->AcquireWeightsMemory(
-          user_weights_md, to_void_cast<float>(filter_data));
+          user_weights_md, to_void_cast<K>(filter_data));
 
       // create reorder primitive if the input format is not the preferred one
       mkldnninfo->src_memory_p =
@@ -463,7 +463,7 @@ struct MkldnnInfo{
     const paddle::framework::Tensor* bias, paddle::framework::Tensor* output,
     ConvInfo* convinfo, MkldnnInfo* mkldnninfo) const {
       const T* input_data = input->data<T>();
-      const float* filter_data = filter->data<float>();
+      const K* filter_data = filter->data<K>();
       bool is_INT8 = true;
       auto scale_in_data = ctx.Attr<float>("Scale_in");
       auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
@@ -479,7 +479,7 @@ struct MkldnnInfo{
       #pragma omp parallel for if (count > 1)
       for(int i=0; i<count; i++){
         if(scale_weights_data[i] == 0.0)
-          output_shift_scale[i] = scale_out_data;
+          output_shift_scale[i] = scale_out_data;  //weights data will contain 0 in some models, then weights scale couldn't be calculated
         else 
           output_shift_scale[i] = scale_out_data / (scale_in_data * scale_weights_data[i]);
       }
@@ -547,7 +547,7 @@ struct MkldnnInfo{
       mkldnninfo->user_src_memory_p =
           mkldnninfo->handler->AcquireSrcMemory(user_src_md, to_void_cast<T>(input_data));
       auto user_weights_memory_p = mkldnninfo->handler->AcquireWeightsMemory(
-          user_weights_md, to_void_cast<float>(filter_data));
+          user_weights_md, to_void_cast<K>(filter_data));
 
       // create reorder primitive if the input format is not the preferred one
       mkldnninfo->src_memory_p =
@@ -622,37 +622,6 @@ struct MkldnnInfo{
         // push primitive to stream and wait until it's executed
       mkldnninfo->pipeline->push_back(*mkldnninfo->conv_p);
     };
-
-    void AppendKey(std::string& key, mkldnn::memory::dims& input_dims,    // NOLINT
-                   mkldnn::memory::dims& weights_dims,  // NOLINT
-                   std::vector<int>& strides,           // NOLINT
-                   std::vector<int>& paddings,          // NOLINT
-                   std::vector<int>& dilations,         // NOLINT
-                   int groups, const std::string& suffix) const{
-      AppendKeyDims(key, input_dims);
-      AppendKeyDims(key, weights_dims);
-      AppendKeyVec(key, strides);
-      AppendKeyVec(key, paddings);
-      AppendKeyVec(key, dilations);
-      AppendKey(key, std::to_string(groups));
-      AppendKey(key, suffix);
-    } 
-
-    void AppendKeyDims(std::string& key, const mkldnn::memory::dims& dims) const{
-      for(unsigned int i=0; i<dims.size(); i++){
-        AppendKey(key, std::to_string(dims[i]));
-      }
-    }
-
-    void AppendKeyVec(std::string& key, const std::vector<int>& dims) const{
-      for(unsigned int i=0; i<dims.size(); i++){
-        AppendKey(key,  std::to_string(dims[i]));
-      }
-    }
-
-    void AppendKey(std::string& key, const std::string& s) const{
-      key.append(s);
-    }
 
     mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
                           const std::vector<float> output_shift_scale, float sum_scale) const {
@@ -1008,9 +977,19 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNOpKernel<float>,
-                                    ops::ConvMKLDNNOpKernel<uint8_t>,
-                                    ops::ConvMKLDNNOpKernel<int8_t>);
+                                    ops::ConvMKLDNNOpKernel<float, float>);
+                                    //ops::ConvMKLDNNOpKernel<uint8_t>,
+                                    //ops::ConvMKLDNNOpKernel<int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8,
+                                    ops::kConvMKLDNNFP32,
+                                    ops::ConvMKLDNNOpKernel<uint8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8,
+                                    ops::kConvMKLDNNFP32,
+                                    ops::ConvMKLDNNOpKernel<int8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
@@ -1020,7 +999,7 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNOpKernel<float>);
+                                    ops::ConvMKLDNNOpKernel<float, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d_grad, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,

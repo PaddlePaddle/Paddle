@@ -194,6 +194,37 @@ class MKLDNNHandler {
     return dims2str(operand_dims) + suffix;
   }
 
+    static void AppendKey(std::string& key, mkldnn::memory::dims& input_dims,    // NOLINT
+                   mkldnn::memory::dims& weights_dims,  // NOLINT
+                   std::vector<int>& strides,           // NOLINT
+                   std::vector<int>& paddings,          // NOLINT
+                   std::vector<int>& dilations,         // NOLINT
+                   int groups, const std::string& suffix) {
+      AppendKeyDims(key, input_dims);
+      AppendKeyDims(key, weights_dims);
+      AppendKeyVec(key, strides);
+      AppendKeyVec(key, paddings);
+      AppendKeyVec(key, dilations);
+      AppendKey(key, std::to_string(groups));
+      AppendKey(key, suffix);
+    }
+ protected:
+   static  void AppendKeyDims(std::string& key, const mkldnn::memory::dims& dims) {
+      for(unsigned int i=0; i<dims.size(); i++){
+        AppendKey(key, std::to_string(dims[i]));
+      }
+    }
+
+   static  void AppendKeyVec(std::string& key, const std::vector<int>& dims) {
+      for(unsigned int i=0; i<dims.size(); i++){
+        AppendKey(key,  std::to_string(dims[i]));
+      }
+    }
+
+   static  void AppendKey(std::string& key, const std::string& s) {
+      key.append(s);
+    }
+
  protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
     std::string dstr = "";
