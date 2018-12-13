@@ -10,15 +10,6 @@ if(NOT WITH_MKLDNN)
     endforeach()
 endif(NOT WITH_MKLDNN)
 
-# The nGraph tests are skiped when the nGraph flag is OFF
-if(NOT WITH_NGRAPH)
-    foreach(src ${TEST_OPS})
-        if(${src} MATCHES ".*_ngraph_op$")
-            list(REMOVE_ITEM TEST_OPS ${src})
-        endif()
-    endforeach()
-endif(NOT WITH_NGRAPH)
-
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
     list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -71,18 +62,10 @@ function(py_test_modules TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    if(${TARGET_NAME} MATCHES ".*_ngraph_op$")
-        set(use_ngraph "true")
-        add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env FLAGS_use_ngraph=${use_ngraph} PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    else() 
-        add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    endif() 
+    add_test(NAME ${TARGET_NAME}
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
@@ -128,3 +111,5 @@ py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executo
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
 endif()
+
+add_subdirectory(ngraph)
