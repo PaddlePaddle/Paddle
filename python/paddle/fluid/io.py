@@ -425,7 +425,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                                        main_program=None)
     """
 
-    if main_program._is_distributed:
+    if main_program and main_program._is_distributed:
         _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
 
@@ -606,7 +606,11 @@ def load_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def load_persistables(executor, dirname, main_program=None, filename=None):
+def load_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      endpoint=None):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then trys to load these variables from the folder
@@ -640,6 +644,11 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
             fluid.io.load_persistables(executor=exe, dirname=param_path,
                                        main_program=None)
     """
+
+    if main_program and main_program._is_distributed:
+        _load_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program)
+
     load_vars(
         executor,
         dirname=dirname,
@@ -985,52 +994,6 @@ def load_inference_model(dirname,
     return [program, feed_target_names, fetch_targets]
 
 
-def _save_lookup_tables_by_notify(executor, dirname, lookup_table,
-                                  pserver_endpoints):
-    """
-    This function will send checkpoint notify message from Trainer 0
-    to all the pservers.
-    The checkpoint notify message contains lookup table name,
-    the absolute path on pserver to save lookup_table.
-
-    Args:
-        executor(Executor): The executor to run for send checkpoint notify.
-        dirname(str): The folder where to save.
-        lookup_table(string): the lookup table name, when use distribute
-            lookup table, we can get lookup table name by DistributeTranspiler.
-            table_name
-        ps_endpoint_list(list): the parameter server ip:port list.
-            when use distribute lookup table, we can get ps_endpoint_list by
-            distribute arguments.
-    Return:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
-            table_name = "share_w"
-            ps_endpoints = ["127.0.0.1:6000","127.0.0.1:6001"]
-
-            _save_pserver_vars_by_notify(executor=exe,
-                    dirname=param_path, lookup_table=table_name,
-                    pserver_endpoints=ps_endpoints)
-    """
-
-    pserver_notify_program = Program()
-    pserver_notify_block = pserver_notify_program.global_block()
-
-    attrs = {}
-    attrs['epmap'] = pserver_endpoints
-    attrs['dir'] = dirname
-    attrs['lookup_table'] = lookup_table
-
-    pserver_notify_block.append_op(
-        type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
-    executor.run(pserver_notify_program)
-
-
 def _endpoints_replacement(program, endpoints):
     ENDPOINT_MAP = "epmap"
     for op in program.global_block().ops:
@@ -1101,54 +1064,3 @@ def get_parameter_value_by_name(name, executor, program=None):
         program = default_main_program()
     var = program.global_block().var(name)
     return get_parameter_value(var, executor)
-
-
-def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
-    if not slice_vars_and_attrs:
-        return
-
-    load_prog = Program()
-    load_block = load_prog.global_block()
-    need_delete_vars = []
-
-    for var_tuple in slice_vars_and_attrs:
-        orig_var = var_tuple[0]
-        start = var_tuple[1]
-        slice_var = var_tuple[2]
-        end = start + slice_var.shape[0]
-
-        orig_var_name = orig_var.name
-        orig_var.name = "{}.origin".format(orig_var_name)
-
-        clone_orig_var = load_block.create_var(
-            name=orig_var.name,
-            type=orig_var.type,
-            shape=orig_var.shape,
-            dtype=orig_var.dtype,
-            persistable=True)
-
-        clone_slice_var = load_block.create_var(
-            name=slice_var.name,
-            type=slice_var.type,
-            shape=slice_var.shape,
-            dtype=slice_var.dtype,
-            persistable=True)
-
-        load_block.append_op(
-            type='load',
-            inputs={},
-            outputs={'Out': [clone_orig_var]},
-            attrs={'file_path': os.path.join(dirname, orig_var_name)})
-        load_block.append_op(
-            type="slice",
-            inputs={'Input': clone_orig_var},
-            outputs={'Out': clone_slice_var},
-            attrs={'axes': [0],
-                   'starts': [start],
-                   'ends': [end]})
-        need_delete_vars.append(clone_orig_var)
-
-    load_block.append_op(
-        type='delete_var',
-        inputs={'X': need_delete_vars}, )
-    executor.run(load_prog)

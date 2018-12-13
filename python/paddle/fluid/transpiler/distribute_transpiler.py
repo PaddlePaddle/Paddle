@@ -693,10 +693,6 @@ class DistributeTranspiler(object):
 
         self._get_distributed_optimizer_vars()
         self.origin_program._slice_vars_overview = self.vars_overview
-        vars_str = self.vars_overview.overview()
-        print("\n ## ## ## ##\n")
-        print(vars_str)
-        print("\n ## ## ## ##\n")
 
     def get_trainer_program(self, wait_port=True):
         """
