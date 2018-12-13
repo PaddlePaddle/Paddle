@@ -1216,9 +1216,13 @@ to transpile() call.")
 
                     if new_shape == dist_var.slice.shape:
                         splited_var = VarStruct(
-                            origin_var.name, origin_var.type, new_shape,
-                            origin_var.lod_level, origin_var.dtype,
-                            origin_var.persistable)
+                            name=origin_var.name,
+                            shape=new_shape,
+                            dtype=origin_var.dtype,
+                            type=origin_var.type,
+                            lod_level=origin_var.lod_level,
+                            persistable=origin_var.persistable)
+
                         self.vars_overview.add_distributed_var(
                             origin_var=origin_var,
                             slice_var=splited_var,

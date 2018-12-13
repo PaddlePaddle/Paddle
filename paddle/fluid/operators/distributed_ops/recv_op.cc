@@ -51,6 +51,8 @@ class RecvOp : public framework::OperatorBase {
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
       std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+      VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+              << varname;
       rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname,
                                              outs[i], with_barrier));
     }

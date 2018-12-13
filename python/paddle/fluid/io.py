@@ -276,30 +276,31 @@ def _save_distributed_persistables(executor, dirname, main_program):
             endpoints = [""] * len(optimizers)
 
             for idx, optimizer in enumerate(optimizers):
-                origin_var = optimizer.origin
-                slice_var = optimizer.slice
+                origin = optimizer.origin
+                slice = optimizer.slice
                 is_slice = optimizer.is_slice
                 block_id = optimizer.block_id
                 endpoint = optimizer.endpoint
 
                 if idx == 0:
                     origin_var = block.create_var(
-                        name=origin_var.name,
-                        type=origin_var.type,
-                        shape=origin_var.shape,
-                        dtype=origin_var.dtype,
-                        persistable=origin_var.persistable)
+                        name=origin.name,
+                        type=origin.type,
+                        shape=origin.shape,
+                        dtype=origin.dtype,
+                        persistable=origin.persistable)
 
                 slice_var = block.create_var(
-                    name="{}.slice.{}".format(slice_var.name, idx),
-                    type=slice_var.type,
-                    shape=slice_var.shape,
-                    dtype=slice_var.dtype,
-                    persistable=slice_var.persistable)
+                    name="{}.slice.{}".format(slice.name, idx),
+                    type=slice.type,
+                    shape=slice.shape,
+                    dtype=slice.dtype,
+                    persistable=slice.persistable)
 
-                slice_vars[block_id] = slice_var
-                slice_var_names[block_id] = slice_var.name
-                endpoints[block_id] = endpoint
+                index = block_id if is_slice else idx
+                slice_vars[index] = slice_var
+                slice_var_names[index] = slice.name
+                endpoints[index] = endpoint
 
             if is_slice:
                 block.append_op(
@@ -355,7 +356,11 @@ def _save_distributed_persistables(executor, dirname, main_program):
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
-            return True
+            if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                        var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                        var.desc.type() == core.VarDesc.VarType.READER:
+                return False
+            return var.persistable
 
         return is_valid
 
@@ -648,13 +653,13 @@ def load_persistables(executor,
     if main_program and main_program._is_distributed:
         _load_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
-
-    load_vars(
-        executor,
-        dirname=dirname,
-        main_program=main_program,
-        predicate=is_persistable,
-        filename=filename)
+    else:
+        load_vars(
+            executor,
+            dirname=dirname,
+            main_program=main_program,
+            predicate=is_persistable,
+            filename=filename)
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
