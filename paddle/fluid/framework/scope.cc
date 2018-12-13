@@ -19,7 +19,6 @@ limitations under the License. */
 #include <set>
 #include <unordered_set>
 #include "glog/logging.h"
-#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(benchmark, false,
@@ -43,13 +42,15 @@ DEFINE_double(
 // the mutex will cause serious performance issue.
 // So the mutex is disabled when `ON_INFER`.
 #ifdef PADDLE_ON_INFERENCE
-#define SCOPE_READER_LOCK
-#define SCOPE_WRITER_LOCK
+#define SCOPE_KIDS_READER_LOCK
+#define SCOPE_KIDS_WRITER_LOCK
+#define SCOPE_VARS_READER_LOCK
+#define SCOPE_VARS_WRITER_LOCK
 #else
-// TODO(minqiyang): use rwlock in all platforms, now rwlock is a fake one
-// in _WIN32 platform
-#define SCOPE_READER_LOCK RWLockGuard(&rw_lock_, RWLockGuard::Status::kRDLock);
-#define SCOPE_WRITER_LOCK RWLockGuard(&rw_lock_, RWLockGuard::Status::kWRLock);
+#define SCOPE_KIDS_READER_LOCK AutoRDLock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK AutoWRLock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK AutoRDLock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK AutoWRLock(&vars_lock_);
 #endif
 
 namespace paddle {
@@ -65,64 +66,69 @@ int64_t GetEagerDeletionThreshold() {
 Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
-  SCOPE_WRITER_LOCK
-  kids_.push_back(new Scope(this));
-  return *kids_.back();
+  Scope* child = new Scope(this);
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    kids_.push_back(child);
+  }
+  return *child;
 }
 
 Variable* Scope::Var(const std::string& name) {
-  SCOPE_WRITER_LOCK
+  SCOPE_VARS_WRITER_LOCK
   return VarInternal(name);
 }
 
 Variable* Scope::Var(std::string* name) {
-  SCOPE_WRITER_LOCK
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
   if (name != nullptr) {
     *name = new_name;
   }
+  SCOPE_VARS_WRITER_LOCK
   return VarInternal(new_name);
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
-  SCOPE_READER_LOCK
+  SCOPE_VARS_READER_LOCK
   return FindVarInternal(name);
 }
 
 Variable* Scope::FindLocalVar(const std::string& name) const {
-  SCOPE_READER_LOCK
+  SCOPE_VARS_READER_LOCK
   return FindVarLocally(name);
 }
 
 const Scope* Scope::FindScope(const Variable* var) const {
-  SCOPE_READER_LOCK
+  SCOPE_VARS_READER_LOCK
   return FindScopeInternal(var);
 }
 
 void Scope::DropKids() {
-  SCOPE_WRITER_LOCK
+  SCOPE_KIDS_WRITER_LOCK
   for (Scope* s : kids_) delete s;
   kids_.clear();
 }
 
 bool Scope::HasKid(const Scope* scope) const {
-  SCOPE_READER_LOCK
+  SCOPE_KIDS_READER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   return it != this->kids_.end();
 }
 
 std::vector<std::string> Scope::LocalVarNames() const {
-  SCOPE_READER_LOCK
   std::vector<std::string> known_vars;
-  known_vars.reserve(this->vars_.size());
-  for (auto& p : vars_) {
-    known_vars.emplace_back(p.first);
+  {
+    SCOPE_VARS_READER_LOCK
+    known_vars.reserve(this->vars_.size());
+    for (auto& p : vars_) {
+      known_vars.emplace_back(p.first);
+    }
   }
   return known_vars;
 }
 
 void Scope::DeleteScope(Scope* scope) const {
-  SCOPE_WRITER_LOCK
+  SCOPE_KIDS_WRITER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "%p Cannot find %p as kid scope",
                  this, scope);
@@ -136,8 +142,8 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  SCOPE_WRITER_LOCK
   std::set<std::string> var_set(var_names.begin(), var_names.end());
+  SCOPE_VARS_WRITER_LOCK
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
       it = vars_.erase(it);
@@ -149,12 +155,12 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
-  SCOPE_WRITER_LOCK
+  SCOPE_VARS_WRITER_LOCK
   RenameInternal(origin_name, new_name);
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
-  SCOPE_WRITER_LOCK
+  SCOPE_VARS_WRITER_LOCK
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
   RenameInternal(origin_name, new_name);
   return new_name;
@@ -188,7 +194,7 @@ void Scope::RenameInternal(const std::string& origin_name,
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE(new_it == vars_.end(),
                  "The variable with name %s is already in the scope", new_name);
-  vars_[new_name].reset(origin_it->second.release());
+  vars_[new_name].reset(origin_it.value().release());
   vars_.erase(origin_it);
 }
 

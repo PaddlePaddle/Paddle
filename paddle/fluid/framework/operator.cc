@@ -163,11 +163,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
-  if (inputs_.find(name) != inputs_.end()) {
-    return true;
-  } else {
-    return false;
-  }
+  return inputs_.find(name) != inputs_.end();
 }
 
 std::string OperatorBase::Input(const std::string& name) const {

@@ -14,10 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <list>
+#include <memory>
 #include <string>
-#include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include <tsl/robin_map.h>  // NOLINT
 
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
@@ -94,7 +98,11 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
  protected:
-  mutable std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
+  mutable tsl::robin_map<
+      std::string, std::unique_ptr<Variable>, std::hash<std::string>,
+      std::equal_to<std::string>,
+      std::allocator<std::pair<std::string, std::unique_ptr<Variable>>>, true>
+      vars_;
 
  private:
   // Call Scope::NewScope for a sub-scope.
@@ -123,7 +131,8 @@ class Scope {
   DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
-  mutable RWLock rw_lock_;
+  mutable RWLock kids_lock_;
+  mutable RWLock vars_lock_;
 };
 
 // Generate some debug string about the inherience structure of scope, quite
