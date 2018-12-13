@@ -389,10 +389,14 @@ def _save_distributed_persistables(executor, dirname, main_program):
         filter(__exclude_vars(exclude_var_names), main_program.list_vars()))
     save_vars(
         executor, main_program=main_program, dirname=dirname, vars=local_vars)
-    __save_optimizers(executor, dirname, optimizer_map)
-    __save_distributed_lookup_tables(executor, dirname,
-                                     main_program._distributed_lookup_table,
-                                     main_program.main_program._endpoints)
+
+    if main_program._is_chief:
+        if optimizer_map:
+            __save_optimizers(executor, dirname, optimizer_map)
+        if main_program._distributed_lookup_table:
+            __save_distributed_lookup_tables(
+                executor, dirname, main_program._distributed_lookup_table,
+                main_program._endpoints)
 
 
 def save_persistables(executor, dirname, main_program=None, filename=None):
