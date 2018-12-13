@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
@@ -752,7 +753,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  if (platform::IsProfileEnabled()) {
+    std::string ename = string::Sprintf(
+        "%s/%s", Type(),
+        Attr<std::string>(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
+    size_t flops = this->EstimateFlops(&infer_shape_ctx);
+    platform::RecordEvent record_event(ename, pool.Get(place), flops);
+
+    kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  } else {
+    kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.

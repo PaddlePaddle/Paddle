@@ -54,7 +54,7 @@ using InferVarTypeFN =
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
 
-using EstimateFlopsFN = std::function<void(InferShapeContext*)>;
+using EstimateFlopsFN = std::function<size_t(InferShapeContext*)>;
 
 }  // namespace framework
 }  // namespace paddle

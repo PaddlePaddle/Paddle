@@ -348,6 +348,10 @@ class OperatorWithKernel : public OperatorBase {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
 
+  virtual size_t EstimateFlops(InferShapeContext* ctx) const {
+    return OpInfoMap::Instance().Get(Type()).estimate_flops_(ctx);
+  }
+
  protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
   virtual OpKernelType GetKernelTypeForVar(

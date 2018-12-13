@@ -52,6 +52,20 @@ DDim InferShapeContext::GetInputsElementDim(const std::string &name,
   return this->GetDim(names[idx]);
 }
 
+DDim InferShapeContext::GetOutputDim(const std::string &name) const {
+  const std::vector<std::string> &arg_names = Outputs(name);
+  PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
+                    "Input(%s) should hold one element, but now it holds %d",
+                    name, arg_names.size());
+  return this->GetDim(arg_names[0]);
+}
+
+std::vector<DDim> InferShapeContext::GetOutputsDim(
+    const std::string &name) const {
+  const std::vector<std::string> &arg_names = Outputs(name);
+  return GetDims(arg_names);
+}
+
 void InferShapeContext::SetOutputDim(const std::string &name, const DDim &dim) {
   auto &arg_names = Outputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
