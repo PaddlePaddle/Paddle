@@ -45,7 +45,8 @@ inline std::default_random_engine& local_random_engine() {
         engine_wrapper_t() {
           static std::atomic<uint64_t> x(0);
           std::seed_seq sseq = {x++, x++, x++,
-                                static_cast<uint64_t>(current_realtime() * 1000)};
+                                static_cast<uint64_t>(
+                                    current_realtime() * 1000)};
           engine.seed(sseq);
         }
     };
@@ -77,6 +78,7 @@ class AsyncExecutor {
   void SaveModel(const std::string& path);
   void InitParamConfig();
 #endif
+
  private:
   void CreateThreads(ExecutorThreadWorker* worker,
                      const ProgramDesc& main_program,
@@ -87,6 +89,7 @@ class AsyncExecutor {
 #ifdef PADDLE_WITH_PSLIB
   void PrepareDenseThread(const std::string& mode);
 #endif
+
  public:
 #ifdef PADDLE_WITH_PSLIB
   std::shared_ptr<paddle::distributed::PSlib>  _pslib_ptr;

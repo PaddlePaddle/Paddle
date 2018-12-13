@@ -102,139 +102,139 @@ void AsyncExecutor::GatherServers(
 }
 
 void AsyncExecutor::InitParamConfig() {
-    for (int i = 0; i <
-        _pslib_ptr->get_param()->server_param().\
-                 downpour_server_param().\
-                 downpour_table_param_size();
-         ++i) {
-        if (_pslib_ptr->get_param()->server_param().\
-            downpour_server_param().downpour_table_param(i).\
-            table_class().find("SparseTable") != -1) {
-            _param_config.fea_dim = _pslib_ptr->get_param()->server_param().\
-                                    downpour_server_param().\
-                                    downpour_table_param(i).\
-                                    accessor().fea_dim();
-            break;
-        }
+  for (int i = 0; i <
+               _pslib_ptr->get_param()->server_param(). \
+               downpour_server_param().                 \
+               downpour_table_param_size();
+       ++i) {
+    if (_pslib_ptr->get_param()->server_param().                \
+        downpour_server_param().downpour_table_param(i).        \
+        table_class().find("SparseTable") != -1) {
+      _param_config.fea_dim = _pslib_ptr->get_param()->server_param().  \
+                              downpour_server_param().                  \
+                              downpour_table_param(i).                  \
+                              accessor().fea_dim();
+      break;
     }
-    _param_config.slot_dim = _param_config.fea_dim - 2;
-    _param_config.tmp_push_dense_wait_times = static_cast<int32_t>(
-        _pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
-    _param_config.tmp_push_sparse_wait_times = static_cast<int32_t>(
-        _pslib_ptr->get_param()->trainer_param().push_sparse_per_batch());
-
-    for (auto t = 0u;
-         t < _pslib_ptr->get_param()->trainer_param().skip_op_size();
-         ++t) {
-        _param_config.skip_op.push_back(
-            _pslib_ptr->get_param()->trainer_param().skip_op(t));
+  }
+  _param_config.slot_dim = _param_config.fea_dim - 2;
+  _param_config.tmp_push_dense_wait_times = static_cast<int32_t>(
+      _pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
+  _param_config.tmp_push_sparse_wait_times = static_cast<int32_t>(
+      _pslib_ptr->get_param()->trainer_param().push_sparse_per_batch());
+  
+  for (auto t = 0u;
+       t < _pslib_ptr->get_param()->trainer_param().skip_op_size();
+       ++t) {
+    _param_config.skip_op.push_back(
+        _pslib_ptr->get_param()->trainer_param().skip_op(t));
+  }
+  
+  for (auto t = 0u;
+       t < _pslib_ptr->get_param()->trainer_param().sparse_table_size();
+       ++t) {
+    auto& table = _pslib_ptr->get_param()->trainer_param().sparse_table(t);
+    std::vector<std::string> tmp_sparse_variable_name;
+    for (int i = 0u; i < table.slot_value_size(); ++i) {
+      tmp_sparse_variable_name.push_back(table.slot_value(i));
+      _param_config.slot_alias_to_table[table.slot_key(i)] =
+          table.table_id();
     }
-
-    for (auto t = 0u;
-         t < _pslib_ptr->get_param()->trainer_param().sparse_table_size();
-         ++t) {
-        auto& table = _pslib_ptr->get_param()->trainer_param().sparse_table(t);
-        std::vector<std::string> tmp_sparse_variable_name;
-        for (int i = 0u; i < table.slot_value_size(); ++i) {
-            tmp_sparse_variable_name.push_back(table.slot_value(i));
-            _param_config.slot_alias_to_table[table.slot_key(i)] =
-                table.table_id();
-        }
-        std::vector<std::string> tmp_sparse_gradient_variable_name;
-        for (auto i = 0u; i < table.slot_gradient_size(); ++i) {
-            tmp_sparse_gradient_variable_name.push_back(
-                    table.slot_gradient(i));
-        }
-        _param_config.slot_input_vec[table.table_id()] =
-            std::move(tmp_sparse_variable_name);
-        _param_config.gradient_var[table.table_id()] =
-            std::move(tmp_sparse_gradient_variable_name);
-        _param_config.sparse_table_id.push_back(table.table_id());
+    std::vector<std::string> tmp_sparse_gradient_variable_name;
+    for (auto i = 0u; i < table.slot_gradient_size(); ++i) {
+      tmp_sparse_gradient_variable_name.push_back(
+          table.slot_gradient(i));
     }
-
-    for (auto t = 0u;
-         t < _pslib_ptr->get_param()->trainer_param().dense_table_size();
-         ++t) {
-        auto& table = _pslib_ptr->get_param()->trainer_param().dense_table(t);
-        std::vector<std::string> tmp_dense_variable_name;
-        for (int i = 0u; i < table.dense_variable_name_size(); ++i) {
-            tmp_dense_variable_name.push_back(table.dense_variable_name(i));
-        }
-        std::vector<std::string> tmp_dense_gradient_variable_name;
-        for (auto i = 0u; i < table.dense_gradient_variable_name_size(); ++i) {
-            tmp_dense_gradient_variable_name.push_back(
-                    table.dense_gradient_variable_name(i));
-        }
-        _param_config.dense_variable_name[table.table_id()] =
-            std::move(tmp_dense_variable_name);
-        _param_config.dense_gradient_variable_name[table.table_id()] =
-            std::move(tmp_dense_gradient_variable_name);
-        _param_config.dense_table_id.push_back(table.table_id());
-        _param_config.dense_table_size.push_back(table.fea_dim());
+    _param_config.slot_input_vec[table.table_id()] =
+        std::move(tmp_sparse_variable_name);
+    _param_config.gradient_var[table.table_id()] =
+        std::move(tmp_sparse_gradient_variable_name);
+    _param_config.sparse_table_id.push_back(table.table_id());
+  }
+  
+  for (auto t = 0u;
+       t < _pslib_ptr->get_param()->trainer_param().dense_table_size();
+       ++t) {
+    auto& table = _pslib_ptr->get_param()->trainer_param().dense_table(t);
+    std::vector<std::string> tmp_dense_variable_name;
+    for (int i = 0u; i < table.dense_variable_name_size(); ++i) {
+      tmp_dense_variable_name.push_back(table.dense_variable_name(i));
     }
+    std::vector<std::string> tmp_dense_gradient_variable_name;
+    for (auto i = 0u; i < table.dense_gradient_variable_name_size(); ++i) {
+      tmp_dense_gradient_variable_name.push_back(
+          table.dense_gradient_variable_name(i));
+    }
+    _param_config.dense_variable_name[table.table_id()] =
+        std::move(tmp_dense_variable_name);
+    _param_config.dense_gradient_variable_name[table.table_id()] =
+        std::move(tmp_dense_gradient_variable_name);
+    _param_config.dense_table_id.push_back(table.table_id());
+    _param_config.dense_table_size.push_back(table.fea_dim());
+  }
 }
 
 void AsyncExecutor::InitModel() {
-    for (auto table_id : _param_config.dense_table_id) {
-        std::vector<paddle::ps::Region> regions;
-        for (auto& t : _param_config.dense_variable_name[table_id]) {
-            Variable* var = root_scope_->FindVar(t);
-            CHECK(var != nullptr) << "var[" << t << "] not found";
-            LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  for (auto table_id : _param_config.dense_table_id) {
+    std::vector<paddle::ps::Region> regions;
+    for (auto& t : _param_config.dense_variable_name[table_id]) {
+      Variable* var = root_scope_->FindVar(t);
+      CHECK(var != nullptr) << "var[" << t << "] not found";
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      
+      float* g = tensor->data<float>();
+      CHECK(g != nullptr) << "var[" << t << "] value not initialized";
 
-            float* g = tensor->data<float>();
-            CHECK(g != nullptr) << "var[" << t << "] value not initialized";
-
-            float init_range = 0.2;
-            int rown = tensor->dims()[0];
-            init_range /= sqrt(rown);
-
-            std::normal_distribution<float> ndistr(0.0, 1.0);
-            for (auto i = 0u; i < tensor->numel(); ++i) {
-                g[i] = ndistr(local_random_engine()) * init_range;
-            }
-
-            paddle::ps::Region reg(g, tensor->numel());
-            regions.emplace_back(std::move(reg));
-        }
-
-        auto push_status =
-            _pslib_ptr->_worker_ptr->push_dense_param(
-                regions.data(), regions.size(), table_id);
-        push_status.wait();
-        auto status = push_status.get();
-        if (status != 0) {
-            LOG(FATAL) << "push dense param failed, status[" << status << "]";
-            exit(-1);
-        }
+      float init_range = 0.2;
+      int rown = tensor->dims()[0];
+      init_range /= sqrt(rown);
+      
+      std::normal_distribution<float> ndistr(0.0, 1.0);
+      for (auto i = 0u; i < tensor->numel(); ++i) {
+        g[i] = ndistr(local_random_engine()) * init_range;
+      }
+      
+      paddle::ps::Region reg(g, tensor->numel());
+      regions.emplace_back(std::move(reg));
     }
+    
+    auto push_status =
+        _pslib_ptr->_worker_ptr->push_dense_param(
+            regions.data(), regions.size(), table_id);
+    push_status.wait();
+    auto status = push_status.get();
+    if (status != 0) {
+      LOG(FATAL) << "push dense param failed, status[" << status << "]";
+      exit(-1);
+    }
+  }
 }
 
 void AsyncExecutor::SaveModel(const std::string& path) {
-    auto ret = _pslib_ptr->_worker_ptr->flush();
-    ret.wait();
-    ret = _pslib_ptr->_worker_ptr->save(path, 0);
-    ret.wait();
-    int32_t feasign_cnt = ret.get();
-    if (feasign_cnt == -1) {  // (colourful-tree) TODO should be feasign_cnt < 0
-        LOG(FATAL) << "save model failed";
-        exit(-1);
-    }
+  auto ret = _pslib_ptr->_worker_ptr->flush();
+  ret.wait();
+  ret = _pslib_ptr->_worker_ptr->save(path, 0);
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {  // (colourful-tree) TODO should be feasign_cnt < 0
+    LOG(FATAL) << "save model failed";
+    exit(-1);
+  }
 }
 
 void AsyncExecutor::PrepareDenseThread(const std::string& mode) {
-    if (mode == "mpi") {
-        DensePullThreadParam param;
-        param.ps_client = _pslib_ptr->_worker_ptr;;
-        param.threshold = 1;
-        param.training_thread_num = actual_thread_num;
-        param.root_scope = root_scope_;
-        param.dense_params = &_param_config.dense_variable_name;
-
-        _pull_dense_thread = std::shared_ptr<DensePullThread>(
-            new DensePullThread(param));
-        _pull_dense_thread->start();
-    }
+  if (mode == "mpi") {
+    DensePullThreadParam param;
+    param.ps_client = _pslib_ptr->_worker_ptr;;
+    param.threshold = 1;
+    param.training_thread_num = actual_thread_num;
+    param.root_scope = root_scope_;
+    param.dense_params = &_param_config.dense_variable_name;
+    
+    _pull_dense_thread = std::shared_ptr<DensePullThread>(
+        new DensePullThread(param));
+    _pull_dense_thread->start();
+  }
 }
 #endif
 

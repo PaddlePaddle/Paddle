@@ -33,87 +33,87 @@ namespace framework {
 
 #ifdef PADDLE_WITH_PSLIB
 int DensePullThread::start() {
-    _running = true;
-    _t = std::thread(&DensePullThread::run, this);
-    return 0;
+  _running = true;
+  _t = std::thread(&DensePullThread::run, this);
+  return 0;
 }
 
 void DensePullThread::run() {
-    while (_running) {
-        _pull_dense_status.resize(0);
-        for (auto& t : _dense_variable_name) {
-            if (check_update_param(t.first)) {
-                auto status = pull_dense(t.first);
-                _pull_dense_status.emplace_back(std::move(status));
-                reset_thread_version(t.first);
-            }
-        }
-        if (_pull_dense_status.size() != 0) {
-            wait_all();
-        }
-
-        usleep(_sleep_time_ms * 1000);
+  while (_running) {
+    _pull_dense_status.resize(0);
+    for (auto& t : _dense_variable_name) {
+      if (check_update_param(t.first)) {
+        auto status = pull_dense(t.first);
+        _pull_dense_status.emplace_back(std::move(status));
+        reset_thread_version(t.first);
+      }
     }
+    if (_pull_dense_status.size() != 0) {
+      wait_all();
+    }
+    
+    usleep(_sleep_time_ms * 1000);
+  }
 }
 bool DensePullThread::check_update_param(uint64_t table_id) {
-    {
-        std::lock_guard<std::mutex> lock(_mutex_for_version);
-        auto& version = _training_versions[table_id];
-        _current_version[table_id] =
-            *(std::min_element(version.begin(), version.end()));
-    }
-    if (_current_version[table_id] - _last_versions[table_id] < _threshold) {
-        return false;
-    }
-    return true;
+  {
+    std::lock_guard<std::mutex> lock(_mutex_for_version);
+    auto& version = _training_versions[table_id];
+    _current_version[table_id] =
+        *(std::min_element(version.begin(), version.end()));
+  }
+  if (_current_version[table_id] - _last_versions[table_id] < _threshold) {
+    return false;
+  }
+  return true;
 }
 
 void DensePullThread::reset_thread_version(uint64_t table_id) {
-    std::lock_guard<std::mutex> lock(_mutex_for_version);
-    _last_versions[table_id] = _current_version[table_id];
+  std::lock_guard<std::mutex> lock(_mutex_for_version);
+  _last_versions[table_id] = _current_version[table_id];
 }
 std::future<int32_t> DensePullThread::pull_dense(uint64_t table_id) {
-    auto& regions = _regions[table_id];
-    regions.clear();
-    auto& variables = _dense_variable_name[table_id];
-    regions.resize(variables.size());
-
-    for (auto i = 0u; i < variables.size(); ++i) {
-        auto& t = variables[i];
-        Variable* var = _root_scope->FindVar(t);
-        LoDTensor* tensor = var->GetMutable<LoDTensor>();
-
-        float* w = tensor->data<float>();
-        paddle::ps::Region reg(w, tensor->numel());
-        regions[i] = std::move(reg);
-    }
-    return _ps_client->pull_dense(regions.data(), regions.size(), table_id);
+  auto& regions = _regions[table_id];
+  regions.clear();
+  auto& variables = _dense_variable_name[table_id];
+  regions.resize(variables.size());
+  
+  for (auto i = 0u; i < variables.size(); ++i) {
+    auto& t = variables[i];
+    Variable* var = _root_scope->FindVar(t);
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    
+    float* w = tensor->data<float>();
+    paddle::ps::Region reg(w, tensor->numel());
+    regions[i] = std::move(reg);
+  }
+  return _ps_client->pull_dense(regions.data(), regions.size(), table_id);
 }
 
 void DensePullThread::wait_all() {
-    for (auto& t : _pull_dense_status) {
-        t.wait();
-        auto status = t.get();
-        if (status != 0) {
-          LOG(WARNING) << "pull dense failed times:" <<
-              ++_pull_dense_fail_times;
-        }
+  for (auto& t : _pull_dense_status) {
+    t.wait();
+    auto status = t.get();
+    if (status != 0) {
+      LOG(WARNING) << "pull dense failed times:" <<
+          ++_pull_dense_fail_times;
     }
-
-    if (_pull_dense_fail_times > 20) {
-        LOG(FATAL) << "pull dense failed times more than 20 times";
-        exit(-1);
-    }
-
-    _pull_dense_status.resize(0);
+  }
+  
+  if (_pull_dense_fail_times > 20) {
+    LOG(FATAL) << "pull dense failed times more than 20 times";
+    exit(-1);
+  }
+  
+  _pull_dense_status.resize(0);
 }
 
 void DensePullThread::increase_thread_version(
     int thread_id, uint64_t table_id) {
-    std::lock_guard<std::mutex> lock(_mutex_for_version);
-    _training_versions[table_id][thread_id]++;
+  std::lock_guard<std::mutex> lock(_mutex_for_version);
+  _training_versions[table_id][thread_id]++;
 }
-#endif    
+#endif
 
 void ExecutorThreadWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
@@ -336,56 +336,56 @@ void AsyncExecutorThreadWorker::TrainFiles() {
 
 void AsyncExecutorThreadWorker::SetPSlibPtr(
     std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {
-    _pslib_ptr = pslib_ptr;
+  _pslib_ptr = pslib_ptr;
 }
 void AsyncExecutorThreadWorker::SetPullDenseThread(
     std::shared_ptr<DensePullThread> dpt) {
-    _pull_dense_thread = dpt;
+  _pull_dense_thread = dpt;
 }
 void AsyncExecutorThreadWorker::TrainOneNetwork() {
-    PrepareParams();
-    
-    for (auto& op : ops_) {
-        if (op->Type().find("sgd") != std::string::npos) {
-            continue;
-        }
-        bool need_skip = false;
-        for (auto t = 0u; t < _param_config->skip_op.size(); ++t) {
-            if (op->Type().find(_param_config->skip_op[t]) !=
-                std::string::npos) {
-                need_skip = true;
-                break;
-            }
-        }
-        if (!need_skip) {
-            op->Run(*thread_scope_, place_);
-        }
+  PrepareParams();
+  
+  for (auto& op : ops_) {
+    if (op->Type().find("sgd") != std::string::npos) {
+      continue;
     }
-    UpdateParams();
+    bool need_skip = false;
+    for (auto t = 0u; t < _param_config->skip_op.size(); ++t) {
+      if (op->Type().find(_param_config->skip_op[t]) !=
+          std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (!need_skip) {
+      op->Run(*thread_scope_, place_);
+    }
+  }
+  UpdateParams();
 }
 
 void AsyncExecutorThreadWorker::SetParamConfig(
     AsyncWorkerParamConfig* param_config) {
-    _param_config = param_config;
+  _param_config = param_config;
 }
 
 void AsyncExecutorThreadWorker::PrepareParams() {
-    for (auto table_id : _param_config->sparse_table_id) {
-        PullSparse(table_id);
-        for (auto& t : _pull_sparse_status) {
-            t.wait();
-            auto status = t.get();
-            if (status != 0) {
-                LOG(ERROR) << "pull sparse failed, status[" << status << "]";
-                exit(-1);
-            }
-        }
+  for (auto table_id : _param_config->sparse_table_id) {
+    PullSparse(table_id);
+    for (auto& t : _pull_sparse_status) {
+      t.wait();
+      auto status = t.get();
+      if (status != 0) {
+        LOG(ERROR) << "pull sparse failed, status[" << status << "]";
+        exit(-1);
+      }
     }
-    _pull_sparse_status.resize(0);
+  }
+  _pull_sparse_status.resize(0);
 
-    for (auto table_id : _param_config->sparse_table_id) {
-        FillSparse(table_id);
-    }
+  for (auto table_id : _param_config->sparse_table_id) {
+    FillSparse(table_id);
+  }
 }
 
 void AsyncExecutorThreadWorker::UpdateParams() {
@@ -426,21 +426,20 @@ void AsyncExecutorThreadWorker::UpdateParams() {
 }
 
 void AsyncExecutorThreadWorker::PushDense(int table_id) {
-    std::vector<paddle::ps::Region> regions;
-    for (auto& t : _param_config->dense_gradient_variable_name[table_id]) {
-        Variable* var = thread_scope_->FindVar(t);
-        CHECK(var != nullptr) << "var[" << t << "] not found";
-        LoDTensor* tensor = var->GetMutable<LoDTensor>();
-        int count = tensor->numel();
-        float* g = tensor->data<float>();
-        paddle::ps::Region reg(g, count);
-        regions.emplace_back(std::move(reg));
-    }
-
-    auto status = _pslib_ptr->_worker_ptr->push_dense(
-        regions.data(), regions.size(), table_id);
-    _push_dense_status.push_back(std::move(status));
-
+  std::vector<paddle::ps::Region> regions;
+  for (auto& t : _param_config->dense_gradient_variable_name[table_id]) {
+    Variable* var = thread_scope_->FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    int count = tensor->numel();
+    float* g = tensor->data<float>();
+    paddle::ps::Region reg(g, count);
+    regions.emplace_back(std::move(reg));
+  }
+  
+  auto status = _pslib_ptr->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
+  _push_dense_status.push_back(std::move(status));
 }
 
 void AsyncExecutorThreadWorker::PullSparse(int table_id) {
@@ -643,24 +642,24 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
         const std::vector<uint64_t>& features,
         std::vector<std::vector<float>>& push_g,
         int dim) {
-    push_g.resize(features.size() + 1);
-    for (auto& t : push_g) {
-        t.resize(dim);
-    }
+  push_g.resize(features.size() + 1);
+  for (auto& t : push_g) {
+    t.resize(dim);
+  }
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-        const std::vector<uint64_t>& features,
-        std::vector<float*>& push_g,
-        int dim) {
-    if (features.size() > push_g.size()) {
-        push_g.reserve(features.size() + 1);
-        auto size = features.size() - push_g.size() + 1;
-        for (auto i = 0u; i < size; ++i) {
-            float* ptr = new float[dim];
-            push_g.push_back(ptr);
-        }
+    const std::vector<uint64_t>& features,
+    std::vector<float*>& push_g,
+    int dim) {
+  if (features.size() > push_g.size()) {
+    push_g.reserve(features.size() + 1);
+    auto size = features.size() - push_g.size() + 1;
+    for (auto i = 0u; i < size; ++i) {
+      float* ptr = new float[dim];
+      push_g.push_back(ptr);
     }
+  }
 }
 #endif
 
