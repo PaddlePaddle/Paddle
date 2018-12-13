@@ -18,15 +18,15 @@
 namespace paddle {
 namespace platform {
 
-TEST(temporal_allocator, temporal_allocator) {
+TEST(temporary_allocator, temporary_allocator) {
   platform::CPUPlace cpu_place;
-  TemporalAllocator alloc(cpu_place);
+  TemporaryAllocator alloc(cpu_place);
   auto allocation = alloc.Allocate(100);
 
 #ifdef PADDLE_WITH_CUDA
   platform::CUDAPlace gpu_place(0);
-  TemporalAllocator gpu_alloc(gpu_place);
-  auto gpu_allocation = alloc.Allocate(100);
+  TemporaryAllocator gpu_alloc(gpu_place);
+  auto gpu_allocation = gpu_alloc.Allocate(100);
 #endif
 }
 }  //  namespace platform

@@ -44,8 +44,10 @@ class DeviceContext {
  public:
   virtual ~DeviceContext() {}
   virtual Place GetPlace() const = 0;
+
   virtual memory::allocation::AllocationPtr GetTemporlAllocation(
       size_t size) = 0;
+
   virtual void Wait() {}
 };
 
@@ -65,7 +67,7 @@ class CPUDeviceContext : public DeviceContext {
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  platform::TemporayAllocator allocator_{place_};
+  platform::TemporaryAllocator allocator_{place_};
 };
 
 template <typename Place>
@@ -272,7 +274,7 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex cublas_mtx_;
 
-  TemporayAllocator allocator_;
+  TemporaryAllocator allocator_;
 };
 
 template <>

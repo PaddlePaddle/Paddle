@@ -25,14 +25,14 @@ TemporayAllocation::TemporayAllocation(
                  underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)) {}
 
-TemporayAllocator::TemporayAllocator(platform::Place place) : place_(place) {
+TemporaryAllocator::TemporaryAllocator(platform::Place place) : place_(place) {
   mtx_.reset(new std::mutex());
   temp_allocations_.reset(new std::deque<TemporayAllocation *>());
 }
 
-bool TemporayAllocator::IsAllocThreadSafe() const { return true; }
+bool TemporaryAllocator::IsAllocThreadSafe() const { return true; }
 
-void TemporayAllocator::Release() {
+void TemporaryAllocator::Release() {
   std::shared_ptr<std::deque<TemporayAllocation *>> t_allocations;
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
@@ -43,7 +43,7 @@ void TemporayAllocator::Release() {
     delete tmp;
   }
 }
-void TemporayAllocator::Free(alloc::Allocation *allocation) {
+void TemporaryAllocator::Free(alloc::Allocation *allocation) {
   auto temp_allocation = dynamic_cast<TemporayAllocation *>(allocation);
   PADDLE_ENFORCE_NOT_NULL(temp_allocation);
 
@@ -55,7 +55,7 @@ void TemporayAllocator::Free(alloc::Allocation *allocation) {
   delete temp_allocation;
 }
 
-alloc::Allocation *TemporayAllocator::AllocateImpl(
+alloc::Allocation *TemporaryAllocator::AllocateImpl(
     size_t size, alloc::Allocator::Attr attr) {
   auto raw_allocation =
       alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);

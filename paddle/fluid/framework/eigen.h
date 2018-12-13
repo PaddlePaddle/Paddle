@@ -50,6 +50,10 @@ struct EigenTensor {
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
+  static Type From(T* data_ptr, DDim dims) {  // NOLINT
+    return Type(data_ptr, EigenDim<D>::From(dims));
+  }
+
   static Type From(Tensor& tensor) {  // NOLINT
     return From(tensor, tensor.dims_);
   }  // NOLINT

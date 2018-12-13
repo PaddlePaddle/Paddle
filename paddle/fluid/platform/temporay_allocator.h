@@ -29,9 +29,9 @@ class TemporayAllocation : public memory::allocation::Allocation {
   memory::allocation::AllocationPtr underlying_allocation_;
 };
 
-class TemporayAllocator : public memory::allocation::Allocator {
+class TemporaryAllocator : public memory::allocation::Allocator {
  public:
-  explicit TemporayAllocator(platform::Place place);
+  explicit TemporaryAllocator(platform::Place place);
 
   void Release();
 
