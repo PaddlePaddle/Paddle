@@ -31,6 +31,7 @@ namespace paddle {
 namespace framework {
 
 int64_t GetEagerDeletionThreshold();
+bool IsFastEagerDeletionModeEnabled();
 
 class Scope;
 

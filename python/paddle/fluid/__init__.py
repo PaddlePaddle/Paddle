@@ -34,6 +34,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
+from . import imperative
 from . import contrib
 from . import nets
 from . import optimizer
@@ -67,6 +68,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'initializer',
         'layers',
         'contrib',
+        'imperative',
         'transpiler',
         'nets',
         'optimizer',
@@ -124,9 +126,9 @@ def __bootstrap__():
         'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_mkldnn',
         'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'allocator_strategy',
-        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
-        'pe_profile_fname'
+        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')

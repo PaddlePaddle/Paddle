@@ -104,9 +104,9 @@ TEST(IsTestPass, basic) {
       auto* op = node->Op();
       auto op_name = boost::get<std::string>(op->GetAttr("name"));
       if (op_name == "conv3") {
-        ASSERT_FALSE(node->RuntimeHasAttr("is_test"));
+        ASSERT_FALSE(op->HasAttr("is_test"));
       } else {
-        ASSERT_TRUE(node->RuntimeHasAttr("is_test"));
+        ASSERT_TRUE(op->HasAttr("is_test"));
         EXPECT_TRUE(boost::get<bool>(op->GetAttr("is_test")));
       }
     }
