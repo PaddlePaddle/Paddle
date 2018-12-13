@@ -238,9 +238,10 @@ class GRPCClient : public RPCClient {
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
   VarHandlePtr _AsyncGetVar(
       const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& var_name,
-      const std::string& out_varname, const bool with_barrier,
-      const std::string& rpc_path, int64_t time_out = FLAGS_rpc_deadline);
+      const framework::Scope& scope, const std::string& method,
+      const std::string& var_name, const std::string& out_varname,
+      const bool with_barrier, const std::string& rpc_path,
+      int64_t time_out = FLAGS_rpc_deadline);
 
  private:
   grpc::CompletionQueue cq_;

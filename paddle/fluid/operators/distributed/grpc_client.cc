@@ -136,7 +136,7 @@ VarHandlePtr GRPCClient::AsyncGetVarNoBarrier(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& var_name,
     const std::string& out_varname, int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, "GetNoBarrierRPC", var_name, var_name,
+  return _AsyncGetVar(ep, ctx, scope, "GetNoBarrierRPC", var_name, out_varname,
                       false, "/sendrecv.SendRecvService/GetVariableNoBarrier",
                       time_out);
 }

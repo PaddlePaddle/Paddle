@@ -81,6 +81,7 @@ enum class GrpcMethod {
   kGetVariable,
   kPrefetchVariable,
   kCheckpointNotify,
+  kGetVariableNoBarrier,
   kGetMonomerVariable,
   kGetMonomerBarrier,
 };
