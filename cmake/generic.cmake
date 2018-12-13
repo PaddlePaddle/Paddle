@@ -261,7 +261,7 @@ function(cc_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
       # Only deps libmklml.so, not link
-      if(NOT "${cc_library_DEPS};" STREQUAL ";" AND "${cc_library_DEPS}" MATCHES "mklml")
+      if("${cc_library_DEPS};" MATCHES "mklml;")
         list(REMOVE_ITEM cc_library_DEPS mklml)
         if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
           list(APPEND cc_library_DEPS dynload_mklml)
