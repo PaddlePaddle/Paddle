@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "ThreadPool.h"
-#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 namespace paddle {

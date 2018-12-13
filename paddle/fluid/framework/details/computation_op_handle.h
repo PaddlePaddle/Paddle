@@ -29,7 +29,8 @@ namespace framework {
 namespace details {
 struct ComputationOpHandle : public OpHandleBase {
  public:
-  ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place);
+  ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
+                      size_t scope_idx);
 
   std::string Name() const override;
 
@@ -38,6 +39,8 @@ struct ComputationOpHandle : public OpHandleBase {
   const platform::Place &GetPlace() const { return place_; }
 
   void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }
+
+  size_t GetScopeIdx() const { return scope_idx_; }
 
  protected:
   void RunImpl() override;
@@ -48,6 +51,7 @@ struct ComputationOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
   platform::Place place_;
+  size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
 };
 }  // namespace details
