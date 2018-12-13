@@ -76,9 +76,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
                            : nullptr;
 #endif
 
-  if (!fetch_tensors.empty() ||
-      drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    drop_scope_counter_ = 0;
+  if (!fetch_tensors.empty()) {
     // Wait All computational streams
     for (auto p : places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
@@ -91,12 +89,17 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       }
 #endif
     }
+  }
+
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+    drop_scope_counter_ = 0;
     for (auto &scope : local_scopes_) {
       auto &local_scope =
           *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
       scope->DeleteScope(local_scope);
     }
   }
+
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {

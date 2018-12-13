@@ -215,6 +215,7 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+include(external/robin_map) # download tsl::robin_map
 
 if (NOT WIN32)
 # there is no official support of warpctc, nccl, cupti in windows

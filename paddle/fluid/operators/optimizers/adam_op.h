@@ -292,23 +292,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
             static_cast<const DeviceContext&>(ctx.device_context()),
             param.numel());
         for_range(functor);
-
-        auto& dev =
-            *ctx.template device_context<DeviceContext>().eigen_device();
-
-        const LoDTensor* beta1_pow_ptr = ctx.Input<LoDTensor>("Beta1Pow");
-        auto eigen_in_beta1_pow =
-            framework::EigenVector<T>::Flatten(*beta1_pow_ptr);
-        auto eigen_out_beta1_pow = framework::EigenVector<T>::Flatten(
-            *(const_cast<LoDTensor*>(beta1_pow_ptr)));
-        eigen_out_beta1_pow.device(dev) = beta1 * eigen_in_beta1_pow;
-
-        const LoDTensor* beta2_pow_ptr = ctx.Input<LoDTensor>("Beta2Pow");
-        auto eigen_in_beta2_pow =
-            framework::EigenVector<T>::Flatten(*beta2_pow_ptr);
-        auto eigen_out_beta2_pow = framework::EigenVector<T>::Flatten(
-            *(const_cast<LoDTensor*>(beta2_pow_ptr)));
-        eigen_out_beta2_pow.device(dev) = beta2 * eigen_in_beta2_pow;
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
