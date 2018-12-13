@@ -30,9 +30,9 @@ try:
 except ImportError as e:
     if os.name == 'nt':
         raise ImportError(
-            """NOTE: You may need to run \"set LD_LIBRARY_PATH=c:\python27\lib:%LD_LIBRARY_PATH%\"
+            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
         if you encounters \"mkldnn.dll not found\" errors. If you have python
-        installed in other directory, replace \"c:\python27\" with your own
+        installed in other directory, replace \"c:\python27\lib" with your own
         directory. The original error is: \n""" + cpt.get_exception_message(e))
     else:
         raise ImportError(
