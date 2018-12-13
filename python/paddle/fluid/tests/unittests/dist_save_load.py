@@ -80,7 +80,8 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode)
+                                args.trainers, args.sync_mode,
+                                args.current_endpoint)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -93,7 +94,8 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         exe.run(startup_prog)
 
         if need_load and model_dir:
-            self._load_persistable_vars(exe, model_dir, startup_prog)
+            self._load_persistable_vars(exe, model_dir, startup_prog,
+                                        pserver_prog)
         exe.run(pserver_prog)
 
     def run_trainer(self, args):

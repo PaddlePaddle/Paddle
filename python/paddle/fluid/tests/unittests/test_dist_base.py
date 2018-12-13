@@ -42,7 +42,8 @@ class TestDistRunnerBase(object):
                        pserver_endpoints,
                        trainers,
                        sync_mode,
-                       dc_asgd=False):
+                       dc_asgd=False,
+                       current_endpoint=None):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
@@ -52,7 +53,8 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
-            sync_mode=sync_mode)
+            sync_mode=sync_mode,
+            current_endpoint=current_endpoint)
         return t
 
     def run_pserver(self, args):
