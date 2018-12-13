@@ -41,6 +41,7 @@ namespace pd = paddle::framework;
 namespace paddle {
 namespace pybind {
 using set_name_func = void (pd::DataFeedDesc::*)(const std::string&);
+#ifdef PADDLE_WITH_PSLIB
 void BindAsyncExecutor(py::module* m) {
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
       .def(py::init([](framework::Scope* scope, const platform::Place& place) {
@@ -56,5 +57,15 @@ void BindAsyncExecutor(py::module* m) {
       .def("init_model",  &framework::AsyncExecutor::InitModel)
       .def("save_model",  &framework::AsyncExecutor::SaveModel);
 }  // end BindAsyncExecutor
+#else
+void BindAsyncExecutor(py::module* m) {
+  py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
+      .def(py::init([](framework::Scope* scope, const platform::Place& place) {
+        return std::unique_ptr<framework::AsyncExecutor>(
+            new framework::AsyncExecutor(scope, place));
+      }))
+      .def("run_from_files", &framework::AsyncExecutor::RunFromFile)
+}  // end BindAsyncExecutor
+#endif
 }  // end namespace pybind
 }  // end namespace paddle

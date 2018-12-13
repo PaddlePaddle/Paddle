@@ -29,10 +29,11 @@ INCLUDE(ExternalProject)
 SET(LIBMCT_PROJECT       "extern_libmct")
 IF((NOT DEFINED LIBMCT_VER) OR (NOT DEFINED LIBMCT_URL))
   MESSAGE(STATUS "use pre defined download url")
-  SET(LIBMCT_VER "libmct" CACHE STRING "" FORCE) #todo libmct version
-  SET(LIBMCT_URL "http://bjyz-heqiaozhi-dev-new.epc.baidu.com:8000/${LIBMCT_VER}.tar.gz" CACHE STRING "" FORCE) #todo libmct url
+  SET(LIBMCT_VER "0.1.0" CACHE STRING "" FORCE)
+  SET(LIBMCT_NAME "libmct" CACHE STRING "" FORCE)
+  SET(LIBMCT_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${LIBMCT_VER}/${LIBMCT_NAME}.tar.gz" CACHE STRING "" FORCE) 
 ENDIF()
-MESSAGE(STATUS "LIBMCT_VER: ${LIBMCT_VER}, LIBMCT_URL: ${LIBMCT_URL}")
+MESSAGE(STATUS "LIBMCT_NAME: ${LIBMCT_NAME}, LIBMCT_URL: ${LIBMCT_URL}")
 SET(LIBMCT_SOURCE_DIR    "${THIRD_PARTY_PATH}/libmct")
 SET(LIBMCT_DOWNLOAD_DIR  "${LIBMCT_SOURCE_DIR}/src/${LIBMCT_PROJECT}")
 SET(LIBMCT_DST_DIR       "libmct")
@@ -47,7 +48,7 @@ INCLUDE_DIRECTORIES(${LIBMCT_INC_DIR})
 FILE(WRITE ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(LIBMCT)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${LIBMCT_VER}/include ${LIBMCT_VER}/lib \n"
+  "install(DIRECTORY ${LIBMCT_NAME}/include ${LIBMCT_NAME}/lib \n"
   "        DESTINATION ${LIBMCT_DST_DIR})\n")
 
 ExternalProject_Add(
@@ -55,8 +56,8 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${LIBMCT_SOURCE_DIR}
     DOWNLOAD_DIR          ${LIBMCT_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${LIBMCT_URL} -c -q -O ${LIBMCT_VER}.tar.gz
-                          && tar zxvf ${LIBMCT_VER}.tar.gz
+    DOWNLOAD_COMMAND      wget --no-check-certificate ${LIBMCT_URL} -c -q -O ${LIBMCT_NAME}.tar.gz
+                          && tar zxvf ${LIBMCT_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${LIBMCT_INSTALL_ROOT}

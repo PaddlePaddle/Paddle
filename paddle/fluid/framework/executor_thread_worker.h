@@ -25,14 +25,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#ifdef PADDLE_WITH_PSLIB
 #include "pslib.h"
+#endif
 
 namespace paddle {
 namespace framework {
 
-const static uint32_t MAX_FEASIGN_NUM = 1000 * 100 * 100;
-
 void CreateTensor(Variable* var, proto::VarType::Type var_type);
+#ifdef PADDLE_WITH_PSLIB
+const static uint32_t MAX_FEASIGN_NUM = 1000 * 100 * 100;
 
 struct AsyncWorkerParamConfig {
   int slot_dim;
@@ -130,6 +132,8 @@ class DensePullThread {
 
     float _total_batch_num = 0;
 };
+#endif
+
 class ExecutorThreadWorker {
  public:
   ExecutorThreadWorker()
@@ -154,12 +158,14 @@ class ExecutorThreadWorker {
   virtual void TrainFiles();
   // set fetch variable names from python interface assigned by users
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
+#ifdef PADDLE_WITH_PSLIB
   virtual void SetPSlibPtr(
       std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {};
   virtual void SetPullDenseThread(
       std::shared_ptr<DensePullThread> dpt) {}
   virtual void SetParamConfig(
       AsyncWorkerParamConfig * param_config) {}
+#endif
 
  private:
   void CreateThreadScope(const framework::ProgramDesc& program);
@@ -188,6 +194,7 @@ class ExecutorThreadWorker {
   bool debug_;
 };
 
+#ifdef PADDLE_WITH_PSLIB
 class AsyncExecutorThreadWorker: public ExecutorThreadWorker {
  public:
   AsyncExecutorThreadWorker() {}
@@ -238,6 +245,7 @@ class AsyncExecutorThreadWorker: public ExecutorThreadWorker {
     AsyncWorkerParamConfig*                         _param_config;
 
 };
+#endif
 
 }  // namespace framework
 }  // namespace paddle

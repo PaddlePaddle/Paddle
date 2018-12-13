@@ -31,6 +31,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_PSLIB
 int DensePullThread::start() {
     _running = true;
     _t = std::thread(&DensePullThread::run, this);
@@ -112,7 +113,8 @@ void DensePullThread::increase_thread_version(
     std::lock_guard<std::mutex> lock(_mutex_for_version);
     _training_versions[table_id][thread_id]++;
 }
-    
+#endif    
+
 void ExecutorThreadWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
   op_names_.clear();
@@ -302,6 +304,7 @@ void ExecutorThreadWorker::SetRootScope(Scope* g_scope) {
   root_scope_ = g_scope;
 }
 
+#ifdef PADDLE_WITH_PSLIB
 //  AsyncExecutor
 void AsyncExecutorThreadWorker::TrainFiles() {
   SetDevice();
@@ -659,6 +662,7 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
         }
     }
 }
+#endif
 
 }  // einit_modelnd namespace framework
 }  // end namespace paddle

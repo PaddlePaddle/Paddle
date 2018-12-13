@@ -222,7 +222,7 @@ if(WITH_PSLIB)
     include(external/libmct)
     include(external/pslib_brpc)
     include(external/pslib)
-endif()
+endif(WITH_PSLIB)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)

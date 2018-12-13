@@ -27,12 +27,13 @@ ENDIF()
 INCLUDE(ExternalProject)
 
 SET(PSLIB_BRPC_PROJECT       "extern_pslib_brpc")
-IF((NOT DEFINED PSLIB_BRPC_VER) OR (NOT DEFINED PSLIB_BRPC_URL))
+IF((NOT DEFINED PSLIB_BRPC_NAME) OR (NOT DEFINED PSLIB_BRPC_URL))
   MESSAGE(STATUS "use pre defined download url")
-  SET(PSLIB_BRPC_VER "pslib_brpc" CACHE STRING "" FORCE) #todo pslib version
-  SET(PSLIB_BRPC_URL "http://bjyz-heqiaozhi-dev-new.epc.baidu.com:8000/${PSLIB_BRPC_VER}.tar.gz" CACHE STRING "" FORCE) #todo pslib_brpc url
+  SET(PSLIB_BRPC_VER "0.1.0" CACHE STRING "" FORCE)
+  SET(PSLIB_BRPC_NAME "pslib_brpc" CACHE STRING "" FORCE)
+  SET(PSLIB_BRPC_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${PSLIB_BRPC_VER}/${PSLIB_BRPC_NAME}.tar.gz" CACHE STRING "" FORCE)
 ENDIF()
-MESSAGE(STATUS "PSLIB_BRPC_VER: ${PSLIB_BRPC_VER}, PSLIB_BRPC_URL: ${PSLIB_BRPC_URL}")
+MESSAGE(STATUS "PSLIB_BRPC_NAME: ${PSLIB_BRPC_NAME}, PSLIB_BRPC_URL: ${PSLIB_BRPC_URL}")
 SET(PSLIB_BRPC_SOURCE_DIR    "${THIRD_PARTY_PATH}/pslib_brpc")
 SET(PSLIB_BRPC_DOWNLOAD_DIR  "${PSLIB_BRPC_SOURCE_DIR}/src/${PSLIB_BRPC_PROJECT}")
 SET(PSLIB_BRPC_DST_DIR       "pslib_brpc")
@@ -50,7 +51,7 @@ INCLUDE_DIRECTORIES(${PSLIB_BRPC_INC_DIR})
 FILE(WRITE ${PSLIB_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(PSLIB_BRPC)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${PSLIB_BRPC_VER}/include ${PSLIB_BRPC_VER}/lib \n"
+  "install(DIRECTORY ${PSLIB_BRPC_NAME}/include ${PSLIB_BRPC_NAME}/lib \n"
   "        DESTINATION ${PSLIB_BRPC_DST_DIR})\n")
 
 ExternalProject_Add(
@@ -58,8 +59,8 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${PSLIB_BRPC_SOURCE_DIR}
     DOWNLOAD_DIR          ${PSLIB_BRPC_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_BRPC_URL} -c -q -O ${PSLIB_BRPC_VER}.tar.gz
-                          && tar zxvf ${PSLIB_BRPC_VER}.tar.gz
+    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_BRPC_URL} -c -q -O ${PSLIB_BRPC_NAME}.tar.gz
+                          && tar zxvf ${PSLIB_BRPC_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_BRPC_INSTALL_ROOT}
