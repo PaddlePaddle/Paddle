@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
 namespace paddle {
@@ -174,6 +175,8 @@ void print_fetch_var(Scope* scope, std::string var_name) {
 }
 
 void ExecutorThreadWorker::TrainFiles() {
+  platform::SetNumThreads(1);
+
   // todo: configurable
   SetDevice();
 
