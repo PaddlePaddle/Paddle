@@ -22,17 +22,8 @@ namespace operators {
 
 framework::OpKernelType QuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-  }
-#endif
+    framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
+    framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
