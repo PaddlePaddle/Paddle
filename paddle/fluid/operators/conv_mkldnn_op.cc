@@ -360,6 +360,7 @@ struct MkldnnInfo{
       auto dst_md = platform::MKLDNNMemDesc(
           *(convinfo->dst_tz), platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
+
       // create a conv primitive descriptor and save it for usage in backward
       auto fwd_prop_kind = mkldnninfo->is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
