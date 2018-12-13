@@ -155,7 +155,6 @@ class ExecutorThreadWorker {
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
   virtual void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
   virtual void SetPullDenseThread(std::shared_ptr<DensePullThread>  dpt) {};
-  virtual void BindingSlotVariableMemory() {};
   virtual void SetParamConfig(AsyncWorkerParamConfig* param_config) {};
  private:
   void CreateThreadScope(const framework::ProgramDesc& program);
@@ -191,7 +190,6 @@ public:
     virtual ~AsyncExecutorThreadWorker() {}
     void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
     void SetPullDenseThread(std::shared_ptr<DensePullThread> dpt);
-    void BindingSlotVariableMemory();
     void SetParamConfig(AsyncWorkerParamConfig* param_config);
     void TrainFiles();  
     void TrainOneNetwork();
