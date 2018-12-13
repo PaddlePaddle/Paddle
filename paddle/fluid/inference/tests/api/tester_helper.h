@@ -33,8 +33,10 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_int32(batch_size, 1, "batch size.");
@@ -43,6 +45,8 @@ DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
+DEFINE_bool(record_benchmark, false,
+            "Record benchmark after profiling the model");
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
@@ -190,19 +194,27 @@ void TestOneThreadPrediction(
   {
     Timer run_timer;
     run_timer.tic();
-#ifdef PADDLE_WITH_PPROF
-    ProfilerStart("paddle.prof");
+#ifdef WITH_GPERFTOOLS
+    ProfilerStart("paddle_inference.prof");
 #endif
     for (int i = 0; i < num_times; i++) {
       for (size_t j = 0; j < inputs.size(); j++) {
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
-#ifdef PADDLE_WITH_PPROF
+#ifdef WITH_GPERFTOOLS
     ProfilerStop();
 #endif
-    PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
-              inputs.size());
+
+    double latency = run_timer.toc() / (num_times > 1 ? num_times : 1);
+    PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
+    if (FLAGS_record_benchmark) {
+      Benchmark benchmark;
+      benchmark.SetName(FLAGS_model_name);
+      benchmark.SetBatchSize(batch_size);
+      benchmark.SetLatency(latency);
+      benchmark.PersistToFile("benchmark_record.txt");
+    }
   }
 }
 

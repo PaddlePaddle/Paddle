@@ -54,7 +54,7 @@ option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
-option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
+option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
@@ -80,7 +80,6 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
-option(WITH_PPROF       "Whether use gperftools to profile" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -253,6 +252,12 @@ if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
+endif()
+
+if (WITH_PROFILER)
+    find_package(Gperftools REQUIRED)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+    add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
 include(generic)            # simplify cmake module
