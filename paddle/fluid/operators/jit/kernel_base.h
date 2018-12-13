@@ -26,7 +26,11 @@ typedef enum {
   vsub,
   vscal,
   vaddbias,
-  vexp
+  vrelu,
+  videntity,
+  vexp,
+  vsigmoid,
+  vtanh
 } KernelType;
 
 template <typename T>
@@ -38,6 +42,13 @@ struct XYZNTuples {
 
 template <typename T>
 struct AXYNTuples : public XYZNTuples<T> {};
+
+template <typename T>
+struct XYNTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int);
+};
 
 // Just for adding to kernel pool without template
 class Kernel {
