@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import paddle.fluid as fluid
 import paddle
 import unittest
 import six
 import numpy as np
+
+dev_cnt = 2
+if fluid.core.is_compiled_with_cuda():
+    dev_cnt = fluid.core.get_cuda_device_count()
+os.environ['CPU_NUM'] = str(dev_cnt)
 
 
 def tanh(x):
@@ -86,17 +92,18 @@ def simple_fc_net(img, label, use_py_func_op):
             out=loss,
             backward_func=cross_entropy_grad,
             skip_vars_in_backward_input=loss)
+
     loss = fluid.layers.mean(loss)
     return loss
 
 
 def reader():
-    for _ in six.moves.range(100):
+    for _ in six.moves.range(dev_cnt * 100):
         yield np.random.random([784]), np.random.random_integers(
             size=[1], low=0, high=9)
 
 
-def test_main(use_cuda, use_py_func_op):
+def test_main(use_cuda, use_py_func_op, use_parallel_executor):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return None
 
@@ -118,27 +125,43 @@ def test_main(use_cuda, use_py_func_op):
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
+            if use_parallel_executor:
+                exe = fluid.ParallelExecutor(
+                    use_cuda=use_cuda, loss_name=loss.name)
+                fetch_list = [loss.name]
+            else:
+                fetch_list = [loss]
+
             ret = []
             for epoch_id in six.moves.range(2):
                 for d in r():
-                    L, = exe.run(feed=feeder.feed(d), fetch_list=[loss])
-                    ret.append(L[0])
+                    L, = exe.run(feed=feeder.feed(d), fetch_list=fetch_list)
+                    ret.append(L)
 
             return np.array(ret)
 
 
-class TestPyFuncOp(unittest.TestCase):
+class TestPyFuncOpUseExecutor(unittest.TestCase):
+    def setUp(self):
+        self.use_parallel_executor = False
+
     def test_loss_diff(self):
         losses = []
         for use_cuda in [True, False]:
             for use_py_func_op in [True, False]:
-                L = test_main(use_cuda, use_py_func_op)
+                L = test_main(use_cuda, use_py_func_op,
+                              self.use_parallel_executor)
                 if L is not None:
                     losses.append(L)
 
         for idx in six.moves.range(len(losses) - 1):
             max_diff = np.max(np.abs(losses[idx] - losses[0]))
             self.assertAlmostEqual(max_diff, 0, delta=1e-3)
+
+
+class TestPyFuncOpUseParallelExecutor(unittest.TestCase):
+    def setUp(self):
+        self.use_parallel_executor = True
 
 
 if __name__ == '__main__':
