@@ -166,28 +166,27 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
         std::min(max_blocks / grid_cols, std::max(out_row / block_rows, 1));
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
-    memory::allocation::AllocationPtr tmp_dev_ins_data =
+    auto tmp_dev_ins_data =
         const_cast<platform::CUDADeviceContext&>(context).GetTemporlAllocation(
-            sizeof(T*) * in_num);
+            inputs_data.size());
     memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                  tmp_dev_ins_data->ptr(), platform::CPUPlace(),
-                 reinterpret_cast<void*>(inputs_data.data()),
-                 sizeof(T*) * in_num, context.stream());
+                 static_cast<void*>(inputs_data.data()), inputs_data.size(),
+                 context.stream());
     T** dev_ins_data = reinterpret_cast<T**>(tmp_dev_ins_data->ptr());
 
     if (sameShape) {
       ConcatKernel<<<grid_size, block_size, 0, context.stream()>>>(
           dev_ins_data, in_col, out_row, out_col, output->data<T>());
     } else {
-      memory::allocation::AllocationPtr tmp_dev_ins_col_data =
+      auto tmp_dev_ins_col_data =
           const_cast<platform::CUDADeviceContext&>(context)
-              .GetTemporlAllocation(sizeof(int) * (in_num + 1));
+              .GetTemporlAllocation(inputs_col.size() * sizeof(int));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
-                   reinterpret_cast<void*>(inputs_col.data()),
-                   sizeof(int) * (in_num + 1), context.stream());
-      int* dev_ins_col_data =
-          reinterpret_cast<int*>(tmp_dev_ins_col_data->ptr());
+                   static_cast<void*>(inputs_col.data()),
+                   inputs_col.size() * sizeof(int), context.stream());
+      int* dev_ins_col_data = static_cast<int*>(tmp_dev_ins_col_data->ptr());
 
       ConcatKernel<<<grid_size, block_size, 0, context.stream()>>>(
           dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col.size()),
@@ -256,26 +255,26 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
         std::min(max_blocks / grid_cols, std::max(out_row / block_rows, 1));
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
-    memory::allocation::AllocationPtr tmp_dev_outs_data =
+    auto tmp_dev_outs_data =
         const_cast<platform::CUDADeviceContext&>(context).GetTemporlAllocation(
-            sizeof(T*) * o_num);
+            outputs_data.size());
     memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                  tmp_dev_outs_data->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void*>(outputs_data.data()),
-                 sizeof(T*) * o_num, context.stream());
+                 outputs_data.size(), context.stream());
     T** dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
 
     if (sameShape) {
       SplitKernel<<<grid_size, block_size, 0, context.stream()>>>(
           input.data<T>(), in_row, in_col, out0_col, dev_out_gpu_data);
     } else {
-      memory::allocation::AllocationPtr tmp_dev_ins_col_data =
+      auto tmp_dev_ins_col_data =
           const_cast<platform::CUDADeviceContext&>(context)
-              .GetTemporlAllocation(sizeof(int) * (o_num + 1));
+              .GetTemporlAllocation(outputs_cols.size() * sizeof(int));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_cols.data()),
-                   sizeof(int) * (o_num + 1), context.stream());
+                   outputs_cols.size() * sizeof(int), context.stream());
       int* dev_outs_col_data =
           reinterpret_cast<int*>(tmp_dev_ins_col_data->ptr());
 
