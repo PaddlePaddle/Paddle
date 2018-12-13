@@ -19,28 +19,30 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+#define ONE_CASE(key) \
+  case key:           \
+    return #key
+
 const char* to_string(KernelType kt) {
   switch (kt) {
-    case vmul:
-      return "vmul";
-    case vadd:
-      return "vadd";
-    case vaddrelu:
-      return "vaddrelu";
-    case vsub:
-      return "vsub";
-    case vscal:
-      return "vscal";
-    case vexp:
-      return "vexp";
-    case vaddbias:
-      return "vaddbias";
+    ONE_CASE(vmul);
+    ONE_CASE(vadd);
+    ONE_CASE(vaddrelu);
+    ONE_CASE(vsub);
+    ONE_CASE(vscal);
+    ONE_CASE(vaddbias);
+    ONE_CASE(vrelu);
+    ONE_CASE(videntity);
+    ONE_CASE(vexp);
+    ONE_CASE(vsigmoid);
+    ONE_CASE(vtanh);
     default:
       PADDLE_THROW("Not support type: %d", kt);
       return "NOT JITKernel";
   }
   return nullptr;
 }
+#undef ONE_CASE
 
 }  // namespace jit
 }  // namespace operators

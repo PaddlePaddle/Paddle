@@ -66,6 +66,50 @@ void VAddBias(const T* a, const T* x, T* y, int n) {
   }
 }
 
+template <typename T>
+void VRelu(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] > 0 ? x[i] : 0;
+  }
+}
+
+template <typename T>
+inline void VIdentity(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i];
+  }
+}
+
+template <typename T>
+void VExp(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
+  }
+}
+
+template <typename T>
+void VSigmoid(const T* x, T* y, int n) {
+  // y = 1 / (1 + e^-x)
+  const T min = SIGMOID_THRESHOLD_MIN;
+  const T max = SIGMOID_THRESHOLD_MAX;
+  for (int i = 0; i < n; ++i) {
+    T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+    y[i] = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-tmp));
+  }
+}
+
+template <typename T>
+void VTanh(const T* x, T* y, int n) {
+  // y = 2 * sigmoid(2x) - 1
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * x[i];
+  }
+  VSigmoid(y, y, n);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -82,6 +126,13 @@ DECLARE_REFER_KERNEL(VSub, XYZNTuples);
 // const T* a, const T* x, T* y, int n
 DECLARE_REFER_KERNEL(VScal, AXYNTuples);
 DECLARE_REFER_KERNEL(VAddBias, AXYNTuples);
+
+// const T* x, T* y, int n
+DECLARE_REFER_KERNEL(VRelu, XYNTuples);
+DECLARE_REFER_KERNEL(VIdentity, XYNTuples);
+DECLARE_REFER_KERNEL(VExp, XYNTuples);
+DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
+DECLARE_REFER_KERNEL(VTanh, XYNTuples);
 
 #undef DECLARE_REFER_KERNEL
 

@@ -201,6 +201,77 @@ void BenchAXYNKernel() {
   }
 }
 
+// return this function avg time
+template <typename T, typename KernelTuples>
+double BenchXYNFunc(const typename KernelTuples::func_type tgt,
+                    const std::vector<T>& x,
+                    std::vector<T>& y) {  // NOLINT
+  const T* x_data = x.data();
+  T* y_data = y.data();
+  const int d = y.size();
+  for (int i = 0; i < FLAGS_burning; ++i) {
+    tgt(x_data, y_data, d);
+  }
+  auto start = GetCurrentUS();
+  for (int i = 0; i < FLAGS_repeat; ++i) {
+    tgt(x_data, y_data, d);
+  }
+  auto end = GetCurrentUS();
+  return (end - start) / FLAGS_repeat;
+}
+
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void BenchXYNKernel() {
+  namespace jit = paddle::operators::jit;
+  for (int d : TestSizes()) {
+    std::vector<std::pair<std::string, double>> infos;
+    std::vector<T> x(d), y(d);
+    RandomVec<T>(d, x.data());
+    // test refer
+    auto refer = jit::GetRefer<KT, jit::XYNTuples<T>>();
+    if (refer) {
+      auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(refer, x, y);
+      infos.push_back(std::make_pair("Refer", res));
+    }
+    // test jitcode
+    auto jitcode = jit::GetJitCode<KT, jit::XYNTuples<T>, PlaceType>(d);
+    if (jitcode) {
+      auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(jitcode, x, y);
+      infos.push_back(std::make_pair("JitCode", res));
+    }
+    // test all impls in more
+    jit::KernelKey kkey(KT, PlaceType());
+    auto& pool = jit::KernelPool().Instance().AllKernels();
+    auto iter = pool.find(kkey);
+    if (iter != pool.end()) {
+      auto& impls = iter->second;
+      for (auto& impl : impls) {
+        auto i =
+            dynamic_cast<const jit::KernelImpl<jit::XYNTuples<T>>*>(impl.get());
+        if (i && i->UseMe(d)) {
+          auto more = i->GetFunc();
+          auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(more, x, y);
+          infos.push_back(std::make_pair("More", res));
+        }
+      }
+    }
+    // Test result from Get function
+    auto tgt = jit::Get<KT, jit::XYNTuples<T>, PlaceType>(d);
+    if (!tgt) {
+      LOG(ERROR) << "Target can not be empty!";
+    }
+    auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(tgt, x, y);
+    infos.push_back(std::make_pair("Target", res));
+    // print
+    std::ostringstream loginfos;
+    loginfos << "Kernel Type: " << jit::to_string(KT) << ", size " << d << ": ";
+    for (auto pair : infos) {
+      loginfos << pair.first << " takes " << pair.second << " us; ";
+    }
+    LOG(INFO) << loginfos.str();
+  }
+}
+
 // Benchmark all jit kernels including jitcode, mkl and refer.
 // To use this tool, run command: ./benchmark [options...]
 // Options:
@@ -222,4 +293,10 @@ int main(int argc, char* argv[]) {
 
   BenchAXYNKernel<jit::vscal, T, PlaceType>();
   BenchAXYNKernel<jit::vaddbias, T, PlaceType>();
+
+  BenchXYNKernel<jit::vrelu, T, PlaceType>();
+  BenchXYNKernel<jit::videntity, T, PlaceType>();
+  BenchXYNKernel<jit::vexp, T, PlaceType>();
+  BenchXYNKernel<jit::vsigmoid, T, PlaceType>();
+  BenchXYNKernel<jit::vtanh, T, PlaceType>();
 }
