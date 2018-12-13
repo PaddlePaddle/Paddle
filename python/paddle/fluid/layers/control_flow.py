@@ -235,8 +235,7 @@ class BlockGuardWithCompletion(BlockGuard):
 
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
-            raise TypeError(
-                "BlockGuardWithCompletion takes a StaticRNN or ParallelDo")
+            raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
         super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
