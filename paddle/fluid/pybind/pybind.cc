@@ -789,7 +789,18 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, ExecutionStrategy::ExecutorType type) {
             self.type_ = type;
           },
-          R"DOC()DOC");
+          R"DOC(The type is ExecutorType which is the enum ranging from Default, 
+ParallelGraph and Experiment:
+
+Default: Compile the main_program into a multi-devices graph,
+         and execute this graph on multi-devices with multiple threads which
+         specified by build_strategy.num_threads.
+ParallelGraph: Compile the main_program into multiple graphs, and execute each of the graphs on one
+               device with one thread. Please note, this mode only supports all-reduce mode and use_cuda=True.
+               This approach can achieve better performance in some scenarios.
+Experimental: Compile the main_program into a multi-devices graph,
+              and executor this graph with a faster execution mode than the Default,
+              this approach is on the experiments.)DOC");
 
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
     BuildStrategy allows the user to more preciously control how to

@@ -17,6 +17,8 @@ import unittest
 import logging
 import six
 
+ExecutorType = fluid.ExecutionStrategy().ExecutorType
+
 
 class TestBase(unittest.TestCase):
     def main(self,
@@ -24,7 +26,7 @@ class TestBase(unittest.TestCase):
              iter=10,
              iter_per_pe=10,
              use_gpu=True,
-             use_experimental_executor=False):
+             exec_type=ExecutorType.Default):
         if use_gpu and not fluid.core.is_compiled_with_cuda():
             logging.warning(
                 "Paddle is not compiled with CUDA, skip GPU unittests")
@@ -43,7 +45,7 @@ class TestBase(unittest.TestCase):
         for _ in six.moves.xrange(iter):
             exe_strategy = fluid.ExecutionStrategy()
             exe_strategy._dry_run = True
-            exe_strategy.use_experimental_executor = use_experimental_executor
+            exe_strategy.executor_type = exec_type
             pe = fluid.ParallelExecutor(
                 use_cuda=use_gpu,
                 loss_name=loss.name,
@@ -56,11 +58,11 @@ class TestBase(unittest.TestCase):
 class TestMNISTDryRun(TestBase):
     def test_mnist_dry_run(self):
         for use_gpu in (False, True):
-            for use_experimental_executor in (False, True):
+            for exec_type in (ExecutorType.Default, ExecutorType.Experimental):
                 self.main(
                     network_func=TestMNISTDryRun.network_func,
                     use_gpu=use_gpu,
-                    use_experimental_executor=use_experimental_executor)
+                    exec_type=exec_type)
 
     @staticmethod
     def network_func():
