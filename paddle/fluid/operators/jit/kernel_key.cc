@@ -23,9 +23,10 @@ size_t JitCodeKey<int>(const int& d) {
   return d;
 }
 
+constexpr int act_type_shift = 3;  // suppot 2^3 act types
+
 template <>
 size_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
-  constexpr int act_type_shift = 3;  // suppot 2^3 act types
   size_t key = attr.d;
   int gate_key = static_cast<int>(attr.act_gate) << 1;
   int cand_key = static_cast<int>(attr.act_cand) << (1 + act_type_shift);
@@ -33,6 +34,14 @@ size_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
   return (key << (1 + act_type_shift * 3)) + gate_key + cand_key + cell_key +
          attr.use_peephole;
 }
+
+template <>
+size_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
+  size_t key = attr.d;
+  return (key << (act_type_shift * 2)) + static_cast<int>(attr.act_gate) +
+         (static_cast<int>(attr.act_cand) << act_type_shift);
+}
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
