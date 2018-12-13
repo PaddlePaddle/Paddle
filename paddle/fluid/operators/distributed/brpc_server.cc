@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/brpc_server.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/brpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
@@ -33,21 +34,29 @@ class BRPCServiceImpl : public SendRecvService {
     auto it = rpc_call_map.find(distributed::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_send_h_ = it->second;
+      send_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::kRequestSend)));
     }
 
     it = rpc_call_map.find(distributed::kRequestGet);
     if (it != rpc_call_map.end()) {
       request_get_h_ = it->second;
+      get_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::kRequestGet)));
     }
 
     it = rpc_call_map.find(distributed::kRequestPrefetch);
     if (it != rpc_call_map.end()) {
       request_prefetch_h_ = it->second;
+      prefetch_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
     }
 
     it = rpc_call_map.find(distributed::kRequestCheckpoint);
     if (it != rpc_call_map.end()) {
       request_checkpoint_h_ = it->second;
+      checkpoint_notify_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
     }
 
     it = rpc_call_map.find(distributed::kRequestGetMonomerVariable);
@@ -62,10 +71,16 @@ class BRPCServiceImpl : public SendRecvService {
   }
 
   virtual ~BRPCServiceImpl() {}
-
   void SendVariable(google::protobuf::RpcController* cntl_butil,
                     const VariableMessage* request, VoidMessage* response,
                     google::protobuf::Closure* done) override {
+    send_threads_->Run(
+        [=] { _SendVariable(cntl_butil, request, response, done); });
+  }
+
+  void _SendVariable(google::protobuf::RpcController* cntl_butil,
+                     const VariableMessage* request, VoidMessage* response,
+                     google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_send_h_ != nullptr,
                    "RequestSend handler should be registed first!");
     brpc::ClosureGuard done_guard(done);
@@ -93,6 +108,13 @@ class BRPCServiceImpl : public SendRecvService {
   void GetVariable(google::protobuf::RpcController* cntl_butil,
                    const VariableMessage* request, VariableMessage* response,
                    google::protobuf::Closure* done) override {
+    get_threads_->Run(
+        [=] { _GetVariable(cntl_butil, request, response, done); });
+  }
+
+  void _GetVariable(google::protobuf::RpcController* cntl_butil,
+                    const VariableMessage* request, VariableMessage* response,
+                    google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_get_h_ != nullptr,
                    "RequestGet handler should be registed first!");
 
@@ -117,11 +139,18 @@ class BRPCServiceImpl : public SendRecvService {
                                     false);
     }
   }
-
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
                         google::protobuf::Closure* done) override {
+    prefetch_threads_->Run(
+        [=] { _PrefetchVariable(cntl_butil, request, response, done); });
+  }
+
+  void _PrefetchVariable(google::protobuf::RpcController* cntl_butil,
+                         const VariableMessage* request,
+                         VariableMessage* response,
+                         google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_prefetch_h_ != nullptr,
                    "kRequestPrefetch handler should be registed first!");
 
@@ -159,6 +188,13 @@ class BRPCServiceImpl : public SendRecvService {
   void CheckpointNotify(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request, VoidMessage* response,
                         google::protobuf::Closure* done) override {
+    checkpoint_notify_threads_->Run(
+        [=] { _CheckpointNotify(cntl_butil, request, response, done); });
+  }
+
+  void _CheckpointNotify(google::protobuf::RpcController* cntl_butil,
+                         const VariableMessage* request, VoidMessage* response,
+                         google::protobuf::Closure* done) {
     PADDLE_ENFORCE(
         request_checkpoint_h_ != nullptr,
         "kRequestCheckpointNotify handler should be registed first!");
@@ -252,6 +288,12 @@ class BRPCServiceImpl : public SendRecvService {
   distributed::RequestHandler* request_get_monomer_barrier_handler_h_{nullptr};
 
   distributed::RPCServer* rpc_server_{nullptr};
+
+  // FIXME(gongwb): brpc should support process one rpce use one threadpool.
+  std::unique_ptr<paddle::framework::ThreadPool> send_threads_;
+  std::unique_ptr<paddle::framework::ThreadPool> get_threads_;
+  std::unique_ptr<paddle::framework::ThreadPool> prefetch_threads_;
+  std::unique_ptr<paddle::framework::ThreadPool> checkpoint_notify_threads_;
 };
 }  // namespace sendrecv
 
