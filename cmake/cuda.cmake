@@ -154,7 +154,6 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
   add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
 endif()
-add_definitions("-DPADDLE_CUDNN_BINVER=\"${CUDNN_MAJOR_VERSION}\"")
 
 include_directories(${CUDA_INCLUDE_DIRS})
 list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
