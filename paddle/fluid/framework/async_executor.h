@@ -17,13 +17,13 @@ limitations under the License. */
 #include <time.h>
 #include <map>
 #include <memory>
-#include <mutex>  // NOLINT
+#include <mutex>   // NOLINT
+#include <random>  // local_random_engine
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <typeinfo>
 #include <vector>
-#include <random>  // local_random_engine
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_thread_worker.h"
@@ -34,24 +34,23 @@ namespace paddle {
 namespace framework {
 
 inline double current_realtime() {
-    struct timespec tp;
-    clock_gettime(CLOCK_REALTIME, &tp);
-    return tp.tv_sec + tp.tv_nsec * 1e-9;
+  struct timespec tp;
+  clock_gettime(CLOCK_REALTIME, &tp);
+  return tp.tv_sec + tp.tv_nsec * 1e-9;
 }
 
 inline std::default_random_engine& local_random_engine() {
-    struct engine_wrapper_t {
-        std::default_random_engine engine;
-        engine_wrapper_t() {
-          static std::atomic<uint64_t> x(0);
-          std::seed_seq sseq = {x++, x++, x++,
-                                static_cast<uint64_t>(
-                                    current_realtime() * 1000)};
-          engine.seed(sseq);
-        }
-    };
-    thread_local engine_wrapper_t r;
-    return r.engine;
+  struct engine_wrapper_t {
+    std::default_random_engine engine;
+    engine_wrapper_t() {
+      static std::atomic<uint64_t> x(0);
+      std::seed_seq sseq = {x++, x++, x++,
+                            static_cast<uint64_t>(current_realtime() * 1000)};
+      engine.seed(sseq);
+    }
+  };
+  thread_local engine_wrapper_t r;
+  return r.engine;
 }
 
 class AsyncExecutor {
@@ -63,14 +62,12 @@ class AsyncExecutor {
                    const std::vector<std::string>& filelist,
                    const int thread_num,
                    const std::vector<std::string>& fetch_names,
-                   const std::string& mode,
-                   const bool debug = false);
+                   const std::string& mode, const bool debug = false);
 #ifdef PADDLE_WITH_PSLIB
   void InitServer(const std::string& dist_desc, int index);
-  void InitWorker(
-      const std::string& dist_desc,
-      const std::vector<uint64_t>& host_sign_list,
-      int node_num, int index);
+  void InitWorker(const std::string& dist_desc,
+                  const std::vector<uint64_t>& host_sign_list, int node_num,
+                  int index);
   uint64_t StartServer();
   void StopServer();
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
@@ -92,19 +89,16 @@ class AsyncExecutor {
 
  public:
 #ifdef PADDLE_WITH_PSLIB
-  std::shared_ptr<paddle::distributed::PSlib>  _pslib_ptr;
-  std::shared_ptr<DensePullThread>  _pull_dense_thread;
+  std::shared_ptr<paddle::distributed::PSlib> _pslib_ptr;
+  std::shared_ptr<DensePullThread> _pull_dense_thread;
   AsyncWorkerParamConfig _param_config;
 #endif
   Scope* root_scope_;
   platform::Place place_;
-  
+
  private:
   int actual_thread_num;
-
 };
-
-
 
 }  // namespace framework
 }  // namespace paddle
