@@ -197,9 +197,17 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_ENFORCE(places.size() > 1,
                    "If you set build_strategy.reduce with 'Reduce',"
                    "the number of places must be greater than 1.");
-    PADDLE_ENFORCE(exec_strategy.type_ != ExecutionStrategy::kParallelGraph,
-                   "You should set build_strategy.reduce with 'AllReduce' for "
-                   "the ParallelGraph executor type");
+  }
+
+  if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+    PADDLE_ENFORCE(
+        member_->use_all_reduce_,
+        "build_strategy.reduce should be `AllReduce` if you want to use"
+        "ParallelGraph executor.");
+    PADDLE_ENFORCE(
+        member_->use_cuda_,
+        "execution_strategy.use_cuda should be True if you want to use"
+        "ParallelGraph executor.");
   }
 
   // Step 1. Bcast the params to devs.

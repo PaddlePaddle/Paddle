@@ -166,6 +166,8 @@ class TestMNIST(TestParallelExecutorBase):
     def check_batchnorm_fc_convergence(self, use_cuda, exec_type):
         if use_cuda and not core.is_compiled_with_cuda():
             return
+        if not use_cuda and exec_type == ExecutorType.ParallelGraph:
+            return
 
         img, label = self._init_data()
 
