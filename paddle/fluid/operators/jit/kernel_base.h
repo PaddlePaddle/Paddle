@@ -33,7 +33,10 @@ typedef enum {
   vsigmoid,
   vtanh,
   lstmctht,
-  lstmc1h1
+  lstmc1h1,
+  gruh1,
+  gruhtpart1,
+  gruhtpart2
 } KernelType;
 
 template <typename T>
@@ -96,6 +99,13 @@ struct LSTMTuples {
   typedef T data_type;
   typedef lstm_attr_t attr_type;
   typedef void (*func_type)(lstm_t*, const lstm_attr_t*);
+};
+
+template <typename T>
+struct GRUTuples {
+  typedef T data_type;
+  typedef gru_attr_t attr_type;
+  typedef void (*func_type)(gru_t*, const gru_attr_t*);
 };
 
 // Just for adding to kernel pool without template

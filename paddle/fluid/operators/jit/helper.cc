@@ -39,6 +39,9 @@ const char* to_string(KernelType kt) {
     ONE_CASE(vtanh);
     ONE_CASE(lstmctht);
     ONE_CASE(lstmc1h1);
+    ONE_CASE(gruh1);
+    ONE_CASE(gruhtpart1);
+    ONE_CASE(gruhtpart2);
     default:
       PADDLE_THROW("Not support type: %d", kt);
       return "NOT JITKernel";

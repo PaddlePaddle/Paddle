@@ -45,4 +45,6 @@ PaddlePaddle/Paddle/paddle/fluid/
 
 - 在`KernelType` 中添加 `your_key` .
 - 实现Reference 的逻辑，每个jitkernel的Reference 实现是必须的。不要依赖任何第三方库。并在`refer/CmakeLists.txt`中`USE_JITKERNEL_REFER(your_key)`.
-- 必要时可以添加新的`KernelTuples`，可以参考`XYZNTuples`.
+- 必要时可以添加新的`KernelTuples`，可以参考`XYZNTuples`，新加的Attr类型需要特例化`JitCodeKey`方法。
+- 添加unit test，需要测试float和double
+- 添加benchmark确保get得到的速度是最快。

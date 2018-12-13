@@ -125,6 +125,8 @@ void (*getActFunc(KernelType type))(const T*, T*, int) {  // NOLINT
   return nullptr;
 }
 
+// TODO(TJ): add refer gemm and make LSTM kernels combine as same GRU kernels
+
 // compute ct and ht
 template <typename T>
 void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr) {
@@ -195,6 +197,51 @@ void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr) {
   VMul(gates + d2, gates + d3, ht, d);
 }
 
+// compute h1 without h0
+template <typename T>
+void GRUH1(gru_t* step, const gru_attr_t* attr) {
+  T* gates = reinterpret_cast<T*>(step->gates);
+  T* ht = reinterpret_cast<T*>(step->ht);
+  auto act_gate = getActFunc<T>(attr->act_gate);
+  auto act_cand = getActFunc<T>(attr->act_cand);
+  int d = attr->d;
+  int d2 = d * 2;
+  act_gate(gates, gates, d);
+  act_cand(gates + d2, gates + d2, d);
+  VMul(gates, gates + d2, ht, d);
+}
+
+// compute the first part of GRU: ht = act_gate(r) * ht_1
+template <typename T>
+void GRUHtPart1(gru_t* step, const gru_attr_t* attr) {
+  // W: {W_update, W_reset; W_state}
+  T* gates = reinterpret_cast<T*>(step->gates);
+  T* ht = reinterpret_cast<T*>(step->ht);
+  const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
+  auto act_gate = getActFunc<T>(attr->act_gate);
+  act_gate(gates + attr->d, gates + attr->d, attr->d);
+  VMul(ht_1, gates + attr->d, ht, attr->d);
+}
+
+// compute the second part of GRU:
+// ht = act_gate(u) * act_cand(s) + (1-act_gate(u)) * ht_1
+template <typename T>
+void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
+  T* gates = reinterpret_cast<T*>(step->gates);
+  T* ht = reinterpret_cast<T*>(step->ht);
+  const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
+  auto act_gate = getActFunc<T>(attr->act_gate);
+  auto act_cand = getActFunc<T>(attr->act_cand);
+  int d = attr->d;
+  T* y = gates + d * 2;
+  act_gate(gates, gates, d);
+  act_cand(y, y, d);
+  // out = zt*ht~ + (1-zt)*ht_1
+  for (int i = 0; i < d; ++i) {
+    ht[i] = gates[i] * y[i] + (static_cast<T>(1) - gates[i]) * ht_1[i];
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -219,9 +266,14 @@ DECLARE_REFER_KERNEL(VExp, XYNTuples);
 DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
 DECLARE_REFER_KERNEL(VTanh, XYNTuples);
 
-// lstm_t* , const lstm_attr_t*
+// lstm_t*, const lstm_attr_t*
 DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
 DECLARE_REFER_KERNEL(LSTMC1H1, LSTMTuples);
+
+// gru_t*, const gru_attr_t*
+DECLARE_REFER_KERNEL(GRUH1, GRUTuples);
+DECLARE_REFER_KERNEL(GRUHtPart1, GRUTuples);
+DECLARE_REFER_KERNEL(GRUHtPart2, GRUTuples);
 
 #undef DECLARE_REFER_KERNEL
 
