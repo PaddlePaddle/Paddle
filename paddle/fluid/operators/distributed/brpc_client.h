@@ -151,6 +151,8 @@ class BRPCClient : public RPCClient {
   std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
 
+  static constexpr int brpc_channel_num_per_server_ = 4;
+
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
   DISABLE_COPY_AND_ASSIGN(BRPCClient);

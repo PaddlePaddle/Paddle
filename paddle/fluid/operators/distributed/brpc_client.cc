@@ -21,8 +21,6 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-DEFINE_int32(brpc_channel_num_per_server, 24,
-             "Number of channels to send requests connected to one server");
 DEFINE_int32(timeout_ms, 30000, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
@@ -337,15 +335,17 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   options.use_rdma = true;
 #endif
   options.protocol = "baidu_std";
-  options.connection_type = "pooled";
+  // don't use pooled type.
+  // the server can't afford that.
+  options.connection_type = "single";
   options.connect_timeout_ms = 1000;
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
 
-  VLOG(1) << "create " << FLAGS_brpc_channel_num_per_server
+  VLOG(1) << "create " << brpc_channel_num_per_server_
           << " brpc channels to pserver:" << ep;
 
-  for (int i = 0; i < FLAGS_brpc_channel_num_per_server; ++i) {
+  for (int i = 0; i < brpc_channel_num_per_server_; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());
     if (c->channel.Init(ep.c_str(), &options) != 0) {
       LOG(FATAL) << "Fail to initialize channel";
