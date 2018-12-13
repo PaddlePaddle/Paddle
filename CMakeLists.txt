@@ -131,8 +131,6 @@ if (APPLE)
 endif()
 
 if (WIN32)
-    set(WITH_DSO OFF CACHE STRING
-            "Disable DSO when compiling for Windows" FORCE)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
     set(WITH_C_API OFF CACHE STRING
