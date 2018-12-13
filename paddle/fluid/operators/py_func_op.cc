@@ -40,14 +40,14 @@ static py::object *GetPythonCallableObject(size_t i) {
   return &g_py_callables[i];
 }
 
-std::string PythonObjectToString(const py::object &py_callable) {
+static std::string PythonObjectToString(const py::object &py_callable) {
   py::gil_scoped_acquire guard;
   return py::str(*py_callable);
 }
 
-void CallPythonFunc(py::object *callable,
-                    const std::vector<framework::LoDTensor> &ins,
-                    std::vector<framework::LoDTensor *> *out) {
+static void CallPythonFunc(py::object *callable,
+                           const std::vector<framework::LoDTensor> &ins,
+                           std::vector<framework::LoDTensor *> *out) {
   py::gil_scoped_acquire guard;
   py::tuple in_args(ins.size());
   for (size_t i = 0; i < ins.size(); ++i) {
@@ -56,8 +56,19 @@ void CallPythonFunc(py::object *callable,
 
   auto ret = (*callable)(*in_args);
   auto ret_tuple = py::cast<py::tuple>(ret);
-  PADDLE_ENFORCE_EQ(py::len(ret_tuple), out->size(), "Output number not match");
-  for (size_t i = 0; i < out->size(); ++i) {
+  size_t ret_num = py::len(ret_tuple);
+  size_t out_num = out->size();
+  if (ret_num != out_num) {
+    // Python function has no return values or returns None
+    // In this case, ret_num = 1 && ret[0] == None && out_num should be 0
+    // Otherwise, ret_num must be equal to out_num
+    PADDLE_ENFORCE(
+        ret_num == 1 && out_num == 0 &&
+            py::cast<framework::LoDTensor *>(ret_tuple[0]) == nullptr,
+        "Output number not match. Expected %d, actual %d", out_num, ret_num);
+  }
+
+  for (size_t i = 0; i < out_num; ++i) {
     if ((*out)[i] == nullptr) {
       continue;
     }

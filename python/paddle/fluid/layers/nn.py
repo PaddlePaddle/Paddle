@@ -176,6 +176,7 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'lstm',
     'py_func',
+    'psroi_pool',
 ]
 
 kIgnoreIndex = -100
@@ -9127,11 +9128,11 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
-class PyFuncWrapper(object):
+class PyFuncRegistry(object):
     _register_funcs = []
 
     def __init__(self, func):
-        if func is None or not hasattr(func, '__call__'):
+        if func is None or not callable(func):
             raise TypeError('func must be a Python function')
 
         self._func = func
@@ -9143,7 +9144,7 @@ class PyFuncWrapper(object):
 
         1. For debug usage. Users can call 
            :code:`py_func.registered_func(idx)` method 
-           to find the registered function coresponding
+           to find the registered function corresponding
            to :code:`idx`. 
 
         2. For increasing reference count of self. 
@@ -9152,7 +9153,7 @@ class PyFuncWrapper(object):
            segmentation fault error in C++ side. 
            May be lack of Python GC in C++ side?
         '''
-        PyFuncWrapper._register_funcs.append(self)
+        PyFuncRegistry._register_funcs.append(self)
 
     @classmethod
     def registered_func(cls, idx):
@@ -9249,8 +9250,8 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 
-    fwd_func_id = PyFuncWrapper(func).id
-    bwd_func_id = PyFuncWrapper(
+    fwd_func_id = PyFuncRegistry(func).id
+    bwd_func_id = PyFuncRegistry(
         backward_func).id if backward_func is not None else -1
 
     for each_out in out_list:
@@ -9288,5 +9289,59 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
 
 # For debug usage
-py_func.registered_func = PyFuncWrapper.registered_func
-py_func.registered_func_num = PyFuncWrapper.registered_func_num
+py_func.registered_func = PyFuncRegistry.registered_func
+py_func.registered_func_num = PyFuncRegistry.registered_func_num
+
+
+@templatedoc()
+def psroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale,
+               pooled_height,
+               pooled_width,
+               name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        output_channels (integer): ${output_channels_comment}
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        name (str, default None): The name of this layer.
+
+    Returns:
+        Variable: ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            pool_out = fluid.layers.psroi_pool(input=x, rois=rois, 490, 1.0, 7, 7)
+    """
+    helper = LayerHelper('psroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='psroi_pool',
+        inputs={'X': input,
+                'ROIs': rois},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
+    return out
