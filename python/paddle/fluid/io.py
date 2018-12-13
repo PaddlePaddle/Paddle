@@ -27,8 +27,7 @@ from . import core
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model',
-    '_save_persistables_on_pserver'
+    'load_persistables', 'save_inference_model', 'load_inference_model'
 ]
 
 
