@@ -155,7 +155,7 @@ class ExecutorThreadWorker {
   // set fetch variable names from python interface assigned by users
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
   virtual void SetPSlibPtr(
-      std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
+      std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {};
   virtual void SetPullDenseThread(
       std::shared_ptr<DensePullThread> dpt) {}
   virtual void SetParamConfig(

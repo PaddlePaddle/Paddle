@@ -50,7 +50,6 @@ void AsyncExecutor::CreateThreads(
   worker->BindingDataFeedMemory();
   worker->SetPSlibPtr(_pslib_ptr);
   worker->SetPullDenseThread(_pull_dense_thread);
-  worker->BindingSlotVariableMemory();
   worker->SetParamConfig(&_param_config);
 }
 
@@ -79,7 +78,7 @@ void AsyncExecutor::InitWorker(const std::string& dist_desc,
     _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     _pslib_ptr->init_worker(
-        dist_desc, host_sign_list.data(), node_num, index);
+        dist_desc, (uint64_t*)(host_sign_list.data()), node_num, index);
 
     InitParamConfig();
 }
@@ -93,8 +92,8 @@ void AsyncExecutor::StopServer() {
 }
 
 void AsyncExecutor::GatherServers(
-    std::vector<uint64_t>& host_sign_list, int node_num) {
-    _pslib_ptr->gather_servers(host_sign_list.data(), node_num);
+    const std::vector<uint64_t>& host_sign_list, int node_num) {
+    _pslib_ptr->gather_servers((uint64_t*)(host_sign_list.data()), node_num);
 }
 
 void AsyncExecutor::InitParamConfig() {
