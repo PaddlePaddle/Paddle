@@ -24,8 +24,9 @@ namespace pybind {
 void BindTracer(pybind11::module *m) {
   pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
       .def("__init__",
-           [](imperative::Tracer &self, framework::BlockDesc *root_block) {
-             new (&self) imperative::Tracer(root_block);
+           [](imperative::Tracer &self, framework::BlockDesc *root_block,
+              framework::BlockDesc *startup_block) {
+             new (&self) imperative::Tracer(root_block, startup_block);
            })
       .def("trace", &imperative::Tracer::Trace)
       .def("get_scope", &imperative::Tracer::GetScope,

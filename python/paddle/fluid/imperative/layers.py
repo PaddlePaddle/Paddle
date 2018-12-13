@@ -25,11 +25,9 @@ __all__ = ['PyLayer']
 
 class PyLayer(core.Layer):
     def __init__(self):
-        pass
+        self._built = False
 
     def __call__(self, inputs):
-        # TODO(panyx0718): Support declarative mode as well.
-        assert base.enabled()
         if not isinstance(inputs, list) and not isinstance(inputs, tuple):
             inputs = [inputs]
 
@@ -37,8 +35,15 @@ class PyLayer(core.Layer):
         for x in inputs:
             py_var = base.to_variable(x)
             var_inputs.append(py_var)
+        if not self._built:
+            self._build_once(inputs)
+            self._built = True
+
         outputs = self.forward(var_inputs)
         return outputs
+
+    def _build_once(self, inputs):
+        pass
 
     def forward(self, inputs):
         return []
