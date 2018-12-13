@@ -67,79 +67,79 @@ struct DensePullThreadParam {
 class DensePullThread {
  public:
   explicit DensePullThread(const DensePullThreadParam& param) :
-        _running(false) {
-        _ps_client = param.ps_client;
-        _threshold = param.threshold;
-        _thread_num = param.training_thread_num;
-        _root_scope = param.root_scope;
-        _sleep_time_ms = param.sleep_time_ms;
-
-        for (auto& t : *param.dense_params) {
-            _dense_variable_name[t.first].insert(
-                    _dense_variable_name[t.first].end(),
-                    t.second.begin(), t.second.end());
-            _training_versions[t.first].resize(_thread_num, 0);
-            _last_versions[t.first] = 0;
-            _current_version[t.first] = 0;
-        }
+  _running(false) {
+    _ps_client = param.ps_client;
+    _threshold = param.threshold;
+    _thread_num = param.training_thread_num;
+    _root_scope = param.root_scope;
+    _sleep_time_ms = param.sleep_time_ms;
+    
+    for (auto& t : *param.dense_params) {
+      _dense_variable_name[t.first].insert(
+          _dense_variable_name[t.first].end(),
+          t.second.begin(), t.second.end());
+      _training_versions[t.first].resize(_thread_num, 0);
+      _last_versions[t.first] = 0;
+      _current_version[t.first] = 0;
     }
-
-    int start();
-
-    void stop() {
-        if (_running) {
-            _running = false;
-            _t.join();
-        }
+  }
+  
+  int start();
+  
+  void stop() {
+    if (_running) {
+      _running = false;
+      _t.join();
     }
-
-    void increase_thread_version(int thread_id, uint64_t table_id);
-    void reset_thread_version(uint64_t table_id);
-    std::future<int32_t> pull_dense(uint64_t table_id);
-    void pull_dense2(uint64_t table_id);
-    void wait_all();
-
+  }
+  
+  void increase_thread_version(int thread_id, uint64_t table_id);
+  void reset_thread_version(uint64_t table_id);
+  std::future<int32_t> pull_dense(uint64_t table_id);
+  void pull_dense2(uint64_t table_id);
+  void wait_all();
+  
  private:
-    void run();
-    bool check_update_param(uint64_t table_id);
-
+  void run();
+  bool check_update_param(uint64_t table_id);
+  
  private:
-    std::shared_ptr<paddle::ps::PSClient> _ps_client;
-    int _thread_num;
-    int _threshold;
-    int _sleep_time_ms;
-    Scope* _root_scope;
-    bool _running;
+  std::shared_ptr<paddle::ps::PSClient> _ps_client;
+  int _thread_num;
+  int _threshold;
+  int _sleep_time_ms;
+  Scope* _root_scope;
+  bool _running;
 
-    std::map<uint64_t, uint64_t> _last_versions;
-    std::map<uint64_t, uint64_t> _current_version;
-    std::mutex  _mutex_for_version;
-    std::map<uint64_t, std::vector<uint64_t>> _training_versions;
-    std::map<uint64_t, std::vector<std::string>> _dense_variable_name;
-
-    std::thread _t;
-
-    std::vector<::std::future<int32_t>> _pull_dense_status;
-
-    std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
-    uint32_t    _pull_dense_fail_times = 0;
-
-    std::vector<float>  _base_norm_param;
-    std::vector<float>  _mean;
-    std::vector<float>  _scale;
-    float _squared_sum_epsilon = 1e-4;
-    std::mutex _mutex_for_mean_scale;
-
-    float _total_batch_num = 0;
+  std::map<uint64_t, uint64_t> _last_versions;
+  std::map<uint64_t, uint64_t> _current_version;
+  std::mutex  _mutex_for_version;
+  std::map<uint64_t, std::vector<uint64_t>> _training_versions;
+  std::map<uint64_t, std::vector<std::string>> _dense_variable_name;
+  
+  std::thread _t;
+  
+  std::vector<::std::future<int32_t>> _pull_dense_status;
+  
+  std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
+  uint32_t    _pull_dense_fail_times = 0;
+  
+  std::vector<float>  _base_norm_param;
+  std::vector<float>  _mean;
+  std::vector<float>  _scale;
+  float _squared_sum_epsilon = 1e-4;
+  std::mutex _mutex_for_mean_scale;
+  
+  float _total_batch_num = 0;
 };
 #endif
 
 class ExecutorThreadWorker {
  public:
-  ExecutorThreadWorker()
-      : thread_id_(-1), root_scope_(NULL), thread_scope_(NULL), debug_(false) {}
+ExecutorThreadWorker()
+    : thread_id_(-1), root_scope_(NULL), thread_scope_(NULL), debug_(false) {}
   virtual ~ExecutorThreadWorker() {}
-
+  
   void CreateThreadResource(const framework::ProgramDesc& program,
                             const paddle::platform::Place& place);
   void SetThreadId(int tid);
@@ -160,7 +160,7 @@ class ExecutorThreadWorker {
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
 #ifdef PADDLE_WITH_PSLIB
   virtual void SetPSlibPtr(
-      std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {};
+      std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {}
   virtual void SetPullDenseThread(
       std::shared_ptr<DensePullThread> dpt) {}
   virtual void SetParamConfig(
@@ -218,32 +218,32 @@ class AsyncExecutorThreadWorker: public ExecutorThreadWorker {
   void check_pull_push_memory(const std::vector<uint64_t>& features,
                               std::vector<std::vector<float>>& push_g,
                               int dim);
-    void collect_feasign_info(int table_id);
-
+  void collect_feasign_info(int table_id);
+  
  private:
-    struct FeasignInfo {
-        uint32_t slot;
-        uint32_t ins;
-        int64_t label;
-    };
-
-    std::map<uint64_t, std::vector<uint64_t>>       _features;
-    std::map<uint64_t, std::vector<FeasignInfo>>    _fea_info;
-    std::map<uint64_t, std::vector<std::vector<float>>> _feature_value;
-    std::map<uint64_t, std::vector<std::vector<float>>> _feature_push_value;
-
-
-    std::shared_ptr<paddle::distributed::PSlib>     _pslib_ptr;
-
-    std::shared_ptr<DensePullThread>                _pull_dense_thread;
-
-    std::vector<::std::future<int32_t>>             _pull_sparse_status;
-    std::vector<::std::future<int32_t>>             _pull_dense_status;
-    std::vector<::std::future<int32_t>>             _push_sparse_status;
-    std::vector<::std::future<int32_t>>             _push_dense_status;
-
-    AsyncWorkerParamConfig*                         _param_config;
-
+  struct FeasignInfo {
+    uint32_t slot;
+    uint32_t ins;
+    int64_t label;
+  };
+  
+  std::map<uint64_t, std::vector<uint64_t>>       _features;
+  std::map<uint64_t, std::vector<FeasignInfo>>    _fea_info;
+  std::map<uint64_t, std::vector<std::vector<float>>> _feature_value;
+  std::map<uint64_t, std::vector<std::vector<float>>> _feature_push_value;
+  
+  
+  std::shared_ptr<paddle::distributed::PSlib>     _pslib_ptr;
+  
+  std::shared_ptr<DensePullThread>                _pull_dense_thread;
+  
+  std::vector<::std::future<int32_t>>             _pull_sparse_status;
+  std::vector<::std::future<int32_t>>             _pull_dense_status;
+  std::vector<::std::future<int32_t>>             _push_sparse_status;
+  std::vector<::std::future<int32_t>>             _push_dense_status;
+  
+  AsyncWorkerParamConfig*                         _param_config;
+  
 };
 #endif
 
