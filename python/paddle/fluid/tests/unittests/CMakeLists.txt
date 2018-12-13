@@ -112,4 +112,6 @@ if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
 endif()
 
-add_subdirectory(ngraph)
+if (WITH_NGRAPH)
+    add_subdirectory(ngraph)
+endif()
