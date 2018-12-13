@@ -615,11 +615,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def load_persistables(executor,
-                      dirname,
-                      main_program=None,
-                      filename=None,
-                      endpoint=None):
+def load_persistables(executor, dirname, main_program=None, filename=None):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then trys to load these variables from the folder
@@ -684,7 +680,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             offset = param.offset
 
             origin = load_block.create_var(
-                name=origin_var.name,
+                name="{}.load".format(origin_var.name),
                 type=origin_var.type,
                 shape=origin_var.shape,
                 dtype=origin_var.dtype,
@@ -694,7 +690,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                 type='load',
                 inputs={},
                 outputs={'Out': [origin]},
-                attrs={'file_path': os.path.join(dirname, origin.name)})
+                attrs={'file_path': os.path.join(dirname, origin_var.name)})
 
             if is_slice:
                 slice = load_block.create_var(
@@ -716,7 +712,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                            'starts': [start],
                            'ends': [end]})
 
-                need_delete_vars.append(origin_var)
+                need_delete_vars.append(origin)
 
         load_block.append_op(
             type='delete_var',
@@ -730,6 +726,11 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     if not main_program._is_distributed:
         raise ValueError(
             "'_load_distributed_persistables' just be designed for distributed training."
+        )
+
+    if not main_program._ps_endpoint:
+        raise ValueError(
+            "'_load_distributed_persistables' need current_endpoint set in DistributeTranspiler.transpile"
         )
 
     need_load_vars = main_program._slice_vars_overview.get_distributed_vars_by_ep(

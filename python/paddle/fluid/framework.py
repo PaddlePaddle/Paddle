@@ -2020,6 +2020,7 @@ class Program(object):
         self._is_chief = other._is_chief
         self._slice_vars_overview = other._slice_vars_overview
         self._endpoints = other._endpoints
+        self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):

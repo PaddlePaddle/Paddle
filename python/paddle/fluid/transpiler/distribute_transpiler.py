@@ -502,6 +502,7 @@ class DistributeTranspiler(object):
         # add distributed attrs to program
         self.origin_program._is_distributed = True
         self.origin_program._endpoints = self.pserver_endpoints
+        self.origin_program._ps_endpoint = current_endpoint
         self.origin_program._is_chief = self.trainer_id == 0
         self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
 
@@ -834,6 +835,8 @@ class DistributeTranspiler(object):
         # step1
         pserver_program = Program()
         pserver_program.random_seed = self.origin_program.random_seed
+        pserver_program._copy_dist_param_info_from(self.origin_program)
+
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
