@@ -25,6 +25,14 @@ if fluid.core.is_compiled_with_cuda():
 os.environ['CPU_NUM'] = str(dev_cnt)
 
 
+def dummy_func_with_no_input():
+    return float(1.0)
+
+
+def dummy_func_with_no_output(x):
+    pass
+
+
 def tanh(x):
     return np.tanh(x)
 
@@ -86,12 +94,19 @@ def simple_fc_net(img, label, use_py_func_op):
     else:
         loss = fluid.default_main_program().current_block().create_var(
             name='loss', dtype='float32', shape=[-1, 1])
-        fluid.layers.py_func(
+        loss = fluid.layers.py_func(
             func=cross_entropy,
             x=[prediction, label],
             out=loss,
             backward_func=cross_entropy_grad,
             skip_vars_in_backward_input=loss)
+
+        dummy_var = fluid.default_main_program().current_block().create_var(
+            name='test_tmp_var', dtype='float32', shape=[1])
+        fluid.layers.py_func(
+            func=dummy_func_with_no_input, x=None, out=dummy_var)
+
+        fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
     loss = fluid.layers.mean(loss)
     return loss
