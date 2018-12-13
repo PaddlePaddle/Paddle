@@ -87,22 +87,6 @@ void ScaleLossGradOpHandle::RunImpl() {
   ScaleLossGradFunctor func(coeff_, tensor, place_, this, out_dtype_, nullptr);
   framework::VisitDataType(out_dtype_, func);
 #endif
-
-  //   if (platform::is_cpu_place(place_)) {
-  //     *tmp = coeff_;
-  //   } else {
-  // #ifdef PADDLE_WITH_CUDA
-  //     this->RunAndRecordEvent([&] {
-  //       auto stream = static_cast<platform::CUDADeviceContext *>(
-  //                         this->dev_ctxes_.at(place_))
-  //                         ->stream();
-  //       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
-  //                    platform::CPUPlace(), &coeff_,
-  //                    sizeof(ToTypeIndex(out_dtype_)), stream);
-  //       VLOG(10) << place_ << "RUN Scale loss grad op";
-  //     });
-  // #endif
-  //   }
 }
 
 std::string ScaleLossGradOpHandle::Name() const { return "Scale LossGrad"; }
