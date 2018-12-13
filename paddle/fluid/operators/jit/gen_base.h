@@ -43,10 +43,6 @@ class GenBase : public Kernel {
   void dumpCode(const unsigned char* code) const;
 };
 
-// Every JitCode should have a method to get the key from attribution
-template <typename Attr>
-size_t JitCodeKey(Attr attr);
-
 // Creator is used to creat the jitcode and save in pool.
 // Every JitCode should have one creator.
 class GenCreator {

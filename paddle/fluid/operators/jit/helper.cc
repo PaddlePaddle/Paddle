@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/helper.h"
+#include <algorithm>  // tolower
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -36,6 +37,8 @@ const char* to_string(KernelType kt) {
     ONE_CASE(vexp);
     ONE_CASE(vsigmoid);
     ONE_CASE(vtanh);
+    ONE_CASE(lstmctht);
+    ONE_CASE(lstmc1h1);
     default:
       PADDLE_THROW("Not support type: %d", kt);
       return "NOT JITKernel";
@@ -43,6 +46,23 @@ const char* to_string(KernelType kt) {
   return nullptr;
 }
 #undef ONE_CASE
+
+KernelType to_kerneltype(const std::string& act) {
+  std::string lower = act;
+  std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+  if (lower == "relu" || lower == "vrelu") {
+    return vrelu;
+  } else if (lower == "identity" || lower == "videntity" || lower == "") {
+    return videntity;
+  } else if (lower == "exp" || lower == "vexp") {
+    return vexp;
+  } else if (lower == "sigmoid" || lower == "vsigmoid") {
+    return vsigmoid;
+  } else if (lower == "tanh" || lower == "vtanh") {
+    return vtanh;
+  }
+  return non_kernel;
+}
 
 }  // namespace jit
 }  // namespace operators

@@ -14,9 +14,7 @@
 
 #pragma once
 
-#include <memory>  // for unique_ptr
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
@@ -123,6 +121,8 @@ typename KernelTuples::func_type Get(typename KernelTuples::attr_type attr) {
 }
 
 const char* to_string(KernelType kt);
+
+KernelType to_kerneltype(const std::string& act);
 
 }  // namespace jit
 }  // namespace operators

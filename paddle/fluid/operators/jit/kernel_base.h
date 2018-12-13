@@ -20,8 +20,9 @@ namespace operators {
 namespace jit {
 
 typedef enum {
-  vmul = 0,
-  vadd = 1,
+  non_kernel = 0,
+  vmul = 1,
+  vadd = 2,
   vaddrelu,
   vsub,
   vscal,
@@ -30,7 +31,9 @@ typedef enum {
   videntity,
   vexp,
   vsigmoid,
-  vtanh
+  vtanh,
+  lstmctht,
+  lstmc1h1
 } KernelType;
 
 template <typename T>
@@ -48,6 +51,51 @@ struct XYNTuples {
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const T*, T*, int);
+};
+
+typedef struct {
+  void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
+  const void* ct_1;
+  void* ct;
+  void* ht;
+  /* weight_peephole and checked data are only used in peephole*/
+  const void* wp{nullptr};  //  W_ic, W_fc, W_oc
+  void* checked{nullptr};   // size: 2 * d
+} lstm_t;
+
+typedef struct {
+  void* gates;  // gates: {x_update, x_reset; x_state}
+  const void* ht_1;
+  void* ht;
+} gru_t;
+
+struct rnn_attr_s {
+  int d;
+  KernelType act_gate, act_cand;
+  rnn_attr_s() = default;
+  rnn_attr_s(int _d, KernelType _act_gate, KernelType _act_cand)
+      : d(_d), act_gate(_act_gate), act_cand(_act_cand) {}
+};
+
+struct lstm_attr_s : public rnn_attr_s {
+  bool use_peephole;
+  KernelType act_cell;
+  lstm_attr_s() = default;
+  lstm_attr_s(int _d, KernelType _act_gate, KernelType _act_cand,
+              KernelType _act_cell, bool _use_peephole = false)
+      : rnn_attr_s(_d, _act_gate, _act_cand),
+        use_peephole(_use_peephole),
+        act_cell(_act_cell) {}
+};
+
+typedef struct rnn_attr_s gru_attr_t;
+typedef struct lstm_attr_s lstm_attr_t;
+
+template <typename T>
+struct LSTMTuples {
+  typedef T data_type;
+  typedef lstm_attr_t attr_type;
+  typedef void (*func_type)(lstm_t*, const lstm_attr_t*);
 };
 
 // Just for adding to kernel pool without template

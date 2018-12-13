@@ -44,6 +44,10 @@ struct KernelKey {
   bool operator!=(const KernelKey& o) const { return !(*this == o); }
 };
 
+// Every JitCode should have a method to get the key from attribution
+template <typename Attr>
+size_t JitCodeKey(const Attr& attr);
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle

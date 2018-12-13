@@ -28,45 +28,6 @@ namespace jitkernel {
 #define YMM_FLOAT_BLOCK 8
 #define ZMM_FLOAT_BLOCK 16
 
-typedef struct {
-  void* gates;  // gates: W_ch, W_ih, W_fh, W_oh
-  const void* ct_1;
-  void* ct;
-  void* ht;
-  /* weight_peephole and checked data are only used in peephole*/
-  const void* wp{nullptr};
-  void* checked{nullptr};
-} lstm_t;
-
-typedef struct {
-  void* gates;  // gates: {W_update, W_reset; W_state}
-  const void* ht_1;
-  void* ht;
-} gru_t;
-
-struct rnn_attr_s {
-  int d;
-  std::string act_gate, act_cand;
-  rnn_attr_s() = default;
-  rnn_attr_s(int _d, const std::string& _act_gate, const std::string& _act_cand)
-      : d(_d), act_gate(_act_gate), act_cand(_act_cand) {}
-};
-
-struct lstm_attr_s : public rnn_attr_s {
-  bool use_peephole;
-  std::string act_cell;
-  lstm_attr_s() = default;
-  lstm_attr_s(int _d, const std::string& _act_gate,
-              const std::string& _act_cand, const std::string& _act_cell,
-              bool _use_peephole = false)
-      : rnn_attr_s(_d, _act_gate, _act_cand),
-        use_peephole(_use_peephole),
-        act_cell(_act_cell) {}
-};
-
-typedef struct rnn_attr_s gru_attr_t;
-typedef struct lstm_attr_s lstm_attr_t;
-
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators

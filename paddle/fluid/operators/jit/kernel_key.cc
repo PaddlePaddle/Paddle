@@ -12,32 +12,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jit/gen_base.h"
-#include <fstream>
-#include <iostream>
-#include <sstream>
-
-DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
+#include "paddle/fluid/operators/jit/kernel_key.h"
 
 namespace paddle {
 namespace operators {
 namespace jit {
 
-// refer do not need useme, it would be the last one.
-void GenBase::dumpCode(const unsigned char* code) const {
-  if (code) {
-    static int counter = 0;
-    std::ostringstream filename;
-    filename << "paddle_jitcode_" << name() << "." << counter << ".bin";
-    counter++;
-    std::ofstream fout(filename.str(), std::ios::out);
-    if (fout.is_open()) {
-      fout.write(reinterpret_cast<const char*>(code), this->getSize());
-      fout.close();
-    }
-  }
+template <>
+size_t JitCodeKey<int>(const int& d) {
+  return d;
 }
 
+template <>
+size_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
+  constexpr int act_type_shift = 3;  // suppot 2^3 act types
+  size_t key = attr.d;
+  int gate_key = static_cast<int>(attr.act_gate) << 1;
+  int cand_key = static_cast<int>(attr.act_cand) << (1 + act_type_shift);
+  int cell_key = static_cast<int>(attr.act_cell) << (1 + act_type_shift * 2);
+  return (key << (1 + act_type_shift * 3)) + gate_key + cand_key + cell_key +
+         attr.use_peephole;
+}
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
