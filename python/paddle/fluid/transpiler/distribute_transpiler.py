@@ -39,7 +39,7 @@ from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework, unique_name
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, \
-    Parameter, grad_var_name
+    Parameter, Variable, grad_var_name
 from .details import *
 from ..distribute_lookup_table import find_distributed_lookup_table
 from functools import reduce
@@ -60,6 +60,173 @@ PRINT_LOG = False
 def log(*args):
     if PRINT_LOG:
         print(args)
+
+
+class VarStruct(object):
+    def __init__(self, name, shape, dtype, type, lod_level, persistable):
+        self.name = name
+        self.shape = shape
+        self.dtype = dtype
+        self.type = type
+        self.lod_level = lod_level
+        self.persistable = persistable
+
+
+class VarDistributed(object):
+    """
+    a class to record the var distributed on parameter servers.
+    """
+
+    def __init__(self,
+                 origin_var,
+                 slice_var,
+                 is_slice=None,
+                 block_id=None,
+                 offset=None,
+                 vtype=None,
+                 endpoint=None):
+
+        if isinstance(origin_var, Variable):
+            self.origin = self.create_var_struct(origin_var)
+        else:
+            self.origin = origin_var
+
+        if isinstance(slice_var, Variable):
+            self.slice = self.create_var_struct(slice_var)
+        else:
+            self.slice = slice_var
+
+        if self.equal(self.origin, self.slice):
+            self.is_slice = False
+            self.block_id = 0
+            self.offset = 0
+        else:
+            self.is_slice = True
+            self.block_id = 0
+            self.offset = 0
+
+        if is_slice is not None:
+            self.is_slice = is_slice
+        if block_id is not None:
+            self.block_id = block_id
+        if offset is not None:
+            self.offset = offset
+
+        self.vtype = vtype
+        self.endpoint = endpoint
+
+    @staticmethod
+    def create_var_struct(var):
+        return VarStruct(var.name, var.shape, var.dtype, var.type,
+                         var.lod_level, var.persistable)
+
+    @staticmethod
+    def equal(var1, var2):
+        assert isinstance(var1, VarStruct) and isinstance(var2, VarStruct)
+
+        return var1.name == var2.name and \
+               var1.type == var2.type and \
+               var1.shape == var2.shape and \
+               var1.dtype == var2.dtype and \
+               var1.lod_level == var2.lod_level and \
+               var1.persistable == var2.persistable
+
+    def update_endpoint(self, endpoint):
+        self.endpoint = endpoint
+
+    def __str__(self):
+        origin_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})". \
+            format(i="{", e="}", name=self.origin.name, type=self.origin.type,
+                   shape=self.origin.shape, dtype=self.origin.dtype)
+
+        slice_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})" \
+                        ".slice({is_slice}).block({block_id}).offset({offset})". \
+            format(i="{", e="}", name=self.slice.name, type=self.slice.type,
+                   shape=self.slice.shape, dtype=self.slice.dtype,
+                   is_slice=self.is_slice, block_id=self.block_id, offset=self.offset)
+
+        return "var owned: {}, origin var: ( {} ), slice var: ( {} ), endpoint: {} ".format(
+            self.vtype, origin_var_str, slice_var_str, self.endpoint)
+
+
+class VarsDistributed(object):
+    def __init__(self):
+        self.distributed_vars = []
+
+    def add_distributed_var(self,
+                            origin_var,
+                            slice_var,
+                            is_slice=None,
+                            block_id=None,
+                            offset=None,
+                            vtype=None,
+                            endpoint=None):
+        self.distributed_vars.append(
+            VarDistributed(origin_var, slice_var, is_slice, block_id, offset,
+                           vtype, endpoint))
+
+    def get_distributed_var_by_slice(self, var):
+        for dist_var in self.distributed_vars:
+
+            if self.equal(dist_var.slice, var):
+                return dist_var
+
+        return None
+
+    @staticmethod
+    def equal(var1, var2):
+        return var1.name == var2.name and \
+               var1.type == var2.type and \
+               var1.shape == var2.shape and \
+               var1.dtype == var2.dtype and \
+               var1.lod_level == var2.lod_level and \
+               var1.persistable == var2.persistable
+
+    def get_distributed_var_by_origin_and_ep(self, origin_var_name, endpoint):
+        for dist_var in self.distributed_vars:
+            if dist_var.origin.name == origin_var_name and dist_var.endpoint == endpoint:
+                return dist_var
+        return None
+
+    def get_distributed_vars_by_vtype(self, vtype, groupby=False):
+        vtype_vars = []
+        for var in self.distributed_vars:
+            if var.vtype == vtype:
+                vtype_vars.append(var)
+        if not groupby:
+            return vtype_vars
+
+        optimizer_map = {}
+        for var in vtype_vars:
+            origin_var_name = var.origin.name
+
+            if origin_var_name in optimizer_map.keys():
+                optimizers = optimizer_map.get(origin_var_name)
+            else:
+                optimizers = []
+            optimizers.append(var)
+            optimizer_map[origin_var_name] = optimizers
+        return optimizer_map
+
+    def get_distributed_vars_by_ep(self, endpoint, vtype=None):
+        endpoint_vars = []
+        for var in self.distributed_vars:
+            if var.endpoint == endpoint:
+                endpoint_vars.append(var)
+        if not vtype:
+            return endpoint_vars
+
+        vtype_vars = []
+        for var in endpoint_vars:
+            if var.vtype == vtype:
+                vtype_vars.append(var)
+        return vtype_vars
+
+    def overview(self):
+        vars_str = []
+        for var in self.distributed_vars:
+            vars_str.append(str(var))
+        return "\n".join(vars_str)
 
 
 class VarBlock:
@@ -314,6 +481,7 @@ class DistributeTranspiler(object):
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
+        self.vars_overview = VarsDistributed()
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
@@ -441,6 +609,10 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
+            distributed_var = self.vars_overview.get_distributed_var_by_slice(
+                recv_vars[i])
+            distributed_var.update_endpoint(ep)
+
         # step4: Concat the parameters splits together after recv.
         all_recv_outputs = []
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
@@ -519,6 +691,13 @@ class DistributeTranspiler(object):
                                                         pserver_endpoints)
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
+        self._get_distributed_optimizer_vars()
+        self.origin_program._slice_vars_overview = self.vars_overview
+        vars_str = self.vars_overview.overview()
+        print("\n ## ## ## ##\n")
+        print(vars_str)
+        print("\n ## ## ## ##\n")
+
     def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program.
@@ -528,8 +707,6 @@ class DistributeTranspiler(object):
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
-
-        self.origin_program.optimizer_varmap = self._get_slice_optimizer_vars()
 
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
@@ -695,9 +872,6 @@ class DistributeTranspiler(object):
                     recv_inputs.append(var)
             else:
                 recv_inputs.append(single_trainer_var)
-
-        self._slice_params_and_optimizes = self._get_slice_vars_and_attrs(
-            endpoint)
 
         # step 3
         # Create a union-find data structure from optimize ops,
@@ -881,10 +1055,6 @@ class DistributeTranspiler(object):
             outputs={},
             attrs=attrs)
 
-        # add distributed attrs
-        pserver_program._slice_vars_and_attrs = list(
-            self._slice_params_and_optimizes.values())
-
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
         self.pserver_program = pserver_program
@@ -995,86 +1165,84 @@ to transpile() call.")
                     inputs={"X": startup_param_var},
                     outputs={"Out": startup_tmpvar})
 
-        # add slice vars
-        s_prog._slice_vars_and_attrs = pserver_program._slice_vars_and_attrs
-
         return s_prog
 
-    def _get_slice_vars_and_attrs(self, endpoint):
-        slice_vars_and_attrs = {}
-        block_suffix = "block"
-        for param in self.param_grad_ep_mapping[endpoint]["params"]:
-            orig_var_name, block_name, _ = self._get_varname_parts(param.name)
-            if not block_name:
-                continue
-
-            block_idx = int(block_name.split(block_suffix)[1])
-            orig_var = self.origin_program.global_block().vars[orig_var_name]
-
-            skip_dim0 = 0
-            slice_vars = self.param_var_mapping[orig_var_name]
-            for slice_var in slice_vars[:block_idx]:
-                skip_dim0 += slice_var.shape[0]
-            slice_vars_and_attrs[param.name] = [orig_var, skip_dim0, param]
-        return slice_vars_and_attrs
-
     # ====================== private transpiler functions =====================
-    def _get_slice_optimizer_vars(self):
-        optimize_vars_map = {}
-        for ep in self.pserver_endpoints:
+    def _get_slice_var_info(self, slice_var):
+        block_suffix = "block"
+        block_idx = 0
+        offset = 0
+        is_slice = False
+
+        orig_var_name, block_name, _ = self._get_varname_parts(slice_var.name)
+
+        if not block_name:
+            return is_slice, block_idx, offset
+
+        block_idx = int(block_name.split(block_suffix)[1])
+        skip_dim0 = 0
+        slice_vars = self.param_var_mapping[orig_var_name]
+
+        orig_dim1_flatten = reduce(lambda x, y: x * y, slice_vars[0].shape[1:])
+
+        for slice_var in slice_vars[:block_idx]:
+            skip_dim0 += slice_var.shape[0]
+
+        offset = skip_dim0 * orig_dim1_flatten
+        is_slice = True
+        return is_slice, block_idx, offset
+
+    def _get_distributed_optimizer_vars(self):
+        def _get_distributed_optimizer_var(endpoint):
             opt_op_on_pserver = []
             for _, op in enumerate(self.optimize_ops):
-                if self._is_optimizer_op(op) and self._is_opt_op_on_pserver(ep,
-                                                                            op):
+                if self._is_optimizer_op(op) and self._is_opt_op_on_pserver(
+                        endpoint, op):
                     opt_op_on_pserver.append(op)
 
-            var_map = {}
-            for var_tuple in self._get_slice_vars_and_attrs(ep).values():
-                var_map[var_tuple[0].name] = var_tuple
-
-            optimize_vars = []
             for opt_op in opt_op_on_pserver:
-                param_var_tuple = None
+                dist_var = None
                 for key in opt_op.input_names:
                     if key == "Param":
-                        param_var_tuple = var_map.get(opt_op.input(key)[0])
-                        if not param_var_tuple:
-                            param_var = self.origin_program.global_block().vars[
-                                opt_op.input(key)[0]]
-                            param_var_tuple = (param_var, 0, param_var)
+                        param_name = opt_op.input(key)[0]
+                        dist_var = self.vars_overview.get_distributed_var_by_origin_and_ep(
+                            param_name, endpoint)
                         break
                 for key in opt_op.input_names:
-                    new_shape = None
                     if key in ["Param", "Grad", "LearningRate"]:
                         continue
-                    var = self.origin_program.global_block().vars[opt_op.input(
-                        key)[0]]
+                    origin_var = self.origin_program.global_block().vars[
+                        opt_op.input(key)[0]]
                     # update accumulator variable shape
                     new_shape = self._get_optimizer_input_shape(
-                        opt_op.type, key, var.shape, param_var_tuple[2].shape)
+                        opt_op.type, key, origin_var.shape,
+                        dist_var.slice.shape)
 
-                    if new_shape == param_var_tuple[2].shape:
-                        optimize_var = (var.name, var.type, new_shape,
-                                        var.dtype, var.persistable,
-                                        param_var_tuple[1])
+                    if new_shape == dist_var.slice.shape:
+                        splited_var = VarStruct(
+                            origin_var.name, origin_var.type, new_shape,
+                            origin_var.lod_level, origin_var.dtype,
+                            origin_var.persistable)
+                        self.vars_overview.add_distributed_var(
+                            origin_var=origin_var,
+                            slice_var=splited_var,
+                            is_slice=dist_var.is_slice,
+                            block_id=dist_var.block_id,
+                            offset=dist_var.offset,
+                            vtype="Optimizer",
+                            endpoint=endpoint)
                     else:
-                        optimize_var = (var.name, var.type, new_shape,
-                                        var.dtype, var.persistable, -1)
-                    optimize_vars.append(optimize_var)
-            optimize_vars_map[ep] = optimize_vars
+                        self.vars_overview.add_distributed_var(
+                            origin_var=origin_var,
+                            slice_var=origin_var,
+                            is_slice=False,
+                            block_id=0,
+                            offset=0,
+                            vtype="Optimizer",
+                            endpoint=endpoint)
 
-            optimize_map = {}
-
-            for ep, all_vars in optimize_vars_map.items():
-                for var in all_vars:
-                    var_t = (var[0], var[1], var[2], var[3], var[4])
-                    var_e = optimize_map.get(var[0])
-                    var_e = var_e if var_e else []
-                    var_e.append((var_t, var[5], ep))
-                    var_e = sorted(var_e, key=lambda var: var[1])
-                    optimize_map[var[0]] = var_e
-
-        return optimize_map
+        for ep in self.pserver_endpoints:
+            _get_distributed_optimizer_var(ep)
 
     def _update_dist_lookup_table_vars(self, param_list, grad_list,
                                        params_grads):
@@ -1160,6 +1328,22 @@ to transpile() call.")
         # origin_param_name -> [splited_param_vars]
         self.param_var_mapping = self._create_vars_from_blocklist(
             self.origin_program, param_blocks)
+
+        for orig_name, splited_vars in self.param_var_mapping.items():
+            orig_var = self.origin_program.global_block().var(orig_name)
+
+            for splited_var in splited_vars:
+                is_slice, block_id, offset = self._get_slice_var_info(
+                    splited_var)
+
+                self.vars_overview.add_distributed_var(
+                    origin_var=orig_var,
+                    slice_var=splited_var,
+                    block_id=block_id,
+                    offset=offset,
+                    is_slice=is_slice,
+                    vtype="Param")
+
         # origin_grad_name -> [splited_grad_vars]
         self.grad_var_mapping = self._create_vars_from_blocklist(
             self.origin_program,
@@ -1786,13 +1970,6 @@ to transpile() call.")
                 dtype=var.dtype,
                 shape=new_shape)
             new_inputs[key] = tmpvar
-
-            # var shape been changed
-            if new_shape != var.shape:
-                slice_var_args = self._slice_params_and_optimizes[
-                    param_var.name]
-                self._slice_params_and_optimizes[
-                    var.name] = [var, slice_var_args[1], tmpvar]
 
         # change output's ParamOut variable
         outputs = self._get_output_map_from_op(

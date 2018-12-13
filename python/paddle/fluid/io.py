@@ -87,97 +87,6 @@ def _clone_var_in_block_(block, var):
         persistable=True)
 
 
-def _save_persistables_on_pserver(executor, dirname, main_program):
-    """
-    get persistables on pserver through rpc.
-    :return:
-    """
-
-    optimizer_varmap = main_program.optimizer_varmap
-
-    if not optimizer_varmap:
-        return
-
-    prog = Program()
-    block = prog.global_block()
-
-    # recv
-    for var_name, var_s in optimizer_varmap.items():
-
-        origin_var_name = ""
-        origin_var_dim0 = 0
-        slice_vars = []
-        slice_var_names = []
-        slice_start = -1
-        endpoints = []
-
-        for idx, var_t in enumerate(var_s):
-            var = var_t[0]
-            slice_start = var_t[1]
-            endpoint = var_t[2]
-
-            origin_var_name = var[0]
-            slice_var_name = "{}.recv.{}".format(var[0], idx)
-
-            slice_var = block.create_var(
-                name="{}".format(slice_var_name),
-                type=var[1],
-                shape=var[2],
-                dtype=var[3],
-                persistable=var[4])
-
-            origin_var_dim0 += var[2][0]
-            slice_vars.append(slice_var)
-            endpoints.append(endpoint)
-            slice_var_names.append(var[0])
-
-        var = var_t[0]
-
-        shape = list(var[2])
-        shape[0] = origin_var_dim0
-
-        origin_var = block.create_var(
-            name=var[0],
-            type=var[1],
-            shape=shape,
-            dtype=var[3],
-            persistable=var[4])
-
-        block.append_op(
-            type='recv',
-            inputs={"X": []},
-            outputs={"Out": slice_vars},
-            attrs={
-                "epmap": endpoints,
-                "with_barrier": False,
-                "varnames": slice_var_names,
-                "sync_mode": True
-            })
-
-        if slice_start != -1:
-            block.append_op(
-                type='concat',
-                inputs={'X': slice_vars},
-                outputs={'Out': origin_var},
-                attrs={})
-
-            block.append_op(
-                type='save',
-                inputs={'X': [origin_var]},
-                outputs={},
-                attrs={'file_path': os.path.join(dirname, origin_var_name)})
-        else:
-            block.append_op(
-                type='save',
-                inputs={'X': slice_vars[:1]},
-                outputs={},
-                attrs={'file_path': os.path.join(dirname, origin_var_name)})
-
-        block.append_op(type='delete_var', inputs={'X': slice_vars})
-
-    executor.run(prog)
-
-
 def save_vars(executor,
               dirname,
               main_program=None,
@@ -275,8 +184,6 @@ def save_vars(executor,
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
-            if each_var.name == main_program._distributed_lookup_table:
-                continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
                 save_block.append_op(
@@ -297,16 +204,6 @@ def save_vars(executor,
                 inputs={'X': save_var_list},
                 outputs={},
                 attrs={'file_path': os.path.join(dirname, filename)})
-
-        # if there is lookup table, the trainer 0 will notify all pserver to save.
-        if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
-            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
-            attrs = {}
-            attrs['epmap'] = main_program._endpoints
-            attrs['dir'] = lookup_table_filename
-            attrs['lookup_table'] = main_program._distributed_lookup_table
-            save_block.append_op(
-                type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
 
         executor.run(save_program)
 
@@ -359,6 +256,141 @@ def save_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
+def _save_distributed_persistables(executor, dirname, main_program):
+    def __save_optimizers(executor, dirname, optimizer_map):
+        """
+        get optimizer vars on pserver through rpc.
+        :return:
+        """
+        if not optimizer_map:
+            return
+
+        prog = Program()
+        block = prog.global_block()
+
+        # recv optimize vars from pserver
+        for name, optimizers in optimizer_map.items():
+            origin_var = None
+            is_slice = False
+            slice_vars = [0] * len(optimizers)
+            slice_var_names = [""] * len(optimizers)
+            endpoints = [""] * len(optimizers)
+
+            for idx, optimizer in enumerate(optimizers):
+                origin_var = optimizer.origin
+                slice_var = optimizer.slice
+                is_slice = optimizer.is_slice
+                block_id = optimizer.block_id
+                endpoint = optimizer.endpoint
+
+                if idx == 0:
+                    origin_var = block.create_var(
+                        name=origin_var.name,
+                        type=origin_var.type,
+                        shape=origin_var.shape,
+                        dtype=origin_var.dtype,
+                        persistable=origin_var.persistable)
+
+                slice_var = block.create_var(
+                    name="{}.slice.{}".format(slice_var.name, idx),
+                    type=slice_var.type,
+                    shape=slice_var.shape,
+                    dtype=slice_var.dtype,
+                    persistable=slice_var.persistable)
+
+                slice_vars[block_id] = slice_var
+                slice_var_names[block_id] = slice_var.name
+                endpoints[block_id] = endpoint
+
+            if is_slice:
+                block.append_op(
+                    type='recv',
+                    inputs={"X": []},
+                    outputs={"Out": slice_vars},
+                    attrs={
+                        "epmap": endpoints,
+                        "with_barrier": False,
+                        "varnames": slice_var_names,
+                        "sync_mode": True
+                    })
+                block.append_op(
+                    type='concat',
+                    inputs={'X': slice_vars},
+                    outputs={'Out': origin_var},
+                    attrs={})
+            else:
+                block.append_op(
+                    type='recv',
+                    inputs={"X": []},
+                    outputs={"Out": [origin_var]},
+                    attrs={
+                        "epmap": endpoints[:1],
+                        "with_barrier": False,
+                        "varnames": slice_var_names,
+                        "sync_mode": True
+                    })
+            block.append_op(
+                type='save',
+                inputs={'X': [origin_var]},
+                outputs={},
+                attrs={'file_path': os.path.join(dirname, origin_var.name)})
+            block.append_op(type='delete_var', inputs={'X': slice_vars})
+        executor.run(prog)
+
+    def __save_distributed_lookup_tables(executor, dirname,
+                                         distributed_lookup_table, endpoints):
+        prog = Program()
+        block = prog.global_block()
+
+        # if there is lookup table, the trainer 0 will notify all pserver to save.
+        lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+        attrs = {}
+        attrs['epmap'] = endpoints
+        attrs['dir'] = lookup_table_filename
+        attrs['lookup_table'] = distributed_lookup_table
+        block.append_op(
+            type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
+        executor.run(prog)
+
+    def __exclude_vars(exclude_var_names=[]):
+        def is_valid(var):
+            if var.name in exclude_var_names:
+                return False
+            return True
+
+        return is_valid
+
+    if not isinstance(main_program, Program):
+        raise ValueError("'main_program' should be an instance of Program.")
+
+    if not main_program._is_distributed:
+        raise ValueError(
+            "'_save_distributed_persistables' just be designed for distributed training."
+        )
+
+    optimizer_map = main_program._slice_vars_overview.get_distributed_vars_by_vtype(
+        "Optimizer", groupby=True)
+
+    exclude_var_names = []
+    if optimizer_map:
+        exclude_var_names.extend(optimizer_map.keys())
+
+    if main_program._distributed_lookup_table:
+        if isinstance(main_program._distributed_lookup_table, list):
+            exclude_var_names.extend(main_program._distributed_lookup_table)
+        else:
+            exclude_var_names.append(main_program._distributed_lookup_table)
+
+    local_vars = list(
+        filter(__exclude_vars(exclude_var_names), main_program.list_vars()))
+    save_vars(
+        executor, main_program=main_program, dirname=dirname, vars=local_vars)
+    __save_optimizers(executor, dirname, optimizer_map)
+    __save_distributed_lookup_tables(executor, dirname,
+                                     main_program._distributed_lookup_table,
+                                     main_program.main_program._endpoints)
+
+
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
     This function filters out all variables with `persistable==True` from the
@@ -393,13 +425,19 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             fluid.io.save_persistables(executor=exe, dirname=param_path,
                                        main_program=None)
     """
-    save_vars(
-        executor,
-        dirname=dirname,
-        main_program=main_program,
-        vars=None,
-        predicate=is_persistable,
-        filename=filename)
+
+    if main_program._is_distributed:
+        _save_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program)
+
+    else:
+        save_vars(
+            executor,
+            dirname=dirname,
+            main_program=main_program,
+            vars=None,
+            predicate=is_persistable,
+            filename=filename)
 
 
 def load_vars(executor,
@@ -494,16 +532,10 @@ def load_vars(executor,
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
-        load_slice_vars = []
-        for each_var in main_program._slice_vars_and_attrs:
-            load_slice_vars.append(each_var[2].name)
-
         load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
-                continue
-            if each_var.name in load_slice_vars:
                 continue
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
@@ -526,10 +558,6 @@ def load_vars(executor,
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
         executor.run(load_prog)
-
-        # load slice vars on pserver, if have it.
-        _load_slice_up_vars(executor, dirname,
-                            main_program._slice_vars_and_attrs)
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
@@ -619,6 +647,77 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         main_program=main_program,
         predicate=is_persistable,
         filename=filename)
+
+
+def _load_distributed_persistables(executor, dirname, main_program=None):
+    def __is_distributed_part_var(varname):
+        trainer_idx = varname.find(".trainer_")
+        block_idx = varname.find(".block")
+        return trainer_idx or block_idx
+
+    def __load_persistable_vars(executor, dirname, need_load_vars):
+        load_prog = Program()
+        load_block = load_prog.global_block()
+        need_delete_vars = []
+
+        for param in need_load_vars:
+            origin_var = param.origin
+            slice_var = param.slice
+            is_slice = param.is_slice
+            offset = param.offset
+
+            origin = load_block.create_var(
+                name=origin_var.name,
+                type=origin_var.type,
+                shape=origin_var.shape,
+                dtype=origin_var.dtype,
+                persistable=origin_var.persistable)
+
+            load_block.append_op(
+                type='load',
+                inputs={},
+                outputs={'Out': [origin]},
+                attrs={'file_path': os.path.join(dirname, origin.name)})
+
+            if is_slice:
+                slice = load_block.create_var(
+                    name=slice_var.name,
+                    type=slice_var.type,
+                    shape=slice_var.shape,
+                    dtype=slice_var.dtype,
+                    persistable=slice_var.persistable)
+
+                dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
+                start = offset / dim1_flatten
+                end = offset / dim1_flatten + slice.shape[0]
+
+                load_block.append_op(
+                    type="slice",
+                    inputs={'Input': origin},
+                    outputs={'Out': slice},
+                    attrs={'axes': [0],
+                           'starts': [start],
+                           'ends': [end]})
+
+                need_delete_vars.append(origin_var)
+
+        load_block.append_op(
+            type='delete_var',
+            inputs={'X': need_delete_vars}, )
+
+        executor.run(load_prog)
+
+    if not isinstance(main_program, Program):
+        raise ValueError("'main_program' should be an instance of Program.")
+
+    if not main_program._is_distributed:
+        raise ValueError(
+            "'_load_distributed_persistables' just be designed for distributed training."
+        )
+
+    need_load_vars = main_program._slice_vars_overview.get_distributed_vars_by_ep(
+        main_program._ps_endpoint)
+    __load_persistable_vars(executor, dirname, need_load_vars)
 
 
 def prepend_feed_ops(inference_program,
