@@ -114,7 +114,7 @@ std::vector<std::vector<Event>> GetAllEvents();
 enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
 
 // Enable the profiling function.
-void EnableProfiler(ProfilerState state);
+void EnableProfiler(ProfilerState state, bool enable_timeline = true);
 
 // Clear the g_all_event_lists, which is total event lists of all threads.
 void ResetProfiler();

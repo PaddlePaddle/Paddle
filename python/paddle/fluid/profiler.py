@@ -122,7 +122,7 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state):
+def start_profiler(state, enable_timeline=False):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to insert the code, except the usage of
@@ -132,6 +132,7 @@ def start_profiler(state):
         state (string) : The profiling state, which should be 'CPU', 'GPU'
             or 'All'. 'CPU' means only profile CPU. 'GPU' means profiling
             GPU as well. 'All' also generates timeline.
+        enable_timeline(bool): If enable timeline or not
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All'].
@@ -159,7 +160,7 @@ def start_profiler(state):
         prof_state = core.ProfilerState.kCPU
     else:
         prof_state = core.ProfilerState.kAll
-    core.enable_profiler(prof_state)
+    core.enable_profiler(prof_state, enable_timeline)
 
 
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):

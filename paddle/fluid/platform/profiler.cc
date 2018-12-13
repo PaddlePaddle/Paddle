@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/port.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -26,8 +25,10 @@ limitations under the License. */
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 #include "glog/logging.h"
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
@@ -39,6 +40,7 @@ struct EventList;
 
 static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
+static bool timeline_enabled = false;
 std::mutex profiler_mu;
 
 // The profiler state, the initial value is ProfilerState::kDisabled
@@ -173,7 +175,6 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   dev_ctx_ = dev_ctx;
@@ -184,12 +185,13 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 }
 
 RecordEvent::~RecordEvent() {
-  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  DeviceTracer* tracer = GetDeviceTracer();
-  if (tracer) {
-    tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
-                          BlockDepth(), g_thread_id);
+  if (timeline_enabled) {
+    DeviceTracer* tracer = GetDeviceTracer();
+    if (tracer) {
+      tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
+                            BlockDepth(), g_thread_id);
+    }
   }
   ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
@@ -204,7 +206,6 @@ RecordRPCEvent::RecordRPCEvent(const std::string& name,
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   SetCurBlock(block_id);
@@ -212,30 +213,34 @@ RecordBlock::RecordBlock(int block_id)
 }
 
 RecordBlock::~RecordBlock() {
-  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  DeviceTracer* tracer = GetDeviceTracer();
-  if (tracer) {
-    // We try to put all blocks at the same nested depth in the
-    // same timeline lane. and distinguish the using thread_id.
-    tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
-                          g_thread_id);
+  if (timeline_enabled) {
+    DeviceTracer* tracer = GetDeviceTracer();
+    if (tracer) {
+      // We try to put all blocks at the same nested depth in the
+      // same timeline lane. and distinguish the using thread_id.
+      tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
+                            g_thread_id);
+    }
   }
   ClearCurBlock();
 }
 
-void EnableProfiler(ProfilerState state) {
+void EnableProfiler(ProfilerState state, bool enable_timeline) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enable profiling, since the input state is ",
                  "ProfilerState::kDisabled");
 
   std::lock_guard<std::mutex> l(profiler_mu);
+  timeline_enabled = enable_timeline;
   if (state == g_state) {
     return;
   }
   g_state = state;
   should_send_profile_state = true;
-  GetDeviceTracer()->Enable();
+  if (timeline_enabled) {
+    GetDeviceTracer()->Enable();
+  }
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
     // Generate some dummy events first to reduce the startup overhead.
@@ -489,10 +494,12 @@ void DisableProfiler(EventSortingKey sorted_key,
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   ResetProfiler();
-  DeviceTracer* tracer = GetDeviceTracer();
-  if (tracer->IsEnabled()) {
-    tracer->Disable();
-    tracer->GenProfile(profile_path);
+  if (timeline_enabled) {
+    DeviceTracer* tracer = GetDeviceTracer();
+    if (tracer->IsEnabled()) {
+      tracer->Disable();
+      tracer->GenProfile(profile_path);
+    }
   }
   g_state = ProfilerState::kDisabled;
   should_send_profile_state = true;

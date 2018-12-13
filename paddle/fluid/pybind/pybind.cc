@@ -709,7 +709,10 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kAve", platform::EventSortingKey::kAve)
       .export_values();
 
-  m.def("enable_profiler", platform::EnableProfiler);
+  m.def("enable_profiler",
+        [](platform::ProfilerState state, bool enable_timeline) {
+          platform::EnableProfiler(state, enable_timeline);
+        });
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
