@@ -19,6 +19,7 @@ limitations under the License. */
 #include <set>
 #include <unordered_set>
 #include "glog/logging.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(benchmark, false,
@@ -47,10 +48,10 @@ DEFINE_double(
 #define SCOPE_VARS_READER_LOCK
 #define SCOPE_VARS_WRITER_LOCK
 #else
-#define SCOPE_KIDS_READER_LOCK AutoRDLock(&kids_lock_);
-#define SCOPE_KIDS_WRITER_LOCK AutoWRLock(&kids_lock_);
-#define SCOPE_VARS_READER_LOCK AutoRDLock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK AutoWRLock(&vars_lock_);
+#define SCOPE_KIDS_READER_LOCK AutoRDLock auto_lock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK AutoWRLock auto_lock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
 #endif
 
 namespace paddle {
