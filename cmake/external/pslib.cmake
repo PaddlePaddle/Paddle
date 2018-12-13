@@ -29,8 +29,8 @@ INCLUDE(ExternalProject)
 SET(PSLIB_PROJECT       "extern_pslib")
 IF((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
   MESSAGE(STATUS "use pre defined download url")
-  SET(PSLIB_VER "pslib" CACHE STRING "" FORCE) #todo pslib version
-  SET(PSLIB_URL "http://bjyz-heqiaozhi-dev-new.epc.baidu.com:8000/${PSLIB_VER}.tar.gz" CACHE STRING "" FORCE) #todo pslib url
+  SET(PSLIB_VER "0.1.0" CACHE STRING "" FORCE) 
+  SET(PSLIB_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${PSLIB_VER}/pslib.tar.gz" CACHE STRING "" FORCE) 
 ENDIF()
 MESSAGE(STATUS "PSLIB_VER: ${PSLIB_VER}, PSLIB_URL: ${PSLIB_URL}")
 SET(PSLIB_SOURCE_DIR    "${THIRD_PARTY_PATH}/pslib")
