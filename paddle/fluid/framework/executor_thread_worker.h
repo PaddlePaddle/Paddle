@@ -35,21 +35,22 @@ const static uint32_t MAX_FEASIGN_NUM = 1000 * 100 * 100;
 void CreateTensor(Variable* var, proto::VarType::Type var_type);
 
 struct AsyncWorkerParamConfig {
-    int slot_dim;
-    int fea_dim; 
-    int32_t tmp_push_dense_wait_times;
-    int32_t tmp_push_sparse_wait_times;
-    
-    std::vector<std::string> skip_op;
-
-    std::map<uint64_t, std::vector<std::string>> dense_variable_name;
-    std::map<uint64_t, std::vector<std::string>> dense_gradient_variable_name;
-    std::vector<int>               dense_table_id;
-    std::vector<uint32_t>          dense_table_size;    // fea_dim for each dense table
-    std::vector<int>               sparse_table_id;
-    std::map<uint64_t, std::vector<std::string>> slot_input_vec; //6048slot 6050slot //name
-    std::map<uint64_t, std::vector<std::string>> gradient_var;   //6048slot_embed 
-    std::map<std::string, uint64_t>       slot_alias_to_table; //TODO done
+  int slot_dim;
+  int fea_dim;
+  int32_t tmp_push_dense_wait_times;
+  int32_t tmp_push_sparse_wait_times;
+  
+  std::vector<std::string> skip_op;
+  
+  std::map<uint64_t, std::vector<std::string>> dense_variable_name;
+  std::map<uint64_t, std::vector<std::string>> dense_gradient_variable_name;
+  std::vector<int>               dense_table_id;
+  // fea_dim for each dense table
+  std::vector<uint32_t>          dense_table_size;
+  std::vector<int>               sparse_table_id;
+  std::map<uint64_t, std::vector<std::string>> slot_input_vec;
+  std::map<uint64_t, std::vector<std::string>> gradient_var;
+  std::map<std::string, uint64_t> slot_alias_to_table;
 };
 
 struct DensePullThreadParam {
@@ -62,8 +63,8 @@ struct DensePullThreadParam {
 };
 
 class DensePullThread {
-public:
-    DensePullThread(DensePullThreadParam& param) :
+ public:
+  explicit DensePullThread(const DensePullThreadParam& param) :
         _running(false) {
         _ps_client = param.ps_client;
         _threshold = param.threshold;
@@ -96,11 +97,11 @@ public:
     void pull_dense2(uint64_t table_id);
     void wait_all();
 
-private:
+ private:
     void run();
     bool check_update_param(uint64_t table_id);
 
-private:
+ private:
     std::shared_ptr<paddle::ps::PSClient> _ps_client;
     int _thread_num;
     int _threshold;
@@ -153,9 +154,13 @@ class ExecutorThreadWorker {
   virtual void TrainFiles();
   // set fetch variable names from python interface assigned by users
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
-  virtual void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
-  virtual void SetPullDenseThread(std::shared_ptr<DensePullThread>  dpt) {};
-  virtual void SetParamConfig(AsyncWorkerParamConfig* param_config) {};
+  virtual void SetPSlibPtr(
+      std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
+  virtual void SetPullDenseThread(
+      std::shared_ptr<DensePullThread> dpt) {}
+  virtual void SetParamConfig(
+      AsyncWorkerParamConfig * param_config) {}
+
  private:
   void CreateThreadScope(const framework::ProgramDesc& program);
   void CreateThreadOperators(const framework::ProgramDesc& program);
@@ -178,32 +183,37 @@ class ExecutorThreadWorker {
   Scope* root_scope_;
   // a thread scope, father scope is global score which is shared
   Scope* thread_scope_;
-  //private:
   std::vector<std::string> fetch_var_names_;
   std::vector<std::vector<float>> fetch_values_;
   bool debug_;
 };
 
 class AsyncExecutorThreadWorker: public ExecutorThreadWorker {
-public:
-    AsyncExecutorThreadWorker(){};
-    virtual ~AsyncExecutorThreadWorker() {}
-    void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
-    void SetPullDenseThread(std::shared_ptr<DensePullThread> dpt);
-    void SetParamConfig(AsyncWorkerParamConfig* param_config);
-    void TrainFiles();  
-    void TrainOneNetwork();
-    void PrepareParams();
-    void UpdateParams(); 
-    void PullSparse(int table_id);
-    void FillSparse(int table_id);
-    void PushSparse(int table_id);
-    void PushDense(int table_id);
-
-    void check_pull_push_memory(std::vector<uint64_t>& features, std::vector<float*>& push_g, int dim);
-    void check_pull_push_memory(std::vector<uint64_t>& features, std::vector<std::vector<float>>& push_g, int dim);
+ public:
+  AsyncExecutorThreadWorker() {}
+  virtual ~AsyncExecutorThreadWorker() {}
+  void SetPSlibPtr(std::shared_ptr<paddle::distributed::PSlib> pslib_ptr);
+  void SetPullDenseThread(std::shared_ptr<DensePullThread> dpt);
+  void SetParamConfig(AsyncWorkerParamConfig* param_config);
+  void TrainFiles();
+  void TrainOneNetwork();
+  void PrepareParams();
+  void UpdateParams();
+  void PullSparse(int table_id);
+  void FillSparse(int table_id);
+  void PushSparse(int table_id);
+  void PushDense(int table_id);
+  
+  void check_pull_push_memory(
+      const std::vector<uint64_t>& features,
+      std::vector<float*>& push_g,
+      int dim);
+  void check_pull_push_memory(const std::vector<uint64_t>& features,
+                              std::vector<std::vector<float>>& push_g,
+                              int dim);
     void collect_feasign_info(int table_id);
-private:
+
+ private:
     struct FeasignInfo {
         uint32_t slot;
         uint32_t ins;
