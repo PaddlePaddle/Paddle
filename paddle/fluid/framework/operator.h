@@ -34,6 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
+DECLARE_int32(inner_op_parallelism);
+DECLARE_int32(min_param_size_to_use_multithread);
+
 namespace paddle {
 namespace framework {
 
