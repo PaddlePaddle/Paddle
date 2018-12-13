@@ -52,6 +52,9 @@ class TestAccuracyOpFp16(TestAccuracyOp):
     def init_dtype(self):
         self.dtype = np.float16
 
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
 
 if __name__ == '__main__':
     unittest.main()
