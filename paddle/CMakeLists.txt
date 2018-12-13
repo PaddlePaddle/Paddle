@@ -1,4 +1,5 @@
 if(NOT WITH_FLUID_ONLY)
+
   add_subdirectory(legacy/cuda)
   add_subdirectory(legacy/function)
   add_subdirectory(legacy/utils)
