@@ -30,9 +30,10 @@ SET(PSLIB_PROJECT       "extern_pslib")
 IF((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
   MESSAGE(STATUS "use pre defined download url")
   SET(PSLIB_VER "0.1.0" CACHE STRING "" FORCE) 
-  SET(PSLIB_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${PSLIB_VER}/pslib.tar.gz" CACHE STRING "" FORCE) 
+  SET(PSLIB_NAME "pslib" CACHE STRING "" FORCE) 
+  SET(PSLIB_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${PSLIB_VER}/${PSLIB_NAME}.tar.gz" CACHE STRING "" FORCE) 
 ENDIF()
-MESSAGE(STATUS "PSLIB_VER: ${PSLIB_VER}, PSLIB_URL: ${PSLIB_URL}")
+MESSAGE(STATUS "PSLIB_NAME: ${PSLIB_NAME}, PSLIB_URL: ${PSLIB_URL}")
 SET(PSLIB_SOURCE_DIR    "${THIRD_PARTY_PATH}/pslib")
 SET(PSLIB_DOWNLOAD_DIR  "${PSLIB_SOURCE_DIR}/src/${PSLIB_PROJECT}")
 SET(PSLIB_DST_DIR       "pslib")
@@ -50,7 +51,7 @@ INCLUDE_DIRECTORIES(${PSLIB_INC_DIR})
 FILE(WRITE ${PSLIB_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(PSLIB)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${PSLIB_VER}/include ${PSLIB_VER}/lib \n"
+  "install(DIRECTORY ${PSLIB_NAME}/include ${PSLIB_NAME}/lib \n"
   "        DESTINATION ${PSLIB_DST_DIR})\n")
 
 ExternalProject_Add(
@@ -58,8 +59,8 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${PSLIB_SOURCE_DIR}
     DOWNLOAD_DIR          ${PSLIB_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_VER}.tar.gz
-                          && tar zxvf ${PSLIB_VER}.tar.gz
+    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
+                          && tar zxvf ${PSLIB_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}

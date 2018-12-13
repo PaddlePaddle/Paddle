@@ -637,7 +637,7 @@ void AsyncExecutorThreadWorker::collect_feasign_info(
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-        std::vector<uint64_t>& features,
+        const std::vector<uint64_t>& features,
         std::vector<std::vector<float>>& push_g,
         int dim) {
     push_g.resize(features.size() + 1);
@@ -647,7 +647,7 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-        std::vector<uint64_t>& features,
+        const std::vector<uint64_t>& features,
         std::vector<float*>& push_g,
         int dim) {
     if (features.size() > push_g.size()) {

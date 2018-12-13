@@ -65,6 +65,7 @@ option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
+option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
@@ -216,9 +217,12 @@ include(external/warpctc)   # download, build, install warpctc
 include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
-include(external/libmct)
-include(external/pslib_brpc)
-include(external/pslib)
+
+if(WITH_PSLIB)
+    include(external/libmct)
+    include(external/pslib_brpc)
+    include(external/pslib)
+endif()
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -279,11 +283,14 @@ set(EXTERNAL_LIBS
     protobuf
     zlib
     ${PYTHON_LIBRARIES}
-    pslib
-    pslib_brpc
-    libmct
 )
 
+if(WITH_PSLIB)
+    list(APPEND EXTERNAL_LIBS pslib)
+    list(APPEND EXTERNAL_LIBS pslib_brpc)
+    list(APPEND EXTERNAL_LIBS libmct)
+endif(WITH_PSLIB)
+    
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
