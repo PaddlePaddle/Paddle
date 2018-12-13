@@ -9137,8 +9137,13 @@ class PyFuncRegistry(object):
 
         self._func = func
         # find named args using reflection 
-        self._named_args = inspect.getargspec(self._func)[0]
-        self._id = core.append_python_callable_object_and_return_id(self)
+        args = inspect.getargspec(self._func)
+        if len(args[0]) == 0 and args[1] is None and args[2] is None:
+            # Function with no inputs
+            self._named_args = None
+        else:
+            self._named_args = args[0]
+        self._id = core._append_python_callable_object_and_return_id(self)
         '''
         Why record self here?
 
@@ -9168,13 +9173,16 @@ class PyFuncRegistry(object):
         return self._id
 
     def __call__(self, *args):
-        kwargs = dict()
-        idx = 0
-        for arg in self._named_args:
-            kwargs[arg] = args[idx]
-            idx += 1
+        if self._named_args is None:
+            func_ret = self._func()
+        else:
+            kwargs = dict()
+            idx = 0
+            for arg in self._named_args:
+                kwargs[arg] = args[idx]
+                idx += 1
+            func_ret = self._func(*args[idx:], **kwargs)
 
-        func_ret = self._func(*args[idx:], **kwargs)
         if not isinstance(func_ret, (list, tuple)):
             func_ret = (func_ret, )
 
@@ -9207,13 +9215,17 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
     User should set the right data type and shape of :code:`out` before
     calling this function. However, data types and shapes of gradients of
-    :code:`out` and :code:`x` would be infered automatically.
+    :code:`out` and :code:`x` would be inferred automatically.
 
-    The orders of inputs of :code:`backward_func` would be: forward input
-    :code:`x`, forward output :code:`out` and backward input gradient of
+    Input orders of :code:`backward_func` would be: forward inputs
+    :code:`x`, forward outputs :code:`out` and backward input gradients of
     :code:`out`. If some variables of :code:`out` have no gradient, the input
     tensor would be None in Python side. If some variables of :code:`in` have
     no gradient, users should return None.
+
+    This function can also be used to debug the running network. User can
+    add a :code:`py_func` operator without output, and print input 
+    :code:`x` inside :code:`func`.
 
     Args:
         func (callable): forward Python function.

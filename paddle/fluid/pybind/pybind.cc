@@ -104,7 +104,7 @@ PYBIND11_MODULE(core, m) {
   BindException(&m);
 
   m.def(
-      "append_python_callable_object_and_return_id",
+      "_append_python_callable_object_and_return_id",
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
