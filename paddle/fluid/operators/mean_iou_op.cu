@@ -148,7 +148,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     CountCUDAKernel<T><<<grid, block, cache_size, stream>>>(
         num_classes, predictions->numel(), predictions_data, labels_data,
         out_wrong_data, out_correct_data);
-    ctx.device_context().Wait();
+    const_cast<platform::DeviceContext&>(ctx.device_context()).Wait();
     ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes, out_wrong_data,
                                                   out_correct_data, ious_data,
                                                   out_mean_iou_data);

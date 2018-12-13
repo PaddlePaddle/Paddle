@@ -33,7 +33,7 @@ function(math_library TARGET)
 endfunction()
 
 # please add new math_library in alphabetical order
-math_library(concat_and_split)
+math_library(concat_and_split DEPS memcpy)
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)

@@ -13,31 +13,27 @@
 // limitations under the License.
 
 #pragma once
-
+#include <deque>
+#include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 
 namespace paddle {
 namespace platform {
 
-class TemporalAllocation : public memory::allocation::Allocation {
+class TemporayAllocation : public memory::allocation::Allocation {
  public:
-#ifdef PADDLE_WITH_CUDA
-  TemporalAllocation(memory::allocation::AllocationPtr &&underlying_allocation,
-                     const cudaStream_t &stream);
-#endif
-  explicit TemporalAllocation(
+  explicit TemporayAllocation(
       memory::allocation::AllocationPtr &&underlying_allocation);
 
   memory::allocation::AllocationPtr underlying_allocation_;
-#ifdef PADDLE_WITH_CUDA
-  cudaStream_t stream_;
-#endif
 };
 
-class TemporalAllocator : public memory::allocation::Allocator {
+class TemporayAllocator : public memory::allocation::Allocator {
  public:
-  explicit TemporalAllocator(platform::Place place);
+  explicit TemporayAllocator(platform::Place place);
+
+  void Release();
 
   bool IsAllocThreadSafe() const override;
 
@@ -49,9 +45,8 @@ class TemporalAllocator : public memory::allocation::Allocator {
 
  private:
   platform::Place place_;
-#ifdef PADDLE_WITH_CUDA
-  cudaStream_t stream_;
-#endif
+  std::shared_ptr<std::deque<TemporayAllocation *>> temp_allocations_;
+  std::unique_ptr<std::mutex> mtx_;
 };
 
 }  // namespace platform

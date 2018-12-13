@@ -159,7 +159,7 @@ class StackKernel : public framework::OpKernel<T> {
 
     // Wait() must be called because device_x_vec may be destructed before
     // kernel ends
-    dev_ctx.Wait();
+    const_cast<DeviceContext &>(dev_ctx).Wait();
 #else
     auto x_data_arr = x_datas.data();
 
@@ -253,7 +253,7 @@ class StackGradKernel : public framework::OpKernel<T> {
 #ifdef __NVCC__
     // Wait() must be called because device_dx_vec may be destructed before
     // kernel ends
-    dev_ctx.Wait();
+    const_cast<DeviceContext &>(dev_ctx).Wait();
 #endif
   }
 };

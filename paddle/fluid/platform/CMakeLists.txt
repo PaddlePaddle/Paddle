@@ -56,10 +56,13 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
+cc_library(temp_allocator SRCS temporay_allocator.cc DEPS  allocator_facade)
+
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS}
+    ${MKLDNN_CTX_DEPS} temp_allocator)
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
@@ -79,10 +82,9 @@ IF(WITH_GPU)
 ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
+
 IF(WITH_GPU)
-    nv_library(temp_allocator SRCS temporal_allocator.cc DEPS  allocator_facade)
-    nv_test(temporal_allocator_test SRCS temporal_allocator_test.cc DEPS temp_allocator)
+    nv_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator)
 ELSE()
-    cc_library(temp_allocator SRCS temporal_allocator.cc DEPS  allocator_facade)
-    cc_test(temporal_allocator_test SRCS temporal_allocator_test.cc DEPS temp_allocator)
+    cc_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator)
 ENDIF()

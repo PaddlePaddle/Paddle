@@ -192,15 +192,17 @@ void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : place_(place), cudnn_holder_(nullptr) {
+    : place_(place), cudnn_holder_(nullptr), allocator_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
   if (dynload::HasCUDNN()) {
@@ -269,9 +271,10 @@ CUDADeviceContext::~CUDADeviceContext() {
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-void CUDADeviceContext::Wait() const {
+void CUDADeviceContext::Wait() {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE(cudaGetLastError());
+  allocator_.Release();
 }
 
 int CUDADeviceContext::GetComputeCapability() const {

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/temporal_allocator.h"
+#include "paddle/fluid/platform/temporay_allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
@@ -45,8 +45,9 @@ class DeviceContext {
  public:
   virtual ~DeviceContext() {}
   virtual Place GetPlace() const = 0;
-
-  virtual void Wait() const {}
+  virtual memory::allocation::AllocationPtr GetTemporlAllocation(
+      size_t size) = 0;
+  virtual void Wait() {}
 };
 
 class CPUDeviceContext : public DeviceContext {
@@ -58,9 +59,14 @@ class CPUDeviceContext : public DeviceContext {
 
   Place GetPlace() const override;
 
+  memory::allocation::AllocationPtr GetTemporlAllocation(size_t size) override {
+    return allocator_.Allocate(size);
+  }
+
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  platform::TemporayAllocator allocator_{place_};
 };
 
 template <typename Place>
@@ -183,7 +189,7 @@ class CUDADeviceContext : public DeviceContext {
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const override;
+  void Wait() override;
 
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
@@ -233,6 +239,10 @@ class CUDADeviceContext : public DeviceContext {
     callback_manager_->Wait();
   }
 
+  memory::allocation::AllocationPtr GetTemporlAllocation(size_t size) override {
+    return allocator_.Allocate(size);
+  }
+
 #if CUDA_VERSION >= 9000
   /*! \brief CublasCall may need to change cublas's config,
    *  but the cublas may be hold by multi-thread, so we should
@@ -268,6 +278,8 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<StreamCallbackManager> callback_manager_;
 
   mutable std::mutex cublas_mtx_;
+
+  TemporayAllocator allocator_;
 };
 
 template <>
@@ -284,6 +296,10 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   Place GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  memory::allocation::AllocationPtr GetTemporlAllocation(size_t size) override {
+    return nullptr;
+  }
 
  private:
   CUDAPinnedPlace place_;
