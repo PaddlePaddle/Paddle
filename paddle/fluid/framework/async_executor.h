@@ -64,6 +64,7 @@ class AsyncExecutor {
                    const std::vector<std::string>& fetch_names,
                    const std::string& mode,
                    const bool debug = false);
+#ifdef PADDLE_WITH_PSLIB
   void InitServer(const std::string& dist_desc, int index);
   void InitWorker(
       const std::string& dist_desc,
@@ -75,7 +76,7 @@ class AsyncExecutor {
   void InitModel();
   void SaveModel(const std::string& path);
   void InitParamConfig();
-
+#endif
  private:
   void CreateThreads(ExecutorThreadWorker* worker,
                      const ProgramDesc& main_program,
@@ -83,16 +84,18 @@ class AsyncExecutor {
                      const std::vector<std::string>& fetch_var_names,
                      Scope* root_scope, const int thread_index,
                      const bool debug);
+#ifdef PADDLE_WITH_PSLIB
   void PrepareDenseThread(const std::string& mode);
-
+#endif
  public:
+#ifdef PADDLE_WITH_PSLIB
   std::shared_ptr<paddle::distributed::PSlib>  _pslib_ptr;
   std::shared_ptr<DensePullThread>  _pull_dense_thread;
+  AsyncWorkerParamConfig _param_config;
+#endif
   Scope* root_scope_;
   platform::Place place_;
   
-  AsyncWorkerParamConfig _param_config;
-
  private:
   int actual_thread_num;
 
