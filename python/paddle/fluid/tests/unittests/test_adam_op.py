@@ -194,7 +194,8 @@ def adam_step(inputs, attributes):
     return param_out, moment1_out, moment2_out
 
 
-def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
+def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
+                     sparse_mode):
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
@@ -230,7 +231,7 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
 
 
 class TestSparseAdamOp(unittest.TestCase):
-    def setup(self, scope, place):
+    def setup(self, scope, place, sparse_mode):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
@@ -262,19 +263,21 @@ class TestSparseAdamOp(unittest.TestCase):
 
         self.sparse_inputs = ["Grad"]
 
-        param_out, mom1, mom2 = adam_step_sparse(
-            self.dense_inputs, self.attrs, height, rows, row_numel, np_array)
+        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
+                                                 height, rows, row_numel,
+                                                 np_array, sparse_mode)
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2
         }
 
-    def check_with_place(self, place):
+    def check_with_place(self, place, sparse_mode):
         scope = core.Scope()
-        self.setup(scope, place)
+        self.setup(scope, place, sparse_mode)
 
         op_args = dict()
+        op_args['sparse_mode'] = sparse_mode
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)
@@ -305,12 +308,13 @@ class TestSparseAdamOp(unittest.TestCase):
                                     0.00001)
                     j += 1
 
-    def test_sparse_sgd(self):
+    def test_sparse_adam(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_with_place(place)
+            for sparse_mode in (True, False):
+                self.check_with_place(place, sparse_mode)
 
 
 if __name__ == "__main__":
