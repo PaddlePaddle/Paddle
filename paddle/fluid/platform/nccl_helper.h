@@ -97,7 +97,7 @@ struct NCCLContextMap {
         order_.size(), contexts_.size(),
         "NCCL Context Map does not support contain two or more same device");
 
-    if (places.size() <= 1) {
+    if (places.size() <= 1 && num_trainers == 1) {
       return;
     }
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
@@ -111,12 +111,19 @@ struct NCCLContextMap {
       {
         int nranks = num_trainers * order_.size();
         NCCLGroupGuard gurad;
-        for (auto &gpu_id : order_) {
-          int rank = trainer_id * order_.size() + gpu_id;
-          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks;
+        for (size_t i = 0; i < order_.size(); ++i) {
+          int gpu_id = order_[i];
+          int rank;
+          if (order_.size() > 1) {
+            rank = trainer_id * order_.size() + i;
+          } else {
+            rank = trainer_id;
+          }
+          VLOG(30) << "init nccl rank: " << rank << " nranks: " << nranks
+                   << "gpu id: " << gpu_id;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
-              comms.get() + gpu_id, nranks, *nccl_id, rank));
+              comms.get() + i, nranks, *nccl_id, rank));
         }
       }
     }

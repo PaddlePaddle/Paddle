@@ -118,8 +118,9 @@ cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
+cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -127,11 +128,14 @@ cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
-cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto)
-if(NOT WIN32)
-cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
-  shape_inference data_transform lod_tensor profiler)
-endif(NOT WIN32)
+
+if(WITH_NGRAPH)
+  if(NOT WIN32)
+    cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
+    cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
+      shape_inference data_transform lod_tensor profiler ngraph)
+  endif(NOT WIN32)
+endif(WITH_NGRAPH)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
@@ -167,11 +171,15 @@ if(WITH_DISTRIBUTE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
-  if(NOT WIN32)
-    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator variable_helper)
-  else(NOT WIN32)
+  if(WITH_NGRAPH)
+    if(NOT WIN32)
+      cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph ngraph_operator variable_helper)
+    else(NOT WIN32)
+      cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
+    endif(NOT WIN32)
+  else(WITH_NGRAPH)
     cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
-  endif(NOT WIN32)
+  endif(WITH_NGRAPH)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
@@ -190,7 +198,7 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
-cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
+cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto op_kernel_type)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 
 cc_test(tuple_test SRCS tuple_test.cc )

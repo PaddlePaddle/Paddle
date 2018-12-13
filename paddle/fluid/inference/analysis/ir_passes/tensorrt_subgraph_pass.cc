@@ -178,11 +178,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     output_mapping.push_back(output_name_map[name]);
   }
 
-  *block_desc.Proto()->mutable_vars() =
-      const_cast<framework::ProgramDesc *>(&graph->program())
-          ->Proto()
-          ->blocks(0)
-          .vars();
+  auto *vars = block_desc.Proto()->mutable_vars();
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      *vars->Add() = *node->Var()->Proto();
+    }
+  }
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());

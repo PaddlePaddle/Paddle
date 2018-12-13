@@ -44,7 +44,7 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
 
         model_dir = tempfile.mkdtemp()
