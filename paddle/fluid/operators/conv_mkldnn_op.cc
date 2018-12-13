@@ -12,6 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <iomanip>
+
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
@@ -204,6 +206,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         user_weights_memory_p, pipeline, is_test);
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
+
+    std::cout << "Residual connection fusion: " << std::boolalpha
+              << fuse_residual_conn << "\n";
 
     if (fuse_residual_conn) {
       std::cout << "Fuse residual connection\n";
