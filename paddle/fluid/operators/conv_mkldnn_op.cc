@@ -206,6 +206,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::memory> dst_memory_p;
 
     if (fuse_residual_conn) {
+      std::cout << "Fuse residual connection\n";
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       auto residual_param_data = residual_param->data<T>();
 
@@ -216,6 +217,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "Output and elementwise parameter need to have the "
                         "same dimension sizes");
 
+      std::cout << "Formats: \n";
+      std::cout << "- residual_param: " << residual_param->format() << "\n";
+      std::cout << "- handler dst format: " << handler.GetDstFormat() << "\n";
       if (residual_param->format() != handler.GetDstFormat()) {
         auto output_data = output->mutable_data<T>(
             ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
