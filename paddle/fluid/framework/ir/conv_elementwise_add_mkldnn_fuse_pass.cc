@@ -27,6 +27,7 @@ namespace ir {
 // The function keeps the graph consistent by replacing
 // a node 'from' in the set of inputs nodes
 // of the visited node by a node 'to'.
+
 void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
   for (auto& node : GraphTraits::DFS(*graph)) {
     auto from_in_inputs =

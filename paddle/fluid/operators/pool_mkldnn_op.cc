@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -71,7 +72,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -130,18 +130,21 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
                           padding_right_bottom);
       }
+
+      mkldnn::memory::data_type dt = paddle::framework::ToMKLDNNDataType(input->type());
+
       auto src_md = platform::MKLDNNMemDesc(
-          src_tz, platform::MKLDNNGetDataType<T>(), input_format);
+          src_tz, dt, input_format);
 
       /* create memory descriptor for pooling without specified format
        * ('any') which lets a primitive (pooling in this case) choose
        * the memory format preferred for best performance
        */
-      auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
+      auto dst_md = platform::MKLDNNMemDesc(dst_tz, dt,
                                             mkldnn::memory::format::any);
-
+      auto propagation = src_md.data.data_type == mkldnn_f32 ? mkldnn::prop_kind::forward_training : mkldnn::prop_kind::forward_scoring;
       std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
-          CreatePrimitiveDesc(src_md, dst_md, strides, padding_left_top,
+          CreatePrimitiveDesc(src_md, dst_md, propagation, strides, padding_left_top,
                               padding_right_bottom, ksize, pooling_type,
                               mkldnn_engine, ceil_mode, is_test);
 
@@ -203,23 +206,25 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  private:
   std::unique_ptr<mkldnn::pooling_forward::primitive_desc> CreatePrimitiveDesc(
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& dst,
+      const mkldnn::prop_kind& propagation,
       const std::vector<int>& stride, const std::vector<int>& padding_left_top,
       const std::vector<int>& padding_right_bot, const std::vector<int>& kernel,
       const std::string& pooling_type, const mkldnn::engine& engine,
       bool ceil_mode, bool is_test) const {
-    auto mkldnn_forward_prop_kind = is_test
-                                        ? mkldnn::prop_kind::forward_inference
-                                        : mkldnn::prop_kind::forward_training;
-    auto pool_desc = mkldnn::pooling_forward::desc(
+
+      auto mkldnn_forward_prop_kind = is_test
+                                            ? mkldnn::prop_kind::forward_inference
+                                            : mkldnn::prop_kind::forward_training;
+      auto pool_desc = mkldnn::pooling_forward::desc(
         mkldnn_forward_prop_kind,
         pooling_type == "max" ? mkldnn::algorithm::pooling_max
                               : mkldnn::algorithm::pooling_avg,
         src, dst, stride, kernel, padding_left_top, padding_right_bot,
         mkldnn::padding_kind::zero);
 
-    auto p_pool_pd =
-        new mkldnn::pooling_forward::primitive_desc(pool_desc, engine);
-    return std::unique_ptr<mkldnn::pooling_forward::primitive_desc>(p_pool_pd);
+      auto p_pool_pd =
+          new mkldnn::pooling_forward::primitive_desc(pool_desc, engine);
+      return std::unique_ptr<mkldnn::pooling_forward::primitive_desc>(p_pool_pd);
   }
 
   std::unique_ptr<mkldnn::memory> CreateWorkspaceMemory(
@@ -231,7 +236,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             : mkldnn::memory::primitive_desc({{},
                                               platform::MKLDNNGetDataType<T>(),
                                               mkldnn::memory::format::nchw},
-                                             engine);
+                                              engine);
 
     auto p_workspace_memory = new mkldnn::memory(workspace_md);
     return std::unique_ptr<mkldnn::memory>(p_workspace_memory);
@@ -411,6 +416,9 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::PoolMKLDNNOpKernel<float>);
+                   ops::PoolMKLDNNOpKernel<float>,
+                   ops::PoolMKLDNNOpKernel<int8_t>,
+                   ops::PoolMKLDNNOpKernel<uint8_t>);
+
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNGradOpKernel<float>);

@@ -11,6 +11,7 @@ RC      = 0
 
 ext_name = '.dll' if os.name == 'nt' else '.so'
 
+
 def git_commit():
     try:
         cmd = ['git', 'rev-parse', 'HEAD']

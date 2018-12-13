@@ -15,6 +15,7 @@ limitations under the License. */
 #include <iostream>
 #include "mkldnn.hpp"
 #include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {

@@ -38,6 +38,7 @@ void SetOp(ProgramDesc* prog, const std::string& type,
   }
 
   op->SetOutput(output.first, {output.second});
+
 }
 
 struct TestIsReachable {

@@ -51,6 +51,9 @@ if(WITH_MKLDNN)
 endif()
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
+if(WITH_MKLDNN)
+#  pass_library(conv_elementwise_add_mkldnn_fuse_pass inference)
+endif()
 
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
@@ -69,3 +72,4 @@ if (WITH_MKLDNN)
     cc_test(test_conv_relu_mkldnn_fuse_pass SRCS conv_relu_mkldnn_fuse_pass_tester.cc DEPS conv_relu_mkldnn_fuse_pass)
     cc_test(test_conv_elementwise_add_mkldnn_fuse_pass SRCS conv_elementwise_add_mkldnn_fuse_pass_tester.cc DEPS conv_elementwise_add_mkldnn_fuse_pass)
 endif ()
+
