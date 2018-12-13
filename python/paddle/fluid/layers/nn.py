@@ -2536,16 +2536,28 @@ def adaptive_pool2d(input,
         ValueError: 'pool_size' should be a list or tuple with length as 2.
 
     Examples:
-
         .. code-block:: python
 
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n], 
+          # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
+          # of input data into m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(m):
+          #         for j in range(n):
+          #             hstart = floor(i * H / m)
+          #             hend = ceil((i + 1) * H / m)
+          #             wstart = floor(i * W / n)
+          #             wend = ceil((i + 1) * W / n)
+          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+          #
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
           pool_out = fluid.layers.adaptive_pool2d(
                             input=data,
                             pool_size=[3, 3],
-                            pool_type='max',
-                            require_index=False)
+                            pool_type='avg')
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -2632,16 +2644,32 @@ def adaptive_pool3d(input,
         ValueError: 'pool_size' should be a list or tuple with length as 2.
 
     Examples:
-
         .. code-block:: python
 
+          # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
+          # of input data into l * m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] = 
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          #
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
           pool_out, mask = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3],
-                            pool_type='max',
-                            require_index=True)
+                            pool_type='avg')
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
