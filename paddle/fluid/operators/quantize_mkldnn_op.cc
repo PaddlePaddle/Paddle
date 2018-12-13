@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/operators/quantize_op.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +39,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
- 
+
     std::vector<primitive> pipeline;
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
@@ -51,32 +50,37 @@ class QuantOpKernel : public framework::OpKernel<T> {
     int mask = 0;
     attri.set_output_scales(mask, {scale_data});
 
-    auto src_md = platform::MKLDNNMemDesc(
-            {src_tz}, memory::data_type::f32, input->format());
+    auto src_md = platform::MKLDNNMemDesc({src_tz}, memory::data_type::f32,
+                                          input->format());
     auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
-    auto src_memory = std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
-    std::shared_ptr<primitive::at> src_memory_p = std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
+    auto src_memory =
+        std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
+    std::shared_ptr<primitive::at> src_memory_p =
+        std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
 
     bool is_negative = ctx.Attr<bool>("is_negative_input");
     mkldnn::memory::primitive_desc dst_pd;
     std::shared_ptr<mkldnn::memory> dst_memory;
     if (is_negative) {
-        int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
-        auto dst_md = platform::MKLDNNMemDesc(
-                {dst_tz}, memory::data_type::s8, memory::format::nhwc);
-        dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-        dst_memory.reset(new mkldnn::memory(dst_pd, to_void_cast<int8_t>(output_data)));
+      int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
+      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, memory::data_type::s8,
+                                            memory::format::nhwc);
+      dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
+      dst_memory.reset(
+          new mkldnn::memory(dst_pd, to_void_cast<int8_t>(output_data)));
     } else {
-        uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
-        auto dst_md = platform::MKLDNNMemDesc(
-                {dst_tz}, memory::data_type::u8, memory::format::nhwc);
-        dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-        dst_memory.reset(new mkldnn::memory(dst_pd, to_void_cast<uint8_t>(output_data)));
+      uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
+      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, memory::data_type::u8,
+                                            memory::format::nhwc);
+      dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
+      dst_memory.reset(
+          new mkldnn::memory(dst_pd, to_void_cast<uint8_t>(output_data)));
     }
-    
+
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-        new reorder::primitive_desc(src_pd, dst_pd, attri));    
-    auto reorder_p= std::shared_ptr<reorder>(new reorder(*reorder_pd, *src_memory_p, *dst_memory));
+        new reorder::primitive_desc(src_pd, dst_pd, attri));
+    auto reorder_p = std::shared_ptr<reorder>(
+        new reorder(*reorder_pd, *src_memory_p, *dst_memory));
 
     pipeline.push_back(*reorder_p);
     stream(stream::kind::eager).submit(pipeline).wait();
@@ -90,7 +94,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-//TODO Support FP32->S8 quantization.
+// TODO(Xiaoli) Support FP32->S8 quantization.
 
 REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

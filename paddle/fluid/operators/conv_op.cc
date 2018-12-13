@@ -97,9 +97,9 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
   auto input_data_type =
       framework::ToDataType(ctx.Input<Tensor>("Input")->type());
-  //auto filter_data_type =
+  // auto filter_data_type =
   //    framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
-  //PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+  // PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
   //                  "input and filter data type should be consistent");
 
   if (input_data_type == framework::proto::VarType::FP16) {
@@ -180,22 +180,24 @@ void Conv2DOpMaker::Make() {
                 "connection.")
       .SetDefault(false);
   AddAttr<float>("Scale_in",
-           "Scale_in to be used for int8 input data."
-           "Only used with INT8.")
+                 "Scale_in to be used for int8 input data."
+                 "Only used with INT8.")
       .SetDefault(1.0f);
   AddAttr<float>("Scale_out",
-           "Scale_out to be used for int8 output data."
-           "Only used with MKL-DNN.")
+                 "Scale_out to be used for int8 output data."
+                 "Only used with MKL-DNN.")
       .SetDefault(1.0f);
   AddAttr<float>("Scale_in_eltwise",
-           "Scale_in_eltwise to be used for int8 eltwise input data."
-           "Only used with MKL-DNN.")
+                 "Scale_in_eltwise to be used for int8 eltwise input data."
+                 "Only used with MKL-DNN.")
       .SetDefault(1.0f);
   AddAttr<std::vector<float>>("Scale_weights",
-           "Scale_weights to be used for int8 weights data."
-           "Only used with MKL-DNN.")
+                              "Scale_weights to be used for int8 weights data."
+                              "Only used with MKL-DNN.")
       .SetDefault({1.0f});
-  AddAttr<bool>("force_fp32_output", "(bool, default false) Force INT8 kernel output FP32, only used in mkldnn kernel")
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",

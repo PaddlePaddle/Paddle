@@ -22,8 +22,8 @@ namespace operators {
 
 framework::OpKernelType DeQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType  library_ = framework::LibraryType::kMKLDNN;
-  framework::DataLayout  layout_ = framework::DataLayout::kMKLDNN;
+  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
+  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
@@ -31,10 +31,9 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(
 }
 
 void DeQuantOpMaker::Make() {
-  AddInput("Input","input data");
-  AddOutput("Output","output data");
-  AddAttr<float>("Scale","scale data")
-      .SetDefault({1.0f});
+  AddInput("Input", "input data");
+  AddOutput("Output", "output data");
+  AddAttr<float>("Scale", "scale data").SetDefault({1.0f});
   AddComment(R"DOC(This op will quantize data from INT8 to FP32)DOC");
 }
 
