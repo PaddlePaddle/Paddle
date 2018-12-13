@@ -46,15 +46,6 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 IF(WIN32)
-    # Write the setup.cfg for setuptools
-    list(APPEND setup_content "[bdist_wheel]\n")
-    list(APPEND setup_content "plat-name=${SYS_PLATFORM}\n")
-    list(APPEND setup_content "python-tag=cp${PYTHON_SHORT_VERSION_NODOT}\n")
-    if(NOT "${PYTHON_ABI}" STREQUAL "")
-        list(APPEND setup_content "python-abi=cp${PYTHON_ABI}\n")
-    endif()
-    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/setup.cfg ${setup_content})
-
     # Python would use the .pyd by default under Windows series platform
     set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
     set(FLUID_CORE ${FLUID_DST_DIR}/core.pyd)

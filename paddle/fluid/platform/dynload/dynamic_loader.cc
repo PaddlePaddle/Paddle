@@ -56,7 +56,7 @@ static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
 static constexpr char* win_curand_lib = "curand64_" PADDLE_CUDA_BINVER ".dll";
-static constexpr char* win_cudnn_lib = "cudnn64_" PADDLE_CUDNN_VERSION ".dll";
+static constexpr char* win_cudnn_lib = "cudnn64_" PADDLE_CUDNN_BINVER ".dll";
 #endif
 
 static inline std::string join(const std::string& part1,
