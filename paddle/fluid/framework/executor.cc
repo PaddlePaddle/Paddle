@@ -106,14 +106,16 @@ static void DeleteUnusedTensors(
 
         VLOG(2) << "Erase variable " << name;
         if (var->IsType<LoDTensor>()) {
-          garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemory());
-        } else if (var->IsType<SelectedRows>()) {
           garbages.emplace_back(
-              var->GetMutable<SelectedRows>()->mutable_value()->MoveMemory());
+              var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+        } else if (var->IsType<SelectedRows>()) {
+          garbages.emplace_back(var->GetMutable<SelectedRows>()
+                                    ->mutable_value()
+                                    ->MoveMemoryHolder());
         } else if (var->IsType<LoDTensorArray>()) {
           auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
           for (auto& t : *lod_tensor_arr) {
-            garbages.emplace_back(t.MoveMemory());
+            garbages.emplace_back(t.MoveMemoryHolder());
           }
         } else {
           PADDLE_THROW("Type %s of %s is not supported eager deletion",
