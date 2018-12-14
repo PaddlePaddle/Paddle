@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -124,7 +125,7 @@ class Scope {
   DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
-  mutable std::mutex mutex_;
+  mutable RWLock lock_;
 };
 
 // Generate some debug string about the inherience structure of scope, quite
