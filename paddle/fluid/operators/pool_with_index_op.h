@@ -36,6 +36,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    bool adaptive = context.Attr<bool>("adaptive");
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (context.Attr<bool>("global_pooling")) {
@@ -50,13 +51,15 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
         paddle::operators::math::MaxPool2dWithIndexFunctor<DeviceContext, T1,
                                                            T2>
             pool2d_forward;
-        pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
+        pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, adaptive, out,
+                       mask);
       } break;
       case 3: {
         paddle::operators::math::MaxPool3dWithIndexFunctor<DeviceContext, T1,
                                                            T2>
             pool3d_forward;
-        pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
+        pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, adaptive, out,
+                       mask);
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
     }
@@ -75,6 +78,7 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    bool adaptive = context.Attr<bool>("adaptive");
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -93,14 +97,14 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
                                                                  T1, T2>
               pool2d_backward;
           pool2d_backward(device_ctx, *out_grad, *mask, ksize, strides,
-                          paddings, in_x_grad);
+                          paddings, adaptive, in_x_grad);
         } break;
         case 3: {
           paddle::operators::math::MaxPool3dWithIndexGradFunctor<DeviceContext,
                                                                  T1, T2>
               pool3d_backward;
           pool3d_backward(device_ctx, *out_grad, *mask, ksize, strides,
-                          paddings, in_x_grad);
+                          paddings, adaptive, in_x_grad);
         } break;
         default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
       }
