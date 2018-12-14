@@ -19,7 +19,7 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
-#ifdef PADDLE_WITH_PPROF
+#ifdef WITH_GPERFTOOLS
 #include <gperftools/profiler.h>
 #endif
 
