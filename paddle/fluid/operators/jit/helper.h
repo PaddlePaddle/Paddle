@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/jit/gen_base.h"
@@ -123,6 +124,19 @@ typename KernelTuples::func_type Get(typename KernelTuples::attr_type attr) {
 const char* to_string(KernelType kt);
 
 KernelType to_kerneltype(const std::string& act);
+
+inline std::ostream& operator<<(std::ostream& os, const lstm_attr_t& attr) {
+  os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)
+     << "],act_cand[" << to_string(attr.act_cand) << "],act_cell["
+     << to_string(attr.act_cell) << "],use_peephole["
+     << (attr.use_peephole ? "True" : "False") << "]";
+  return os;
+}
+inline std::ostream& operator<<(std::ostream& os, const gru_attr_t& attr) {
+  os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)
+     << "],act_cand[" << to_string(attr.act_cand) << "]";
+  return os;
+}
 
 }  // namespace jit
 }  // namespace operators
