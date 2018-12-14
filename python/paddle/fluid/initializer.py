@@ -18,7 +18,7 @@ from . import framework
 import numpy as np
 import contextlib
 from .core import VarDesc
-import unique_name
+from . import unique_name
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
