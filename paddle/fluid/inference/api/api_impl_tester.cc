@@ -39,7 +39,7 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   if (t->type() == framework::proto::VarType::INT64) {
     pt.data.Reset(t->data<void>(), t->numel() * sizeof(int64_t));
     pt.dtype = PaddleDType::INT64;
-  } else if (t->type() == framework::proto::VarType::INT32) {
+  } else if (t->type() == framework::proto::VarType::FP32) {
     pt.data.Reset(t->data<void>(), t->numel() * sizeof(float));
     pt.dtype = PaddleDType::FLOAT32;
   } else {

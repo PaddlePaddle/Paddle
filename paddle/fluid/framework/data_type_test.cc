@@ -35,6 +35,6 @@ TEST(DataType, float16) {
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
 
   // test debug info
-  std::string type = "float16";
+  std::string type = "::paddle::platform::float16";
   EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }
