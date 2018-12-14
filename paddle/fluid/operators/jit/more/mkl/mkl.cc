@@ -62,6 +62,16 @@ void VScal<double>(const double* a, const double* x, double* y, int n) {
   }
 }
 
+template <>
+void VExp<float>(const float* x, float* y, int n) {
+  platform::dynload::vsExp(n, x, y);
+}
+
+template <>
+void VExp<double>(const double* x, double* y, int n) {
+  platform::dynload::vdExp(n, x, y);
+}
+
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::UseMe(int d) const {
@@ -78,6 +88,21 @@ bool VScalKernel<float>::UseMe(int d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
+template <>
+bool VExpKernel<float>::UseMe(int d) const {
+  return d > 7;
+}
+
+template <>
+bool VSigmoidKernel<float>::UseMe(int d) const {
+  return d > 7;
+}
+
+template <>
+bool VTanhKernel<float>::UseMe(int d) const {
+  return d > 7;
+}
+
 #define AWALYS_USE_ME_WITH_DOUBLE(func)           \
   template <>                                     \
   bool func##Kernel<double>::UseMe(int d) const { \
@@ -87,6 +112,9 @@ bool VScalKernel<float>::UseMe(int d) const {
 AWALYS_USE_ME_WITH_DOUBLE(VMul);
 AWALYS_USE_ME_WITH_DOUBLE(VAdd);
 AWALYS_USE_ME_WITH_DOUBLE(VScal);
+AWALYS_USE_ME_WITH_DOUBLE(VExp);
+AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
+AWALYS_USE_ME_WITH_DOUBLE(VTanh);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
 }  // namespace mkl
@@ -104,5 +132,8 @@ namespace mkl = paddle::operators::jit::more::mkl;
 REGISTER_MKL_KERNEL(vmul, VMul);
 REGISTER_MKL_KERNEL(vadd, VAdd);
 REGISTER_MKL_KERNEL(vscal, VScal);
+REGISTER_MKL_KERNEL(vexp, VExp);
+REGISTER_MKL_KERNEL(vsigmoid, VSigmoid);
+REGISTER_MKL_KERNEL(vtanh, VTanh);
 
 #undef REGISTER_MKL_KERNEL

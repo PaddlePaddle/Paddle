@@ -56,10 +56,6 @@ typedef enum {
   identity
 } operand_type;
 
-#define XMM_FLOAT_BLOCK 4
-#define YMM_FLOAT_BLOCK 8
-#define ZMM_FLOAT_BLOCK 16
-
 #define DECLARE_JIT_CODE(codename) \
   const char* name() const override { return #codename; }
 

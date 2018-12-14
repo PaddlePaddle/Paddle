@@ -32,6 +32,34 @@ void VAdd(const T* x, const T* y, T* z, int n);
 template <typename T>
 void VScal(const T* a, const T* x, T* y, int n);
 
+template <typename T>
+void VExp(const T* x, T* y, int n);
+
+template <typename T>
+void VSigmoid(const T* x, T* y, int n) {
+  const T min = SIGMOID_THRESHOLD_MIN;
+  const T max = SIGMOID_THRESHOLD_MAX;
+  for (int i = 0; i < n; ++i) {
+    y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+    y[i] = static_cast<T>(0) - y[i];
+  }
+  VExp(y, y, n);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
+  }
+}
+
+template <typename T>
+void VTanh(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * x[i];
+  }
+  VSigmoid(y, y, n);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
+  }
+}
+
 #define DECLARE_MKL_KERNEL(name, tuples)                      \
   template <typename T>                                       \
   class name##Kernel : public KernelImpl<tuples<T>> {         \
@@ -46,6 +74,11 @@ DECLARE_MKL_KERNEL(VAdd, XYZNTuples);
 
 // AXYN
 DECLARE_MKL_KERNEL(VScal, AXYNTuples);
+
+// XYN
+DECLARE_MKL_KERNEL(VExp, XYNTuples);
+DECLARE_MKL_KERNEL(VSigmoid, XYNTuples);
+DECLARE_MKL_KERNEL(VTanh, XYNTuples);
 
 #undef DECLARE_MKL_KERNEL
 

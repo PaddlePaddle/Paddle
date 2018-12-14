@@ -312,7 +312,7 @@ void TestXYNKernel() {
 
     std::vector<T> x(d), yref(d);
     std::vector<T> xinp(d);  // inplace test
-    RandomVec<T>(d, x.data());
+    RandomVec<T>(d, x.data(), -2.f, 2.f);
     std::copy(x.begin(), x.end(), xinp.begin());
 
     const T* x_data = x.data();

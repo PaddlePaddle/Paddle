@@ -6,3 +6,6 @@ set(JIT_KERNEL_DEPS ${JIT_KERNEL_DEPS} dynload_mklml jit_kernel_mkl PARENT_SCOPE
 USE_JITKERNEL_MORE(vmul, mkl)
 USE_JITKERNEL_MORE(vadd, mkl)
 USE_JITKERNEL_MORE(vscal, mkl)
+USE_JITKERNEL_MORE(vexp, mkl)
+USE_JITKERNEL_MORE(vsigmoid, mkl)
+USE_JITKERNEL_MORE(vtanh, mkl)
