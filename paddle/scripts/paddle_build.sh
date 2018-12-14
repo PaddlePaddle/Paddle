@@ -518,7 +518,7 @@ function assert_api_spec_approvals() {
       fi
     done
 
-    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep const_cast`
+    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep const_cast || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
