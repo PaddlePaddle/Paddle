@@ -174,7 +174,7 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'lstm',
     'psroi_pool',
-    'huber_regression_loss',
+    'huber_loss',
 ]
 
 kIgnoreIndex = -100
@@ -9180,7 +9180,7 @@ def psroi_pool(input,
     return out
 
 
-def huber_regression_loss(input, label, delta):
+def huber_loss(input, label, delta):
     """
     Huber regression loss is a loss function used in robust regression.
     Huber regression loss can evaluate the fitness of input to label.
@@ -9212,9 +9212,9 @@ def huber_regression_loss(input, label, delta):
         .. code-block:: python
 
             predictions = fluid.layers.softmax(x)
-            loss = fluid.layers.huber_regression_loss(input=predictions, label=label, 1.0)
+            loss = fluid.layers.huber_loss(input=predictions, label=label, 1.0)
     """
-    helper = LayerHelper('huber_regression_loss', **locals())
+    helper = LayerHelper('huber_loss', **locals())
     residual = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
