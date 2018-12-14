@@ -18,33 +18,30 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+
 class TestDeQuantizeOp(OpTest):
     def setUp(self):
         self.op_type = 'dequantize'
         self.scale = 2.0
-        self.input_size = [1, 1, 5, 5] #Naive nChw16c
+        self.input_size = [1, 1, 5, 5]  #Naive nChw16c
         self.data_type = 'int8'
         self.set_scale()
         self.set_data_type()
 
         if self.data_type == 'int8':
-            input = (np.random.randint(0, 100, self.input_size) - 50).astype(self.data_type)
+            input = (np.random.randint(0, 100, self.input_size) - 50
+                     ).astype(self.data_type)
             output = (input * (1 / self.scale)).astype('float')
         else:
-            input = (np.random.randint(0, 100, self.input_size)).astype(self.data_type)
+            input = (np.random.randint(0, 100,
+                                       self.input_size)).astype(self.data_type)
             output = (input * (1 / self.scale)).astype('float')
 
-        self.inputs = {
-             'Input': OpTest.np_dtype_to_fluid_dtype(input)
-        }
+        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(input)}
 
-        self.outputs = {
-            'Output': output
-        }
+        self.outputs = {'Output': output}
 
-        self.attrs = {
-            'Scale': self.scale,
-        }
+        self.attrs = {'Scale': self.scale, }
 
     def test_check_output(self):
         self.check_output()
@@ -55,12 +52,14 @@ class TestDeQuantizeOp(OpTest):
     def set_data_type(OpTest):
         pass
 
+
 class TestDeQuantizeOp1(TestDeQuantizeOp):
     def set_scale(self):
         self.scale = 1.5
 
     def set_data_type(self):
         self.data_type = 'int8'
+
 
 class TestDeQuantizeOp2(TestDeQuantizeOp):
     def set_scale(self):

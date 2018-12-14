@@ -18,29 +18,28 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+
 class TestQuantizeOp(OpTest):
     def setUp(self):
         self.op_type = 'quantize'
         self.scale = 2.0
-        self.input_size = [1, 1, 5, 5] #Naive nChw16c
+        self.input_size = [1, 1, 5, 5]  #Naive nChw16c
         self.is_negative = False
         self.set_scale()
         self.set_is_negative()
 
         if self.is_negative:
-            input = (100 * np.random.random_sample(self.input_size) - 50).astype('float32')
+            input = (100 * np.random.random_sample(self.input_size) - 50
+                     ).astype('float32')
             output = np.round(input * self.scale).astype('int8')
         else:
-            input = (100 * np.random.random_sample(self.input_size)).astype('float32')
+            input = (100 *
+                     np.random.random_sample(self.input_size)).astype('float32')
             output = np.round(input * self.scale).astype('uint8')
 
-        self.inputs = {
-             'Input': OpTest.np_dtype_to_fluid_dtype(input)
-        }
+        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(input)}
 
-        self.outputs = {
-            'Output': output
-        }
+        self.outputs = {'Output': output}
 
         self.attrs = {
             'Scale': self.scale,
@@ -64,12 +63,14 @@ class TestQuantizeOp1(TestQuantizeOp):
     def set_is_negative(self):
         self.is_nagative = True
 
+
 class TestQuantizeOp2(TestQuantizeOp):
     def set_scale(self):
         self.scale = 0.1
 
     def set_is_negative(self):
         self.is_nagative = False
+
 
 if __name__ == '__main__':
     unittest.main()
