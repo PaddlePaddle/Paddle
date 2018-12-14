@@ -157,6 +157,9 @@ struct AdamFunctor<T, CPUAdam> {
   }
 };
 
+template <typename T, typename Flavour>
+struct SparseAdamFunctor;
+
 template <typename T>
 struct SparseAdamFunctor<T, GPUAdam> {
   T beta1_;
@@ -283,6 +286,7 @@ struct SparseAdamFunctor<T, CPUAdam> {
 
       // Calculation
       if (i == *(rows_ + j)) {
+        T g = grad_[j * row_numel_];
         mom1 = beta1_ * mom1 + (1 - beta1_) * g;
         mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
         ++j;
@@ -388,12 +392,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
       } else {
         // merge duplicated rows if any.
         // The rows of grad_merge have been sorted inside MergeAdd functor
-        scatter::MergeAdd<DeviceContext, T> merge_func(true);
+        scatter::MergeAdd<DeviceContext, T> merge_func;
         auto* grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
                                    .Var()
                                    ->GetMutable<framework::SelectedRows>();
         merge_func(ctx.template device_context<DeviceContext>(), grad,
-                   grad_merge_var);
+                   grad_merge_var, true);
         grad_merge_ptr = grad_merge_var;
       }
 

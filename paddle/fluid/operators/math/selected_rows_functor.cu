@@ -266,7 +266,8 @@ __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
 template <typename T>
 struct MergeAdd<platform::CUDADeviceContext, T> {
   framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
-                                     const framework::SelectedRows& input) {
+                                     const framework::SelectedRows& input,
+                                     const bool sorted_result = false) {
     framework::SelectedRows out;
     (*this)(context, input, &out);
     return out;
