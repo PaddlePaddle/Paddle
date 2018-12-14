@@ -56,8 +56,8 @@ TEST(AnalysisPredictor, analysis_off) {
 
 TEST(AnalysisPredictor, analysis_on) {
 #ifdef PADDLE_WITH_CUDA
-  config.fraction_of_gpu_memory = 0.15;
   AnalysisConfig config(true);
+  config.fraction_of_gpu_memory = 0.15;
 #else
   AnalysisConfig config;
 #endif
