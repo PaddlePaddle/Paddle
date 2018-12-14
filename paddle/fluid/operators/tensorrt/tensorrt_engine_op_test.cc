@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
-USE_CUDA_ONLY_OP(tensorrt_engine);
-
 namespace paddle {
 namespace operators {
 
