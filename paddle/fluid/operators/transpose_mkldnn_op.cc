@@ -56,9 +56,9 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string data_format = ctx.Attr<std::string>("data_format");
 
     auto src_md =
-        data_format.compare("AnyLayout") == 0
+        input->format() != mkldnn::memory::format::nchw
             ? platform::MKLDNNMemDesc(nchw_tz, platform::MKLDNNGetDataType<T>(),
-                                      mkldnn::memory::format::any)
+                                      input->format())
             : Axis2MemoryDesc(nchw_tz, nchw_axis);
 
     this->TransposeKernel(ctx.GetPlace(), Axis2MemoryDesc(nchw_tz, axis),
