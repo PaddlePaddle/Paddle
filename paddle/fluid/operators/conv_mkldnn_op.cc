@@ -924,9 +924,12 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "Output" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, strides, paddings, dilations, groups,
-        ctx.op().Input("Output"));
+    const int MaxKeyLength = 256;
+    std::string key;
+    key.reserve(MaxKeyLength);
+    platform::ConvMKLDNNHandler::AppendKey(key, src_tz, weights_tz, strides,
+                                           paddings, dilations, groups,
+                                           ctx.op().Input("Output"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     std::vector<primitive> pipeline;
