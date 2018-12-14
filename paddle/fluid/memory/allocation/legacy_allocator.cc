@@ -14,11 +14,13 @@
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/split.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -86,7 +88,7 @@ struct NaiveAllocator {
 
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
-  VLOG(1) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
@@ -97,7 +99,7 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 
 template <>
 void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
-  VLOG(1) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
@@ -110,19 +112,21 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   static std::once_flag init_flag;
   static detail::BuddyAllocator **a_arr = nullptr;
+  static std::vector<int> devices;
 
   std::call_once(init_flag, [gpu_id]() {
-    int gpu_num = platform::GetCUDADeviceCount();
-    PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
-                   gpu_num);
+    devices = platform::GetSelectedDevices();
+    int gpu_num = devices.size();
 
     a_arr = new BuddyAllocator *[gpu_num];
-    for (int i = 0; i < gpu_num; i++) {
+    for (size_t i = 0; i < devices.size(); ++i) {
+      int dev_id = devices[i];
       a_arr[i] = nullptr;
-      platform::SetDeviceId(i);
-      a_arr[i] = new BuddyAllocator(
-          std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
-          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::SetDeviceId(dev_id);
+      a_arr[i] = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                        new detail::GPUAllocator(dev_id)),
+                                    platform::GpuMinChunkSize(),
+                                    platform::GpuMaxChunkSize());
 
       VLOG(10) << "\n\nNOTE: each GPU device use "
                << FLAGS_fraction_of_gpu_memory_to_use * 100
@@ -134,7 +138,9 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   });
 
   platform::SetDeviceId(gpu_id);
-  return a_arr[gpu_id];
+  auto pos = std::distance(devices.begin(),
+                           std::find(devices.begin(), devices.end(), gpu_id));
+  return a_arr[pos];
 }
 #endif
 

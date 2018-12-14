@@ -190,9 +190,13 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
-  // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
-  tensor_array_batch_cleaner_.ResetTensorArray();
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
+  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
 
@@ -304,6 +308,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.SetUseGPU(config_.use_gpu);
   argument_.SetGPUDeviceId(config_.device);
+  argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -320,6 +325,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+  }
+
+  if (config_.use_mkldnn_) {
+    argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();
@@ -417,7 +426,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
@@ -444,20 +453,24 @@ bool AnalysisPredictor::LoadProgramDesc() {
     return false;
   }
 
-  std::string pb_content;
-  // Read binary
-  std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
-  fin.seekg(0, std::ios::end);
-
-  pb_content.resize(fin.tellg());
-  fin.seekg(0, std::ios::beg);
-  fin.read(&(pb_content.at(0)), pb_content.size());
-  fin.close();
-
   // Create ProgramDesc
   framework::proto::ProgramDesc proto;
-  proto.ParseFromString(pb_content);
+  if (!config_.model_from_memory()) {
+    std::string pb_content;
+    // Read binary
+    std::ifstream fin(filename, std::ios::in | std::ios::binary);
+    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
+                   filename);
+    fin.seekg(0, std::ios::end);
+    pb_content.resize(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    fin.read(&(pb_content.at(0)), pb_content.size());
+    fin.close();
+
+    proto.ParseFromString(pb_content);
+  } else {
+    proto.ParseFromString(config_.prog_file);
+  }
   inference_program_.reset(new framework::ProgramDesc(proto));
   return true;
 }
@@ -465,6 +478,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
 bool AnalysisPredictor::LoadParameters() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           "The inference program should be loaded first.");
+
   const auto &global_block = inference_program_->MutableBlock(0);
 
   // create a temporary program to load parameters.

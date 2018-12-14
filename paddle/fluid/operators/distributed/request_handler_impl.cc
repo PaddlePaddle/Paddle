@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -37,7 +38,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Variable* invar,
                                 framework::Variable** outvar,
                                 const int trainer_id,
-                                const std::string& out_var_name) {
+                                const std::string& out_var_name,
+                                const std::string& table_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
   // Sync
@@ -77,8 +79,10 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Variable* invar,
                                framework::Variable** outvar,
                                const int trainer_id,
-                               const std::string& out_var_name) {
+                               const std::string& out_var_name,
+                               const std::string& table_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
+
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(3) << "sync: recv fetch barrier message";
@@ -113,14 +117,22 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     framework::Variable* invar,
                                     framework::Variable** outvar,
                                     const int trainer_id,
-                                    const std::string& out_var_name) {
+                                    const std::string& out_var_name,
+                                    const std::string& table_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
-  auto var_desc = program_->Block(0).FindVar(out_var_name);
-  InitializeVariable(*outvar, var_desc->GetType());
-  executor_->RunPreparedContext(
-      (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
-
+  if (table_name.empty()) {
+    auto var_desc = program_->Block(0).FindVar(out_var_name);
+    InitializeVariable(*outvar, var_desc->GetType());
+    executor_->RunPreparedContext(
+        (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
+  } else {
+    (*outvar)->GetMutable<framework::LoDTensor>();
+    auto lookup_table_op =
+        BuildLookupTableOp(table_name, varname, out_var_name);
+    paddle::platform::CPUPlace cpu_place;
+    lookup_table_op->Run(*scope, cpu_place);
+  }
   return true;
 }
 
@@ -129,7 +141,8 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
                                       const int trainer_id,
-                                      const std::string& out_var_name) {
+                                      const std::string& out_var_name,
+                                      const std::string& table_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
