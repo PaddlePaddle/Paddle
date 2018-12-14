@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include <set>
 #include <unordered_map>
 
@@ -301,6 +302,9 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     }
     std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                     merged_row_set.end());
+    if (sorted_result_) {
+      std::sort(merge_rows);
+    }
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
       rows_to_id[merge_rows[i]] = i;
