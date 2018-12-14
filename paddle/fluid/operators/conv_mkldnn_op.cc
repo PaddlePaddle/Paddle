@@ -217,10 +217,21 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // std::cout << "Residual connection fusion: " << std::boolalpha
     //          << fuse_residual_conn << "\n";
 
+    auto input_hash =
+        calculate_hash(input->data<T>(), input->numel() * sizeof(T));
+
+    std::stringstream ss;
+    ss << "Input hash:  " << std::hex << input_hash << " ";
+
     if (fuse_residual_conn) {
       //      std::cout << "Fuse residual connection\n";
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       auto residual_param_data = residual_param->data<T>();
+
+      auto residual_hash = calculate_hash(residual_param_data,
+                                          residual_param->numel() * sizeof(T));
+
+      ss << "Residual hash: " << std::hex << residual_hash << " ";
 
       PADDLE_ENFORCE(
           residual_param_data != nullptr,
@@ -289,15 +300,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
 
-    auto input_hash =
-        calculate_hash(input->data<T>(), input->numel() * sizeof(T));
     auto output_hash =
         calculate_hash(output->data<T>(), output->numel() * sizeof(T));
 
-    std::cout << "Input hash:  " << std::hex << input_hash << " "
-              << "Output hash: " << std::hex << output_hash << " "
-              << "residual connection: " << std::boolalpha << fuse_residual_conn
-              << std::endl;
+    ss << "Output hash: " << std::hex << output_hash << " ";
+    ss << std::endl;
+
+    std::cout << ss.str();
   }
 
  private:
