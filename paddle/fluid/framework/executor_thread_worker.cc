@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
+#include <algorithm>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -51,7 +52,7 @@ void DensePullThread::run() {
     if (_pull_dense_status.size() != 0) {
       wait_all();
     }
-    
+
     usleep(_sleep_time_ms * 1000);
   }
 }
@@ -77,12 +78,12 @@ std::future<int32_t> DensePullThread::pull_dense(uint64_t table_id) {
   regions.clear();
   auto& variables = _dense_variable_name[table_id];
   regions.resize(variables.size());
-  
+
   for (auto i = 0u; i < variables.size(); ++i) {
     auto& t = variables[i];
     Variable* var = _root_scope->FindVar(t);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    
+
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
@@ -95,21 +96,20 @@ void DensePullThread::wait_all() {
     t.wait();
     auto status = t.get();
     if (status != 0) {
-      LOG(WARNING) << "pull dense failed times:" <<
-          ++_pull_dense_fail_times;
+      LOG(WARNING) << "pull dense failed times:" << ++_pull_dense_fail_times;
     }
   }
-  
+
   if (_pull_dense_fail_times > 20) {
     LOG(FATAL) << "pull dense failed times more than 20 times";
     exit(-1);
   }
-  
+
   _pull_dense_status.resize(0);
 }
 
-void DensePullThread::increase_thread_version(
-    int thread_id, uint64_t table_id) {
+void DensePullThread::increase_thread_version(int thread_id,
+                                              uint64_t table_id) {
   std::lock_guard<std::mutex> lock(_mutex_for_version);
   _training_versions[table_id][thread_id]++;
 }
@@ -173,7 +173,6 @@ void ExecutorThreadWorker::SetFetchVarNames(
   fetch_var_names_.insert(fetch_var_names_.end(), fetch_var_names.begin(),
                           fetch_var_names.end());
 }
-
 
 void ExecutorThreadWorker::SetDevice() {
 #if defined _WIN32 || defined __APPLE__
@@ -344,15 +343,14 @@ void AsyncExecutorThreadWorker::SetPullDenseThread(
 }
 void AsyncExecutorThreadWorker::TrainOneNetwork() {
   PrepareParams();
-  
+
   for (auto& op : ops_) {
     if (op->Type().find("sgd") != std::string::npos) {
       continue;
     }
     bool need_skip = false;
     for (auto t = 0u; t < _param_config->skip_op.size(); ++t) {
-      if (op->Type().find(_param_config->skip_op[t]) !=
-          std::string::npos) {
+      if (op->Type().find(_param_config->skip_op[t]) != std::string::npos) {
         need_skip = true;
         break;
       }
@@ -436,14 +434,13 @@ void AsyncExecutorThreadWorker::PushDense(int table_id) {
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
-  
-  auto status = _pslib_ptr->_worker_ptr->push_dense(
-      regions.data(), regions.size(), table_id);
+
+  auto status = _pslib_ptr->_worker_ptr->push_dense(regions.data(),
+                                                    regions.size(), table_id);
   _push_dense_status.push_back(std::move(status));
 }
 
 void AsyncExecutorThreadWorker::PullSparse(int table_id) {
-
   auto& features = _features[table_id];
   auto& feature_value = _feature_value[table_id];
   auto fea_dim = _param_config->fea_dim;
@@ -451,8 +448,7 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
   features.clear();
   features.resize(0);
   features.reserve(MAX_FEASIGN_NUM);
-  const std::vector<std::string>& feed_vec =
-      thread_reader_->GetUseSlotAlias();
+  const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
   // slot_idx = 0 is label TODO
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
@@ -468,20 +464,20 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
       features.push_back(static_cast<uint64_t>(ids[i]));
     }
   }
-  check_pull_push_memory(features, feature_value, fea_dim);
-  
+  check_pull_push_memory(features, &feature_value, fea_dim);
+
   std::vector<float*> pull_feature_value;
   for (auto i = 0u; i < features.size(); ++i) {
     pull_feature_value.push_back(feature_value[i].data());
   }
-  
+
   auto status = _pslib_ptr->_worker_ptr->pull_sparse(
       pull_feature_value.data(), table_id, features.data(), features.size());
   _pull_sparse_status.push_back(std::move(status));
-  
+
   auto& push_g = _feature_push_value[table_id];
-  check_pull_push_memory(features, push_g, fea_dim);
-  
+  check_pull_push_memory(features, &push_g, fea_dim);
+
   collect_feasign_info(table_id);
 }
 
@@ -490,15 +486,14 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
   auto fea_dim = _param_config->fea_dim;
   auto& features = _features[table_id];
   auto& fea_value = _feature_value[table_id];
-  
+
   CHECK(features.size() > 0) << "feature size check failed";
-  
+
   auto fea_idx = 0u;
-  
+
   std::vector<float> init_value(fea_dim);
-  
-  const std::vector<std::string>& feed_vec =
-      thread_reader_->GetUseSlotAlias();
+
+  const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
   // slot_idx = 0 is label TODO
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
@@ -508,22 +503,22 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
     Variable* var_emb = thread_scope_->FindVar(
         _param_config->slot_input_vec[table_id][slot_idx - 1]);
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
-    float* ptr = tensor_emb->mutable_data<float>(
-      {len, slot_dim}, platform::CPUPlace());
+    float* ptr =
+        tensor_emb->mutable_data<float>({len, slot_dim}, platform::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * slot_dim);
     auto& tensor_lod = tensor->lod()[0];
-    
+
     LoD data_lod{tensor_lod};
     tensor_emb->set_lod(data_lod);
-    
+
     for (auto index = 0u; index < len; ++index) {
       if (ids[index] == 0u) {
-        memcpy(ptr + slot_dim * index,
-               init_value.data() + 2, sizeof(float) * slot_dim);
+        memcpy(ptr + slot_dim * index, init_value.data() + 2,
+               sizeof(float) * slot_dim);
         continue;
       }
-      memcpy(ptr + slot_dim * index,
-             fea_value[fea_idx].data() + 2, sizeof(float) * slot_dim);
+      memcpy(ptr + slot_dim * index, fea_value[fea_idx].data() + 2,
+             sizeof(float) * slot_dim);
       fea_idx++;
     }
   }
@@ -534,35 +529,38 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
   auto fea_dim = _param_config->fea_dim;
   auto& features = _features[table_id];
   auto& push_g = _feature_push_value[table_id];
-  check_pull_push_memory(features, push_g, fea_dim);
-  CHECK(push_g.size() == features.size() + 1) <<
-      "push_g size:" << push_g.size() << " features size:" << features.size();
+  check_pull_push_memory(features, &push_g, fea_dim);
+  CHECK(push_g.size() == features.size() + 1)
+      << "push_g size:" << push_g.size()
+      << " features size:" << features.size();
   uint64_t fea_idx = 0u;
   auto& fea_info = _fea_info[table_id];
   int offset = 2;
   const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
-  // slot_idx = 0 is label 
+  // slot_idx = 0 is label
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
-    if (_param_config->slot_alias_to_table.find(
-            feed_vec[slot_idx]) == _param_config->slot_alias_to_table.end()) {
-      LOG(ERROR) << "ERROR slot_idx:" << slot_idx <<
-          " name:" << feed_vec[slot_idx];
-    } else if (
-        _param_config->slot_alias_to_table[feed_vec[slot_idx]] != table_id) {
+    if (_param_config->slot_alias_to_table.find(feed_vec[slot_idx]) ==
+        _param_config->slot_alias_to_table.end()) {
+      LOG(ERROR) << "ERROR slot_idx:" << slot_idx
+                 << " name:" << feed_vec[slot_idx];
+    } else if (_param_config->slot_alias_to_table[feed_vec[slot_idx]] !=
+               table_id) {
       continue;
     }
     Variable* g_var = thread_scope_->FindVar(
         _param_config->gradient_var[table_id][slot_idx - 1]);
-    CHECK(g_var != nullptr) << "var[" <<
-        _param_config->gradient_var[table_id][slot_idx - 1] << "] not found";
+    CHECK(g_var != nullptr)
+        << "var[" << _param_config->gradient_var[table_id][slot_idx - 1]
+        << "] not found";
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
     if (g_tensor == NULL) {
-      LOG(ERROR) << "var[" <<
-          _param_config->gradient_var[table_id][slot_idx - 1] << "] not found";
+      LOG(ERROR) << "var["
+                 << _param_config->gradient_var[table_id][slot_idx - 1]
+                 << "] not found";
       exit(-1);
     }
     float* g = g_tensor->data<float>();
-    
+
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
     CHECK(var != nullptr) << "var[" << feed_vec[slot_idx] << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
@@ -571,42 +569,40 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
       exit(-1);
     }
     int len = tensor->numel();
-    CHECK(slot_dim * len == g_tensor->numel()) <<
-        "len:" << len << " g_numel:" << g_tensor->numel();
-    CHECK(len == tensor->numel()) << "len:" <<
-        len << "t_numel:" << tensor->numel();
+    CHECK(slot_dim * len == g_tensor->numel())
+        << "len:" << len << " g_numel:" << g_tensor->numel();
+    CHECK(len == tensor->numel()) << "len:" << len
+                                  << "t_numel:" << tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
         g += slot_dim;
         continue;
       }
-      memcpy(push_g[fea_idx].data() + offset,
-             g, sizeof(float) * slot_dim);
+      memcpy(push_g[fea_idx].data() + offset, g, sizeof(float) * slot_dim);
       push_g[fea_idx][0] = 1.0f;
-      CHECK(fea_idx < fea_info.size()) << "fea_idx:" <<
-          fea_idx << " size:" << fea_info.size();
+      CHECK(fea_idx < fea_info.size()) << "fea_idx:" << fea_idx
+                                       << " size:" << fea_info.size();
       push_g[fea_idx][1] = static_cast<float>(fea_info[fea_idx].label);
       g += slot_dim;
       fea_idx++;
     }
   }
-  CHECK(fea_idx == features.size()) << "fea_idx:" <<
-      fea_idx << " features size:" << features.size();
+  CHECK(fea_idx == features.size()) << "fea_idx:" << fea_idx
+                                    << " features size:" << features.size();
   CHECK_GT(features.size(), 0);
-  
+
   std::vector<float*> push_g_vec;
   for (auto i = 0u; i < features.size(); ++i) {
     push_g_vec.push_back(push_g[i].data());
   }
   auto status = _pslib_ptr->_worker_ptr->push_sparse(
-      table_id, features.data(),
-      (const float**)push_g_vec.data(), features.size());
+      table_id, features.data(), (const float**)push_g_vec.data(),
+      features.size());
   _push_sparse_status.push_back(std::move(status));
 }
 
-void AsyncExecutorThreadWorker::collect_feasign_info(
-    int table_id) {
+void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
   auto& fea_info = _fea_info[table_id];
   auto& feature = _features[table_id];
   fea_info.resize(feature.size());
@@ -614,13 +610,13 @@ void AsyncExecutorThreadWorker::collect_feasign_info(
   Variable* var = thread_scope_->FindVar(feed_vec[0]);
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   int64_t* label = tensor->data<int64_t>();
-  
+
   int global_index = 0;
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int64_t* ids = tensor->data<int64_t>();
-    
+
     int fea_idx = 0;
     for (auto ins_idx = 1u; ins_idx < tensor->lod()[0].size(); ++ins_idx) {
       for (; fea_idx < tensor->lod()[0][ins_idx]; ++fea_idx) {
@@ -628,36 +624,33 @@ void AsyncExecutorThreadWorker::collect_feasign_info(
           continue;
         }
         FeasignInfo info{slot_idx, ins_idx, label[ins_idx - 1]};
-        
+
         fea_info[global_index++] = std::move(info);
       }
     }
   }
-  CHECK(global_index == feature.size()) <<
-      "expect fea info size:" << feature.size()
-                              << " real:" << global_index;
+  CHECK(global_index == feature.size())
+      << "expect fea info size:" << feature.size() << " real:" << global_index;
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-        const std::vector<uint64_t>& features,
-        std::vector<std::vector<float>>& push_g,
-        int dim) {
-  push_g.resize(features.size() + 1);
-  for (auto& t : push_g) {
+    const std::vector<uint64_t>& features,
+    std::vector<std::vector<float>>* push_g, int dim) {
+  push_g->resize(features.size() + 1);
+  for (auto& t : *push_g) {
     t.resize(dim);
   }
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-    const std::vector<uint64_t>& features,
-    std::vector<float*>& push_g,
+    const std::vector<uint64_t>& features, std::vector<float*>* push_g,
     int dim) {
-  if (features.size() > push_g.size()) {
-    push_g.reserve(features.size() + 1);
-    auto size = features.size() - push_g.size() + 1;
+  if (features.size() > push_g->size()) {
+    push_g->reserve(features.size() + 1);
+    auto size = features.size() - push_g->size() + 1;
     for (auto i = 0u; i < size; ++i) {
       float* ptr = new float[dim];
-      push_g.push_back(ptr);
+      push_g->push_back(ptr);
     }
   }
 }
