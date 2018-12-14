@@ -236,7 +236,7 @@ void TestAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
     }
   }
   // test result from Get function
-  VLOG(10) << "Test Get function ";
+  // VLOG(10) << "Test Get function ";
   auto tgt = jit::Get<KT, KernelTuples, PlaceType>(attr);
   test(tgt, args...);
 }
@@ -338,9 +338,6 @@ void TestLSTMKernel() {
       for (auto& act_gate : all_acts) {
         for (auto& act_cand : all_acts) {
           for (auto& act_cell : all_acts) {
-            std::string info = act_gate + act_cand + act_cell +
-                               (use_peephole ? "peephole_" : "") + "size_" +
-                               std::to_string(d);
             const jit::lstm_attr_t attr(
                 d, jit::to_kerneltype(act_gate), jit::to_kerneltype(act_cand),
                 jit::to_kerneltype(act_cell), use_peephole);
@@ -370,7 +367,7 @@ void TestLSTMKernel() {
               step.checked = checked_data;
             }
             ref(&step, &attr);
-
+            VLOG(10) << attr;
             TestAllImpls<KT, jit::LSTMTuples<T>, PlaceType, std::vector<T>,
                          std::vector<T>, std::vector<T>, std::vector<T>,
                          std::vector<T>>(attr, xsrc, wp, ct_1, ct_ref, ht_ref,
@@ -390,7 +387,6 @@ void TestGRUKernel() {
   for (int d : TestSizes()) {
     for (auto& act_gate : all_acts) {
       for (auto& act_cand : all_acts) {
-        std::string info = act_gate + act_cand + "size_" + std::to_string(d);
         const jit::gru_attr_t attr(d, jit::to_kerneltype(act_gate),
                                    jit::to_kerneltype(act_cand));
         auto ref = jit::GetRefer<KT, jit::GRUTuples<T>>();
@@ -409,7 +405,7 @@ void TestGRUKernel() {
         step.ht_1 = ht_1_data;
         step.ht = ht_ref_data;
         ref(&step, &attr);
-
+        VLOG(10) << attr;
         TestAllImpls<KT, jit::GRUTuples<T>, PlaceType, std::vector<T>,
                      std::vector<T>, std::vector<T>>(attr, xsrc, ht_1, ht_ref,
                                                      attr);
