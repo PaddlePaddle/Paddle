@@ -58,7 +58,8 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
   auto *scores_data =
       selected_scores->mutable_data<float>(platform::CPUPlace());
-  auto *parent_idx_data = parent_idx->mutable_data<int>(platform::CPUPlace());
+  auto *parent_idx_data =
+      parent_idx->mutable_data<int64_t>(platform::CPUPlace());
 
   // fill in data
   std::vector<size_t> low_level;
