@@ -42,7 +42,7 @@ constexpr char kRequestGetMonomerBarrier[] = "RequestGetMonomerBarrier";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
-constexpr char kGetVariableWithoutBarrier[] = "GetVariableWithoutBarrier";
+constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"

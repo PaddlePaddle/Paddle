@@ -128,7 +128,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
                                      const std::string& var_name,
                                      const std::string& out_varname,
                                      int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, "GetRPC", var_name, out_varname, true,
+  return _AsyncGetVar(ep, ctx, scope, "GetRPC", var_name, out_varname,
                       "/sendrecv.SendRecvService/GetVariable", time_out);
 }
 
@@ -136,16 +136,19 @@ VarHandlePtr GRPCClient::AsyncGetVarNoBarrier(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& var_name,
     const std::string& out_varname, int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, "GetNoBarrierRPC", var_name, out_varname,
-                      false, "/sendrecv.SendRecvService/GetVariableNoBarrier",
-                      time_out);
+  std::string var_name_no_barrier =
+      string::Sprintf("%s%s", var_name, WITHOUT_BARRIER_MESSAGE);
+
+  return _AsyncGetVar(
+      ep, ctx, scope, "GetNoBarrierRPC", var_name_no_barrier, out_varname,
+      "/sendrecv.SendRecvService/GetVariableNoBarrier", time_out);
 }
 
 VarHandlePtr GRPCClient::AsyncGetMonomerVariable(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& var_name,
     int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, "GetMonomerRPC", var_name, var_name, true,
+  return _AsyncGetVar(ep, ctx, scope, "GetMonomerRPC", var_name, var_name,
                       "/sendrecv.SendRecvService/GetMonomerVariable", time_out);
 }
 
@@ -153,7 +156,7 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& method,
     const std::string& var_name, const std::string& out_varname,
-    const bool with_barrier, const std::string& rpc_path, int64_t time_out) {
+    const std::string& rpc_path, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;

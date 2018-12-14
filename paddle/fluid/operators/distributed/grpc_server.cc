@@ -167,7 +167,8 @@ class RequestGetNoBarrier final : public RequestBase {
                                ::grpc::ServerCompletionQueue* cq,
                                RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
+    auto method_id =
+        static_cast<int>(distributed::GrpcMethod::kGetVariableNoBarrier);
     service_->RequestAsyncUnary(
         method_id, &ctx_, &request_, &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
@@ -507,6 +508,9 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestSend(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGet) {
     b = new RequestGet(&service_, cq.get(), handler, req_id);
+
+  } else if (rpc_name == kRequestGetNoBarrier) {
+    b = new RequestGetNoBarrier(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGetMonomerVariable) {
     b = new RequestGetMonomerVariable(&service_, cq.get(), handler, req_id,
                                       this);
