@@ -78,6 +78,7 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
   std::vector<PaddleTensor> outputs;
   if (use_analysis || use_tensorrt) {
     contrib::AnalysisConfig config(true);
+    config.pass_builder()->TurnOnDebug();
     SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
                                        FLAGS_batch_size);
     TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
@@ -141,9 +142,31 @@ TEST(TensorRT_resnext50, profile) {
   profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
 }
 
+TEST(resnext50, compare_analysis_native) {
+  std::string model_dir = FLAGS_infer_model + "/resnext50";
+  compare(model_dir, false /*use tensorrt*/);
+}
+
 TEST(TensorRT_mobilenet, analysis) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  compare(model_dir, /* use_tensorrt */ false);
+  compare(model_dir, false /* use_tensorrt */);
+}
+
+TEST(AnalysisPredictor, use_gpu) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  AnalysisConfig config(true);
+  config.model_dir = model_dir;
+  config.fraction_of_gpu_memory = 0.15;
+  config.pass_builder()->TurnOnDebug();
+
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+
+  std::vector<PaddleTensor> outputs;
+  for (auto& input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+  }
 }
 
 }  // namespace inference
