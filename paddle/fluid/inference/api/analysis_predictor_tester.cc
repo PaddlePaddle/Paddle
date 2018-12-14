@@ -55,12 +55,14 @@ TEST(AnalysisPredictor, analysis_off) {
 }
 
 TEST(AnalysisPredictor, analysis_on) {
-  AnalysisConfig config(true);
-  config.model_dir = FLAGS_dirname;
-  config.enable_ir_optim = true;
 #ifdef PADDLE_WITH_CUDA
   config.fraction_of_gpu_memory = 0.15;
+  AnalysisConfig config(true);
+#else
+  AnalysisConfig config;
 #endif
+  config.model_dir = FLAGS_dirname;
+  config.enable_ir_optim = true;
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
