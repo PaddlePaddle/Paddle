@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <xxhash.h>
 #include <iomanip>
-
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
@@ -70,6 +70,13 @@ inline mkldnn::memory::format GetWeightsFormat(mkldnn::memory::format format,
   }
 }
 
+static uint64_t calculate_hash(const void* buffer, size_t length) {
+  uint64_t seed = 0;
+  uint64_t h = XXH64(buffer, length, seed);
+
+  return h;
+}
+
 template <typename T>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
@@ -112,6 +119,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
+
+    auto input_hash =
+        calculate_hash(input->data<T>(), input->numel() * sizeof(T));
+    std::cout << "Input hash: " << std::hex << input_hash
+              << " residual connection: " << std::boolalpha
+              << fuse_residual_conn << std::endl;
 
     bool is_conv3d = strides.size() == 3U;
     // TODO(tpatejko): add support for dilation
@@ -207,11 +220,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
 
-    std::cout << "Residual connection fusion: " << std::boolalpha
-              << fuse_residual_conn << "\n";
+    // std::cout << "Residual connection fusion: " << std::boolalpha
+    //          << fuse_residual_conn << "\n";
 
     if (fuse_residual_conn) {
-      std::cout << "Fuse residual connection\n";
+      //      std::cout << "Fuse residual connection\n";
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       auto residual_param_data = residual_param->data<T>();
 
@@ -222,9 +235,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "Output and elementwise parameter need to have the "
                         "same dimension sizes");
 
-      std::cout << "Formats: \n";
-      std::cout << "- residual_param: " << residual_param->format() << "\n";
-      std::cout << "- handler dst format: " << handler.GetDstFormat() << "\n";
+      //      std::cout << "Formats: \n";
+      //      std::cout << "- residual_param: " << residual_param->format() <<
+      //      "\n";
+      //      std::cout << "- handler dst format: " << handler.GetDstFormat() <<
+      //      "\n";
       if (residual_param->format() != handler.GetDstFormat()) {
         auto output_data = output->mutable_data<T>(
             ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
