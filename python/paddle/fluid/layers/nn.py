@@ -173,6 +173,7 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
+    'psroi_pool',
 ]
 
 kIgnoreIndex = -100
@@ -9121,4 +9122,58 @@ def get_tensor_from_selected_rows(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={})
+    return out
+
+
+@templatedoc()
+def psroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale,
+               pooled_height,
+               pooled_width,
+               name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        output_channels (integer): ${output_channels_comment}
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        name (str, default None): The name of this layer.
+
+    Returns:
+        Variable: ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            pool_out = fluid.layers.psroi_pool(input=x, rois=rois, 490, 1.0, 7, 7)
+    """
+    helper = LayerHelper('psroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='psroi_pool',
+        inputs={'X': input,
+                'ROIs': rois},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
     return out
