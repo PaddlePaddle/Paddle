@@ -53,23 +53,21 @@ class RecvOp : public framework::OperatorBase {
       for (size_t i = 0; i < outs.size(); i++) {
         std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
         VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-                << varname;
+                << varname << " and with AsyncGetVar";
         rets.push_back(
             rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
       }
-
       if (sync_mode) {
         for (size_t i = 0; i < rets.size(); i++) {
           PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
         }
       }
-
     } else {
       std::vector<distributed::VarHandlePtr> rets;
       for (size_t i = 0; i < outs.size(); i++) {
         std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
         VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-                << varname;
+                << varname << " and with AsyncGetVarNoBarrier";
         rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
                                                         varname, outs[i]));
       }
