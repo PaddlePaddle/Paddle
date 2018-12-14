@@ -84,7 +84,8 @@ class ConfigFactory(object):
                         compress_pass.add_strategy(strategy)
 
                 if key == 'include':
-                    self._parse_config(dict[key])
+                    for file in dict[key]:
+                        self._parse_config(file.strip())
 
 
     def _ordered_load(self, stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):

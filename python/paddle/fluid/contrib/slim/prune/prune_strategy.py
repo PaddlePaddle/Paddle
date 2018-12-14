@@ -3,8 +3,8 @@ from ....framework import Program, program_guard
 from .... import layers
 import numpy as np
 
-__all__ = ['SensetivePruneStrategy', 'PruneStrategy']
-class SensetivePruneStrategy(Strategy):
+__all__ = ['SensitivePruneStrategy', 'PruneStrategy']
+class SensitivePruneStrategy(Strategy):
     def __init__(self,
                  pruner=None, 
                  start_epoch=0,
@@ -12,7 +12,7 @@ class SensetivePruneStrategy(Strategy):
                  delta_rate=0.20,
                  acc_loss_threshold=0.2,
                  sensitivities=None):
-        super(SensetivePruneStrategy, self).__init__(start_epoch, end_epoch)
+        super(SensitivePruneStrategy, self).__init__(start_epoch, end_epoch)
         self.pruner = pruner
         self.delta_rate = delta_rate
         self.acc_loss_threshold = acc_loss_threshold

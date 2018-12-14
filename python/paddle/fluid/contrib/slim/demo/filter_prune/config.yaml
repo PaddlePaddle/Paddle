@@ -12,7 +12,7 @@ pruners:
             '*': 'l1-norm'
 strategies:
     strategy_1:
-        class: 'SensetivePruneStrategy'
+        class: 'SensitivePruneStrategy'
         pruner: 'pruner_1'
         start_epoch: 0
         end_epoch: 10

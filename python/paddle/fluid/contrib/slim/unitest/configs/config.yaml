@@ -1,5 +1,5 @@
 version: 1.0
-include: "./unitest/configs/pruners.yaml"
+include: ["./unitest/configs/pruners.yaml", "./unitest/configs/pruners_0.yaml"]
 pruners:
     pruner_1:
         class: 'RatioPruner'
@@ -13,7 +13,7 @@ pruners:
             '*': 'l1-norm'
 strategies:
     strategy_1:
-        class: 'SensetivePruneStrategy'
+        class: 'SensitivePruneStrategy'
         pruner: 'pruner_2'
         start_epoch: 0
         end_epoch: 10
