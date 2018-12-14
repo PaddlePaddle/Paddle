@@ -12,21 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 
 namespace paddle {
 namespace framework {
-namespace details {
-
-class ReferenceCountPass : public ir::Pass {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
-};
-
-}  // namespace details
+namespace details {}  // namespace details
 }  // namespace framework
 }  // namespace paddle
