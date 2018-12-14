@@ -78,23 +78,19 @@ namespace scatter {
 // functors for manuplating SelectedRows data
 template <typename DeviceContext, typename T>
 struct MergeAdd {
-  MergeAdd() : sorted_result_(false) {}
-
-  explicit MergeAdd(bool sorted_result) : sorted_result_(sorted_result) {}
-
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input);
+                                     const framework::SelectedRows& input,
+                                     const bool sorted_result = false);
   void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input,
-                  framework::SelectedRows* output);
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false);
   void operator()(const DeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output);
-
- private:
-  bool sorted_result_;
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false);
 };
 
 enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
