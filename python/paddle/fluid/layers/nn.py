@@ -9182,19 +9182,19 @@ def psroi_pool(input,
 
 def huber_loss(input, label, delta):
     """
-    Huber regression loss is a loss function used in robust regression.
-    Huber regression loss can evaluate the fitness of input to label.
-    Different from MSE loss, Huber regression loss is more robust for outliers.
+    Huber loss is a loss function used in robust.
+    Huber loss can evaluate the fitness of input to label.
+    Different from MSE loss, Huber loss is more robust for outliers.
 
     When the difference between input and label is large than delta
     .. math::
 
-        huber\_regression\_loss = delta * (label - input) - 0.5 * delta * delta
+        huber\_loss = delta * (label - input) - 0.5 * delta * delta
 
     When the difference between input and label is less than delta
     .. math::
 
-        huber\_regression\_loss = 0.5 * (label - input) * (label - input)
+        huber\_loss = 0.5 * (label - input) * (label - input)
 
 
     Args:
@@ -9202,11 +9202,11 @@ def huber_loss(input, label, delta):
                           The first dimension is batch size, and the last dimension is 1.
         label (Variable): The groud truth whose first dimension is batch size
                           and last dimension is 1.
-        delta (float): The parameter of huber regression loss, which controls
+        delta (float): The parameter of huber loss, which controls
                        the range of outliers
 
     Returns:
-        huber\_regression\_loss (Variable): The huber regression loss with shape [batch_size, 1].
+        huber\_loss (Variable): The huber loss with shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
