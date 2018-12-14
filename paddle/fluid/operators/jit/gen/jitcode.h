@@ -62,7 +62,7 @@ typedef enum {
 class JitCode : public GenBase, public Xbyak::CodeGenerator {
  public:
   explicit JitCode(size_t code_size, void* code_ptr = nullptr)
-      : Xbyak::CodeGenerator(code_size, code_ptr) {}
+      : Xbyak::CodeGenerator((code_size < 4096 ? 4096 : code_size), code_ptr) {}
 
   virtual const char* name() const = 0;
   virtual void genCode() = 0;
