@@ -386,8 +386,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           CreateComputationalOps(&result, node, places_.size());
         }
 
-// insert synchronous ops at the backpropagation; and
-// insert synchronous ops if the graph contains mutilple places.
+// insert collective ops at the backpropagation; and
+// insert collective ops if the graph contains mutilple places.
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
         if (!is_forwarding &&

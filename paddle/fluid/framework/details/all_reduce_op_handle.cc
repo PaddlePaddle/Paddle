@@ -107,22 +107,20 @@ void AllReduceOpHandle::RunImpl() {
           PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
               buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
               ncclSum, comm, stream));
-          if (!nccl_ctxs_->need_group_call_) cudaStreamSynchronize(stream);
+          // TODO(Yancey1989): synchronize here can get better performance
+          // if don't use NCCL group call, but need more profileing.
+          if (local_scopes_.size() == 1UL) cudaStreamSynchronize(stream);
         });
       }
 
       this->RunAndRecordEvent([&] {
-        // TODO(Yancey1989): need allreduce operator to avoid this flag
-        if (nccl_ctxs_->need_group_call_) {
+        if (all_reduce_calls.size() == 1UL) {
+          all_reduce_calls[0]();
+        } else {
           platform::NCCLGroupGuard guard;
           for (auto &call : all_reduce_calls) {
             call();
           }
-        } else {
-          // only used in executor_type == ParallalGraph, one thread one GPU
-          // TODO(Yancey1989): use allreduce operator to avoid this tricky.
-          PADDLE_ENFORCE(all_reduce_calls.size() == 1UL);
-          all_reduce_calls[0]();
         }
       });
 

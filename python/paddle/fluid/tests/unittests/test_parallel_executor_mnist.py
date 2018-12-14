@@ -123,7 +123,7 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_convergence(False)
 
     def test_simple_fc_with_new_strategy(self):
-        # use_cuda, use_reducea
+        # use_cuda, use_reduce
         self._compare_reduce_and_allreduce(simple_fc_net, True)
         self._compare_reduce_and_allreduce(simple_fc_net, False)
 

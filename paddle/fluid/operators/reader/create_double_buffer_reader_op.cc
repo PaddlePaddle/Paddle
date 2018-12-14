@@ -46,6 +46,7 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
       sin >> num;
       place = platform::CUDAPlace(static_cast<int>(num));
     }
+
     out->Reset(framework::MakeDecoratedReader<BufferedReader>(underlying_reader,
                                                               place, 2));
   }
