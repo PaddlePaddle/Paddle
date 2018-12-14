@@ -19,7 +19,7 @@ endfunction()
 
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
