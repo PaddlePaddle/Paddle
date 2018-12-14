@@ -81,9 +81,8 @@ void AsyncExecutor::InitWorker(const std::string& dist_desc,
                                int node_num, int index) {
   _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(
       new paddle::distributed::PSlib());
-  _pslib_ptr->init_worker(dist_desc,
-                          static_cast<uint64_t*>(host_sign_list.data()),
-                          node_num, index);
+  _pslib_ptr->init_worker(
+      dist_desc, const_cast<uint64_t*>(host_sign_list.data()), node_num, index);
 
   InitParamConfig();
 }
@@ -94,7 +93,7 @@ void AsyncExecutor::StopServer() { _pslib_ptr->stop_server(); }
 
 void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
                                   int node_num) {
-  _pslib_ptr->gather_servers(static_cast<uint64_t*>(host_sign_list.data()),
+  _pslib_ptr->gather_servers(const_cast<uint64_t*>(host_sign_list.data()),
                              node_num);
 }
 
