@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {

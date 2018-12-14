@@ -30,47 +30,6 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-#ifdef PADDLE_WITH_MKLML
-// try to use MKL to speedup
-template <typename T>
-void VExpMKL(const T* x, T* y, int n);
-
-template <>
-void VExpMKL<float>(const float* x, float* y, int n) {
-  platform::dynload::vsExp(n, x, y);
-}
-
-template <>
-void VExpMKL<double>(const double* x, double* y, int n) {
-  platform::dynload::vdExp(n, x, y);
-}
-
-template <typename T>
-void VSigmoidMKL(const T* x, T* y, int n) {
-  const T min = SIGMOID_THRESHOLD_MIN;
-  const T max = SIGMOID_THRESHOLD_MAX;
-  for (int i = 0; i < n; ++i) {
-    y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
-    y[i] = static_cast<T>(0) - y[i];
-  }
-  VExpMKL(y, y, n);
-  for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
-  }
-}
-
-template <typename T>
-void VTanhMKL(const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(2) * x[i];
-  }
-  VSigmoidMKL(y, y, n);
-  for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
-  }
-}
-#endif
-
 /* VExp JitKernel */
 template <typename T>
 class VExpKernelImpl : public VExpKernel<T> {
