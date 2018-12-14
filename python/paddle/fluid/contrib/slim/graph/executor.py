@@ -59,18 +59,7 @@ class ImitationGraphExecutor(GraphExecutor):
                             scope=scope,
                             fetch_list=fetch_list,
                             feed=feed)
-        if fetches:
-            results =  self.exe.run(graph.program,
-                                    scope=scope,
-                                    fetch_list=fetch_list,
-                                    feed=feed)
-            return results
-        else:
-            self.exe.run(graph.program,
-                         scope=scope,
-                         fetch_list=fetch_list,
-                         feed=feed)
-            return None
+        return results
 
 def get_executor(graph, place):
     if isinstance(graph, ImitationGraph):

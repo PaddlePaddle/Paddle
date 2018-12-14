@@ -30,7 +30,7 @@ class PruneStrategy(Strategy):
 
     def _triger(self, context):
         return (context.batch_id % self.mini_batch_pruning_frequency == 0 and 
-           context.epoch_id >= self.start_epoch and context.epoch_id < self.end_epoch)
+           self.start_epoch <= context.epoch_id < self.end_epoch)
 
     def on_batch_end(self, context):
         if self._triger(context):

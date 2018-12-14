@@ -59,15 +59,13 @@ class ConfigFactory(object):
                     value = self.instances[value]
                 args[key] = value
             self.instances[name] = class_(**args)
-        return self.instances[name]
+        return self.instances.get(name)
 
     def _parse_config(self, config):
         assert config
         with open(config, 'r') as file:
             dict = self._ordered_load(file)
-            print "parsing file: %s" % file
             for key in dict:
-                print "parsing: %s" % key
                 # parse version
                 if key == 'version' and self.version is None:
                     self.version = int(dict['version'])

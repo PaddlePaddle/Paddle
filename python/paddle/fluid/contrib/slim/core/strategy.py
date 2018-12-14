@@ -28,19 +28,19 @@ class Strategy(object):
         self.end_epoch = end_epoch
 
     def on_compress_begin(self, context):
-        pass
+        raise NotImplementedError("on_compress_begin is not implemented!")
 
     def on_epoch_begin(self, context):
-        pass
+        raise NotImplementedError("on_epoch_begin is not implemented!")
 
-    def on_epoch_begin(self, context):
-        pass
+    def on_epoch_end(self, context):
+        raise NotImplementedError("on_epoch_end is not implemented!")
 
     def on_batch_begin(self, context):
-        pass
+        raise NotImplementedError("on_batch_begin is not implemented!")
 
     def on_batch_end(self, context):
-        pass
+        raise NotImplementedError("on_batch_end is not implemented!")
 
     def on_compress_end(self, context):
-        pass
+        raise NotImplementedError("on_compress_end is not implemented!")

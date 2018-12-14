@@ -86,7 +86,7 @@ class CompressPass(object):
             for data in self.data_reader():
 
                 for strategy in self.strategies:
-                    strategy.on_epoch_begin(context)
+                    strategy.on_batch_begin(context)
                 fetches = None
                 if self.metrics:
                     fetches = self.metrics.values()
@@ -104,7 +104,7 @@ class CompressPass(object):
                 context.batch_id += 1
     
             for strategy in self.strategies:
-                strategy.on_batch_end(context)
+                strategy.on_epoch_end(context)
             context.epoch_id += 1
 
         for strategy in self.strategies:
