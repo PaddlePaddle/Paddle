@@ -85,6 +85,11 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static float ASUM(ARGS... args) {
+    return platform::dynload::cblas_sasum(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_sgemm_batch(args...);
   }
@@ -172,6 +177,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
     platform::dynload::cblas_dscal(args...);
+  }
+
+  template <typename... ARGS>
+  static double ASUM(ARGS... args) {
+    return platform::dynload::cblas_dasum(args...);
   }
 
   template <typename... ARGS>
@@ -268,6 +278,7 @@ struct CBlas<platform::float16> {
   static void VPOW(...) { PADDLE_THROW("float16 VPOW not supported on CPU"); }
   static void DOT(...) { PADDLE_THROW("float16 DOT not supported on CPU"); };
   static void SCAL(...) { PADDLE_THROW("float16 SCAL not supported on CPU"); };
+  static void ASUM(...) { PADDLE_THROW("float16 ASUM not supported on CPU"); };
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
     PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
@@ -474,6 +485,21 @@ void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
     x[i] = a * x[i];
   }
 #endif
+}
+
+template <>
+template <typename T>
+T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
+  auto sum = static_cast<T>(0.0);
+#ifdef PADDLE_WITH_MKLML
+  sum = CBlas<T>::ASUM(n, x, inc);
+#else
+  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
+  for (int c = 0; c < n; ++c) {
+    sum += x[c];
+  }
+#endif
+  return sum;
 }
 
 template <>

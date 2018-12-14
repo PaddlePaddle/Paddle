@@ -36,7 +36,7 @@ void JitCode::preCode() {
   for (int i = 0; i < num_g_abi_regs; ++i) {
     push(Xbyak::Reg64(g_abi_regs[i]));
   }
-  if (platform::jit::MayIUse(platform::jit::avx512f)) {
+  if (platform::MayIUse(platform::avx512f)) {
     mov(reg_EVEX_max_8b_offt, 2 * EVEX_max_8b_offt);
   }
 }

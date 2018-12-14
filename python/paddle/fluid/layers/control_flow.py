@@ -717,8 +717,9 @@ class While(object):
 
         out_vars = []
         for inner_out_name in inner_outputs:
-            if inner_out_name in parent_block.vars:
-                out_vars.append(parent_block.var(inner_out_name))
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_vars.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -1264,10 +1265,11 @@ class ConditionalBlock(object):
             if each_name not in input_set
         ]
 
-        out_list = [
-            parent_block.var(var_name) for var_name in parent_block.vars
-            if var_name in intermediate
-        ]
+        out_list = []
+        for inner_out_name in intermediate:
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_list.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)

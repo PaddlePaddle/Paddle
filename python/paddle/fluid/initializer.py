@@ -33,13 +33,15 @@ def force_init_on_cpu():
     """
     The flag of whether force to init variables on CPU.
 
-    Returns::
+    Returns:
+        bool: the state if we should force init on CPU.
 
     Examples:
+
         .. code-block:: python
 
             if force_init_on_cpu():
-                pass
+                create_op('force_cpu': force_init_on_cpu())
 
     """
     return _force_init_on_cpu_

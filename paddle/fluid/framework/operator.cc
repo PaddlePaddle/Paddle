@@ -695,6 +695,12 @@ static void CheckTensorNANOrInf(const std::string& name,
                  "Tensor %s contains NAN", name);
 }
 
+void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
+                                           const platform::Place& place) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
@@ -873,6 +879,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
+                         ipt_name, DebugString());
           int tmp = static_cast<int>(ToDataType(t->type()));
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,

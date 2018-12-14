@@ -79,6 +79,16 @@ link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
+if (NOT WIN32)
+    set(NGRAPH_PATH "${PADDLE_LIB}/third_party/install/ngraph")
+    if(EXISTS ${NGRAPH_PATH})
+        include(GNUInstallDirs)
+        include_directories("${NGRAPH_PATH}/include")
+        link_directories("${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}")
+        set(NGRAPH_LIB ${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}/libngraph${CMAKE_SHARED_LIBRARY_SUFFIX})
+    endif()
+endif()
+
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 
 if(WITH_MKL)
@@ -106,7 +116,7 @@ endif()
 if (NOT WIN32)
 set(EXTERNAL_LIB "-lrt -ldl -lpthread")
 set(DEPS ${DEPS}
-    ${MATH_LIB} ${MKLDNN_LIB}
+    ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
     glog gflags protobuf snappystream snappy z xxhash
     ${EXTERNAL_LIB})
 else()
