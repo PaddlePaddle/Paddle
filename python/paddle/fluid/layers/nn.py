@@ -169,6 +169,7 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
+    'huber_regression_loss',
 ]
 
 
@@ -4595,7 +4596,7 @@ def hsigmoid(input,
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, or you can use is_custom to pass your own tree to 
+    complete binary tree, or you can use is_custom to pass your own tree to
     implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
@@ -4611,7 +4612,7 @@ def hsigmoid(input,
         2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
         3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
          means label of each binary classification, using 1 indicate true, 0 indicate false.
-        4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+        4. now, each word should has its path and code along the path, you can pass a batch of path and code
         related to the same batch of inputs.
 
 
@@ -4621,8 +4622,8 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
-            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set,
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num
             which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
@@ -4635,15 +4636,15 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+        path_table: (Variable|None) this variable can store each batch of samples' path to root,
             it should be in leaf -> root order
-            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
-            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
-        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like
+            structure and each element in this array is indexes in parent nodes' Weight Matrix.
+        path_code:  (Variable|None) this variable can store each batch of samples' code,
             each code consist with every code of parent nodes. it should be in leaf -> root order
-        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is
              set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
-        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient
              of W and input will be sparse.
 
     Returns:
@@ -8770,3 +8771,51 @@ def bilinear_tensor_product(x,
 
     # add activation
     return helper.append_activation(out)
+
+
+def huber_regression_loss(input, label, delta):
+    """
+    Huber regression loss is a loss function used in robust regression.
+    Huber regression loss can evaluate the fitness of input to label.
+    Different from MSE loss, Huber regression loss is more robust for outliers.
+
+    When the difference between input and label is large than delta
+    .. math::
+
+        huber\_regression\_loss = delta * (label - input) - 0.5 * delta * delta
+
+    When the difference between input and label is less than delta
+    .. math::
+
+        huber\_regression\_loss = 0.5 * (label - input) * (label - input)
+
+
+    Args:
+        input (Variable): This input is a probability computed by the previous operator.
+                          The first dimension is batch size, and the last dimension is 1.
+        label (Variable): The groud truth whose first dimension is batch size
+                          and last dimension is 1.
+        delta (float): The parameter of huber regression loss, which controls
+                       the range of outliers
+
+    Returns:
+        huber\_regression\_loss (Variable): The huber regression loss with shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.huber_regression_loss(input=predictions, label=label, 1.0)
+    """
+    helper = LayerHelper('huber_regression_loss', **locals())
+    residual = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='huber_loss',
+        inputs={'X': input,
+                'Y': label},
+        outputs={'Out': out,
+                 'Residual': residual},
+        attrs={'delta': delta})
+    return out
