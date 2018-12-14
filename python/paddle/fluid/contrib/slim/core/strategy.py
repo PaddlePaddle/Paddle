@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__=['Strategy']
+__all__ = ['Strategy']
+
 
 class Strategy(object):
     """
     Base class for all strategies.
     """
+
     def __init__(self, start_epoch=0, end_epoch=10):
         """
         Args:
@@ -28,19 +30,19 @@ class Strategy(object):
         self.end_epoch = end_epoch
 
     def on_compress_begin(self, context):
-        raise NotImplementedError("on_compress_begin is not implemented!")
+        pass
 
     def on_epoch_begin(self, context):
-        raise NotImplementedError("on_epoch_begin is not implemented!")
+        pass
 
     def on_epoch_end(self, context):
-        raise NotImplementedError("on_epoch_end is not implemented!")
+        pass
 
     def on_batch_begin(self, context):
-        raise NotImplementedError("on_batch_begin is not implemented!")
+        pass
 
     def on_batch_end(self, context):
-        raise NotImplementedError("on_batch_end is not implemented!")
+        pass
 
     def on_compress_end(self, context):
-        raise NotImplementedError("on_compress_end is not implemented!")
+        pass

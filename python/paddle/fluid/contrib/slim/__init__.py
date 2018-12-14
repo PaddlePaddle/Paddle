@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from . import core
+
 from .core import *
-from . import graph
 from .graph import *
-from . import prune
 from .prune import *
-__all__ = core.__all__ 
-__all__ = graph.__all__ 
-__all__ += prune.__all__
+__all__ = [
+    'build_compressor',
+    'CompressPass',
+    'ImitationGraph',
+    'SensitivePruneStrategy',
+    'MagnitudePruner',
+    'RatioPruner',
+]
