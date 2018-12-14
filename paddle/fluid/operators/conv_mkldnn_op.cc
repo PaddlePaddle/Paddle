@@ -120,12 +120,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
 
-    auto input_hash =
-        calculate_hash(input->data<T>(), input->numel() * sizeof(T));
-    std::cout << "Input hash: " << std::hex << input_hash
-              << " residual connection: " << std::boolalpha
-              << fuse_residual_conn << std::endl;
-
     bool is_conv3d = strides.size() == 3U;
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
@@ -294,6 +288,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
+
+    auto input_hash =
+        calculate_hash(input->data<T>(), input->numel() * sizeof(T));
+    auto output_hash =
+        calculate_hash(output->data<T>(), output->numel() * sizeof(T));
+
+    std::cout << "Input hash:  " << std::hex << input_hash << " "
+              << "Output hash: " << std::hex << output_hash << " "
+              << "residual connection: " << std::boolalpha << fuse_residual_conn
+              << std::endl;
   }
 
  private:

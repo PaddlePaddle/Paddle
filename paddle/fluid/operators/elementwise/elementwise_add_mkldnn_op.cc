@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <xxhash.h>
+#include <iomanip>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -28,6 +31,13 @@ using mkldnn::reorder;
 using mkldnn::primitive;
 using mkldnn::stream;
 using mkldnn::sum;
+
+static uint64_t calculate_hash(const void* buffer, size_t length) {
+  uint64_t seed = 0;
+  uint64_t h = XXH64(buffer, length, seed);
+
+  return h;
+}
 
 template <typename T>
 class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
@@ -133,6 +143,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       z->set_format(
           (memory::format)dst_memory.get_primitive_desc().desc().data.format);
     }
+
+    auto z_hash = calculate_hash(z->data<T>(), z->numel() * sizeof(T));
+    std::cout << "Elementwise_add z hash: " << std::hex << z_hash << std::endl;
   }
 };
 
