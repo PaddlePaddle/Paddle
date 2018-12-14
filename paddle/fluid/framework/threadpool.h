@@ -27,6 +27,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
 struct ExceptionHandler {
   mutable std::future<std::unique_ptr<platform::EnforceNotMet>> future_;
   explicit ExceptionHandler(

@@ -52,6 +52,7 @@ void OpHandleBase::Run(bool use_cuda) {
 #else
   PADDLE_ENFORCE(!use_cuda);
 #endif
+
   RunImpl();
 }
 
