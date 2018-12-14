@@ -177,7 +177,7 @@ class AsyncExecutor(object):
             >>> exe = fluid.AsyncExecutor()
             >>> exe.download_data("/xxx/xxx/xx/",
             >>>                   "./data", "afs://            
-            >>>  xxx.xxx.xxx.xxx:9901", "xxx,yyy")
+            >>>  xxx.xxx.xxx.xxx:9901", "xxx,yyy") 
         Args:
             afs_path(str): afs_path defined by users
             local_path(str): download data path
