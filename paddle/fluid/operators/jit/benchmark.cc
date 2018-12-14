@@ -51,251 +51,108 @@ std::vector<int> TestSizes() {
   return s;
 }
 
-// return this function avg time
-template <typename T, typename KernelTuples>
-double BenchXYZNFunc(const typename KernelTuples::func_type tgt,
-                     const std::vector<T>& x, const std::vector<T>& y,
-                     std::vector<T>& z) {  // NOLINT
-  const T* x_data = x.data();
-  const T* y_data = y.data();
-  const int d = z.size();
-  T* z_data = z.data();
+template <typename KernelTuples, typename... Args>
+struct BenchFunc {
+  // return this function avg time
+  double operator()(const typename KernelTuples::func_type tgt, Args... args) {
+    for (int i = 0; i < FLAGS_burning; ++i) {
+      tgt(args...);
+    }
+    auto start = GetCurrentUS();
+    for (int i = 0; i < FLAGS_repeat; ++i) {
+      tgt(args...);
+    }
+    auto end = GetCurrentUS();
+    return (end - start) / FLAGS_repeat;
+  }
+};
 
-  for (int i = 0; i < FLAGS_burning; ++i) {
-    tgt(x_data, y_data, z_data, d);
+namespace jit = paddle::operators::jit;
+
+template <jit::KernelType KT, typename KernelTuples, typename PlaceType,
+          typename... Args>
+void BenchAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
+  BenchFunc<KernelTuples, Args...> benchmark;
+  std::vector<std::pair<std::string, double>> infos;
+  // test refer
+  auto refer = jit::GetRefer<KT, KernelTuples>();
+  if (!refer) {
+    LOG(FATAL) << "Refer can not be empty!";
   }
-  auto start = GetCurrentUS();
-  for (int i = 0; i < FLAGS_repeat; ++i) {
-    tgt(x_data, y_data, z_data, d);
+  infos.push_back(std::make_pair("Refer", benchmark(refer, args...)));
+
+  // test jitcode
+  auto jitcode = jit::GetJitCode<KT, KernelTuples, PlaceType>(attr);
+  if (jitcode) {
+    infos.push_back(std::make_pair("JitCode", benchmark(jitcode, args...)));
   }
-  auto end = GetCurrentUS();
-  return (end - start) / FLAGS_repeat;
+  // test all impls in more
+  jit::KernelKey kkey(KT, PlaceType());
+  auto& pool = jit::KernelPool().Instance().AllKernels();
+  auto iter = pool.find(kkey);
+  if (iter != pool.end()) {
+    auto& impls = iter->second;
+    for (auto& impl : impls) {
+      auto i = dynamic_cast<const jit::KernelImpl<KernelTuples>*>(impl.get());
+      if (i && i->UseMe(attr)) {
+        auto more = i->GetFunc();
+        infos.push_back(std::make_pair("More", benchmark(more, args...)));
+      }
+    }
+  }
+  // Test result from Get function
+  auto tgt = jit::Get<KT, KernelTuples, PlaceType>(attr);
+  if (!tgt) {
+    LOG(FATAL) << "Target can not be empty!";
+  }
+  infos.push_back(std::make_pair("Target", benchmark(tgt, args...)));
+
+  // print
+  std::ostringstream loginfos;
+  loginfos << "Kernel Type " << jit::to_string(KT) << ": " << attr << ": ";
+  for (auto pair : infos) {
+    loginfos << pair.first << " takes " << pair.second << " us; ";
+  }
+  LOG(INFO) << loginfos.str();
 }
 
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchXYZNKernel() {
-  namespace jit = paddle::operators::jit;
   for (int d : TestSizes()) {
-    std::vector<std::pair<std::string, double>> infos;
     std::vector<T> x(d), y(d), z(d);
     RandomVec<T>(d, x.data());
     RandomVec<T>(d, y.data());
-    // refer
-    auto refer = jit::GetRefer<KT, jit::XYZNTuples<T>>();
-    if (refer) {
-      auto res = BenchXYZNFunc<T, jit::XYZNTuples<T>>(refer, x, y, z);
-      infos.push_back(std::make_pair("Refer", res));
-    }
-
-    // test jitcode
-    auto jitcode = jit::GetJitCode<KT, jit::XYZNTuples<T>, PlaceType>(d);
-    if (jitcode) {
-      auto res = BenchXYZNFunc<T, jit::XYZNTuples<T>>(jitcode, x, y, z);
-      infos.push_back(std::make_pair("JitCode", res));
-    }
-
-    // test all impls in more
-    jit::KernelKey kkey(KT, PlaceType());
-    auto& pool = jit::KernelPool().Instance().AllKernels();
-    auto iter = pool.find(kkey);
-    if (iter != pool.end()) {
-      auto& impls = iter->second;
-      for (auto& impl : impls) {
-        auto i = dynamic_cast<const jit::KernelImpl<jit::XYZNTuples<T>>*>(
-            impl.get());
-        if (i && i->UseMe(d)) {
-          auto more = i->GetFunc();
-          auto res = BenchXYZNFunc<T, jit::XYZNTuples<T>>(more, x, y, z);
-          infos.push_back(std::make_pair("More", res));
-        }
-      }
-    }
-
-    // Test result from Get function
-    auto tgt = jit::Get<KT, jit::XYZNTuples<T>, PlaceType>(d);
-    if (!tgt) {
-      LOG(ERROR) << "Target can not be empty!";
-    }
-    auto res = BenchXYZNFunc<T, jit::XYZNTuples<T>>(tgt, x, y, z);
-    infos.push_back(std::make_pair("Target", res));
-
-    // print
-    std::ostringstream loginfos;
-    loginfos << "Kernel Type: " << jit::to_string(KT) << ", size " << d << ": ";
-    for (auto pair : infos) {
-      loginfos << pair.first << " takes " << pair.second << " us; ";
-    }
-    LOG(INFO) << loginfos.str();
+    BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data(), y.data(),
+                                                     z.data(), d);
   }
-}
-
-// return this function avg time
-template <typename T, typename KernelTuples>
-double BenchAXYNFunc(const typename KernelTuples::func_type tgt, const T a,
-                     const std::vector<T>& x,
-                     std::vector<T>& y) {  // NOLINT
-  const T* x_data = x.data();
-  T* y_data = y.data();
-  const int d = y.size();
-  for (int i = 0; i < FLAGS_burning; ++i) {
-    tgt(&a, x_data, y_data, d);
-  }
-  auto start = GetCurrentUS();
-  for (int i = 0; i < FLAGS_repeat; ++i) {
-    tgt(&a, x_data, y_data, d);
-  }
-  auto end = GetCurrentUS();
-  return (end - start) / FLAGS_repeat;
 }
 
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchAXYNKernel() {
-  namespace jit = paddle::operators::jit;
   for (int d : TestSizes()) {
-    std::vector<std::pair<std::string, double>> infos;
     const T a = static_cast<T>(3);
     std::vector<T> x(d), y(d);
     RandomVec<T>(d, x.data());
-    // test refer
-    auto refer = jit::GetRefer<KT, jit::AXYNTuples<T>>();
-    if (refer) {
-      auto res = BenchAXYNFunc<T, jit::AXYNTuples<T>>(refer, a, x, y);
-      infos.push_back(std::make_pair("Refer", res));
-    }
-    // test jitcode
-    auto jitcode = jit::GetJitCode<KT, jit::AXYNTuples<T>, PlaceType>(d);
-    if (jitcode) {
-      auto res = BenchAXYNFunc<T, jit::AXYNTuples<T>>(jitcode, a, x, y);
-      infos.push_back(std::make_pair("JitCode", res));
-    }
-    // test all impls in more
-    jit::KernelKey kkey(KT, PlaceType());
-    auto& pool = jit::KernelPool().Instance().AllKernels();
-    auto iter = pool.find(kkey);
-    if (iter != pool.end()) {
-      auto& impls = iter->second;
-      for (auto& impl : impls) {
-        auto i = dynamic_cast<const jit::KernelImpl<jit::AXYNTuples<T>>*>(
-            impl.get());
-        if (i && i->UseMe(d)) {
-          auto more = i->GetFunc();
-          auto res = BenchAXYNFunc<T, jit::AXYNTuples<T>>(more, a, x, y);
-          infos.push_back(std::make_pair("More", res));
-        }
-      }
-    }
-    // Test result from Get function
-    auto tgt = jit::Get<KT, jit::AXYNTuples<T>, PlaceType>(d);
-    if (!tgt) {
-      LOG(ERROR) << "Target can not be empty!";
-    }
-    auto res = BenchAXYNFunc<T, jit::AXYNTuples<T>>(tgt, a, x, y);
-    infos.push_back(std::make_pair("Target", res));
-    // print
-    std::ostringstream loginfos;
-    loginfos << "Kernel Type: " << jit::to_string(KT) << ", size " << d << ": ";
-    for (auto pair : infos) {
-      loginfos << pair.first << " takes " << pair.second << " us; ";
-    }
-    LOG(INFO) << loginfos.str();
+    BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data(), y.data(),
+                                                     d);
   }
-}
-
-// return this function avg time
-template <typename T, typename KernelTuples>
-double BenchXYNFunc(const typename KernelTuples::func_type tgt,
-                    const std::vector<T>& x,
-                    std::vector<T>& y) {  // NOLINT
-  const T* x_data = x.data();
-  T* y_data = y.data();
-  const int d = y.size();
-  for (int i = 0; i < FLAGS_burning; ++i) {
-    tgt(x_data, y_data, d);
-  }
-  auto start = GetCurrentUS();
-  for (int i = 0; i < FLAGS_repeat; ++i) {
-    tgt(x_data, y_data, d);
-  }
-  auto end = GetCurrentUS();
-  return (end - start) / FLAGS_repeat;
 }
 
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchXYNKernel() {
-  namespace jit = paddle::operators::jit;
   for (int d : TestSizes()) {
-    std::vector<std::pair<std::string, double>> infos;
     std::vector<T> x(d), y(d);
     RandomVec<T>(d, x.data());
-    // test refer
-    auto refer = jit::GetRefer<KT, jit::XYNTuples<T>>();
-    if (refer) {
-      auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(refer, x, y);
-      infos.push_back(std::make_pair("Refer", res));
-    }
-    // test jitcode
-    auto jitcode = jit::GetJitCode<KT, jit::XYNTuples<T>, PlaceType>(d);
-    if (jitcode) {
-      auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(jitcode, x, y);
-      infos.push_back(std::make_pair("JitCode", res));
-    }
-    // test all impls in more
-    jit::KernelKey kkey(KT, PlaceType());
-    auto& pool = jit::KernelPool().Instance().AllKernels();
-    auto iter = pool.find(kkey);
-    if (iter != pool.end()) {
-      auto& impls = iter->second;
-      for (auto& impl : impls) {
-        auto i =
-            dynamic_cast<const jit::KernelImpl<jit::XYNTuples<T>>*>(impl.get());
-        if (i && i->UseMe(d)) {
-          auto more = i->GetFunc();
-          auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(more, x, y);
-          infos.push_back(std::make_pair("More", res));
-        }
-      }
-    }
-    // Test result from Get function
-    auto tgt = jit::Get<KT, jit::XYNTuples<T>, PlaceType>(d);
-    if (!tgt) {
-      LOG(ERROR) << "Target can not be empty!";
-    }
-    auto res = BenchXYNFunc<T, jit::XYNTuples<T>>(tgt, x, y);
-    infos.push_back(std::make_pair("Target", res));
-    // print
-    std::ostringstream loginfos;
-    loginfos << "Kernel Type: " << jit::to_string(KT) << ", size " << d << ": ";
-    for (auto pair : infos) {
-      loginfos << pair.first << " takes " << pair.second << " us; ";
-    }
-    LOG(INFO) << loginfos.str();
+    BenchAllImpls<KT, jit::XYNTuples<T>, PlaceType>(d, x.data(), y.data(), d);
   }
-}
-
-// return this function avg time
-template <typename T, typename KernelTuples>
-double BenchLSTMFunc(const typename KernelTuples::func_type tgt,
-                     const paddle::operators::jit::lstm_attr_t* attr,
-                     paddle::operators::jit::lstm_t* step) {
-  for (int i = 0; i < FLAGS_burning; ++i) {
-    tgt(step, attr);
-  }
-  auto start = GetCurrentUS();
-  for (int i = 0; i < FLAGS_repeat; ++i) {
-    tgt(step, attr);
-  }
-  auto end = GetCurrentUS();
-  return (end - start) / FLAGS_repeat;
 }
 
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchLSTMKernel() {
-  namespace jit = paddle::operators::jit;
   for (bool use_peephole : {true, false}) {
     for (int d : TestSizes()) {
       const jit::lstm_attr_t attr(d, jit::vsigmoid, jit::vtanh, jit::vtanh,
                                   use_peephole);
-      std::vector<std::pair<std::string, double>> infos;
       std::vector<T> x(4 * d), ct_1(d), ct(d), ht(d), wp(3 * d), checked(2 * d);
       RandomVec<T>(4 * d, x.data(), -2.f, 2.f);
       RandomVec<T>(3 * d, wp.data(), -2.f, 2.f);
@@ -315,77 +172,15 @@ void BenchLSTMKernel() {
         step.wp = wp_data;
         step.checked = checked_data;
       }
-
-      // test refer
-      auto refer = jit::GetRefer<KT, jit::LSTMTuples<T>>();
-      if (refer) {
-        auto res = BenchLSTMFunc<T, jit::LSTMTuples<T>>(refer, &attr, &step);
-        infos.push_back(std::make_pair("Refer", res));
-      }
-      // test jitcode
-      auto jitcode = jit::GetJitCode<KT, jit::LSTMTuples<T>, PlaceType>(attr);
-      if (jitcode) {
-        auto res = BenchLSTMFunc<T, jit::LSTMTuples<T>>(jitcode, &attr, &step);
-        infos.push_back(std::make_pair("JitCode", res));
-      }
-      // test all impls in more
-      jit::KernelKey kkey(KT, PlaceType());
-      auto& pool = jit::KernelPool().Instance().AllKernels();
-      auto iter = pool.find(kkey);
-      if (iter != pool.end()) {
-        auto& impls = iter->second;
-        for (auto& impl : impls) {
-          auto i = dynamic_cast<const jit::KernelImpl<jit::LSTMTuples<T>>*>(
-              impl.get());
-          if (i && i->UseMe(attr)) {
-            auto more = i->GetFunc();
-            auto res = BenchLSTMFunc<T, jit::LSTMTuples<T>>(more, &attr, &step);
-            infos.push_back(std::make_pair("More", res));
-          }
-        }
-      }
-      // Test result from Get function
-      auto tgt = jit::Get<KT, jit::LSTMTuples<T>, PlaceType>(attr);
-      if (!tgt) {
-        LOG(ERROR) << "Target can not be empty!";
-      }
-      auto res = BenchLSTMFunc<T, jit::LSTMTuples<T>>(tgt, &attr, &step);
-      infos.push_back(std::make_pair("Target", res));
-      // print
-      std::ostringstream loginfos;
-      loginfos << "Kernel Type: " << jit::to_string(KT)
-               << ", Sigmoid,Tanh,Tanh, " << (use_peephole ? "Peephole_" : "")
-               << " size " << d << ": ";
-      for (auto pair : infos) {
-        loginfos << pair.first << " takes " << pair.second << " us; ";
-      }
-      LOG(INFO) << loginfos.str();
+      BenchAllImpls<KT, jit::LSTMTuples<T>, PlaceType>(attr, &step, &attr);
     }
   }
 }
 
-// return this function avg time
-template <typename T, typename KernelTuples>
-double BenchGRUFunc(const typename KernelTuples::func_type tgt,
-                    const paddle::operators::jit::gru_attr_t* attr,
-                    paddle::operators::jit::gru_t* step) {
-  for (int i = 0; i < FLAGS_burning; ++i) {
-    tgt(step, attr);
-  }
-  auto start = GetCurrentUS();
-  for (int i = 0; i < FLAGS_repeat; ++i) {
-    tgt(step, attr);
-  }
-  auto end = GetCurrentUS();
-  return (end - start) / FLAGS_repeat;
-}
-
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchGRUKernel() {
-  namespace jit = paddle::operators::jit;
   for (int d : TestSizes()) {
     const jit::gru_attr_t attr(d, jit::vsigmoid, jit::vtanh);
-    std::vector<std::pair<std::string, double>> infos;
     std::vector<T> x(3 * d), ht_1(d), ht(d);
     RandomVec<T>(3 * d, x.data(), -2.f, 2.f);
     RandomVec<T>(d, ht_1.data(), -2.f, 2.f);
@@ -396,50 +191,7 @@ void BenchGRUKernel() {
     step.gates = x_data;
     step.ht_1 = ht_1_data;
     step.ht = ht_data;
-
-    // test refer
-    auto refer = jit::GetRefer<KT, jit::GRUTuples<T>>();
-    if (refer) {
-      auto res = BenchGRUFunc<T, jit::GRUTuples<T>>(refer, &attr, &step);
-      infos.push_back(std::make_pair("Refer", res));
-    }
-    // test jitcode
-    auto jitcode = jit::GetJitCode<KT, jit::GRUTuples<T>, PlaceType>(attr);
-    if (jitcode) {
-      auto res = BenchGRUFunc<T, jit::GRUTuples<T>>(jitcode, &attr, &step);
-      infos.push_back(std::make_pair("JitCode", res));
-    }
-    // test all impls in more
-    jit::KernelKey kkey(KT, PlaceType());
-    auto& pool = jit::KernelPool().Instance().AllKernels();
-    auto iter = pool.find(kkey);
-    if (iter != pool.end()) {
-      auto& impls = iter->second;
-      for (auto& impl : impls) {
-        auto i =
-            dynamic_cast<const jit::KernelImpl<jit::GRUTuples<T>>*>(impl.get());
-        if (i && i->UseMe(attr)) {
-          auto more = i->GetFunc();
-          auto res = BenchGRUFunc<T, jit::GRUTuples<T>>(more, &attr, &step);
-          infos.push_back(std::make_pair("More", res));
-        }
-      }
-    }
-    // Test result from Get function
-    auto tgt = jit::Get<KT, jit::GRUTuples<T>, PlaceType>(attr);
-    if (!tgt) {
-      LOG(ERROR) << "Target can not be empty!";
-    }
-    auto res = BenchGRUFunc<T, jit::GRUTuples<T>>(tgt, &attr, &step);
-    infos.push_back(std::make_pair("Target", res));
-    // print
-    std::ostringstream loginfos;
-    loginfos << "Kernel Type: " << jit::to_string(KT) << ", Sigmoid,Tanh, size "
-             << d << ": ";
-    for (auto pair : infos) {
-      loginfos << pair.first << " takes " << pair.second << " us; ";
-    }
-    LOG(INFO) << loginfos.str();
+    BenchAllImpls<KT, jit::GRUTuples<T>, PlaceType>(attr, &step, &attr);
   }
 }
 
@@ -456,16 +208,17 @@ int main(int argc, char* argv[]) {
             << " times.";
   using T = float;
   using PlaceType = paddle::platform::CPUPlace;
-  namespace jit = paddle::operators::jit;
+  // xyzn
   BenchXYZNKernel<jit::vmul, T, PlaceType>();
   BenchXYZNKernel<jit::vadd, T, PlaceType>();
   BenchXYZNKernel<jit::vaddrelu, T, PlaceType>();
   BenchXYZNKernel<jit::vsub, T, PlaceType>();
 
+  // axyn
   BenchAXYNKernel<jit::vscal, T, PlaceType>();
   BenchAXYNKernel<jit::vaddbias, T, PlaceType>();
 
-  // act
+  // xyn
   BenchXYNKernel<jit::vrelu, T, PlaceType>();
   BenchXYNKernel<jit::videntity, T, PlaceType>();
   BenchXYNKernel<jit::vexp, T, PlaceType>();
