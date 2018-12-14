@@ -31,56 +31,6 @@ namespace operators {
 namespace math {
 namespace jitkernel {
 
-#ifdef PADDLE_WITH_MKLML
-template <typename T>
-void VMulMKL(const T* x, const T* y, T* z, int n);
-
-template <>
-void VMulMKL<float>(const float* x, const float* y, float* z, int n) {
-  platform::dynload::vsMul(n, x, y, z);
-}
-
-template <>
-void VMulMKL<double>(const double* x, const double* y, double* z, int n) {
-  platform::dynload::vdMul(n, x, y, z);
-}
-
-template <typename T>
-void VAddMKL(const T* x, const T* y, T* z, int n);
-
-template <>
-void VAddMKL<float>(const float* x, const float* y, float* z, int n) {
-  platform::dynload::vsAdd(n, x, y, z);
-}
-
-template <>
-void VAddMKL<double>(const double* x, const double* y, double* z, int n) {
-  platform::dynload::vdAdd(n, x, y, z);
-}
-
-template <typename T>
-void VScalMKL(const T* a, const T* x, T* y, int n);
-
-template <>
-void VScalMKL<float>(const float* a, const float* x, float* y, int n) {
-  if (x == y) {
-    platform::dynload::cblas_sscal(n, *a, y, 1);
-  } else {
-    refer::VScal<float>(a, x, y, n);
-  }
-}
-
-template <>
-void VScalMKL<double>(const double* a, const double* x, double* y, int n) {
-  if (x == y) {
-    platform::dynload::cblas_dscal(n, *a, y, 1);
-  } else {
-    refer::VScal<double>(a, x, y, n);
-  }
-}
-
-#endif
-
 /* VMUL JitKernel */
 template <typename T>
 class VMulKernelImpl : public VMulKernel<T> {

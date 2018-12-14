@@ -16,7 +16,6 @@
 
 #include <type_traits>
 #include "paddle/fluid/operators/jit/kernel_base.h"
-#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -28,17 +27,27 @@ template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);
 
 template <typename T>
-class VMulKernel : public KernelImpl<XYZNTuples<T>> {
- public:
-  VMulKernel() { this->func = VMul<T>; }
-  bool UseMe(int d) const override {
-    if (std::is_same<T, float>::value) {
-      return platform::MayIUse(platform::avx512f) && d > 512;
-    } else {
-      return true;
-    }
+void VAdd(const T* x, const T* y, T* z, int n);
+
+template <typename T>
+void VScal(const T* a, const T* x, T* y, int n);
+
+#define DECLARE_MKL_KERNEL(name, tuples)                      \
+  template <typename T>                                       \
+  class name##Kernel : public KernelImpl<tuples<T>> {         \
+   public:                                                    \
+    name##Kernel() { this->func = name<T>; }                  \
+    bool UseMe(typename tuples<T>::attr_type) const override; \
   }
-};
+
+// XYZN
+DECLARE_MKL_KERNEL(VMul, XYZNTuples);
+DECLARE_MKL_KERNEL(VAdd, XYZNTuples);
+
+// AXYN
+DECLARE_MKL_KERNEL(VScal, AXYNTuples);
+
+#undef DECLARE_MKL_KERNEL
 
 }  // namespace mkl
 }  // namespace more
