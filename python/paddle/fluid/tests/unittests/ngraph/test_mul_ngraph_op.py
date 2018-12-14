@@ -19,19 +19,23 @@ from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2, Test
 
 
 class TestNGRAPHMulOp(TestMulOp):
-    pass
+    def init_dtype_type(self):
+        pass
 
 
 class TestNGRAPHMulOp2(TestMulOp2):
-    pass
+    def init_dtype_type(self):
+        pass
 
 
 class TestNGRAPHFP16MulOp1(TestFP16MulOp1):
-    pass
+    def init_dtype_type(self):
+        pass
 
 
 class TestNGRAPHFP16MulOp2(TestFP16MulOp2):
-    pass
+    def init_dtype_type(self):
+        pass
 
 
 if __name__ == "__main__":

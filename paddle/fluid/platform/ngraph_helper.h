@@ -99,29 +99,6 @@ static bool HasOutput(
   return outputs.at(prm).size() > 0;
 }
 
-template <typename T>
-static void BuildBinaryNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto x = GetInputNode(op, "X", ngb_node_map);
-  auto y = GetInputNode(op, "Y", ngb_node_map);
-  auto out = std::make_shared<T>(x, y);
-  SetOutputNode(op, "Out", out, ngb_node_map);
-}
-
-template <typename T>
-static void BuildUnaryNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto input = GetInputNode(op, "X", ngb_node_map);
-  auto out = std::make_shared<T>(input);
-  SetOutputNode(op, "Out", out, ngb_node_map);
-}
-
 }  // namespace platform
 }  // namespace paddle
 

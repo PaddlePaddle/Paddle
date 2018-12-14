@@ -19,7 +19,7 @@ limitations under the License. */
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/framework/ngraph_bridge.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/ngraph/mul_op.h"
+#include "paddle/fluid/operators/ngraph/ngraph_ops.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
@@ -33,8 +33,8 @@ std::map<std::string,
     NgraphBridge::NG_NODE_MAP = {
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
-        {"relu", paddle::platform::BuildUnaryNode<ngraph::op::Relu>},
-        {"tanh", paddle::platform::BuildUnaryNode<ngraph::op::Tanh>}};
+        {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
+        {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>}};
 
 void NgraphBridge::BuildNgNode(const std::shared_ptr<OperatorBase>& op) {
   auto& op_type = op->Type();
