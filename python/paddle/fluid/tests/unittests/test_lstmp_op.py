@@ -36,11 +36,13 @@ def lstmp(
         w_b=None,  # 1 x 4D
         w_c=None,  # 1 x 3D
         is_reverse=False,
+        proj_clip = 0.0,
+        cell_clip = 0.0,
         act_gate=None,
         act_cell=None,
         act_cand=None,
         act_proj=None):
-    def _step(x, w_r, w_rh, w_c, r_pre, c_pre, act_gate, act_cell, act_cand,
+    def _step(x, w_r, w_rh, w_c, r_pre, c_pre, proj_clip, cell_clip, act_gate, act_cell, act_cand,
               act_proj):
         g = np.dot(r_pre, w_r)  # 1 x 4D
         g = g + x
@@ -55,6 +57,21 @@ def lstmp(
             g_f = act_gate(g_f + w_fc * c_pre)  # 1 x D
         c = g_f * c_pre + g_i * act_cand(c)  # 1 x D
 
+        def array_clip(a, clip):
+            #print('clip:{}'.format(clip))
+            #print(a)
+
+            size = np.prod(a.shape)
+            new_a = np.reshape(a, (size))
+	    for i in range(size):
+		new_a[i] = max(new_a[i], -1.0 * clip)
+		new_a[i] = min(new_a[i], clip)
+            new_a = np.reshape(new_a, a.shape)
+            #print(new_a)
+            return new_a
+
+        if cell_clip > 0.0:
+            c = array_clip(c, cell_clip)
         if w_c is None:
             g_o = act_gate(g_o)  # 1 x D
         else:
@@ -64,6 +81,8 @@ def lstmp(
         # projection
         r = np.dot(h, w_rh)
         r = act_proj(r)
+        if proj_clip > 0.0:
+            r = array_clip(r, proj_clip)
         return r, c
 
     def _reverse(x, offset):
@@ -87,12 +106,13 @@ def lstmp(
         # compute one sequence
         seq_len = lod[0][i]
         x = input[offset[i]:offset[i + 1], :]
-        r_pre = np.dot(h0[i], w_rh)  # 1 x P
-        r_pre = act_proj(r_pre)
+        #r_pre = np.dot(h0[i], w_rh)  # 1 x P
+        r_pre = h0[i]
+        #r_pre = act_proj(r_pre)
         c_pre = c0[i]  # 1 x D
         for j in range(seq_len):
             # compute one step
-            r_pre, c_pre = _step(x[j], w_r, w_rh, w_c, r_pre, c_pre, act_gate,
+            r_pre, c_pre = _step(x[j], w_r, w_rh, w_c, r_pre, c_pre, proj_clip, cell_clip, act_gate,
                                  act_cell, act_cand, act_proj)
             projection.append(r_pre.flatten())
             cell.append(c_pre.flatten())
@@ -126,10 +146,10 @@ class TestLstmpOp(LstmTest.TestLstmOp):
 
         x = np.random.normal(size=(T, 4 * self.D)).astype('float64')
         if self.has_initial_state:
-            h0 = np.random.normal(size=(N, self.D)).astype('float64')
+            h0 = np.random.normal(size=(N, self.P)).astype('float64')
             c0 = np.random.normal(size=(N, self.D)).astype('float64')
         else:
-            h0 = np.zeros((N, self.D)).astype('float64')
+            h0 = np.zeros((N, self.P)).astype('float64')
             c0 = np.zeros((N, self.D)).astype('float64')
         w = np.random.normal(size=(self.P, 4 * self.D)).astype('float64')
         if self.use_peepholes:
@@ -140,7 +160,9 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         w_b = b[:, 0:4 * self.D]
         w_c = b[:, 4 * self.D:] if self.use_peepholes else None
         w_rh = np.random.normal(size=(self.D, self.P)).astype('float64')
-        r, c = lstmp(x, self.lod, h0, c0, w, w_rh, w_b, w_c, self.is_reverse,
+        proj_clip = 0.1
+        cell_clip = 0.0
+        r, c = lstmp(x, self.lod, h0, c0, w, w_rh, w_b, w_c, self.is_reverse, proj_clip, cell_clip,
                      ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
                      ACTIVATION[self.act_cand], ACTIVATION[self.act_proj])
 
@@ -159,6 +181,8 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         self.attrs = {
             'use_peepholes': self.use_peepholes,
             'is_reverse': self.is_reverse,
+            'proj_clip':proj_clip,
+            'cell_clip':cell_clip,
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,

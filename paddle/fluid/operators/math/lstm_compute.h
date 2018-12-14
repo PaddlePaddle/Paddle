@@ -50,7 +50,7 @@ template <typename DeviceContext, typename T>
 class LstmUnitFunctor {
  public:
   static void compute(const DeviceContext &context, LstmMetaValue<T> value,
-                      int frame_size, int batch_size,
+                      int frame_size, int batch_size, T cell_clip,
                       const detail::ActivationType &gate_act,
                       const detail::ActivationType &cell_act,
                       const detail::ActivationType &cand_act);
@@ -61,6 +61,7 @@ class LstmUnitGradFunctor {
  public:
   static void compute(const DeviceContext &context, LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad, int frame_size, int batch_size,
+                      T cell_clip,
                       const detail::ActivationType &gate_act,
                       const detail::ActivationType &cell_act,
                       const detail::ActivationType &cand_act);

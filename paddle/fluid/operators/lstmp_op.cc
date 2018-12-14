@@ -184,6 +184,14 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, defalut: False) "
                   "whether to compute reversed LSTMP.")
         .SetDefault(false);
+    AddAttr<float>("cell_clip",
+                  "(float, defalut: 0.0) "
+                  "Clip for Tensor for cell state tensor when clip value is greater than 0.0")
+        .SetDefault(0.0);
+    AddAttr<float>("proj_clip",
+                  "(float, defalut: 0.0) "
+                  "Clip for Tensor for projection tensor when clip value is greater than 0.0")
+        .SetDefault(0.0);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"

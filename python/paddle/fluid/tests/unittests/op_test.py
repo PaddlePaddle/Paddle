@@ -294,6 +294,7 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = list(map(block.var, fetch_list))
+        #import pdb; pdb.set_trace()
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,

@@ -23,12 +23,12 @@ namespace math {
 template <class T>
 struct LstmUnitFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext& context,
-                      LstmMetaValue<T> value, int frame_size, int batch_size,
+                      LstmMetaValue<T> value, int frame_size, int batch_size, T cell_clip,
                       const detail::ActivationType& gate_act,
                       const detail::ActivationType& cell_act,
                       const detail::ActivationType& cand_act) {
     detail::gpu_lstm_forward<T>(context, detail::forward::lstm<T>(), value,
-                                frame_size, batch_size, cand_act, gate_act,
+                                frame_size, batch_size, cell_clip, cand_act, gate_act,
                                 cell_act);
   }
 };
@@ -37,12 +37,12 @@ template <class T>
 struct LstmUnitGradFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size,
+                      int frame_size, int batch_size, T cell_clip,
                       const detail::ActivationType& gate_act,
                       const detail::ActivationType& cell_act,
                       const detail::ActivationType& cand_act) {
     detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value, grad,
-                              frame_size, batch_size, cand_act, gate_act,
+                              frame_size, batch_size, cell_clip, cand_act, gate_act,
                               cell_act);
   }
 };

@@ -21,16 +21,49 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
+using platform::Transform;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T>
+class ClipFunctor {
+ public:
+  explicit ClipFunctor(const T min, const T max) : min_(min), max_(max) {}
+  HOSTDEVICE T operator()(const T& x) const {
+    if (x < min_)
+      return min_;
+    else if (x > max_)
+      return max_;
+    else
+      return x;
+  }
+
+ private:
+  T min_;
+  T max_;
+};
+
+template <typename T>
+class ClipGradFunctor {
+ public:
+  explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
+  HOSTDEVICE T operator()(const T& x, const T& y) const {
+    return (y > min_ && y < max_) ? x : 0;
+  }
+
+ private:
+  T min_;
+  T max_;
+};
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
@@ -59,6 +92,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     else
       PADDLE_THROW("unsupported activation type");
   }
+
   void Print(Tensor & t, std::string name) {
       VLOG(1) << "qxz print "<< name;
       VLOG(1) << name << "size = " << t.numel();
@@ -78,6 +112,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
            VLOG(1)<< d[i] << ",";
       }   
    }
+
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
@@ -86,6 +121,9 @@ class LSTMPKernel : public framework::OpKernel<T> {
 
     auto* hidden_t0 = ctx.Input<Tensor>("H0");
     auto* cell_t0 = ctx.Input<Tensor>("C0");
+    
+    auto proj_clip = static_cast<T>(ctx.Attr<float>("proj_clip"));
+    auto cell_clip = static_cast<T>(ctx.Attr<float>("cell_clip"));
 
     auto* batch_gate = ctx.Output<LoDTensor>("BatchGate");
     batch_gate->mutable_data<T>(ctx.GetPlace());
@@ -199,7 +237,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       lstmp_value.state_value = cell_t.data<T>();
       lstmp_value.state_active_value = cell_pre_act_t.data<T>();
       math::LstmUnitFunctor<DeviceContext, T>::compute(
-          device_ctx, lstmp_value, frame_size, cur_batch_size, gate_act,
+          device_ctx, lstmp_value, frame_size, cur_batch_size, cell_clip, gate_act,
           cell_act, cand_act);
       lstmp_value.prev_state_value = lstmp_value.state_value;
       blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
@@ -208,6 +246,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
       if (proj_act != math::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev);
+      }
+      if (proj_clip && proj_clip > 0.0) {
+          T* x_data = proj_t.data<T>();
+          int64_t numel = proj_t.numel();
+          Transform<DeviceContext> trans;
+          trans(ctx.template device_context<DeviceContext>(), x_data,
+            x_data + numel, x_data, ClipFunctor<T>(-1.0 * proj_clip, proj_clip)); 
       }
     }
 
@@ -249,6 +294,11 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
     auto* proj_out = ctx.Input<LoDTensor>("Projection");
     auto* cell_out = ctx.Input<LoDTensor>("Cell");
+
+    auto proj_clip = static_cast<T>(ctx.Attr<float>("proj_clip"));
+    auto cell_clip = static_cast<T>(ctx.Attr<float>("cell_clip"));
+
+
 
     auto* batch_gate = ctx.Input<LoDTensor>("BatchGate");
     auto* batch_cell_pre_act = ctx.Input<LoDTensor>("BatchCellPreAct");
@@ -373,6 +423,16 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
       Tensor cur_proj = batch_proj.Slice(bstart, bend);
       Tensor proj_g = batch_proj_g.Slice(bstart, bend);
+
+      if (proj_clip && proj_clip > 0.0) {
+          T* dx_data = proj_g.data<T>();
+          T* x_data = cur_proj.data<T>();
+          int64_t numel = proj_g.numel();
+          Transform<DeviceContext> trans;
+          trans(ctx.template device_context<DeviceContext>(), dx_data,
+            dx_data + numel, x_data, dx_data, ClipGradFunctor<T>(-1.0 * proj_clip, proj_clip)); 
+      }
+
       if (proj_act != math::detail::ActivationType::kIdentity) {
         auto cur_proj_dev = EigenMatrix<T>::From(cur_proj);
         auto proj_g_dev = EigenMatrix<T>::From(proj_g);
@@ -416,7 +476,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
       int cur_batch_size = bend - bstart;
       math::LstmUnitGradFunctor<DeviceContext, T>::compute(
-          device_ctx, lstmp_value, lstmp_grad, frame_size, cur_batch_size,
+          device_ctx, lstmp_value, lstmp_grad, frame_size, cur_batch_size, cell_clip,
           gate_act, cell_act, cand_act);
 
       if (n > 0) {

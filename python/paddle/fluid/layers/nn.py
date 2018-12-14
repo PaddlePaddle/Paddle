@@ -653,11 +653,13 @@ def dynamic_lstmp(input,
                   param_attr=None,
                   bias_attr=None,
                   use_peepholes=True,
+                  cell_clip=None,
+                  proj_clip=None,
                   is_reverse=False,
                   gate_activation='sigmoid',
                   cell_activation='tanh',
                   candidate_activation='tanh',
-                  proj_activation='tanh',
+                  proj_activation='identity',
                   dtype='float32',
                   name=None):
     """
@@ -767,6 +769,11 @@ def dynamic_lstmp(input,
                               the bias is initialized zero. Default: None.
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
+        cell_clip: (float): If provided the cell state is clipped
+                             by this value prior to the cell output activation.
+        proj_clip: (float): If `num_proj > 0` and `proj_clip` is
+                            provided, then the projected values are clipped elementwise to within
+                            `[-proj_clip, proj_clip]`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
         gate_activation(str): The activation for input gate, forget gate and
                               output gate. Choices = ["sigmoid", "tanh", "relu",
@@ -778,7 +785,7 @@ def dynamic_lstmp(input,
                               default "tanh".
         proj_activation(str): The activation for projection output.
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
+                              default "identity".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -856,6 +863,8 @@ def dynamic_lstmp(input,
         },
         attrs={
             'use_peepholes': use_peepholes,
+            'cell_clip': cell_clip,
+            'proj_clip': proj_clip,
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
             'cell_activation': cell_activation,

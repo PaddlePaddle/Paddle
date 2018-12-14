@@ -31,7 +31,7 @@ namespace detail {
  */
 template <class T, class Op, bool is_batch>
 __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
-                              int batch_size, ActivationType active_node,
+                              int batch_size, T cell_clip, ActivationType active_node,
                               ActivationType active_gate,
                               ActivationType active_state) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -71,7 +71,7 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
   }
 
   op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
-     &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
+     &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO, &cell_clip,
      active_node, active_gate, active_state);
 
   value.gate_value[frame_idx] = r_value_in;
@@ -91,7 +91,7 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
 template <class T, class Op, bool is_batch>
 __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
                                LstmMetaGrad<T> grad, int frame_size,
-                               int batch_size, ActivationType active_node,
+                               int batch_size, T cell_clip, ActivationType active_node,
                                ActivationType active_gate,
                                ActivationType active_state) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -148,7 +148,7 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
   op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_grad_in, &r_grad_ig,
      &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad, &r_state,
      &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI, &r_checkF,
-     &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad, active_node,
+     &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad, &cell_clip, active_node,
      active_gate, active_state);
 
   grad.gate_grad[frame_idx] = r_grad_in;
@@ -184,7 +184,7 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
-                      LstmMetaValue<T> value, int frame_size, int batch_size,
+                      LstmMetaValue<T> value, int frame_size, int batch_size, T cell_clip,
                       ActivationType active_node, ActivationType active_gate,
                       ActivationType active_state) {
   dim3 threads;
@@ -205,12 +205,12 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
   if (batch_size == 1) {
     KeLstmForward<T, Op,
                   /* is_batch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, frame_size, batch_size, active_node, active_gate,
+        op, value, frame_size, batch_size, cell_clip, active_node, active_gate,
         active_state);
   } else {
     KeLstmForward<T, Op,
                   /* is_batch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, frame_size, batch_size, active_node, active_gate,
+        op, value, frame_size, batch_size, cell_clip, active_node, active_gate,
         active_state);
   }
 }
@@ -218,7 +218,7 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
 template <class T, class Op>
 void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
                        LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                       int frame_size, int batch_size,
+                       int frame_size, int batch_size, T cell_clip,
                        ActivationType active_node, ActivationType active_gate,
                        ActivationType active_state) {
   dim3 threads;
@@ -239,12 +239,12 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
   if (batch_size == 1) {
     KeLstmBackward<T, Op,
                    /* is_batch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, grad, frame_size, batch_size, active_node, active_gate,
+        op, value, grad, frame_size, batch_size, cell_clip, active_node, active_gate,
         active_state);
   } else {
     KeLstmBackward<T, Op,
                    /* is_batch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, grad, frame_size, batch_size, active_node, active_gate,
+        op, value, grad, frame_size, batch_size, cell_clip, active_node, active_gate,
         active_state);
   }
 }
