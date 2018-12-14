@@ -17,8 +17,8 @@ from ..graph import get_executor
 
 __all__ = ['Context', 'CompressPass']
 
-class Context(object):
 
+class Context(object):
     def __init__(self, exe, graph, scope, program_exe=None):
         # The total number of epoches to be trained.
         self.epoch = 0
@@ -29,7 +29,8 @@ class Context(object):
         self.exe = exe
         self.graph = graph
         self.scope = scope
-        self.program_exe = program_exe 
+        self.program_exe = program_exe
+
 
 class CompressPass(object):
     def __init__(self,
@@ -70,15 +71,13 @@ class CompressPass(object):
             graph: The target graph to be compressed.
         """
         self.executor = get_executor(graph, self.place)
-        context = Context(self.executor,
-                          graph,
-                          self.scope,
-                          program_exe=self.program_exe)
+        context = Context(
+            self.executor, graph, self.scope, program_exe=self.program_exe)
 
         for strategy in self.strategies:
             strategy.on_compress_begin(context)
 
-        for epoch in range(self.epoch): 
+        for epoch in range(self.epoch):
 
             for strategy in self.strategies:
                 strategy.on_epoch_begin(context)
@@ -94,19 +93,19 @@ class CompressPass(object):
                 if self.data_feeder:
                     feed = self.data_feeder.feed(data)
                 results = self.executor.run(graph,
-                               fetches=fetches,
-                               scope=self.scope,
-                               feed=feed)
+                                            fetches=fetches,
+                                            scope=self.scope,
+                                            feed=feed)
                 if results:
-                    print("results: {}".format(zip(self.metrics.keys(), results)))
+                    print("results: {}".format(
+                        zip(self.metrics.keys(), results)))
                 for strategy in self.strategies:
                     strategy.on_batch_end(context)
                 context.batch_id += 1
-    
+
             for strategy in self.strategies:
                 strategy.on_epoch_end(context)
             context.epoch_id += 1
 
         for strategy in self.strategies:
             strategy.on_compress_end(context)
-

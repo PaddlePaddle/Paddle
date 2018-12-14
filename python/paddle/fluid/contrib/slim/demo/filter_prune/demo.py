@@ -1,20 +1,30 @@
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import paddle.fluid as fluid
 import paddle
 import os
 import sys
-
-#current_dir = os.path.dirname(__file__)
-#root_path = os.path.abspath(os.path.join(current_dir, '..', '..'))
-#sys.path.append(root_path)
-
 from paddle.fluid.contrib.slim import CompressPass
 from paddle.fluid.contrib.slim import build_compressor
 from paddle.fluid.contrib.slim import ImitationGraph
 
+
 class LinearModel(object):
     def __init__(slef):
         pass
-    
+
     def train(self):
         train_program = fluid.Program()
         startup_program = fluid.Program()
@@ -29,8 +39,10 @@ class LinearModel(object):
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost)
 
-        train_reader = paddle.batch(paddle.dataset.uci_housing.train(),batch_size=1)
-        eval_reader = paddle.batch(paddle.dataset.uci_housing.test(),batch_size=1)
+        train_reader = paddle.batch(
+            paddle.dataset.uci_housing.train(), batch_size=1)
+        eval_reader = paddle.batch(
+            paddle.dataset.uci_housing.test(), batch_size=1)
         place = fluid.CPUPlace()
         train_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         eval_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
@@ -39,18 +51,19 @@ class LinearModel(object):
         train_metrics = {"loss": avg_cost.name}
         eval_metrics = {"loss": avg_cost.name}
 
-
         graph = ImitationGraph(train_program)
         config = './config.yaml'
-        comp_pass = build_compressor(place,
-                                 data_reader=train_reader,
-                                 data_feeder=train_feeder,
-                                 scope=fluid.global_scope(),
-                                 metrics=train_metrics,
-                                 epoch=1,
-                                 config=config)
+        comp_pass = build_compressor(
+            place,
+            data_reader=train_reader,
+            data_feeder=train_feeder,
+            scope=fluid.global_scope(),
+            metrics=train_metrics,
+            epoch=1,
+            config=config)
         comp_pass.apply(graph)
-    
+
+
 if __name__ == "__main__":
     model = LinearModel()
     model.train()

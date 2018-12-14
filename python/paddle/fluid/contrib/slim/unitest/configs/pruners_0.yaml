@@ -10,4 +10,3 @@ pruners:
             '*': [1, 2, 3]
         criterions:
             '*': 'l1-norm'
-
