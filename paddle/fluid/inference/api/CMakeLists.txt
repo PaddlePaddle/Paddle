@@ -47,7 +47,7 @@ if(WITH_TESTING)
                       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
 endif()
-cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps}
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
 
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
