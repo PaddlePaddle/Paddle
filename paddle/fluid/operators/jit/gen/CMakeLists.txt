@@ -10,3 +10,8 @@ endfunction()
 
 # use gen jitcode kernel by name
 USE_JITKERNEL_GEN(vmul)
+USE_JITKERNEL_GEN(vadd)
+#USE_JITKERNEL_GEN(vsub) # TODO(TJ): enable me
+USE_JITKERNEL_GEN(vaddrelu)
+USE_JITKERNEL_GEN(vscal)
+USE_JITKERNEL_GEN(vaddbias)

@@ -104,18 +104,28 @@ void VXXJitCode::genCode() {
   ret();
 }
 
-class VMulCreator : public JitCodeCreator<int> {
- public:
-  bool UseMe(const int& attr) const override {
-    return platform::MayIUse(platform::avx);
+#define DECLARE_BLAS_CREATOR(name)                                           \
+  class name##Creator : public JitCodeCreator<int> {                         \
+   public:                                                                   \
+    bool UseMe(const int& attr) const override {                             \
+      return platform::MayIUse(platform::avx);                               \
+    }                                                                        \
+    size_t CodeSize(const int& d) const override {                           \
+      return 96 + d / YMM_FLOAT_BLOCK * 4 * 8;                               \
+    }                                                                        \
+    std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override { \
+      return make_unique<name##JitCode>(attr, CodeSize(attr));               \
+    }                                                                        \
   }
-  size_t CodeSize(const int& d) const override {
-    return 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
-  }
-  std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
-    return make_unique<VMulJitCode>(attr, CodeSize(attr));
-  }
-};
+
+DECLARE_BLAS_CREATOR(VMul);
+DECLARE_BLAS_CREATOR(VAdd);
+DECLARE_BLAS_CREATOR(VSub);
+DECLARE_BLAS_CREATOR(VAddRelu);
+DECLARE_BLAS_CREATOR(VScal);
+DECLARE_BLAS_CREATOR(VAddBias);
+
+#undef DECLARE_BLAS_CREATOR
 
 }  // namespace gen
 }  // namespace jit
@@ -125,3 +135,9 @@ class VMulCreator : public JitCodeCreator<int> {
 namespace gen = paddle::operators::jit::gen;
 
 REGISTER_JITKERNEL_GEN(vmul, gen::VMulCreator);
+REGISTER_JITKERNEL_GEN(vadd, gen::VAddCreator);
+// TODO(TJ): enable sub
+// REGISTER_JITKERNEL_GEN(vsub, gen::VSubCreator);
+REGISTER_JITKERNEL_GEN(vaddrelu, gen::VAddReluCreator);
+REGISTER_JITKERNEL_GEN(vscal, gen::VScalCreator);
+REGISTER_JITKERNEL_GEN(vaddbias, gen::VAddBiasCreator);
