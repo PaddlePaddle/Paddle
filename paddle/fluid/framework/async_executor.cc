@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
 #ifdef PADDLE_WITH_PSLIB
-#include "pslib.h"
+#include <pslib.h>
 #endif
 
 namespace paddle {
@@ -70,50 +70,52 @@ void PrepareReaders(std::vector<std::shared_ptr<DataFeed>>& readers,  // NOLINT
 
 #ifdef PADDLE_WITH_PSLIB
 void AsyncExecutor::InitServer(const std::string& dist_desc, int index) {
-    _pslib_ptr =
-        std::shared_ptr<paddle::distributed::PSlib>(
-            new paddle::distributed::PSlib());
-    _pslib_ptr->init_server(dist_desc, index);
-    InitParamConfig();
+  _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(
+      new paddle::distributed::PSlib());
+  _pslib_ptr->init_server(dist_desc, index);
+  InitParamConfig();
 }
 
 void AsyncExecutor::InitWorker(const std::string& dist_desc,
                                const std::vector<uint64_t>& host_sign_list,
                                int node_num, int index) {
-    _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(
-        new paddle::distributed::PSlib());
-    _pslib_ptr->init_worker(
-        dist_desc, (uint64_t*)(host_sign_list.data()), node_num, index);
+  _pslib_ptr = std::shared_ptr<paddle::distributed::PSlib>(
+      new paddle::distributed::PSlib());
+  _pslib_ptr->init_worker(dist_desc,
+                          static_cast<uint64_t*>(host_sign_list.data()),
+                          node_num, index);
 
-    InitParamConfig();
+  InitParamConfig();
 }
 
-uint64_t AsyncExecutor::StartServer() {
-    return _pslib_ptr->run_server();
-}
+uint64_t AsyncExecutor::StartServer() { return _pslib_ptr->run_server(); }
 
-void AsyncExecutor::StopServer() {
-    _pslib_ptr->stop_server();
-}
+void AsyncExecutor::StopServer() { _pslib_ptr->stop_server(); }
 
-void AsyncExecutor::GatherServers(
-    const std::vector<uint64_t>& host_sign_list, int node_num) {
-    _pslib_ptr->gather_servers((uint64_t*)(host_sign_list.data()), node_num);
+void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
+                                  int node_num) {
+  _pslib_ptr->gather_servers(static_cast<uint64_t*>(host_sign_list.data()),
+                             node_num);
 }
 
 void AsyncExecutor::InitParamConfig() {
-  for (int i = 0; i <
-               _pslib_ptr->get_param()->server_param(). \
-               downpour_server_param().                 \
-               downpour_table_param_size();
+  for (int i = 0; i < _pslib_ptr->get_param()
+                          ->server_param()
+                          .downpour_server_param()
+                          .downpour_table_param_size();
        ++i) {
-    if (_pslib_ptr->get_param()->server_param().                \
-        downpour_server_param().downpour_table_param(i).        \
-        table_class().find("SparseTable") != -1) {
-      _param_config.fea_dim = _pslib_ptr->get_param()->server_param().  \
-                              downpour_server_param().                  \
-                              downpour_table_param(i).                  \
-                              accessor().fea_dim();
+    if (_pslib_ptr->get_param()
+            ->server_param()
+            .downpour_server_param()
+            .downpour_table_param(i)
+            .table_class()
+            .find("SparseTable") != -1) {
+      _param_config.fea_dim = _pslib_ptr->get_param()
+                                  ->server_param()
+                                  .downpour_server_param()
+                                  .downpour_table_param(i)
+                                  .accessor()
+                                  .fea_dim();
       break;
     }
   }
@@ -122,28 +124,24 @@ void AsyncExecutor::InitParamConfig() {
       _pslib_ptr->get_param()->trainer_param().push_dense_per_batch());
   _param_config.tmp_push_sparse_wait_times = static_cast<int32_t>(
       _pslib_ptr->get_param()->trainer_param().push_sparse_per_batch());
-  
-  for (auto t = 0u;
-       t < _pslib_ptr->get_param()->trainer_param().skip_op_size();
+
+  for (auto t = 0u; t < _pslib_ptr->get_param()->trainer_param().skip_op_size();
        ++t) {
     _param_config.skip_op.push_back(
         _pslib_ptr->get_param()->trainer_param().skip_op(t));
   }
-  
+
   for (auto t = 0u;
-       t < _pslib_ptr->get_param()->trainer_param().sparse_table_size();
-       ++t) {
+       t < _pslib_ptr->get_param()->trainer_param().sparse_table_size(); ++t) {
     auto& table = _pslib_ptr->get_param()->trainer_param().sparse_table(t);
     std::vector<std::string> tmp_sparse_variable_name;
     for (int i = 0u; i < table.slot_value_size(); ++i) {
       tmp_sparse_variable_name.push_back(table.slot_value(i));
-      _param_config.slot_alias_to_table[table.slot_key(i)] =
-          table.table_id();
+      _param_config.slot_alias_to_table[table.slot_key(i)] = table.table_id();
     }
     std::vector<std::string> tmp_sparse_gradient_variable_name;
     for (auto i = 0u; i < table.slot_gradient_size(); ++i) {
-      tmp_sparse_gradient_variable_name.push_back(
-          table.slot_gradient(i));
+      tmp_sparse_gradient_variable_name.push_back(table.slot_gradient(i));
     }
     _param_config.slot_input_vec[table.table_id()] =
         std::move(tmp_sparse_variable_name);
@@ -151,10 +149,9 @@ void AsyncExecutor::InitParamConfig() {
         std::move(tmp_sparse_gradient_variable_name);
     _param_config.sparse_table_id.push_back(table.table_id());
   }
-  
+
   for (auto t = 0u;
-       t < _pslib_ptr->get_param()->trainer_param().dense_table_size();
-       ++t) {
+       t < _pslib_ptr->get_param()->trainer_param().dense_table_size(); ++t) {
     auto& table = _pslib_ptr->get_param()->trainer_param().dense_table(t);
     std::vector<std::string> tmp_dense_variable_name;
     for (int i = 0u; i < table.dense_variable_name_size(); ++i) {
@@ -181,26 +178,25 @@ void AsyncExecutor::InitModel() {
       Variable* var = root_scope_->FindVar(t);
       CHECK(var != nullptr) << "var[" << t << "] not found";
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      
+
       float* g = tensor->data<float>();
       CHECK(g != nullptr) << "var[" << t << "] value not initialized";
 
       float init_range = 0.2;
       int rown = tensor->dims()[0];
       init_range /= sqrt(rown);
-      
+
       std::normal_distribution<float> ndistr(0.0, 1.0);
       for (auto i = 0u; i < tensor->numel(); ++i) {
         g[i] = ndistr(local_random_engine()) * init_range;
       }
-      
+
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     }
-    
-    auto push_status =
-        _pslib_ptr->_worker_ptr->push_dense_param(
-            regions.data(), regions.size(), table_id);
+
+    auto push_status = _pslib_ptr->_worker_ptr->push_dense_param(
+        regions.data(), regions.size(), table_id);
     push_status.wait();
     auto status = push_status.get();
     if (status != 0) {
@@ -225,14 +221,14 @@ void AsyncExecutor::SaveModel(const std::string& path) {
 void AsyncExecutor::PrepareDenseThread(const std::string& mode) {
   if (mode == "mpi") {
     DensePullThreadParam param;
-    param.ps_client = _pslib_ptr->_worker_ptr;;
+    param.ps_client = _pslib_ptr->_worker_ptr;
     param.threshold = 1;
     param.training_thread_num = actual_thread_num;
     param.root_scope = root_scope_;
     param.dense_params = &_param_config.dense_variable_name;
-    
-    _pull_dense_thread = std::shared_ptr<DensePullThread>(
-        new DensePullThread(param));
+
+    _pull_dense_thread =
+        std::shared_ptr<DensePullThread>(new DensePullThread(param));
     _pull_dense_thread->start();
   }
 }
@@ -243,8 +239,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::vector<std::string>& filelist,
                                 const int thread_num,
                                 const std::vector<std::string>& fetch_var_names,
-                                const std::string& mode,
-                                const bool debug) {
+                                const std::string& mode, const bool debug) {
   std::vector<std::thread> threads;
 
   auto& block = main_program.Block(0);
@@ -293,9 +288,9 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& worker : workers) {
 #ifdef PADDLE_WITH_PSLIB
     if (mode == "mpi") {
-        worker.reset(new AsyncExecutorThreadWorker);
+      worker.reset(new AsyncExecutorThreadWorker);
     } else {
-        worker.reset(new ExecutorThreadWorker);
+      worker.reset(new ExecutorThreadWorker);
     }
 #else
     worker.reset(new ExecutorThreadWorker);
@@ -308,7 +303,6 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                   fetch_var_names, root_scope_, thidx, debug);
   }
 
-  
   // start executing ops in multiple threads
   for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
     threads.push_back(
