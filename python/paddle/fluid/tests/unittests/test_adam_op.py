@@ -195,7 +195,7 @@ def adam_step(inputs, attributes):
 
 
 def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
-                     sparse_mode):
+                     lazy_mode):
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
@@ -231,7 +231,7 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
 
 
 class TestSparseAdamOp(unittest.TestCase):
-    def setup(self, scope, place, sparse_mode):
+    def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
@@ -265,19 +265,19 @@ class TestSparseAdamOp(unittest.TestCase):
 
         param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
                                                  height, rows, row_numel,
-                                                 np_array, sparse_mode)
+                                                 np_array, lazy_mode)
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2
         }
 
-    def check_with_place(self, place, sparse_mode):
+    def check_with_place(self, place, lazy_mode):
         scope = core.Scope()
-        self.setup(scope, place, sparse_mode)
+        self.setup(scope, place, lazy_mode)
 
         op_args = dict()
-        op_args['sparse_mode'] = sparse_mode
+        op_args['lazy_mode'] = lazy_mode
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)
@@ -313,8 +313,8 @@ class TestSparseAdamOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            for sparse_mode in (True, False):
-                self.check_with_place(place, sparse_mode)
+            for lazy_mode in (True, False):
+                self.check_with_place(place, lazy_mode)
 
 
 if __name__ == "__main__":
