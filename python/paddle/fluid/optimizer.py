@@ -664,7 +664,7 @@ class AdamOptimizer(Optimizer):
                  epsilon=1e-8,
                  regularization=None,
                  name=None,
-                 sparse_mode=False):
+                 lazy_mode=False):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -677,7 +677,7 @@ class AdamOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self._sparse_mode = sparse_mode
+        self._lazy_mode = lazy_mode
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -732,7 +732,7 @@ class AdamOptimizer(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "sparse_mode": self._sparse_mode
+                "lazy_mode": self._lazy_mode
             })
 
         return adam_op
