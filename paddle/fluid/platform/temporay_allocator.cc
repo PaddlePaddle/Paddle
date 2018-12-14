@@ -26,30 +26,37 @@ TemporayAllocation::TemporayAllocation(
       underlying_allocation_(std::move(underlying_allocation)) {}
 
 TemporaryAllocator::TemporaryAllocator(platform::Place place) : place_(place) {
-  mtx_.reset(new std::mutex());
-  temp_allocations_.reset(new std::deque<TemporayAllocation *>());
+  temp_memory_.reset(new std::deque<TemporayAllocation *>());
 }
 
 bool TemporaryAllocator::IsAllocThreadSafe() const { return true; }
 
+void TemporaryAllocator::MoveToDeleteQueue() {
+  std::unique_lock<std::mutex> lock(mtx_);
+  cv_.wait(lock, [=] { return !wait_delete_memory_; });
+  wait_delete_memory_ = temp_memory_;
+  temp_memory_.reset(new std::deque<TemporayAllocation *>());
+}
+
 void TemporaryAllocator::Release() {
   std::shared_ptr<std::deque<TemporayAllocation *>> t_allocations;
   {
-    platform::LockGuardPtr<std::mutex> guard(mtx_);
-    t_allocations = temp_allocations_;
-    temp_allocations_.reset(new std::deque<TemporayAllocation *>());
+    std::unique_lock<std::mutex> lock(mtx_);
+    t_allocations = wait_delete_memory_;
+    wait_delete_memory_.reset();
   }
+  cv_.notify_all();
   for (auto tmp : *t_allocations) {
     delete tmp;
   }
 }
+
 void TemporaryAllocator::Free(alloc::Allocation *allocation) {
   auto temp_allocation = dynamic_cast<TemporayAllocation *>(allocation);
   PADDLE_ENFORCE_NOT_NULL(temp_allocation);
-
   if (platform::is_gpu_place(temp_allocation->place())) {
-    platform::LockGuardPtr<std::mutex> guard(mtx_);
-    temp_allocations_->emplace_back(temp_allocation);
+    std::unique_lock<std::mutex> lock(mtx_);
+    temp_memory_->emplace_back(temp_allocation);
     return;
   }
   delete temp_allocation;

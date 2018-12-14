@@ -27,6 +27,9 @@ TEST(temporary_allocator, temporary_allocator) {
   platform::CUDAPlace gpu_place(0);
   TemporaryAllocator gpu_alloc(gpu_place);
   auto gpu_allocation = gpu_alloc.Allocate(100);
+
+  gpu_alloc.MoveToDeleteQueue();
+  gpu_alloc.Release();
 #endif
 }
 }  //  namespace platform

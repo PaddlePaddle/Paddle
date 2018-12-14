@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <condition_variable>  // NOLINT
 #include <deque>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -33,6 +34,11 @@ class TemporaryAllocator : public memory::allocation::Allocator {
  public:
   explicit TemporaryAllocator(platform::Place place);
 
+  // Move temp_memory to wait_delete_memory
+  void MoveToDeleteQueue();
+
+  // Note: This function releases wait_delete_memory, so you
+  // should call MoveToDeleteQueue first.
   void Release();
 
   bool IsAllocThreadSafe() const override;
@@ -45,8 +51,11 @@ class TemporaryAllocator : public memory::allocation::Allocator {
 
  private:
   platform::Place place_;
-  std::shared_ptr<std::deque<TemporayAllocation *>> temp_allocations_;
-  std::unique_ptr<std::mutex> mtx_;
+  std::shared_ptr<std::deque<TemporayAllocation *>> temp_memory_{nullptr};
+  std::shared_ptr<std::deque<TemporayAllocation *>> wait_delete_memory_{
+      nullptr};
+  std::mutex mtx_;
+  std::condition_variable cv_;
 };
 
 }  // namespace platform

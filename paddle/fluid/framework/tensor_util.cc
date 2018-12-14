@@ -409,7 +409,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
                      boost::get<platform::CUDAPlace>(tensor.place()),
                      reinterpret_cast<const void*>(data), size_to_write,
                      gpu_dev_ctx.stream());
-        const_cast<platform::CUDADeviceContext&>(gpu_dev_ctx).Wait();
+        gpu_dev_ctx.Wait();
         os.write(buf.get(), size_to_write);
         data += size_to_write;
         size -= size_to_write;

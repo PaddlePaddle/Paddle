@@ -13,8 +13,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-
 #include "paddle/fluid/memory/memory.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -82,6 +82,48 @@ DeviceContextPool::DeviceContextPool(
 #endif
     }
   }
+}
+
+DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
+
+#ifdef PADDLE_WITH_CUDA
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place, const cudaStream_t& stream) {
+  auto place_stream = std::make_pair(place, stream);
+  if (!device_allocator_.count(place_stream)) {
+    std::unique_lock<std::mutex> lock(mtx_);
+    if (!device_allocator_.count(place_stream)) {
+      device_allocator_[place_stream].reset(new TemporaryAllocator(place));
+    }
+  }
+  return *device_allocator_.at(place_stream);
+}
+#endif
+
+template <typename DeviceContext>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const DeviceContext& dev_ctx) {
+  if (platform::is_cpu_place(dev_ctx.GetPlace())) {
+    return cpu_allocator_;
+  } else if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+    auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
+    if (device_allocator_.count(place_stream)) {
+      return *device_allocator_.at(place_stream);
+    }
+    return Get(dev_ctx.GetPlace(), dev_ctx.stream());
+#else
+    PADDLE_THROW("Not compile with cuda");
+#endif
+  } else {
+    PADDLE_THROW("Not implement.");
+  }
+}
+
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place), "You should pass CPUPlace");
+  return cpu_allocator_;
 }
 
 CPUDeviceContext::CPUDeviceContext() {
@@ -192,7 +234,7 @@ void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : place_(place), cudnn_holder_(nullptr), allocator_(place) {
+    : place_(place), cudnn_holder_(nullptr) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
@@ -271,10 +313,15 @@ CUDADeviceContext::~CUDADeviceContext() {
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-void CUDADeviceContext::Wait() {
+void CUDADeviceContext::Wait() const {
+  auto& allocator =
+      DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
+  allocator.MoveToDeleteQueue();
+
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE(cudaGetLastError());
-  allocator_.Release();
+
+  allocator.Release();
 }
 
 int CUDADeviceContext::GetComputeCapability() const {

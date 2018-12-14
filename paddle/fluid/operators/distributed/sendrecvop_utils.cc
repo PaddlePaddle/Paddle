@@ -46,7 +46,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
                  boost::get<platform::CUDAPlace>(tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
 
-    const_cast<platform::DeviceContext&>(ctx).Wait();
+    ctx.Wait();
     return TensorPayload(result);
 #else
     PADDLE_THROW("This situation should not be happened");
