@@ -33,11 +33,13 @@ static void CheckWhileOpInput(framework::ProgramDesc *program) {
         VLOG(3) << "Set ExecutorPrepareContext for while_op";
         auto &op_inputs = op->Inputs();
         std::string var_name;
-        if (op_inputs.find("ExecutorPrepareContext") == op_inputs.end()) {
+        if (op_inputs.find("ExecutorPrepareContext") == op_inputs.end() ||
+            op->Input("ExecutorPrepareContext").size() == 0) {
           var_name = "while_prepare_context_" + std::to_string(num_while_ops++);
         } else {
           var_name = op->Input("ExecutorPrepareContext")[0];
         }
+        VLOG(3) << "Name of Input(ExecutorPrepareContext): " << var_name;
         framework::VarDesc *context_var = block->Var(var_name);
         context_var->SetType(framework::proto::VarType::LOD_TENSOR);
         context_var->SetPersistable(true);

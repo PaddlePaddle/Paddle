@@ -49,6 +49,8 @@ std::ostream &operator<<(std::ostream &os, const NativeConfig &config) {
   os << GenSpaces(num_spaces) << "device: " << config.device << "\n";
   os << GenSpaces(num_spaces)
      << "fraction_of_gpu_memory: " << config.fraction_of_gpu_memory << "\n";
+  os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file << "\n";
+  os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
   os << GenSpaces(num_spaces)
      << "specify_input_name: " << config.specify_input_name << "\n";
   os << GenSpaces(num_spaces)
