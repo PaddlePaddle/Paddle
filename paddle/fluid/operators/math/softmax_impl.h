@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/float16.h"
 
 #include "paddle/fluid/operators/math/blas.h"
 namespace paddle {
@@ -30,6 +31,14 @@ template <typename T>
 struct ValueClip {
   HOSTDEVICE T operator()(const T& x) const {
     const T kThreshold = static_cast<T>(-64.);
+    return x < kThreshold ? kThreshold : x;
+  }
+};
+
+template <>
+struct ValueClip<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& x) const {
+    const platform::float16 kThreshold = static_cast<platform::float16>(-32.);
     return x < kThreshold ? kThreshold : x;
   }
 };
