@@ -15,13 +15,26 @@
 from mpi4py import MPI
 import ps_pb2 as pslib
 
+
 class FileSystem(object):
-    def __init__(self, fs_type="afs",
+    """
+    A file system that support async_executor hadoop client desc. 
+
+    Args:
+        fs_type (string): fs_type, for example is "afs"
+        user (string): hadoop param
+        passwd (string): hadoop param
+        hadoop bin (string): hadoop param
+    Examples:
+        fs = FileSystm()
+    """
+
+    def __init__(self,
+                 fs_type="afs",
                  uri="afs://tianqi.afs.baidu.com:9902",
                  user=None,
                  passwd=None,
-                 hadoop_bin="",
-                 afs_conf=None):
+                 hadoop_bin=""):
         assert user != None
         assert passwd != None
         assert hadoop_bin != None
@@ -38,9 +51,22 @@ class FileSystem(object):
         #self.fs_client.afs_conf = afs_conf if not afs_conf else ""
 
     def get_desc(self):
+        """
+        get hadoop desc.
+        """
         return self.fs_client
 
+
 class MPIHelper(object):
+    """
+    MPIHelper is a wrapper of mpi4py, supprot get_rank get_size etc.
+    Args:
+        No params
+    Examples:
+        mh = MPIHelper()
+        mh.get_ip()
+    """
+
     def __init__(self):
         self.comm = MPI.COMM_WORLD
 
@@ -61,5 +87,3 @@ class MPIHelper(object):
 
     def finalize(self):
         MPI.Finalize()
-    
-        
