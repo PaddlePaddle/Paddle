@@ -742,21 +742,24 @@ class TestLoadSliceVar(TranspilerTest):
         pserver, _ = self.get_pserver(self.pserver1_ep)
         pserver2, _ = self.get_pserver(self.pserver2_ep)
 
-        self.assertTrue(pserver._slice_vars_and_attrs)
-        self.assertTrue(pserver2._slice_vars_and_attrs)
+        vars_ps1 = pserver._slice_vars_overview.get_distributed_vars_by_ep(
+            self.pserver1_ep)
+        vars_ps2 = pserver._slice_vars_overview.get_distributed_vars_by_ep(
+            self.pserver2_ep)
 
-        for idx in six.moves.xrange(len(pserver._slice_vars_and_attrs)):
-            self.assertEqual(pserver._slice_vars_and_attrs[idx][0],
-                             pserver2._slice_vars_and_attrs[idx][0])
+        self.assertTrue(vars_ps1)
+        self.assertTrue(vars_ps2)
 
-            total_numel = six.moves.reduce(
-                lambda x, y: x * y, pserver._slice_vars_and_attrs[idx][0].shape)
+        for idx in six.moves.xrange(len(vars_ps1)):
+            self.assertEqual(vars_ps1[idx].slice.name, vars_ps2[idx].slice.name)
+
+            total_numel = six.moves.reduce(lambda x, y: x * y,
+                                           vars_ps1[idx].origin.shape)
             self.assertEqual(
                 total_numel,
-                six.moves.reduce(lambda x, y: x * y,
-                                 pserver._slice_vars_and_attrs[idx][2].shape) +
-                six.moves.reduce(lambda x, y: x * y,
-                                 pserver2._slice_vars_and_attrs[idx][2].shape))
+                six.moves.reduce(lambda x, y: x * y, vars_ps1[idx].slice.shape)
+                + six.moves.reduce(lambda x, y: x * y,
+                                   vars_ps2[idx].slice.shape))
 
 
 class TestNCCL2Transpile(TranspilerTest):
