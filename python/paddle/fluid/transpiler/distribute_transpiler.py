@@ -131,9 +131,6 @@ class VarDistributed(object):
                var1.lod_level == var2.lod_level and \
                var1.persistable == var2.persistable
 
-    def update_endpoint(self, endpoint):
-        self.endpoint = endpoint
-
     def __str__(self):
         origin_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})". \
             format(i="{", e="}", name=self.origin.name, type=self.origin.type,
@@ -165,12 +162,10 @@ class VarsDistributed(object):
             VarDistributed(origin_var, slice_var, is_slice, block_id, offset,
                            vtype, endpoint))
 
-    def get_distributed_var_by_slice(self, var):
+    def get_distributed_var_by_slice(self, var_name):
         for dist_var in self.distributed_vars:
-
-            if self.equal(dist_var.slice, var):
+            if dist_var.slice.name == var_name:
                 return dist_var
-
         return None
 
     @staticmethod
@@ -188,25 +183,25 @@ class VarsDistributed(object):
                 return dist_var
         return None
 
-    def get_distributed_vars_by_vtype(self, vtype, groupby=False):
+    def get_distributed_vars_by_vtypes(self, vtypes, groupby=False):
         vtype_vars = []
         for var in self.distributed_vars:
-            if var.vtype == vtype:
+            if var.vtype in vtypes:
                 vtype_vars.append(var)
         if not groupby:
             return vtype_vars
 
-        optimizer_map = {}
+        params_map = {}
         for var in vtype_vars:
             origin_var_name = var.origin.name
 
-            if origin_var_name in optimizer_map.keys():
-                optimizers = optimizer_map.get(origin_var_name)
+            if origin_var_name in params_map.keys():
+                optimizers = params_map.get(origin_var_name)
             else:
                 optimizers = []
             optimizers.append(var)
-            optimizer_map[origin_var_name] = optimizers
-        return optimizer_map
+            params_map[origin_var_name] = optimizers
+        return params_map
 
     def get_distributed_vars_by_ep(self, endpoint, vtype=None):
         endpoint_vars = []
@@ -611,8 +606,8 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
             distributed_var = self.vars_overview.get_distributed_var_by_slice(
-                recv_vars[i])
-            distributed_var.update_endpoint(ep)
+                recv_vars[i].name)
+            distributed_var.endpoint = ep
 
         # step4: Concat the parameters splits together after recv.
         all_recv_outputs = []
@@ -640,6 +635,12 @@ class DistributeTranspiler(object):
                 recv_op_role_var_name = splited_trainer_grad[0].name
 
             if param_varname in self.sparse_param_to_height_sections:
+
+                for table_name in table_names:
+                    distributed_var = self.vars_overview.get_distributed_var_by_slice(
+                        table_name)
+                    distributed_var.vtype = "RemotePrefetch"
+
                 height_sections = self.sparse_param_to_height_sections[
                     param_varname]
                 self._update_remote_sparse_update_op(

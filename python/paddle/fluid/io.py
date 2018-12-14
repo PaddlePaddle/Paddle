@@ -256,26 +256,26 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
 
 def _save_distributed_persistables(executor, dirname, main_program):
-    def __save_optimizers(executor, dirname, optimizer_map):
+    def __save_remote_params(executor, dirname, remote_params_map):
         """
         get optimizer vars on pserver through rpc.
         :return:
         """
-        if not optimizer_map:
+        if not remote_params_map:
             return
 
         prog = Program()
         block = prog.global_block()
 
         # recv optimize vars from pserver
-        for name, optimizers in optimizer_map.items():
+        for name, remote_params in remote_params_map.items():
             origin_var = None
             is_slice = False
-            slice_vars = [0] * len(optimizers)
-            slice_var_names = [""] * len(optimizers)
-            endpoints = [""] * len(optimizers)
+            slice_vars = [0] * len(remote_params)
+            slice_var_names = [""] * len(remote_params)
+            endpoints = [""] * len(remote_params)
 
-            for idx, optimizer in enumerate(optimizers):
+            for idx, optimizer in enumerate(remote_params):
                 origin = optimizer.origin
                 slice = optimizer.slice
                 is_slice = optimizer.is_slice
@@ -372,12 +372,12 @@ def _save_distributed_persistables(executor, dirname, main_program):
             "'_save_distributed_persistables' just be designed for distributed training."
         )
 
-    optimizer_map = main_program._slice_vars_overview.get_distributed_vars_by_vtype(
-        "Optimizer", groupby=True)
+    remote_params_map = main_program._slice_vars_overview.get_distributed_vars_by_vtypes(
+        ["Optimizer", "RemotePrefetch"], groupby=True)
 
     exclude_var_names = []
-    if optimizer_map:
-        exclude_var_names.extend(optimizer_map.keys())
+    if remote_params_map:
+        exclude_var_names.extend(remote_params_map.keys())
 
     if main_program._distributed_lookup_table:
         if isinstance(main_program._distributed_lookup_table, list):
@@ -391,8 +391,8 @@ def _save_distributed_persistables(executor, dirname, main_program):
         executor, main_program=main_program, dirname=dirname, vars=local_vars)
 
     if main_program._is_chief:
-        if optimizer_map:
-            __save_optimizers(executor, dirname, optimizer_map)
+        if remote_params_map:
+            __save_remote_params(executor, dirname, remote_params_map)
         if main_program._distributed_lookup_table:
             __save_distributed_lookup_tables(
                 executor, dirname, main_program._distributed_lookup_table,
