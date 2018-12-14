@@ -335,8 +335,7 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   options.use_rdma = true;
 #endif
   options.protocol = "baidu_std";
-  // don't use pooled type.
-  // the server can't afford that.
+  // don't use pooled type. the server can't afford that.
   options.connection_type = "single";
   options.connect_timeout_ms = 1000;
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
