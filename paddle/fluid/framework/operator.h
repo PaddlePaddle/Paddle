@@ -70,6 +70,14 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 class OperatorBase;
 class ExecutionContext;
 
+class RuntimeContext {
+ public:
+  RuntimeContext() {}
+
+  VariableValueMap inputs;
+  VariableValueMap outputs;
+};
+
 /**
  * OperatorBase has the basic elements that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -129,7 +137,8 @@ class OperatorBase {
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
   virtual void RuntimeInferShape(const Scope& scope,
-                                 const platform::Place& place) const {}
+                                 const platform::Place& place,
+                                 const RuntimeContext& ctx) const {}
 
  protected:
   std::string type_;
@@ -350,8 +359,8 @@ class OperatorWithKernel : public OperatorBase {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
 
-  void RuntimeInferShape(const Scope& scope,
-                         const platform::Place& place) const override;
+  void RuntimeInferShape(const Scope& scope, const platform::Place& place,
+                         const RuntimeContext& ctx) const override;
 
  protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
@@ -371,9 +380,10 @@ class OperatorWithKernel : public OperatorBase {
    *
    * * transfered_inplace_vars is a output vector.
    */
-  Scope* TryTransferData(
-      const Scope& scope, const OpKernelType& expected_kernel_key,
-      std::vector<std::string>* transfered_inplace_vars) const;
+  Scope* PrepareData(const Scope& scope,
+                     const OpKernelType& expected_kernel_key,
+                     std::vector<std::string>* transfered_inplace_vars,
+                     RuntimeContext* ctx) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
