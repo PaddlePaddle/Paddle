@@ -260,7 +260,7 @@ def inject_all_tests():
     for use_cuda in (False, True):
         if use_cuda and not core.is_compiled_with_cuda():
             continue
-        for parallel in (False, True):
+        for parallel in (False, ):
             for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)
 
