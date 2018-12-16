@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ps_pb2 as pslib
-
 
 class FileSystem(object):
     """
@@ -37,6 +35,7 @@ class FileSystem(object):
         assert user != None
         assert passwd != None
         assert hadoop_bin != None
+        import ps_pb2 as pslib
         self.fs_client = pslib.FsClientParameter()
         #if fs_type == "afs":
         #    fs_client.fs_type = pslib.FsApiType.AFS
