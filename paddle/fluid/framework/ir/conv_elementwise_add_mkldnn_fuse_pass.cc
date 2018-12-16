@@ -223,10 +223,11 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
 
   residual_conv_op->Op()->SetAttr("fuse_residual_connection", true);
 
+  GraphSafeRemoveNodes(graph, {residual_conv_output, elementwise_add_op});
+
   IR_NODE_LINK_TO(projection_node, residual_conv_op);
   IR_NODE_LINK_TO(residual_conv_op, elementwise_add_out);
 
-  GraphSafeRemoveNodes(graph, {residual_conv_output, elementwise_add_op});
   (*fusion_stats)++;
 }
 
