@@ -411,11 +411,6 @@ def yolov3_loss(x,
                 class_num,
                 ignore_thresh,
                 input_size,
-                loss_weight_xy=None,
-                loss_weight_wh=None,
-                loss_weight_conf_target=None,
-                loss_weight_conf_notarget=None,
-                loss_weight_class=None,
                 name=None):
     """
     ${comment}
@@ -433,11 +428,6 @@ def yolov3_loss(x,
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         input_size (int): ${input_size_comment}
-        loss_weight_xy (float|None): ${loss_weight_xy_comment}
-        loss_weight_wh (float|None): ${loss_weight_wh_comment}
-        loss_weight_conf_target (float|None): ${loss_weight_conf_target_comment}
-        loss_weight_conf_notarget (float|None): ${loss_weight_conf_notarget_comment}
-        loss_weight_class (float|None): ${loss_weight_class_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -490,18 +480,18 @@ def yolov3_loss(x,
         "input_size": input_size,
     }
 
-    if loss_weight_xy is not None and isinstance(loss_weight_xy, float):
-        self.attrs['loss_weight_xy'] = loss_weight_xy
-    if loss_weight_wh is not None and isinstance(loss_weight_wh, float):
-        self.attrs['loss_weight_wh'] = loss_weight_wh
-    if loss_weight_conf_target is not None and isinstance(
-            loss_weight_conf_target, float):
-        self.attrs['loss_weight_conf_target'] = loss_weight_conf_target
-    if loss_weight_conf_notarget is not None and isinstance(
-            loss_weight_conf_notarget, float):
-        self.attrs['loss_weight_conf_notarget'] = loss_weight_conf_notarget
-    if loss_weight_class is not None and isinstance(loss_weight_class, float):
-        self.attrs['loss_weight_class'] = loss_weight_class
+    # if loss_weight_xy is not None and isinstance(loss_weight_xy, float):
+    #     self.attrs['loss_weight_xy'] = loss_weight_xy
+    # if loss_weight_wh is not None and isinstance(loss_weight_wh, float):
+    #     self.attrs['loss_weight_wh'] = loss_weight_wh
+    # if loss_weight_conf_target is not None and isinstance(
+    #         loss_weight_conf_target, float):
+    #     self.attrs['loss_weight_conf_target'] = loss_weight_conf_target
+    # if loss_weight_conf_notarget is not None and isinstance(
+    #         loss_weight_conf_notarget, float):
+    #     self.attrs['loss_weight_conf_notarget'] = loss_weight_conf_notarget
+    # if loss_weight_class is not None and isinstance(loss_weight_class, float):
+    #     self.attrs['loss_weight_class'] = loss_weight_class
 
     helper.append_op(
         type='yolov3_loss',

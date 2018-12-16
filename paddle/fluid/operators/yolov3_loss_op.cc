@@ -34,11 +34,12 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     auto dim_gtbox = ctx->GetInputDim("GTBox");
     auto dim_gtlabel = ctx->GetInputDim("GTLabel");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
+    int anchor_num = anchors.size() / 2;
     auto class_num = ctx->Attrs().Get<int>("class_num");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(dim_x[2], dim_x[3],
                       "Input(X) dim[3] and dim[4] should be euqal.");
-    PADDLE_ENFORCE_EQ(dim_x[1], anchors.size() / 2 * (5 + class_num),
+    PADDLE_ENFORCE_EQ(dim_x[1], anchor_num * (5 + class_num),
                       "Input(X) dim[1] should be equal to (anchor_number * (5 "
                       "+ class_num)).");
     PADDLE_ENFORCE_EQ(dim_gtbox.size(), 3,
@@ -106,20 +107,6 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(406);
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.");
-    AddAttr<float>("loss_weight_xy", "The weight of x, y location loss.")
-        .SetDefault(1.0);
-    AddAttr<float>("loss_weight_wh", "The weight of w, h location loss.")
-        .SetDefault(1.0);
-    AddAttr<float>(
-        "loss_weight_conf_target",
-        "The weight of confidence score loss in locations with target object.")
-        .SetDefault(1.0);
-    AddAttr<float>("loss_weight_conf_notarget",
-                   "The weight of confidence score loss in locations without "
-                   "target object.")
-        .SetDefault(1.0);
-    AddAttr<float>("loss_weight_class", "The weight of classification loss.")
-        .SetDefault(1.0);
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
          truth boxes.
