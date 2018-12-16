@@ -350,10 +350,6 @@ class OperatorWithKernel : public OperatorBase {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
 
-  virtual size_t EstimateFlops(InferShapeContext* ctx) const {
-    return OpInfoMap::Instance().Get(Type()).estimate_flops_(ctx);
-  }
-
   void RuntimeInferShape(const Scope& scope,
                          const platform::Place& place) const override;
 
@@ -368,6 +364,11 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+
+  size_t EstimateFlops(InferShapeContext* ctx) const {
+    auto& info = OpInfoMap::Instance().Get(this->Type());
+    return info.estimate_flops_ ? info.estimate_flops_(ctx) : 0;
+  }
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to

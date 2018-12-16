@@ -31,6 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
+DEFINE_bool(print_flops, false,
+            "Whether to print the FLOPs and FLOPs per second.");
 
 namespace paddle {
 namespace platform {
@@ -173,10 +175,8 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx,
                         flops);
 }
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx,
-              size_t flops) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id, dev_ctx,
-                        flops);
+void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id, dev_ctx);
 }
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx,
@@ -326,10 +326,25 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
             << std::setw(data_width) << "Min." << std::setw(data_width)
             << "Max." << std::setw(data_width) << "Ave."
             << std::setw(data_width) << "Ratio." << std::setw(data_width)
-            << "FLOPs." << std::setw(data_width) << "FLOPsPerSec." << std::endl;
+            << "FLOPs." << std::setw(data_width) << "GFLOPsPerSec."
+            << std::endl;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       const EventItem& event_item = events_table[i][j];
+      double flops_per_sec = event_item.ave_time > 0
+                                 ? static_cast<double>(event_item.flops) /
+                                       static_cast<double>(event_item.ave_time)
+                                 : 0.;
+      flops_per_sec = flops_per_sec * 1e3 / 1e9;
+      std::string str_flops = "";
+      if (event_item.flops) {
+        str_flops =
+            string::Sprintf("%d", static_cast<int64_t>(event_item.flops));
+      }
+      std::string str_flops_per_sec = "";
+      if (flops_per_sec > 0) {
+        str_flops_per_sec = string::Sprintf("%f", flops_per_sec);
+      }
       std::cout << std::setw(name_width) << event_item.name
                 << std::setw(data_width) << event_item.calls
                 << std::setw(data_width) << event_item.total_time
@@ -337,9 +352,8 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio
-                << std::setw(data_width) << event_item.flops
-                << std::setw(data_width)
-                << event_item.flops / event_item.ave_time << std::endl;
+                << std::setw(data_width) << str_flops << std::setw(data_width)
+                << str_flops_per_sec << std::endl;
     }
   }
   std::cout << std::endl;
@@ -457,6 +471,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
             // max time
             event_items[index].max_time =
                 std::max(event_time, event_items[index].max_time);
+            // total flops
+            event_items[index].flops += flops;
           }
 
           // remove the push marker from the list
@@ -472,6 +488,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
     for (auto& item : event_items) {
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
+      item.flops = item.flops / item.calls;
     }
     // sort
     if (sorted_by != EventSortingKey::kDefault) {

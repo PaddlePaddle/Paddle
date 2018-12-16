@@ -760,13 +760,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (platform::IsProfileEnabled()) {
-    std::string ename = string::Sprintf(
-        "%s/%s", Type(),
-        Attr<std::string>(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
-    size_t flops = this->EstimateFlops(&infer_shape_ctx);
-    platform::RecordEvent record_event(ename, pool.Get(place), flops);
+    std::string ename =
+        string::Sprintf("%s%s", Type(), Attr<std::string>("op_namescope"));
+    platform::PushEvent(ename, dev_ctx, EstimateFlops(&infer_shape_ctx));
 
     kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+
+    platform::PopEvent(ename, dev_ctx);
   } else {
     kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
   }

@@ -34,7 +34,7 @@ class InferShapeBase {
 class EstimateFlopsBase {
  public:
   virtual ~EstimateFlopsBase() = default;
-  virtual size_t operator()(InferShapeContext*) const = 0;
+  virtual size_t operator()(const InferShapeContext*) const = 0;
 };
 
 struct OpInfo {

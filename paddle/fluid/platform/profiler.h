@@ -70,8 +70,7 @@ void Mark(const std::string& name, const DeviceContext* dev_ctx);
 void PushEvent(const std::string& name, const DeviceContext* dev_ctx,
                size_t flops = 0);
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx,
-              size_t flops = 0);
+void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
   // dev_ctx can be set to nullptr if device is cpu.
