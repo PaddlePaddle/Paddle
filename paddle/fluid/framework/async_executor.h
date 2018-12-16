@@ -39,7 +39,7 @@ inline double current_realtime() {
   clock_gettime(CLOCK_REALTIME, &tp);
   return tp.tv_sec + tp.tv_nsec * 1e-9;
 #else
-  return 0.0;
+  return 0;
 #endif
 }
 
