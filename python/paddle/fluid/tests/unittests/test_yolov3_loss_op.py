@@ -80,8 +80,8 @@ def build_target(gtboxes, gtlabel, attrs, grid_size):
     class_num = attrs["class_num"]
     input_size = attrs["input_size"]
     an_num = len(anchors) // 2
+    conf_mask = np.ones((n, an_num, grid_size, grid_size)).astype('float32')
     obj_mask = np.zeros((n, an_num, grid_size, grid_size)).astype('float32')
-    noobj_mask = np.ones((n, an_num, grid_size, grid_size)).astype('float32')
     tx = np.zeros((n, an_num, grid_size, grid_size)).astype('float32')
     ty = np.zeros((n, an_num, grid_size, grid_size)).astype('float32')
     tw = np.zeros((n, an_num, grid_size, grid_size)).astype('float32')
@@ -114,10 +114,10 @@ def build_target(gtboxes, gtlabel, attrs, grid_size):
                     max_iou = iou
                     best_an_index = k
                 if iou > ignore_thresh:
-                    noobj_mask[i, best_an_index, gj, gi] = 0
+                    conf_mask[i, best_an_index, gj, gi] = 0
 
+            conf_mask[i, best_an_index, gj, gi] = 1
             obj_mask[i, best_an_index, gj, gi] = 1
-            noobj_mask[i, best_an_index, gj, gi] = 0
             tx[i, best_an_index, gj, gi] = gx - gi
             ty[i, best_an_index, gj, gi] = gy - gj
             tw[i, best_an_index, gj, gi] = np.log(gw / anchors[2 *
@@ -129,7 +129,7 @@ def build_target(gtboxes, gtlabel, attrs, grid_size):
             tconf[i, best_an_index, gj, gi] = 1
             tcls[i, best_an_index, gj, gi, gt_label] = 1
 
-    return (tx, ty, tw, th, tweight, tconf, tcls, obj_mask, noobj_mask)
+    return (tx, ty, tw, th, tweight, tconf, tcls, conf_mask, obj_mask)
 
 
 def YoloV3Loss(x, gtbox, gtlabel, attrs):
@@ -144,11 +144,9 @@ def YoloV3Loss(x, gtbox, gtlabel, attrs):
     pred_conf = x[:, :, :, :, 4]
     pred_cls = x[:, :, :, :, 5:]
 
-    tx, ty, tw, th, tweight, tconf, tcls, obj_mask, noobj_mask = build_target(
+    tx, ty, tw, th, tweight, tconf, tcls, conf_mask, obj_mask = build_target(
         gtbox, gtlabel, attrs, x.shape[2])
 
-    # print("obj_mask: ", obj_mask[0, 0, :, :])
-    # print("noobj_mask: ", noobj_mask[0, 0, :, :])
     obj_weight = obj_mask * tweight
     obj_mask_expand = np.tile(
         np.expand_dims(obj_mask, 4), (1, 1, 1, 1, int(attrs['class_num'])))
@@ -156,30 +154,19 @@ def YoloV3Loss(x, gtbox, gtlabel, attrs):
     loss_y = sce(pred_y, ty, obj_weight)
     loss_w = l1loss(pred_w, tw, obj_weight)
     loss_h = l1loss(pred_h, th, obj_weight)
-    loss_conf_target = sce(pred_conf, tconf, obj_mask)
-    loss_conf_notarget = sce(pred_conf, tconf, noobj_mask)
+    loss_obj = sce(pred_conf, tconf, conf_mask)
     loss_class = sce(pred_cls, tcls, obj_mask_expand)
 
-    # print("loss_xy: ", loss_x + loss_y)
-    # print("loss_wh: ", loss_w + loss_h)
-    # print("loss_conf_target: ", loss_conf_target)
-    # print("loss_conf_notarget: ", loss_conf_notarget)
-    # print("loss_class: ", loss_class)
+    # print("python loss_xy: ", loss_x + loss_y)
+    # print("python loss_wh: ", loss_w + loss_h)
+    # print("python loss_obj: ", loss_obj)
+    # print("python loss_class: ", loss_class)
 
-    return attrs['loss_weight_xy'] * (loss_x + loss_y) \
-            + attrs['loss_weight_wh'] * (loss_w + loss_h) \
-            + attrs['loss_weight_conf_target'] * loss_conf_target \
-            + attrs['loss_weight_conf_notarget'] * loss_conf_notarget \
-            + attrs['loss_weight_class'] * loss_class
+    return loss_x + loss_y + loss_w + loss_h + loss_obj + loss_class
 
 
 class TestYolov3LossOp(OpTest):
     def setUp(self):
-        self.loss_weight_xy = 1.0
-        self.loss_weight_wh = 1.0
-        self.loss_weight_conf_target = 1.0
-        self.loss_weight_conf_notarget = 1.0
-        self.loss_weight_class = 1.0
         self.initTestCase()
         self.op_type = 'yolov3_loss'
         x = logit(np.random.uniform(0, 1, self.x_shape).astype('float32'))
@@ -192,11 +179,6 @@ class TestYolov3LossOp(OpTest):
             "class_num": self.class_num,
             "ignore_thresh": self.ignore_thresh,
             "input_size": self.input_size,
-            "loss_weight_xy": self.loss_weight_xy,
-            "loss_weight_wh": self.loss_weight_wh,
-            "loss_weight_conf_target": self.loss_weight_conf_target,
-            "loss_weight_conf_notarget": self.loss_weight_conf_notarget,
-            "loss_weight_class": self.loss_weight_class,
         }
 
         self.inputs = {'X': x, 'GTBox': gtbox, 'GTLabel': gtlabel}
@@ -215,17 +197,12 @@ class TestYolov3LossOp(OpTest):
             max_relative_error=0.31)
 
     def initTestCase(self):
-        self.anchors = [12, 12]
+        self.anchors = [12, 12, 11, 13]
         self.class_num = 5
-        self.ignore_thresh = 0.3
+        self.ignore_thresh = 0.5
         self.input_size = 416
         self.x_shape = (3, len(self.anchors) // 2 * (5 + self.class_num), 5, 5)
         self.gtbox_shape = (3, 5, 4)
-        self.loss_weight_xy = 1.2
-        self.loss_weight_wh = 0.8
-        self.loss_weight_conf_target = 2.0
-        self.loss_weight_conf_notarget = 1.0
-        self.loss_weight_class = 1.5
 
 
 if __name__ == "__main__":

@@ -470,8 +470,6 @@ class OpTest(unittest.TestCase):
         ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
-        # print(numeric_grads[0][0, 4, :, :])
-        # print(analytic_grads[0][0, 4, :, :])
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
