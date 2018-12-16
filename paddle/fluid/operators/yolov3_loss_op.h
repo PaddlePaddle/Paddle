@@ -164,48 +164,50 @@ static inline void CalcSCEGradWithWeight(const T* loss_grad, Tensor* grad,
   }
 }
 
-template <typename T>
-static void SplitPredResult(const Tensor& input, Tensor* pred_conf,
-                            Tensor* pred_class, Tensor* pred_x, Tensor* pred_y,
-                            Tensor* pred_w, Tensor* pred_h,
-                            const int anchor_num, const int class_num) {
-  const int n = input.dims()[0];
-  const int h = input.dims()[2];
-  const int w = input.dims()[3];
-  const int box_attr_num = 5 + class_num;
-
-  auto input_t = EigenTensor<T, 4>::From(input);
-  auto pred_conf_t = EigenTensor<T, 4>::From(*pred_conf);
-  auto pred_class_t = EigenTensor<T, 5>::From(*pred_class);
-  auto pred_x_t = EigenTensor<T, 4>::From(*pred_x);
-  auto pred_y_t = EigenTensor<T, 4>::From(*pred_y);
-  auto pred_w_t = EigenTensor<T, 4>::From(*pred_w);
-  auto pred_h_t = EigenTensor<T, 4>::From(*pred_h);
-
-  for (int i = 0; i < n; i++) {
-    for (int an_idx = 0; an_idx < anchor_num; an_idx++) {
-      for (int j = 0; j < h; j++) {
-        for (int k = 0; k < w; k++) {
-          pred_x_t(i, an_idx, j, k) = input_t(i, box_attr_num * an_idx, j, k);
-          pred_y_t(i, an_idx, j, k) =
-              input_t(i, box_attr_num * an_idx + 1, j, k);
-          pred_w_t(i, an_idx, j, k) =
-              input_t(i, box_attr_num * an_idx + 2, j, k);
-          pred_h_t(i, an_idx, j, k) =
-              input_t(i, box_attr_num * an_idx + 3, j, k);
-
-          pred_conf_t(i, an_idx, j, k) =
-              input_t(i, box_attr_num * an_idx + 4, j, k);
-
-          for (int c = 0; c < class_num; c++) {
-            pred_class_t(i, an_idx, j, k, c) =
-                input_t(i, box_attr_num * an_idx + 5 + c, j, k);
-          }
-        }
-      }
-    }
-  }
-}
+// template <typename T>
+// static void SplitPredResult(const Tensor& input, Tensor* pred_conf,
+//                             Tensor* pred_class, Tensor* pred_x, Tensor*
+//                             pred_y,
+//                             Tensor* pred_w, Tensor* pred_h,
+//                             const int anchor_num, const int class_num) {
+//   const int n = input.dims()[0];
+//   const int h = input.dims()[2];
+//   const int w = input.dims()[3];
+//   const int box_attr_num = 5 + class_num;
+//
+//   auto input_t = EigenTensor<T, 4>::From(input);
+//   auto pred_conf_t = EigenTensor<T, 4>::From(*pred_conf);
+//   auto pred_class_t = EigenTensor<T, 5>::From(*pred_class);
+//   auto pred_x_t = EigenTensor<T, 4>::From(*pred_x);
+//   auto pred_y_t = EigenTensor<T, 4>::From(*pred_y);
+//   auto pred_w_t = EigenTensor<T, 4>::From(*pred_w);
+//   auto pred_h_t = EigenTensor<T, 4>::From(*pred_h);
+//
+//   for (int i = 0; i < n; i++) {
+//     for (int an_idx = 0; an_idx < anchor_num; an_idx++) {
+//       for (int j = 0; j < h; j++) {
+//         for (int k = 0; k < w; k++) {
+//           pred_x_t(i, an_idx, j, k) = input_t(i, box_attr_num * an_idx, j,
+//           k);
+//           pred_y_t(i, an_idx, j, k) =
+//               input_t(i, box_attr_num * an_idx + 1, j, k);
+//           pred_w_t(i, an_idx, j, k) =
+//               input_t(i, box_attr_num * an_idx + 2, j, k);
+//           pred_h_t(i, an_idx, j, k) =
+//               input_t(i, box_attr_num * an_idx + 3, j, k);
+//
+//           pred_conf_t(i, an_idx, j, k) =
+//               input_t(i, box_attr_num * an_idx + 4, j, k);
+//
+//           for (int c = 0; c < class_num; c++) {
+//             pred_class_t(i, an_idx, j, k, c) =
+//                 input_t(i, box_attr_num * an_idx + 5 + c, j, k);
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
 
 template <typename T>
 static T CalcBoxIoU(std::vector<T> box1, std::vector<T> box2) {
@@ -235,7 +237,7 @@ template <typename T>
 static void PreProcessGTBox(const Tensor& gt_box, const Tensor& gt_label,
                             const float ignore_thresh, std::vector<int> anchors,
                             const int input_size, const int grid_size,
-                            Tensor* obj_mask, Tensor* noobj_mask, Tensor* tx,
+                            Tensor* conf_mask, Tensor* obj_mask, Tensor* tx,
                             Tensor* ty, Tensor* tw, Tensor* th, Tensor* tweight,
                             Tensor* tconf, Tensor* tclass) {
   const int n = gt_box.dims()[0];
@@ -243,8 +245,8 @@ static void PreProcessGTBox(const Tensor& gt_box, const Tensor& gt_label,
   const int anchor_num = anchors.size() / 2;
   auto gt_box_t = EigenTensor<T, 3>::From(gt_box);
   auto gt_label_t = EigenTensor<int, 2>::From(gt_label);
-  auto obj_mask_t = EigenTensor<T, 4>::From(*obj_mask).setConstant(0);
-  auto noobj_mask_t = EigenTensor<T, 4>::From(*noobj_mask).setConstant(1);
+  auto conf_mask_t = EigenTensor<T, 4>::From(*conf_mask).setConstant(1.0);
+  auto obj_mask_t = EigenTensor<T, 4>::From(*obj_mask).setConstant(0.0);
   auto tx_t = EigenTensor<T, 4>::From(*tx).setConstant(0.0);
   auto ty_t = EigenTensor<T, 4>::From(*ty).setConstant(0.0);
   auto tw_t = EigenTensor<T, 4>::From(*tw).setConstant(0.0);
@@ -280,11 +282,11 @@ static void PreProcessGTBox(const Tensor& gt_box, const Tensor& gt_label,
           best_an_index = an_idx;
         }
         if (iou > ignore_thresh) {
-          noobj_mask_t(i, an_idx, gj, gi) = static_cast<T>(0.0);
+          conf_mask_t(i, an_idx, gj, gi) = static_cast<T>(0.0);
         }
       }
+      conf_mask_t(i, best_an_index, gj, gi) = static_cast<T>(1.0);
       obj_mask_t(i, best_an_index, gj, gi) = static_cast<T>(1.0);
-      noobj_mask_t(i, best_an_index, gj, gi) = static_cast<T>(0.0);
       tx_t(i, best_an_index, gj, gi) = gx - gi;
       ty_t(i, best_an_index, gj, gi) = gy - gj;
       tw_t(i, best_an_index, gj, gi) = log(gw / anchors[2 * best_an_index]);
@@ -298,51 +300,192 @@ static void PreProcessGTBox(const Tensor& gt_box, const Tensor& gt_label,
 }
 
 template <typename T>
-static void AddAllGradToInputGrad(
-    Tensor* grad, const Tensor& grad_x, const Tensor& grad_y,
-    const Tensor& grad_w, const Tensor& grad_h, const Tensor& grad_conf_target,
-    const Tensor& grad_conf_notarget, const Tensor& grad_class,
-    const int class_num, const float loss_weight_xy, const float loss_weight_wh,
-    const float loss_weight_conf_target, const float loss_weight_conf_notarget,
-    const float loss_weight_class) {
-  const int n = grad_x.dims()[0];
-  const int an_num = grad_x.dims()[1];
-  const int h = grad_x.dims()[2];
-  const int w = grad_x.dims()[3];
-  const int attr_num = class_num + 5;
-  auto grad_t = EigenTensor<T, 4>::From(*grad).setConstant(0.0);
-  auto grad_x_t = EigenTensor<T, 4>::From(grad_x);
-  auto grad_y_t = EigenTensor<T, 4>::From(grad_y);
-  auto grad_w_t = EigenTensor<T, 4>::From(grad_w);
-  auto grad_h_t = EigenTensor<T, 4>::From(grad_h);
-  auto grad_conf_target_t = EigenTensor<T, 4>::From(grad_conf_target);
-  auto grad_conf_notarget_t = EigenTensor<T, 4>::From(grad_conf_notarget);
-  auto grad_class_t = EigenTensor<T, 5>::From(grad_class);
+static T SCE(T x, T label) {
+  return (x > 0 ? x : 0.0) - x * label + std::log(1.0 + std::exp(-std::abs(x)));
+}
 
+template <typename T>
+static T L1Loss(T x, T y) {
+  return std::abs(y - x);
+}
+
+template <typename T>
+static T SCEGrad(T x, T label) {
+  return 1.0 / (1.0 + std::exp(-x)) - label;
+}
+
+template <typename T>
+static T L1LossGrad(T x, T y) {
+  return x > y ? 1.0 : -1.0;
+}
+
+template <typename T>
+static void CalcSCE(T* loss_data, const T* input, const T* target,
+                    const T* weight, const T* mask, const int n,
+                    const int an_num, const int grid_num, const int class_num,
+                    const int num) {
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < an_num; j++) {
-      for (int k = 0; k < h; k++) {
-        for (int l = 0; l < w; l++) {
-          grad_t(i, j * attr_num, k, l) = grad_x_t(i, j, k, l) * loss_weight_xy;
-          grad_t(i, j * attr_num + 1, k, l) =
-              grad_y_t(i, j, k, l) * loss_weight_xy;
-          grad_t(i, j * attr_num + 2, k, l) =
-              grad_w_t(i, j, k, l) * loss_weight_wh;
-          grad_t(i, j * attr_num + 3, k, l) =
-              grad_h_t(i, j, k, l) * loss_weight_wh;
-          grad_t(i, j * attr_num + 4, k, l) =
-              grad_conf_target_t(i, j, k, l) * loss_weight_conf_target;
-          grad_t(i, j * attr_num + 4, k, l) +=
-              grad_conf_notarget_t(i, j, k, l) * loss_weight_conf_notarget;
-
-          for (int c = 0; c < class_num; c++) {
-            grad_t(i, j * attr_num + 5 + c, k, l) =
-                grad_class_t(i, j, k, l, c) * loss_weight_class;
-          }
+      for (int k = 0; k < grid_num; k++) {
+        int sub_idx = k * num;
+        for (int l = 0; l < num; l++) {
+          loss_data[i] += SCE<T>(input[l * grid_num + k], target[sub_idx + l]) *
+                          weight[k] * mask[k];
         }
       }
+      input += (class_num + 5) * grid_num;
+      target += grid_num * num;
+      weight += grid_num;
+      mask += grid_num;
     }
   }
+}
+
+template <typename T>
+static void CalcSCEGrad(T* input_grad, const T* loss_grad, const T* input,
+                        const T* target, const T* weight, const T* mask,
+                        const int n, const int an_num, const int grid_num,
+                        const int class_num, const int num) {
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < an_num; j++) {
+      for (int k = 0; k < grid_num; k++) {
+        int sub_idx = k * num;
+        for (int l = 0; l < num; l++) {
+          input_grad[l * grid_num + k] =
+              SCEGrad<T>(input[l * grid_num + k], target[sub_idx + l]) *
+              weight[k] * mask[k] * loss_grad[i];
+        }
+      }
+      input_grad += (class_num + 5) * grid_num;
+      input += (class_num + 5) * grid_num;
+      target += grid_num * num;
+      weight += grid_num;
+      mask += grid_num;
+    }
+  }
+}
+
+template <typename T>
+static void CalcL1Loss(T* loss_data, const T* input, const T* target,
+                       const T* weight, const T* mask, const int n,
+                       const int an_num, const int grid_num,
+                       const int class_num) {
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < an_num; j++) {
+      for (int k = 0; k < grid_num; k++) {
+        loss_data[i] += L1Loss<T>(input[k], target[k]) * weight[k] * mask[k];
+      }
+      input += (class_num + 5) * grid_num;
+      target += grid_num;
+      weight += grid_num;
+      mask += grid_num;
+    }
+  }
+}
+
+template <typename T>
+static void CalcL1LossGrad(T* input_grad, const T* loss_grad, const T* input,
+                           const T* target, const T* weight, const T* mask,
+                           const int n, const int an_num, const int grid_num,
+                           const int class_num) {
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < an_num; j++) {
+      for (int k = 0; k < grid_num; k++) {
+        input_grad[k] = L1LossGrad<T>(input[k], target[k]) * weight[k] *
+                        mask[k] * loss_grad[i];
+      }
+      input_grad += (class_num + 5) * grid_num;
+      input += (class_num + 5) * grid_num;
+      target += grid_num;
+      weight += grid_num;
+      mask += grid_num;
+    }
+  }
+}
+
+template <typename T>
+static void CalcYolov3Loss(T* loss_data, const Tensor& input, const Tensor& tx,
+                           const Tensor& ty, const Tensor& tw, const Tensor& th,
+                           const Tensor& tweight, const Tensor& tconf,
+                           const Tensor& tclass, const Tensor& conf_mask,
+                           const Tensor& obj_mask) {
+  const T* input_data = input.data<T>();
+  const T* tx_data = tx.data<T>();
+  const T* ty_data = ty.data<T>();
+  const T* tw_data = tw.data<T>();
+  const T* th_data = th.data<T>();
+  const T* tweight_data = tweight.data<T>();
+  const T* tconf_data = tconf.data<T>();
+  const T* tclass_data = tclass.data<T>();
+  const T* conf_mask_data = conf_mask.data<T>();
+  const T* obj_mask_data = obj_mask.data<T>();
+
+  const int n = tclass.dims()[0];
+  const int an_num = tclass.dims()[1];
+  const int h = tclass.dims()[2];
+  const int w = tclass.dims()[3];
+  const int class_num = tclass.dims()[4];
+  const int grid_num = h * w;
+
+  CalcSCE<T>(loss_data, input_data, tx_data, tweight_data, obj_mask_data, n,
+             an_num, grid_num, class_num, 1);
+  CalcSCE<T>(loss_data, input_data + grid_num, ty_data, tweight_data,
+             obj_mask_data, n, an_num, grid_num, class_num, 1);
+  CalcL1Loss<T>(loss_data, input_data + 2 * grid_num, tw_data, tweight_data,
+                obj_mask_data, n, an_num, grid_num, class_num);
+  CalcL1Loss<T>(loss_data, input_data + 3 * grid_num, th_data, tweight_data,
+                obj_mask_data, n, an_num, grid_num, class_num);
+  CalcSCE<T>(loss_data, input_data + 4 * grid_num, tconf_data, conf_mask_data,
+             conf_mask_data, n, an_num, grid_num, class_num, 1);
+  CalcSCE<T>(loss_data, input_data + 5 * grid_num, tclass_data, obj_mask_data,
+             obj_mask_data, n, an_num, grid_num, class_num, class_num);
+}
+
+template <typename T>
+static void CalcYolov3LossGrad(T* input_grad_data, const Tensor& loss_grad,
+                               const Tensor& input, const Tensor& tx,
+                               const Tensor& ty, const Tensor& tw,
+                               const Tensor& th, const Tensor& tweight,
+                               const Tensor& tconf, const Tensor& tclass,
+                               const Tensor& conf_mask,
+                               const Tensor& obj_mask) {
+  const T* loss_grad_data = loss_grad.data<T>();
+  const T* input_data = input.data<T>();
+  const T* tx_data = tx.data<T>();
+  const T* ty_data = ty.data<T>();
+  const T* tw_data = tw.data<T>();
+  const T* th_data = th.data<T>();
+  const T* tweight_data = tweight.data<T>();
+  const T* tconf_data = tconf.data<T>();
+  const T* tclass_data = tclass.data<T>();
+  const T* conf_mask_data = conf_mask.data<T>();
+  const T* obj_mask_data = obj_mask.data<T>();
+
+  const int n = tclass.dims()[0];
+  const int an_num = tclass.dims()[1];
+  const int h = tclass.dims()[2];
+  const int w = tclass.dims()[3];
+  const int class_num = tclass.dims()[4];
+  const int grid_num = h * w;
+
+  CalcSCEGrad<T>(input_grad_data, loss_grad_data, input_data, tx_data,
+                 tweight_data, obj_mask_data, n, an_num, grid_num, class_num,
+                 1);
+  CalcSCEGrad<T>(input_grad_data + grid_num, loss_grad_data,
+                 input_data + grid_num, ty_data, tweight_data, obj_mask_data, n,
+                 an_num, grid_num, class_num, 1);
+  CalcL1LossGrad<T>(input_grad_data + 2 * grid_num, loss_grad_data,
+                    input_data + 2 * grid_num, tw_data, tweight_data,
+                    obj_mask_data, n, an_num, grid_num, class_num);
+  CalcL1LossGrad<T>(input_grad_data + 3 * grid_num, loss_grad_data,
+                    input_data + 3 * grid_num, th_data, tweight_data,
+                    obj_mask_data, n, an_num, grid_num, class_num);
+  CalcSCEGrad<T>(input_grad_data + 4 * grid_num, loss_grad_data,
+                 input_data + 4 * grid_num, tconf_data, conf_mask_data,
+                 conf_mask_data, n, an_num, grid_num, class_num, 1);
+  CalcSCEGrad<T>(input_grad_data + 5 * grid_num, loss_grad_data,
+                 input_data + 5 * grid_num, tclass_data, obj_mask_data,
+                 obj_mask_data, n, an_num, grid_num, class_num, class_num);
 }
 
 template <typename T>
@@ -357,33 +500,16 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     int class_num = ctx.Attr<int>("class_num");
     int input_size = ctx.Attr<int>("input_size");
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
-    float loss_weight_xy = ctx.Attr<float>("loss_weight_xy");
-    float loss_weight_wh = ctx.Attr<float>("loss_weight_wh");
-    float loss_weight_conf_target = ctx.Attr<float>("loss_weight_conf_target");
-    float loss_weight_conf_notarget =
-        ctx.Attr<float>("loss_weight_conf_notarget");
-    float loss_weight_class = ctx.Attr<float>("loss_weight_class");
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
     const int w = input->dims()[3];
     const int an_num = anchors.size() / 2;
 
-    Tensor pred_x, pred_y, pred_w, pred_h;
-    Tensor pred_conf, pred_class;
-    pred_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_conf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    SplitPredResult<T>(*input, &pred_conf, &pred_class, &pred_x, &pred_y,
-                       &pred_w, &pred_h, an_num, class_num);
-
-    Tensor obj_mask, noobj_mask;
+    Tensor conf_mask, obj_mask;
     Tensor tx, ty, tw, th, tweight, tconf, tclass;
+    conf_mask.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     obj_mask.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    noobj_mask.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tx.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     ty.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tw.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
@@ -392,35 +518,13 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
     PreProcessGTBox<T>(*gt_box, *gt_label, ignore_thresh, anchors, input_size,
-                       h, &obj_mask, &noobj_mask, &tx, &ty, &tw, &th, &tweight,
+                       h, &conf_mask, &obj_mask, &tx, &ty, &tw, &th, &tweight,
                        &tconf, &tclass);
-
-    Tensor obj_weight;
-    obj_weight.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    auto obj_weight_t = EigenTensor<T, 4>::From(obj_weight);
-    auto obj_mask_t = EigenTensor<T, 4>::From(obj_mask);
-    auto tweight_t = EigenTensor<T, 4>::From(tweight);
-    obj_weight_t = obj_mask_t * tweight_t;
-
-    Tensor obj_mask_expand;
-    obj_mask_expand.mutable_data<T>({n, an_num, h, w, class_num},
-                                    ctx.GetPlace());
-    auto obj_mask_expand_t = EigenTensor<T, 5>::From(obj_mask_expand);
-    obj_mask_expand_t = obj_mask_t.reshape(Array5(n, an_num, h, w, 1))
-                            .broadcast(Array5(1, 1, 1, 1, class_num));
 
     T* loss_data = loss->mutable_data<T>({n}, ctx.GetPlace());
     memset(loss_data, 0, n * sizeof(T));
-    CalcSCEWithWeight<T>(pred_x, tx, obj_weight, loss_weight_xy, loss_data);
-    CalcSCEWithWeight<T>(pred_y, ty, obj_weight, loss_weight_xy, loss_data);
-    CalcL1LossWithWeight<T>(pred_w, tw, obj_weight, loss_weight_wh, loss_data);
-    CalcL1LossWithWeight<T>(pred_h, th, obj_weight, loss_weight_wh, loss_data);
-    CalcSCEWithWeight<T>(pred_conf, tconf, obj_mask, loss_weight_conf_target,
-                         loss_data);
-    CalcSCEWithWeight<T>(pred_conf, tconf, noobj_mask,
-                         loss_weight_conf_notarget, loss_data);
-    CalcSCEWithWeight<T>(pred_class, tclass, obj_mask_expand, loss_weight_class,
-                         loss_data);
+    CalcYolov3Loss<T>(loss_data, *input, tx, ty, tw, th, tweight, tconf, tclass,
+                      conf_mask, obj_mask);
   }
 };
 
@@ -436,14 +540,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
-    const T* loss_grad_data = loss_grad->data<T>();
     int input_size = ctx.Attr<int>("input_size");
-    float loss_weight_xy = ctx.Attr<float>("loss_weight_xy");
-    float loss_weight_wh = ctx.Attr<float>("loss_weight_wh");
-    float loss_weight_conf_target = ctx.Attr<float>("loss_weight_conf_target");
-    float loss_weight_conf_notarget =
-        ctx.Attr<float>("loss_weight_conf_notarget");
-    float loss_weight_class = ctx.Attr<float>("loss_weight_class");
 
     const int n = input->dims()[0];
     const int c = input->dims()[1];
@@ -451,21 +548,10 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     const int w = input->dims()[3];
     const int an_num = anchors.size() / 2;
 
-    Tensor pred_x, pred_y, pred_w, pred_h;
-    Tensor pred_conf, pred_class;
-    pred_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_conf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    pred_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    SplitPredResult<T>(*input, &pred_conf, &pred_class, &pred_x, &pred_y,
-                       &pred_w, &pred_h, an_num, class_num);
-
-    Tensor obj_mask, noobj_mask;
+    Tensor conf_mask, obj_mask;
     Tensor tx, ty, tw, th, tweight, tconf, tclass;
+    conf_mask.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     obj_mask.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    noobj_mask.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tx.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     ty.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tw.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
@@ -474,51 +560,13 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     tconf.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
     tclass.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
     PreProcessGTBox<T>(*gt_box, *gt_label, ignore_thresh, anchors, input_size,
-                       h, &obj_mask, &noobj_mask, &tx, &ty, &tw, &th, &tweight,
+                       h, &conf_mask, &obj_mask, &tx, &ty, &tw, &th, &tweight,
                        &tconf, &tclass);
 
-    Tensor obj_weight;
-    obj_weight.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    auto obj_weight_t = EigenTensor<T, 4>::From(obj_weight);
-    auto obj_mask_t = EigenTensor<T, 4>::From(obj_mask);
-    auto tweight_t = EigenTensor<T, 4>::From(tweight);
-    obj_weight_t = obj_mask_t * tweight_t;
-
-    Tensor obj_mask_expand;
-    obj_mask_expand.mutable_data<T>({n, an_num, h, w, class_num},
-                                    ctx.GetPlace());
-    auto obj_mask_expand_t = EigenTensor<T, 5>::From(obj_mask_expand);
-    obj_mask_expand_t = obj_mask_t.reshape(Array5(n, an_num, h, w, 1))
-                            .broadcast(Array5(1, 1, 1, 1, class_num));
-
-    Tensor grad_x, grad_y, grad_w, grad_h;
-    Tensor grad_conf_target, grad_conf_notarget, grad_class;
-    grad_x.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    grad_y.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    grad_w.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    grad_h.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    grad_conf_target.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    grad_conf_notarget.mutable_data<T>({n, an_num, h, w}, ctx.GetPlace());
-    grad_class.mutable_data<T>({n, an_num, h, w, class_num}, ctx.GetPlace());
-    CalcSCEGradWithWeight<T>(loss_grad_data, &grad_x, pred_x, tx, obj_weight);
-    CalcSCEGradWithWeight<T>(loss_grad_data, &grad_y, pred_y, ty, obj_weight);
-    CalcL1LossGradWithWeight<T>(loss_grad_data, &grad_w, pred_w, tw,
-                                obj_weight);
-    CalcL1LossGradWithWeight<T>(loss_grad_data, &grad_h, pred_h, th,
-                                obj_weight);
-    CalcSCEGradWithWeight<T>(loss_grad_data, &grad_conf_target, pred_conf,
-                             tconf, obj_mask);
-    CalcSCEGradWithWeight<T>(loss_grad_data, &grad_conf_notarget, pred_conf,
-                             tconf, noobj_mask);
-    CalcSCEGradWithWeight<T>(loss_grad_data, &grad_class, pred_class, tclass,
-                             obj_mask_expand);
-
-    input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
-    AddAllGradToInputGrad<T>(input_grad, grad_x, grad_y, grad_w, grad_h,
-                             grad_conf_target, grad_conf_notarget, grad_class,
-                             class_num, loss_weight_xy, loss_weight_wh,
-                             loss_weight_conf_target, loss_weight_conf_notarget,
-                             loss_weight_class);
+    T* input_grad_data =
+        input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
+    CalcYolov3LossGrad<T>(input_grad_data, *loss_grad, *input, tx, ty, tw, th,
+                          tweight, tconf, tclass, conf_mask, obj_mask);
   }
 };
 
