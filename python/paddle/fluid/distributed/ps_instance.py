@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import helper as dist_helper
-import sys
+from .helper import MPIHelper
 
 
 class PaddlePSInstance(object):
@@ -26,7 +25,7 @@ class PaddlePSInstance(object):
     """
 
     def __init__(self, server_worker_mode, proc_per_node):
-        self.dh = dist_helper.MPIHelper()
+        self.dh = MPIHelper()
         self._rankid = self.dh.get_rank()
         self._server_worker_mode = server_worker_mode
         self._proc_per_node = proc_per_node
