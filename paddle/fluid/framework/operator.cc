@@ -477,23 +477,22 @@ bool OpSupportGPU(const std::string& op_type) {
 
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
+                           const RuntimeContext& ctx)
+      : op_(op), scope_(scope), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
-    const auto& ins = op_.Inputs();
+    const auto& ins = ctx_.inputs;
     auto it = ins.find(name);
     if (it == ins.end()) {
       return false;
     }
     const auto& in = it->second;
-    if (in.size() == 0 || in[0] == kEmptyVarName) {
-      return false;
-    }
+    if (in.size() == 0) return false;
     PADDLE_ENFORCE_EQ(in.size(), 1UL,
                       "Input %s should not have more than one inputs", name);
-    return scope_.FindVar(in[0]) != nullptr;
+    return in[0] != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
@@ -678,6 +677,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  private:
   const OperatorBase& op_;
   const Scope& scope_;
+  const RuntimeContext& ctx_;
 };
 
 static void CheckTensorNANOrInf(const std::string& name,
@@ -696,8 +696,9 @@ static void CheckTensorNANOrInf(const std::string& name,
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
-                                           const platform::Place& place) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+                                           const platform::Place& place,
+                                           const RuntimeContext& ctx) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
   this->InferShape(&infer_shape_ctx);
 }
 
@@ -743,10 +744,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
+  RuntimeContext ctx;
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   auto* transfer_scope =
-      TryTransferData(scope, expected_kernel_key, &transfered_inplace_vars);
+      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
 
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -756,7 +758,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope);
+  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
   this->InferShape(&infer_shape_ctx);
   kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
@@ -797,13 +799,20 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   }
 }
 
-Scope* OperatorWithKernel::TryTransferData(
+Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
-    std::vector<std::string>* transfered_inplace_vars) const {
+    std::vector<std::string>* transfered_inplace_vars,
+    RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
   for (auto& var_name_item : Inputs()) {
-    for (auto& var_name : var_name_item.second) {
+    std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
+    input_vars.resize(var_name_item.second.size());
+
+    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+      auto& var_name = var_name_item.second[i];
       auto* var = scope.FindVar(var_name);
+      input_vars[i] = var;
+
       // Only tensor can be tranfer to another device.
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
@@ -851,10 +860,20 @@ Scope* OperatorWithKernel::TryTransferData(
       }
 
       auto* trans_var = new_scope->Var(var_name);
+      input_vars[i] = var;
 
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
+    }
+  }
+  for (auto& var_name_item : Outputs()) {
+    std::vector<Variable*>& output_vars = ctx->outputs[var_name_item.first];
+    output_vars.resize(var_name_item.second.size());
+
+    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+      auto& var_name = var_name_item.second[i];
+      output_vars[i] = scope.FindVar(var_name);
     }
   }
 

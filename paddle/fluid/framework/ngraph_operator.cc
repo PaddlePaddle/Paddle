@@ -278,7 +278,20 @@ std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
 void NgraphEngine::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
-  op->RuntimeInferShape(scope_, place_);
+  RuntimeContext ctx;
+  for (auto& var_name_item : op->Inputs()) {
+    std::vector<Variable*> input_vars = ctx.inputs[var_name_item.first];
+    for (auto& var_name : var_name_item.second) {
+      input_vars.push_back(scope_.FindVar(var_name));
+    }
+  }
+  for (auto& var_name_item : op->Outputs()) {
+    std::vector<Variable*> output_vars = ctx.outputs[var_name_item.first];
+    for (auto& var_name : var_name_item.second) {
+      output_vars.push_back(scope_.FindVar(var_name));
+    }
+  }
+  op->RuntimeInferShape(scope_, place_, ctx);
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope_.FindVar(var_name);
