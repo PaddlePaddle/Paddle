@@ -250,7 +250,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
 
 for use_cuda in (False, True):
     for is_sparse in (False, True):
-        for is_parallel in (False, True):
+        for is_parallel in (False, ):
             inject_test_method(use_cuda, is_sparse, is_parallel)
 
 if __name__ == '__main__':
