@@ -58,8 +58,8 @@ def lstmp(
         c = g_f * c_pre + g_i * act_cand(c)  # 1 x D
 
         def array_clip(a, clip):
-            #print('clip:{}'.format(clip))
-            #print(a)
+            print('clip:{}'.format(clip))
+            print('old' + str(a))
 
             size = np.prod(a.shape)
             new_a = np.reshape(a, (size))
@@ -67,7 +67,7 @@ def lstmp(
 		new_a[i] = max(new_a[i], -1.0 * clip)
 		new_a[i] = min(new_a[i], clip)
             new_a = np.reshape(new_a, a.shape)
-            #print(new_a)
+            print('new' + str(new_a))
             return new_a
 
         if cell_clip > 0.0:
@@ -133,6 +133,70 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         pass
 
     def setUp(self):
+        self.set_argument()
+        # projection size
+        self.P = 2
+
+        self.reset_argument()
+        self.op_type = 'lstmp'
+        self.act_proj = 'identity'
+        self.use_peepholes = False
+        self.has_initial_state = True
+        self.lod=[[5]]
+
+        T = sum(self.lod[0])
+        N = len(self.lod[0])
+
+        proj_clip = 0.5
+        cell_clip = 0.0
+
+        #import pdb; pdb.set_trace()
+        x=np.array([[-0.50806344, 0.50909436], \
+	 [-0.50087136, 0.4904187 ], \
+	 [-0.48933774, 0.50408053], \
+	 [ 0.00896523, 0.00770854], \
+	 [-0.00851139,-0.01005108]])
+        wx = np.array([[ 0.2932311,  -0.8829277,   1.100133,    0.8197811,  -0.8194872,  -0.829262, 0.7708865,  -0.62339246, -0.7656475,   0.4283645,  -0.27164033, -0.3600223 ], \
+            [-0.609142,    0.25025278,  0.15731744, -0.66051376, -0.70994514,  0.8344964, -0.00551117, -0.7072167,  -0.63929003, -0.52340907, -0.8842589,   0.9531688 ]])
+        x=np.dot(x, wx)
+
+        w = np.array([[ 0.7808204, -0.7412322,  -0.9458036,  -0.01664658,  0.7930616,   0.10208707, 0.20036687, -0.16743736,  1.0295134,  -0.3118722,   0.02241168,  0.3154219 ], \
+ [-0.29026014,  0.24638331, -0.5435432,   0.87635124, -0.96091515, -0.1411362, 0.58606523, -0.38996056, -0.9003789,   0.8540163,  -0.8831781,  -0.28499633]])
+
+        w_rh=np.array([[ 0.15685119,  0.05694652], [-0.9641068,  -1.5106804 ], [ 0.3599193,   1.2540514 ]])	
+        w_b = np.array([[-0.49999997,  0.5,        -0.49999997, -0.5,         0.5,         0.5, 0.49999997, -0.49999997,  0.49999997, -0.5,         0.49999997,  0.5       ]])
+        h0 = np.array([[-1.3392334e-04, -6.8468950e-04]])
+        c0 = np.array([[4.5552300e-04,  1.3302206e-03, -3.6721351e-04]])
+        w_c=None
+        self.lod=[[5]]
+        #import pdb; pdb.set_trace()
+        r, c = lstmp(x, self.lod, h0, c0, w, w_rh, w_b, w_c, self.is_reverse, proj_clip, cell_clip,
+                     ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
+                     ACTIVATION[self.act_cand], ACTIVATION[self.act_proj])
+        self.inputs = {'Input': (x, self.lod), 'Weight': w, 'ProjWeight': w_rh}
+
+        self.inputs['Bias'] = w_b
+
+        if self.has_initial_state:
+            self.inputs['H0'] = h0
+            self.inputs['C0'] = c0
+
+        self.outputs = {
+            'Projection': (r, self.lod),
+            'Cell': (c, self.lod),
+        }
+        self.attrs = {
+            'use_peepholes': self.use_peepholes,
+            'is_reverse': self.is_reverse,
+            'proj_clip':proj_clip,
+            'cell_clip':cell_clip,
+            'gate_activation': self.act_gate,
+            'cell_activation': self.act_cell,
+            'candidate_activation': self.act_cand,
+            'proj_activation': self.act_proj
+        }
+
+    def setUp2(self):
         self.set_argument()
         # projection size
         self.P = 10

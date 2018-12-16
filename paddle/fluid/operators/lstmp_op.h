@@ -35,9 +35,9 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-class ClipFunctor {
+class _ClipFunctor {
  public:
-  explicit ClipFunctor(const T min, const T max) : min_(min), max_(max) {}
+  explicit _ClipFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T& x) const {
     if (x < min_)
       return min_;
@@ -53,9 +53,9 @@ class ClipFunctor {
 };
 
 template <typename T>
-class ClipGradFunctor {
+class _ClipGradFunctor {
  public:
-  explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
+  explicit _ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T& x, const T& y) const {
     return (y > min_ && y < max_) ? x : 0;
   }
@@ -252,7 +252,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
           int64_t numel = proj_t.numel();
           Transform<DeviceContext> trans;
           trans(ctx.template device_context<DeviceContext>(), x_data,
-            x_data + numel, x_data, ClipFunctor<T>(-1.0 * proj_clip, proj_clip)); 
+            x_data + numel, x_data, _ClipFunctor<T>(-1.0 * proj_clip, proj_clip)); 
       }
     }
 
@@ -430,7 +430,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
           int64_t numel = proj_g.numel();
           Transform<DeviceContext> trans;
           trans(ctx.template device_context<DeviceContext>(), dx_data,
-            dx_data + numel, x_data, dx_data, ClipGradFunctor<T>(-1.0 * proj_clip, proj_clip)); 
+            dx_data + numel, x_data, dx_data, _ClipGradFunctor<T>(-1.0 * proj_clip, proj_clip)); 
       }
 
       if (proj_act != math::detail::ActivationType::kIdentity) {
