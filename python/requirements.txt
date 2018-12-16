@@ -9,4 +9,4 @@ Pillow
 nltk>=3.2.2
 graphviz
 six
-mpi4py=3.0.0
+mpi4py==3.0.0
