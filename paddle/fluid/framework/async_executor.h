@@ -34,9 +34,13 @@ namespace paddle {
 namespace framework {
 
 inline double current_realtime() {
+#if !defined(_WIN32)
   struct timespec tp;
   clock_gettime(CLOCK_REALTIME, &tp);
   return tp.tv_sec + tp.tv_nsec * 1e-9;
+#else
+  return 0.0;
+#endif
 }
 
 inline std::default_random_engine& local_random_engine() {
