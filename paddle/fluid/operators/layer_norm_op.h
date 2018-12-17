@@ -230,7 +230,7 @@ class LayerNormKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(bias->numel(), right);
 
     auto ker =
-        jit::Get<jit::layernorm, jit::LayerNormTuples, platform::CPUPlace>(
+        jit::Get<jit::layernorm, jit::LayerNormTuples<T>, platform::CPUPlace>(
             right);
     ker(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
         scale->data<T>(), bias->data<T>(), static_cast<int>(left),
