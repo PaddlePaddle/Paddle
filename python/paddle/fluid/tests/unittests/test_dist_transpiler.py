@@ -751,8 +751,8 @@ class TestLoadSliceVar(TranspilerTest):
         self.assertTrue(vars_ps2)
 
         for idx in six.moves.xrange(len(vars_ps1)):
-            total_numel = 0L
-            ps1_numel, ps2_numel = 0L, 0L
+            total_numel = 0
+            ps1_numel, ps2_numel = 0, 0
 
             ps1_var = vars_ps1[idx]
 
