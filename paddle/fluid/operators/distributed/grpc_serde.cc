@@ -32,13 +32,6 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-static void SerializeDestroyCallback(void* payload) {
-  if (payload != nullptr) {
-    auto* shared_payload = reinterpret_cast<TensorPayload*>(payload);
-    delete shared_payload;
-  }
-}
-
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,
