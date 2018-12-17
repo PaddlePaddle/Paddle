@@ -36,12 +36,6 @@ limitations under the License. */
 #define ALIGN32_END __attribute__((aligned(32)))
 #endif  // _WIN32
 
-#if defined(_WIN32)
-#if defined(__AVX2__) || defined(__AVX__)
-inline __m256 operator+=(__m256 a, __m256 b) { return _mm256_add_ps(a, b); }
-#endif
-#endif
-
 namespace paddle {
 namespace platform {
 
