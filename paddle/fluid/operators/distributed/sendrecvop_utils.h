@@ -50,6 +50,13 @@ class TensorPayload final {
   size_t memory_size_;
 };
 
+inline void SerializeDestroyCallback(void* payload) {
+  if (payload != nullptr) {
+    auto* shared_payload = reinterpret_cast<TensorPayload*>(payload);
+    delete shared_payload;
+  }
+}
+
 TensorPayload GetTensorPayload(framework::Variable* var,
                                const platform::DeviceContext& ctx,
                                VarMsg* request);
