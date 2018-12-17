@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/memory_early_delete_pass.h"
+#include <queue>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/details/memory_reuse_types.h"
@@ -24,18 +25,18 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
-  std::queue<VarHandleBase *> queue;
+static ComputationOpHandle* FindNextComputationOpHandle(VarHandle* var_in) {
+  std::queue<VarHandleBase*> queue;
   queue.push(var_in);
   do {
-    auto *var = queue.front();
+    auto* var = queue.front();
     queue.pop();
-    for (auto *op : var->PendingOps()) {
-      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
+    for (auto* op : var->PendingOps()) {
+      auto* compute_op = dynamic_cast<ComputationOpHandle*>(op);
       if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
         return compute_op;
       }
-      for (auto *out_var : op->Outputs()) {
+      for (auto* out_var : op->Outputs()) {
         queue.push(out_var);
       }
     }

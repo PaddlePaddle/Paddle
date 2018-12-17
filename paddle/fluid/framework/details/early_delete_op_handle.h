@@ -70,7 +70,9 @@ class EarlyDeleteOpHandle : public OpHandleBase {
       if (var->IsType<LoDTensor>()) {
         tensors.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
       } else if (var->IsType<SelectedRows>()) {
-        tensors.emplace_back(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+        tensors.emplace_back(var->GetMutable<SelectedRows>()
+                                 ->mutable_value()
+                                 ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {
         LoDTensorArray* tensor_array = var->GetMutable<LoDTensorArray>();
         for (auto& tensor : *tensor_array) {
@@ -84,7 +86,8 @@ class EarlyDeleteOpHandle : public OpHandleBase {
   }
 
  private:
-  void ClearTensors(const std::vector<std::shared_ptr<memory::Allocation>>& tensors) {
+  void ClearTensors(
+      const std::vector<std::shared_ptr<memory::Allocation>>& tensors) {
     if (platform::is_cpu_place(place_)) {
       ClearCPUTensors(tensors);
     } else {
@@ -92,15 +95,16 @@ class EarlyDeleteOpHandle : public OpHandleBase {
     }
   }
 
-  void ClearCPUTensors(const std::vector<std::shared_ptr<memory::Allocation>>& tensors) {
-    // cpu delete tensor immediately.
+  void ClearCPUTensors(
+      const std::vector<std::shared_ptr<memory::Allocation>>& tensors) {
     auto* gc = dynamic_cast<CPUGarbageCollector*>(gc_);
     if (gc != nullptr) {
       gc->Add(tensors);
     }
   }
 
-  void ClearGPUTensors(const std::vector<std::shared_ptr<memory::Allocation>>& tensors) {
+  void ClearGPUTensors(
+      const std::vector<std::shared_ptr<memory::Allocation>>& tensors) {
 #ifdef PADDLE_WITH_CUDA
     auto* gc = dynamic_cast<StreamGarbageCollector*>(gc_);
     if (gc != nullptr) {
