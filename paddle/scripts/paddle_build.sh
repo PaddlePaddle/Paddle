@@ -517,6 +517,18 @@ function assert_api_spec_approvals() {
           fi
       fi
     done
+
+    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
+    if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have at least 2 approvals for the const_cast"
+        exit 1
+        fi
+    fi
+
 }
 
 
