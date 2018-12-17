@@ -76,10 +76,7 @@ class TensorRTEngineOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input0 = ctx.Inputs("Xs").front();
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(ctx.scope()
-                                  .FindVar(input0)
-                                  ->GetMutable<framework::LoDTensor>()
-                                  ->type()),
+        ctx.scope().FindVar(input0)->GetMutable<framework::LoDTensor>()->type(),
         ctx.GetPlace());
     return kt;
   }

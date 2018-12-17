@@ -43,10 +43,9 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
   if (var->IsType<framework::LoDTensor>()) {
-    return framework::ToDataType(var->Get<framework::LoDTensor>().type());
+    return var->Get<framework::LoDTensor>().type();
   } else if (var->IsType<framework::SelectedRows>()) {
-    return framework::ToDataType(
-        var->Get<framework::SelectedRows>().value().type());
+    return var->Get<framework::SelectedRows>().value().type();
   } else {
     PADDLE_THROW("Var should be LoDTensor or SelectedRows");
   }
@@ -93,13 +92,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
-    return DataTypeToString(ToDataType(tensor.type()));
+    return DataTypeToString(tensor.type());
   } else if (var->IsType<SelectedRows>()) {
     auto tensor = var->Get<SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
-      return DataTypeToString(ToDataType(tensor.type()));
+      return DataTypeToString(tensor.type());
     }
   } else {
     return "";
@@ -686,7 +685,8 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
+  if (tensor.type() != proto::VarType::FP32 &&
+      tensor.type() != proto::VarType::FP64) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
@@ -881,7 +881,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         if (t != nullptr) {
           PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
                          ipt_name, DebugString());
-          int tmp = static_cast<int>(ToDataType(t->type()));
+          int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
               "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
