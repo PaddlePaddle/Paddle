@@ -12,12 +12,19 @@ cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
+if(WITH_DISTRIBUTE)
+    if(NOT WITH_GRPC)
+        set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+        set_source_files_properties(reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    endif()
+endif()
+
 if(WITH_GPU)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     if(WITH_DISTRIBUTE)
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-            ddim dynload_cuda selected_rows_functor sendrecvop_grpc)
+            ddim dynload_cuda selected_rows_functor sendrecvop_rpc)
     else()
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim dynload_cuda selected_rows_functor)
@@ -30,7 +37,7 @@ else()
              variable_visitor)
     if(WITH_DISTRIBUTE)
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
-            ddim selected_rows_functor sendrecvop_grpc)
+            ddim selected_rows_functor sendrecvop_rpc)
     else()
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim selected_rows_functor)
