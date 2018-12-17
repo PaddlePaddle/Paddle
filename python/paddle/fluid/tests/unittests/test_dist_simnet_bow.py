@@ -107,7 +107,7 @@ class TestDistSimnetBow2x2LookupTableSync(TestDistBase):
         self.check_with_place(
             "dist_simnet_bow.py",
             delta=1e-5,
-            check_error_log=True,
+            check_error_log=False,
             need_envs=need_envs)
 
 
