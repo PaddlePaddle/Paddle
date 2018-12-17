@@ -122,10 +122,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
                        filter->format() != memory::format::format_undef,
                    "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(input->dims().size() == 4,
-                   "Input must be with 4 dimensions, i.e. NCHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4,
-                   "Filter must be with 4 dimensions, i.e. OIHW");
+    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 5,
+                   "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE(filter->dims().size() == 4 || filter->dims().size() == 5,
+                   "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
     if (bias) {
       PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
                          bias->format() != memory::format::format_undef,
@@ -538,7 +538,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         {*convinfo->src_tz}, paddle::framework::ToMKLDNNDataType(input->type()),
         input->format());
     auto user_weights_md = platform::MKLDNNMemDesc(
-        {*convinfo->weights_tz}, platform::MKLDNNGetDataType<float>(),
+        {*convinfo->weights_tz}, platform::MKLDNNGetDataType<K>(),
         ((convinfo->g) == 1) ? mkldnn::memory::format::oihw
                              : mkldnn::memory::format::goihw);
 
