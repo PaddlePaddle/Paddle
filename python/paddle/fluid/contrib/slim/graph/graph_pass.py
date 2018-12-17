@@ -14,26 +14,29 @@
 
 __all__ = ['GraphPass', 'PruneParameterPass']
 
+
 class GraphPass(object):
     """
     Base class for all graph pass.
     """
+
     def __init__(self):
         pass
 
     def apply(self, graph):
         pass
 
+
 class PruneParameterPass(GraphPass):
     """
     Generate a graph for pruning parameters from target graph.
     """
+
     def __init__(self, pruned_params, thresholds):
         super(PruneParameterPass, self).__init__()
-        self.pruned_params =  pruned_params
+        self.pruned_params = pruned_params
         self.thresholds = thresholds
         self.default_threshold = thresholds['*']
 
     def apply(self, graph):
         pass
-            

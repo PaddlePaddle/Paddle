@@ -19,47 +19,41 @@ from .graph import IRGraph, ImitationGraph
 
 __all__ = ['get_executor']
 
+
 class GraphExecutor(object):
-    __metaclass__= abc.ABCMeta
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, place):
         self.place = place
 
     @abstractmethod
-    def run(self,
-            graph,
-            feches=None,
-            feed=None):
+    def run(self, graph, feches=None, feed=None):
         pass
+
 
 class IRGraphExecutor(GraphExecutor):
-    
-    def run(self,
-            grah,
-            fetches,
-            feed=None):
+    def run(self, grah, fetches, feed=None):
         pass
 
-class ImitationGraphExecutor(GraphExecutor):
-    
-    def __init__(self, place):
-       super(ImitationGraphExecutor, self).__init__(place)
-       self.exe = executor.Executor(place)
 
-    def run(self,
-            graph,
-            scope=None,
-            fetches=None,
-            feed=None):
+class ImitationGraphExecutor(GraphExecutor):
+    def __init__(self, place):
+        super(ImitationGraphExecutor, self).__init__(place)
+        self.exe = executor.Executor(place)
+
+    def run(self, graph, scope=None, fetches=None, feed=None):
         assert isinstance(graph, ImitationGraph)
         fetch_list = None
         if fetches:
-            fetch_list = [graph.program.global_block().var(name) for name in fetches]
-        results =  self.exe.run(graph.program,
-                            scope=scope,
-                            fetch_list=fetch_list,
-                            feed=feed)
+            fetch_list = [
+                graph.program.global_block().var(name) for name in fetches
+            ]
+        results = self.exe.run(graph.program,
+                               scope=scope,
+                               fetch_list=fetch_list,
+                               feed=feed)
         return results
+
 
 def get_executor(graph, place):
     if isinstance(graph, ImitationGraph):

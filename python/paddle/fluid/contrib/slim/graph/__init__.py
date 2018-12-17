@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from . import executor
-from .executor import * 
+from .executor import *
 from . import graph
 from .graph import *
-from .import graph_pass
+from . import graph_pass
 from .graph_pass import *
 __all__ = executor.__all__
 __all__ += graph.__all__
 __all__ += graph_pass.__all__
-

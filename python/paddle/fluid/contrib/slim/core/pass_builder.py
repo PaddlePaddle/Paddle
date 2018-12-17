@@ -17,13 +17,14 @@ from .config import ConfigFactory
 
 __all__ = ['build_compressor']
 
+
 def build_compressor(place=None,
-                 data_reader=None,
-                 data_feeder=None,
-                 scope=None,
-                 metrics=None,
-                 epoch=None,
-                 config=None):
+                     data_reader=None,
+                     data_feeder=None,
+                     scope=None,
+                     metrics=None,
+                     epoch=None,
+                     config=None):
     if config is not None:
         factory = ConfigFactory(config)
         comp_pass = factory.get_compress_pass()
@@ -36,5 +37,3 @@ def build_compressor(place=None,
     comp_pass.metrics = metrics
     comp_pass.epoch = epoch
     return comp_pass
-    
-    

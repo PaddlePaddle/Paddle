@@ -21,16 +21,17 @@ from .compress_pass import *
 from .strategy import *
 
 __all__ = ['ConfigFactory']
-
 """This factory is used to create instances by loading and parsing configure file with yaml format.
 """
+
+
 class ConfigFactory(object):
     def __init__(self, config):
         """Init a factory from configure file."""
         self.instances = {}
         self.version = None
         self._parse_config(config)
-    
+
     def get_compress_pass(self):
         """
         Get compress pass from factory.
@@ -50,7 +51,10 @@ class ConfigFactory(object):
         if name not in self.instances:
             class_ = globals()[attrs['class']]
             sig = funcsigs.signature(class_.__init__)
-            keys = [param.name for param in sig.parameters.values() if (param.kind == param.POSITIONAL_OR_KEYWORD)][1:]
+            keys = [
+                param.name for param in sig.parameters.values()
+                if (param.kind == param.POSITIONAL_OR_KEYWORD)
+            ][1:]
             keys = set(attrs.keys()).intersection(set(keys))
             args = {}
             for key in keys:
@@ -70,7 +74,7 @@ class ConfigFactory(object):
                 if key == 'version' and self.version is None:
                     self.version = int(dict['version'])
                     assert self.version == int(dict['version'])
-                
+
                 # parse pruners
                 if key == 'pruners' or key == 'strategies':
                     instances = dict[key]
@@ -87,17 +91,21 @@ class ConfigFactory(object):
                     for file in dict[key]:
                         self._parse_config(file.strip())
 
-
-    def _ordered_load(self, stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
+    def _ordered_load(self,
+                      stream,
+                      Loader=yaml.Loader,
+                      object_pairs_hook=OrderedDict):
         """
         See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
         """
+
         class OrderedLoader(Loader):
             pass
+
         def construct_mapping(loader, node):
             loader.flatten_mapping(node)
             return object_pairs_hook(loader.construct_pairs(node))
+
         OrderedLoader.add_constructor(
-            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            construct_mapping)
+            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
         return yaml.load(stream, OrderedLoader)

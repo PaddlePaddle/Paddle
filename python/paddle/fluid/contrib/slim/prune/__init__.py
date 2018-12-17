@@ -18,4 +18,4 @@ from . import prune_strategy
 from .prune_strategy import *
 
 __all__ = pruner.__all__
-__all__ += prune_strategy.__all__ 
+__all__ += prune_strategy.__all__
