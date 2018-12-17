@@ -284,7 +284,8 @@ def detection_output(loc,
         prior_box=prior_box,
         prior_box_var=prior_box_var,
         target_box=loc,
-        code_type='decode_center_size')
+        code_type='decode_center_size',
+        box_normalized=shared)
     if shared:
         scores = nn.softmax(input=scores)
         scores = nn.transpose(scores, perm=[0, 2, 1])
