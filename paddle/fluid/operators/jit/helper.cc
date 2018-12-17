@@ -44,8 +44,9 @@ const char* to_string(KernelType kt) {
     ONE_CASE(gruhtpart2);
     ONE_CASE(crfdecoding);
     ONE_CASE(layernorm);
+    ONE_CASE(nchw16cmulnc);
     default:
-      PADDLE_THROW("Not support type: %d", kt);
+      PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";
   }
   return nullptr;

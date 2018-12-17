@@ -319,6 +319,19 @@ void LayerNorm(T* x, T* out, T* mean, T* var, const T* scale, const T* bias,
   }
 }
 
+template <typename T>
+void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
+  int offset = 0;
+  for (int h = 0; h < height; ++h) {
+    for (int w = 0; w < width; ++w) {
+      for (int i = 0; i < 16; ++i) {
+        z[i + offset] = y[i] * x[i + offset];
+      }
+      offset += ZMM_FLOAT_BLOCK;
+    }
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -354,6 +367,8 @@ DECLARE_REFER_KERNEL(GRUHtPart2, GRUTuples);
 
 DECLARE_REFER_KERNEL(CRFDecoding, CRFDecodingTuples);
 DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
+
+DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
 
 #undef DECLARE_REFER_KERNEL
 
