@@ -241,7 +241,7 @@ def polynomial_decay(learning_rate,
         Variable: The decayed learning rate
     """
 
-    def _lr_schedule(dtype):
+    def _lr_schedule(dtype, decay_steps=decay_steps):
         with default_main_program()._lr_schedule_guard():
             global_step = _decay_step_counter()
 

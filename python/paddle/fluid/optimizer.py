@@ -50,8 +50,10 @@ class Optimizer(object):
 
     def __init__(self, learning_rate, regularization=None, name=None):
         if not isinstance(learning_rate, float) and \
-                not isinstance(learning_rate, framework.Variable):
-            raise TypeError("learning rate should be float or Variable")
+                not isinstance(learning_rate, framework.Variable) and \
+                not callable(learning_rate):
+            raise TypeError(
+                "learning rate should be float or Variable or callable(dtype)")
         self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
@@ -81,6 +83,7 @@ class Optimizer(object):
             dtype = 'float32' if self._dtype is None else self._dtype
             self._learning_rate_map[framework.default_main_program()] = lr(
                 dtype)
+            return
         else:
             if not isinstance(self._learning_rate, float):
                 raise TypeError(
