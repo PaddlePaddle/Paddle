@@ -233,6 +233,29 @@ class TestBook(unittest.TestCase):
                     pool_stride=[1, 2],
                     pool_padding=(2, 1)))
 
+    def test_adaptive_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool2d(
+                    x, [3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
+    def test_adaptive_pool3d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 244, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool3d(
+                    x, [3, 3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(
+                x, [3, 3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
@@ -508,6 +531,16 @@ class TestBook(unittest.TestCase):
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
             output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_psroi_pool(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
             self.assertIsNotNone(output)
         print(str(program))
 
