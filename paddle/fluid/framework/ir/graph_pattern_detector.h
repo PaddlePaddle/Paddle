@@ -671,6 +671,51 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_y);
   PATTERN_DECL_NODE(elementwise_add_out);
 };
+
+// Conv + ElementwiseAdd + an activation
+// This pattern can futher fuse the conv related ops after the conv+bn fusion.
+struct ConvElementwiseaddAct : public PatternBase {
+  ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
+
+  PDNode* operator()(PDNode* conv_in);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(conv_filter);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);  // input
+  PATTERN_DECL_NODE(elementwise_add_out);
+
+  PATTERN_DECL_NODE(act_op);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// Conv + ElementwiseAdd + ElementwiseAdd + Activation
+struct ConvElementwiseadd2Act : public PatternBase {
+  ConvElementwiseadd2Act(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "conv_elementwiseadd2_elementwiseadd_act") {}
+
+  PDNode* operator()(PDNode* conv_in);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_out);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);  // input
+  PATTERN_DECL_NODE(elementwise_add_out);
+
+  PATTERN_DECL_NODE(elementwise_add_op_1);
+  PATTERN_DECL_NODE(elementwise_add_in_y_1);  // input
+  PATTERN_DECL_NODE(elementwise_add_out_1);
+
+  PATTERN_DECL_NODE(act_op);
+  PATTERN_DECL_NODE(act_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
