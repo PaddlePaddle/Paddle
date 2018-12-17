@@ -159,9 +159,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
     Tensor col_matrix;
     if (is_expand) {
       auto tmp_allocation_ptr =
-          platform::DeviceTemporaryAllocator::Instance()
-              .Get<DeviceContext>(dev_ctx)
-              .Allocate(framework::product(col_shape) * sizeof(T));
+          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
+              framework::product(col_shape) * sizeof(T));
       Tensor tep_tensor =
           platform::GetTensor<T>(std::move(tmp_allocation_ptr), col_shape);
 

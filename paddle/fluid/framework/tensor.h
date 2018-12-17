@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 
 namespace framework {
@@ -69,7 +68,7 @@ class Tensor {
  public:
   Tensor() : type_(proto::VarType::FP32), offset_(0) {}
 
-  explicit Tensor(std::type_index type) : type_(type), offset_(0) {}
+  explicit Tensor(std::type_index type);
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>

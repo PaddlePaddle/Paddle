@@ -54,8 +54,8 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
     auto allocation = cpu_alloc.Allocate(memory_size);
     void* address = allocation->ptr();
     int numel = memory_size / sizeof(float);
-    framework::Tensor tensor = ConvertAllocaionPtrToTensor<float>(
-        std::move(allocation), framework::make_ddim({numel}));
+    framework::Tensor tensor =
+        GetTensor<float>(std::move(allocation), framework::make_ddim({numel}));
     PADDLE_ENFORCE_EQ(address, tensor.data<float>());
     PADDLE_ENFORCE_EQ(tensor.numel(), numel);
   }
@@ -69,8 +69,8 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
     auto allocation = gpu_alloc.Allocate(memory_size);
     void* address = allocation->ptr();
     int numel = memory_size / sizeof(float);
-    framework::Tensor tensor = ConvertAllocaionPtrToTensor<float>(
-        std::move(allocation), framework::make_ddim({numel}));
+    framework::Tensor tensor =
+        GetTensor<float>(std::move(allocation), framework::make_ddim({numel}));
     PADDLE_ENFORCE_EQ(address, tensor.data<float>());
     PADDLE_ENFORCE_EQ(tensor.numel(), numel);
   }
@@ -98,7 +98,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     {
       auto allocation = cpu_alloc.Allocate(memory_size);
       address = allocation->ptr();
-      framework::Tensor tensor = ConvertAllocaionPtrToTensor<float>(
+      framework::Tensor tensor = GetTensor<float>(
           std::move(allocation), framework::make_ddim({numel}));
       PADDLE_ENFORCE_EQ(address, tensor.data<float>());
       PADDLE_ENFORCE_EQ(tensor.numel(), numel);
@@ -120,7 +120,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     {
       auto allocation = gpu_alloc.Allocate(memory_size);
       address = allocation->ptr();
-      framework::Tensor tensor = ConvertAllocaionPtrToTensor<float>(
+      framework::Tensor tensor = GetTensor<float>(
           std::move(allocation), framework::make_ddim({numel}));
       PADDLE_ENFORCE_EQ(address, tensor.data<float>());
       PADDLE_ENFORCE_EQ(tensor.numel(), numel);
