@@ -385,7 +385,7 @@ TEST(SortOpLikeDescOrder, AddAndReplaceOpDescInplace) {
   graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
 
   auto find_node_in_graph = [&](std::string s) {
-    ir::Node* ret;
+    ir::Node* ret = nullptr;
     for (auto n : graph.Nodes()) {
       if (n->Name() == s) {
         ret = n;
@@ -462,37 +462,6 @@ TEST(SortOpLikeDescOrder, AddAndReplaceOpDescInplace) {
     auto node = graph_nodes[i];
     auto op_desc = op_descs[i];
     ASSERT_TRUE(IsSameDesc(node->Op(), op_desc));
-  }
-}
-
-TEST(BFSSortGraphOps, NormalTest) {
-  auto prog = FillProgramDesc();
-  {
-    auto op = prog.MutableBlock(0)->AppendOp();
-    prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);
-    op->SetType("sum");
-    op->SetInput("X", {"b", "c"});
-    op->SetOutput("Out", {"d1"});
-  }
-  {
-    prog.MutableBlock(0)->Var("e1")->SetType(proto::VarType::LOD_TENSOR);
-    auto op = prog.MutableBlock(0)->AppendOp();
-    op->SetType("sum");
-    op->SetInput("X", {"d", "d1"});
-    op->SetOutput("Out", {"e1"});
-  }
-  ir::Graph graph(prog);
-  // the op name are not unique
-  // use op output instead
-  std::vector<std::string> bfs_order = {
-      "c", "b", "d", "d1", "e", "e1",
-  };
-  auto ops = BFSSortGraphOps(graph);
-  PADDLE_ENFORCE(bfs_order.size() == ops.size());
-  for (size_t i = 0; i < bfs_order.size(); ++i) {
-    auto expect = bfs_order[i];
-    auto real = ops[i]->outputs[0]->Name();
-    ASSERT_EQ(expect, real);
   }
 }
 
