@@ -80,7 +80,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode,
+                                args.trainers, args.sync_mode, False,
                                 args.current_endpoint)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
@@ -94,8 +94,8 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         exe.run(startup_prog)
 
         if need_load and model_dir:
-            self._load_persistable_vars(exe, model_dir, startup_prog,
-                                        pserver_prog)
+            fluid.io.load_persistables(exe, model_dir, pserver_prog)
+
         exe.run(pserver_prog)
 
     def run_trainer(self, args):
@@ -187,8 +187,6 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                     if need_save and model_dir and idx == skip_steps and args.trainer_id == 0:
                         io.save_persistables(startup_exe, model_dir,
                                              trainer_prog)
-                        io._save_persistables_on_pserver(startup_exe, model_dir,
-                                                         trainer_prog)
             else:
                 for idx in six.moves.xrange(RUN_STEP):
                     data = get_data()

@@ -755,10 +755,12 @@ class TestLoadSliceVar(TranspilerTest):
             ps1_numel, ps2_numel = 0L, 0L
 
             ps1_var = vars_ps1[idx]
-  
+
             if not ps1_var.is_slice:
-                total_numel = six.moves.reduce(lambda x, y: x * y, vars_ps1[idx].origin.shape)
-                ps1_numel = six.moves.reduce(lambda x, y: x * y,  vars_ps1[idx].slice.shape)
+                total_numel = six.moves.reduce(lambda x, y: x * y,
+                                               vars_ps1[idx].origin.shape)
+                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                                             vars_ps1[idx].slice.shape)
             else:
                 ps2_var = None
                 for var in vars_ps2:
@@ -766,9 +768,12 @@ class TestLoadSliceVar(TranspilerTest):
                         ps2_var = var
                         break
 
-                total_numel = six.moves.reduce(lambda x, y: x * y, ps1_var.origin.shape)
-                ps1_numel = six.moves.reduce(lambda x, y: x * y, ps1_var.slice.shape)
-                ps2_numel = six.moves.reduce(lambda x, y: x * y, ps2_var.slice.shape)
+                total_numel = six.moves.reduce(lambda x, y: x * y,
+                                               ps1_var.origin.shape)
+                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                                             ps1_var.slice.shape)
+                ps2_numel = six.moves.reduce(lambda x, y: x * y,
+                                             ps2_var.slice.shape)
 
             self.assertEqual(total_numel, ps1_numel + ps2_numel)
 

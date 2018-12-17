@@ -679,20 +679,22 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             is_slice = param.is_slice
             offset = param.offset
 
-            origin = load_block.create_var(
-                name="{}.load".format(origin_var.name),
-                type=origin_var.type,
-                shape=origin_var.shape,
-                dtype=origin_var.dtype,
-                persistable=origin_var.persistable)
-
-            load_block.append_op(
-                type='load',
-                inputs={},
-                outputs={'Out': [origin]},
-                attrs={'file_path': os.path.join(dirname, origin_var.name)})
-
             if is_slice:
+                origin = load_block.create_var(
+                    name="{}.load".format(origin_var.name),
+                    type=origin_var.type,
+                    shape=origin_var.shape,
+                    dtype=origin_var.dtype,
+                    persistable=origin_var.persistable)
+
+                load_block.append_op(
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [origin]},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_var.name)
+                    })
+
                 slice = load_block.create_var(
                     name=slice_var.name,
                     type=slice_var.type,
@@ -713,6 +715,20 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                            'ends': [end]})
 
                 need_delete_vars.append(origin)
+            else:
+                origin = load_block.create_var(
+                    name="{}".format(origin_var.name),
+                    type=origin_var.type,
+                    shape=origin_var.shape,
+                    dtype=origin_var.dtype,
+                    persistable=origin_var.persistable)
+                load_block.append_op(
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [origin]},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_var.name)
+                    })
 
         load_block.append_op(
             type='delete_var',
