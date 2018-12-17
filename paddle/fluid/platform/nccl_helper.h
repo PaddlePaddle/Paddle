@@ -20,6 +20,7 @@
 #include <thread>  // NOLINT
 #include <typeindex>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -28,14 +29,14 @@
 namespace paddle {
 namespace platform {
 
-inline ncclDataType_t ToNCCLDataType(std::type_index type) {
-  if (type == typeid(float)) {  // NOLINT
+inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
+  if (type == framework::proto::VarType::FP32) {
     return ncclFloat;
-  } else if (type == typeid(double)) {  // NOLINT
+  } else if (type == framework::proto::VarType::FP64) {
     return ncclDouble;
-  } else if (type == typeid(int)) {  // NOLINT
+  } else if (type == framework::proto::VarType::INT32) {
     return ncclInt;
-  } else if (type == typeid(int64_t)) {  // NOLINT
+  } else if (type == framework::proto::VarType::INT64) {
     return ncclInt64;
   } else {
     PADDLE_THROW("Not supported");
