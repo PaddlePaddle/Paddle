@@ -227,7 +227,9 @@ struct SparseAdamFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
-    if (!(lazy_mode_ && row_idx < 0)) {
+    if (lazy_mode_ && row_idx < 0) {
+      return;
+    } else {
       T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
       adam_update(i, g);
     }
