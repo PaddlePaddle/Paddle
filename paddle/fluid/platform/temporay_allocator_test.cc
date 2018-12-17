@@ -65,7 +65,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
   TemporaryAllocator gpu_alloc(gpu_place);
 
   {
-    size_t memory_size = 201;
+    size_t memory_size = 300;
     auto allocation = gpu_alloc.Allocate(memory_size);
     void* address = allocation->ptr();
     int numel = memory_size / sizeof(float);
@@ -90,7 +90,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
   platform::CPUPlace cpu_place;
   TemporaryAllocator cpu_alloc(cpu_place);
   {
-    size_t memory_size = 300;
+    size_t memory_size = 400;
     int numel = memory_size / sizeof(float);
 
     framework::Tensor out_side_tensor;
@@ -114,7 +114,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
   TemporaryAllocator gpu_alloc(gpu_place);
   {
     void* address;
-    size_t memory_size = 301;
+    size_t memory_size = 500;
     int numel = memory_size / sizeof(float);
     framework::Tensor out_side_tensor;
     {
