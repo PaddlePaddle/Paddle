@@ -31,6 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -53,32 +55,93 @@ class BRPCClient : public RPCClient {
   BRPCClient() {}
   virtual ~BRPCClient();
 
-  bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
-                    const framework::Scope& scope, const std::string& var_name,
-                    int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncSendVar(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            int64_t time_out = FLAGS_rpc_deadline) override;
 
-  bool AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
-                   const framework::Scope& scope, const std::string& var_name,
-                   int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncGetVar(const std::string& ep,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope& scope,
+                           const std::string& var_name,
+                           int64_t time_out = FLAGS_rpc_deadline) override;
 
-  bool AsyncPrefetchVar(const std::string& ep,
-                        const platform::DeviceContext& ctx,
-                        const framework::Scope& scope,
-                        const std::string& in_var_name,
-                        const std::string& out_var_name,
-                        int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncGetMonomerBarrier(
+      const std::string& ep, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncGetMonomerVariable(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncPrefetchVar(const std::string& ep,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope& scope,
+                                const std::string& in_var_name,
+                                const std::string& out_var_name,
+                                const std::string& table_name = "",
+                                int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void Wait() override;
+  VarHandlePtr AsyncSendBatchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
+
+  VarHandlePtr AsyncSendFetchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
+
+  VarHandlePtr AsyncCheckpointNotify(
+      const std::string& ep, const std::string& dir,
+      int64_t time_out = FLAGS_rpc_deadline) override;
+
+  bool Wait() override;
+
+  void SendComplete() override;
 
  private:
+  VarHandlePtr _AsyncGetVar(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            const std::string& method_name,
+                            int64_t time_out = FLAGS_rpc_deadline);
+
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);
+
+  VarHandlePtr AsyncSendComplete(const std::string& ep,
+                                 int64_t time_out = FLAGS_rpc_deadline);
+
+  VarHandlePtr AsyncSendMessage(const std::string& ep,
+                                const std::string& method_name,
+                                const std::string& message, int64_t time_out);
+
+  VarHandlePtr AsyncSendVarMessage(const std::string& ep,
+                                   const std::string& method_name,
+                                   const sendrecv::VariableMessage& req,
+                                   int64_t time_out);
+
+  friend void HandleSendResponse(brpc::Controller* cntl,
+                                 sendrecv::VoidMessage* response,
+                                 VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
+                                 ChannelContextPtr ch_ctx, BRPCClient* cls);
+
+  friend void HandleGetResponse(brpc::Controller* cntl,
+                                sendrecv::VariableMessage* response,
+                                VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
+                                ChannelContextPtr ch_ctx, BRPCClient* cls);
+
+  friend void HandleFetchBarrierResponse(brpc::Controller* cntl,
+                                         sendrecv::VariableMessage* response,
+                                         VarHandlePtr var_h,
+                                         ChannelQueuePtr ch_ptr,
+                                         ChannelContextPtr ch_ctx,
+                                         BRPCClient* cls);
+  void DecreaseReqCount() {
+    if (--req_count_ <= 0) {
+      sync_cond_.notify_all();
+    }
+  }
 
  private:
   std::unordered_map<std::string, ChannelQueuePtr> channels_;
@@ -87,6 +150,8 @@ class BRPCClient : public RPCClient {
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
+
+  static constexpr int brpc_channel_num_per_server_ = 4;
 
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
