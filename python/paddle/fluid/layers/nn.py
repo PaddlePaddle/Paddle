@@ -31,148 +31,37 @@ from functools import reduce
 from .. import core
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'bpr_loss',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'sequence_unpad',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'sequence_slice',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'hsigmoid',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'group_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'squeeze',
-    'unsqueeze',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'roi_pool',
-    'roi_align',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'resize_nearest',
-    'gather',
-    'scatter',
-    'sequence_scatter',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'selu',
-    'log',
-    'crop',
-    'rank_loss',
-    'margin_rank_loss',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
-    'prelu',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
-    'flatten',
-    'sequence_mask',
-    'stack',
-    'pad2d',
-    'unstack',
-    'sequence_enumerate',
-    'expand',
-    'sequence_concat',
-    'scale',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
-    'uniform_random_batch_size_like',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'shape',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
-    'clip',
-    'clip_by_norm',
-    'mean',
-    'mul',
-    'sigmoid_cross_entropy_with_logits',
-    'maxout',
-    'space_to_depth',
-    'affine_grid',
-    'sequence_reverse',
-    'affine_channel',
-    'similarity_focus',
-    'hash',
-    'grid_sampler',
-    'log_loss',
-    'add_position_encoding',
-    'bilinear_tensor_product',
-    'merge_selected_rows',
-    'get_tensor_from_selected_rows',
-    'lstm',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'bpr_loss', 'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
+    'conv3d', 'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d',
+    'pool3d', 'batch_norm', 'beam_search_decode', 'conv2d_transpose',
+    'conv3d_transpose', 'sequence_expand', 'sequence_expand_as', 'sequence_pad',
+    'sequence_unpad', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
+    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
+    'sequence_slice', 'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance',
+    'l2_normalize', 'matmul', 'topk', 'warpctc', 'sequence_reshape',
+    'transpose', 'im2sequence', 'nce', 'hsigmoid', 'beam_search', 'row_conv',
+    'multiplex', 'layer_norm', 'group_norm', 'softmax_with_cross_entropy',
+    'smooth_l1', 'one_hot', 'autoincreased_step_counter', 'reshape', 'squeeze',
+    'unsqueeze', 'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth',
+    'roi_pool', 'roi_align', 'dice_loss', 'image_resize', 'image_resize_short',
+    'resize_bilinear', 'resize_nearest', 'gather', 'scatter',
+    'sequence_scatter', 'random_crop', 'mean_iou', 'relu', 'selu', 'log',
+    'crop', 'rank_loss', 'margin_rank_loss', 'elu', 'relu6', 'pow', 'stanh',
+    'hard_sigmoid', 'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu',
+    'flatten', 'sequence_mask', 'stack', 'pad2d', 'unstack',
+    'sequence_enumerate', 'expand', 'sequence_concat', 'scale',
+    'elementwise_add', 'elementwise_div', 'elementwise_sub', 'elementwise_mul',
+    'elementwise_max', 'elementwise_min', 'elementwise_pow',
+    'uniform_random_batch_size_like', 'gaussian_random', 'sampling_id',
+    'gaussian_random_batch_size_like', 'sum', 'slice', 'shape', 'logical_and',
+    'logical_or', 'logical_xor', 'logical_not', 'clip', 'clip_by_norm', 'mean',
+    'mul', 'sigmoid_cross_entropy_with_logits', 'maxout', 'space_to_depth',
+    'affine_grid', 'sequence_reverse', 'affine_channel', 'similarity_focus',
+    'hash', 'grid_sampler', 'log_loss', 'add_position_encoding',
+    'bilinear_tensor_product', 'merge_selected_rows',
+    'get_tensor_from_selected_rows', 'lstm', 'shufflechannel'
 ]
 
 kIgnoreIndex = -100
@@ -9121,4 +9010,44 @@ def get_tensor_from_selected_rows(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={})
+    return out
+
+
+def shuffle_channel(x, group=1, name=None):
+    """
+    **Shuffle Channel Operator**
+    This operator obtains the group convolutional layer with channels shuffled.
+    First, divide the input channels in each group into several subgroups,
+    then, feed each group in the next layer with different subgroups.
+    Shuffle channel operation makes it possible to build more powerful structures
+    with multiple group convolutional layers.
+    
+    Args: 
+        x: The input tensor variable.
+
+
+    Returns:
+        Variable: channel shuffled tensor variable.
+
+    Raises:
+        ValueError: If group in not a int type variable.
+
+    Examples:
+        .. code-block:: python
+    
+
+    """
+    helper = LayerHelper("shuffle_channel", **locals())
+
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.intput_dtype('x'))
+
+    if not isinstance(group, int):
+        raise TypeError("group must be int type")
+
+    helper.append_op(
+        type="shuffle_channel",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"group": group})
     return out

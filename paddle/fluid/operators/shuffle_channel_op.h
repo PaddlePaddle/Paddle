@@ -1,0 +1,101 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#pragma once
+#include <algorithm>
+#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
+
+namespace paddle {
+namespace operators {
+
+template <typename DeviceContext, typename T>
+class ShuffleChannelOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* input = ctx.Input<framework::Tensor>("X");
+    auto* output = ctx.Output<framework::Tensor>("Out");
+    auto group = ctx.Input<framework::Tensor>("group");
+
+    auto input_dims = input->dims();
+    auto num = input_dims[0];
+    auto channel = input_dims[1];
+    auto height = input_dims[2];
+    auto weight = input_dims[3];
+
+    auto feature_map_size = channel * height * weight;
+    auto sp_sz = height * weight;
+
+    int group_row = group;
+    int group_column = channels / group_row;
+
+    const T* input_data = input->data<T>();
+    T* output_data = out->mutable_data<T>(ctx.GetPlace());
+
+    for (int n = 0; n < num; ++n) {
+      output_data_temp = output_data + n * feature_map_size;
+      input_data_temp = input_data + n * feature_map_size;
+      for (int i = 0; i < group_row; ++i) {
+        for (int j = 0; j < group_column; ++j) {
+          const auto* p_i = input_data_temp + (i * group_column + j) * sp_sz;
+          auto* p_o = output_data_temp + (j * group_row + i) * sp_sz;
+          memcpy(p_o, p_i, sizeof(Dtype) * sp_sz);
+        }
+      }
+    }
+    return;
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<framework::Tensor>("X");
+    auto group = ctx.Input<framework::Tensor>("group");
+
+    auto input_dims = input->dims();
+    auto num = input_dims[0];
+    auto channel = input_dims[1];
+    auto height = input_dims[2];
+    auto weight = input_dims[3];
+    auto feature_map_size = channel * height * weight;
+    auto sp_sz = height * weight;
+
+    int group_row = group;
+    int group_column = channels / group_row;
+
+    auto* output_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+    const T* output_grad_data = output_grad->data<T>();
+
+    for (int n = 0; n < num; ++n) {
+      output_grad_temp = output_grad_data + n * feature_map_size;
+      input_grad_temp = input_grad_data + n * feature_map_size;
+      for (int i = 0; i < group_row; ++i) {
+        for (int j = 0; j < group_column; ++j) {
+          const auto* p_i = output_grad_temp + (i * group_column + j) * sp_sz;
+          auto* p_o = input_grad_temp + (j * group_row + i) * sp_sz;
+          memcpy(p_o, p_i, sizeof(Dtype) * sp_sz);
+        }
+      }
+    }
+    return;
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
