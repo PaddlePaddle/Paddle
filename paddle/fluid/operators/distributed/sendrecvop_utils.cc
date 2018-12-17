@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/platform/port.h"
@@ -45,7 +46,6 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
-
     ctx.Wait();
     return TensorPayload(result);
 #else

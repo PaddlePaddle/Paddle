@@ -17,17 +17,36 @@
 #include <vector>
 #include "paddle/fluid/framework/details/memory_reuse_types.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/reference_count_op_handle.h"
+#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
+static ComputationOpHandle *FindNextComputationOpHandle(VarHandle *var_in) {
+  std::queue<VarHandleBase *> queue;
+  queue.push(var_in);
+  do {
+    auto *var = queue.front();
+    queue.pop();
+    for (auto *op : var->PendingOps()) {
+      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
+      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
+        return compute_op;
+      }
+      for (auto *out_var : op->Outputs()) {
+        queue.push(out_var);
+      }
+    }
+  } while (!queue.empty());
+  return nullptr;
+}
+
 std::unique_ptr<ir::Graph> MemoryEarlyDeletePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto& graph_pool = Get<GraphNodePool>(kGraphNodePool);
-  auto& gcs = Get<DeviceGarbageCollectorMap>(kGarbageCollector);
+  auto& gcs = Get<GarbageCollectorMap>(kGarbageCollector);
 
   std::unordered_map<std::string, std::unordered_set<OpDesc*>> unlived_vars;
   unlived_vars.reserve(graph_pool.size());
@@ -40,6 +59,7 @@ std::unique_ptr<ir::Graph> MemoryEarlyDeletePass::ApplyImpl(
     if (unlived_vars.empty()) return;
     // unlived vars can be deleted after the last used op has finished.
     auto* compute_op = dynamic_cast<ComputationOpHandle*>(op);
+    const auto& places = Get<std::vector<platform::Place>>(kAllPlaces);
     for (auto& var : vars) {
       auto* var_handle = dynamic_cast<VarHandle*>(var);
       auto var_name = var->Node()->Name();
@@ -64,13 +84,7 @@ std::unique_ptr<ir::Graph> MemoryEarlyDeletePass::ApplyImpl(
       }
       auto* early_delete_node =
           graph->CreateEmptyNode("early_delete", ir::Node::Type::kOperation);
-      GarbageCollector<Tensor>* gc = nullptr;
-      if (platform::is_gpu_place(var_place)) {
-        auto place = boost::get<platform::CUDAPlace>(var_place);
-        gc = gcs[place.device].get();
-      } else {
-        gc = gcs[kDefaultCPUGarbageCollectorId].get();
-      }
+      GarbageCollector* gc = gcs.at(places[compute_op->GetScopeIdx()]).get();
       auto* early_delete_handle = new EarlyDeleteOpHandle(
           early_delete_node, compute_op->GetScope(), var_place, {var_name}, gc);
       if (compute_op->Outputs().empty()) {
