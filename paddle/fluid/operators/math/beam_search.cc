@@ -30,7 +30,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
                   const framework::LoDTensor &scores,
                   framework::LoDTensor *selected_ids,
                   framework::LoDTensor *selected_scores, size_t level,
-                  size_t beam_size, int end_id) {
+                  size_t beam_size, int end_id, bool is_accumulated) {
     // Input the arguments that needed by this class.
     ids_ = &ids;
     scores_ = &scores;
@@ -42,16 +42,16 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     auto abs_lod = framework::ToAbsOffset(ids_->lod());
     auto &high_level = abs_lod[lod_level_];
 
-    LOG(INFO) << "ids.abs_lod: " << abs_lod;
+    // LOG(INFO) << "ids.abs_lod: " << abs_lod;
 
     auto items = SelectTopBeamSizeItems(pre_ids, pre_scores);
     auto selected_items = ToMap(items, high_level.back());
-    LOG(INFO) << "selected_items:";
-    for (size_t i = 0; i < selected_items.size(); ++i) {
-      for (auto &item : selected_items[i]) {
-        LOG(INFO) << item.ToString();
-      }
-    }
+    // LOG(INFO) << "selected_items:";
+    // for (size_t i = 0; i < selected_items.size(); ++i) {
+    //   for (auto &item : selected_items[i]) {
+    //     LOG(INFO) << item.ToString();
+    //   }
+    // }
 
     PruneEndBeams(pre_ids, &selected_items);
     // calculate the output tensor's height
@@ -90,6 +90,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
+    // LOG(INFO) << "selected_ids: " << *selected_ids;
+    // LOG(INFO) << "selected_scores: " << *selected_scores;
   }
 
   /*
@@ -190,13 +192,13 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
       }
       result.emplace_back(items);
     }
-    LOG(INFO) << "SelectTopBeamSizeItems result size " << result.size();
-    for (auto &items : result) {
-      LOG(INFO) << "item set:";
-      for (auto &item : items) {
-        LOG(INFO) << item.ToString();
-      }
-    }
+    // LOG(INFO) << "SelectTopBeamSizeItems result size " << result.size();
+    // for (auto &items : result) {
+    //   LOG(INFO) << "item set:";
+    //   for (auto &item : items) {
+    //     LOG(INFO) << item.ToString();
+    //   }
+    // }
 
     return result;
   }
@@ -246,10 +248,10 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
       }
     }
 
-    LOG(INFO) << "Next item:";
-    for (auto &item : *items) {
-      LOG(INFO) << item.ToString();
-    }
+    // LOG(INFO) << "Next item:";
+    // for (auto &item : *items) {
+    //   LOG(INFO) << item.ToString();
+    // }
 
     sent_offset_++;
     return true;

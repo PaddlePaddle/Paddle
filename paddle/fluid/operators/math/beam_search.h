@@ -111,7 +111,7 @@ class BeamSearchFunctor {
                   const framework::LoDTensor& scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores, size_t level,
-                  size_t beam_size, int end_id);
+                  size_t beam_size, int end_id, bool is_accumulated);
 };
 
 }  // namespace math

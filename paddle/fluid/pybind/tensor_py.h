@@ -221,7 +221,7 @@ inline void PyCUDATensorSetFromArray(
     paddle::platform::CUDAPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(array.ndim()); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 

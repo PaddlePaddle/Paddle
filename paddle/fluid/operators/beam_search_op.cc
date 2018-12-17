@@ -52,6 +52,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("beam_size", "beam size for beam search");
     AddAttr<int>("end_id",
                  "the token id which indicates the end of a sequence");
+    AddAttr<bool>("is_accumulated", "").SetDefault(true);
 
     AddComment(R"DOC(
 This operator does the search in beams for one time step. 
@@ -75,7 +76,6 @@ class BeamSearchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     for (const std::string &arg :
          std::vector<std::string>({"pre_ids", "ids", "scores"})) {
@@ -89,12 +89,14 @@ class BeamSearchOp : public framework::OperatorWithKernel {
     }
   }
 
+ protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::LoDTensor>("pre_ids")->type()),
-        platform::CPUPlace());
+        // platform::CPUPlace());
+        ctx.device_context());
     return kt;
   }
 };
