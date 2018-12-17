@@ -32,7 +32,7 @@ inline typename std::enable_if<
     std::is_same<typename KernelTuples::data_type, float>::value &&
         std::is_same<PlaceType, platform::CPUPlace>::value,
     typename KernelTuples::func_type>::type
-GetJitCode(typename KernelTuples::attr_type attr) {
+GetJitCode(const typename KernelTuples::attr_type& attr) {
   using Func = typename KernelTuples::func_type;
   using Attr = typename KernelTuples::attr_type;
   size_t key = JitCodeKey<Attr>(attr);
@@ -68,7 +68,7 @@ inline typename std::enable_if<
     !std::is_same<typename KernelTuples::data_type, float>::value ||
         !std::is_same<PlaceType, platform::CPUPlace>::value,
     typename KernelTuples::func_type>::type
-GetJitCode(typename KernelTuples::attr_type attr) {
+GetJitCode(const typename KernelTuples::attr_type& attr) {
   return nullptr;
 }
 
@@ -93,8 +93,8 @@ inline typename KernelTuples::func_type GetRefer() {
 
 template <KernelType KT, typename KernelTuples,
           typename PlaceType = platform::CPUPlace>
-// TODO(TJ): const & attr
-typename KernelTuples::func_type Get(typename KernelTuples::attr_type attr) {
+typename KernelTuples::func_type Get(
+    const typename KernelTuples::attr_type& attr) {
   auto jitfunc = GetJitCode<KT, KernelTuples, PlaceType>(attr);
   if (jitfunc) {
     return jitfunc;

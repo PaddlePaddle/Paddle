@@ -31,13 +31,14 @@ inline void FCCompute(const BlasT<DeviceContext, T>& blas, const int M,
   }
   if (relu) {
     auto compute =
-        jit::Get<jit::vaddrelu, jit::XYZNTuples, platform::CPUPlcace>(N);
+        jit::Get<jit::vaddrelu, jit::XYZNTuples<T>, platform::CPUPlace>(N);
     for (int i = 0; i < M; i++) {
       T* dst = Y + i * N;
       compute(B, dst, dst, N);
     }
   } else {
-    auto compute = jit::Get<jit::vadd, jit::XYZNTuples, platform::CPUPlcace>(N);
+    auto compute =
+        jit::Get<jit::vadd, jit::XYZNTuples<T>, platform::CPUPlace>(N);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
