@@ -15,23 +15,31 @@
 #include "paddle/fluid/pybind/ir.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "pybind11/stl.h"
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+
 void BindGraph(py::module* m) {
   using paddle::framework::ProgramDesc;
   using paddle::framework::ir::Graph;
+  using paddle::framework::ir::Node;
+  using paddle::framework::OpDesc;
+  using paddle::framework::VarDesc;
   using pybind11::return_value_policy;
 
-  py::class_<Graph>(*m, "Graph", "")
+  py::class_<Graph, std::shared_ptr<Graph>>(*m, "Graph", "")
       .def(py::init<const ProgramDesc&>())
       .def("has", &Graph::Has)
-      .def("get", &Graph::Get<int>)
-      .def("get", &Graph::Get<float>)
-      .def("get", &Graph::Get<double>)
-      .def("get", &Graph::Get<std::string>)
+      .def("get_int", &Graph::Get<int>)
+      .def("get_float", &Graph::Get<float>)
+      .def("get_double", &Graph::Get<double>)
+      .def("get_string", &Graph::Get<std::string>)
       .def("set", &Graph::Set<int>)
       .def("set", &Graph::Set<float>)
       .def("set", &Graph::Set<double>)
@@ -42,8 +50,14 @@ void BindGraph(py::module* m) {
       .def("set_not_owned", &Graph::SetNotOwned<std::string>)
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
-      .def("create_var_node", &Graph::CreateVarNode,
-           return_value_policy::reference)
+      .def("create_var_node",
+           [](Graph& self, VarDesc& var_desc) -> std::shared_ptr<Node> {
+             return std::shared_ptr<Node>(self.CreateVarNode(&var_desc));
+           })
+      .def("create_op_node",
+           [](Graph& self, OpDesc& op_desc) -> std::shared_ptr<Node> {
+             return std::shared_ptr<Node>(self.CreateOpNode(&op_desc));
+           })
       .def("create_op_node", &Graph::CreateOpNode,
            return_value_policy::reference)
       .def("create_control_dep_var", &Graph::CreateControlDepVar,
@@ -55,6 +69,30 @@ void BindGraph(py::module* m) {
       .def("retrieve_node", &Graph::RetrieveNode,
            return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard);
+}
+
+void BindNode(py::module* m) {
+  using paddle::framework::ir::Node;
+  using paddle::framework::ir::CreateNodeForTest;
+  using pybind11::return_value_policy;
+
+  py::class_<Node>(*m, "Node")
+      .def(py::init(&CreateNodeForTest), return_value_policy::reference)
+      .def("name", &Node::Name)
+      .def("node_type", &Node::NodeType)
+      .def("var", &Node::Var)
+      .def("op", &Node::Op)
+      .def("id", &Node::id)
+      .def("is_op", &Node::IsOp)
+      .def("is_var", &Node::IsVar)
+      .def("is_ctrl_var", &Node::IsCtrlVar)
+      .def("rutime_has_attr", &Node::RuntimeHasAttr)
+      .def_readwrite("inputs", &Node::inputs)
+      .def_readwrite("oututs", &Node::outputs);
+
+  py::enum_<Node::Type>(*m, "NodeType")
+      .value("Operation", Node::Type::kOperation)
+      .value("Variable", Node::Type::kVariable);
 }
 }  // namespace pybind
 }  // namespace paddle
