@@ -44,6 +44,7 @@ def lstmp(
         act_proj=None):
     def _step(x, w_r, w_rh, w_c, r_pre, c_pre, proj_clip, cell_clip, act_gate, act_cell, act_cand,
               act_proj):
+        #import pdb; pdb.set_trace()
         g = np.dot(r_pre, w_r)  # 1 x 4D
         g = g + x
         g = np.reshape(g, (1, g.size))
@@ -58,8 +59,8 @@ def lstmp(
         c = g_f * c_pre + g_i * act_cand(c)  # 1 x D
 
         def array_clip(a, clip):
-            print('clip:{}'.format(clip))
-            print('old' + str(a))
+            #print('clip:{}'.format(clip))
+            #print('old' + str(a))
 
             size = np.prod(a.shape)
             new_a = np.reshape(a, (size))
@@ -67,7 +68,7 @@ def lstmp(
 		new_a[i] = max(new_a[i], -1.0 * clip)
 		new_a[i] = min(new_a[i], clip)
             new_a = np.reshape(new_a, a.shape)
-            print('new' + str(new_a))
+            #print('new' + str(new_a))
             return new_a
 
         if cell_clip > 0.0:
@@ -132,7 +133,7 @@ class TestLstmpOp(LstmTest.TestLstmOp):
     def reset_argument(self):
         pass
 
-    def setUp(self):
+    def setUp2(self):
         self.set_argument()
         # projection size
         self.P = 2
@@ -196,18 +197,23 @@ class TestLstmpOp(LstmTest.TestLstmOp):
             'proj_activation': self.act_proj
         }
 
-    def setUp2(self):
+    def setUp(self):
         self.set_argument()
         # projection size
         self.P = 10
+        #self.D = 9
         self.act_proj = self.act_cell
 
         self.reset_argument()
         self.op_type = 'lstmp'
+        #self.use_peepholes=False
+        #self.lod=[[7]]
+        #self.act_proj='identity'
+        #self.act_proj='tanh'
 
         T = sum(self.lod[0])
         N = len(self.lod[0])
-
+        #np.random.seed=123
         x = np.random.normal(size=(T, 4 * self.D)).astype('float64')
         if self.has_initial_state:
             h0 = np.random.normal(size=(N, self.P)).astype('float64')
@@ -225,7 +231,8 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         w_c = b[:, 4 * self.D:] if self.use_peepholes else None
         w_rh = np.random.normal(size=(self.D, self.P)).astype('float64')
         proj_clip = 0.1
-        cell_clip = 0.0
+        cell_clip = 0.1
+        #import pdb; pdb.set_trace()
         r, c = lstmp(x, self.lod, h0, c0, w, w_rh, w_b, w_c, self.is_reverse, proj_clip, cell_clip,
                      ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
                      ACTIVATION[self.act_cand], ACTIVATION[self.act_proj])
@@ -265,7 +272,7 @@ class TestLstmpOp(LstmTest.TestLstmOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2)
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005)
 
 
 class TestLstmpOpHasInitial(TestLstmpOp):
@@ -281,7 +288,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
-            ['Projection'],
+            ['Projection'], numeric_grad_delta=0.0000005,
             max_relative_error=1e-2)
 
     def test_check_grad_ingore_bias(self):
@@ -292,7 +299,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'ProjWeight', 'Weight'], ['Projection'],
-            max_relative_error=1e-2,
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005,
             no_grad_set=set('Bias'))
 
     def test_check_grad_ingore_weight(self):
@@ -303,7 +310,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'ProjWeight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005,
             no_grad_set=set('Weight'))
 
     def test_check_grad_ingore_proj_weight(self):
@@ -314,7 +321,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005,
             no_grad_set=set('ProjWeight'))
 
     def test_check_grad_ingore_input(self):
@@ -325,7 +332,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Weight', 'ProjWeight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005, 
             no_grad_set=set('Input'))
 
     def test_check_grad_ingore_h0(self):
@@ -336,7 +343,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'C0'], ['Projection'],
-            max_relative_error=1e-2,
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005,
             no_grad_set=set('H0'))
 
     def test_check_grad_ingore_c0(self):
@@ -347,7 +354,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0'], ['Projection'],
-            max_relative_error=1e-2,
+            max_relative_error=1e-2, numeric_grad_delta=0.0000005,
             no_grad_set=set('C0'))
 
 

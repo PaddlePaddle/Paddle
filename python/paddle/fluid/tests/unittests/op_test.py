@@ -469,6 +469,7 @@ class OpTest(unittest.TestCase):
                 delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
+        #import pdb; pdb.set_trace()
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
         #import pdb; pdb.set_trace()

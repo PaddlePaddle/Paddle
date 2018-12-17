@@ -106,13 +106,14 @@ class lstm {
                              ActivationType active_state) {
     *grad_og =
         activation((*output_grad) * (*state_atv), *value_og, active_gate);
-    T cur_state_grad = activation((*output_grad) * (*value_og), *state_atv, active_state);
     if (*cell_clip > 0.0f) {
       if (*state >= (*cell_clip) || *state <= (0.0f - (*cell_clip))) {
-        cur_state_grad = 0.0f;
+        *state_grad = 0.0f;
+      } else {
+        *state_grad += activation((*output_grad) * (*value_og), *state_atv, active_state)
+                   + (*grad_og) * (*checkO);
       }
     }
-    *state_grad += cur_state_grad + (*grad_og) * (*checkO);
     *grad_in = activation((*state_grad) * (*value_ig), *value_in, active_node);
     *grad_ig = activation((*state_grad) * (*value_in), *value_ig, active_gate);
     *grad_fg =
@@ -139,16 +140,18 @@ class lstm {
       ActivationType active_gate, ActivationType active_state) {
     *grad_og = activation(_mm256_mul_ps(*output_grad, *state_atv), *value_og,
                           active_gate);
-    __m256 cur_state_grad = activation(_mm256_mul_ps(*output_grad, *value_og),
-                                       *state_atv, active_state);
     if (*cell_clip > 0.0f) {
       T *state_ = reinterpret_cast<T*>(state);
       if (*state_ >= (*cell_clip) || *state_ <= (0.0f - (*cell_clip))) {
-        cur_state_grad = _mm256_set1_ps(0.0f); 
+        *state_grad = _mm256_set1_ps(0.0f); 
+      } else {
+	*state_grad =
+	    _mm256_add_ps(activation(_mm256_mul_ps(*output_grad, *value_og),
+				     *state_atv, active_state),
+			  *state_grad);
+	*state_grad = _mm256_add_ps(_mm256_mul_ps(*grad_og, *checkO), *state_grad);
       }
     } 
-    *state_grad = _mm256_add_ps(cur_state_grad, *state_grad);
-    *state_grad = _mm256_add_ps(_mm256_mul_ps(*grad_og, *checkO), *state_grad);
     *grad_in = activation(_mm256_mul_ps(*state_grad, *value_ig), *value_in,
                           active_node);
     *grad_ig = activation(_mm256_mul_ps(*state_grad, *value_in), *value_ig,
