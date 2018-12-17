@@ -359,14 +359,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
           param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
           grad_merge.rows().size(), lazy_mode);
       if (lazy_mode) {
+        std::vector<int64_t> id_vector;
         size_t row_count = grad_merge.rows().size();
         for (size_t row_index = 0; row_index < row_count; ++row_index) {
           for (size_t offset = 0; offset < row_numel; ++offset) {
             size_t i = rows[row_index] * row_numel + offset;
-            T g = grad_data[row_index * row_numel + offset];
-            functor.adam_update(i, g);
+            id_vector.push_back(i);
           }
         }
+        platform::ForRangeIn<DeviceContext> for_range_in(
+            static_cast<const DeviceContext&>(ctx.device_context()), id_vector);
+        for_range_in(functor);
       } else {
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(ctx.device_context()),
