@@ -26,10 +26,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
+#include "paddle/fluid/platform/profiler.h"
 
-DEFINE_int32(rpc_send_thread_num, 5, "number of threads for rpc send");
-DEFINE_int32(rpc_get_thread_num, 5, "number of threads for rpc get");
-DEFINE_int32(rpc_prefetch_thread_num, 5, "number of threads for rpc prefetch");
+DEFINE_int32(rpc_send_thread_num, 12, "number of threads for rpc send");
+DEFINE_int32(rpc_get_thread_num, 12, "number of threads for rpc get");
+DEFINE_int32(rpc_prefetch_thread_num, 12, "number of threads for rpc prefetch");
 
 namespace paddle {
 namespace operators {
