@@ -237,6 +237,8 @@ class AsyncExecutor(object):
         if self.instance.is_first_worker():
             self.executor.stop_server()
         self.instance.barrier_worker()  #sync
+        self.instance.barrier_all()
+        self.instance.finalize()
 
     def init_server(self, dist_desc):
         """
