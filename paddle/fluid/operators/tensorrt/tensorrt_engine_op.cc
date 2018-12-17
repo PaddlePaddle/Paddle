@@ -29,7 +29,6 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph.");
-    AddAttr<std::string>("engine_uniq_key", "unique key for the TRT engine.");
     AddAttr<int>("max_batch_size", "the maximum batch size.");
     AddAttr<int>("workspace_size", "the workspace size.");
     AddComment("TensorRT engine operator.");
