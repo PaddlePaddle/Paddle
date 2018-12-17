@@ -72,11 +72,15 @@ class HDFSClient(object):
 
     def upload(self, hdfs_path, local_path, overwrite=False, retry_times=5):
         """
-            upload the local file to hdfs
-            args:
-                local_file_path: the local file path
-                remote_file_path: default value(${OUTPUT_PATH}/${SYS_USER_ID}/${SYS_JOB_ID}/tmp)
-            return:
+        upload the local file to hdfs
+
+        Args:
+            hdfs_path(str): the hdfs file path
+            local_path(str): the local file path
+            overwrite(bool|None): will overwrite the file on HDFS or not
+            retry_times(int|5): retry times
+
+        Returns:
                 True or False
         """
         assert hdfs_path is not None
@@ -86,7 +90,7 @@ class HDFSClient(object):
             _logger.warn(
                 "The Local path: {} is dir and I will support it later, return".
                 format(local_path))
-            return
+            return False
 
         base = os.path.basename(local_path)
         if not self.is_exist(hdfs_path):
@@ -118,12 +122,16 @@ class HDFSClient(object):
 
     def download(self, hdfs_path, local_path, overwrite=False, unzip=False):
         """
-            download from hdfs
-            args:
-                local_file_path: the local file path
-                remote_file_path: remote dir on hdfs
-            return:
-                True or False
+        download file from HDFS
+
+        Args:
+            hdfs_path(str): the hdfs file path
+            local_path(str): the local file path
+            overwrite(bool|None): will overwrite the file on HDFS or not
+            unzip(bool|False): if the download file is compressed by zip, unzip it or not.
+
+        Returns:
+            True or False
         """
         _logger.info('Downloading %r to %r.', hdfs_path, local_path)
         _logger.info('Download of %s to %r complete.', hdfs_path, local_path)
@@ -163,13 +171,13 @@ class HDFSClient(object):
 
     def is_exist(self, hdfs_path=None):
         """
-            whether the remote hdfs path exists?
-            args:
-                remote_file_path: default value(${OUTPUT_PATH}/${SYS_USER_ID}/${SYS_JOB_ID}/tmp)
-                fs_name: The default values are the same as in the job configuration
-                fs_ugi: The default values are the same as in the job configuration
-            return:
-                True or False
+        whether the remote HDFS path exists
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            True or False
         """
         exist_cmd = ['-test', '-e', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(
@@ -186,13 +194,13 @@ class HDFSClient(object):
 
     def is_dir(self, hdfs_path=None):
         """
-            whether the remote hdfs path exists?
-            args:
-                remote_file_path: default value(${OUTPUT_PATH}/${SYS_USER_ID}/${SYS_JOB_ID}/tmp)
-                fs_name: The default values are the same as in the job configuration
-                fs_ugi: The default values are the same as in the job configuration
-            return:
-                True or False
+        whether the remote HDFS path is directory
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            True or False
         """
 
         if not self.is_exist(hdfs_path):
@@ -211,15 +219,18 @@ class HDFSClient(object):
             return True
 
     def delete(self, hdfs_path):
-        """Remove a file or directory from HDFS.
+        """
+        Remove a file or directory from HDFS.
 
-        :param hdfs_path: HDFS path.
-        :param recursive: Recursively delete files and directories. By default,
-          this method will raise an :class:`HdfsError` if trying to delete a
-          non-empty directory.
+        whether the remote HDFS path exists
 
-        This function returns `True` if the deletion was successful and `False` if
-        no file or directory previously existed at `hdfs_path`.
+        Args:
+        hdfs_path: HDFS path.
+
+        Returns:
+            True or False
+            This function returns `True` if the deletion was successful and `False` if
+            no file or directory previously existed at `hdfs_path`.
 
         """
         _logger.info('Deleting %r.', hdfs_path)
@@ -245,13 +256,15 @@ class HDFSClient(object):
             return True
 
     def rename(self, hdfs_src_path, hdfs_dst_path, overwrite=False):
-        """Move a file or folder.
+        """
+        Move a file or folder on HDFS.
 
-        :param hdfs_src_path: Source path.
-        :param hdfs_dst_path: Destination path. If the path already exists and is
-          a directory, the source will be moved into it. If the path exists and is
-          a file, or if a parent destination directory is missing, this method will
-          raise an :class:`HdfsError`.
+        Args:
+        hdfs_path(str): HDFS path.
+        overwrite(bool|False): If the path already exists and overwrite is False, will return False.
+
+        Returns:
+            True or False
 
         """
         assert hdfs_src_path is not None
@@ -285,10 +298,14 @@ class HDFSClient(object):
                 raise
 
     def makedirs(self, hdfs_path):
-        """Create a remote directory, recursively if necessary.
+        """
+        Create a remote directory, recursively if necessary.
 
-        :param hdfs_path: Remote path. Intermediate directories will be created
-          appropriately.
+        Args:
+        hdfs_path(str): Remote path. Intermediate directories will be created appropriately.
+
+        Returns:
+            True or False
         """
         _logger.info('Creating directories to %r.', hdfs_path)
         assert hdfs_path is not None
@@ -309,6 +326,15 @@ class HDFSClient(object):
             return True
 
     def ls(self, hdfs_path):
+        """
+        list directory contents about HDFS hdfs_path
+
+        Args:
+        hdfs_path(str): Remote HDFS path.
+
+        Returns:
+            List: a contents list about hdfs_path.
+        """
         assert hdfs_path is not None
 
         if not self.is_exist(hdfs_path):
@@ -334,6 +360,18 @@ class HDFSClient(object):
             return ret_lines
 
     def lsr(self, hdfs_path, only_file=True, sort=True):
+        """
+        list directory contents about HDFS hdfs_path recursively
+
+        Args:
+        hdfs_path(str): Remote HDFS path.
+        only_file(bool|True): will discard folders.
+        sort(bool|True): will be sorted by create time.
+
+        Returns:
+            List: a contents list about hdfs_path.
+        """
+
         def sort_by_time(v1, v2):
             v1_time = datetime.strptime(v1[1], '%Y-%m-%d %H:%M')
             v2_time = datetime.strptime(v2[1], '%Y-%m-%d %H:%M')
@@ -378,14 +416,19 @@ def multi_download(client,
                    trainers,
                    multi_processes=5):
     """
-    multi_download
-    :param client: instance of HDFSClient
-    :param hdfs_path: path on hdfs
-    :param local_path: path on local
-    :param trainer_id: current trainer id
-    :param trainers: all trainers number
-    :param multi_processes: the download data process at the same time, default=5
-    :return: None
+    Download files from HDFS using multi process.
+
+    Args:
+        client(HDFSClient): instance of HDFSClient
+        hdfs_path(str): path on hdfs
+        local_path(str): path on local
+        trainer_id(int): current trainer id
+        trainers(int): all trainers number
+        multi_processes(int|5): the download data process at the same time, default=5
+
+    Returns:
+        List:
+        Download files in local folder.
     """
 
     def __subprocess_download(datas):
@@ -454,12 +497,18 @@ def multi_upload(client,
                  overwrite=False,
                  sync=True):
     """
+    Upload files to HDFS using multi process.
 
-    :param client:
-    :param hdfs_path:
-    :param local_path:
-    :param sync:
-    :return:
+    Args:
+        client(HDFSClient): instance of HDFSClient
+        hdfs_path(str): path on hdfs
+        local_path(str): path on local
+        multi_processes(int|5): the upload data process at the same time, default=5
+        overwrite(bool|False): will overwrite file on HDFS or not
+        sync(bool|True): upload files sync or not.
+
+    Returns:
+        None
     """
 
     def __subprocess_upload(datas):
