@@ -358,6 +358,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
           lr.template data<T>(), grad_data, param.template data<T>(),
           param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
           grad_merge.rows().size(), lazy_mode);
+      VLOG(3) << "lazy_mode :" << lazy_mode;
       if (lazy_mode) {
         std::vector<int64_t> id_vector;
         size_t row_count = grad_merge.rows().size();
