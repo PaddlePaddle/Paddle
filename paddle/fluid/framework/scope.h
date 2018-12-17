@@ -14,14 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+extern "C" {
+#include <xxhash.h>
+}
+
 #include <functional>
 #include <list>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <tsl/robin_map.h>  // NOLINT
 
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
@@ -34,6 +37,14 @@ int64_t GetEagerDeletionThreshold();
 bool IsFastEagerDeletionModeEnabled();
 
 class Scope;
+
+namespace inner {
+struct KeyHasher {
+  std::size_t operator()(const std::string& key) const {
+    return XXH32(key.c_str(), key.size(), 1);
+  }
+};
+}  // namespace inner
 
 /**
  * @brief Scope that manage all variables.
@@ -99,11 +110,14 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
  protected:
-  mutable tsl::robin_map<
-      std::string, std::unique_ptr<Variable>, std::hash<std::string>,
-      std::equal_to<std::string>,
-      std::allocator<std::pair<std::string, std::unique_ptr<Variable>>>, true>
+  mutable std::unordered_map<std::string, std::unique_ptr<Variable>,
+                             inner::KeyHasher>
       vars_;
+  // mutable tsl::robin_map<
+  // std::string, std::unique_ptr<Variable>, std::hash<std::string>,
+  // std::equal_to<std::string>,
+  // std::allocator<std::pair<std::string, std::unique_ptr<Variable>>>, true>
+  // vars_;
 
  private:
   // Call Scope::NewScope for a sub-scope.
