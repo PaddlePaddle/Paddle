@@ -75,8 +75,6 @@ class DownpourServer(Server):
         table.accessor.embedx_dim = 8
         table.accessor.embedx_threshold = 5
         table.accessor.fea_dim = 11
-        #table.accessor.fea_dim = abs(reduce(lambda x, y: x * y, 
-        #                                    slot_value_var[0].shape, 1))
         table.accessor.downpour_accessor_param.nonclk_coeff = 0.1
         table.accessor.downpour_accessor_param.click_coeff = 2
         table.accessor.downpour_accessor_param.base_threshold = 0.2
@@ -134,8 +132,6 @@ class DownpourWorker(Worker):
     def __init__(self, window):
         self.window = window
         self.worker_ = pslib.DownpourTrainerParameter()
-        #self.worker_.pull_dense_per_batch = window
-        #self.worker_.push_dense_per_batch = window
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_vars):
