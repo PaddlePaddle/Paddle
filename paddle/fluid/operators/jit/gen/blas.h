@@ -99,6 +99,18 @@ DECLARE_BLAS_JITCODE(VAddBias, operand_type::add, 1, false);
 
 #undef DECLARE_BLAS_JITCODE
 
+// nChw16c = nChw16c .* NC
+class NCHW16CMulNCJitCode : public JitCode {
+ public:
+  DECLARE_JIT_CODE(NCHW16CMulNCJitCode);
+  explicit NCHW16CMulNCJitCode(int d /*unused*/, size_t code_size,
+                               void* code_ptr = nullptr)
+      : JitCode(code_size, code_ptr) {
+    this->genCode();
+  }
+  void genCode() override;
+};
+
 }  // namespace gen
 }  // namespace jit
 }  // namespace operators

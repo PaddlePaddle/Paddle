@@ -39,7 +39,8 @@ typedef enum {
   gruhtpart1,
   gruhtpart2,
   crfdecoding,
-  layernorm
+  layernorm,
+  nchw16cmulnc,
 } KernelType;
 
 template <typename T>
@@ -124,6 +125,14 @@ struct LayerNormTuples {
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
                             const float, int);
+};
+
+// nChw16c = nChw16c .* NC
+template <typename T>
+struct NCHW16CMulNCTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int, int);
 };
 
 // Just for adding to kernel pool without template

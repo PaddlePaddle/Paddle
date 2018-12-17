@@ -93,6 +93,7 @@ inline typename KernelTuples::func_type GetRefer() {
 
 template <KernelType KT, typename KernelTuples,
           typename PlaceType = platform::CPUPlace>
+// TODO(TJ): const & attr
 typename KernelTuples::func_type Get(typename KernelTuples::attr_type attr) {
   auto jitfunc = GetJitCode<KT, KernelTuples, PlaceType>(attr);
   if (jitfunc) {
