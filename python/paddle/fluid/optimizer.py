@@ -69,6 +69,7 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._backward_called = False
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -291,18 +292,41 @@ class Optimizer(object):
                         outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
+    def _backward(self,
+                  loss,
+                  startup_program=None,
+                  parameter_list=None,
+                  no_grad_set=None,
+                  callbacks=None):
+        if callbacks is None:
+            callbacks = [error_clip_callback]
+        else:
+            assert (isinstance(callbacks, list))
+            callbacks.append(error_clip_callback)
+        self._backward_called = True
+        self.params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                            callbacks)
+        return self.params_grads
+
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 user_params_grads=None):
         """Add operations to minimize `loss` by updating `parameter_list`.
 
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       [error_clip_callback])
+        if not self._backward_called:
+            self._backward(loss, startup_program, parameter_list, no_grad_set)
+
+        # optimize user specified parameters
+        if user_params_grads:
+            params_grads = user_params_grads
+        else:
+            params_grads = self.params_grads
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
