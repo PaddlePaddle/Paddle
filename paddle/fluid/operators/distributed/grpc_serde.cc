@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
+#include <limits>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
@@ -102,6 +103,11 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
+  if (payload->memory_size() < 0 ||
+      payload->memory_size >= std::numeric_limits<int>::max()) {
+    LOG(FATAL) << "AppendZeroCopy varname:" << varname
+               << ", vlen:" << payload->memory_size;
+  }
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
   int num_slices = 2;       // only SelectedRows have rows buffer
