@@ -197,12 +197,12 @@ class TestYolov3LossOp(OpTest):
             max_relative_error=0.31)
 
     def initTestCase(self):
-        self.anchors = [12, 12, 11, 13]
+        self.anchors = [12, 12]
         self.class_num = 5
         self.ignore_thresh = 0.5
         self.input_size = 416
-        self.x_shape = (3, len(self.anchors) // 2 * (5 + self.class_num), 5, 5)
-        self.gtbox_shape = (3, 5, 4)
+        self.x_shape = (1, len(self.anchors) // 2 * (5 + self.class_num), 3, 3)
+        self.gtbox_shape = (1, 5, 4)
 
 
 if __name__ == "__main__":
