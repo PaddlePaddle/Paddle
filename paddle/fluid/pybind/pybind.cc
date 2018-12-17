@@ -82,6 +82,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithBrpc() {
+#if defined(PADDLE_WITH_BRPC) || defined(PADDLE_WITH_BRPC_RDMA)
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithDIST() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   return true;
@@ -632,6 +640,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {

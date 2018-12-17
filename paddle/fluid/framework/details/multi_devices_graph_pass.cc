@@ -565,7 +565,7 @@ void MultiDevSSAGraphBuilder::CreateComputationalOp(ir::Graph *result,
                                                     int dev_id) const {
   result->Get<GraphOps>(kGraphOps).emplace_back(
       new ComputationOpHandle(result->CreateOpNode(node->Op()),
-                              local_scopes_[dev_id], places_[dev_id]));
+                              local_scopes_[dev_id], places_[dev_id], dev_id));
   CreateOpHandleIOs(result, node, dev_id);
 }
 
@@ -688,8 +688,8 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(ir::Graph *result,
   for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
     auto p = places_[scope_idx];
     auto s = local_scopes_[scope_idx];
-    result->Get<GraphOps>(kGraphOps).emplace_back(
-        new ComputationOpHandle(result->CreateOpNode(node->Op()), s, p));
+    result->Get<GraphOps>(kGraphOps).emplace_back(new ComputationOpHandle(
+        result->CreateOpNode(node->Op()), s, p, scope_idx));
     CreateOpHandleIOs(result, node, scope_idx);
   }
 }

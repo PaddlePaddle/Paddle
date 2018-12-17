@@ -118,7 +118,10 @@ class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
     passes_.assign({
-        "infer_clean_graph_pass", "conv_bn_fuse_pass",
+        "infer_clean_graph_pass",               //
+        "conv_bn_fuse_pass",                    //
+        "conv_elementwise_add_act_fuse_pass",   //
+        "conv_elementwise_add2_act_fuse_pass",  //
     });
   }
 
