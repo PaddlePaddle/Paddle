@@ -75,7 +75,7 @@ class OrderedNodePairPool {
 };
 
 // node memory size in bytes
-size_t GetNodeSize(ir::Node* n);
+size_t NodeSizeInBytes(ir::Node* n);
 
 std::string DebugString(ir::Node* var);
 

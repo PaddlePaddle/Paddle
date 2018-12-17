@@ -174,7 +174,7 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
 
     if (build_strategy_.memory_early_delete_) {
       auto early_delete_pass =
-        ir::PassRegistry::Instance().Get("memory_early_delete_pass");
+          ir::PassRegistry::Instance().Get("memory_early_delete_pass");
       early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
       graph = early_delete_pass->Apply(std::move(graph));
     }

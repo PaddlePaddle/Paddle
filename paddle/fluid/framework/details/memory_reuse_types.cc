@@ -21,10 +21,10 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-size_t GetNodeSize(ir::Node* n) {
+size_t NodeSizeInBytes(ir::Node* n) {
   auto* desc = FindVarDescInBlock(n);
   auto shape = desc->GetShape();
-  size_t type_size = SizeOfType(ToTypeIndex(desc->GetDataType()));
+  size_t type_size = SizeOfType(desc->GetDataType());
   int size = 1;
   for (auto& s : shape) {
     size *= s;
@@ -76,7 +76,7 @@ struct NodeComparator {
     auto rhs_shape = rhs_desc->GetShape();
     if ((lhs_shape[0] == -1 && rhs_shape[0] == -1) ||
         (lhs_shape[0] != -1 && rhs_shape[0] != -1)) {
-      return GetNodeSize(lhs) <= GetNodeSize(rhs);
+      return NodeSizeInBytes(lhs) <= NodeSizeInBytes(rhs);
     } else {
       return false;
     }
