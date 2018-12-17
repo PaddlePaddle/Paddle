@@ -46,7 +46,7 @@ class DeviceTemporaryAllocator {
  public:
   static DeviceTemporaryAllocator& Instance() {
     PADDLE_ENFORCE_NOT_NULL(allocators,
-                            "Need to Create DeviceContextPool first!");
+                            "Need to Create DeviceTemporaryAllocator first!");
     return *allocators;
   }
 

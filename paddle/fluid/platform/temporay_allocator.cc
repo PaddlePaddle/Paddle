@@ -47,7 +47,7 @@ void TemporaryAllocator::Release() {
     t_allocations = wait_to_delete_mem_queue_;
     wait_to_delete_mem_queue_.reset();
   }
-  cv_.notify_all();
+  cv_.notify_one();
   for (auto tmp : *t_allocations) {
     VLOG(10) << "Delete temporary allocation " << tmp->ptr()
              << " size: " << tmp->size();
@@ -62,7 +62,7 @@ void TemporaryAllocator::Free(alloc::Allocation *allocation) {
     std::unique_lock<std::mutex> lock(mtx_);
     temp_mem_queue_->emplace_back(temp_allocation);
     wait_delete_mem_ += temp_allocation->size();
-    VLOG(10) << "Move temporary allocation " << temp_allocation->ptr()
+    VLOG(10) << "Move temporary allocation: " << temp_allocation->ptr()
              << " to delete queue: " << temp_allocation->size() << "; "
              << "wait_delete_mem: " << wait_delete_mem_;
     return;
@@ -85,7 +85,7 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
   auto raw_allocation =
       alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);
   auto temp_mem = new TemporayAllocation(std::move(raw_allocation));
-  VLOG(10) << "Alloc temporary allocation " << temp_mem->ptr() << ": " << size;
+  VLOG(10) << "Alloc temporary allocation: " << temp_mem->ptr() << ": " << size;
   return temp_mem;
 }
 

@@ -35,7 +35,7 @@ class TemporaryAllocator : public memory::allocation::Allocator {
 
   // Move temp_memory to wait_delete_memory.
   // Once the allocation is not held by any variable, it will be
-  // placed to temp_mem_queue immediately, so if we attempt to free the
+  // placed to temp_mem_queue, so if we attempt to free the
   // temporary allocation, we should move the temporary allocation to
   // wait_to_delete_mem_queue first, and then call sync operation,
   // and then call Release.
