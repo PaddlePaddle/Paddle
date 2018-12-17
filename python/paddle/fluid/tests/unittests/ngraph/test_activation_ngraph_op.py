@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-#from scipy.special import expit
 from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh
 
 
