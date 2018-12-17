@@ -139,17 +139,23 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consist of three major parts, box location loss,
-         confidence score loss, and classification loss. The MSE loss is used for 
-         box location, and binary cross entropy loss is used for confidence score 
-         loss and classification loss.
+         confidence score loss, and classification loss. The L1 loss is used for 
+         box coordinates (w, h), and sigmoid cross entropy loss is used for box 
+         coordinates (x, y), confidence score loss and classification loss.
+
+         In order to trade off box coordinate losses between big boxes and small 
+         boxes, box coordinate losses will be mutiplied by scale weight, which is
+         calculated as follow.
+
+         $$
+         weight_{box} = 2.0 - t_w * t_h
+         $$
 
          Final loss will be represented as follow.
 
          $$
-         loss = \loss_weight_{xy} * loss_{xy} + \loss_weight_{wh} * loss_{wh}
-              + \loss_weight_{conf_target} * loss_{conf_target}
-              + \loss_weight_{conf_notarget} * loss_{conf_notarget}
-              + \loss_weight_{class} * loss_{class}
+         loss = (loss_{xy} + loss_{wh}) * weight_{box}
+              + loss_{conf} + loss_{class}
          $$
          )DOC");
   }
@@ -206,11 +212,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(yolov3_loss, ops::Yolov3LossOp, ops::Yolov3LossOpMaker,
                   ops::Yolov3LossGradMaker);
 REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    yolov3_loss,
-    ops::Yolov3LossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Yolov3LossKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    yolov3_loss_grad,
-    ops::Yolov3LossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Yolov3LossGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(yolov3_loss, ops::Yolov3LossKernel<float>,
+                       ops::Yolov3LossKernel<double>);
+REGISTER_OP_CPU_KERNEL(yolov3_loss_grad, ops::Yolov3LossGradKernel<float>,
+                       ops::Yolov3LossGradKernel<double>);

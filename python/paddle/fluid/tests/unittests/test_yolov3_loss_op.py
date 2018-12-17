@@ -157,11 +157,6 @@ def YoloV3Loss(x, gtbox, gtlabel, attrs):
     loss_obj = sce(pred_conf, tconf, conf_mask)
     loss_class = sce(pred_cls, tcls, obj_mask_expand)
 
-    # print("python loss_xy: ", loss_x + loss_y)
-    # print("python loss_wh: ", loss_w + loss_h)
-    # print("python loss_obj: ", loss_obj)
-    # print("python loss_class: ", loss_class)
-
     return loss_x + loss_y + loss_w + loss_h + loss_obj + loss_class
 
 
