@@ -13,8 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
+#include <algorithm>
+#include <iostream>
+#include <iterator>
+#include <random>
+#include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.h"
 
 using paddle::framework::Scope;
 using paddle::framework::Variable;
@@ -68,4 +76,102 @@ TEST(Scope, GetAllNames) {
   }
 
   EXPECT_STREQ("a", str.c_str());
+}
+
+using paddle::platform::CPUDeviceContext;
+using paddle::platform::RecordEvent;
+using paddle::platform::EventSortingKey;
+
+constexpr int kItemCount = 100000;
+constexpr int kCharSet = 26;
+class ConcurrentScopeTest {
+ public:
+  explicit ConcurrentScopeTest(int n) : nthreads_(n), dist_(0, kCharSet) {
+    gen_.seed(1331);
+    vars_.reserve(kItemCount);
+    paddle::platform::EnableProfiler(paddle::platform::ProfilerState::kCPU);
+  }
+  ~ConcurrentScopeTest() {
+    paddle::platform::DisableProfiler(EventSortingKey::kTotal,
+                                      "/tmp/scope_profiler");
+  }
+
+  void PerThreadProducer(Scope* scope, const int& thread_id) {
+    thread_local int offset = thread_id * (kItemCount / nthreads_);
+    std::cout << offset << std::endl;
+    std::cout << thread_id << std::endl;
+    for (int i = 0; i < (kItemCount / nthreads_); ++i) {
+      vars_[offset + i] = RandomString();
+      if (i % 2 == 0) {
+        RecordEvent("Producer", &dev_ctx_);
+        scope->Var(vars_[offset + i]);
+      }
+    }
+  }
+
+  void PerThreadConsumer(Scope* scope, const int& thread_id) {
+    int offset = thread_id * (kItemCount / nthreads_);
+    for (int i = 0; i < (kItemCount / nthreads_); ++i) {
+      Variable* var = nullptr;
+      {
+        RecordEvent("Consumer", &dev_ctx_);
+        var = scope->FindVar(vars_[offset + i]);
+      }
+      if (i % 2 == 0) {
+        PADDLE_ENFORCE(var != nullptr);
+      } else {
+        PADDLE_ENFORCE(var == nullptr);
+      }
+    }
+  }
+
+ private:
+  std::string RandomString(const size_t& n = 5) {
+    std::string ret;
+    std::generate_n(std::back_inserter(ret), n,
+                    [&]() { return 'a' + dist_(gen_); });
+    return ret;
+  }
+
+  int nthreads_;
+  std::mt19937 gen_;
+  std::uniform_int_distribution<size_t> dist_;
+  std::vector<std::string> vars_;
+  paddle::platform::CPUDeviceContext dev_ctx_;
+};
+
+template <typename T>
+double GetTimeDiff(const T& start) {
+  auto startu = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> time_span =
+      std::chrono::duration_cast<std::chrono::duration<double>>(startu - start);
+  double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
+  return used_time_ms;
+}
+
+TEST(Scope, Concurrent) {
+  Scope scope;
+  const int kThreadNum = 10;
+  ConcurrentScopeTest mock(kThreadNum);
+  std::vector<std::thread> producer;
+  std::vector<std::thread> consumer;
+
+  auto s1 = std::chrono::system_clock::now();
+  for (int i = 0; i < kThreadNum; ++i) {
+    producer.emplace_back(std::thread(
+        [&scope, &mock, &i]() { mock.PerThreadProducer(&scope, i); }));
+  }
+  for (auto& t : producer) {
+    t.join();
+  }
+  std::cout << "Producer Time : " << GetTimeDiff(s1) << "ms" << std::endl;
+  auto s2 = std::chrono::system_clock::now();
+  for (int i = 0; i < kThreadNum; ++i) {
+    consumer.emplace_back(std::thread(
+        [&scope, &mock, &i]() { mock.PerThreadConsumer(&scope, i); }));
+  }
+  for (auto& t : consumer) {
+    t.join();
+  }
+  std::cout << "Consumer Time : " << GetTimeDiff(s2) << "ms" << std::endl;
 }
