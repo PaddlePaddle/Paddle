@@ -65,7 +65,6 @@ using inference::tensorrt::TensorRTEngine;
 
 class TensorRTEngineOp : public framework::OperatorBase {
  private:
-  std::string engine_name_;
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
   mutable std::unique_ptr<TensorRTEngine> trt_engine_;
@@ -78,7 +77,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
                    const framework::VariableNameMap &outputs,
                    const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {
-    engine_name_ = Attr<std::string>("engine_uniq_key");
     input_names_ = Inputs("Xs");
     max_batch_size_ = Attr<int>("max_batch_size");
     workspace_size_ = Attr<int>("workspace_size");
