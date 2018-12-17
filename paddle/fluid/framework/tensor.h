@@ -14,15 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/fluid/framework/framework.pb.h>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <typeindex>
 #include <vector>
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
