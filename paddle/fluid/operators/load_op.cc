@@ -65,7 +65,7 @@ class LoadOp : public framework::OperatorBase {
     DeserializeFromStream(fin, tensor, dev_ctx);
 
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
-    auto in_dtype = framework::ToDataType(tensor->type());
+    auto in_dtype = tensor->type();
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {
