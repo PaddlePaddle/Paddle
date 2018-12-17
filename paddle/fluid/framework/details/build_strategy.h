@@ -73,6 +73,8 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  bool enable_parallel_graph_{false};
+
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;

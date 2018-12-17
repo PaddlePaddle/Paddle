@@ -29,7 +29,6 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
       graphs_(std::move(graphs)) {
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
   // do not use threadpool for each graph execution.
-  strategy_.num_threads_ = 1UL;
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
         strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i])));
