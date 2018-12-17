@@ -37,7 +37,9 @@ typedef enum {
   lstmc1h1,
   gruh1,
   gruhtpart1,
-  gruhtpart2
+  gruhtpart2,
+  crfdecoding,
+  layernorm
 } KernelType;
 
 template <typename T>
@@ -107,6 +109,21 @@ struct GRUTuples {
   typedef T data_type;
   typedef gru_attr_t attr_type;
   typedef void (*func_type)(gru_t*, const gru_attr_t*);
+};
+
+template <typename T>
+struct CRFDecodingTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const int, const T*, const T*, T*, int*, int);
+};
+
+template <typename T>
+struct LayerNormTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
+                            const float, int);
 };
 
 // Just for adding to kernel pool without template

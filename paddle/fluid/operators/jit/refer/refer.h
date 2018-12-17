@@ -13,6 +13,9 @@
  * limitations under the License. */
 
 #pragma once
+
+#include <cmath>
+#include <limits>
 #include "paddle/fluid/operators/jit/helper.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -242,6 +245,80 @@ void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
   }
 }
 
+template <typename T>
+void CRFDecoding(const int seq_len, const T* x, const T* w, T* alpha,
+                 int* track, int right) {
+  constexpr int state_trans_base_idx = 2;
+  for (int i = 0; i < right; ++i) {
+    alpha[i] = w[i] + x[i];
+  }
+  for (int k = 1; k < seq_len; ++k) {
+    for (int i = 0; i < right; ++i) {
+      T max_score = -std::numeric_limits<T>::max();
+      int max_j = 0;
+      for (int j = 0; j < right; ++j) {
+        T score = alpha[(k - 1) * right + j] +
+                  w[(j + state_trans_base_idx) * right + i];
+        if (score > max_score) {
+          max_score = score;
+          max_j = j;
+        }
+      }
+      alpha[k * right + i] = max_score + x[k * right + i];
+      track[k * right + i] = max_j;
+    }
+  }
+}
+
+template <typename T>
+void LayerNorm(T* x, T* out, T* mean, T* var, const T* scale, const T* bias,
+               int height, const float epsilon, int right) {
+  // get mean
+  for (int i = 0; i < height; i++) {
+    T sum = 0.0;
+    int offset = i * right;
+    for (int j = 0; j < right; j++) {
+      sum += x[offset + j];
+    }
+    mean[i] = sum / right;
+  }
+
+  // get variance
+  for (int i = 0; i < height; i++) {
+    T sum = 0.0;
+    int offset = i * right;
+    for (int j = 0; j < right; j++) {
+      sum += (x[offset + j] - mean[i]) * (x[offset + j] - mean[i]);
+    }
+    var[i] = sum / right;
+  }
+
+  for (int i = 0; i < height; i++) {
+    int offset = i * right;
+    T sqrt_var = std::sqrt(var[i] + (T)epsilon);
+    for (int j = 0; j < right; j++) {
+      out[offset + j] = (x[offset + j] - mean[i]) / sqrt_var;
+    }
+  }
+  if (scale) {
+    for (int i = 0; i < height; i++) {
+      int offset = i * right;
+      for (int j = 0; j < right; j++) {
+        out[offset + j] *= scale[j];
+      }
+    }
+  }
+
+  if (bias) {
+    for (int i = 0; i < height; i++) {
+      int offset = i * right;
+      for (int j = 0; j < right; j++) {
+        out[offset + j] += bias[j];
+      }
+    }
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -274,6 +351,9 @@ DECLARE_REFER_KERNEL(LSTMC1H1, LSTMTuples);
 DECLARE_REFER_KERNEL(GRUH1, GRUTuples);
 DECLARE_REFER_KERNEL(GRUHtPart1, GRUTuples);
 DECLARE_REFER_KERNEL(GRUHtPart2, GRUTuples);
+
+DECLARE_REFER_KERNEL(CRFDecoding, CRFDecodingTuples);
+DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
 
 #undef DECLARE_REFER_KERNEL
 

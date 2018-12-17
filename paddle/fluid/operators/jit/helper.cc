@@ -42,6 +42,8 @@ const char* to_string(KernelType kt) {
     ONE_CASE(gruh1);
     ONE_CASE(gruhtpart1);
     ONE_CASE(gruhtpart2);
+    ONE_CASE(crfdecoding);
+    ONE_CASE(layernorm);
     default:
       PADDLE_THROW("Not support type: %d", kt);
       return "NOT JITKernel";
@@ -64,6 +66,8 @@ KernelType to_kerneltype(const std::string& act) {
   } else if (lower == "tanh" || lower == "vtanh") {
     return vtanh;
   }
+  PADDLE_THROW("Not support type: %s, or forget to add this case", act);
+
   return non_kernel;
 }
 

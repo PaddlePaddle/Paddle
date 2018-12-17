@@ -515,7 +515,7 @@ TEST(JITKernel, gruhtpart2) {
   TestGRUKernel<jit::gruhtpart2, double, paddle::platform::CPUPlace>();
 }
 
-// TODO(TJ): refine the tests template
+// TODO(yihua/TJ): add crf decoding and layer norm unit tests
 
 TEST(JITKernel, pool) {
   // TODO(TJ): add some test
