@@ -233,6 +233,29 @@ class TestBook(unittest.TestCase):
                     pool_stride=[1, 2],
                     pool_padding=(2, 1)))
 
+    def test_adaptive_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool2d(
+                    x, [3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
+    def test_adaptive_pool3d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 244, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool3d(
+                    x, [3, 3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(
+                x, [3, 3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
