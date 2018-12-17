@@ -31,37 +31,150 @@ from functools import reduce
 from .. import core
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'bpr_loss', 'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
-    'conv3d', 'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d',
-    'pool3d', 'batch_norm', 'beam_search_decode', 'conv2d_transpose',
-    'conv3d_transpose', 'sequence_expand', 'sequence_expand_as', 'sequence_pad',
-    'sequence_unpad', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
-    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
-    'sequence_slice', 'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance',
-    'l2_normalize', 'matmul', 'topk', 'warpctc', 'sequence_reshape',
-    'transpose', 'im2sequence', 'nce', 'hsigmoid', 'beam_search', 'row_conv',
-    'multiplex', 'layer_norm', 'group_norm', 'softmax_with_cross_entropy',
-    'smooth_l1', 'one_hot', 'autoincreased_step_counter', 'reshape', 'squeeze',
-    'unsqueeze', 'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth',
-    'roi_pool', 'roi_align', 'dice_loss', 'image_resize', 'image_resize_short',
-    'resize_bilinear', 'resize_nearest', 'gather', 'scatter',
-    'sequence_scatter', 'random_crop', 'mean_iou', 'relu', 'selu', 'log',
-    'crop', 'rank_loss', 'margin_rank_loss', 'elu', 'relu6', 'pow', 'stanh',
-    'hard_sigmoid', 'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu',
-    'flatten', 'sequence_mask', 'stack', 'pad2d', 'unstack',
-    'sequence_enumerate', 'expand', 'sequence_concat', 'scale',
-    'elementwise_add', 'elementwise_div', 'elementwise_sub', 'elementwise_mul',
-    'elementwise_max', 'elementwise_min', 'elementwise_pow',
-    'uniform_random_batch_size_like', 'gaussian_random', 'sampling_id',
-    'gaussian_random_batch_size_like', 'sum', 'slice', 'shape', 'logical_and',
-    'logical_or', 'logical_xor', 'logical_not', 'clip', 'clip_by_norm', 'mean',
-    'mul', 'sigmoid_cross_entropy_with_logits', 'maxout', 'space_to_depth',
-    'affine_grid', 'sequence_reverse', 'affine_channel', 'similarity_focus',
-    'hash', 'grid_sampler', 'log_loss', 'add_position_encoding',
-    'bilinear_tensor_product', 'merge_selected_rows',
-    'get_tensor_from_selected_rows', 'lstm', 'shufflechannel'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'bpr_loss',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'sequence_expand_as',
+    'sequence_pad',
+    'sequence_unpad',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'sequence_slice',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'hsigmoid',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'group_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'squeeze',
+    'unsqueeze',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'pad_constant_like',
+    'label_smooth',
+    'roi_pool',
+    'roi_align',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'resize_nearest',
+    'gather',
+    'scatter',
+    'sequence_scatter',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'selu',
+    'log',
+    'crop',
+    'rank_loss',
+    'margin_rank_loss',
+    'elu',
+    'relu6',
+    'pow',
+    'stanh',
+    'hard_sigmoid',
+    'swish',
+    'prelu',
+    'brelu',
+    'leaky_relu',
+    'soft_relu',
+    'flatten',
+    'sequence_mask',
+    'stack',
+    'pad2d',
+    'unstack',
+    'sequence_enumerate',
+    'expand',
+    'sequence_concat',
+    'scale',
+    'elementwise_add',
+    'elementwise_div',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_max',
+    'elementwise_min',
+    'elementwise_pow',
+    'uniform_random_batch_size_like',
+    'gaussian_random',
+    'sampling_id',
+    'gaussian_random_batch_size_like',
+    'sum',
+    'slice',
+    'shape',
+    'logical_and',
+    'logical_or',
+    'logical_xor',
+    'logical_not',
+    'clip',
+    'clip_by_norm',
+    'mean',
+    'mul',
+    'sigmoid_cross_entropy_with_logits',
+    'maxout',
+    'space_to_depth',
+    'affine_grid',
+    'sequence_reverse',
+    'affine_channel',
+    'similarity_focus',
+    'hash',
+    'grid_sampler',
+    'log_loss',
+    'add_position_encoding',
+    'bilinear_tensor_product',
+    'merge_selected_rows',
+    'get_tensor_from_selected_rows',
+    'lstm',
+    'shufflechannel',
+    'psroi_pool',
 ]
 
 kIgnoreIndex = -100
@@ -2386,6 +2499,204 @@ def pool3d(input,
         })
 
     return pool_out
+
+
+@templatedoc(op_type="pool2d")
+def adaptive_pool2d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+        .. code-block:: python
+
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n], 
+          # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
+          # of input data into m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(m):
+          #         for j in range(n):
+          #             hstart = floor(i * H / m)
+          #             hend = ceil((i + 1) * H / m)
+          #             wstart = floor(i * W / n)
+          #             wend = ceil((i + 1) * W / n)
+          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+          #
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool2d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='avg')
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 2:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 2.")
+
+    if pool_type == "max":
+        l_type = 'max_pool2d_with_index'
+    else:
+        l_type = "pool2d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "adaptive": True,
+        })
+
+    return (pool_out, mask) if require_index else pool_out
+
+
+@templatedoc(op_type="pool3d")
+def adaptive_pool3d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (Depth, Height, Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+        .. code-block:: python
+
+          # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
+          # of input data into l * m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] = 
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          #
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out, mask = fluid.layers.adaptive_pool3d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='avg')
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 3:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 3.")
+
+    if pool_type == "max":
+        l_type = 'max_pool3d_with_index'
+    else:
+        l_type = "pool3d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "adaptive": True,
+        })
+
+    return (pool_out, mask) if require_index else pool_out
 
 
 def batch_norm(input,
@@ -9050,4 +9361,57 @@ def shuffle_channel(x, group=1, name=None):
         inputs={"X": x},
         outputs={"Out": out},
         attrs={"group": group})
+
+
+@templatedoc()
+def psroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale,
+               pooled_height,
+               pooled_width,
+               name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        output_channels (integer): ${output_channels_comment}
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        name (str, default None): The name of this layer.
+
+    Returns:
+        Variable: ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            pool_out = fluid.layers.psroi_pool(input=x, rois=rois, 490, 1.0, 7, 7)
+    """
+    helper = LayerHelper('psroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='psroi_pool',
+        inputs={'X': input,
+                'ROIs': rois},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
     return out

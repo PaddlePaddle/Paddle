@@ -282,8 +282,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("pre_ids")->type()),
+        ctx.Input<framework::LoDTensor>("pre_ids")->type(),
         platform::CPUPlace());
     return kt;
   }
