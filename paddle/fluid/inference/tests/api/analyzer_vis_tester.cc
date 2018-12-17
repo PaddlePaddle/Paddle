@@ -93,20 +93,6 @@ void profile(bool use_mkldnn = false) {
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
-
-  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    const float ocr_result_data[] = {
-        5.273636460856323538e-08, 3.296741795111302054e-07,
-        1.873261190610264748e-08, 3.403730275408634043e-08,
-        3.383312474625199684e-08};
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
-    for (size_t i = 0; i < std::min(5UL, size); i++) {
-      EXPECT_NEAR(result[i], ocr_result_data[i], 1e-3);
-    }
-  }
 }
 
 TEST(Analyzer_vis, profile) { profile(); }
