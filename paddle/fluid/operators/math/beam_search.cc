@@ -48,7 +48,6 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     auto selected_items = ToMap(items, high_level.back());
     LOG(INFO) << "selected_items:";
     for (size_t i = 0; i < selected_items.size(); ++i) {
-      LOG(INFO) << "offset:" << i;
       for (auto &item : selected_items[i]) {
         LOG(INFO) << item.ToString();
       }
@@ -65,8 +64,6 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     selected_ids->Resize(dims);
     selected_scores->Resize(dims);
 
-    std::map<size_t /*offset*/, std::vector<Item>> hash;
-    framework::LoD new_lod;
     auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
     auto *scores_data =
         selected_scores->mutable_data<float>(platform::CPUPlace());
@@ -193,11 +190,11 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
       }
       result.emplace_back(items);
     }
-    VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
+    LOG(INFO) << "SelectTopBeamSizeItems result size " << result.size();
     for (auto &items : result) {
-      VLOG(3) << "item set:";
+      LOG(INFO) << "item set:";
       for (auto &item : items) {
-        VLOG(3) << item.ToString();
+        LOG(INFO) << item.ToString();
       }
     }
 
@@ -247,6 +244,11 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
                               scores_data[dim_offset]);
         }
       }
+    }
+
+    LOG(INFO) << "Next item:";
+    for (auto &item : *items) {
+      LOG(INFO) << item.ToString();
     }
 
     sent_offset_++;

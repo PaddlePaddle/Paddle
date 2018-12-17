@@ -51,6 +51,9 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     size_t beam_size = context.Attr<int>("beam_size");
     int end_id = context.Attr<int>("end_id");
 
+    LOG(INFO) << "level: " << level << ", beam_size: " << beam_size
+              << ", end_id:" << end_id;
+
     auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
     auto selected_scores =
         context.Output<framework::LoDTensor>("selected_scores");
