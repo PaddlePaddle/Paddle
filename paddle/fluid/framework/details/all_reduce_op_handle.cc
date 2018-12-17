@@ -109,7 +109,7 @@ void AllReduceOpHandle::RunImpl() {
               buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
               ncclSum, comm, stream));
           // TODO(Yancey1989): synchronize here can get better performance
-          // if don't use NCCL group call, but need more profileing.
+          // if don't use NCCL group call, but need more profiling.
           if (local_scopes_.size() == 1UL) cudaStreamSynchronize(stream);
         });
       }
