@@ -72,7 +72,8 @@ class ExecutionContext;
 
 class RuntimeContext {
  public:
-  RuntimeContext() {}
+  RuntimeContext(const VariableNameMap& innames,
+                 const VariableNameMap& outnames, const Scope& scope);
 
   VariableValueMap inputs;
   VariableValueMap outputs;
@@ -165,8 +166,9 @@ class OperatorBase {
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
-      : op_(op), scope_(scope), device_context_(device_context) {}
+                   const platform::DeviceContext& device_context,
+                   const RuntimeContext& ctx)
+      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -295,6 +297,7 @@ class ExecutionContext {
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
+  const RuntimeContext& ctx_;
 };
 
 template <>
