@@ -134,7 +134,6 @@ static const char kParams[] = "params";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
 static const char kNumTrainers[] = "num_trainers";
-static const char kNumLossScaled[] = "num_loss_scaled";
 
 void MultiDevSSAGraphBuilder::Init() const {
   all_vars_.clear();
