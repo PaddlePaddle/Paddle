@@ -266,10 +266,10 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
-    if (type == typeid(float)) {
+    if (type == framework::DataTypeTrait<float>::DataType) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == typeid(int64_t)) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
     } else {

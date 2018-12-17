@@ -56,9 +56,8 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     }
 #endif
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context(), layout_, library_);
   }
 };
 
@@ -136,9 +135,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context());
   }
 };
 
