@@ -58,9 +58,11 @@ class Optimizer(object):
         # the learning rate type should be inferenced from loss
         self._dtype = None
         # each program should have a independent learning rate
-        # program -> Variable(learning_rate)
+        # program -> Variable(learning_rate) or:
+        # program -> callable(return learning_rate Variable)
         self._learning_rate_map = dict()
-        if isinstance(self._learning_rate, framework.Variable):
+        if isinstance(self._learning_rate, framework.Variable) or \
+            callable(self._learning_rate):
             self._learning_rate_map[framework.default_main_program(
             )] = self._learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
@@ -75,6 +77,10 @@ class Optimizer(object):
 
         if isinstance(lr, framework.Variable):
             return
+        elif callable(lr):
+            dtype = 'float32' if self._dtype is None else self._dtype
+            self._learning_rate_map[framework.default_main_program()] = lr(
+                dtype)
         else:
             if not isinstance(self._learning_rate, float):
                 raise TypeError(
