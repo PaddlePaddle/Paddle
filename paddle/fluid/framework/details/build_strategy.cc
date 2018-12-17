@@ -26,7 +26,9 @@ namespace framework {
 namespace details {
 
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
-  return (!strategy.enable_sequential_execution_ && strategy.num_trainers_ > 1);
+  return (!strategy.enable_sequential_execution_ &&
+          strategy.num_trainers_ > 1) ||
+         strategy.enable_parallel_graph_;
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {

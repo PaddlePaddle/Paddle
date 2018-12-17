@@ -20,7 +20,7 @@ namespace framework {
 namespace details {
 
 struct ExecutionStrategy {
-  enum ExecutorType { kDefault = 0, kExperimental = 1, kParallelGraph = 2 };
+  enum ExecutorType { kDefault = 0, kExperimental = 1 };
 
   size_t num_threads_{0};
   bool use_cuda_{true};

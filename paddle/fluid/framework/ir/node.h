@@ -49,7 +49,6 @@ class Node {
  public:
   virtual ~Node() {
     if (!wrapper_.empty()) {
-      VLOG(4) << "ir::Node deleting a wrapper node " << Name();
       wrapper_deleter_();
     }
   }

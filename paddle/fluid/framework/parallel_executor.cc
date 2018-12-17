@@ -199,7 +199,7 @@ ParallelExecutor::ParallelExecutor(
                    "the number of places must be greater than 1.");
   }
 
-  if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+  if (build_strategy.enable_parallel_graph_) {
     PADDLE_ENFORCE(
         member_->use_all_reduce_,
         "build_strategy.reduce should be `AllReduce` if you want to use"
@@ -231,7 +231,7 @@ ParallelExecutor::ParallelExecutor(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     ncclUniqueId *nccl_id = nullptr;
-    if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+    if (build_strategy.enable_parallel_graph_) {
       // parallel graph mode should initialize nccl by ncclCommInitRank since
       // it call nccl operator per device per thread.
       if (nccl_id_var == nullptr) {
@@ -265,7 +265,7 @@ ParallelExecutor::ParallelExecutor(
   // ncclOp
   std::vector<std::unique_ptr<ir::Graph>> graphs;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+  if (build_strategy.enable_parallel_graph_) {
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
           main_program, {member_->places_[i]}, loss_var_name, params,
@@ -287,9 +287,8 @@ ParallelExecutor::ParallelExecutor(
 #endif
 
   auto max_memory_size = GetEagerDeletionThreshold();
-  // TODO(Yancey1989): fix gc failed on ParallelGraph executor.
-  if (max_memory_size >= 0 &&
-      exec_strategy.type_ != ExecutionStrategy::kParallelGraph) {
+  // TODO(Yancey1989): fix gc failed on ParallelGraph strategy.
+  if (max_memory_size >= 0 && !build_strategy.enable_parallel_graph_) {
     graphs[0] = member_->PrepareGCAndRefCnts(
         std::move(graphs[0]), static_cast<size_t>(max_memory_size));
   }
@@ -323,18 +322,20 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 
-  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        std::move(graphs[0])));
-  } else if (exec_strategy.type_ == ExecutionStrategy::kParallelGraph) {
+  if (build_strategy.enable_parallel_graph_) {
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_,
         std::move(graphs)));
   } else {
-    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        std::move(graphs[0])));
+    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, member_->places_,
+          std::move(graphs[0])));
+    } else {
+      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, member_->places_,
+          std::move(graphs[0])));
+    }
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(

@@ -761,11 +761,6 @@ All parameter, weight, gradient are variables in Paddle.
 
         )DOC");
 
-  py::enum_<ExecutionStrategy::ExecutorType>(exec_strategy, "ExecutorType")
-      .value("Default", ExecutionStrategy::ExecutorType::kDefault)
-      .value("Experimental", ExecutionStrategy::ExecutorType::kExperimental)
-      .value("ParallelGraph", ExecutionStrategy::ExecutorType::kParallelGraph);
-
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -823,25 +818,17 @@ All parameter, weight, gradient are variables in Paddle.
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
                     [](ExecutionStrategy &self, bool dry_run) {
                       self.dry_run_ = dry_run;
-                    })
-      .def_property(
-          "executor_type",
-          [](const ExecutionStrategy &self) { return self.type_; },
-          [](ExecutionStrategy &self, ExecutionStrategy::ExecutorType type) {
-            self.type_ = type;
-          },
-          R"DOC(The type is ExecutorType which is the enum ranging from Default, 
-ParallelGraph and Experiment:
+                    });
 
-Default: Compile the main_program into a multi-devices graph,
-         and execute this graph on multi-devices with multiple threads which
-         specified by build_strategy.num_threads.
-ParallelGraph: Compile the main_program into multiple graphs, and execute each of the graphs on one
-               device with one thread. Please note, this mode only supports all-reduce mode and use_cuda=True.
-               This approach can achieve better performance in some scenarios.
-Experimental: Compile the main_program into a multi-devices graph,
-              and executor this graph with a faster execution mode than the Default,
-              this approach is on the experiments.)DOC");
+  exec_strategy.def_property(
+      "use_experimental_executor",
+      [](const ExecutionStrategy &self) {
+        return self.type_ == ExecutionStrategy::kExperimental;
+      },
+      [](ExecutionStrategy &self, bool experimental) {
+        self.type_ = experimental ? ExecutionStrategy::kExperimental
+                                  : ExecutionStrategy::kDefault;
+      });
 
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
     BuildStrategy allows the user to more preciously control how to
@@ -964,6 +951,14 @@ Experimental: Compile the main_program into a multi-devices graph,
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
+      .def_property(
+          "enable_parallel_graph",
+          [](const BuildStrategy &self) { return self.enable_parallel_graph_; },
+          [](BuildStrategy &self, bool b) { self.enable_parallel_graph_ = b; },
+          R"DOC(The type is BOOL, if set True, ParallelExecutor would build the main_program into multiple graphs,
+                each of the graphs would run with one device. This approach can achieve better performance in
+                some scenarios. Please note, this approach only supports all-reduce mode
+                on GPU device)DOC")
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

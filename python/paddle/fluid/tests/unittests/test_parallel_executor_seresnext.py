@@ -19,7 +19,7 @@ import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
 import paddle.fluid.core as core
-from parallel_executor_test_base import TestParallelExecutorBase, ExecutorType
+from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import math
 import os
@@ -282,7 +282,7 @@ class TestResnet(TestParallelExecutorBase):
                                   use_reduce=False,
                                   iter=20,
                                   delta2=1e-6,
-                                  exec_type=ExecutorType.Default,
+                                  use_parallel_graph=False,
                                   lr_scale=1.0):
         if use_cuda and not core.is_compiled_with_cuda():
             return
@@ -303,7 +303,7 @@ class TestResnet(TestParallelExecutorBase):
             use_reduce=use_reduce,
             optimizer=optimizer(),
             use_parallel_executor=False,
-            exec_type=exec_type)
+            use_parallel_graph=use_parallel_graph)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -313,7 +313,7 @@ class TestResnet(TestParallelExecutorBase):
             use_cuda=use_cuda,
             use_reduce=use_reduce,
             optimizer=optimizer(lr_scale=lr_scale),
-            exec_type=exec_type)
+            use_parallel_graph=use_parallel_graph)
 
         self.assertAlmostEquals(
             np.mean(parallel_first_loss), single_first_loss[0], delta=1e-6)
@@ -327,7 +327,7 @@ class TestResnet(TestParallelExecutorBase):
             self._check_resnet_convergence(
                 model=SE_ResNeXt50Small,
                 use_cuda=True,
-                exec_type=ExecutorType.ParallelGraph,
+                use_parallel_graph=True,
                 lr_scale=core.get_cuda_device_count())
         self._check_resnet_convergence(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)

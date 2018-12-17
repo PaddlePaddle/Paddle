@@ -26,26 +26,24 @@ import sys
 
 __all__ = ['TestParallelExecutorBase']
 
-ExecutorType = fluid.ExecutionStrategy().ExecutorType
-
 
 class TestParallelExecutorBase(unittest.TestCase):
-    def check_network_convergence(
-            self,
-            method,
-            use_cuda=True,
-            memory_opt=True,
-            iter=50,
-            batch_size=None,
-            allow_op_delay=False,
-            feed_dict=None,
-            seed=None,
-            use_parallel_executor=True,
-            use_reduce=False,
-            fuse_elewise_add_act_ops=False,
-            optimizer=fluid.optimizer.Adam,
-            exec_type=fluid.ExecutionStrategy().ExecutorType.Default,
-            enable_sequential_execution=False):
+    def check_network_convergence(self,
+                                  method,
+                                  use_cuda=True,
+                                  memory_opt=True,
+                                  iter=50,
+                                  batch_size=None,
+                                  allow_op_delay=False,
+                                  feed_dict=None,
+                                  seed=None,
+                                  use_parallel_executor=True,
+                                  use_reduce=False,
+                                  use_parallel_graph=False,
+                                  fuse_elewise_add_act_ops=False,
+                                  optimizer=fluid.optimizer.Adam,
+                                  use_fast_executor=False,
+                                  enable_sequential_execution=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -61,8 +59,8 @@ class TestParallelExecutorBase(unittest.TestCase):
         startup = fluid.Program()
         startup.random_seed = 1  # Fix random seed
         main.random_seed = 1
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        self.scope = fluid.Scope()
+        with fluid.scope_guard(self.scope):
             with fluid.program_guard(main, startup):
                 if seed is not None:
                     startup.random_seed = seed
@@ -80,13 +78,14 @@ class TestParallelExecutorBase(unittest.TestCase):
                 startup_exe.run(startup)
                 exec_strategy = fluid.ExecutionStrategy()
                 exec_strategy.allow_op_delay = allow_op_delay
-                exec_strategy.executor_type = exec_type
+                exec_strategy.use_experimental_executor = use_fast_executor
 
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                     if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
                 build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
                 build_strategy.enable_sequential_execution = enable_sequential_execution
+                build_strategy.enable_parallel_graph = use_parallel_graph
                 if use_cuda and core.is_compiled_with_cuda():
                     build_strategy.remove_unnecessary_lock = True
 
