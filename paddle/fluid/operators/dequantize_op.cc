@@ -25,9 +25,8 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(
   framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
   framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
-      ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout_, library_);
 }
 
 void DeQuantOpMaker::Make() {

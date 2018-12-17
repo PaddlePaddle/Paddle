@@ -205,7 +205,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_reorder_key = key + "@src_mem_preorder_p";
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
-    if (conv_p == nullptr) {
+    if (conv_p == nullptr || !is_test) {
       struct ConvInfo convinfo;
       struct MkldnnInfo mkldnninfo;
       convinfo.strides = &strides;
@@ -559,13 +559,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dst_dt = mkldnninfo->fuse_relu
                       ? paddle::framework::ToMKLDNNDataType(
-                            std::type_index(typeid(unsigned char)))
+                            framework::DataTypeTrait<int8_t>::DataType)
                       : paddle::framework::ToMKLDNNDataType(
-                            std::type_index(typeid(signed char)));
+                            framework::DataTypeTrait<uint8_t>::DataType);
 
     if (mkldnninfo->force_fp32_output) {
-      dst_dt =
-          paddle::framework::ToMKLDNNDataType(std::type_index(typeid(float)));
+      dst_dt = paddle::framework::ToMKLDNNDataType(
+          framework::DataTypeTrait<float>::DataType);
     }
 
     if (mkldnninfo->fuse_residual_conn) {

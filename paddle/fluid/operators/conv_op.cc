@@ -98,7 +98,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif
 
   auto input_data_type = ctx.Input<Tensor>("Input")->type();
-  auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
 
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
