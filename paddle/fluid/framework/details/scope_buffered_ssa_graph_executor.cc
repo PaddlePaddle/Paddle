@@ -41,10 +41,12 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       Scope &local_scope = scope->NewScope();
       *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
           &local_scope;
+
       for (auto &info : var_infos_) {
         if (scope->FindVar(info.name_) != nullptr) {
           continue;
         }
+
         if (info.persistable_) {  // Persistable
           InitializeVariable(scope->Var(info.name_), info.type_);
         } else {

@@ -79,26 +79,25 @@ class TestMNIST(TestParallelExecutorBase):
             return
 
         img, label = self._init_data()
-        """
+
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
             use_reduce=False)
-        """
+
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
             use_reduce=True)
-        """
+
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-4)
-        """
 
     # simple_fc
     def check_simple_fc_convergence(self,
@@ -118,7 +117,7 @@ class TestMNIST(TestParallelExecutorBase):
             use_reduce=use_reduce,
             use_parallel_graph=use_parallel_graph)
 
-    def notest_simple_fc(self):
+    def test_simple_fc(self):
         # use_cuda
         if core.is_compiled_with_cuda():
             self.check_simple_fc_convergence(True)
@@ -126,7 +125,7 @@ class TestMNIST(TestParallelExecutorBase):
                 True, use_reduce=False, use_parallel_graph=True)
         self.check_simple_fc_convergence(False)
 
-    def notest_simple_fc_with_new_strategy(self):
+    def test_simple_fc_with_new_strategy(self):
         # use_cuda, use_reduce
         self._compare_reduce_and_allreduce(simple_fc_net, True)
         self._compare_reduce_and_allreduce(simple_fc_net, False)
@@ -163,7 +162,7 @@ class TestMNIST(TestParallelExecutorBase):
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
-    def notest_simple_fc_parallel_accuracy(self):
+    def test_simple_fc_parallel_accuracy(self):
         if core.is_compiled_with_cuda():
             self.check_simple_fc_parallel_accuracy(True)
             self.check_simple_fc_parallel_accuracy(
@@ -192,7 +191,9 @@ class TestMNIST(TestParallelExecutorBase):
         for use_cuda in (False, True):
             for use_fast_executor in (False, True):
                 self.check_batchnorm_fc_convergence(use_cuda, use_fast_executor)
-        self.check_batchnorm_fc_convergence(use_cuda, False, True)
+
+        self.check_batchnorm_fc_convergence(
+            use_cuda=True, use_fast_executor=False, use_parallel_graph=True)
 
     def test_batchnorm_fc_with_new_strategy(self):
         # FIXME(zcd): close this test temporally.

@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
