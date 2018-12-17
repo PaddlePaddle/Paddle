@@ -361,9 +361,10 @@ class AdamOpKernel : public framework::OpKernel<T> {
       if (lazy_mode) {
         std::vector<int64_t> id_vector;
         size_t row_count = grad_merge.rows().size();
+        std::vector<int64_t> cpu_rows(grad_merge.rows());
         for (size_t row_index = 0; row_index < row_count; ++row_index) {
           for (size_t offset = 0; offset < row_numel; ++offset) {
-            size_t i = rows[row_index] * row_numel + offset;
+            size_t i = cpu_rows[row_index] * row_numel + offset;
             id_vector.push_back(i);
           }
         }

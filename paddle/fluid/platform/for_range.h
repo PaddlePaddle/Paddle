@@ -128,7 +128,7 @@ struct ForRangeIn<CUDADeviceContext> {
     int grid_size = (range_.size() + num_threads - 1) / num_threads;
 
     ForRangeInElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
-        func, range_.data(), range_size);
+        func, range_.CUDAData(dev_ctx_.GetPlace()), range_size);
   }
 
   const CUDADeviceContext& dev_ctx_;
