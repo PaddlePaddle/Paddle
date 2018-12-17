@@ -33,6 +33,10 @@ _logger.setLevel(logging.INFO)
 
 
 class HDFSClient(object):
+    """
+    this is a tool class for read/write data with HDFS.
+    """
+
     def __init__(self, hadoop_home, configs):
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home

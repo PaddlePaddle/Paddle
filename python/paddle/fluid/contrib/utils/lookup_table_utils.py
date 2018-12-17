@@ -78,19 +78,28 @@ def __get_prefetch_op_tuples(main_program):
     return prefetch_op_tuples
 
 
-def convert_dist_to_sparse_program(main_program):
-    if not main_program._distributed_lookup_table:
+def convert_dist_to_sparse_program(progarm):
+    """
+    WARNING: this function will only used for distributed training with distributed lookup table.
+    when we train model with distributed lookup table but want to do the local inference, we can use
+    this function to convert the train program with distributed lookup table to sparse lookup table.
+
+    :param program(Program): the program must be the trainer program, which will be get by the distribute transpiler.
+    :return:
+        program: The `program` is a Program, it's the program replace distributed lookup table to sparse lookup table.
+    """
+    if not progarm._distributed_lookup_table:
         _logger.warn(
             "There are no distributed lookup tables need to be converted")
         return
 
     # create table param and grad var in pserver program
-    origin_emb_var = "{}.origin".format(main_program._distributed_lookup_table)
-    emb_var = main_program._distributed_lookup_table
-    main_program.global_block()._rename_var(emb_var, origin_emb_var)
-    origin_param_var = main_program.global_block().vars[origin_emb_var]
+    origin_emb_var = "{}.origin".format(progarm._distributed_lookup_table)
+    emb_var = progarm._distributed_lookup_table
+    progarm.global_block()._rename_var(emb_var, origin_emb_var)
+    origin_param_var = progarm.global_block().vars[origin_emb_var]
 
-    param_var = main_program.global_block().create_var(
+    param_var = progarm.global_block().create_var(
         name=emb_var,
         shape=origin_param_var.shape,
         dtype=origin_param_var.dtype,
@@ -98,25 +107,25 @@ def convert_dist_to_sparse_program(main_program):
         persistable=True)
     # parameter must be selected rows
     param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
-    main_program._sync_with_cpp()
+    progarm._sync_with_cpp()
 
-    prefetch_op_tuples = __get_prefetch_op_tuples(main_program)
+    prefetch_op_tuples = __get_prefetch_op_tuples(progarm)
 
     split_ids_id = prefetch_op_tuples[0]
 
     for idx in range(split_ids_id + 2, split_ids_id - 1, -1):
-        main_program.global_block()._remove_op(idx)
-    main_program.desc.flush()
+        progarm.global_block()._remove_op(idx)
+    progarm.desc.flush()
 
     in_out_pairs = zip(prefetch_op_tuples[1], prefetch_op_tuples[2])
 
     for in_out_pair in in_out_pairs:
         idx = split_ids_id
-        ids = main_program.global_block().vars[in_out_pair[0]]
-        out = main_program.global_block().vars[in_out_pair[1]]
-        __insert_lookup_sparse_table_op(main_program, idx, ids, param_var, out)
-        main_program.desc.flush()
-    return main_program
+        ids = progarm.global_block().vars[in_out_pair[0]]
+        out = progarm.global_block().vars[in_out_pair[1]]
+        __insert_lookup_sparse_table_op(progarm, idx, ids, param_var, out)
+        progarm.desc.flush()
+    return progarm
 
 
 def _load_persistable_vars(executor, dirname, program, lookup_table_vars):
@@ -168,9 +177,18 @@ def _load_persistable_vars(executor, dirname, program, lookup_table_vars):
 def load_persistables_for_increment(dirname, executor, program,
                                     lookup_table_var, lookup_table_var_path):
     """
+    WARNING: this function will only used for distributed training with distributed lookup table.
     for increment trainning, the pserver will not only load dense variables,
     but also load the suitable lookup table var. Because of slice lookup table
     var with HASH, we must load the correct slice var.
+
+
+    :param dirname(str): The directory path
+    :param executor(Executor): The executor to run for loading inference model.
+    :param program(Program): The parameter server program, which will run on Pserver.
+    :param lookup_table_var: the distributed lookup tables var name.
+    :param lookup_table_var_path: the the distributed lookup tables var location.
+    :return: None
     """
 
     def __load_lookup_table_vars(executor, main_program, lookup_table_var,
@@ -211,7 +229,16 @@ def load_persistables_for_increment(dirname, executor, program,
 def load_persistables_for_inference(dirname, executor, program,
                                     lookup_table_var_name):
     """
-    this function is suitable for local inference with lookup table variables.
+
+    WARNING: this function will only used for inference with distributed lookup table.
+    Inference with distributed lookup table is a little funky, this function will load distributed
+    lookup table vars into sparse var, can be used in local inference mode.
+
+    :param dirname(str): The directory path
+    :param executor(Executor): The executor to run for loading inference model.
+    :param program(Program): The parameter server program, which will run on Pserver.
+    :param lookup_table_var_name: the distributed lookup tables var name.
+    :return: None
     """
 
     def __load_lookup_table_vars(executor, dirname, main_program,
