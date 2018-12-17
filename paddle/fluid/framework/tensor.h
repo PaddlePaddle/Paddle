@@ -69,6 +69,8 @@ class Tensor {
  public:
   Tensor() : type_(typeid(float)), offset_(0) {}
 
+  explicit Tensor(std::type_index type) : type_(type), offset_(0) {}
+
   /*! Return a pointer to mutable memory block. */
   template <typename T>
   T* data();
@@ -161,6 +163,8 @@ class Tensor {
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);
   }
+
+  void ReSetHolder(std::shared_ptr<memory::Allocation> holder);
 
  private:
   /*! holds the memory block if allocated. */

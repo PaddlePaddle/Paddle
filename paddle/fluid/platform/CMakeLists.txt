@@ -90,8 +90,8 @@ ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
 
-IF(WITH_GPU)
-    nv_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator)
-ELSE()
-    cc_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator)
-ENDIF()
+if(WITH_GPU)
+    nv_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator tensor)
+else()
+    cc_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator tensor)
+endif()

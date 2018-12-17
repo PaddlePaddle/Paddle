@@ -13,8 +13,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/memory/memory.h"
 
+#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -89,6 +89,7 @@ DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
 #ifdef PADDLE_WITH_CUDA
 platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     const platform::Place& place, const cudaStream_t& stream) {
+  PADDLE_ENFORCE(platform::is_gpu_place(place));
   auto place_stream = std::make_pair(place, stream);
   if (!device_allocator_.count(place_stream)) {
     std::unique_lock<std::mutex> lock(mtx_);
@@ -98,26 +99,22 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
   }
   return *device_allocator_.at(place_stream);
 }
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CUDADeviceContext& dev_ctx) {
+  auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
+  if (device_allocator_.count(place_stream)) {
+    return *device_allocator_.at(place_stream);
+  }
+  return Get(dev_ctx.GetPlace(), dev_ctx.stream());
+}
 #endif
 
-template <typename DeviceContext>
+template <>
 platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
-    const DeviceContext& dev_ctx) {
-  if (platform::is_cpu_place(dev_ctx.GetPlace())) {
-    return cpu_allocator_;
-  } else if (platform::is_gpu_place(dev_ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-    auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
-    if (device_allocator_.count(place_stream)) {
-      return *device_allocator_.at(place_stream);
-    }
-    return Get(dev_ctx.GetPlace(), dev_ctx.stream());
-#else
-    PADDLE_THROW("Not compile with cuda");
-#endif
-  } else {
-    PADDLE_THROW("Not implement.");
-  }
+    const platform::CPUDeviceContext& dev_ctx) {
+  return cpu_allocator_;
 }
 
 platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
@@ -239,12 +236,10 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
-
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
   if (dynload::HasCUDNN()) {

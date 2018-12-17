@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
+#include "paddle/fluid/platform/create_tensor_with_allocationptr.h"
 
 namespace paddle {
 namespace operators {
@@ -123,6 +124,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
@@ -155,13 +158,20 @@ class GemmConvKernel : public framework::OpKernel<T> {
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      col.mutable_data<T>(col_shape, context.GetPlace());
+      auto tmp_allocation_ptr =
+          platform::DeviceTemporaryAllocator::Instance()
+              .Get<DeviceContext>(dev_ctx)
+              .Allocate(framework::product(col_shape) * sizeof(T));
+      Tensor tep_tensor =
+          platform::GetTensor<T>(std::move(tmp_allocation_ptr), col_shape);
+
+      col.ShareDataWith(tep_tensor);
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }
 
-    framework::DDim input_shape = framework::slice_ddim(
-        input->dims(), 1, static_cast<int>(input->dims().size()));
+    framework::DDim input_shape =
+        framework::slice_ddim(input->dims(), 1, input->dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
                                            filter.numel() / filter.dims()[0]};
@@ -178,7 +188,6 @@ class GemmConvKernel : public framework::OpKernel<T> {
     math::Vol2ColFunctor<DeviceContext, T> vol2col;
     math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     for (int i = 0; i < batch_size; i++) {
       Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
@@ -237,6 +246,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
     // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
     std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
     // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
@@ -262,8 +273,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     framework::DDim col_matrix_shape =
         framework::flatten_to_2d(col_shape, data_dim + 1);
 
-    framework::DDim input_shape = framework::slice_ddim(
-        input->dims(), 1, static_cast<int>(input->dims().size()));
+    framework::DDim input_shape =
+        framework::slice_ddim(input->dims(), 1, input->dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
                                            filter.numel() / filter.dims()[0]};
@@ -286,13 +297,19 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      col.mutable_data<T>(col_shape, context.GetPlace());
+      auto tmp_allocation_ptr =
+          platform::DeviceTemporaryAllocator::Instance()
+              .Get<DeviceContext>(dev_ctx)
+              .Allocate(framework::product(col_shape) * sizeof(T));
+      Tensor tep_tensor =
+          platform::GetTensor<T>(std::move(tmp_allocation_ptr), col_shape);
+
+      col.ShareDataWith(tep_tensor);
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }
 
     math::SetConstant<DeviceContext, T> set_zero;
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {

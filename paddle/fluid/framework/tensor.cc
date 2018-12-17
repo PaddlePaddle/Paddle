@@ -101,5 +101,12 @@ const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
 
+void Tensor::ReSetHolder(std::shared_ptr<memory::Allocation> holder) {
+  if (holder_) {
+    PADDLE_ENFORCE_EQ(numel() * SizeOfType(type()), holder->size());
+  }
+  holder_ = holder;
+}
+
 }  // namespace framework
 }  // namespace paddle
