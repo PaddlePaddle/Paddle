@@ -201,7 +201,7 @@ void Scope::RenameInternal(const std::string& origin_name,
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE(new_it == vars_.end(),
                  "The variable with name %s is already in the scope", new_name);
-  vars_[new_name].reset(origin_it.value().release());
+  vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
 }
 
