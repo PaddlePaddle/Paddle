@@ -33,7 +33,7 @@ DEFINE_bool(check_nan_inf, false,
 
 namespace paddle {
 namespace framework {
-
+static std::mutex mtx;
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
@@ -758,7 +758,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  {
+    std::lock_guard<std::mutex> guard(mtx);
+    kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
