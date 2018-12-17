@@ -52,6 +52,8 @@ __all__ = [
     'softmax',
     'pool2d',
     'pool3d',
+    'adaptive_pool2d',
+    'adaptive_pool3d',
     'batch_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -2498,6 +2500,204 @@ def pool3d(input,
         })
 
     return pool_out
+
+
+@templatedoc(op_type="pool2d")
+def adaptive_pool2d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+        .. code-block:: python
+
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n], 
+          # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
+          # of input data into m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(m):
+          #         for j in range(n):
+          #             hstart = floor(i * H / m)
+          #             hend = ceil((i + 1) * H / m)
+          #             wstart = floor(i * W / n)
+          #             wend = ceil((i + 1) * W / n)
+          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+          #
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool2d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='avg')
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 2:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 2.")
+
+    if pool_type == "max":
+        l_type = 'max_pool2d_with_index'
+    else:
+        l_type = "pool2d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "adaptive": True,
+        })
+
+    return (pool_out, mask) if require_index else pool_out
+
+
+@templatedoc(op_type="pool3d")
+def adaptive_pool3d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (Depth, Height, Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+        .. code-block:: python
+
+          # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
+          # of input data into l * m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] = 
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          #
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out, mask = fluid.layers.adaptive_pool3d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='avg')
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 3:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 3.")
+
+    if pool_type == "max":
+        l_type = 'max_pool3d_with_index'
+    else:
+        l_type = "pool3d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "adaptive": True,
+        })
+
+    return (pool_out, mask) if require_index else pool_out
 
 
 def batch_norm(input,
