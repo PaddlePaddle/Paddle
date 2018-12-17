@@ -59,9 +59,6 @@ class PaddlePSInstance(object):
         else:
             self._node_type = -1
 
-        #if self._rankid == 0:
-        #print "node type: ", self._node_type
-
     def _split_comm(self):
         if self.is_server():
             self._comm = self.dh.comm.Split(self._node_type)

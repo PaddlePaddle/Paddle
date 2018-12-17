@@ -28,7 +28,7 @@ class FileSystem(object):
 
     def __init__(self,
                  fs_type="afs",
-                 uri="afs://tianqi.afs.baidu.com:9902",
+                 uri="afs://xx",
                  user=None,
                  passwd=None,
                  hadoop_bin=""):
@@ -37,10 +37,6 @@ class FileSystem(object):
         assert hadoop_bin != None
         import ps_pb2 as pslib
         self.fs_client = pslib.FsClientParameter()
-        #if fs_type == "afs":
-        #    fs_client.fs_type = pslib.FsApiType.AFS
-        #else:
-        #    fs_client.fs_type = pslib.FsApiType.HDFS
         self.fs_client.uri = uri
         self.fs_client.user = user
         self.fs_client.passwd = passwd
