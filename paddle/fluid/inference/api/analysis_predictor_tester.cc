@@ -55,7 +55,12 @@ TEST(AnalysisPredictor, analysis_off) {
 }
 
 TEST(AnalysisPredictor, analysis_on) {
-  AnalysisConfig config(false);
+#ifdef PADDLE_WITH_CUDA
+  AnalysisConfig config(true);
+  config.fraction_of_gpu_memory = 0.15;
+#else
+  AnalysisConfig config;
+#endif
   config.model_dir = FLAGS_dirname;
   config.enable_ir_optim = true;
 

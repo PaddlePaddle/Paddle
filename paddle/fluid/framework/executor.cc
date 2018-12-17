@@ -157,9 +157,9 @@ void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   // TODO(typhoonzero): complete message will need to use real trainer_id,
   // except 0.
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>(0)
-      ->SendComplete();
+  auto client =
+      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+  client->SendComplete();
 #endif
 }
 
