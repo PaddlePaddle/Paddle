@@ -181,6 +181,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
+    PADDLE_ENFORCE(VectorElemName(slr->rows()) == typeid(int64_t).name());
     size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
 
     IOBufWriter::Append(name, iobuf,
