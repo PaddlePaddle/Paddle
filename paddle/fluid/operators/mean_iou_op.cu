@@ -120,8 +120,6 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
         platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     auto tmp_ious_data = allocator.Allocate(num_classes * sizeof(float));
     float* ious_data = static_cast<float*>(tmp_ious_data->ptr());
-    auto ious_t = EigenTensor<float, 1>::From(
-        ious_data, framework::make_ddim({static_cast<int64_t>(num_classes)}));
 
     // Init out_wrong, out_correct and out_mean_iou
     out_wrong_t.device(place) = out_wrong_t.constant(0);

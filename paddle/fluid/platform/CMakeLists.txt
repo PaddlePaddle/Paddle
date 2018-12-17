@@ -89,7 +89,6 @@ IF(WITH_GPU)
 ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
-
 if(WITH_GPU)
     nv_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator tensor)
 else()

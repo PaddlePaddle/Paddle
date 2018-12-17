@@ -29,7 +29,7 @@ void Tensor::check_memory_size() const {
 }
 
 Tensor::Tensor(std::type_index type)
-    : type_(framework::ToVarType(type)), offset_(0) {}
+    : type_(framework::ToDataType(type)), offset_(0) {}
 
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
