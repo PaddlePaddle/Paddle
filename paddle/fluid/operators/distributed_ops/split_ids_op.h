@@ -44,7 +44,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
         batch_size += ids_tensors[i]->dims()[0];
       }
-      VLOG(40) << "Get Total BatchSize is: " << batch_size;
+      VLOG(4) << "Get Total BatchSize is: " << batch_size;
 
       std::vector<T> all_ids(batch_size);
       int offset = 0;

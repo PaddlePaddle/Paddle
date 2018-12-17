@@ -30,8 +30,10 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_int32(batch_size, 1, "batch size.");
@@ -40,8 +42,11 @@ DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
+DEFINE_bool(record_benchmark, false,
+            "Record benchmark after profiling the model");
 
 DECLARE_bool(profile);
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
@@ -177,11 +182,9 @@ void TestOneThreadPrediction(
     warmup_timer.tic();
     predictor->Run(inputs[0], outputs, batch_size);
     PrintTime(batch_size, 1, 1, 0, warmup_timer.toc(), 1);
-#if !defined(_WIN32)
     if (FLAGS_profile) {
       paddle::platform::ResetProfiler();
     }
-#endif
   }
 
   LOG(INFO) << "Run " << num_times << " times...";
@@ -193,8 +196,16 @@ void TestOneThreadPrediction(
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
-    PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
-              inputs.size());
+
+    double latency = run_timer.toc() / num_times;
+    PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
+    if (FLAGS_record_benchmark) {
+      Benchmark benchmark;
+      benchmark.SetName(FLAGS_model_name);
+      benchmark.SetBatchSize(batch_size);
+      benchmark.SetLatency(latency);
+      benchmark.PersistToFile("benchmark_record.txt");
+    }
   }
 }
 
@@ -206,35 +217,51 @@ void TestMultiThreadPrediction(
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
-  for (int tid = 1; tid < num_threads; ++tid) {
-    predictors.emplace_back(predictors.front()->Clone());
-  }
+  auto main_predictor = CreateTestPredictor(config, use_analysis);
 
   size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
-#ifdef PADDLE_WITH_MKLDNN
-      platform::set_cur_thread_id(static_cast<int>(tid) + 1);
-#endif
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
-      auto &predictor = predictors[tid];
-      LOG(INFO) << "running thread " << tid;
-      Timer timer;
-      timer.tic();
-      for (int i = 0; i < num_times; i++) {
-        for (const auto &input : inputs) {
-          ASSERT_TRUE(predictor->Run(input, &outputs_tid));
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = main_predictor->Clone();
+#ifdef PADDLE_WITH_MKLDNN
+      if (use_analysis) {
+        static_cast<AnalysisPredictor *>(predictor.get())
+            ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
+      }
+#endif
+
+      // warmup run
+      LOG(INFO) << "Running thread " << tid << ", warm up run...";
+      {
+        Timer warmup_timer;
+        warmup_timer.tic();
+        predictor->Run(inputs[0], outputs, batch_size);
+        PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
+        if (FLAGS_profile) {
+          paddle::platform::ResetProfiler();
         }
       }
 
-      auto time = timer.toc();
-      total_time += time;
-      PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
-                inputs.size());
+      LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
+      {
+        Timer timer;
+        timer.tic();
+        for (int i = 0; i < num_times; i++) {
+          for (const auto &input : inputs) {
+            ASSERT_TRUE(predictor->Run(input, &outputs_tid));
+          }
+        }
+
+        auto time = timer.toc();
+        total_time += time;
+        PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
+                  inputs.size());
+      }
     });
   }
   for (int i = 0; i < num_threads; ++i) {
@@ -346,7 +373,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   }
 
   for (size_t i = 0; i < a_size; i++) {
-    if (a.type() == typeid(float)) {
+    if (a.type() == framework::proto::VarType::FP32) {
       const auto *a_data = a.data<float>();
       const auto *b_data = b.data<float>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
@@ -355,7 +382,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
             b_data[i]);
         return false;
       }
-    } else if (a.type() == typeid(int64_t)) {
+    } else if (a.type() == framework::proto::VarType::INT64) {
       const auto *a_data = a.data<int64_t>();
       const auto *b_data = b.data<int64_t>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {

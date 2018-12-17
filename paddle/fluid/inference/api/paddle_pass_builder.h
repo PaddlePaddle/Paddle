@@ -98,9 +98,10 @@ class CpuPassStrategy : public PassStrategy {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass :
-         std::vector<std::string>({"depthwise_conv_mkldnn_pass",  //
-                                   "conv_bias_mkldnn_fuse_pass",  //
-                                   "conv_relu_mkldnn_fuse_pass",  //
+         std::vector<std::string>({"depthwise_conv_mkldnn_pass",    //
+                                   "conv_bias_mkldnn_fuse_pass",    //
+                                   "conv3d_bias_mkldnn_fuse_pass",  //
+                                   "conv_relu_mkldnn_fuse_pass",    //
                                    "conv_elementwise_add_mkldnn_fuse_pass"})) {
       passes_.push_back(pass);
     }
@@ -117,7 +118,10 @@ class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
     passes_.assign({
-        "infer_clean_graph_pass", "conv_bn_fuse_pass",
+        "infer_clean_graph_pass",               //
+        "conv_bn_fuse_pass",                    //
+        "conv_elementwise_add_act_fuse_pass",   //
+        "conv_elementwise_add2_act_fuse_pass",  //
     });
   }
 

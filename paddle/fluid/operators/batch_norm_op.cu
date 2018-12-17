@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/batch_norm_op.h"
+#include <algorithm>
 #include <cfloat>
+#include <string>
+#include <vector>
+#include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
@@ -59,6 +63,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
@@ -96,7 +101,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
 
-    VLOG(30) << "Setting descriptors.";
+    VLOG(3) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
     if (data_layout == DataLayout::kNCHW) {
@@ -121,7 +126,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
-    if (is_test) {
+    if (is_test || use_global_stats) {
       // only when test we use input to do computation.
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
@@ -163,7 +168,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       if ((N * H * W * D) == 1) {
         LOG(WARNING) << "Only 1 element in normalization dimension, "
                      << "we skip the batch norm calculation, let y = x.";
-        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+        framework::TensorCopy(*x, ctx.GetPlace(), y);
       } else {
         double this_factor = 1. - momentum;
 
@@ -191,6 +196,58 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
   }
 };
 
+template <typename T, framework::DataLayout layout>
+static __global__ void KeBNBackwardData(const T *dy,
+                                        const BatchNormParamType<T> *scale,
+                                        const BatchNormParamType<T> *variance,
+                                        const double epsilon, const int C,
+                                        const int HxW, const int num, T *dx) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (int i = gid; i < num; i += stride) {
+    const int c = layout == framework::DataLayout::kNCHW ? i / HxW % C : i % C;
+    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
+    dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
+                           scale[c] * inv_var);
+  }
+}
+
+template <typename T, int BlockDim, framework::DataLayout layout>
+static __global__ void KeBNBackwardScaleBias(
+    const T *dy, const T *x, const BatchNormParamType<T> *mean,
+    const BatchNormParamType<T> *variance, const double epsilon, const int N,
+    const int C, const int HxW, BatchNormParamType<T> *dscale,
+    BatchNormParamType<T> *dbias) {
+  const int outer_size = C;
+  const int inner_size = N * HxW;
+  typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage ds_storage;
+  __shared__ typename BlockReduce::TempStorage db_storage;
+
+  for (int i = blockIdx.x; i < outer_size; i += gridDim.x) {
+    BatchNormParamType<T> ds_sum = static_cast<BatchNormParamType<T>>(0);
+    BatchNormParamType<T> db_sum = static_cast<BatchNormParamType<T>>(0);
+
+    BatchNormParamType<T> inv_var_i = 1.0 / sqrt(variance[i] + epsilon);
+    BatchNormParamType<T> mean_i = mean[i];
+    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int index = layout == framework::DataLayout::kNCHW
+                            ? (j / HxW * C + i) * HxW + j % HxW
+                            : j * outer_size + i;
+      ds_sum += static_cast<BatchNormParamType<T>>(dy[index]) *
+                (static_cast<BatchNormParamType<T>>(x[index]) - mean_i);
+      db_sum += static_cast<BatchNormParamType<T>>(dy[index]);
+    }
+    ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
+    db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
+    if (threadIdx.x == 0) {
+      dscale[i] = ds_sum * inv_var_i;
+      dbias[i] = db_sum;
+    }
+    __syncthreads();
+  }
+}
+
 template <typename T>
 class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -200,6 +257,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                    "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const auto *x = ctx.Input<Tensor>("X");
@@ -219,41 +278,12 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    if ((N * H * W * D) == 1) {
-      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-          functor;
-      functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
-      return;
+    if (d_scale && d_bias) {
+      d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     }
-
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
     PADDLE_ENFORCE_EQ(scale->dims()[0], C);
-
-    // ------------------- cudnn descriptors ---------------------
-    cudnnTensorDescriptor_t data_desc_;
-    cudnnTensorDescriptor_t bn_param_desc_;
-    cudnnBatchNormMode_t mode_;
-
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    CUDNN_ENFORCE(
-        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
-    if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
-      LOG(ERROR) << "Provided epsilon is smaller than "
-                 << "CUDNN_BN_MIN_EPSILON. Setting it to "
-                 << "CUDNN_BN_MIN_EPSILON instead.";
-    }
-    epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if CUDNN_VERSION_MIN(7, 0, 0)
-    mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-#else
-    mode_ = CUDNN_BATCHNORM_SPATIAL;
-#endif
 
     std::vector<int> dims;
     std::vector<int> strides;
@@ -264,34 +294,114 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       dims = {N, C, H, W, D};
       strides = {H * W * C * D, 1, W * D * C, D * C, C};
     }
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
-        data_desc_, CudnnDataType<T>::type,
-        x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
-        bn_param_desc_, data_desc_, mode_));
 
-    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-    const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
-    const void *saved_mean_data =
-        saved_mean->template data<BatchNormParamType<T>>();
-    const void *saved_var_data =
-        saved_var->template data<BatchNormParamType<T>>();
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    if (!use_global_stats) {
+      if ((N * H * W * D) == 1) {
+        framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+            functor;
+        functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
+        functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+        return;
+      }
 
-    CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
-        dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
-        CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
-        CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
-        data_desc_, d_y->template data<T>(), data_desc_,
-        d_x->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-        scale->template data<BatchNormParamType<T>>(),
-        d_scale->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
-        d_bias->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
-        epsilon, saved_mean_data, saved_var_data));
+      // ------------------- cudnn descriptors ---------------------
+      cudnnTensorDescriptor_t data_desc_;
+      cudnnTensorDescriptor_t bn_param_desc_;
+      cudnnBatchNormMode_t mode_;
 
-    // clean when exit.
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    CUDNN_ENFORCE(
-        platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+      CUDNN_ENFORCE(
+          platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+      CUDNN_ENFORCE(
+          platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+      if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
+        LOG(ERROR) << "Provided epsilon is smaller than "
+                   << "CUDNN_BN_MIN_EPSILON. Setting it to "
+                   << "CUDNN_BN_MIN_EPSILON instead.";
+      }
+      epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
+#if CUDNN_VERSION_MIN(7, 0, 0)
+      mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+#else
+      mode_ = CUDNN_BATCHNORM_SPATIAL;
+#endif
+
+      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+          data_desc_, CudnnDataType<T>::type,
+          x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
+      CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
+          bn_param_desc_, data_desc_, mode_));
+
+      const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+      const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
+      const void *saved_mean_data =
+          saved_mean->template data<BatchNormParamType<T>>();
+      const void *saved_var_data =
+          saved_var->template data<BatchNormParamType<T>>();
+
+      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
+          dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
+          CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
+          CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
+          data_desc_, d_y->template data<T>(), data_desc_,
+          d_x->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
+          scale->template data<BatchNormParamType<T>>(),
+          d_scale->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+          d_bias->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+          epsilon, saved_mean_data, saved_var_data));
+
+      // clean when exit.
+      CUDNN_ENFORCE(
+          platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+      CUDNN_ENFORCE(
+          platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+    } else {
+      const auto *running_mean = ctx.Input<Tensor>("Mean");
+      const auto *running_var = ctx.Input<Tensor>("Variance");
+
+      const auto *running_mean_data =
+          running_mean->template data<BatchNormParamType<T>>();
+      const auto *running_var_data =
+          running_var->template data<BatchNormParamType<T>>();
+
+      const int num = x->numel();
+      const int block = 512;
+      int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+      const int max_blocks = std::max(max_threads / block, 1);
+      int grid1 = (num + block - 1) / block;
+      int grid2 = std::min(C, max_blocks);
+
+      if (data_layout == framework::DataLayout::kNCHW) {
+        if (d_x) {
+          KeBNBackwardData<T, framework::DataLayout::kNCHW><<<
+              grid1, block, 0, dev_ctx.stream()>>>(
+              d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
+              running_var_data, epsilon, C, H * W, num, d_x->data<T>());
+        }
+        if (d_scale && d_bias) {
+          KeBNBackwardScaleBias<T, block, framework::DataLayout::kNCHW><<<
+              grid2, block, 0, dev_ctx.stream()>>>(
+              d_y->data<T>(), x->data<T>(), running_mean_data, running_var_data,
+              epsilon, C, H * W, num, d_scale->data<BatchNormParamType<T>>(),
+              d_bias->data<BatchNormParamType<T>>());
+        }
+      } else {
+        if (d_x) {
+          KeBNBackwardData<T, framework::DataLayout::kNHWC><<<
+              grid1, block, 0, dev_ctx.stream()>>>(
+              d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
+              running_var_data, epsilon, C, H * W, num, d_x->data<T>());
+        }
+        if (d_scale && d_bias) {
+          KeBNBackwardScaleBias<T, block, framework::DataLayout::kNCHW><<<
+              grid2, block, 0, dev_ctx.stream()>>>(
+              d_y->data<T>(), x->data<T>(), running_mean_data, running_var_data,
+              epsilon, C, H * W, num, d_scale->data<BatchNormParamType<T>>(),
+              d_bias->data<BatchNormParamType<T>>());
+        }
+      }
+    }
   }
 };
 

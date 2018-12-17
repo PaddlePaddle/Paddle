@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "pybind11/common.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -44,7 +43,7 @@ template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
   pybind11::buffer_info operator()(const framework::Tensor &tensor) {
-    if (std::type_index(typeid(CUR_TYPE)) == tensor.type()) {
+    if (framework::DataTypeTrait<CUR_TYPE>::DataType == tensor.type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
       std::vector<size_t> strides;
@@ -163,7 +162,7 @@ void PyCPUTensorSetFromArray(
     paddle::platform::CPUPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
@@ -183,7 +182,7 @@ inline void PyCPUTensorSetFromArray(
     paddle::platform::CPUPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
@@ -201,7 +200,7 @@ void PyCUDATensorSetFromArray(
     paddle::platform::CUDAPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
@@ -222,7 +221,7 @@ inline void PyCUDATensorSetFromArray(
     paddle::platform::CUDAPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
@@ -241,7 +240,7 @@ void PyCUDAPinnedTensorSetFromArray(
     const paddle::platform::CUDAPinnedPlace &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
@@ -261,7 +260,7 @@ inline void PyCUDAPinnedTensorSetFromArray(
     const paddle::platform::CUDAPinnedPlace &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
 

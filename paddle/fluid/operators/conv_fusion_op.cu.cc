@@ -22,6 +22,7 @@ DECLARE_bool(cudnn_exhaustive_search);
 namespace paddle {
 namespace operators {
 
+#if CUDNN_VERSION >= 7001
 using Tensor = framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
@@ -109,11 +110,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
-    if (activation == "identity") {
-      // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
-      // enabled with CUDNN_ACTIVATION_IDENTITY in cuDNN lib.
-      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-    } else if (!exhaustive_search) {
+    if (!exhaustive_search) {
       CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
           cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
@@ -164,24 +161,51 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
                       "workspace_size to be allocated exceeds the limit");
 
-    // ------------------- cudnn conv+bias+act forward --------------------
-    ScalingParamType<T> alpha1 = 1.0f;
-    ScalingParamType<T> alpha2 = residual ? 1.0f : 0.0f;
-    auto cudnn_func = [&](void* cudnn_workspace) {
-      CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBiasActivationForward(
-          handle, &alpha1, cudnn_input_desc, input_data, cudnn_filter_desc,
-          filter_data, cudnn_conv_desc, algo, cudnn_workspace,
-          workspace_size_in_bytes, &alpha2, cudnn_output_desc, residual_data,
-          cudnn_bias_desc, bias_data, cudnn_act_desc, cudnn_output_desc,
+    if ((activation == "identity") &&
+        (algo != CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM) &&
+        (!residual)) {
+      // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
+      // enabled with CUDNN_ACTIVATION_IDENTITY in cuDNN lib.
+      // But test in some case, the speed is slower, change to use
+      // cudnnConvolutionForward and cudnnAddTensor
+      // ------------- cudnn conv forward and bias add ---------------------
+      ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+      auto cudnn_func = [&](void* cudnn_workspace) {
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
+            handle, &alpha, cudnn_input_desc, input_data, cudnn_filter_desc,
+            filter_data, cudnn_conv_desc, algo, cudnn_workspace,
+            workspace_size_in_bytes, &beta, cudnn_output_desc, output_data));
+      };
+      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+      CUDNN_ENFORCE(platform::dynload::cudnnAddTensor(
+          handle, &alpha, cudnn_bias_desc, bias_data, &alpha, cudnn_output_desc,
           output_data));
-    };
-    workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+    } else {
+      if (activation == "identity") {
+        algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      }
+      // ------------------- cudnn conv+bias+act forward --------------------
+      ScalingParamType<T> alpha1 = 1.0f;
+      ScalingParamType<T> alpha2 = residual ? 1.0f : 0.0f;
+      auto cudnn_func = [&](void* cudnn_workspace) {
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBiasActivationForward(
+            handle, &alpha1, cudnn_input_desc, input_data, cudnn_filter_desc,
+            filter_data, cudnn_conv_desc, algo, cudnn_workspace,
+            workspace_size_in_bytes, &alpha2, cudnn_output_desc, residual_data,
+            cudnn_bias_desc, bias_data, cudnn_act_desc, cudnn_output_desc,
+            output_data));
+      };
+      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+    }
   }
 };
+#endif
 
 }  // namespace operators
 }  // namespace paddle
 
+#if CUDNN_VERSION >= 7001
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(conv2d_fusion, ops::CUDNNConvFusionOpKernel<float>,
                         ops::CUDNNConvFusionOpKernel<double>);
+#endif

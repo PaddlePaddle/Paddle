@@ -15,12 +15,15 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include <sys/time.h>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
+#include "paddle/fluid/platform/port.h"
+
+DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
 
 namespace paddle {
 namespace operators {
@@ -43,7 +46,6 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
-
     ctx.Wait();
     return TensorPayload(result);
 #else
@@ -59,8 +61,7 @@ TensorPayload GetTensorPayload(framework::Variable* var,
   auto tensor = var->Get<framework::LoDTensor>();
   // FIXME(wuyi): data types in send_recv.proto is copied from
   // framework.proto
-  request->set_data_type(
-      static_cast<VarMsg::Type>(framework::ToDataType(tensor.type())));
+  request->set_data_type(static_cast<VarMsg::Type>(tensor.type()));
   for (auto& dim : framework::vectorize(tensor.dims())) {
     request->add_dims(dim);
   }
@@ -81,8 +82,7 @@ TensorPayload GetSelectedRowsPayload(framework::Variable* var,
                                      const platform::DeviceContext& ctx,
                                      VarMsg* request) {
   auto* slr = var->GetMutable<framework::SelectedRows>();
-  request->set_data_type(
-      static_cast<VarMsg::Type>(framework::ToDataType(slr->value().type())));
+  request->set_data_type(static_cast<VarMsg::Type>(slr->value().type()));
   request->set_lod_level(0);
   request->set_slr_height(slr->height());
 

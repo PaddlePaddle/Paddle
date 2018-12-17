@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <random>
 #include <thread>  // NOLINT
 #include <vector>
 #include "gtest/gtest.h"
@@ -40,9 +41,8 @@ TEST(BestFitAllocator, concurrent_cuda) {
   LockedAllocator concurrent_allocator(
       std::unique_ptr<Allocator>(new BestFitAllocator(cuda_allocation.get())));
 
-  auto th_main = [&] {
-    std::random_device dev;
-    std::default_random_engine engine(dev());
+  auto th_main = [&](std::random_device::result_type seed) {
+    std::default_random_engine engine(seed);
     std::uniform_int_distribution<size_t> dist(1U, 1024U);
     platform::CUDAPlace gpu(0);
     platform::CUDADeviceContext dev_ctx(gpu);
@@ -74,7 +74,8 @@ TEST(BestFitAllocator, concurrent_cuda) {
   {
     std::vector<std::thread> threads;
     for (size_t i = 0; i < 1024; ++i) {
-      threads.emplace_back(th_main);
+      std::random_device dev;
+      threads.emplace_back(th_main, dev());
     }
     for (auto& th : threads) {
       th.join();

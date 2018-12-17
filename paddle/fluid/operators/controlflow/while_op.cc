@@ -32,6 +32,20 @@ static constexpr char kStepScopes[] = "StepScopes";
 static constexpr char kX[] = "X";
 static constexpr char kXGRAD[] = "X@GRAD";
 static constexpr char kOutputs[] = "Out";
+static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+
+namespace {  // NOLINT
+static std::string GetSkipEagerDeletionVarsDebugString(
+    const std::vector<std::string> &vars) {
+  std::string str = "Skip " + std::to_string(vars.size()) +
+                    " var(s) in eager deletion mode: ";
+  for (auto &var : vars) {
+    str.append(var);
+    str.push_back(' ');
+  }
+  return str;
+}
+}  // NOLINT
 
 class WhileOp : public framework::OperatorBase {
  public:
@@ -59,7 +73,10 @@ class WhileOp : public framework::OperatorBase {
                    "Condition of while op must in CPU memory.");
 
     bool is_test = Attr<bool>("is_test");
-    auto ctx = executor.Prepare(*program, block->ID());
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
@@ -96,6 +113,10 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
+    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
+                                      "Vars that would skip eager deletion."
+                                      "Users should not set this manually.")
+        .SetDefault(std::vector<std::string>());
     AddComment(R"DOC(
 )DOC");
   }
@@ -119,7 +140,10 @@ class WhileGradOp : public framework::OperatorBase {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
-    auto ctx = executor.Prepare(*program, block->ID());
+
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
 
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
@@ -132,15 +156,15 @@ class WhileGradOp : public framework::OperatorBase {
 
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
-      VLOG(30) << "Start backward at time_step "
-               << cur_scope_iter - step_scopes->rbegin();
+      VLOG(3) << "Start backward at time_step "
+              << cur_scope_iter - step_scopes->rbegin();
       framework::Scope &cur_scope = **cur_scope_iter;
       // Link OG from outside to inside
       for (size_t i = 0; i < outside_og_names.size(); ++i) {
         auto outside_og_name = outside_og_names[i];
         auto inside_og_name = inside_og_names[i];
-        VLOG(80) << "Linking outside " << outside_og_name << " --> inside "
-                 << inside_og_name;
+        VLOG(8) << "Linking outside " << outside_og_name << " --> inside "
+                << inside_og_name;
         if (scope.FindVar(outside_og_name) == nullptr) {
           continue;
         }
@@ -162,11 +186,11 @@ class WhileGradOp : public framework::OperatorBase {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
-          VLOG(80) << outside_og_name << " size = " << outside_array.size();
+          VLOG(8) << outside_og_name << " size = " << outside_array.size();
           inside_array.resize(outside_array.size());
 
           for (size_t j = 0; j < inside_array.size(); ++j) {
-            VLOG(80) << j << " " << outside_array[j].numel();
+            VLOG(8) << j << " " << outside_array[j].numel();
             if (outside_array[j].numel() != 0) {
               inside_array[j].set_lod(outside_array[j].lod());
               inside_array[j].ShareDataWith(outside_array[j]);
@@ -237,7 +261,7 @@ class WhileGradOp : public framework::OperatorBase {
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["dtype"] = framework::ToDataType(inside_tensor.type());
+            attrs["dtype"] = inside_tensor.type();
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
@@ -292,7 +316,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
     for (auto &each_ig : igs) {
       if (inner_op_outputs.find(each_ig) == inner_op_outputs.end()) {
-        VLOG(80) << "Ignore " << each_ig;
+        VLOG(8) << "Ignore " << each_ig;
         each_ig = framework::kEmptyVarName;
       }
     }
@@ -341,6 +365,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     while_grad->SetAttr("original_output_grad", output_grads_list);
 
+    while_grad->SetAttr(kSkipEagerDeletionVars, std::vector<std::string>());
+
     return std::unique_ptr<framework::OpDesc>(while_grad);
   }
 };
@@ -356,8 +382,8 @@ class WhileGradOpVarTypeInference : public framework::VarTypeInference {
       auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
       auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
       if (g_var != nullptr) {  // Gradient could be @EMPTY@
-        VLOG(50) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                 << " type: " << p_var.GetType();
+        VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
+                << " type: " << p_var.GetType();
         g_var->SetType(p_var.GetType());
         g_var->SetDataType(p_var.GetDataType());
       }

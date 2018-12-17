@@ -76,10 +76,7 @@ class TensorRTEngineOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input0 = ctx.Inputs("Xs").front();
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(ctx.scope()
-                                  .FindVar(input0)
-                                  ->GetMutable<framework::LoDTensor>()
-                                  ->type()),
+        ctx.scope().FindVar(input0)->GetMutable<framework::LoDTensor>()->type(),
         ctx.GetPlace());
     return kt;
   }
@@ -127,9 +124,9 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
     // Convert output tensor from engine to fluid
     int output_index = 0;
-    VLOG(40) << "TensorRT Engine Op Outputs:";
+    VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto& y : context.Outputs("Ys")) {
-      VLOG(40) << y;
+      VLOG(4) << y;
       // convert output and copy to fluid.
       nvinfer1::ITensor* trt_t = engine->GetITensor(output_maps[output_index]);
       auto dims = trt_t->getDimensions();
@@ -167,7 +164,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
  protected:
   void Prepare(const framework::ExecutionContext& context) const {
-    VLOG(40) << "Prepare engine";
+    VLOG(4) << "Prepare engine";
     // Get the ProgramDesc and pass to convert.
     framework::proto::BlockDesc block_desc;
     block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
@@ -192,12 +189,12 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     engine->InitNetwork();
 
     framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
-    VLOG(40) << "parsed var size " << block.AllVars().size();
+    VLOG(4) << "parsed var size " << block.AllVars().size();
     // Add inputs
-    VLOG(40) << "declare inputs";
+    VLOG(4) << "declare inputs";
     for (auto& input : context.Inputs("Xs")) {
       if (parameters.count(input)) continue;
-      VLOG(40) << "declare input " << input;
+      VLOG(4) << "declare input " << input;
       auto* var = block.FindVar(input);
       // TensorRT engine need to create parameters. The parameter's description
       // should be set in

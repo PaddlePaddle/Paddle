@@ -11,8 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -24,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -35,11 +34,6 @@ DEFINE_bool(check_nan_inf, false,
 namespace paddle {
 namespace framework {
 
-// Combine two hash values to a single hash.
-inline size_t CombineHash(size_t seed, size_t a) {
-  return (seed ^ a) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
@@ -49,10 +43,9 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
   if (var->IsType<framework::LoDTensor>()) {
-    return framework::ToDataType(var->Get<framework::LoDTensor>().type());
+    return var->Get<framework::LoDTensor>().type();
   } else if (var->IsType<framework::SelectedRows>()) {
-    return framework::ToDataType(
-        var->Get<framework::SelectedRows>().value().type());
+    return var->Get<framework::SelectedRows>().value().type();
   } else {
     PADDLE_THROW("Var should be LoDTensor or SelectedRows");
   }
@@ -99,13 +92,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
-    return DataTypeToString(ToDataType(tensor.type()));
+    return DataTypeToString(tensor.type());
   } else if (var->IsType<SelectedRows>()) {
     auto tensor = var->Get<SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
-      return DataTypeToString(ToDataType(tensor.type()));
+      return DataTypeToString(tensor.type());
     }
   } else {
     return "";
@@ -145,7 +138,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(40) << place << " " << DebugStringEx(&scope);
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -155,20 +148,17 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
   }
 
-// The profile has a process-wide mutex, results in serious performance issue
-// in concurrency scenerio. Here use an `if` to fix this issue.
-// Please not remove the `if`, ask @Superjomn if there are any concern.
-#ifndef _WIN32
+  // The profile has a process-wide mutex, results in serious performance issue
+  // in concurrency scenerio. Here use an `if` to fix this issue.
+  // Please not remove the `if`, ask @Superjomn if there are any concern.
   if (platform::IsProfileEnabled()) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::RecordEvent record_event(Type(), pool.Get(place));
     RunImpl(scope, place);
-  } else
-#endif
-  {
+  } else {
     RunImpl(scope, place);
   }
-  VLOG(30) << place << " " << DebugStringEx(&scope);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -632,6 +622,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
+  void DecreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  }
+
   bool IsRuntime() const override { return true; }
 
  protected:
@@ -690,13 +685,20 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
+  if (tensor.type() != proto::VarType::FP32 &&
+      tensor.type() != proto::VarType::FP64) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
                  "Tensor %s contains Inf", name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
                  "Tensor %s contains NAN", name);
+}
+
+void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
+                                           const platform::Place& place) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
@@ -725,14 +727,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto expected_kernel_key =
       this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
-  VLOG(30) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
-    VLOG(30) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
     expected_kernel_key.library_type_ = LibraryType::kPlain;
     expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
     kernel_iter = kernels.find(expected_kernel_key);
@@ -784,8 +786,7 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
-    VLOG(30) << "share inplace var " + var_name +
-                    " back to it's original scope";
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* original_tensor =
         GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
     auto* var = transfer_scope.FindVar(var_name);
@@ -799,17 +800,6 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 Scope* OperatorWithKernel::TryTransferData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars) const {
-// In the inference scenerio, the scopes will be reused across the batches, so
-// the `new_scope` here will result in GPU memroy explosion over the running of
-// operators.
-// We use a thread_local cache to fix that issue, the key in the cache is the
-// combination of the `scope` argument, from_kernel_type, target_kernel_type.
-// Have a discussion with @Superjomn or the inference developers if some changes
-// on this logic for this macro might not tested on the other scenerios.
-#ifdef PADDLE_ON_INFERENCE
-  thread_local std::unordered_map<size_t, Scope*> infer_transfer_scope_cache;
-#endif
-
   Scope* new_scope = nullptr;
   for (auto& var_name_item : Inputs()) {
     for (auto& var_name : var_name_item.second) {
@@ -837,26 +827,26 @@ Scope* OperatorWithKernel::TryTransferData(
         transfered_inplace_vars->emplace_back(var_name);
       }
 
-      VLOG(30) << "Transform Variable " << var_name << " from "
-               << kernel_type_for_var << " to " << expected_kernel_key;
+      VLOG(3) << "Transform Variable " << var_name << " from "
+              << kernel_type_for_var << " to " << expected_kernel_key;
 
-#ifdef PADDLE_ON_INFERENCE
-      size_t infer_cache_key =
-          CombineHash(OpKernelType::Hash()(kernel_type_for_var),
-                      OpKernelType::Hash()(expected_kernel_key));
-      infer_cache_key =
-          CombineHash(infer_cache_key, std::hash<const Scope*>()(&scope));
-
-      auto it = infer_transfer_scope_cache.find(infer_cache_key);
-      if (it != infer_transfer_scope_cache.end()) {
-        new_scope = infer_transfer_scope_cache[infer_cache_key];
-      } else {
-        new_scope = &scope.NewScope();
-        infer_transfer_scope_cache[infer_cache_key] = new_scope;
+      // In the inference scenerio, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memroy explosion
+      // over the  running of operators.
+      // We use a thread_local cache to fix that issue, the key in the cache is
+      // the combination of the `scope` argument, from_kernel_type,
+      // target_kernel_type.
+      // Have a discussion with @Superjomn or the inference developers if some
+      // changes on this logic for this macro might not tested on the other
+      // scenerios.
+      // If this op is not called by an Executor or ParallelExecutor, it should
+      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
+      // variables, that behavior a lot different.
+      if (!run_by_executor_) {
+        new_scope = TryCreateTransferScope(kernel_type_for_var,
+                                           expected_kernel_key, &scope);
       }
-#endif
-
-      if (new_scope == nullptr) {
+      if (!new_scope) {
         new_scope = &scope.NewScope();
       }
 
@@ -889,7 +879,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          int tmp = static_cast<int>(ToDataType(t->type()));
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
+                         ipt_name, DebugString());
+          int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
               "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",

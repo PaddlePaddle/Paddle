@@ -54,7 +54,7 @@ option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
-option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
+option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
@@ -130,6 +130,21 @@ if (APPLE OR WIN32)
         "Disable MKL for building on mac and windows" FORCE)
 endif()
 
+if (WIN32)
+    set(WITH_AVX OFF CACHE STRING
+            "Disable AVX when compiling for Windows" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+            "Disable DSO when compiling for Windows" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+            "Disable MKL when compiling for Windows" FORCE)
+    set(WITH_DISTRIBUTE OFF CACHE STRING
+            "Disable DISTRIBUTE when compiling for Windows" FORCE)
+    set(WITH_C_API OFF CACHE STRING
+            "Disable C_API when compiling for Windows" FORCE)
+    set(WITH_FLUID_ONLY ON CACHE STRING
+            "Enable FLUID_ONLY when compiling for Windows" FORCE)
+endif()
+
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
@@ -189,14 +204,17 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
+include(external/rocprim)
 include(external/xxhash)    # download xxhash
-
-if (NOT WIN32)
-# there is no official support of snappystream, warpctc, nccl, cupti in windows
+include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+
+if (NOT WIN32)
+# there is no official support of warpctc, nccl, cupti in windows
 include(external/warpctc)   # download, build, install warpctc
 include(cupti)
+include(external/gzstream)
 endif (NOT WIN32)
 
 if(WITH_DISTRIBUTE)
@@ -234,6 +252,12 @@ if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
+endif()
+
+if (WITH_PROFILER)
+    find_package(Gperftools REQUIRED)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+    add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
 include(generic)            # simplify cmake module

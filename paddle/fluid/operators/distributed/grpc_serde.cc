@@ -15,7 +15,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include <sys/time.h>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
@@ -26,23 +25,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-static void SerializeDestroyCallback(void* payload) {
-  if (payload != nullptr) {
-    auto* shared_payload = reinterpret_cast<TensorPayload*>(payload);
-    delete shared_payload;
-  }
-}
-
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,
-                           const int trainer_id) {
+                           const int trainer_id,
+                           const std::string& table_name) {
   platform::RecordRPCEvent record_event("serial", &ctx);
   VarMsg request;
   TensorPayload* payload = nullptr;
@@ -62,6 +56,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
   if (!out_name.empty()) {
     request.set_out_varname(out_name);
+  }
+  if (!table_name.empty()) {
+    request.set_table_name(table_name);
   }
   if (var->IsType<framework::LoDTensor>()) {
     request.set_type(::sendrecv::LOD_TENSOR);
@@ -118,8 +115,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
     ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
-    size_t rows_memory_size =
-        slr->rows().size() * framework::SizeOfType(typeid(int64_t));
+    size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
     slices[2] = ::grpc::Slice(e2.size());
     memcpy(const_cast<uint8_t*>(slices[2].begin()), e2.data(), e2.size());

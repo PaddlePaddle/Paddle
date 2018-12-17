@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
+#include "paddle/fluid/operators/math/jit_kernel_refer.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_XBYAK
@@ -29,50 +30,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
-namespace jit = platform::jit;
-
-template <typename T>
-void VMulRefer(const T* x, const T* y, T* z, int n) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] * y[i];
-  }
-}
-
-template <typename T>
-void VAddRefer(const T* x, const T* y, T* z, int n) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] + y[i];
-  }
-}
-
-template <typename T>
-void VAddReluRefer(const T* x, const T* y, T* z, int n) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] + y[i];
-    z[i] = z[i] > 0 ? z[i] : 0;
-  }
-}
-
-template <typename T>
-void VScalRefer(const T* a, const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = a[0] * x[i];
-  }
-}
-
-template <typename T>
-void VAddBiasRefer(const T* a, const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = a[0] + x[i];
-  }
-}
-
-template <typename T>
-void VReluRefer(const T* x, T* y, int n) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = x[i] > 0 ? x[i] : 0;
-  }
-}
 
 #ifdef PADDLE_WITH_MKLML
 template <typename T>
@@ -109,7 +66,7 @@ void VScalMKL<float>(const float* a, const float* x, float* y, int n) {
   if (x == y) {
     platform::dynload::cblas_sscal(n, *a, y, 1);
   } else {
-    VScalRefer<float>(a, x, y, n);
+    refer::VScal<float>(a, x, y, n);
   }
 }
 
@@ -118,7 +75,7 @@ void VScalMKL<double>(const double* a, const double* x, double* y, int n) {
   if (x == y) {
     platform::dynload::cblas_dscal(n, *a, y, 1);
   } else {
-    VScalRefer<double>(a, x, y, n);
+    refer::VScal<double>(a, x, y, n);
   }
 }
 
@@ -147,7 +104,7 @@ class VMulKernelImpl : public VMulKernel<T> {
       return;
     }
 #endif
-    this->Compute = VMulRefer<T>;
+    this->Compute = refer::VMul<T>;
   }
 
 #ifdef PADDLE_WITH_XBYAK
@@ -167,7 +124,7 @@ bool VMulKernelImpl<float>::useJIT(int d) {
 #ifdef PADDLE_WITH_MKLML
 template <>
 bool VMulKernelImpl<float>::useMKL(int d) {
-  return jit::MayIUse(jit::avx512f) && d > 512;
+  return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
@@ -198,7 +155,7 @@ class VAddKernelImpl : public VAddKernel<T> {
       return;
     }
 #endif
-    this->Compute = VAddRefer<T>;
+    this->Compute = refer::VAdd<T>;
   }
 #ifdef PADDLE_WITH_XBYAK
 
@@ -226,6 +183,44 @@ bool VAddKernelImpl<double>::useMKL(int d) {
 }
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+/* EltwiseMul for nChw16c & NC inputs JitKernel */
+template <typename T>
+class EltwiseMulnChw16cNCKernelImpl
+    : public math::jitkernel::EltwiseMulnChw16cNCKernel<T> {
+ public:
+  JITKERNEL_DECLARE_STATIC_FUNC;
+  explicit EltwiseMulnChw16cNCKernelImpl(int d)
+      : EltwiseMulnChw16cNCKernel<T>() {
+    using mul_func_t = void (*)(const float*, const float*, float*, int, int);
+#ifdef PADDLE_WITH_XBYAK
+    if (useJIT(d)) {
+      // roughly estimate the size of code
+      size_t sz = 96 + d / YMM_FLOAT_BLOCK * 4 * 8;
+      sz = sz > 4096 ? sz : 4096;
+      jitcode_.reset(new gen::EltwiseMulnChw16cNC(sz));
+      this->Compute = (mul_func_t)jitcode_->getCode();
+      return;
+    }
+#endif
+    PADDLE_THROW(
+        "This kernel shouldn't be used in Non-Xbyak, Non-MKL-DNN "
+        "environemnt");
+  }
+
+#ifdef PADDLE_WITH_XBYAK
+
+ private:
+  std::unique_ptr<gen::EltwiseMulnChw16cNC> jitcode_{nullptr};
+};
+
+template <>
+bool EltwiseMulnChw16cNCKernelImpl<float>::useJIT(int d) {
+  return true;
+}
+#endif
+#endif
+
 /* VAddRelu JitKernel */
 template <typename T>
 class VAddReluKernelImpl : public VAddReluKernel<T> {
@@ -242,7 +237,7 @@ class VAddReluKernelImpl : public VAddReluKernel<T> {
       return;
     }
 #endif
-    this->Compute = VAddReluRefer<T>;
+    this->Compute = refer::VAddRelu<T>;
   }
 #ifdef PADDLE_WITH_XBYAK
 
@@ -280,7 +275,7 @@ class VScalKernelImpl : public VScalKernel<T> {
       return;
     }
 #endif
-    this->Compute = VScalRefer<T>;
+    this->Compute = refer::VScal<T>;
   }
 #ifdef PADDLE_WITH_XBYAK
 
@@ -324,7 +319,7 @@ class VAddBiasKernelImpl : public VAddBiasKernel<T> {
     }
 #endif
 
-    this->Compute = VAddBiasRefer<T>;
+    this->Compute = refer::VAddBias<T>;
   }
 #ifdef PADDLE_WITH_XBYAK
 
@@ -358,7 +353,7 @@ class VReluKernelImpl : public VReluKernel<T> {
     }
 #endif
 
-    this->Compute = VReluRefer<T>;
+    this->Compute = refer::VRelu<T>;
   }
 #ifdef PADDLE_WITH_XBYAK
 
@@ -374,16 +369,13 @@ bool VReluKernelImpl<float>::useJIT(int d) {
 }
 #endif
 
-template <typename T>
-inline void VIdentityRefer(const T* x, T* y, int n) {}
-
 /* An empty JitKernel */
 template <typename T>
 class VIdentityKernelImpl : public VIdentityKernel<T> {
  public:
   JITKERNEL_DECLARE_STATIC_FUNC;
   explicit VIdentityKernelImpl(int d) : VIdentityKernel<T>() {
-    this->Compute = VIdentityRefer<T>;
+    this->Compute = refer::VIdentity<T>;
   }
 };
 
@@ -394,6 +386,9 @@ REGISTER_JITKERNEL(vscal, VScalKernel);
 REGISTER_JITKERNEL(vaddbias, VAddBiasKernel);
 REGISTER_JITKERNEL(vrelu, VReluKernel);
 REGISTER_JITKERNEL(videntity, VIdentityKernel);
+#ifdef PADDLE_WITH_MKLDNN
+REGISTER_JITKERNEL(eltwise_mul_nchw16c, EltwiseMulnChw16cNCKernel);
+#endif
 
 }  // namespace jitkernel
 }  // namespace math

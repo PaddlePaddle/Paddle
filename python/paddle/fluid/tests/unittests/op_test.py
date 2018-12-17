@@ -216,6 +216,15 @@ class OpTest(unittest.TestCase):
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
                                       self.dtype)
+
+        if hasattr(self, "cache_name_list"):
+            for name in self.cache_name_list:
+                inputs[name] = block.create_var(
+                    name=name,
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW,
+                    stop_gradient=True)
+
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
@@ -362,7 +371,9 @@ class OpTest(unittest.TestCase):
             else:
                 return []
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+        cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
+           and not cpu_only:
             places.append(core.CUDAPlace(0))
         return places
 
@@ -379,8 +390,8 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
 
-    def __assert_is_close(self, numeric_grads, analytic_grads, names,
-                          max_relative_error, msg_prefix):
+    def _assert_is_close(self, numeric_grads, analytic_grads, names,
+                         max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
@@ -426,8 +437,17 @@ class OpTest(unittest.TestCase):
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
-                            op_attrs)
+
+        cache_list = None
+        if hasattr(self, "cache_name_list"):
+            cache_list = self.cache_name_list
+        self.op = create_op(
+            self.scope,
+            self.op_type,
+            op_inputs,
+            op_outputs,
+            op_attrs,
+            cache_list=cache_list)
 
         if no_grad_set is None:
             no_grad_set = set()
@@ -449,9 +469,9 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
 
-        self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
-                               max_relative_error,
-                               "Gradient Check On %s" % str(place))
+        self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
+                              max_relative_error,
+                              "Gradient Check On %s" % str(place))
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

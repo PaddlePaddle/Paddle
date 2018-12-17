@@ -62,6 +62,9 @@ class InferShapeContext {
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
 
+  virtual void DecreaseLoDLevel(const std::string &in, const std::string &out,
+                                size_t i = 0, size_t j = 0) const = 0;
+
   virtual bool IsRuntime() const = 0;
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(const std::string &name);

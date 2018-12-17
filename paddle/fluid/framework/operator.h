@@ -20,8 +20,6 @@ limitations under the License. */
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
@@ -73,7 +71,7 @@ class OperatorBase;
 class ExecutionContext;
 
 /**
- * OperatorBase has the basic element that Net will call to do computation.
+ * OperatorBase has the basic elements that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
  * should always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
@@ -100,6 +98,7 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
+  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
@@ -128,6 +127,10 @@ class OperatorBase {
   //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
+  void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
+  virtual void RuntimeInferShape(const Scope& scope,
+                                 const platform::Place& place) const {}
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -140,6 +143,8 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // Whether this operator executes in an Executor.
+  bool run_by_executor_{true};
 
  private:
   void GenerateTemporaryNames();
@@ -344,6 +349,9 @@ class OperatorWithKernel : public OperatorBase {
   virtual void InferShape(InferShapeContext* ctx) const {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
+
+  void RuntimeInferShape(const Scope& scope,
+                         const platform::Place& place) const override;
 
  protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
