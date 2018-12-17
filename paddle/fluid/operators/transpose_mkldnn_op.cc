@@ -48,7 +48,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     std::vector<int> nchw_axis(ndims, 0);
-    for (int i = 0; i < nchw_axis.size(); ++i) {
+    for (size_t i = 0; i < nchw_axis.size(); ++i) {
       nchw_axis[i] = i;
     }
 
