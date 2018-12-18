@@ -18,31 +18,12 @@ from paddle import fluid
 
 
 class TestIRGraph(unittest.TestCase):
+    """
+    TODO(fc500110): There is some api unusable because it's using python unsupported types,
+    these api will be tested when it can be used.
+    """
     def test_nodes(self):
-        prog = fluid.core.ProgramDesc()
-        block = prog.block(0)
-
-        shape = [10, 20]
-
-        # prepare input/output
-        x1 = block.var(six.b("x1"))
-        x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
-        x1.set_shape(shape)
-        x2 = block.var(six.b("x2"))
-        x2.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
-        x2.set_shape(shape)
-
-        out = block.var(six.b("out"))
-        out.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
-
-        sum_op_desc = block.append_op()
-        sum_op_desc.set_type("sum")
-        sum_op_desc.set_input("X", ["x1", "x2"])
-        sum_op_desc.set_output("Out", ["out"])
-
-        sum_op_desc.check_attrs()
-        sum_op_desc.infer_shape(block)
-        graph = fluid.core.Graph(prog)
+        graph = build_graph()
         self.assertTrue(
             {node.name()
              for node in graph.nodes()} == {"x1", "x2", "out", "sum"})
@@ -60,7 +41,6 @@ class TestIRGraph(unittest.TestCase):
         pass
 
     def test_create_var_node(self):
-        #graph = build_graph()
         pass
 
     def test_create_op_node(self):

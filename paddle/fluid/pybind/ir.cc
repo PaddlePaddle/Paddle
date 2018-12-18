@@ -58,8 +58,6 @@ void BindGraph(py::module* m) {
            [](Graph& self, OpDesc& op_desc) -> std::shared_ptr<Node> {
              return std::shared_ptr<Node>(self.CreateOpNode(&op_desc));
            })
-      .def("create_op_node", &Graph::CreateOpNode,
-           return_value_policy::reference)
       .def("create_control_dep_var", &Graph::CreateControlDepVar,
            return_value_policy::reference)
       .def("create_empty_node", &Graph::CreateEmptyNode,
@@ -87,7 +85,7 @@ void BindNode(py::module* m) {
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)
       .def_readwrite("inputs", &Node::inputs)
-      .def_readwrite("oututs", &Node::outputs);
+      .def_readwrite("outputs", &Node::outputs);
 
   py::enum_<Node::Type>(*m, "NodeType")
       .value("Operation", Node::Type::kOperation)
