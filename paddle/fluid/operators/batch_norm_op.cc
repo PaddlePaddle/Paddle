@@ -72,8 +72,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
     // By default, the type of the scale, bias, mean,
     // and var tensors should both be float. (For float or float16 input tensor)
     // or double (For double input tensor).
@@ -81,17 +80,13 @@ class BatchNormOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP64) {
       bn_param_type = framework::proto::VarType::FP64;
     }
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("Scale")->type()),
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
                       "Scale input should be of float type");
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("Bias")->type()),
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
                       "Bias input should be of float type");
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("Mean")->type()),
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
                       "Mean input should be of float type");
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::ToDataType(
-                                         ctx.Input<Tensor>("Variance")->type()),
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
                       "Variance input should be of float type");
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
@@ -413,9 +408,8 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.GetPlace(), layout, library);
   }
 };
 

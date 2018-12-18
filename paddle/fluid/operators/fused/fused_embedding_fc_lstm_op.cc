@@ -115,8 +115,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::ToDataType(
-          ctx.Input<framework::LoDTensor>("Embeddings")->type()),
+      ctx.Input<framework::LoDTensor>("Embeddings")->type(),
       ctx.device_context());
 }
 
@@ -217,13 +216,13 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   auto& act_gate_str = ctx.Attr<std::string>("gate_activation");               \
   auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
   auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
-  if (platform::jit::MayIUse(platform::jit::avx)) {                            \
-    math::VecActivations<T, platform::jit::avx> act_functor;                   \
+  if (platform::MayIUse(platform::avx)) {                                      \
+    math::VecActivations<T, platform::avx> act_functor;                        \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \
   } else {                                                                     \
-    math::VecActivations<T, platform::jit::isa_any> act_functor;               \
+    math::VecActivations<T, platform::isa_any> act_functor;                    \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \

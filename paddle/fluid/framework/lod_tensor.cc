@@ -70,9 +70,9 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   // only print first ten elements
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
-    if (IsType<float>(t.type())) {
+    if (t.type() == proto::VarType::FP32) {
       os << t.data<float>()[i] << " ";
-    } else if (IsType<int64_t>(t.type())) {
+    } else if (t.type() == proto::VarType::INT64) {
       os << t.data<int64_t>()[i] << " ";
     } else {
       PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
@@ -387,7 +387,7 @@ void LoDTensor::MergeLoDTensor(
   PADDLE_ENFORCE(!lod_tensors.empty());
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  std::type_index new_type = lod_tensors[0]->type();
+  auto new_type = lod_tensors[0]->type();
   framework::DataLayout new_layout = lod_tensors[0]->layout();
   LoD new_lod = lod_tensors[0]->lod();
   for (size_t i = 1; i < lod_tensors.size(); ++i) {

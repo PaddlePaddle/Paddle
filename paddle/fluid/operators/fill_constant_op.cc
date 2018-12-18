@@ -59,9 +59,9 @@ class FillConstantOp : public framework::OperatorBase {
 
     if (force_cpu) {
       auto cpu = platform::CPUPlace();
-      tensor->mutable_data(cpu, framework::ToTypeIndex(data_type));
+      tensor->mutable_data(cpu, data_type);
     } else {
-      tensor->mutable_data(dev_place, framework::ToTypeIndex(data_type));
+      tensor->mutable_data(dev_place, data_type);
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

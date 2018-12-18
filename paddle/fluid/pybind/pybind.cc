@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -45,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
@@ -79,6 +81,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithBrpc() {
+#if defined(PADDLE_WITH_BRPC) || defined(PADDLE_WITH_BRPC_RDMA)
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithDIST() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   return true;
@@ -99,6 +109,42 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def("_run_backward",
+           [](imperative::VarBase &self, framework::Scope *scope) {
+             self.RunBackward(scope);
+           })
+      .def("_grad", &imperative::VarBase::Grad)
+      .def_property(
+          "desc",
+          [](const imperative::VarBase &self) { return self.var_desc_; },
+          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
+            self.var_desc_ = var_desc;
+          },
+          py::return_value_policy::reference);
+
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def_property(
+          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
+          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
+            if (op_desc) {
+              self.op_desc_ = op_desc;
+            }
+          },
+          py::return_value_policy::reference);
+
+  py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
+  layer.def(py::init<>())
+      .def("forward",
+           [](imperative::Layer &self,
+              const std::vector<imperative::VarBase> &inputs) {
+             return self.Forward(inputs);
+           })
+      .def("backward", &imperative::Layer::Backward);
+  BindTracer(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -168,7 +214,7 @@ PYBIND11_MODULE(core, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
+      .def("_dtype", [](Tensor &self) { return self.type(); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -298,6 +344,8 @@ PYBIND11_MODULE(core, m) {
       .def("get_tensor",
            [](SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
+      .def("numel",
+           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
       .def("set_rows",
@@ -591,6 +639,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
@@ -601,6 +650,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+  m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
 
@@ -886,6 +936,18 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int num_trainers) {
             self.num_trainers_ = num_trainers;
           })
+      .def_property(
+          "trainers_endpoints",
+          [](const BuildStrategy &self) { return self.trainers_endpoints_; },
+          [](BuildStrategy &self,
+             const std::vector<std::string> &trainers_endpoints) {
+            self.trainers_endpoints_ = trainers_endpoints;
+          })
+      .def_property("trainer_id",
+                    [](const BuildStrategy &self) { return self.trainer_id_; },
+                    [](BuildStrategy &self, int trainer_id) {
+                      self.trainer_id_ = trainer_id;
+                    })
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

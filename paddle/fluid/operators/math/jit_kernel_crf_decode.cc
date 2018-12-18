@@ -16,19 +16,14 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
 
-namespace jit = platform::jit;
-
 /* CRF Decode JitKernel */
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+template <typename T, platform::cpu_isa_t isa, jit_block>
 class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
  public:
   explicit CRFDecodeKernelImpl(int tag_num) : CRFDecodeKernel<T>() {
@@ -101,7 +96,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
 
 #define INTRIAVX_FLOAT(block)                                                  \
   template <>                                                                  \
-  CRFDecodeKernelImpl<float, jit::avx, block>::CRFDecodeKernelImpl(            \
+  CRFDecodeKernelImpl<float, platform::avx, block>::CRFDecodeKernelImpl(       \
       int tag_num)                                                             \
       : CRFDecodeKernel<float>() {                                             \
     this->num_ = tag_num;                                                      \
@@ -109,7 +104,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
     this->rest_ = this->num_ % YMM_FLOAT_BLOCK;                                \
   }                                                                            \
   template <>                                                                  \
-  void CRFDecodeKernelImpl<float, jit::avx, block>::Compute(                   \
+  void CRFDecodeKernelImpl<float, platform::avx, block>::Compute(              \
       const int seq_len, const float* x, const float* w, float* alpha,         \
       int* track) const {                                                      \
     INIT_ALPHA(YMM_FLOAT_BLOCK)                                                \
@@ -135,8 +130,8 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
           /* AVX instructions.*/                                               \
           __m128i lo_max_j = _mm256_extractf128_si256(max_j, 0);               \
           __m128i hi_max_j = _mm256_extractf128_si256(max_j, 1);               \
-          __m128i lo_mask = _mm256_extractf128_si256((__m256i)mask, 0);        \
-          __m128i hi_mask = _mm256_extractf128_si256((__m256i)mask, 1);        \
+          __m128i lo_mask = _mm256_extractf128_si256(*(__m256i*)&mask, 0);     \
+          __m128i hi_mask = _mm256_extractf128_si256(*(__m256i*)&mask, 1);     \
           lo_max_j = _mm_andnot_si128(lo_mask, lo_max_j);                      \
           hi_max_j = _mm_andnot_si128(hi_mask, hi_max_j);                      \
           lo_mask = _mm_and_si128(lo_mask, _mm_set1_epi32(i));                 \
@@ -204,7 +199,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
 
 #define INTRIAVX512_FLOAT(block)                                               \
   template <>                                                                  \
-  CRFDecodeKernelImpl<float, jit::avx512f, block>::CRFDecodeKernelImpl(        \
+  CRFDecodeKernelImpl<float, platform::avx512f, block>::CRFDecodeKernelImpl(   \
       int tag_num)                                                             \
       : CRFDecodeKernel<float>() {                                             \
     this->num_ = tag_num;                                                      \
@@ -212,7 +207,7 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
     this->rest_ = this->num_ % ZMM_FLOAT_BLOCK;                                \
   }                                                                            \
   template <>                                                                  \
-  void CRFDecodeKernelImpl<float, jit::avx512f, block>::Compute(               \
+  void CRFDecodeKernelImpl<float, platform::avx512f, block>::Compute(          \
       const int seq_len, const float* x, const float* w, float* alpha,         \
       int* track) const {                                                      \
     INIT_ALPHA(ZMM_FLOAT_BLOCK)                                                \
@@ -270,14 +265,14 @@ INTRIAVX_FLOAT(kEQ16);
 INTRIAVX_FLOAT(kGT16);
 #endif
 #ifdef __AVX2__
-INTRIAVX2_FLOAT(jit::avx2, kEQ8);
-INTRIAVX2_FLOAT(jit::avx2, kGT8LT16);
-INTRIAVX2_FLOAT(jit::avx2, kEQ16);
-INTRIAVX2_FLOAT(jit::avx2, kGT16);
+INTRIAVX2_FLOAT(platform::avx2, kEQ8);
+INTRIAVX2_FLOAT(platform::avx2, kGT8LT16);
+INTRIAVX2_FLOAT(platform::avx2, kEQ16);
+INTRIAVX2_FLOAT(platform::avx2, kGT16);
 #endif
 #ifdef __AVX512F__
-INTRIAVX2_FLOAT(jit::avx512f, kEQ8);
-INTRIAVX2_FLOAT(jit::avx512f, kGT8LT16);
+INTRIAVX2_FLOAT(platform::avx512f, kEQ8);
+INTRIAVX2_FLOAT(platform::avx512f, kGT8LT16);
 INTRIAVX512_FLOAT(kEQ16);
 INTRIAVX512_FLOAT(kGT16);
 #endif

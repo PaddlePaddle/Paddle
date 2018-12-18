@@ -32,11 +32,28 @@ the image layout as follows.
 
 from __future__ import print_function
 
+import six
 import numpy as np
-try:
-    import cv2
-except ImportError:
-    cv2 = None
+# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
+# https://github.com/numpy/numpy/issues/12497
+if six.PY3:
+    import subprocess
+    import sys
+    import_cv2_proc = subprocess.Popen(
+        [sys.executable, "-c", "import cv2"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    out, err = import_cv2_proc.communicate()
+    retcode = import_cv2_proc.poll()
+    if retcode != 0:
+        cv2 = None
+    else:
+        import cv2
+else:
+    try:
+        import cv2
+    except ImportError:
+        cv2 = None
 import os
 import tarfile
 import six.moves.cPickle as pickle
