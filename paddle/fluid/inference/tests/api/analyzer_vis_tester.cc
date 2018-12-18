@@ -93,6 +93,22 @@ void profile(bool use_mkldnn = false) {
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+    std::string line;
+    std::ifstream file(FLAGS_refer_result);
+    std::getline(file, line);
+    auto refer = ProcessALine(line);
+    file.close();
+
+    auto &output = outputs.front();
+    size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
+    CHECK_EQ(numel, refer.data.size());
+    for (size_t i = 0; i < numel; ++i) {
+      CHECK_LT(
+          fabs(static_cast<float *>(output.data.data())[i] - refer.data[i]),
+          1e-5);
+    }
+  }
 }
 
 TEST(Analyzer_vis, profile) { profile(); }
