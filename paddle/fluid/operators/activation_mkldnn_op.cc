@@ -196,12 +196,14 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   pipeline.push_back(*p_fwd);
   stream(stream::kind::eager).submit(pipeline).wait();
 
-  auto input_hash = calculate_hash(x->data<T>(), x->numel() * sizeof(T));
-  auto output_hash = calculate_hash(y->data<T>(), y->numel() * sizeof(T));
+  /*
+    auto input_hash = calculate_hash(x->data<T>(), x->numel() * sizeof(T));
+    auto output_hash = calculate_hash(y->data<T>(), y->numel() * sizeof(T));
 
-  std::cout << "Relu: input hash: " << std::hex << input_hash << " " << std::hex
-            << output_hash << std::endl;
-
+    std::cout << "Relu: input hash: " << std::hex << input_hash << " " <<
+    std::hex
+              << output_hash << std::endl;
+  */
   y->set_layout(DataLayout::kMKLDNN);
   y->set_format(GetMKLDNNFormat(*dst_memory));
 }

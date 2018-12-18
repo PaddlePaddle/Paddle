@@ -96,8 +96,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(y->layout() == DataLayout::kMKLDNN &&
                          y->format() != memory::format::format_undef,
                      "Wrong layout/format set for Y tensor");
-      std::cout << "x format " << x->format() << " y format " << y->format()
-                << std::endl;
+      //      std::cout << "x format " << x->format() << " y format " <<
+      //      y->format()
+      //                << std::endl;
 
       std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
       std::vector<int> src_y_tz = framework::vectorize2int(y_dims_untrimed);
@@ -146,12 +147,15 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
           (memory::format)dst_memory.get_primitive_desc().desc().data.format);
     }
 
-    auto x_hash = calculate_hash(x->data<T>(), x->numel() * sizeof(T));
-    auto y_hash = calculate_hash(y->data<T>(), y->numel() * sizeof(T));
-    auto z_hash = calculate_hash(z->data<T>(), z->numel() * sizeof(T));
-    std::cout << "Elementwise_add "
-              << " x hash: " << std::hex << x_hash << " y hash: " << std::hex
-              << y_hash << " z hash: " << std::hex << z_hash << std::endl;
+    /*
+        auto x_hash = calculate_hash(x->data<T>(), x->numel() * sizeof(T));
+        auto y_hash = calculate_hash(y->data<T>(), y->numel() * sizeof(T));
+        auto z_hash = calculate_hash(z->data<T>(), z->numel() * sizeof(T));
+        std::cout << "Elementwise_add "
+                  << " x hash: " << std::hex << x_hash << " y hash: " <<
+       std::hex
+                  << y_hash << " z hash: " << std::hex << z_hash << std::endl;
+    */
   }
 };
 
