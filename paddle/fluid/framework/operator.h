@@ -191,15 +191,9 @@ class ExecutionContext {
     return op_.Outputs(name).size();
   }
 
-  const Variable* InputVar(const std::string& name) const {
-    auto ipt = op_.Input(name);
-    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-  }
+  const Variable* InputVar(const std::string& name) const;
 
-  Variable* OutputVar(const std::string& name) const {
-    auto opt = op_.Output(name);
-    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-  }
+  Variable* OutputVar(const std::string& name) const;
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
@@ -237,6 +231,22 @@ class ExecutionContext {
     auto var = OutputVar(name);
     return var == nullptr ? nullptr : var->GetMutable<T>();
   }
+
+  template <typename T>
+  const T* FastInput(const std::string& name) const {
+    auto* var = FastInputVar(name);
+    return var == nullptr ? nullptr : &var->Get<T>();
+  }
+
+  template <typename T>
+  T* FastOutput(const std::string& name) const {
+    auto var = FastOutputVar(name);
+    return var == nullptr ? nullptr : var->GetMutable<T>();
+  }
+
+  const Variable* FastInputVar(const std::string& name) const;
+
+  Variable* FastOutputVar(const std::string& name) const;
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
@@ -304,11 +314,18 @@ template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
 
 template <>
+const Tensor* ExecutionContext::FastInput<Tensor>(
+    const std::string& name) const;
+
+template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
 
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+Tensor* ExecutionContext::FastOutput<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(

@@ -143,12 +143,14 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   for (auto& var_name_item : innames) {
     std::vector<Variable*>& input_vars = inputs[var_name_item.first];
     for (auto& var_name : var_name_item.second) {
+      LOG(ERROR) << "first in " << var_name_item.first << ":" << var_name;
       input_vars.push_back(scope.FindVar(var_name));
     }
   }
   for (auto& var_name_item : outnames) {
     std::vector<Variable*>& output_vars = outputs[var_name_item.first];
     for (auto& var_name : var_name_item.second) {
+      LOG(ERROR) << "first out " << var_name_item.first << ":" << var_name;
       output_vars.push_back(scope.FindVar(var_name));
     }
   }
@@ -429,9 +431,50 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
   return var != nullptr;
 }
 
+const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) return nullptr;
+
+  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
+                    "Operator %s's input %s should contain only one variable.",
+                    op_.Type(), name);
+  return it->second.empty() ? nullptr : it->second[0];
+}
+
+Variable* ExecutionContext::OutputVar(const std::string& name) const {
+  auto opt = op_.Output(name);
+  return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
+}
+
+const Variable* ExecutionContext::FastInputVar(const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) return nullptr;
+
+  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
+                    "Operator %s's input %s should contain only one variable.",
+                    op_.Type(), name);
+  return it->second.empty() ? nullptr : it->second[0];
+}
+
+Variable* ExecutionContext::FastOutputVar(const std::string& name) const {
+  auto it = ctx_.outputs.find(name);
+  if (it == ctx_.outputs.end()) return nullptr;
+
+  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
+                    "Operator %s's output %s should contain only one variable.",
+                    op_.Type(), name);
+  return it->second.empty() ? nullptr : it->second[0];
+}
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   return Input<LoDTensor>(name);
+}
+
+template <>
+const Tensor* ExecutionContext::FastInput<Tensor>(
+    const std::string& name) const {
+  return FastInput<LoDTensor>(name);
 }
 
 template <>
@@ -456,6 +499,11 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   return Output<LoDTensor>(name);
+}
+
+template <>
+Tensor* ExecutionContext::FastOutput<Tensor>(const std::string& name) const {
+  return FastOutput<LoDTensor>(name);
 }
 
 template <>
@@ -822,6 +870,7 @@ Scope* OperatorWithKernel::PrepareData(
       auto& var_name = var_name_item.second[i];
       auto* var = scope.FindVar(var_name);
       input_vars[i] = var;
+      LOG(ERROR) << "second in " << var_name_item.first << ":" << var_name;
 
       // Only tensor can be tranfer to another device.
       if (var == nullptr || !VarIsTensor(*var)) {
@@ -882,6 +931,7 @@ Scope* OperatorWithKernel::PrepareData(
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto& var_name = var_name_item.second[i];
       output_vars[i] = scope.FindVar(var_name);
+      LOG(ERROR) << "second out " << var_name_item.first << ":" << var_name;
     }
   }
 
