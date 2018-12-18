@@ -141,6 +141,7 @@ class TestListenAndServOp(unittest.TestCase):
                     SampleLabels='SampleLabels',
                     num_total_classes=5,
                     num_neg_samples=2,
+                    custom_neg_classes=list(range(2)),
                     sampler=0,
                     seed=1,
                     is_sparse=True,
