@@ -203,10 +203,10 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
-include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)
-# there is no official support of nccl, cupti in windows
+# there is no official support of warpctc, nccl, cupti in windows
+include(external/warpctc)   # download, build, install warpctc
 include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
