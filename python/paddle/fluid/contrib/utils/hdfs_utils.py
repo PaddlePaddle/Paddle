@@ -352,7 +352,7 @@ class HDFSClient(object):
 
     def ls(self, hdfs_path):
         """
-        list directory contents about HDFS hdfs_path
+        ls directory contents about HDFS hdfs_path
 
         Args:
         hdfs_path(str): Remote HDFS path will be ls.
