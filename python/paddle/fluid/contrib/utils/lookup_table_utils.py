@@ -109,7 +109,7 @@ def convert_dist_to_sparse_program(program):
     param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
     program._sync_with_cpp()
 
-    prefetch_op_tuples = __get_prefetch_op_tuples(progarm)
+    prefetch_op_tuples = __get_prefetch_op_tuples(program)
 
     split_ids_id = prefetch_op_tuples[0]
 
@@ -123,7 +123,7 @@ def convert_dist_to_sparse_program(program):
         idx = split_ids_id
         ids = program.global_block().vars[in_out_pair[0]]
         out = program.global_block().vars[in_out_pair[1]]
-        __insert_lookup_sparse_table_op(progarm, idx, ids, param_var, out)
+        __insert_lookup_sparse_table_op(program, idx, ids, param_var, out)
         program.desc.flush()
     return program
 
