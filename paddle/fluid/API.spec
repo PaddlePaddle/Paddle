@@ -340,7 +340,7 @@ paddle.fluid.contrib.QuantizeTranspiler.freeze_program ArgSpec(args=['self', 'pr
 paddle.fluid.contrib.QuantizeTranspiler.training_transpile ArgSpec(args=['self', 'program', 'startup_program'], varargs=None, keywords=None, defaults=(None, None))
 paddle.fluid.contrib.load_persistables_for_increment ArgSpec(args=['dirname', 'executor', 'program', 'lookup_table_var', 'lookup_table_var_path'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.load_persistables_for_inference ArgSpec(args=['dirname', 'executor', 'program', 'lookup_table_var_name'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.contrib.convert_dist_to_sparse_program ArgSpec(args=['main_program'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.convert_dist_to_sparse_program ArgSpec(args=['program'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.HDFSClient.__init__ ArgSpec(args=['self', 'hadoop_home', 'configs'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.HDFSClient.delete ArgSpec(args=['self', 'hdfs_path'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.HDFSClient.download ArgSpec(args=['self', 'hdfs_path', 'local_path', 'overwrite', 'unzip'], varargs=None, keywords=None, defaults=(False, False))
