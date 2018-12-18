@@ -138,8 +138,6 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
                    '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 package_data={'paddle.fluid': ['core' + (ext_name if os.name != 'nt' else '.pyd')]}
-if os.name == 'nt':
-    package_data['paddle.fluid'] += ['openblas' + ext_name]
 
 if '${WITH_FLUID_ONLY}'== 'OFF':
     package_data['paddle.v2.master']=['libpaddle_master' + ext_name]
@@ -162,15 +160,16 @@ if os.name != 'nt':
     package_data['paddle.libs']= []
     package_data['paddle.libs']=['libwarpctc' + ext_name]
     shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
     package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
 else:
-    # copy the openblas.dll
     if os.name == 'nt':
-        shutil.copy('${CBLAS_LIBRARIES}', libs_path)
-        package_data['paddle.libs']+=['openblas' + ext_name]
+        # copy the openblas.dll
+        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        package_data['paddle.fluid'] += ['openblas' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release':
