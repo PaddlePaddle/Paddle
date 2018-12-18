@@ -15,33 +15,87 @@
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/framework/unroll_array_ops.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+
 template <typename T, size_t N>
 class Array {
-  static_assert(N > 0, "The size of array must be larger than 0");
-
  public:
-  HOSTDEVICE Array() {}
+  static constexpr size_t kSize = N;
 
-  HOSTDEVICE explicit Array(const T &val) {
-    for (size_t i = 0; i < N; ++i) data_[i] = val;
+  HOSTDEVICE inline Array() = default;
+
+  template <typename... Args>
+  HOSTDEVICE inline explicit Array(const T &val, Args... args) {
+    UnrollVarArgsAssign<T, N>::Run(data_, val, args...);
   }
 
-  HOSTDEVICE const T *Get() const { return data_; }
+  HOSTDEVICE inline void Fill(const T &val) {
+    UnrollFillConstant<N>::Run(data_, val);
+  }
 
-  HOSTDEVICE T *GetMutable() { return data_; }
+  HOSTDEVICE inline const T *Get() const { return data_; }
 
-  HOSTDEVICE T &operator[](size_t index) { return data_[index]; }
+  HOSTDEVICE inline T *GetMutable() { return data_; }
 
-  HOSTDEVICE const T &operator[](size_t index) const { return data_[index]; }
+  HOSTDEVICE inline T &operator[](size_t index) { return data_[index]; }
+
+  HOSTDEVICE inline const T &operator[](size_t index) const {
+    return data_[index];
+  }
 
   HOSTDEVICE constexpr size_t size() const { return N; }
 
+  HOSTDEVICE inline bool operator==(const Array<T, N> &other) const {
+    return UnrollCompare<N>::Run(data_, other.data_);
+  }
+
+  HOSTDEVICE inline bool operator!=(const Array<T, N> &other) const {
+    return !(*this == other);
+  }
+
  private:
   T data_[N];
+};
+
+template <typename T>
+class Array<T, 0> {
+ public:
+  static constexpr size_t kSize = 0;
+
+  HOSTDEVICE inline Array() = default;
+
+  HOSTDEVICE inline void Fill(const T &val) {}
+
+  HOSTDEVICE inline constexpr T *Get() const { return nullptr; }
+
+  // Add constexpr to GetMutable() cause warning in MAC
+  HOSTDEVICE inline T *GetMutable() { return nullptr; }
+
+  HOSTDEVICE inline T &operator[](size_t index) {
+#ifndef __CUDA_ARCH__
+    PADDLE_THROW("Array<T, 0> has no element");
+#endif
+  }
+
+  HOSTDEVICE inline const T &operator[](size_t index) const {
+#ifndef __CUDA_ARCH__
+    PADDLE_THROW("Array<T, 0> has no element");
+#endif
+  }
+
+  HOSTDEVICE constexpr size_t size() const { return 0; }
+
+  HOSTDEVICE constexpr bool operator==(const Array<T, 0> &other) const {
+    return true;
+  }
+
+  HOSTDEVICE constexpr bool operator!=(const Array<T, 0> &other) const {
+    return false;
+  }
 };
 
 }  // namespace framework

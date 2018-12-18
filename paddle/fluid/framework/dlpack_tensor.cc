@@ -62,7 +62,7 @@ static DLDataType GetDLDataTypeFromTypeIndex(const std::type_index &type) {
 
 struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   inline ::DLContext operator()(const platform::CPUPlace &place) const {
-    DLContext ctx;
+    ::DLContext ctx;
     ctx.device_type = kDLCPU;
     ctx.device_id = 0;
     return ctx;
@@ -70,7 +70,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
 
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
 #ifdef PADDLE_WITH_CUDA
-    DLContext ctx;
+    ::DLContext ctx;
     ctx.device_type = kDLGPU;
     ctx.device_id = place.device;
     return ctx;
@@ -81,7 +81,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
 
   inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
 #ifdef PADDLE_WITH_CUDA
-    DLContext ctx;
+    ::DLContext ctx;
     ctx.device_type = kDLCPUPinned;
     ctx.device_id = 0;
     return ctx;

@@ -18,8 +18,6 @@ limitations under the License. */
 #include <stdexcept>
 #include <vector>
 #include "paddle/fluid/framework/dim.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -29,50 +27,137 @@ namespace framework {
  *
  * The number of dimensions must be between [1, 9].
  */
-struct DDim {
-  typedef boost::variant<Dim<0>, Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>,
-                         Dim<7>, Dim<8>, Dim<9>>
-      DDimVar;
-  DDimVar var;
+class DDim {
+ public:
+  constexpr static int kMaxRank = 9;
 
-  DDim() : var(Dim<1>()) {}
+  DDim() : rank_(1) { dim_[0] = 0; }
 
-  template <int D>
-  explicit DDim(const Dim<D>& in) : var(in) {}
-
-  /*implicit*/ DDim(std::initializer_list<int64_t> init_list);
+  DDim(const int* d, int n);
+  DDim(const int64_t* d, int n);
 
   template <int D>
-  DDim& operator=(const Dim<D>& in) {
-    var = in;
+  /*implicit*/ DDim(const Dim<D>& in) : rank_(D) {  // NOLINT
+    UnsafeCast<D>() = in;
+  }
+
+  /*implicit*/ DDim(std::initializer_list<int64_t> init_list)
+      : DDim(init_list.begin(), init_list.size()) {}
+
+  template <int D>
+  inline DDim& operator=(const Dim<D>& in) {
+    rank_ = D;
+    UnsafeCast<D>() = in;
     return *this;
   }
 
-  int64_t& operator[](int idx);
-  int64_t operator[](int idx) const;
+  inline int64_t& operator[](int idx) { return dim_[idx]; }
 
-  template <typename Visitor>
-  typename Visitor::result_type apply_visitor(Visitor& visitor) {
-    return var.apply_visitor(visitor);
+  inline int64_t operator[](int idx) const { return dim_[idx]; }
+
+  inline int64_t& at(int idx) {
+    PADDLE_ENFORCE(idx >= 0 && idx < rank_);
+    return dim_[idx];
+  }
+
+  inline int64_t at(int idx) const {
+    PADDLE_ENFORCE(idx >= 0 && idx < rank_);
+    return dim_[idx];
   }
 
   template <typename Visitor>
-  typename Visitor::result_type apply_visitor(Visitor& visitor) const {
-    return var.apply_visitor(visitor);
+  typename std::result_of<Visitor(Dim<0>&)>::type apply_visitor(
+      Visitor&& visitor);
+
+  template <typename Visitor>
+  typename std::result_of<Visitor(const Dim<0>&)>::type apply_visitor(
+      Visitor&& visitor) const;
+
+  bool operator==(const DDim& d) const;
+
+  bool operator!=(const DDim& d) const;
+
+  DDim operator+(const DDim& d) const;
+
+  DDim operator*(const DDim& d) const;
+
+  // Make DDim act like std::vector<int64_t>
+  using iterator = int64_t*;
+  using const_iterator = const int64_t*;
+
+  int64_t* data() { return dim_.data(); }
+  const int64_t* data() const { return dim_.data(); }
+
+  iterator begin() { return data(); }
+  const_iterator begin() const { return data(); }
+  iterator end() { return data() + rank_; }
+  const_iterator end() const { return data() + rank_; }
+
+  int size() const { return rank_; }
+
+ private:
+  template <int M>
+  inline Dim<M>& UnsafeCast() {
+    return const_cast<Dim<M>&>(const_cast<const DDim*>(this)->UnsafeCast<M>());
   }
 
-  DDimVar getVar() { return var; }
+  template <int M>
+  inline const Dim<M>& UnsafeCast() const {
+    static_assert(M >= 0 && M <= kMaxRank, "Invalid rank");
+    auto* p = static_cast<const void*>(&dim_);
+    return *reinterpret_cast<const Dim<M>*>(p);
+  }
 
-  bool operator==(DDim d) const;
+  friend DDim slice_ddim(const DDim& dim, int begin, int end);
+  friend DDim stride(const DDim& ddim);
+  friend DDim stride_numel(const DDim& ddim);
 
-  bool operator!=(DDim d) const;
-
-  DDim operator+(DDim d) const;
-
-  DDim operator*(DDim d) const;
-
-  int size() const;
+  Dim<kMaxRank> dim_;
+  int rank_;
 };
+
+#define PADDLE_VISIT_DDIM(rank) \
+  case rank:                    \
+    return visitor(UnsafeCast<rank>())
+
+template <typename Visitor>
+typename std::result_of<Visitor(Dim<0>&)>::type DDim::apply_visitor(
+    Visitor&& visitor) {
+  switch (rank_) {
+    PADDLE_VISIT_DDIM(0);
+    PADDLE_VISIT_DDIM(1);
+    PADDLE_VISIT_DDIM(2);
+    PADDLE_VISIT_DDIM(3);
+    PADDLE_VISIT_DDIM(4);
+    PADDLE_VISIT_DDIM(5);
+    PADDLE_VISIT_DDIM(6);
+    PADDLE_VISIT_DDIM(7);
+    PADDLE_VISIT_DDIM(8);
+    PADDLE_VISIT_DDIM(9);
+    default:
+      PADDLE_THROW("Invalid rank %d", rank_);
+  }
+}
+
+template <typename Visitor>
+typename std::result_of<Visitor(const Dim<0>&)>::type DDim::apply_visitor(
+    Visitor&& visitor) const {
+  switch (rank_) {
+    PADDLE_VISIT_DDIM(0);
+    PADDLE_VISIT_DDIM(1);
+    PADDLE_VISIT_DDIM(2);
+    PADDLE_VISIT_DDIM(3);
+    PADDLE_VISIT_DDIM(4);
+    PADDLE_VISIT_DDIM(5);
+    PADDLE_VISIT_DDIM(6);
+    PADDLE_VISIT_DDIM(7);
+    PADDLE_VISIT_DDIM(8);
+    PADDLE_VISIT_DDIM(9);
+    default:
+      PADDLE_THROW("Invalid rank %d", rank_);
+  }
+}
+#undef PADDLE_VISIT_DDIM
 
 /**
  * \brief Make a DDim from std::vector<int64_t>
@@ -92,7 +177,7 @@ DDim make_ddim(const std::vector<int>& dims);
 DDim make_ddim(std::initializer_list<int64_t> dims);
 
 int64_t get(const DDim& dim, int idx);
-void set(DDim& dim, int idx, int val);
+void set(DDim& dim, int idx, int val);  // NOLINT
 
 std::vector<int64_t> vectorize(const DDim& ddim);
 std::vector<int> vectorize2int(const DDim& ddim);
@@ -129,12 +214,3 @@ DDim stride(const DDim& ddim);
 DDim stride_numel(const DDim& ddim);
 }  // namespace framework
 }  // namespace paddle
-
-namespace boost {
-
-template <typename T>
-T get(const paddle::framework::DDim& in) {
-  return boost::get<T>(in.var);
-}
-
-}  // namespace boost
