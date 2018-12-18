@@ -89,7 +89,7 @@ class PerThreadData {
     std::mt19937 gen;
     std::uniform_int_distribution<int> dist;
     for (int i = 0; i < size_; ++i) {
-      int word_length = rand_r_r() % max_length + 1;
+      int word_length = rand() % max_length + 1;  // NOLINT
       std::string ret;
       std::generate_n(std::back_inserter(ret), word_length,
                       [&]() { return 'a' + dist(gen); });
@@ -127,7 +127,7 @@ TEST(Scope, ConcurrentScopeTest) {
 
   auto s1 = std::chrono::system_clock::now();
   for (int i = 0; i < data.size(); ++i) {
-    if (rand_r_r() % 3 == 0) {
+    if (rand() % 3 == 0) {  // NOLINT
       scope.Var(data[i]);
     } else {
       scope.FindVar(data[i]);
@@ -145,7 +145,7 @@ TEST(Scope, ConcurrentScopeTest2) {
 
   auto s1 = std::chrono::system_clock::now();
   for (int i = 0; i < data.size(); ++i) {
-    if (rand_r_r() % 3 == 0) {
+    if (rand() % 3 == 0) {  // NOLINT
       scope.Var(data[i]);
     } else {
       scope.FindVar(data[i]);
@@ -169,7 +169,7 @@ TEST(Scope, ConcurrentScopeTest3) {
   for (int tid = 0; tid < kThreadNum; ++tid) {
     threads.emplace_back(std::thread([&]() {
       for (int i = 0; i < data.size(); ++i) {
-        if (rand_r_r() % 3 == 0) {
+        if (rand() % 3 == 0) {  // NOLINT
           scope.Var(data[i]);
         } else {
           scope.FindVar(data[i]);
