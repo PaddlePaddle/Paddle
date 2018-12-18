@@ -192,6 +192,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.specify_input_name = false;
   cfg.EnableMemoryOptim();
   cfg.Build();
 
@@ -262,20 +263,12 @@ TEST(Analyzer_dam, compare_with_memory_optim) {
   SetInput(&input_slots_all);
   // Run the first time to force to update memory cache
   SetConfig(&cfg);
-  cfg.EnableMemoryOptim(true);
-  cfg.Build();
 
+  // Force to generate memory optimization.
+  cfg.EnableMemoryOptim();
+  cfg.Build();
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
-
-  // Run second time to use the memory cache and perform memory optimization.
-  SetConfig(&cfg1);
-  cfg1.EnableMemoryOptim();
-  cfg1.Build();
-
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg1),
-      input_slots_all);
 }
 
 TEST(Analyzer_dam, compare) { compare(); }

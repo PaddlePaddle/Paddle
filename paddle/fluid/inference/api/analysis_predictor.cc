@@ -259,7 +259,9 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       idx = feed_names_[inputs[i].name];
     } else {
       idx = boost::get<int>(feeds_[i]->GetAttr("col"));
+      LOG(INFO) << "get feed col " << idx;
     }
+    LOG(INFO) << "set feed idx " << idx;
     framework::SetFeedVariable(scope, input, "feed", idx);
   }
   return true;

@@ -39,6 +39,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
   max_lifecycle_ = 0;
+  int feed_idx=0;
   for (auto* op_node : framework::ir::TopologyVarientSort(*graph_, sort_kind)) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
@@ -49,7 +50,8 @@ void MemoryOptimizePass::CollectLifeCycle(
 
     // Disable reuse of feed variables.
     if (op_node->Name() == "feed") {
-      for (auto* node : op_node->outputs) {
+      LOG(INFO) << "feed " << feed_idx++;
+      for (auto* node : op_node->inputs) {
         auto var = node->Name();
         if (!lifecycles->count(var)) {
           (*lifecycles)[var] =
@@ -618,8 +620,11 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
                             memory_allocation.allocated / 1024. / 1024.);
     string::PrettyLogDetail("--- Saved %d MB",
                             memory_allocation.saved / 1024. / 1024.);
-    argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
-                               new std::unordered_set<std::string>);
+    if (!argument->main_graph().Has(
+            framework::ir::kGraphToProgramVarsToRemove)) {
+      argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
+                                 new std::unordered_set<std::string>);
+    }
     auto& vars2remove =
         argument->main_graph().Get<std::unordered_set<std::string>>(
             framework::ir::kGraphToProgramVarsToRemove);
