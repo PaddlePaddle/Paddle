@@ -131,8 +131,6 @@ if (APPLE OR WIN32)
 endif()
 
 if (WIN32)
-    set(WITH_AVX OFF CACHE STRING
-            "Disable AVX when compiling for Windows" FORCE)
     set(WITH_DSO OFF CACHE STRING
             "Disable DSO when compiling for Windows" FORCE)
     set(WITH_MKL OFF CACHE STRING
