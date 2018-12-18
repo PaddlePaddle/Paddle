@@ -919,7 +919,7 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       auto* trans_var = new_scope->Var(var_name);
-      input_vars[i] = var;
+      input_vars[i] = trans_var;
 
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
