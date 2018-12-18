@@ -65,6 +65,7 @@ option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
+option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
@@ -131,8 +132,6 @@ if (APPLE OR WIN32)
 endif()
 
 if (WIN32)
-    set(WITH_AVX OFF CACHE STRING
-            "Disable AVX when compiling for Windows" FORCE)
     set(WITH_DSO OFF CACHE STRING
             "Disable DSO when compiling for Windows" FORCE)
     set(WITH_MKL OFF CACHE STRING
@@ -217,6 +216,12 @@ include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
 
+if(WITH_PSLIB)
+    include(external/libmct)
+    include(external/pslib_brpc)
+    include(external/pslib)
+endif(WITH_PSLIB)
+
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
         include(external/grpc)
@@ -284,6 +289,12 @@ set(EXTERNAL_LIBS
     ${PYTHON_LIBRARIES}
 )
 
+if(WITH_PSLIB)
+    list(APPEND EXTERNAL_LIBS pslib)
+    list(APPEND EXTERNAL_LIBS pslib_brpc)
+    list(APPEND EXTERNAL_LIBS libmct)
+endif(WITH_PSLIB)
+    
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
