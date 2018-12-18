@@ -233,20 +233,20 @@ class ExecutionContext {
   }
 
   template <typename T>
-  const T* FastInput(const std::string& name) const {
-    auto* var = FastInputVar(name);
+  const T* LegacyInput(const std::string& name) const {
+    auto* var = LegacyInputVar(name);
     return var == nullptr ? nullptr : &var->Get<T>();
   }
 
   template <typename T>
-  T* FastOutput(const std::string& name) const {
-    auto var = FastOutputVar(name);
+  T* LegacyOutput(const std::string& name) const {
+    auto var = LegacyOutputVar(name);
     return var == nullptr ? nullptr : var->GetMutable<T>();
   }
 
-  const Variable* FastInputVar(const std::string& name) const;
+  const Variable* LegacyInputVar(const std::string& name) const;
 
-  Variable* FastOutputVar(const std::string& name) const;
+  Variable* LegacyOutputVar(const std::string& name) const;
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
@@ -314,7 +314,7 @@ template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
 
 template <>
-const Tensor* ExecutionContext::FastInput<Tensor>(
+const Tensor* ExecutionContext::LegacyInput<Tensor>(
     const std::string& name) const;
 
 template <>
@@ -325,7 +325,7 @@ template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
-Tensor* ExecutionContext::FastOutput<Tensor>(const std::string& name) const;
+Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
