@@ -871,8 +871,8 @@ class TestRemoteNce(TestDistLookupTableBase):
     def transpiler_test_impl(self):
         trainer, _ = self.get_trainer()
 
-        out_vars = ["nce_w.block0", "nce_w.block1"]
-        in_vars = ["nce_b.block0", "nce_b.block1"]
+        out_vars = ["nce_w"]
+        in_vars = ["nce_b"]
 
         recv_var_names = []
 
