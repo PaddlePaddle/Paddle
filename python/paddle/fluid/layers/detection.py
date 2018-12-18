@@ -305,22 +305,11 @@ def detection_output(loc,
             target_box=loc,
             code_type='decode_center_size')
 
-    compile_shape = scores.shape
-    run_shape = nn.shape(scores)
     scores = nn.softmax(input=scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     if arm_scores:
-        compile_shape = arm_scores.shape
-        run_shape = nn.shape(arm_scores)
-        arm_scores = nn.flatten(x=arm_scores, axis=2)
         arm_scores = nn.softmax(input=arm_scores)
-        obj_scores = tensor.fill_constant(
-            shape=arm_scores.shape, value=objectness_threshold, dtype='float32')
-        obj_idx = control_flow.less_than(obj_scores, arm_scores)
-        obj_idx = nn.reshape(
-            x=obj_idx, shape=compile_shape, actual_shape=run_shape)
-        obj_idx = nn.transpose(obj_idx, perm=[0, 2, 1])
-        obj_idx = nn.split(obj_idx, num_or_sections=2, dim=1)[1]
+        arm_scores = nn.transpose(arm_scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
@@ -330,7 +319,7 @@ def detection_output(loc,
             inputs={
                 'Scores': scores,
                 'BBoxes': decoded_box,
-                'ObjIndex': obj_idx
+                'ARMScores': arm_scores,
             },
             outputs={'Out': nmsed_outs},
             attrs={
@@ -339,7 +328,8 @@ def detection_output(loc,
                 'nms_top_k': nms_top_k,
                 'keep_top_k': keep_top_k,
                 'score_threshold': score_threshold,
-                'nms_eta': 1.0
+                'nms_eta': 1.0,
+                'obj_scores': objectness_threshold
             })
     else:
         helper.append_op(

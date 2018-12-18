@@ -287,8 +287,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* boxes = ctx.Input<Tensor>("BBoxes");
     auto* scores = ctx.Input<Tensor>("Scores");
-    auto* obj_idx = ctx.Input<Tensor>("ObjIndex");
     auto* outs = ctx.Output<LoDTensor>("Out");
+    auto* arm_scores = ctx.Input<Tensor>("ARMScores");
 
     auto score_dims = scores->dims();
 
@@ -301,20 +301,25 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     Tensor* scores_refine = new Tensor;
     framework::TensorCopy(*scores, ctx.GetPlace(), scores_refine);
     // For RefineDet
-    if (obj_idx) {
-      auto* obj_idx_data = obj_idx->data<bool>();
-      auto* scores_data = scores_refine->data<T>();
+    float obj_scores = ctx.Attr<float>("obj_scores");
+    if (arm_scores) {
+      auto* scores_refine_data = scores_refine->data<T>();
+      auto* arm_scores_data = arm_scores->data<T>();
       for (int64_t i = 0; i < batch_size; ++i)
-        for (int64_t j = 0; j < predict_dim; ++j)
+        for (int64_t j = 0; j < predict_dim; ++j) {
+          if (arm_scores_data[i * predict_dim * 2 + predict_dim + j] >
+              obj_scores) {
+            continue;
+          }
           for (int64_t c = 0; c < class_num; ++c) {
             int offset = i * predict_dim * class_num + c * predict_dim + j;
-            if (obj_idx_data[i * predict_dim + j]) continue;
             if (c == 0) {
-              scores_data[offset] = 1;
+              scores_refine_data[offset] = 1;
             } else {
-              scores_data[offset] = 0;
+              scores_refine_data[offset] = 0;
             }
           }
+        }
     }
 
     std::vector<std::map<int, std::vector<int>>> all_indices;
@@ -377,11 +382,14 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
              " Please note, M is equal to the 1st dimension of BBoxes. ");
-    AddInput("ObjIndex",
-             "(Tensor) A 3-D Tensor<bool> with shape [N, 1, M], each value "
-             "indicates wether a box in the BBoxes with the same location "
-             "contains a object. ")
-        .AsDispensable();
+    AddInput("ARMScores",
+             "(Tensor) A 3-D Tensor<bool> with shape [N, 2, M] represents the "
+             "predicted confidence predictions. N is the batch size, 2 is the "
+             "class number, which indicate the foreground and the background. "
+             "M is number of bounding boxes. For each category "
+             "there are total M scores which corresponding M bounding boxes. "
+             " Please note, M is equal to the 1st dimension of BBoxes. ");
+    .AsDispensable();
     AddAttr<int>(
         "background_label",
         "(int, defalut: 0) "
@@ -409,6 +417,11 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int64_t) "
                  "Number of total bboxes to be kept per image after NMS "
                  "step. -1 means keeping all bboxes after NMS step.");
+    AddAttr<float>("obj_scores",
+                   "(float) "
+                   "Threshold to filter out the foreground bounding boxes in "
+                   "RefineDet. If not provided, consider all boxes.");
+    .SetDefault(0.01);
     AddOutput("Out",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "

@@ -39,13 +39,28 @@ class TestDetection(unittest.TestCase):
                 shape=[2, 10, 4],
                 append_batch_size=False,
                 dtype='float32')
+            arm_loc = layers.data(
+                name='arm_target_box',
+                shape=[2, 10, 4],
+                append_batch_size=False,
+                dtype='float32')
             scores = layers.data(
                 name='scores',
                 shape=[2, 10, 20],
                 append_batch_size=False,
                 dtype='float32')
+            arm_scores = layers.data(
+                name='arm_scores',
+                shape=[2, 10, 2],
+                append_batch_size=False,
+                dtype='float32')
             out = layers.detection_output(
-                scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
+                scores=scores,
+                loc=loc,
+                arm_scores=arm_scores,
+                arm_loc=arm_loc,
+                prior_box=pb,
+                prior_box_var=pbv)
             self.assertIsNotNone(out)
             self.assertEqual(out.shape[-1], 6)
         print(str(program))
