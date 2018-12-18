@@ -27,6 +27,45 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
 
 
+def nce(input, weight, bias, sample_weight, labels, num_classes,
+        num_sample_class):
+    samples = []
+    sample_labels = []
+    batch_size = input.shape[0]
+    num_true_class = labels.shape[1]
+    for i in range(batch_size):
+        w = 1 if sample_weight is None else sample_weight[i]
+        for label in labels[i]:
+            samples.append((i, label, True, w))
+            sample_labels.append(label)
+        for num in range(num_sample_class):
+            samples.append((i, num, False, w))
+            sample_labels.append(num)
+    # forward bias
+    sample_out = np.zeros(len(samples)).astype(np.float32)
+    if bias is not None:
+        for i in range(len(samples)):
+            sample_out[i] = bias[samples[i][1]]
+    # forward weight
+    for i in range(len(samples)):
+        sample_out[i] += np.dot(input[samples[i][0]], weight[samples[i][1]])
+
+    # forward activation
+    sample_out = 1.0 / (1.0 + np.exp(-sample_out))
+    # forward cost
+    out = np.zeros(batch_size).astype(np.float32)
+    b = 1.0 / num_classes * num_sample_class
+
+    for i in range(len(samples)):
+        o = sample_out[i]
+        cost = -np.log(o / (o + b)) if samples[i][2] else -np.log(b / (o + b))
+        out[samples[i][0]] += cost * samples[i][3]
+    return (out[:, np.newaxis], np.array(sample_out).reshape(
+        batch_size, num_sample_class + num_true_class),
+            np.array(sample_labels).reshape(batch_size,
+                                            num_sample_class + num_true_class))
+
+
 def run_pserver(pserver_id, use_cuda, sync_mode):
     scope = fluid.core.Scope()
     program = Program()
@@ -94,11 +133,11 @@ class TestListenAndServOp(unittest.TestCase):
         with fluid.scope_guard(scope):
             with program_guard(program, startup_program=Program()):
                 x = scope.var('Input').get_tensor()
-                x_array = np.random.random((4, 8)).astype("float32") * 2
+                x_array = np.random.random((4, 8)).astype("float32")
                 x.set(x_array, place)
                 # create and initialize Param Variable
                 param = scope.var('Weight').get_tensor()
-                param_array = np.zeros((5, 8)).astype("float32") * 2
+                param_array = np.zeros((5, 8)).astype("float32")
                 param.set(param_array, place)
 
                 bias = scope.var('Bias').get_tensor()
@@ -110,7 +149,7 @@ class TestListenAndServOp(unittest.TestCase):
                 sample_w.set(sample_weight, place)
 
                 label = scope.var('Label').get_tensor()
-                label_array = np.array([0, 1, 4, 5])
+                label_array = np.array([[0], [1], [4], [3]])
                 label.set(label_array, place)
 
                 cost = scope.var('Cost').get_tensor()
@@ -122,7 +161,7 @@ class TestListenAndServOp(unittest.TestCase):
                 sample_l.set(sample_l_w, place)
 
                 sample_la = scope.var('SampleLabels').get_tensor()
-                sample_la_w = np.zeros((4, 3)).astype("float32")
+                sample_la_w = np.zeros((4, 3)).astype("int")
                 sample_la.set(sample_la_w, place)
 
                 emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
@@ -139,11 +178,12 @@ class TestListenAndServOp(unittest.TestCase):
                     Cost='Cost',
                     SampleLogits='SampleLogits',
                     SampleLabels='SampleLabels',
+                    SampleWeight='SampleWeight',
                     num_total_classes=5,
                     num_neg_samples=2,
                     custom_neg_classes=list(range(2)),
                     sampler=0,
-                    seed=1,
+                    seed=0,
                     is_sparse=True,
                     remote_prefetch=True,
                     epmap=emaps,
@@ -153,9 +193,21 @@ class TestListenAndServOp(unittest.TestCase):
                 nce_op.run(scope, place)
 
                 # get and compare result
-                o_cost = np.array(cost_w)
-                o_logits = np.array(sample_l)
-                o_labels = np.array(sample_la)
+                o_cost = np.array(scope.var('Cost').get_tensor())
+                o_logits = np.array(scope.var('SampleLogits').get_tensor())
+                o_labels = np.array(scope.var('SampleLabels').get_tensor())
+
+                param_array = np.ones((5, 8)).astype("float32")
+                for i in range(2):
+                    param_array[i] *= param_array[i] * i + 0 * 10 + 1
+                for i in range(2, 5):
+                    param_array[i] *= param_array[i] * i + 1 * 10 + 1
+                out = nce(x_array, param_array, bias_array, sample_weight,
+                          label_array, 5, 2)
+
+                self.assertAlmostEqual(o_cost.all(), out[0].all(), delta=1e-6)
+                self.assertAlmostEqual(o_logits.all(), out[1].all(), delta=1e-6)
+                self.assertAlmostEqual(o_labels.all(), out[2].all(), delta=1e-6)
 
     def test_nce_op_remote(self):
         os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
