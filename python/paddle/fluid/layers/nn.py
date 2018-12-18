@@ -9471,4 +9471,3 @@ class FC(layers.PyLayer):
             outputs={"Out": out},
             attrs={"use_mkldnn": False})
         return out
-
