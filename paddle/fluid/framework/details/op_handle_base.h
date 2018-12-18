@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
+constexpr char kLocalExecScopeName[] = "@LOCAL_SCOPE@";
 
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
