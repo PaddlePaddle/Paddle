@@ -222,11 +222,9 @@ static std::string GetHash(const Tensor* weights, const std::string& suffix) {
 }
 
 template <typename T>
-std::shared_ptr<FCPrimitiveFactory<T>>
-GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
-                    const ExecutionContext& ctx,
-                    const Tensor* weights,
-                    const mkldnn::engine& mkldnn_engine) {
+std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
+    const MKLDNNDeviceContext& dev_ctx, const ExecutionContext& ctx,
+    const Tensor* weights, const mkldnn::engine& mkldnn_engine) {
   const std::string key = GetHash(weights, ctx.op().Output("Out"));
 
   auto prim_creator =
