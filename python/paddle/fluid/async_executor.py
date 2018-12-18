@@ -301,7 +301,7 @@ class AsyncExecutor(object):
         save_model command that can be invoked from one of the worker
         model parameters are saved in servers and upload to save_path of file system
         Args:
-        save_path(str): path to file system
+        save_path(str): save path to file system
         """
         if self.instance is None:
             raise ValueError(
