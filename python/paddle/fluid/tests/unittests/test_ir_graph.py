@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 import six
 from paddle import fluid
@@ -22,23 +23,33 @@ class TestIRGraph(unittest.TestCase):
     TODO(fc500110): There is some api unusable because it's using python unsupported types,
     these api will be tested when it can be used.
     """
+
     def test_nodes(self):
         graph = build_graph()
         self.assertTrue(
             {node.name()
              for node in graph.nodes()} == {"x1", "x2", "out", "sum"})
 
-    def test_get(self):
-        pass
+    def test_has_set_get(self):
+        graph = build_graph()
+        for attr_name in ["int", "float", "string"]:
+            self.assertFalse(graph.has(attr_name))
+        graph.set("int", 1)
+        graph.set("float", 0.5)
+        graph.set("string", "string")
+        for attr_name in ["int", "float", "string"]:
+            self.assertTrue(graph.has(attr_name))
 
-    def test_set(self):
-        pass
-
-    def test_set_not_owned(self):
-        pass
+        self.assertTrue(graph.get_int("int") == 1)
+        self.assertTrue(graph.get_float("float") == 0.5)
+        self.assertTrue(graph.get_string("string") == "string")
 
     def test_erase(self):
-        pass
+        graph = build_graph()
+        graph.set("test", 0)
+        self.assertTrue(graph.has("test"))
+        graph.erase("test")
+        self.assertFalse(graph.has("test"))
 
     def test_create_var_node(self):
         pass
@@ -47,7 +58,10 @@ class TestIRGraph(unittest.TestCase):
         pass
 
     def test_create_control_dep_var(self):
-        pass
+        graph = build_graph()
+        name = "__control_var@{}".format(len(graph.nodes()))
+        node = graph.create_control_dep_var()
+        self.assertTrue(node.name() == name)
 
     def test_create_empty_node(self):
         prog = fluid.core.ProgramDesc()
@@ -65,7 +79,15 @@ class TestIRGraph(unittest.TestCase):
                          for node in nodes} == {"x1", "x2", "out", "sum"})
 
     def test_remove_node(self):
-        pass
+        graph = build_graph()
+        nodes = graph.nodes()
+        for node in nodes:
+            if node.name() == "sum":
+                break
+        self.assertTrue({node.name()
+                         for node in nodes} == {"x1", "x2", "out", "sum"})
+        nodes.remove(node)
+        self.assertTrue({node.name() for node in nodes} == {"x1", "x2", "out"})
 
     def test_retrieve_node(self):
         graph = build_graph()

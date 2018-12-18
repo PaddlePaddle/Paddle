@@ -38,6 +38,11 @@ std::unique_ptr<Node> CreateNodeForTest(OpDesc *op_desc) {
   return std::unique_ptr<Node>(new Node(op_desc));
 }
 
+std::unique_ptr<Node> CreateNodeForPybind(const std::string &name,
+                                          Node::Type type) {
+  return std::unique_ptr<Node>(new Node(name, type));
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

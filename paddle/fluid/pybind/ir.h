@@ -19,7 +19,7 @@
 
 namespace paddle {
 namespace pybind {
-void BindGraph(pybind11::module* m);
-void BindNode(pybind11::module* m);
+void BindGraph(pybind11::module *m);
+void BindNode(pybind11::module *m);
 }  // namespace pybind
 }  // namespace paddle

@@ -126,6 +126,8 @@ class Node {
                                                  Node::Type type);
   friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
   friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
+  friend std::unique_ptr<Node> CreateNodeForPybind(const std::string& name,
+                                                   Node::Type type);
 
   explicit Node(const std::string& name, Type type)
       : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
@@ -156,6 +158,8 @@ std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
 std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
 
 std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
+std::unique_ptr<Node> CreateNodeForPybind(const std::string& name,
+                                          Node::Type type);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
