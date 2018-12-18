@@ -127,7 +127,7 @@ void AllReduceOpHandle::RunImpl() {
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
-      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      VisitDataType(lod_tensors[0]->type(), func);
 
       for (size_t i = 1; i < local_scopes_.size(); ++i) {
         auto &scope =

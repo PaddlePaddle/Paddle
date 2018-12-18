@@ -197,8 +197,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = framework::ToDataType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
+    auto input_data_type =
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
