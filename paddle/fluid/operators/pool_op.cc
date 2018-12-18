@@ -52,6 +52,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   bool ceil_mode = ctx->Attrs().Get<bool>("ceil_mode");
+  bool adaptive = ctx->Attrs().Get<bool>("adaptive");
 
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                  "Pooling intput should be 4-D or 5-D tensor.");
@@ -72,9 +73,13 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
                     "Paddings size and pooling size should be the same.");
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-  for (size_t i = 0; i < ksize.size(); ++i) {
-    output_shape.push_back(PoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                          paddings[i], strides[i], ceil_mode));
+  if (adaptive) {
+    output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
+  } else {
+    for (size_t i = 0; i < ksize.size(); ++i) {
+      output_shape.push_back(PoolOutputSize(
+          in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+    }
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");
@@ -99,9 +104,8 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+                                 layout_, library_);
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
@@ -130,7 +134,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  auto input_data_type = ctx.Input<Tensor>("X")->type();
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");
@@ -186,6 +190,14 @@ void Pool2dOpMaker::Make() {
       "averaging calculating, otherwise, include the zero-padding. Note, it "
       "is only used when pooling_type is avg. The defalut is True.")
       .SetDefault(true);
+  AddAttr<bool>(
+      "adaptive",
+      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "output shape in H and W dimensions will be same as ksize, input data "
+      "will be divided into grids specify by ksize averagely and perform "
+      "pooling in each grid area to get output pooling value.")
+      .SetDefault(false);
+
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
@@ -264,6 +276,14 @@ Example:
        Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
        $$
 
+  For adaptive = true:
+      $$
+      hstart = floor(i * H_{in} / H_{out})
+      hend = ceil((i + 1) * H_{in} / H_{out})
+      wstart = floor(j * W_{in} / W_{out})
+      wend = ceil((j + 1) * W_{in} / W_{out})
+      Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+      $$
 )DOC");
 }
 
@@ -325,6 +345,13 @@ void Pool3dOpMaker::Make() {
       "averaging calculating, otherwise, include the zero-padding. Note, it "
       "is only used when pooling_type is avg. The defalut is True.")
       .SetDefault(true);
+  AddAttr<bool>(
+      "adaptive",
+      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "output shape in H and W dimensions will be same as ksize, input data "
+      "will be divided into grids specify by ksize averagely and perform "
+      "pooling in each grid area to get output pooling value.")
+      .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
@@ -375,6 +402,37 @@ Example:
        D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0] + strides[0] -1)}{strides[0]} + 1 \\
        H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
+  $$
+  For exclusive = true:
+  $$
+  dstart = i * strides[0] - paddings[0]
+  dend = dstart + ksize[0]
+  hstart = j * strides[1] - paddings[1]
+  hend = hstart + ksize[1]
+  wstart = k * strides[2] - paddings[2]
+  wend = wstart + ksize[2]
+  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
+  $$
+  For exclusive = false:
+  $$
+  dstart = max(0, i * strides[0] - paddings[0])
+  dend = min(D, dstart + ksize[0])
+  hstart = max(0, j * strides[1] - paddings[1])
+  hend = min(H, hstart + ksize[1])
+  wstart = max(0, k * strides[2] - paddings[2])
+  wend = min(W, wstart + ksize[2])
+  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+  $$
+
+  For adaptive = true:
+  $$
+  dstart = floor(i * D_{in} / D_{out})
+  dend = ceil((i + 1) * D_{in} / D_{out})
+  hstart = floor(j * H_{in} / H_{out})
+  hend = ceil((j + 1) * H_{in} / H_{out})
+  wstart = floor(k * W_{in} / W_{out})
+  wend = ceil((k + 1) * W_{in} / W_{out})
+  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
   $$
 
 )DOC");

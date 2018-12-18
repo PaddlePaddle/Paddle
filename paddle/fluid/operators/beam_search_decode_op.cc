@@ -145,7 +145,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
     framework::VisitDataType(
-        framework::ToDataType(scores->at(0).type()),
+        scores->at(0).type(),
         BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores,
                                 beam_size, end_id));
   }
