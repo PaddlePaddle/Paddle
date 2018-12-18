@@ -388,8 +388,8 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "class number, which indicate the foreground and the background. "
              "M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
-             " Please note, M is equal to the 1st dimension of BBoxes. ");
-    .AsDispensable();
+             " Please note, M is equal to the 1st dimension of BBoxes. ")
+        .AsDispensable();
     AddAttr<int>(
         "background_label",
         "(int, defalut: 0) "
@@ -420,8 +420,8 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("obj_scores",
                    "(float) "
                    "Threshold to filter out the foreground bounding boxes in "
-                   "RefineDet. If not provided, consider all boxes.");
-    .SetDefault(0.01);
+                   "RefineDet. If not provided, consider all boxes.")
+        .SetDefault(0.01);
     AddOutput("Out",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
