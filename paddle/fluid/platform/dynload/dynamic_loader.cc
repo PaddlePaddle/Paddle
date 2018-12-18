@@ -53,12 +53,6 @@ namespace platform {
 namespace dynload {
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
 
-#if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
-static constexpr char* win_curand_lib = "curand64_" PADDLE_CUDA_BINVER ".dll";
-static constexpr char* win_cudnn_lib = "cudnn64_" PADDLE_CUDNN_BINVER ".dll";
-#endif
-
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
   // directory separator
@@ -171,8 +165,6 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
 void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
-#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cublas_lib);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
@@ -181,8 +173,6 @@ void* GetCublasDsoHandle() {
 void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
-#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false);
 #endif
@@ -203,8 +193,6 @@ void* GetCUPTIDsoHandle() {
 void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
-#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
@@ -213,8 +201,6 @@ void* GetCurandDsoHandle() {
 void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
-#elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "warpctc.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
 #endif
@@ -239,8 +225,6 @@ void* GetTensorRtDsoHandle() {
 void* GetMKLMLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
-#elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
