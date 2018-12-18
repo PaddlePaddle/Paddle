@@ -164,7 +164,7 @@ class Tensor {
     return std::move(holder_);
   }
 
-  void ReSetHolder(std::shared_ptr<memory::Allocation> holder);
+  void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
  private:
   /*! holds the memory block if allocated. */

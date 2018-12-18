@@ -131,9 +131,8 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     int in_col = input[0].numel() / in_row;
     int out_row = in_row, out_col = 0;
 
-    std::vector<uint8_t> inputs_data(in_num * sizeof(T*));
+    std::vector<T*> inputs_data(in_num);
     std::vector<int> inputs_col(in_num + 1);
-    T** inputs_ptr = reinterpret_cast<T**>(inputs_data.data());
 
     inputs_col[0] = 0;
     bool sameShape = true;
@@ -144,7 +143,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
       }
       out_col += t_cols;
       inputs_col[i + 1] = out_col;
-      inputs_ptr[i] = const_cast<T*>(input[i].data<T>());
+      inputs_data[i] = const_cast<T*>(input[i].data<T>());
     }
 
     // computation
@@ -168,11 +167,11 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
 
     auto tmp_dev_ins_data =
         platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-            inputs_data.size());
+            inputs_data.size() * sizeof(T*));
     memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                  tmp_dev_ins_data->ptr(), platform::CPUPlace(),
-                 static_cast<void*>(inputs_data.data()), inputs_data.size(),
-                 context.stream());
+                 static_cast<void*>(inputs_data.data()),
+                 inputs_data.size() * sizeof(T*), context.stream());
     T** dev_ins_data = reinterpret_cast<T**>(tmp_dev_ins_data->ptr());
 
     if (sameShape) {
@@ -218,9 +217,8 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     int in_col = 0, in_row = out_row;
     bool sameShape = true;
 
-    std::vector<uint8_t> outputs_data(o_num * sizeof(T*));
+    std::vector<T*> outputs_data(o_num);
     std::vector<int> outputs_cols(o_num + 1);
-    T** outputs_ptr = reinterpret_cast<T**>(outputs_data.data());
 
     outputs_cols[0] = 0;
     for (int i = 0; i < o_num; ++i) {
@@ -231,9 +229,9 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
       in_col += t_col;
       outputs_cols[i + 1] = in_col;
       if (outputs->at(i) != nullptr) {
-        outputs_ptr[i] = outputs->at(i)->data<T>();
+        outputs_data[i] = outputs->at(i)->data<T>();
       } else {
-        outputs_ptr[i] = nullptr;
+        outputs_data[i] = nullptr;
       }
     }
 
@@ -257,11 +255,11 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
 
     auto tmp_dev_outs_data =
         platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-            outputs_data.size());
+            outputs_data.size() * sizeof(T*));
     memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                  tmp_dev_outs_data->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void*>(outputs_data.data()),
-                 outputs_data.size(), context.stream());
+                 outputs_data.size() * sizeof(T*), context.stream());
     T** dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
 
     if (sameShape) {

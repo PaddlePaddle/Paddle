@@ -34,7 +34,7 @@ paddle::framework::Tensor GetTensor(
 
   paddle::framework::Tensor temp_tensor(std::type_index(typeid(T)));
   temp_tensor.Resize(dim);
-  temp_tensor.ReSetHolder(std::move(shared_allocation));
+  temp_tensor.ResetHolder(std::move(shared_allocation));
   return temp_tensor;
 }
 
