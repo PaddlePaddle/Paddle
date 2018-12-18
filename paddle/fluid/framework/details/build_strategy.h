@@ -60,14 +60,25 @@ struct BuildStrategy {
     kCustomized = 2,
   };
 
+  enum class OptimizeStrategy {
+    // To be Implemented,bruteforce, recursive compute unused var names.
+    kBruteForce = 0,
+    kControlFlowGraph = 1,  // use cfg_graph algorithm, faster speed.
+  };
+
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
+  OptimizeStrategy strategy_{OptimizeStrategy::kControlFlowGraph};
 
   std::string debug_graphviz_path_{""};
 
   bool fuse_elewise_add_act_ops_{false};
 
   bool enable_data_balance_{false};
+
+  bool memory_optimize_{false};
+
+  bool memory_early_delete_{false};
 
   bool enable_sequential_execution_{false};
 
