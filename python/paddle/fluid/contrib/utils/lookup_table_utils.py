@@ -78,7 +78,7 @@ def __get_prefetch_op_tuples(main_program):
     return prefetch_op_tuples
 
 
-def convert_dist_to_sparse_program(progarm):
+def convert_dist_to_sparse_program(program):
     """
     WARNING: this function will only be used for distributed training with distributed lookup table.
     when we train model with distributed lookup table but want to do the local inference, we can use
@@ -88,18 +88,18 @@ def convert_dist_to_sparse_program(progarm):
     :return:
         program: The `program` is a Program, it's the program replace distributed lookup table to sparse lookup table.
     """
-    if not progarm._distributed_lookup_table:
+    if not program._distributed_lookup_table:
         _logger.warn(
             "There are no distributed lookup tables need to be converted")
         return
 
     # create table param and grad var in pserver program
-    origin_emb_var = "{}.origin".format(progarm._distributed_lookup_table)
-    emb_var = progarm._distributed_lookup_table
-    progarm.global_block()._rename_var(emb_var, origin_emb_var)
-    origin_param_var = progarm.global_block().vars[origin_emb_var]
+    origin_emb_var = "{}.origin".format(program._distributed_lookup_table)
+    emb_var = program._distributed_lookup_table
+    program.global_block()._rename_var(emb_var, origin_emb_var)
+    origin_param_var = program.global_block().vars[origin_emb_var]
 
-    param_var = progarm.global_block().create_var(
+    param_var = program.global_block().create_var(
         name=emb_var,
         shape=origin_param_var.shape,
         dtype=origin_param_var.dtype,
@@ -107,25 +107,25 @@ def convert_dist_to_sparse_program(progarm):
         persistable=True)
     # parameter must be selected rows
     param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
-    progarm._sync_with_cpp()
+    program._sync_with_cpp()
 
     prefetch_op_tuples = __get_prefetch_op_tuples(progarm)
 
     split_ids_id = prefetch_op_tuples[0]
 
     for idx in range(split_ids_id + 2, split_ids_id - 1, -1):
-        progarm.global_block()._remove_op(idx)
-    progarm.desc.flush()
+        program.global_block()._remove_op(idx)
+    program.desc.flush()
 
     in_out_pairs = zip(prefetch_op_tuples[1], prefetch_op_tuples[2])
 
     for in_out_pair in in_out_pairs:
         idx = split_ids_id
-        ids = progarm.global_block().vars[in_out_pair[0]]
-        out = progarm.global_block().vars[in_out_pair[1]]
+        ids = program.global_block().vars[in_out_pair[0]]
+        out = program.global_block().vars[in_out_pair[1]]
         __insert_lookup_sparse_table_op(progarm, idx, ids, param_var, out)
-        progarm.desc.flush()
-    return progarm
+        program.desc.flush()
+    return program
 
 
 def _load_persistable_vars(executor, dirname, program, lookup_table_vars):
