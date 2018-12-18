@@ -85,4 +85,5 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 }  // namespace paddle
 
 REGISTER_PASS(multi_devices_print_pass,
-              paddle::framework::details::SSAGraghBuilderWithPrinter);
+              paddle::framework::details::SSAGraghBuilderWithPrinter)
+    .RequirePassAttr(paddle::framework::details::kGraphvizPath);

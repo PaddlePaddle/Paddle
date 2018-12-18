@@ -104,8 +104,10 @@ packages=['paddle',
           'paddle.fluid.imperative',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
+          'paddle.fluid.distributed',
           'paddle.fluid.layers',
           'paddle.fluid.contrib',
+          'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
           'paddle.fluid.transpiler',
@@ -241,5 +243,6 @@ setup(name='${PACKAGE_NAME}',
       ext_modules=ext_modules,
       package_data=package_data,
       package_dir=package_dir,
-      scripts=paddle_bins
+      scripts=paddle_bins,
+      distclass=BinaryDistribution
 )
