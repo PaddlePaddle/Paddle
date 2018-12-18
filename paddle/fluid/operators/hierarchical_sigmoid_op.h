@@ -71,7 +71,6 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
       // server
       auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
       auto table_names = ctx.Attr<std::vector<std::string>>("table_names");
-      VLOG(3) << "path type is " << path->type().name();
       std::vector<int64_t> real_rows = PathToRows(*path);
       framework::Scope& local_scope = ctx.scope().NewScope();
       auto* ids = local_scope.Var("Ids@Prefetch");
