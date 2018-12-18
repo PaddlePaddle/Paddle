@@ -812,6 +812,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
   this->InferShape(&infer_shape_ctx);
+  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+  // not Scope. Imperative mode only pass inputs and get outputs.
   kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
 
   if (!transfered_inplace_vars.empty()) {
@@ -917,13 +919,6 @@ Scope* OperatorWithKernel::PrepareData(
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
-    }
-  }
-  for (auto& var_name_item : Outputs()) {
-    std::vector<Variable*>& output_vars = ctx->outputs[var_name_item.first];
-    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
-      auto& var_name = var_name_item.second[i];
-      output_vars[i] = scope.FindVar(var_name);
     }
   }
 
