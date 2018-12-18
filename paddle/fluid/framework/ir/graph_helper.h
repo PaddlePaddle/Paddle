@@ -24,6 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
 

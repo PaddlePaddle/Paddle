@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#define EIGEN_USE_GPU
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -223,14 +222,10 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
-    std::lock_guard<std::mutex> guard(callback_mtx_);
     callback_manager_->AddCallback(callback);
   }
 
-  void WaitStreamCallback() const {
-    std::lock_guard<std::mutex> guard(callback_mtx_);
-    callback_manager_->Wait();
-  }
+  void WaitStreamCallback() const { callback_manager_->Wait(); }
 
 #if CUDA_VERSION >= 9000
   /*! \brief CublasCall may need to change cublas's config,
@@ -261,9 +256,7 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex mtx_;
 
-  // This lock is only used by callback
-  // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
-  mutable std::mutex callback_mtx_;
+  // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
 
   mutable std::mutex cublas_mtx_;

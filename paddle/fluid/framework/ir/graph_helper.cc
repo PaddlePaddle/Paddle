@@ -20,6 +20,7 @@ limitations under the License. */
 #include <fstream>
 #include <iosfwd>
 #include <ostream>
+#include <unordered_map>
 #include <unordered_set>
 
 DEFINE_string(print_sub_graph_dir, "",
@@ -226,7 +227,7 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
 }
 
 size_t GraphNum(const Graph &graph) {
-  std::unordered_set<ir::Node *> nodes = graph.Nodes();
+  std::unordered_set<ir::Node *> nodes(graph.Nodes());
   std::unordered_set<ir::Node *> visited_nodes;
   visited_nodes.reserve(nodes.size());
   std::deque<ir::Node *> q_nodes;
