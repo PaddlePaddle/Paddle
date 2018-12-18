@@ -20,7 +20,7 @@ import six
 from .framework import Program, default_main_program, Variable
 from . import core
 
-__all__ = ['Executor', 'global_scope', 'scope_guard', '_switch_scope']
+__all__ = ['Executor', 'global_scope', 'scope_guard']
 
 g_scope = core.Scope()
 
@@ -407,16 +407,17 @@ class Executor(object):
 
         Examples:
 
-            >>> data = layers.data(name='X', shape=[1], dtype='float32')
-            >>> hidden = layers.fc(input=data, size=10)
-            >>> layers.assign(hidden, out)
-            >>> loss = layers.mean(out)
+            >>> data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            >>> out = fluid.layers.create_tensor(dtype='float32')
+            >>> hidden = fluid.layers.fc(input=data, size=10)
+            >>> fluid.layers.assign(hidden,out)
+            >>> loss = fluid.layers.mean(out)
             >>> adam = fluid.optimizer.Adam()
-            >>> adam.minimize(loss)
+						>>> adam.minimize(loss)
 
             >>> cpu = core.CPUPlace()
-            >>> exe = Executor(cpu)
-            >>> exe.run(default_startup_program())
+            >>> exe = fluid.Executor(cpu)
+            >>> exe.run(fluid.default_startup_program())
 
             >>> x = numpy.random.random(size=(10, 1)).astype('float32')
             >>> outs = exe.run(

@@ -76,9 +76,8 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
@@ -150,22 +149,21 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
                    "Output(W@Grad should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X@Grad should not be null.");
-    if (!ctx->Attrs().Get<bool>("is_sparse")) {
-      if (ctx->HasOutput(framework::GradVarName("Bias"))) {
-        ctx->SetOutputDim(framework::GradVarName("Bias"),
-                          ctx->GetInputDim("Bias"));
-      }
-      ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
+
+    if (ctx->HasOutput(framework::GradVarName("Bias"))) {
+      ctx->SetOutputDim(framework::GradVarName("Bias"),
+                        ctx->GetInputDim("Bias"));
     }
+    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 

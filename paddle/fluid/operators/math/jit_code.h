@@ -47,7 +47,6 @@ extern const float exp_float_consts[];
 extern const int exp_int_0x7f[];
 extern int g_tmp_mem[];
 
-#define ALIGN32 __attribute__((aligned(32)))
 #define EXP_HIG 88.3762626647949f
 #define EXP_LOW -88.3762626647949f
 #define CEPHES_LOG2EF 1.44269504088896341
@@ -179,7 +178,7 @@ class VActJitCode : public JitCode {
   template <typename JMM>
   void exp_jmm(JMM& dst, JMM& src, int src_idx = 11, int fx_idx = 12,  // NOLINT
                int fy_idx = 13, int mask_idx = 14, int tmp_idx = 15) {
-    using namespace platform::jit;  // NOLINT
+    using namespace platform;  // NOLINT
     // check all idx can not equal
     JMM jmm_src = JMM(src_idx);
     JMM jmm_fx = JMM(fx_idx);

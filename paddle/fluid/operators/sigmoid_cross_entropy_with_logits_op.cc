@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+const int kIgnoreIndex = -100;
 
 class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
  public:
@@ -100,6 +101,11 @@ class SigmoidCrossEntropyWithLogitsOpMaker
     AddOutput("Out",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "
               " of elementwise logistic losses.");
+    AddAttr<int>("ignore_index",
+                 "(int, default kIgnoreIndex), Specifies a target value that "
+                 "is ignored and"
+                 "does not contribute to the input gradient.")
+        .SetDefault(kIgnoreIndex);
     AddComment(R"DOC(
 SigmoidCrossEntropyWithLogits Operator.
 
