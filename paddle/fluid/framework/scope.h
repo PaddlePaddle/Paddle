@@ -38,14 +38,6 @@ bool IsFastEagerDeletionModeEnabled();
 
 class Scope;
 
-namespace inner {
-struct KeyHasher {
-  std::size_t operator()(const std::string& key) const {
-    return XXH32(key.c_str(), key.size(), 1);
-  }
-};
-}  // namespace inner
-
 /**
  * @brief Scope that manage all variables.
  *
@@ -110,8 +102,13 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
  protected:
-  mutable std::unordered_map<std::string, std::unique_ptr<Variable>,
-                             inner::KeyHasher>
+  struct KeyHasher {
+    std::size_t operator()(const std::string& key) const {
+      return XXH32(key.c_str(), key.size(), 1);
+    }
+  };
+
+  mutable std::unordered_map<std::string, std::unique_ptr<Variable>, KeyHasher>
       vars_;
 
  private:
