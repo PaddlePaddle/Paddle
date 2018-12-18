@@ -9243,6 +9243,47 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
     Returns:
         out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
+
+    Examples:
+    
+        >>> import paddle.fluid as fluid
+        >>> import six
+        >>>
+        >>> def create_tmp_var(name, dtype, shape):
+        >>>     return fluid.default_main_program().current_block().create_var(
+        >>>         name=name, dtype=dtype, shape=shape) 
+        >>>
+        >>> # tanh activation has been provided by Paddle C++ op
+        >>> # Here, we only use tanh to be an example to show the usage 
+        >>> # of py_func
+        >>> def tanh(x):
+        >>>     return np.tanh(x)
+        >>> 
+        >>> # forward input x is skipped
+        >>> def tanh_grad(y, dy):
+        >>>     return np.array(dy) * (1 - np.square(np.array(y)))
+        >>>
+        >>> def debug_func(x):
+        >>>     print(x) 
+        >>>
+        >>> def simple_net(img, label):
+        >>>     hidden = img
+        >>>     for idx in six.moves.range(4):
+        >>>         hidden = fluid.layers.fc(hidden, size=200)
+        >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+        >>>             dtype=hidden.dtype, shape=hidden.shape)    
+        >>>
+        >>>         # user-defined layers with forward and backward
+        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden, 
+        >>>             out=new_hidden, backward_func=tanh_grad, 
+        >>>             skip_vars_in_backward_input=hidden)
+        >>>
+        >>>         # user-defined debug layers to print variables
+        >>>         fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+        >>>
+        >>>     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+        >>>     loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        >>>     return fluid.layers.mean(loss)
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
