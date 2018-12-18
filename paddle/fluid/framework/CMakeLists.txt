@@ -3,30 +3,22 @@
 # We create a hidden file and compile it instead of origin source file.
 function(windows_symbolic TARGET)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs SRCS PATH)
   cmake_parse_arguments(windows_symbolic "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(final_path ${CMAKE_CURRENT_SOURCE_DIR}/${windows_symbolic_PATH})
   foreach(src ${windows_symbolic_SRCS})
-  get_filename_component(src ${src} NAME_WE)
-  if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc OR NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cu)
-      message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
-  endif()
+    get_filename_component(src ${src} NAME_WE)
+    if (NOT EXISTS ${final_path}/${src}.cc OR NOT EXISTS ${final_path}/${src}.cu)
+        message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
+    endif()
 
-  # only copy the xx.cu to .xx.cu when the content are modified
-  set(copy_flag 1)
-  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc SOURCE_STR)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu TARGET_STR)
-  if (SOURCE_STR STREQUAL TARGET_STR)
-    set(copy_flag 0)
-  endif()
-  endif()
-  if (copy_flag)
-  add_custom_command(OUTPUT .${src}.cu
-          COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu
-          COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc" "${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu"
-          COMMENT "create hidden file of ${src}.cu")
-  endif(copy_flag)
-  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
+    file(GENERATE OUTPUT ${final_path}/.${src}.cu INPUT ${final_path}/${src}.cc)
+
+    add_custom_command(OUTPUT ${final_path}/.${src}.cu
+            COMMAND ${CMAKE_COMMAND} -E remove ${final_path}/.${src}.cu
+            COMMAND ${CMAKE_COMMAND} -E copy "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
+            COMMENT "create hidden file of ${src}.cu")
+    add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
   endforeach()
 endfunction()
 
@@ -71,6 +63,8 @@ cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto 
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+
+cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory)
 
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 cc_test(reader_test SRCS reader_test.cc DEPS reader)
@@ -167,9 +161,12 @@ cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
 if(WITH_DISTRIBUTE)
-  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr graph_to_program_pass variable_helper)
-  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog
+        lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS} graph_to_program_pass variable_helper)
+
+   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+
 else()
   if(WITH_NGRAPH)
     if(NOT WIN32)
@@ -182,6 +179,8 @@ else()
   endif(WITH_NGRAPH)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
+
+target_link_libraries(executor garbage_collector)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor

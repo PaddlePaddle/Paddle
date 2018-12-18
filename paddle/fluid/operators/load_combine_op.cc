@@ -69,7 +69,7 @@ class LoadCombineOp : public framework::OperatorBase {
       // Get data from fin to tensor
       DeserializeFromStream(*buffer, tensor, dev_ctx);
 
-      auto in_dtype = framework::ToDataType(tensor->type());
+      auto in_dtype = tensor->type();
       auto out_dtype =
           load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

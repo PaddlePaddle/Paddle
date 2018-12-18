@@ -126,9 +126,9 @@ def __bootstrap__():
         'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_mkldnn',
         'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'allocator_strategy',
-        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
-        'pe_profile_fname'
+        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -150,8 +150,9 @@ def __bootstrap__():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'selected_gpus'
+            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus'
         ]
+
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
