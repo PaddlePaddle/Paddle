@@ -44,13 +44,15 @@ class FCPrimitiveFactory {
                                           const Tensor* weights,
                                           const Tensor* bias, Tensor* output,
                                           const ExecutionContext& ctx) {
+    if (fc_ && IsOutputSame(output, ctx)) {
+      return *fc_;
+    }
     auto src_desc = CreateMemDescriptor(input, input->format());
     input_ = CreateMemory(src_desc, input);
 
     auto weights_dims = GetCorrectedWeightsDims(weights);
     auto weights_desc = CreateMemDescriptor(weights_dims, memory::format::oi);
     weights_ = CreateMemory(weights_desc, weights);
-
     if (input->dims().size() == 4) {
       weights_ = CreateFourDimWeightsMemory(input, weights);
       weights_desc = weights_.get().get_primitive_desc().desc();
@@ -58,11 +60,16 @@ class FCPrimitiveFactory {
 
     auto dst_desc = CreateMemDescriptor(output, memory::format::any);
 
-    return CreateFcPrimitive(src_desc, input_.get(), weights_desc,
-                             weights_.get(), dst_desc, bias, output, ctx);
+    fc_ = CreateFcPrimitive(src_desc, input_.get(), weights_desc,
+                            weights_.get(), dst_desc, bias, output, ctx);
+    return *fc_;
   }
 
  private:
+  bool IsOutputSame(Tensor* out, const ExecutionContext& ctx) {
+    return output_->get_data_handle() == out->mutable_data<T>(ctx.GetPlace());
+  }
+
   memory::format MatchWeightFormat(memory::format fmt) {
     using format = memory::format;
     switch (fmt) {
@@ -196,12 +203,41 @@ class FCPrimitiveFactory {
 
  private:
   const mkldnn::engine& engine_;
-  boost::optional<memory> memory_;
   boost::optional<memory> bias_;
   boost::optional<memory> input_;
   boost::optional<memory> output_;
   boost::optional<memory> weights_;
+  boost::optional<inner_product_forward> fc_;
 };
+
+static std::string GetHash(const Tensor* weights, const std::string& suffix) {
+  auto dim2str = [](const DDim& operand_dims) {
+    std::string str = "";
+    for (size_t i = 0; i < operand_dims.size(); ++i) {
+      str += std::to_string(operand_dims[i]) + "-";
+    }
+    return str;
+  };
+  return dim2str(weights->dims()) + suffix;
+}
+
+template <typename T>
+std::shared_ptr<FCPrimitiveFactory<T>>
+GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
+                    const ExecutionContext& ctx,
+                    const Tensor* weights,
+                    const mkldnn::engine& mkldnn_engine) {
+  const std::string key = GetHash(weights, ctx.op().Output("Out"));
+
+  auto prim_creator =
+      std::static_pointer_cast<FCPrimitiveFactory<T>>(dev_ctx.GetBlob(key));
+  if (prim_creator == nullptr) {
+    prim_creator = std::make_shared<FCPrimitiveFactory<T>>(mkldnn_engine);
+    dev_ctx.SetBlob(key, prim_creator);
+  }
+
+  return prim_creator;
+}
 
 template <typename T>
 class FCMKLDNNOpKernel : public framework::OpKernel<T> {
@@ -209,7 +245,6 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
@@ -218,8 +253,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
 
-    FCPrimitiveFactory<T> prim_creator(mkldnn_engine);
-    auto fc = prim_creator.CreateFcPrimitive(input, w, bias, output, ctx);
+    auto prim_creator = GetPrimitiveFactory<T>(dev_ctx, ctx, w, mkldnn_engine);
+    auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);
     stream(stream::kind::eager).submit({fc}).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
