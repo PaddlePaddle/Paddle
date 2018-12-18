@@ -34,7 +34,25 @@ _logger.setLevel(logging.INFO)
 
 class HDFSClient(object):
     """
-    this is a tool class for read/write data with HDFS.
+    A tool of HDFS 
+
+    Args:
+        hadoop_home (string): hadoop_home 
+        configs (dict): hadoop config, it is a dict, please contain \
+            key "fs.default.name" and "hadoop.job.ugi"
+        Can be a float value
+    Examples:
+        hadoop_home = "/home/client/hadoop-client/hadoop/"
+
+        configs = {
+            "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+            "hadoop.job.ugi": "hello,hello123"
+        }
+
+        client = HDFSClient(hadoop_home, configs)
+
+        client.ls("/user/com/train-25")
+        files = client.lsr("/user/com/train-25/models")
     """
 
     def __init__(self, hadoop_home, configs):
@@ -57,9 +75,13 @@ class HDFSClient(object):
         ret_code = 0
         ret_out = None
         ret_err = None
+        whole_commands = " ".join(whole_commands)
         for x in range(retry_times + 1):
             proc = subprocess.Popen(
-                whole_commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                whole_commands,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True)
             (output, errors) = proc.communicate()
             ret_code, ret_out, ret_err = proc.returncode, output, errors
             if ret_code:
@@ -231,7 +253,6 @@ class HDFSClient(object):
             True or False
             This function returns `True` if the deletion was successful and `False` if
             no file or directory previously existed at `hdfs_path`.
-
         """
         _logger.info('Deleting %r.', hdfs_path)
 
@@ -265,7 +286,6 @@ class HDFSClient(object):
 
         Returns:
             True or False
-
         """
         assert hdfs_src_path is not None
         assert hdfs_dst_path is not None
@@ -291,6 +311,11 @@ class HDFSClient(object):
 
     @staticmethod
     def make_local_dirs(local_path):
+        """
+        create a directiory local, is same to mkdir
+        Args:
+            local_path: local path that wants to create a directiory.
+        """
         try:
             os.makedirs(local_path)
         except OSError as e:
@@ -330,7 +355,7 @@ class HDFSClient(object):
         list directory contents about HDFS hdfs_path
 
         Args:
-        hdfs_path(str): Remote HDFS path.
+        hdfs_path(str): Remote HDFS path will be ls.
 
         Returns:
             List: a contents list about hdfs_path.
@@ -414,6 +439,7 @@ def multi_download(client,
                    local_path,
                    trainer_id,
                    trainers,
+                   file_cnt,
                    multi_processes=5):
     """
     Download files from HDFS using multi process.
@@ -445,7 +471,7 @@ def multi_download(client,
     client.make_local_dirs(local_path)
     _logger.info("Make local dir {} successfully".format(local_path))
 
-    all_need_download = client.lsr(hdfs_path, sort=True)
+    all_need_download = client.lsr(hdfs_path, sort=True)[:file_cnt]
     need_download = all_need_download[trainer_id::trainers]
     _logger.info("Get {} files From all {} files need to be download from {}".
                  format(len(need_download), len(all_need_download), hdfs_path))
@@ -572,6 +598,7 @@ if __name__ == "__main__":
         "/home/xx/data1",
         1,
         5,
+        100,
         multi_processes=5)
 
     multi_upload(client, "/user/com/train-25/model", "/home/xx/data1")

@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-extern size_t SizeOfType(std::type_index type);
+extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
@@ -31,7 +31,7 @@ size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
 }
 
-void* Tensor::mutable_data(platform::Place place, std::type_index type,
+void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
                            memory::Allocator::Attr attr,
                            size_t requested_size) {
   type_ = type;

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-from . import lookup_table_utils
-from .lookup_table_utils import *
+#from . import lookup_table_utils
+#from .lookup_table_utils import *
 from . import hdfs_utils
 from .hdfs_utils import *
 
