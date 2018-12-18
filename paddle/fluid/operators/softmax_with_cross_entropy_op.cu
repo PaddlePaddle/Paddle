@@ -11,9 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#define EIGEN_USE_GPU
+
 #include <cub/cub.cuh>
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -58,8 +62,17 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
 
 }  // namespace
 
+static __device__ __forceinline__ platform::float16 real_exp(
+    platform::float16 x) {
+  return ::Eigen::numext::exp(x);
+}
 static __device__ __forceinline__ float real_exp(float x) { return expf(x); }
 static __device__ __forceinline__ double real_exp(double x) { return exp(x); }
+
+static __device__ __forceinline__ platform::float16 real_log(
+    platform::float16 x) {
+  return math::TolerableValue<platform::float16>()(::Eigen::numext::log(x));
+}
 static __device__ __forceinline__ float real_log(float x) {
   return math::TolerableValue<float>()(logf(x));
 }
@@ -118,6 +131,7 @@ template <typename T, int BlockDim>
 static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
                                           int feature_size) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
+  T clip_value = static_cast<T>(-64.);
 
   auto beg_idx = feature_size * blockIdx.x + threadIdx.x;
   auto end_idx = feature_size * (blockIdx.x + 1);
@@ -134,7 +148,7 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
   if (threadIdx.x == 0) {
-    max_data[blockIdx.x] = cur_max < -64 ? -64 : cur_max;
+    max_data[blockIdx.x] = cur_max < clip_value ? clip_value : cur_max;
   }
 }
 
@@ -464,9 +478,12 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(softmax_with_cross_entropy,
-                        ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
-                        ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(softmax_with_cross_entropy_grad,
-                        ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
-                        ops::SoftmaxWithCrossEntropyGradCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
+    ops::SoftmaxWithCrossEntropyCUDAKernel<paddle::platform::float16>,
+    ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    softmax_with_cross_entropy_grad,
+    ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
+    ops::SoftmaxWithCrossEntropyGradCUDAKernel<paddle::platform::float16>,
+    ops::SoftmaxWithCrossEntropyGradCUDAKernel<double>);
