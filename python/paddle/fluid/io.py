@@ -19,6 +19,7 @@ import errno
 import time
 import shutil
 import six
+from functools import reduce
 
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
