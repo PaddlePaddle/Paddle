@@ -231,7 +231,7 @@ ParallelExecutor::ParallelExecutor(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     ncclUniqueId *nccl_id = nullptr;
-    if (build_strategy.enable_parallel_graph_) {
+    if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
       // parallel graph mode should initialize nccl by ncclCommInitRank since
       // it call nccl operator per device per thread.
       if (nccl_id_var == nullptr) {

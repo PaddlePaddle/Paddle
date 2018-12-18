@@ -59,7 +59,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     if (pool_) {
       run_futures.emplace_back(pool_->enqueue(std::move(call)));
     } else {
-      call();
+      fetch_datas.emplace_back(std::move(call()));
     }
   }
 

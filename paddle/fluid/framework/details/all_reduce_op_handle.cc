@@ -51,7 +51,8 @@ void AllReduceOpHandle::RunImpl() {
 // FIXME(typhoonzero): If scope0(global scope) have NCCL_ID_VAR,
 // this is a distributed or inter-process call, find a better way.
 #ifdef PADDLE_WITH_CUDA
-  // Find NCCL ID from the global scope.
+  // All-reduce op_handle can run on the sub-scope, find the nccl id from
+  // the global scope.
   if (NoDummyInputSize() == 1 &&
       local_scopes_[0]->FindVar(NCCL_ID_VARNAME) == nullptr) {
 #else
