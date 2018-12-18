@@ -105,7 +105,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto data_o = output->mutable_data<T>(
         place, paddle::memory::Allocator::kDefault, mpd_o.get_size());
 
-    auto src = mkldnn::memory(mpd_i, const_cast<T*>(data_i));
+    auto src = mkldnn::memory(mpd_i, (T*)(data_i));
     auto dst = mkldnn::memory(mpd_o, data_o);
 
     auto r = mkldnn::reorder(src, dst);
