@@ -539,7 +539,7 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      VLOG(3) << "CompletionQueue " << rpc_name << " shutdown!";
+      LOG(WARNING) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
@@ -562,9 +562,8 @@ void AsyncGRPCServer::HandleRequest(
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      LOG(WARNING) << "completion queue:" << rpc_name
-                   << " recv no regular event"
-                   << " context:" << base->Status2String(rpc_name);
+      VLOG(4) << "completion queue:" << rpc_name << " recv no regular event"
+              << " context:" << base->Status2String(rpc_name);
       TryToRegisterNewOne(rpc_name, req_id);
       delete base;
       continue;
