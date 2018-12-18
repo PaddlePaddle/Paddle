@@ -115,19 +115,19 @@ if (NOT PROTOBUF_FOUND OR WIN32)
             )
 endif ()
 
-if (NOT CBLAS_FOUND)
-    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
-    copy(openblas_lib
-            SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-            DSTS ${dst_dir} ${dst_dir}
-            DEPS extern_openblas
-            )
-elseif (WITH_MKLML)
+if (WITH_MKLML)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mklml")
     copy(mklml_lib
             SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
             DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
             DEPS mklml
+            )
+elseif (NOT CBLAS_FOUND OR WIN32)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
+    copy(openblas_lib
+            SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+            DSTS ${dst_dir} ${dst_dir}
+            DEPS extern_openblas
             )
 endif ()
 
