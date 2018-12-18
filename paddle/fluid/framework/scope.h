@@ -20,6 +20,10 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#ifndef PADDLE_ON_INFERENCE
+#include "tbb/concurrent_hash_map.h"
+#endif
+
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -30,6 +34,16 @@ int64_t GetEagerDeletionThreshold();
 bool IsFastEagerDeletionModeEnabled();
 
 class Scope;
+// When in inference scenario, the scopes will not be written by two threads in
+// a mean time, but a scope may be read by multiple threads concurrently, and
+// the mutex will cause serious performance issue.
+// So the mutex is disabled when `ON_INFER`.
+#ifdef PADDLE_ON_INFERENCE
+using ScopeHashMap = std::unordered_map<std::string, std::unique_ptr<Variable>>;
+#else
+using ScopeHashMap =
+    tbb::concurrent_hash_map<std::string, std::unique_ptr<Variable>>;
+#endif
 
 /**
  * @brief Scope that manage all variables.
@@ -95,7 +109,8 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
  protected:
-  mutable std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
+  // mutable std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
+  mutable ScopeHashMap vars_;
 
  private:
   // Call Scope::NewScope for a sub-scope.

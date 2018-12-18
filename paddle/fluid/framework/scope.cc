@@ -42,124 +42,14 @@ DEFINE_bool(fast_eager_deletion_mode, false,
             "Fast eager deletion mode. If enabled, memory would release "
             "immediately without waiting GPU kernel ends.");
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_LOCK_GUARD
-#else
-#define SCOPE_LOCK_GUARD std::lock_guard<std::mutex> lock(mutex_);
-#endif
-
 namespace paddle {
 namespace framework {
 
-int64_t GetEagerDeletionThreshold() {
-  return FLAGS_eager_delete_tensor_gb < 0
-             ? -1
-             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
-                                    (static_cast<int64_t>(1) << 30));
-}
-
-bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
-
-Scope::~Scope() { DropKids(); }
-
-Scope& Scope::NewScope() const {
-  SCOPE_LOCK_GUARD
-  kids_.push_back(new Scope(this));
-  return *kids_.back();
-}
-
-Variable* Scope::Var(const std::string& name) {
-  SCOPE_LOCK_GUARD
-  return VarInternal(name);
-}
-
-Variable* Scope::Var(std::string* name) {
-  SCOPE_LOCK_GUARD
-  auto new_name = string::Sprintf("%p.%d", this, vars_.size());
-  if (name != nullptr) {
-    *name = new_name;
-  }
-  return VarInternal(new_name);
-}
-
-Variable* Scope::FindVar(const std::string& name) const {
-  SCOPE_LOCK_GUARD
-  return FindVarInternal(name);
-}
-
-Variable* Scope::FindLocalVar(const std::string& name) const {
-  SCOPE_LOCK_GUARD
-  return FindVarLocally(name);
-}
-
-const Scope* Scope::FindScope(const Variable* var) const {
-  SCOPE_LOCK_GUARD
-  return FindScopeInternal(var);
-}
-
-void Scope::DropKids() {
-  SCOPE_LOCK_GUARD
-  for (Scope* s : kids_) delete s;
-  kids_.clear();
-}
-
-bool Scope::HasKid(const Scope* scope) const {
-  SCOPE_LOCK_GUARD
-  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-  return it != this->kids_.end();
-}
-
-std::vector<std::string> Scope::LocalVarNames() const {
-  SCOPE_LOCK_GUARD
-  std::vector<std::string> known_vars;
-  known_vars.reserve(this->vars_.size());
-  for (auto& p : vars_) {
-    known_vars.emplace_back(p.first);
-  }
-  return known_vars;
-}
-
-void Scope::DeleteScope(Scope* scope) const {
-  SCOPE_LOCK_GUARD
-  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-  PADDLE_ENFORCE(it != this->kids_.end(), "%p Cannot find %p as kid scope",
-                 this, scope);
-  this->kids_.erase(it);
-  // When making memory benchmark on Fluid, we have to delete scope sync.
-  if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
-    delete scope;
-  } else {
-    Async([scope] { delete scope; });
-  }
-}
-
-void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  SCOPE_LOCK_GUARD
-  std::set<std::string> var_set(var_names.begin(), var_names.end());
-  for (auto it = vars_.begin(); it != vars_.end();) {
-    if (var_set.find(it->first) != var_set.end()) {
-      it = vars_.erase(it);
-    } else {
-      ++it;
-    }
-  }
-}
-
-void Scope::Rename(const std::string& origin_name,
-                   const std::string& new_name) const {
-  SCOPE_LOCK_GUARD
-  RenameInternal(origin_name, new_name);
-}
-
-std::string Scope::Rename(const std::string& origin_name) const {
-  SCOPE_LOCK_GUARD
-  auto new_name = string::Sprintf("%p.%d", this, vars_.size());
-  RenameInternal(origin_name, new_name);
-  return new_name;
+#ifdef PADDLE_ON_INFERENCE
+Variable* Scope::FindVarLocally(const std::string& name) const {
+  auto it = vars_.find(name);
+  if (it != vars_.end()) return it->second.get();
+  return nullptr;
 }
 
 Variable* Scope::VarInternal(const std::string& name) {
@@ -169,17 +59,7 @@ Variable* Scope::VarInternal(const std::string& name) {
   v = new Variable();
   vars_[name].reset(v);
   VLOG(3) << "Create variable " << name;
-  v->name_ = &(vars_.find(name)->first);
   return v;
-}
-
-const Scope* Scope::FindScopeInternal(const Variable* var) const {
-  for (auto& kv : vars_) {
-    if (kv.second.get() == var) {
-      return this;
-    }
-  }
-  return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
 
 void Scope::RenameInternal(const std::string& origin_name,
@@ -194,18 +74,145 @@ void Scope::RenameInternal(const std::string& origin_name,
   vars_.erase(origin_it);
 }
 
+#else
+// concurrent hash map has a different access do find/erase
+Variable* Scope::FindVarLocally(const std::string& name) const {
+  ScopeHashMap::const_accessor it;
+  auto exsits = vars_.find(it, name);
+  if (exsits) return it->second.get();
+  return nullptr;
+}
+
+Variable* Scope::VarInternal(const std::string& name) {
+  auto* v = FindVarLocally(name);
+  if (v != nullptr) return v;
+
+  ScopeHashMap::accessor it;
+  vars_.insert(it,
+               std::make_pair(name, std::unique_ptr<Variable>(new Variable())));
+  VLOG(3) << "Create variable " << name;
+  return it->second.get();
+}
+
+void Scope::RenameInternal(const std::string& origin_name,
+                           const std::string& new_name) const {
+  ScopeHashMap::const_accessor new_it, origin_it;
+  auto origin_exsits = vars_.find(origin_it, origin_name);
+  PADDLE_ENFORCE(origin_exsits, "Cannot find original variable with name %s",
+                 origin_name);
+  auto new_exsits = vars_.find(new_it, new_name);
+  PADDLE_ENFORCE(new_exsits == false,
+                 "The variable with name %s is already in the scope", new_name);
+  vars_.insert(
+      new_it,
+      std::make_pair(new_name, std::unique_ptr<Variable>(new Variable())));
+  vars_.erase(origin_it);
+}
+#endif
+
+int64_t GetEagerDeletionThreshold() {
+  return FLAGS_eager_delete_tensor_gb < 0
+             ? -1
+             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
+                                    (static_cast<int64_t>(1) << 30));
+}
+
+bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
+
+Scope::~Scope() { DropKids(); }
+
+Scope& Scope::NewScope() const {
+  kids_.push_back(new Scope(this));
+  return *kids_.back();
+}
+
+Variable* Scope::Var(const std::string& name) { return VarInternal(name); }
+
+Variable* Scope::Var(std::string* name) {
+  auto new_name = string::Sprintf("%p.%d", this, vars_.size());
+  if (name != nullptr) {
+    *name = new_name;
+  }
+  return VarInternal(new_name);
+}
+
+Variable* Scope::FindVar(const std::string& name) const {
+  return FindVarInternal(name);
+}
+
+void Scope::EraseVars(const std::vector<std::string>& var_names) {
+  std::set<std::string> var_set(var_names.begin(), var_names.end());
+  for (auto it = var_names.begin(); it != var_names.end(); ++it) {
+    vars_.erase(*it);
+  }
+}
+
+Variable* Scope::FindLocalVar(const std::string& name) const {
+  return FindVarLocally(name);
+}
+
+const Scope* Scope::FindScope(const Variable* var) const {
+  return FindScopeInternal(var);
+}
+
+void Scope::DropKids() {
+  for (Scope* s : kids_) delete s;
+  kids_.clear();
+}
+
+bool Scope::HasKid(const Scope* scope) const {
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  return it != this->kids_.end();
+}
+
+std::vector<std::string> Scope::LocalVarNames() const {
+  std::vector<std::string> known_vars;
+  known_vars.reserve(this->vars_.size());
+  for (auto& p : vars_) {
+    known_vars.emplace_back(p.first);
+  }
+  return known_vars;
+}
+
+void Scope::DeleteScope(Scope* scope) const {
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  PADDLE_ENFORCE(it != this->kids_.end(), "%p Cannot find %p as kid scope",
+                 this, scope);
+  this->kids_.erase(it);
+  // When making memory benchmark on Fluid, we have to delete scope sync.
+  if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
+    delete scope;
+  } else {
+    Async([scope] { delete scope; });
+  }
+}
+
+void Scope::Rename(const std::string& origin_name,
+                   const std::string& new_name) const {
+  RenameInternal(origin_name, new_name);
+}
+
+std::string Scope::Rename(const std::string& origin_name) const {
+  auto new_name = string::Sprintf("%p.%d", this, vars_.size());
+  RenameInternal(origin_name, new_name);
+  return new_name;
+}
+
+const Scope* Scope::FindScopeInternal(const Variable* var) const {
+  for (auto& kv : vars_) {
+    if (kv.second.get() == var) {
+      return this;
+    }
+  }
+  return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
+}
+
 Variable* Scope::FindVarInternal(const std::string& name) const {
   auto var = FindVarLocally(name);
   if (var != nullptr) {
     return var;
   }
   return (parent_ == nullptr) ? nullptr : parent_->FindVar(name);
-}
-
-Variable* Scope::FindVarLocally(const std::string& name) const {
-  auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second.get();
-  return nullptr;
 }
 
 std::string GenScopeTreeDebugInfo(Scope* root) {

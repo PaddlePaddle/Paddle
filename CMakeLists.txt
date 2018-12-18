@@ -178,6 +178,15 @@ if (NOT DEFINED WITH_MKLDNN)
     endif()
 endif()
 
+if (NOT DEFINED WITH_TBB)
+  if (WITH_MKL AND AVX2_FOUND)
+    # avoid define a new option. turn on tbb if mkl is defined
+    set(WITH_TBB ON)
+  else()
+     message(STATUS "Do not have AVX2 intrinsics and disabled TBB")
+  endif()
+endif()
+
 if (REPLACE_ENFORCE_GLOG)
   add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
@@ -194,6 +203,7 @@ include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
+include(external/tbb)       # download, build, install tbb
 include(external/ngraph)    # download, build, install nGraph
 include(external/swig)      # download, build, install swig
 include(external/boost)     # download boost
