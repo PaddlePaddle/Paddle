@@ -942,6 +942,7 @@ function main() {
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
+        ;;
       *)
         print_usage
         exit 0
