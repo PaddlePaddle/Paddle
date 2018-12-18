@@ -36,6 +36,7 @@
 DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
+DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");

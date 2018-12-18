@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+#include <algorithm>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -93,6 +94,7 @@ class ParallelExecutorPrivate {
     }
   }
 
+  BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
@@ -169,6 +171,14 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(std::move(graph));
     VLOG(10) << "EagerDeletionPass Applied";
+
+    if (build_strategy_.memory_early_delete_) {
+      auto early_delete_pass =
+          ir::PassRegistry::Instance().Get("memory_early_delete_pass");
+      early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+      graph = early_delete_pass->Apply(std::move(graph));
+    }
+    VLOG(10) << "MemoryEarlyDeletePass Applied.";
   }
 
   return graph;
@@ -189,6 +199,7 @@ ParallelExecutor::ParallelExecutor(
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
+  member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
 
@@ -245,7 +256,6 @@ ParallelExecutor::ParallelExecutor(
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
-
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
     graph = member_->PrepareGCAndRefCnts(std::move(graph),
@@ -280,10 +290,12 @@ ParallelExecutor::ParallelExecutor(
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graph)));
   } else {
     member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+        exec_strategy, member_->local_scopes_, member_->places_,
+        std::move(graph)));
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
@@ -423,5 +435,6 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(memory_early_delete_pass);
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
