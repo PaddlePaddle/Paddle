@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
 namespace paddle {
@@ -138,42 +139,24 @@ void print_lod_tensor(std::string var_name, const LoDTensor& lod_tensor) {
   std::cout << sstream.str() << std::endl;
 }
 
-void print_fetch_var(Scope* scope, std::string var_name) {
-  const LoDTensor& tensor = scope->FindVar(var_name)->Get<LoDTensor>();
+static void print_fetch_var(Scope* scope, const std::string& var_name) {
+  auto& tensor = scope->FindVar(var_name)->Get<LoDTensor>();
 
-  if (std::type_index(tensor.type()) ==
-      std::type_index(typeid(platform::float16))) {
-    print_lod_tensor<platform::float16>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) == std::type_index(typeid(float))) {
-    print_lod_tensor<float>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-             std::type_index(typeid(double))) {
-    print_lod_tensor<double>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) == std::type_index(typeid(int))) {
-    print_lod_tensor<int>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-             std::type_index(typeid(int64_t))) {
-    print_lod_tensor<int64_t>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) == std::type_index(typeid(bool))) {
-    print_lod_tensor<bool>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-             std::type_index(typeid(uint8_t))) {
-    print_lod_tensor<uint8_t>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-             std::type_index(typeid(int16_t))) {
-    print_lod_tensor<int16_t>(var_name, tensor);
-  } else if (std::type_index(tensor.type()) ==
-             std::type_index(typeid(int8_t))) {
-    print_lod_tensor<int8_t>(var_name, tensor);
-  } else {
-    VLOG(1) << "print_fetch_var: unrecognized data type:"
-            << tensor.type().name();
-  }
+#define PrintLoDTensorCallback(cpp_type, proto_type) \
+  do {                                               \
+    if (tensor.type() == proto_type) {               \
+      print_lod_tensor<cpp_type>(var_name, tensor);  \
+      return;                                        \
+    }                                                \
+  } while (0)
 
-  return;
+  _ForEachDataType_(PrintLoDTensorCallback);
+  VLOG(1) << "print_fetch_var: unrecognized data type:" << tensor.type();
 }
 
 void ExecutorThreadWorker::TrainFiles() {
+  platform::SetNumThreads(1);
+
   // todo: configurable
   SetDevice();
 
