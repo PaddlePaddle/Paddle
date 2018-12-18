@@ -93,9 +93,8 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-      ctx.device_context());
+  return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                 ctx.device_context());
 }
 
 void FusionGRUOpMaker::Make() {

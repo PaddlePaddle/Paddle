@@ -62,45 +62,54 @@ inline std::string demangle(std::string name) { return name; }
 #endif
 
 struct EnforceNotMet : public std::exception {
-  std::exception_ptr exp_;
   std::string err_str_;
-  EnforceNotMet(std::exception_ptr e, const char* f, int l) : exp_(e) {
-    static constexpr int TRACE_STACK_LIMIT = 100;
+  EnforceNotMet(std::exception_ptr e, const char* f, int l) {
     try {
-      std::rethrow_exception(exp_);
-    } catch (const std::exception& exp) {
-      std::ostringstream sout;
-
-      sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
-      sout << "PaddlePaddle Call Stacks: " << std::endl;
-#if !defined(_WIN32)
-      void* call_stack[TRACE_STACK_LIMIT];
-      auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-      auto symbols = backtrace_symbols(call_stack, size);
-
-      Dl_info info;
-      for (int i = 0; i < size; ++i) {
-        if (dladdr(call_stack[i], &info) && info.dli_sname) {
-          auto demangled = demangle(info.dli_sname);
-          auto addr_offset = static_cast<char*>(call_stack[i]) -
-                             static_cast<char*>(info.dli_saddr);
-          sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
-                                  2 + sizeof(void*) * 2, call_stack[i],
-                                  demangled, addr_offset);
-        } else {
-          sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
-                                  call_stack[i]);
-        }
-      }
-      free(symbols);
-#else
-      sout << "Windows not support stack backtrace yet.";
-#endif
-      err_str_ = sout.str();
+      std::rethrow_exception(e);
+    } catch (std::exception& e) {
+      Init(e.what(), f, l);
     }
   }
 
-  const char* what() const noexcept { return err_str_.c_str(); }
+  template <typename... ARGS>
+  EnforceNotMet(const char* f, int l, ARGS... args) {
+    Init(string::Sprintf(args...), f, l);
+  }
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+
+ private:
+  template <typename StrType>
+  inline void Init(StrType what, const char* f, int l) {
+    static constexpr int TRACE_STACK_LIMIT = 100;
+    std::ostringstream sout;
+
+    sout << string::Sprintf("%s at [%s:%d]", what, f, l) << std::endl;
+    sout << "PaddlePaddle Call Stacks: " << std::endl;
+#if !defined(_WIN32)
+    void* call_stack[TRACE_STACK_LIMIT];
+    auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+    auto symbols = backtrace_symbols(call_stack, size);
+    Dl_info info;
+    for (int i = 0; i < size; ++i) {
+      if (dladdr(call_stack[i], &info) && info.dli_sname) {
+        auto demangled = demangle(info.dli_sname);
+        auto addr_offset = static_cast<char*>(call_stack[i]) -
+                           static_cast<char*>(info.dli_saddr);
+        sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
+                                2 + sizeof(void*) * 2, call_stack[i], demangled,
+                                addr_offset);
+      } else {
+        sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
+                                call_stack[i]);
+      }
+    }
+    free(symbols);
+#else
+    sout << "Windows not support stack backtrace yet.";
+#endif
+    err_str_ = sout.str();
+  }
 };
 
 struct EOFException : public std::exception {
@@ -242,13 +251,8 @@ inline void throw_on_error(T e) {
   throw_on_error(e, "");
 }
 
-#define PADDLE_THROW(...)                                              \
-  do {                                                                 \
-    throw ::paddle::platform::EnforceNotMet(                           \
-        std::make_exception_ptr(                                       \
-            std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
-        __FILE__, __LINE__);                                           \
-  } while (false)
+#define PADDLE_THROW(...) \
+  throw ::paddle::platform::EnforceNotMet(__FILE__, __LINE__, __VA_ARGS__)
 
 #ifndef REPLACE_ENFORCE_GLOG
 #define PADDLE_ENFORCE(...)                                             \

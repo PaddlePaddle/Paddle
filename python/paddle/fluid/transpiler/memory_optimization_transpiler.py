@@ -35,14 +35,14 @@ dtype_to_size = {
 }
 
 SUB_BLOCK_OPS = [
-    "while", "while_grad", "parallel_do", "parallel_do_grad",
-    "conditional_block", "conditional_block_grad"
+    "while", "while_grad", "conditional_block", "conditional_block_grad"
 ]
 
-SUB_BLOCK_PAIR = [("while", "while_grad"), ("parallel_do", "parallel_do_grad"),
+SUB_BLOCK_PAIR = [("while", "while_grad"),
                   ("conditional_block", "conditional_block_grad")]
 
 PRINT_LOG = False
+FLAGS_memory_optimize = ""
 
 
 class OrderedSet(MutableSet):
@@ -121,6 +121,7 @@ class ControlFlowGraph(object):
         self._defs = defaultdict(OrderedSet)
         self._live_in = defaultdict(OrderedSet)
         self._live_out = defaultdict(OrderedSet)
+
         self._skip_opt = skip_opt
         self.pool = []
 
@@ -144,7 +145,6 @@ class ControlFlowGraph(object):
         for i in range(self.op_size):
             self._uses[i].update(self._ops[i].input_arg_names())
             self._defs[i].update(self._ops[i].output_arg_names())
-            self._live_in[i] = self._uses[i]
 
     def _update_graph(self, old_name, new_name, begin_idx=0):
         for i in range(begin_idx, self.op_size):
@@ -177,20 +177,52 @@ class ControlFlowGraph(object):
                     worklist.append(d)
 
     def _fill_pool(self, i, is_forward):
+        def comparator(x, cache):
+            x_shape = x[1]
+            cache_shape = cache[1]
+            x_size = abs(reduce(lambda x, y: x * y, x_shape))
+            cache_size = abs(reduce(lambda x, y: x * y, cache_shape))
+            if (x_shape[0] == -1 and cache_shape[0] == -1) or \
+               (x_shape[0] != -1 and cache_shape[0] != -1) :
+                return x_size <= cache_size
+            else:
+                return False
+
+        def find_var_in_block(x):
+            known_vars = set()
+            for op in self._ops:
+                known_vars.update(op.output_arg_names())
+            return x in known_vars
+
         block_desc = self._ops[i].block()
         in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
         # NOTE: must sort the in_diff set for cases that get different cache var.
         # FIXME(typhoonzero): maybe use a "sorted set" is better than this.
         can_optimize = [
-            x for x in in_diff
+            x for x in sorted(in_diff)
             if self._check_var_validity(block_desc, x, is_forward)
         ]
         if can_optimize:
             for var_name in can_optimize:
                 cache = (var_name, self._find_var(block_desc, var_name,
                                                   is_forward).shape())
-                if cache not in self.pool:
-                    self.pool.append(cache)
+                if cache not in self.pool and find_var_in_block(var_name):
+                    i = 0
+                    while i < len(self.pool):
+                        mycache = self.pool[i]
+                        mysize = mycache[1][0]
+                        cache_size = cache[1][0]
+                        if (mysize == -1 and cache_size == -1) or \
+                           (mysize != -1 and cache_size != -1):
+                            if comparator(mycache, cache):
+                                i += 1
+                            else:
+                                break
+                        elif mysize == -1 and cache_size != -1:
+                            i += 1
+                        elif mysize != -1 and cache_size == -1:
+                            break
+                    self.pool.insert(i, cache)
 
     def _get_diff(self, a, b):
         u = a & b
@@ -229,7 +261,7 @@ class ControlFlowGraph(object):
     def _update_skip_opt_set(self):
         for i in range(self.op_size):
             op = self._ops[i]
-            if op.type() == "fill_constant" and op.attr("force_cpu") == True:
+            if op.has_attr("force_cpu") and op.attr("force_cpu") == True:
                 self._skip_opt.update(op.output_arg_names())
 
     def release_memory(self, skip_opt_set=None):
@@ -281,6 +313,7 @@ class ControlFlowGraph(object):
         # update skip set to meet users' demand
         if skip_opt_set:
             self._skip_opt.update(skip_opt_set)
+        counter = 0
         for i in range(self.op_size):
             op = self._ops[i]
             if op.type() in SUB_BLOCK_OPS:
@@ -301,6 +334,9 @@ class ControlFlowGraph(object):
                     # If x is both in uses and defs, it can not be optimized!
                     if x in self._uses[i]:
                         continue
+                    if x == FLAGS_memory_optimize:
+                        print("start match var ", x, " of op ", op.type())
+                        print(self.pool)
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
@@ -323,15 +359,13 @@ class ControlFlowGraph(object):
                         if not compare_shape(x_shape, cache_shape, level):
                             continue
                         # TODO(qijun): dtype_to_size[x_dtype] and dtype_to_size[cache_dtype]
-                        if x_dtype != cache_dtype:
-                            continue
-
                         if PRINT_LOG:
-                            print(("Hit Cache !!!! cache pool index "
-                                   "is %d, var name is %s, "
-                                   "cached var name is %s, "
-                                   "var shape is %s ") % (index, x, cache_var,
-                                                          str(cache_shape)))
+                            print(
+                                ("!!! %d,  %s => %s, cache idx %d, pool size %d"
+                                 % (counter, x + str(x_shape),
+                                    cache_var + str(cache_shape), index,
+                                    len(self.pool))))
+                            counter += 1
                         self.pool.pop(index)
                         # Rename the var to the cache var already with
                         # memory allocated in order to reuse the memory.
@@ -484,8 +518,11 @@ def memory_optimize(input_program,
 
     if level != 0 and level != 1:
         raise ValueError("only support opt_level 0 or 1.")
-    if skip_opt_set is not None and not isinstance(skip_opt_set, set):
-        raise ValueError("only support skip_opt_set as set.")
+    if skip_opt_set is not None:
+        if isinstance(skip_opt_set, set) or isinstance(skip_opt_set, list):
+            skip_opt_set = set(skip_opt_set)
+        else:
+            raise ValueError("only support skip_opt_set as set.")
     global PRINT_LOG
     PRINT_LOG = print_log
     if skip_grads:
