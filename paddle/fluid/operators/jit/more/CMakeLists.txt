@@ -7,4 +7,8 @@ if(WITH_MKLML)
     add_subdirectory(mkl)
 endif()
 
+if(WITH_AVX)
+    add_subdirectory(intrinsic)
+endif()
+
 set(JIT_KERNEL_DEPS ${JIT_KERNEL_DEPS} PARENT_SCOPE)
