@@ -88,158 +88,73 @@ class TestListenAndServOp(unittest.TestCase):
             port = int(f.read().strip())
         return port
 
-    def _run_nce_op_one_pserver(self, place, port):
-        scope = fluid.core.Scope()
-        program = Program()
-        with fluid.scope_guard(scope):
-            with program_guard(program, startup_program=Program()):
-                x = scope.var('X').get_tensor()
-                x_array = np.random.random((4, 8)).astype("float32") * 2
-                x.set(x_array, place)
-                # create and initialize Param Variable
-                param = scope.var('W').get_tensor()
-                param_array = np.zeros((5, 8)).astype("float32") * 2
-                param.set(param_array, place)
-
-                path_table = scope.var('PathTable').get_tensor()
-                path_table_array = np.array(
-                    [(0, 2, -1, -1, -1), (0, 1, 2, -1, -1), (0, 1, 4, -1, -1),
-                     (0, 2, -1, -1, -1)]).astype(
-                         "int64"
-                     )  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-                path_table.set(path_table_array, place)
-
-                path_code = scope.var('PathCode').get_tensor()
-                path_code_array = np.array(
-                    [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
-                     (0, 1, -1, -1, -1)]).astype("int64")  #np.array to store
-                path_code.set(path_code_array, place)
-
-                label = scope.var('Label').get_tensor()
-                label_array = np.array([0, 1, 4, 5])
-                label.set(label_array, place)
-
-                bias = scope.var('Bias').get_tensor()
-                bias_array = np.random.random((5, 1)).astype("float32")
-                bias.set(bias_array, place)
-
-                out = scope.var('Out').get_tensor()
-
-                pre_out = scope.var('PreOut').get_tensor
-
-                w_out = scope.var('W_Out').get_tensor()
-                w_out.set(param_array, place)
-
-                emaps = ['127.0.0.1:' + str(port)]
-                table_names = ['table']
-                height_sections = [2]
-
-                # create and run sgd operator
-                hsigmoid_op = Operator(
-                    "hierarchical_sigmoid",
-                    X='X',
-                    W='W',
-                    PathTable='PathTable',
-                    PathCode='PathCode',
-                    Label='Label',
-                    Bias='Bias',
-                    Out='Out',
-                    PreOut='PreOut',
-                    W_Out='W_Out',
-                    remote_prefetch=True,
-                    epmap=emaps,
-                    table_names=table_names,
-                    height_sections=height_sections)
-
-                hsigmoid_op.run(scope, place)
-
-                # get and compare result
-                result_array = np.array(w_out)
-                self.assertEqual(list(result_array.shape), [5, 8])
-                correct = None
-                for i in range(5):
-                    if i != 3:
-                        correct = np.full((1, 8), i + 1).astype("float32")
-                        self.assertTrue((result_array[i] == correct).all())
-                    else:
-                        correct = np.full((1, 8), 0).astype("float32")
-                        self.assertTrue((result_array[i] == correct).all())
-
     def _run_nce_op_two_pserver(self, place, port0, port1):
         scope = fluid.core.Scope()
         program = Program()
         with fluid.scope_guard(scope):
             with program_guard(program, startup_program=Program()):
-                x = scope.var('X').get_tensor()
+                x = scope.var('Input').get_tensor()
                 x_array = np.random.random((4, 8)).astype("float32") * 2
                 x.set(x_array, place)
                 # create and initialize Param Variable
-                param = scope.var('W').get_tensor()
+                param = scope.var('Weight').get_tensor()
                 param_array = np.zeros((5, 8)).astype("float32") * 2
                 param.set(param_array, place)
-
-                path_table = scope.var('PathTable').get_tensor()
-                path_table_array = np.array(
-                    [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-                     (0, 2, -1, -1, -1)]).astype(
-                         "int64"
-                     )  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-                path_table.set(path_table_array, place)
-
-                path_code = scope.var('PathCode').get_tensor()
-                path_code_array = np.array(
-                    [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
-                     (0, 1, -1, -1, -1)]).astype("int64")  #np.array to store
-                path_code.set(path_code_array, place)
-
-                label = scope.var('Label').get_tensor()
-                label_array = np.array([0, 1, 4, 5])
-                label.set(label_array, place)
 
                 bias = scope.var('Bias').get_tensor()
                 bias_array = np.random.random((5, 1)).astype("float32")
                 bias.set(bias_array, place)
 
-                out = scope.var('Out').get_tensor()
+                sample_w = scope.var('SampleWeight').get_tensor()
+                sample_weight = np.random.random((4, 1)).astype("float32")
+                sample_w.set(sample_weight, place)
 
-                pre_out = scope.var('PreOut').get_tensor
+                label = scope.var('Label').get_tensor()
+                label_array = np.array([0, 1, 4, 5])
+                label.set(label_array, place)
 
-                w_out = scope.var('W_Out').get_tensor()
-                w_out.set(param_array, place)
+                cost = scope.var('Cost').get_tensor()
+                cost_w = np.zeros((4, 1)).astype("float32")
+                cost.set(cost_w, place)
+
+                sample_l = scope.var('SampleLogits').get_tensor()
+                sample_l_w = np.zeros((4, 3)).astype("float32")
+                sample_l.set(sample_l_w, place)
+
+                sample_la = scope.var('SampleLabels').get_tensor()
+                sample_la_w = np.zeros((4, 3)).astype("float32")
+                sample_la.set(sample_la_w, place)
 
                 emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
                 table_names = ['table', 'table']
                 height_sections = [2, 3]
 
-                # create and run sgd operator
-                hsigmoid_op = Operator(
-                    "hierarchical_sigmoid",
-                    X='X',
-                    W='W',
-                    PathTable='PathTable',
-                    PathCode='PathCode',
+                # create and run nce operator
+                nce_op = Operator(
+                    "nce",
+                    Input='Input',
+                    Weight='Weight',
                     Label='Label',
                     Bias='Bias',
-                    Out='Out',
-                    PreOut='PreOut',
-                    W_Out='W_Out',
+                    Cost='Cost',
+                    SampleLogits='SampleLogits',
+                    SampleLabels='SampleLabels',
+                    num_total_classes=5,
+                    num_neg_samples=2,
+                    sampler=0,
+                    seed=1,
+                    is_sparse=True,
                     remote_prefetch=True,
                     epmap=emaps,
                     table_names=table_names,
                     height_sections=height_sections)
-                hsigmoid_op.run(scope, place)
+
+                nce_op.run(scope, place)
 
                 # get and compare result
-                result_array = np.array(w_out)
-                self.assertEqual(list(result_array.shape), [5, 8])
-                correct = None
-                for i in range(5):
-                    if i < 2:
-                        correct = np.full((1, 8), i + 1).astype("float32")
-                        self.assertTrue((result_array[i] == correct).all())
-                    else:
-                        correct = np.full((1, 8), i + 9).astype("float32")
-                        self.assertTrue((result_array[i] == correct).all())
+                o_cost = np.array(cost_w)
+                o_logits = np.array(sample_l)
+                o_labels = np.array(sample_la)
 
     def test_nce_op_remote(self):
         os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
@@ -257,7 +172,6 @@ class TestListenAndServOp(unittest.TestCase):
             places.append(core.CUDAPlace(0))
 
         for place in places:
-            self._run_nce_op_one_pserver(place, port0)
             self._run_nce_op_two_pserver(place, port0, port1)
 
         # raise SIGTERM to pserver
