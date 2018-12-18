@@ -120,6 +120,14 @@ boost::optional<Node*> HasBias(const Node& op, const std::string& bias_name) {
   return boost::none;
 }
 
+template <typename T>
+boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
+  if (op.Op()->HasAttr(attr))
+    return boost::get<T>(op.Op()->GetAttr(attr));
+  else
+    return boost::none;
+}
+
 ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::IdentityFuseHandle(
     const ResidualConnectionMKLDNNFusePass::CanFuseFunc& can_fuse_func,
     const ResidualConnectionMKLDNNFusePass::IdentityConvFunc&
@@ -151,8 +159,8 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
-  auto fuses_relu = boost::get<true>(conv_op->Op()->GetAttr("fuse_relu");
-  if (fuses_relu) return;
+  auto fuse_relu = HasAttribute<bool>(*conv_op, "fuse_relu");
+  if (fuse_relu && *fuse_relu) return;
 
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
@@ -220,6 +228,9 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
   } else {
     return;
   }
+
+  auto fuse_relu = HasAttribute<bool>(*residual_conv_op, "fuse_relu");
+  if (fuse_relu && *fuse_relu) return;
 
   residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
   residual_conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
