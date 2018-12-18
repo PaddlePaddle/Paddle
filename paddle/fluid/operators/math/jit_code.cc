@@ -113,26 +113,27 @@ void VXXJitCode::generate() {
   ret();
 }
 
-const float exp_float_consts[] ALIGN32 = {REPEAT_8TIMES(1.f),
-                                          REPEAT_8TIMES(2.f),
-                                          REPEAT_8TIMES(0.5f),
-                                          REPEAT_8TIMES(EXP_HIG),
-                                          REPEAT_8TIMES(EXP_LOW),
-                                          REPEAT_8TIMES(CEPHES_LOG2EF),
-                                          REPEAT_8TIMES(CEPHES_EXP_C1),
-                                          REPEAT_8TIMES(CEPHES_EXP_C2),
-                                          REPEAT_8TIMES(CEPHES_EXP_P0),
-                                          REPEAT_8TIMES(CEPHES_EXP_P1),
-                                          REPEAT_8TIMES(CEPHES_EXP_P2),
-                                          REPEAT_8TIMES(CEPHES_EXP_P3),
-                                          REPEAT_8TIMES(CEPHES_EXP_P4),
-                                          REPEAT_8TIMES(CEPHES_EXP_P5),
-                                          REPEAT_8TIMES(EXP_MAX_INPUT),
-                                          REPEAT_8TIMES(SIGMOID_THRESHOLD_MAX),
-                                          REPEAT_8TIMES(SIGMOID_THRESHOLD_MIN)};
+const float ALIGN32_BEG exp_float_consts[] ALIGN32_END = {
+    REPEAT_8TIMES(1.f),
+    REPEAT_8TIMES(2.f),
+    REPEAT_8TIMES(0.5f),
+    REPEAT_8TIMES(EXP_HIG),
+    REPEAT_8TIMES(EXP_LOW),
+    REPEAT_8TIMES(CEPHES_LOG2EF),
+    REPEAT_8TIMES(CEPHES_EXP_C1),
+    REPEAT_8TIMES(CEPHES_EXP_C2),
+    REPEAT_8TIMES(CEPHES_EXP_P0),
+    REPEAT_8TIMES(CEPHES_EXP_P1),
+    REPEAT_8TIMES(CEPHES_EXP_P2),
+    REPEAT_8TIMES(CEPHES_EXP_P3),
+    REPEAT_8TIMES(CEPHES_EXP_P4),
+    REPEAT_8TIMES(CEPHES_EXP_P5),
+    REPEAT_8TIMES(EXP_MAX_INPUT),
+    REPEAT_8TIMES(SIGMOID_THRESHOLD_MAX),
+    REPEAT_8TIMES(SIGMOID_THRESHOLD_MIN)};
 
-const int exp_int_0x7f[] ALIGN32 = {REPEAT_8TIMES(0x7f)};
-int g_tmp_mem[16] ALIGN32 = {0};
+const int ALIGN32_BEG exp_int_0x7f[] ALIGN32_END = {REPEAT_8TIMES(0x7f)};
+int ALIGN32_BEG g_tmp_mem[16] ALIGN32_END = {0};
 
 bool VActJitCode::init(int d, operand_type type) {
   // TODO(TJ): implement avx512, avx_exp is slower than mkl when d >= 256
