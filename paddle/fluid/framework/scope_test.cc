@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
 #include <algorithm>
+#include <cstdlib>
 #include <iostream>
 #include <iterator>
 #include <random>
@@ -22,7 +23,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
 
 using paddle::framework::Scope;
 using paddle::framework::Variable;
@@ -78,66 +78,36 @@ TEST(Scope, GetAllNames) {
   EXPECT_STREQ("a", str.c_str());
 }
 
-using paddle::platform::CPUDeviceContext;
-using paddle::platform::RecordEvent;
-using paddle::platform::EventSortingKey;
-
-constexpr int kItemCount = 100000;
-constexpr int kCharSet = 26;
-class ConcurrentScopeTest {
+// to mimic the op running, generate the difference sized string
+// and have a test.
+class PerThreadData {
  public:
-  explicit ConcurrentScopeTest(int n) : nthreads_(n), dist_(0, kCharSet) {
-    gen_.seed(1331);
-    vars_.reserve(kItemCount);
-    paddle::platform::EnableProfiler(paddle::platform::ProfilerState::kCPU);
-  }
-  ~ConcurrentScopeTest() {
-    paddle::platform::DisableProfiler(EventSortingKey::kTotal,
-                                      "/tmp/scope_profiler");
-  }
-
-  void PerThreadProducer(Scope* scope, const int& thread_id) {
-    thread_local int offset = thread_id * (kItemCount / nthreads_);
-    std::cout << offset << std::endl;
-    std::cout << thread_id << std::endl;
-    for (int i = 0; i < (kItemCount / nthreads_); ++i) {
-      vars_[offset + i] = RandomString();
-      if (i % 2 == 0) {
-        RecordEvent("Producer", &dev_ctx_);
-        scope->Var(vars_[offset + i]);
-      }
+  PerThreadData(const int& max_length, const int size)
+      : max_length_(max_length), size_(size) {
+    items_.reserve(size_);
+    // fill vector with dynamic sized string.
+    std::mt19937 gen;
+    std::uniform_int_distribution<int> dist;
+    for (int i = 0; i < size_; ++i) {
+      int word_length = rand() % max_length + 1;  // NOLINT
+      std::string ret;
+      std::generate_n(std::back_inserter(ret), word_length,
+                      [&]() { return 'a' + dist(gen); });
+      items_.emplace_back(std::move(ret));
     }
   }
 
-  void PerThreadConsumer(Scope* scope, const int& thread_id) {
-    int offset = thread_id * (kItemCount / nthreads_);
-    for (int i = 0; i < (kItemCount / nthreads_); ++i) {
-      Variable* var = nullptr;
-      {
-        RecordEvent("Consumer", &dev_ctx_);
-        var = scope->FindVar(vars_[offset + i]);
-      }
-      if (i % 2 == 0) {
-        PADDLE_ENFORCE(var != nullptr);
-      } else {
-        PADDLE_ENFORCE(var == nullptr);
-      }
-    }
+  std::string operator[](const int& idx) {
+    PADDLE_ENFORCE(idx >= 0 && idx < size_);
+    return items_[idx];
   }
+
+  int size() { return size_; }
 
  private:
-  std::string RandomString(const size_t& n = 5) {
-    std::string ret;
-    std::generate_n(std::back_inserter(ret), n,
-                    [&]() { return 'a' + dist_(gen_); });
-    return ret;
-  }
-
-  int nthreads_;
-  std::mt19937 gen_;
-  std::uniform_int_distribution<size_t> dist_;
-  std::vector<std::string> vars_;
-  paddle::platform::CPUDeviceContext dev_ctx_;
+  int max_length_;
+  int size_;
+  std::vector<std::string> items_;
 };
 
 template <typename T>
@@ -149,29 +119,68 @@ double GetTimeDiff(const T& start) {
   return used_time_ms;
 }
 
-TEST(Scope, Concurrent) {
+// single thread, max word length = 5
+TEST(Scope, ConcurrentScopeTest) {
   Scope scope;
-  const int kThreadNum = 10;
-  ConcurrentScopeTest mock(kThreadNum);
-  std::vector<std::thread> producer;
-  std::vector<std::thread> consumer;
+  int max_name_length = 5, item_count = 100000;
+  PerThreadData data(max_name_length, item_count);
 
   auto s1 = std::chrono::system_clock::now();
-  for (int i = 0; i < kThreadNum; ++i) {
-    producer.emplace_back(std::thread(
-        [&scope, &mock, &i]() { mock.PerThreadProducer(&scope, i); }));
+  for (int i = 0; i < data.size(); ++i) {
+    if (rand() % 3 == 0) {  // NOLINT
+      scope.Var(data[i]);
+    } else {
+      scope.FindVar(data[i]);
+    }
   }
-  for (auto& t : producer) {
-    t.join();
+  std::cout << "max_name_length : " << max_name_length << "\n"
+            << "item count : " << item_count << "\n"
+            << "Time : " << GetTimeDiff(s1) << "ms" << std::endl;
+}
+
+TEST(Scope, ConcurrentScopeTest2) {
+  Scope scope;
+  int max_name_length = 20, item_count = 100000;
+  PerThreadData data(max_name_length, item_count);
+
+  auto s1 = std::chrono::system_clock::now();
+  for (int i = 0; i < data.size(); ++i) {
+    if (rand() % 3 == 0) {  // NOLINT
+      scope.Var(data[i]);
+    } else {
+      scope.FindVar(data[i]);
+    }
   }
-  std::cout << "Producer Time : " << GetTimeDiff(s1) << "ms" << std::endl;
-  auto s2 = std::chrono::system_clock::now();
-  for (int i = 0; i < kThreadNum; ++i) {
-    consumer.emplace_back(std::thread(
-        [&scope, &mock, &i]() { mock.PerThreadConsumer(&scope, i); }));
+  std::cout << "max_name_length : " << max_name_length << "\n"
+            << "item count : " << item_count << "\n"
+            << "Time : " << GetTimeDiff(s1) << "ms" << std::endl;
+}
+
+// multi thread max word length = 20
+TEST(Scope, ConcurrentScopeTest3) {
+  int max_name_length = 20, item_count = 100000;
+  constexpr int kThreadNum = 10;
+
+  Scope scope;
+  PerThreadData data(max_name_length, item_count);
+  std::vector<std::thread> threads;
+
+  auto s1 = std::chrono::system_clock::now();
+  for (int tid = 0; tid < kThreadNum; ++tid) {
+    threads.emplace_back(std::thread([&]() {
+      for (int i = 0; i < data.size(); ++i) {
+        if (rand() % 3 == 0) {  // NOLINT
+          scope.Var(data[i]);
+        } else {
+          scope.FindVar(data[i]);
+        }
+      }
+    }));
   }
-  for (auto& t : consumer) {
-    t.join();
+  for (auto& th : threads) {
+    th.join();
   }
-  std::cout << "Consumer Time : " << GetTimeDiff(s2) << "ms" << std::endl;
+  std::cout << "max_name_length : " << max_name_length << "\n"
+            << "item count : " << item_count << "\n"
+            << "Time : " << GetTimeDiff(s1) << "ms" << std::endl;
 }
