@@ -358,7 +358,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
           FLAGS_min_param_size_to_use_multithread > 0 &&
           param.numel() > FLAGS_min_param_size_to_use_multithread) {
         VLOG(3) << "use multi thread, inner_op_parallelism="
-                << inner_op_parallelism << " min_param_size_to_use_multithread"
+                << inner_op_parallelism << " min_param_size_to_use_multithread="
                 << FLAGS_min_param_size_to_use_multithread;
         std::vector<std::future<void>> fs;
         int64_t block_size = param.numel() / inner_op_parallelism;
