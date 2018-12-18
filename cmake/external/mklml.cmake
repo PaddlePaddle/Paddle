@@ -44,40 +44,36 @@ else()
 endif()
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
 
-if(WIN32)
-    MESSAGE(WARNING
-    "Please download the MKLML and and put it at " ${THIRD_PARTY_PATH}/install/mklml)
-else()
-    SET(MKLML_PROJECT       "extern_mklml")
-    IF((NOT DEFINED MKLML_VER) OR (NOT DEFINED MKLML_URL))
-      MESSAGE(STATUS "use pre defined download url")
-      SET(MKLML_VER "mklml_lnx_2019.0.20180710" CACHE STRING "" FORCE)
-      SET(MKLML_URL "http://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
+IF((NOT DEFINED MKLML_VER) OR (NOT DEFINED MKLML_URL))
+    MESSAGE(STATUS "use pre defined download url")
+    if(WIN32)
+        SET(MKLML_VER "mklml_win_2019.0.1.20180928" CACHE STRING "" FORCE)
+        SET(MKLML_URL "https://github.com/intel/mkl-dnn/releases/download/v0.17/${MKLML_VER}.zip" CACHE STRING "" FORCE)
+    else()
+        SET(MKLML_VER "mklml_lnx_2019.0.20180710" CACHE STRING "" FORCE)
+        SET(MKLML_URL "http://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
     ENDIF()
-    MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
-    SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
-    SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
-
-    FILE(WRITE ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt
-      "PROJECT(MKLML)\n"
-      "cmake_minimum_required(VERSION 3.0)\n"
-      "install(DIRECTORY ${MKLML_VER}/include ${MKLML_VER}/lib \n"
-      "        DESTINATION ${MKLML_DST_DIR})\n")
-
-    ExternalProject_Add(
-        ${MKLML_PROJECT}
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        PREFIX                ${MKLML_SOURCE_DIR}
-        DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
-        DOWNLOAD_COMMAND      wget --no-check-certificate ${MKLML_URL} -c -q -O ${MKLML_VER}.tgz
-                              && tar zxf ${MKLML_VER}.tgz
-        DOWNLOAD_NO_PROGRESS  1
-        UPDATE_COMMAND        ""
-        CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT}
-        CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${MKLML_INSTALL_ROOT}
-    )
 endif()
 
+SET(MKLML_PROJECT       "extern_mklml")
+MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
+SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
+SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
+
+ExternalProject_Add(
+    ${MKLML_PROJECT}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    PREFIX                 ${MKLML_SOURCE_DIR}
+    URL                    ${MKLML_URL}
+    DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
+    DOWNLOAD_NO_PROGRESS  1
+    CONFIGURE_COMMAND     ""
+    BUILD_COMMAND         ""
+    UPDATE_COMMAND ""
+    INSTALL_COMMAND
+        ${CMAKE_COMMAND} -E copy_directory ${MKLML_DOWNLOAD_DIR}/include ${MKLML_INC_DIR} &&
+        ${CMAKE_COMMAND} -E copy_directory ${MKLML_DOWNLOAD_DIR}/lib ${MKLML_LIB_DIR}
+)
 
 INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 
