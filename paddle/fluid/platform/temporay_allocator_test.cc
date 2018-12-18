@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/create_tensor_with_allocationptr.h"
+DECLARE_double(limit_of_temporary_allocation);
 
 namespace paddle {
 namespace platform {
@@ -31,18 +32,38 @@ TEST(temporary_allocator, temporary_allocator) {
 
   auto allocation = gpu_alloc.Allocate(101);
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
-  gpu_alloc.MoveToDeleteQueue();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
-  gpu_alloc.Release();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
+  gpu_alloc.Release([]() {});
+  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
 
-  { gpu_alloc.Allocate(102); }
+  {
+    auto allocation = gpu_alloc.Allocate(102);
+    PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
+  }
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
-  gpu_alloc.MoveToDeleteQueue();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 1);
-  gpu_alloc.Release();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
+  gpu_alloc.Release([]() {});
+  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
+#endif
+}
+
+TEST(temporary_allocator, add_callback) {
+#ifdef PADDLE_WITH_CUDA
+  FLAGS_limit_of_temporary_allocation = 10;
+  platform::CUDAPlace gpu_place(0);
+  TemporaryAllocator gpu_alloc(gpu_place);
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx =
+      static_cast<platform::CUDADeviceContext*>(pool.Get(gpu_place));
+  auto stream = dev_ctx->stream();
+  bool deleted = false;
+  gpu_alloc.SetCallback([stream, &deleted]() {
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+    PADDLE_ENFORCE(cudaGetLastError());
+    deleted = true;
+  });
+  { gpu_alloc.Allocate(100); }
+  PADDLE_ENFORCE(deleted);
+  FLAGS_limit_of_temporary_allocation = -1;
 #endif
 }
 
@@ -78,11 +99,8 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
   // The allocation is not holded now, it should be placed to
   // TemporaryAllocationQueue.
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
-  gpu_alloc.MoveToDeleteQueue();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 1);
-  gpu_alloc.Release();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
+  gpu_alloc.Release([]() {});
+  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
 #endif
 }
 
@@ -131,22 +149,17 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     PADDLE_ENFORCE_EQ(out_side_tensor.numel(), numel);
     // The allocation is holded by out_side_tensor.
     PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
-    PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
-    gpu_alloc.MoveToDeleteQueue();
-    PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
-    gpu_alloc.Release();
-    PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
+    gpu_alloc.Release([]() {});
+    PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
   }
 
   // The allocation is not holded now, it should be placed to
   // TemporaryAllocationQueue.
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
-  gpu_alloc.MoveToDeleteQueue();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 1);
-  gpu_alloc.Release();
-  PADDLE_ENFORCE_EQ(gpu_alloc.WaitDeleteQueueSize(), 0);
+  gpu_alloc.Release([]() {});
+  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
 #endif
 }
+
 }  //  namespace platform
 }  //  namespace paddle

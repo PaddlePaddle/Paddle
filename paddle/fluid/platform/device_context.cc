@@ -96,6 +96,10 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     std::unique_lock<std::mutex> lock(mtx_);
     if (!device_allocator_.count(place_stream)) {
       device_allocator_[place_stream].reset(new TemporaryAllocator(place));
+      device_allocator_[place_stream]->SetCallback([stream]() {
+        PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+        PADDLE_ENFORCE(cudaGetLastError());
+      });
     }
   }
   return *device_allocator_.at(place_stream);
@@ -312,12 +316,10 @@ Place CUDADeviceContext::GetPlace() const { return place_; }
 void CUDADeviceContext::Wait() const {
   auto& allocator =
       DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
-  allocator.MoveToDeleteQueue();
-
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaGetLastError());
-
-  allocator.Release();
+  allocator.Release([=]() {
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+    PADDLE_ENFORCE(cudaGetLastError());
+  });
 }
 
 int CUDADeviceContext::GetComputeCapability() const {

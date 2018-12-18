@@ -33,23 +33,13 @@ class TemporaryAllocator : public memory::allocation::Allocator {
  public:
   explicit TemporaryAllocator(platform::Place place);
 
-  // Move temp_memory to wait_delete_memory.
-  // Once the allocation is not held by any variable, it will be
-  // placed to temp_mem_queue, so if we attempt to free the
-  // temporary allocation, we should move the temporary allocation to
-  // wait_to_delete_mem_queue first, and then call sync operation,
-  // and then call Release.
-  void MoveToDeleteQueue();
-
-  // Note: This function releases wait_delete_memory, so you
-  // should call MoveToDeleteQueue first.
-  void Release();
-
-  size_t WaitDeleteQueueSize();
+  void Release(const std::function<void()> &callback);
 
   size_t TemporaryAllocationQueueSize();
 
   bool IsAllocThreadSafe() const override;
+
+  void SetCallback(const std::function<void()> &callback);
 
  protected:
   void Free(memory::allocation::Allocation *allocation) override;
@@ -64,11 +54,9 @@ class TemporaryAllocator : public memory::allocation::Allocator {
   // to temp_mem_queue immediately.
   std::shared_ptr<std::deque<TemporayAllocation *>> temp_mem_queue_{nullptr};
 
-  std::shared_ptr<std::deque<TemporayAllocation *>> wait_to_delete_mem_queue_{
-      nullptr};
   std::mutex mtx_;
-  std::condition_variable cv_;
   size_t wait_delete_mem_{0};
+  std::function<void()> callback_;
 };
 
 }  // namespace platform

@@ -15,6 +15,9 @@
 #include "paddle/fluid/platform/temporay_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
+DEFINE_double(limit_of_temporary_allocation, -1,
+              "The up limit of temporary_allocation size.");
+
 namespace paddle {
 namespace platform {
 namespace alloc = memory::allocation;
@@ -31,23 +34,15 @@ TemporaryAllocator::TemporaryAllocator(platform::Place place) : place_(place) {
 
 bool TemporaryAllocator::IsAllocThreadSafe() const { return true; }
 
-void TemporaryAllocator::MoveToDeleteQueue() {
-  std::unique_lock<std::mutex> lock(mtx_);
-  cv_.wait(lock, [=] { return !wait_to_delete_mem_queue_; });
-  wait_to_delete_mem_queue_ = temp_mem_queue_;
-  temp_mem_queue_.reset(new std::deque<TemporayAllocation *>());
-  VLOG(10) << "Delete temporary allocation size:" << wait_delete_mem_;
-  wait_delete_mem_ = 0;
-}
-
-void TemporaryAllocator::Release() {
+void TemporaryAllocator::Release(const std::function<void()> &callback) {
   std::shared_ptr<std::deque<TemporayAllocation *>> t_allocations;
   {
     std::unique_lock<std::mutex> lock(mtx_);
-    t_allocations = wait_to_delete_mem_queue_;
-    wait_to_delete_mem_queue_.reset();
+    callback();
+    t_allocations = temp_mem_queue_;
+    temp_mem_queue_.reset(new std::deque<TemporayAllocation *>());
+    wait_delete_mem_ = 0;
   }
-  cv_.notify_one();
   for (auto tmp : *t_allocations) {
     VLOG(10) << "Delete temporary allocation " << tmp->ptr()
              << " size: " << tmp->size();
@@ -56,28 +51,35 @@ void TemporaryAllocator::Release() {
 }
 
 void TemporaryAllocator::Free(alloc::Allocation *allocation) {
-  auto temp_allocation = dynamic_cast<TemporayAllocation *>(allocation);
+  auto *temp_allocation = dynamic_cast<TemporayAllocation *>(allocation);
   PADDLE_ENFORCE_NOT_NULL(temp_allocation);
   if (platform::is_gpu_place(temp_allocation->place())) {
-    std::unique_lock<std::mutex> lock(mtx_);
-    temp_mem_queue_->emplace_back(temp_allocation);
-    wait_delete_mem_ += temp_allocation->size();
-    VLOG(10) << "Move temporary allocation: " << temp_allocation->ptr()
-             << " to delete queue: " << temp_allocation->size() << "; "
-             << "wait_delete_mem: " << wait_delete_mem_;
+    size_t wait_delete_mem = 0;
+    {
+      std::unique_lock<std::mutex> lock(mtx_);
+      temp_mem_queue_->emplace_back(temp_allocation);
+      wait_delete_mem_ += temp_allocation->size();
+      wait_delete_mem = wait_delete_mem_;
+      VLOG(10) << "Move temporary allocation: " << temp_allocation->ptr()
+               << " to delete queue: " << temp_allocation->size() << "; "
+               << "wait_delete_mem: " << wait_delete_mem_;
+    }
+    if (FLAGS_limit_of_temporary_allocation > 0 &&
+        wait_delete_mem > FLAGS_limit_of_temporary_allocation) {
+      Release(callback_);
+    }
     return;
   }
   delete temp_allocation;
 }
 
-size_t TemporaryAllocator::WaitDeleteQueueSize() {
-  std::unique_lock<std::mutex> lock(mtx_);
-  return wait_to_delete_mem_queue_ ? wait_to_delete_mem_queue_->size() : 0;
-}
-
 size_t TemporaryAllocator::TemporaryAllocationQueueSize() {
   std::unique_lock<std::mutex> lock(mtx_);
   return temp_mem_queue_ ? temp_mem_queue_->size() : 0;
+}
+
+void TemporaryAllocator::SetCallback(const std::function<void()> &callback) {
+  callback_ = callback;
 }
 
 alloc::Allocation *TemporaryAllocator::AllocateImpl(
