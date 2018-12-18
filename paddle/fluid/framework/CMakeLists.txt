@@ -15,8 +15,7 @@ function(windows_symbolic TARGET)
     file(GENERATE OUTPUT ${final_path}/.${src}.cu INPUT ${final_path}/${src}.cc)
 
     add_custom_command(OUTPUT ${final_path}/.${src}.cu
-            COMMAND ${CMAKE_COMMAND} -E remove ${final_path}/.${src}.cu
-            COMMAND ${CMAKE_COMMAND} -E copy "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
             COMMENT "create hidden file of ${src}.cu")
     add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
   endforeach()

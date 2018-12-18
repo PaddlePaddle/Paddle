@@ -37,6 +37,10 @@
 #define GOOGLE_GLOG_DLL_DECL
 #include <io.h>  // _popen, _pclose
 #include <stdio.h>
+#ifdef _WINSOCKAPI_
+/* Prevent inclusion of winsock.h in windows.h */
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <numeric>  // std::accumulate in msvc
 #ifndef S_ISDIR     // windows port for sys/stat.h
@@ -55,7 +59,6 @@ static void *dlsym(void *handle, const char *symbol_name) {
 
 static void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
-  file_name.replace(0, file_name.size() - 1, '/', '\\');
   HMODULE hModule = LoadLibrary(file_name.c_str());
   if (!hModule) {
     throw std::runtime_error(file_name + " not found.");

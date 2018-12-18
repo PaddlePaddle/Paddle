@@ -125,16 +125,12 @@ if(ANDROID OR IOS)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
-if (APPLE OR WIN32)
+if (APPLE)
     set(WITH_MKL OFF CACHE STRING
-        "Disable MKL for building on mac and windows" FORCE)
+        "Disable MKL for building on mac" FORCE)
 endif()
 
 if (WIN32)
-    set(WITH_DSO OFF CACHE STRING
-            "Disable DSO when compiling for Windows" FORCE)
-    set(WITH_MKL OFF CACHE STRING
-            "Disable MKL when compiling for Windows" FORCE)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
     set(WITH_C_API OFF CACHE STRING
@@ -207,10 +203,10 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)
-# there is no official support of warpctc, nccl, cupti in windows
-include(external/warpctc)   # download, build, install warpctc
+# there is no official support of nccl, cupti in windows
 include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
