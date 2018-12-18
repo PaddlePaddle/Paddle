@@ -151,6 +151,9 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
+  auto fuses_relu = boost::get<true>(conv_op->Op()->GetAttr("fuse_relu");
+  if (fuses_relu) return;
+
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
   conv_op->Op()->SetAttr("fuse_residual_connection", true);
