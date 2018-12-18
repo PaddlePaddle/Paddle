@@ -940,6 +940,8 @@ function main() {
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
+      cmake_gen)
+        cmake_gen ${PYTHON_ABI:-""}
       *)
         print_usage
         exit 0
