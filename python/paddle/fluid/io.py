@@ -704,8 +704,8 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     persistable=slice_var.persistable)
 
                 dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
-                start = offset / dim1_flatten
-                end = offset / dim1_flatten + slice.shape[0]
+                start = int(offset / dim1_flatten)
+                end = int(offset / dim1_flatten + slice.shape[0])
 
                 load_block.append_op(
                     type="slice",
