@@ -39,6 +39,7 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
     cost = network(data, label, len(word_dict))
+    cost.persistable = True
     optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
     optimizer.minimize(cost)
 
