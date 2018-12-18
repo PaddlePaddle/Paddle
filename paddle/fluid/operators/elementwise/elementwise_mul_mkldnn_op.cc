@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
+#if defined(_WIN32) && defined(_WINSOCKAPI_)
+#define _WINSOCK2API_ /* Prevent inclusion of winsock2.h */
+#endif
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
 
