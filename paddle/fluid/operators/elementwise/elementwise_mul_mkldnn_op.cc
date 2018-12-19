@@ -19,8 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
+#ifdef PADDLE_WITH_XBYAK
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
+#endif
 
 namespace paddle {
 namespace operators {
