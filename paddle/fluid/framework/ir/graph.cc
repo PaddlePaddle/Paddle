@@ -162,7 +162,10 @@ void Graph::ResolveHazard(
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
 
-      PADDLE_ENFORCE(write_op, "The write_op should not be empty.");
+      PADDLE_ENFORCE(
+          write_op,
+          string::Sprintf("The write_op of var %s should not be empty.",
+                          (*it_new)->Name()));
 
       // Add write after write dependence
       ir::Node *upstream_op =

@@ -716,6 +716,24 @@ struct ConvElementwiseadd2Act : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+// Conv + ElementwiseAdd
+// This pattern should be used after ConvElementwiseadd2Act or
+// ConvElementwiseadd pass
+struct ConvElementwiseadd : public PatternBase {
+  ConvElementwiseadd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_elementwiseadd") {}
+
+  PDNode* operator()(PDNode* conv_in);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(conv_filter);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);
+  PATTERN_DECL_NODE(elementwise_add_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
