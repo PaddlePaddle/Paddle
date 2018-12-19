@@ -77,7 +77,7 @@ void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr) {
   auto vadd_d2 = Get<vadd, XYZNTuples<T>, platform::CPUPlace>(d2);
   auto act_gate_d = getActFunc(attr->act_gate, d);
   auto act_gate_d2 = getActFunc(attr->act_gate, d2);
-  auto act_gate_d3 = getActFunc(attr->act_gate, d2);
+  auto act_gate_d3 = getActFunc(attr->act_gate, d3);
   auto act_cand_d = getActFunc(attr->act_cand, d);
   auto act_cell_d = getActFunc(attr->act_cell, d);
 
