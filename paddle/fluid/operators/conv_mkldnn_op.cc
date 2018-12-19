@@ -61,10 +61,12 @@ inline void GetWeightsTz(std::vector<int>& weights_tz, int groups,  // NOLINT
 
 inline mkldnn::memory::format GetWeightsFormat(mkldnn::memory::format format,
                                                int groups, bool is_conv3d) {
-  if (is_conv3d) {
-    return (groups == 1) ? format : mkldnn::memory::format::goidhw;
+  if (format == mkldnn::memory::format::any || groups == 1) {
+    return format;
+  } else if (is_conv3d) {
+    return mkldnn::memory::format::goidhw;
   } else {
-    return (groups == 1) ? format : mkldnn::memory::format::goihw;
+    return mkldnn::memory::format::goihw;
   }
 }
 
