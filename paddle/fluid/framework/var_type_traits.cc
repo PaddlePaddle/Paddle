@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,31 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
-
-#include "gtest/gtest.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 
 namespace paddle {
 namespace framework {
 
-TEST(Variable, GetMutable) {
-  std::unique_ptr<Variable> v(new Variable());
+const char* ToTypeName(int var_id) { return ToTypeIndex(var_id).name(); }
 
-  auto* t = v->GetMutable<std::string>();
-  *t = "1234";
-
-  const auto& tt = v->Get<std::string>();
-  EXPECT_EQ("1234", tt);
-
-  try {
-    v->GetMutable<Tensor>();
-  } catch (std::exception& e) {
-    return;
-  }
-  EXPECT_TRUE(false);
+const std::type_index& ToTypeIndex(int var_id) {
+  return detail::VarIdToTypeIndexMapHolder::ToTypeIndex(var_id);
 }
 
 }  // namespace framework

@@ -92,7 +92,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (framework::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
@@ -122,7 +122,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (framework::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
