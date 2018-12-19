@@ -200,6 +200,13 @@ if (WITH_ANAKIN AND WITH_MKL)
     list(APPEND inference_deps anakin_inference_lib)
 endif ()
 
+if (TENSORRT_FOUND)
+    copy(tensorrt_lib DEPS ${inference_deps} 
+        SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/libnvinfer*
+        DSTS ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/include ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/lib)
+endif ()
+
+
 set(module "inference")
 if(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
