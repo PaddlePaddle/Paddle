@@ -83,8 +83,12 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     UpdateDataFormat(ctx, const_cast<Tensor*>(x), "x_data_format");
     UpdateDataFormat(ctx, const_cast<Tensor*>(y), "y_data_format");
 
+#ifdef PADDLE_WITH_XBYAK
     Xbyak::util::Cpu cpu;
     const bool is_avx512_enabled = cpu.has(Xbyak::util::Cpu::tAVX512F);
+#else
+    const bool is_avx512_enabled = platform::MayIUse(platform::avx512f);
+#endif  // PADDLE_WITH_XBYAK
     const bool are_dims_divisable = !(x_int_dims[1] % 16);
     const bool is_x_format_correct = x->format() == memory::format::nChw16c;
     const bool is_y_format_correct = y->format() == memory::format::nc;

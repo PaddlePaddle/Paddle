@@ -212,8 +212,10 @@ class EltwiseMulnChw16cNCKernelImpl
 
  private:
   std::unique_ptr<gen::EltwiseMulnChw16cNC> jitcode_{nullptr};
+#endif
 };
 
+#ifdef PADDLE_WITH_XBYAK
 template <>
 bool EltwiseMulnChw16cNCKernelImpl<float>::useJIT(int d) {
   return true;
