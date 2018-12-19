@@ -159,6 +159,20 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return GetVarTypes(Outputs(name));
   }
 
+  void SetOutputDim(const std::string &name, const DDim &dim) override {
+    auto &arg_names = Outputs(name);
+    PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
+                      "Output(%s) should hold one element, but now it holds %d",
+                      name, arg_names.size());
+    SetDim(arg_names[0], dim);
+  }
+
+  void SetOutputsDim(const std::string &name,
+                     const std::vector<DDim> &dims) override {
+    auto &names = Outputs(name);
+    SetDims(names, dims);
+  }
+
  protected:
   std::vector<proto::VarType::Type> GetVarTypes(
       const std::vector<std::string> &names) const {
@@ -196,7 +210,19 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return ret;
   }
 
-  void SetDim(const std::string &name, const DDim &dim) override;
+  void SetDim(const std::string &name, const DDim &dim);
+
+  void SetDims(const std::vector<std::string> &names,
+               const std::vector<DDim> &dims) {
+    size_t length = names.size();
+    PADDLE_ENFORCE_EQ(length, dims.size());
+    for (size_t i = 0; i < length; ++i) {
+      if (names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+      SetDim(names[i], dims[i]);
+    }
+  }
 
   std::vector<DDim> GetRepeatedDims(const std::string &name) const override;
 

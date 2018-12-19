@@ -732,6 +732,20 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return GetVarTypes(OutputVars(name));
   }
 
+  void SetOutputDim(const std::string& name, const DDim& dim) override {
+    auto& vars = OutputVars(name);
+    PADDLE_ENFORCE_EQ(vars.size(), 1UL,
+                      "Output(%s) should hold one element, but now it holds %d",
+                      name, vars.size());
+    SetDim(vars[0], dim);
+  }
+
+  void SetOutputsDim(const std::string& name,
+                     const std::vector<DDim>& dims) override {
+    auto& vars = OutputVars(name);
+    SetDims(vars, dims);
+  }
+
  protected:
   DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var);
@@ -759,15 +773,26 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_THROW("Only compile time support this method");
   }
 
-  void SetDim(const std::string& name, const DDim& dim) override {
-    Variable* var = scope_.FindVar(name);
+  void SetDim(Variable* var, const DDim& dim) {
     if (var->IsType<LoDTensor>()) {
       var->GetMutable<LoDTensor>()->Resize(dim);
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
-                   name, var->Type().name());
+      PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                   var->Type().name());
+    }
+  }
+
+  void SetDims(const std::vector<Variable*>& vars,
+               const std::vector<DDim>& dims) {
+    size_t length = vars.size();
+    PADDLE_ENFORCE_EQ(length, dims.size());
+    for (size_t i = 0; i < length; ++i) {
+      if (vars[i] == nullptr) {
+        continue;
+      }
+      SetDim(vars[i], dims[i]);
     }
   }
 
