@@ -23,12 +23,9 @@ FIND_PACKAGE(PythonLibs ${PY_VERSION} REQUIRED)
 
 if(WIN32)
     execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
-"from distutils import sysconfig as s;import sys;import struct;import sysconfig;
+"from distutils import sysconfig as s;import sys;import struct;
 print(sys.prefix);
 print(s.get_config_var('LDVERSION') or s.get_config_var('VERSION'));
-print(sysconfig.get_platform());
-print(sysconfig.get_config_var('py_version_nodot'));
-print(sysconfig.get_config_var('SOABI'));
 "
             RESULT_VARIABLE _PYTHON_SUCCESS
             OUTPUT_VARIABLE _PYTHON_VALUES
@@ -44,9 +41,6 @@ print(sysconfig.get_config_var('SOABI'));
     string(REGEX REPLACE "\n" ";" _PYTHON_VALUES ${_PYTHON_VALUES})
     list(GET _PYTHON_VALUES 0 PYTHON_PREFIX)
     list(GET _PYTHON_VALUES 1 PYTHON_LIBRARY_SUFFIX)
-    list(GET _PYTHON_VALUES 2 SYS_PLATFORM)
-    list(GET _PYTHON_VALUES 3 PYTHON_SHORT_VERSION_NODOT)
-    list(GET _PYTHON_VALUES 4 PYTHON_SOABI)
 
     # Make sure all directory separators are '/'
     string(REGEX REPLACE "\\\\" "/" PYTHON_PREFIX ${PYTHON_PREFIX})
