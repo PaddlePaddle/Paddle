@@ -37,7 +37,7 @@ template <typename T>
 void ExpectEQ(const T* target, const T* refer, int n) {
   if (std::is_floating_point<T>::value) {
     for (int i = 0; i < n; ++i) {
-      EXPECT_NEAR(target[i], refer[i], 1e-3);
+      EXPECT_NEAR(target[i], refer[i], 1e-5);
     }
   } else {
     for (int i = 0; i < n; ++i) {
