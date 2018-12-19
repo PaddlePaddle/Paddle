@@ -439,7 +439,6 @@ def multi_download(client,
                    local_path,
                    trainer_id,
                    trainers,
-                   file_cnt,
                    multi_processes=5):
     """
     Download files from HDFS using multi process.
@@ -471,7 +470,7 @@ def multi_download(client,
     client.make_local_dirs(local_path)
     _logger.info("Make local dir {} successfully".format(local_path))
 
-    all_need_download = client.lsr(hdfs_path, sort=True)[:file_cnt]
+    all_need_download = client.lsr(hdfs_path, sort=True)
     need_download = all_need_download[trainer_id::trainers]
     _logger.info("Get {} files From all {} files need to be download from {}".
                  format(len(need_download), len(all_need_download), hdfs_path))
