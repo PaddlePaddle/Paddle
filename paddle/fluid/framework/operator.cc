@@ -575,7 +575,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   bool HasInputs(const std::string& name) const override {
     const auto& ins = ctx_.inputs;
     auto it = ins.find(name);
-    if (it == ins.end()) {
+    if (it == ins.end() || it->second.empty()) {
       return false;
     }
     for (auto& input : it->second) {
@@ -589,7 +589,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   bool HasOutputs(const std::string& name) const override {
     const auto& outs = ctx_.outputs;
     auto it = outs.find(name);
-    if (it == outs.end()) {
+    if (it == outs.end() || it->second.empty()) {
       return false;
     }
     for (auto& output : it->second) {
