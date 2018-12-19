@@ -22,11 +22,16 @@ namespace operators {
 namespace jit {
 namespace more {
 namespace intrinsic {
+// Note: intrinsic code is not runtime build.
+// For example, if you build code on AVX, and run on AVX512 it can only use AVX
 
 void CRFDecoding(const int seq_len, const float* x, const float* w,
                  float* alpha, int* track, int tag_num) {
-  const int step_size =
-      platform::MayIUse(platform::avx512f) ? ZMM_FLOAT_BLOCK : YMM_FLOAT_BLOCK;
+#ifdef __AVX512F__
+  const int step_size = ZMM_FLOAT_BLOCK;
+#else
+  const int step_size = YMM_FLOAT_BLOCK;
+#endif
   const int end = tag_num / step_size;
   const int rest = tag_num % step_size;
   /* Setup the alpha initial value.*/
@@ -157,7 +162,12 @@ void CRFDecoding(const int seq_len, const float* x, const float* w,
 }
 
 bool CRFDecodingKernel::UseMe(const int& d) const {
-  return platform::MayIUse(platform::avx);
+#ifdef __AVX512F__
+  constexpr int block = ZMM_FLOAT_BLOCK;
+#else
+  constexpr int block = YMM_FLOAT_BLOCK;
+#endif
+  return platform::MayIUse(platform::avx) && d >= block;
 }
 
 }  // namespace intrinsic
