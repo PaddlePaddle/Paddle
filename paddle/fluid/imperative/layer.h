@@ -60,7 +60,8 @@ class OpBase {
         pre_ops_(new std::vector<OpBase*>()),
         pre_ops_out_idx_(new std::vector<int>()),
         op_desc_(nullptr),
-        grad_op_desc_(nullptr) {}
+        grad_op_desc_(nullptr),
+        grad_to_var_(nullptr) {}
 
   virtual ~OpBase() {
     delete input_vars_;

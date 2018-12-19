@@ -24,8 +24,10 @@ __all__ = ['PyLayer']
 
 
 class PyLayer(core.Layer):
-    def __init__(self):
-        self._built = False
+    def __init__(self, *args, **kwargs):
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper(type(self).__name__, **kwargs)
+        self._dtype = kwargs.get("dtype", core.VarDesc.VarType.FP32)
 
     def __call__(self, inputs):
         if not isinstance(inputs, list) and not isinstance(inputs, tuple):
@@ -35,15 +37,10 @@ class PyLayer(core.Layer):
         for x in inputs:
             py_var = base.to_variable(x)
             var_inputs.append(py_var)
-        if not self._built:
-            self._build_once(inputs)
-            self._built = True
 
         outputs = self.forward(var_inputs)
-        return outputs
 
-    def _build_once(self, inputs):
-        pass
+        return outputs
 
     def forward(self, inputs):
         return []

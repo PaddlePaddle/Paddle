@@ -117,6 +117,12 @@ PYBIND11_MODULE(core, m) {
              self.RunBackward(scope);
            })
       .def("_grad", &imperative::VarBase::Grad)
+      .def_property("value",
+                    [](const imperative::VarBase &self) { return self.var_; },
+                    [](imperative::VarBase &self, framework::Variable *var) {
+                      self.var_ = var;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },

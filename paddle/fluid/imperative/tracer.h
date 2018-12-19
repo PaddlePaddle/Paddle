@@ -43,20 +43,14 @@ void CreateGradOp(const framework::OpDesc& op_desc,
 
 class Tracer {
  public:
-  explicit Tracer(framework::BlockDesc* root_block,
-                  framework::BlockDesc* startup_block)
-      : root_block_(root_block), startup_block_(startup_block) {
-    root_scope_ = new framework::Scope();
-    scopes_[root_block_] = root_scope_;
-    scopes_[startup_block_] = root_scope_;
-  }
+  explicit Tracer(framework::BlockDesc* root_block)
+      : root_scope_(new framework::Scope()) {}
 
-  virtual ~Tracer() { delete root_scope_; }
+  virtual ~Tracer() {}
 
   void Trace(OpBase* op, const std::vector<VarBase*>& inputs,
-             const std::vector<VarBase*>& outputs,
-             framework::BlockDesc* block) {
-    framework::Scope* scope = GetScope(block);
+             const std::vector<VarBase*>& outputs, framework::BlockDesc* block,
+             const bool stop_gradient) {
     framework::OpDesc* op_desc = op->op_desc_;
     VLOG(3) << "tracer tracing " << op_desc->Type();
     op_desc->InferShape(*block);
@@ -67,7 +61,7 @@ class Tracer {
     *op->input_vars_ = inputs;
     for (VarBase* input : inputs) {
       const std::string vname = input->var_desc_->Name();
-      framework::Variable* var = scope->Var(vname);
+      framework::Variable* var = root_scope_->Var(vname);
       input->var_ = var;
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block->FindVar(vname);
@@ -90,7 +84,7 @@ class Tracer {
     *op->output_vars_ = outputs;
     for (size_t i = 0; i < outputs.size(); ++i) {
       const std::string vname = outputs[i]->var_desc_->Name();
-      framework::Variable* var = scope->Var(vname);
+      framework::Variable* var = root_scope_->Var(vname);
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block->FindVar(vname);
         if (var_desc->GetType() == framework::proto::VarType::LOD_TENSOR) {
@@ -105,11 +99,8 @@ class Tracer {
     }
 
     VLOG(3) << "tracer running " << op_desc->Type();
-    op_base->Run(*scope, platform::CPUPlace());
-    if (block == startup_block_) {
-      op->grad_op_desc_ = nullptr;
-      op->grad_to_var_ = nullptr;
-    } else {
+    op_base->Run(*root_scope_, platform::CPUPlace());
+    if (!stop_gradient) {
       framework::OpDesc* grad_op_desc;
       auto grad_to_var = new std::unordered_map<std::string, std::string>();
       CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
@@ -119,22 +110,10 @@ class Tracer {
     op->block_ = block;
   }
 
-  framework::Scope* GetScope(framework::BlockDesc* block) {
-    if (scopes_.find(block) != scopes_.end()) {
-      return scopes_.at(block);
-    }
-    framework::BlockDesc* parent_block = block->ParentBlock();
-    PADDLE_ENFORCE(scopes_.find(parent_block) != scopes_.end());
-    framework::Scope* scope = &scopes_[parent_block]->NewScope();
-    scopes_[block] = scope;
-    return scope;
-  }
+  framework::Scope* GetScope() { return root_scope_.get(); }
 
  private:
-  std::map<framework::BlockDesc*, framework::Scope*> scopes_;
-  framework::BlockDesc* root_block_;
-  framework::BlockDesc* startup_block_;
-  framework::Scope* root_scope_;
+  std::unique_ptr<framework::Scope> root_scope_;
 };
 
 }  // namespace imperative
