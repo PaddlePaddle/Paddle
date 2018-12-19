@@ -625,8 +625,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* out_var = out_it->second[j];
 
     PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
-                   "The type of %s and %s is not the same.", in_var->Type(),
-                   out_var->Type());
+                   "The type of %s and %s is not the same.", in, out);
 
     if (in_var->IsType<framework::SelectedRows>()) {
       auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
