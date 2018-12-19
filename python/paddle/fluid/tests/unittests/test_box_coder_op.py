@@ -131,7 +131,7 @@ class TestBoxCoderOp(OpTest):
 
     def setUp(self):
         self.op_type = "box_coder"
-        lod = [[1,1,1,1,1]]
+        lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((10, 4)).astype('float32')
         prior_box_var = np.random.random((10, 4)).astype('float32')
         target_box = np.random.random((5, 10, 4)).astype('float32')
@@ -176,6 +176,7 @@ class TestBoxCoderOpWithOneRankVar(OpTest):
             'box_normalized': False
         }
         self.outputs = {'OutputBox': output_box}
+
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
     def test_check_output(self):
@@ -225,6 +226,7 @@ class TestBoxCoderOpWithLoD(OpTest):
         }
         self.attrs = {'code_type': 'encode_center_size', 'box_normalized': True}
         self.outputs = {'OutputBox': output_box}
+
 
 if __name__ == '__main__':
     unittest.main()

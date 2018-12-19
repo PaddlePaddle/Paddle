@@ -311,10 +311,10 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
                            new_indices[label].end());
         }
         */
-        for(const auto& it : new_indices) {
+        for (const auto& it : new_indices) {
           int label = it.first;
           std::stable_sort(new_indices[label].begin(),
-                           new_indices[label].end());   
+                           new_indices[label].end());
         }
       }
       new_indices.swap(*indices);
@@ -414,7 +414,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           ClipTiledBoxes<T>(dev_ctx, im_info_slice, &boxes_slice);
         }
         std::map<int, std::vector<int>> indices;
-        int num_nmsed_out = 0; 
+        int num_nmsed_out = 0;
         MultiClassNMS(ctx, scores_slice, boxes_slice, score_dims.size(),
                       &indices, &num_nmsed_out);
         all_indices.push_back(indices);

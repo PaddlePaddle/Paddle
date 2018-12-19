@@ -53,8 +53,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         T prior_box_height = prior_box_data[j * len + 3] -
                              prior_box_data[j * len + 1] +
                              (normalized == false);
-        T prior_box_center_x =
-            prior_box_data[j * len] + prior_box_width / 2;
+        T prior_box_center_x = prior_box_data[j * len] + prior_box_width / 2;
         T prior_box_center_y =
             prior_box_data[j * len + 1] + prior_box_height / 2;
 
@@ -117,8 +116,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         T prior_box_height = prior_box_data[j * len + 3] -
                              prior_box_data[j * len + 1] +
                              (normalized == false);
-        T prior_box_center_x =
-            prior_box_data[j * len] + prior_box_width / 2;
+        T prior_box_center_x = prior_box_data[j * len] + prior_box_width / 2;
         T prior_box_center_y =
             prior_box_data[j * len + 1] + prior_box_height / 2;
 

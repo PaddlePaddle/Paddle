@@ -31,10 +31,9 @@ __global__ void EncodeCenterSizeKernel(const T* prior_box_data,
     T prior_box_height = prior_box_data[col_idx * len + 3] -
                          prior_box_data[col_idx * len + 1] +
                          (normalized == false);
-    T prior_box_center_x =
-        prior_box_data[col_idx * len] + prior_box_width / 2;
-    T prior_box_center_y = prior_box_data[col_idx * len + 1] +
-                            prior_box_height / 2;
+    T prior_box_center_x = prior_box_data[col_idx * len] + prior_box_width / 2;
+    T prior_box_center_y =
+        prior_box_data[col_idx * len + 1] + prior_box_height / 2;
 
     T target_box_center_x =
         (target_box_data[row_idx * len + 2] + target_box_data[row_idx * len]) /
@@ -85,10 +84,9 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
     T prior_box_height = prior_box_data[col_idx * len + 3] -
                          prior_box_data[col_idx * len + 1] +
                          (normalized == false);
-    T prior_box_center_x =
-        prior_box_data[col_idx * len] + prior_box_width / 2;
-    T prior_box_center_y = prior_box_data[col_idx * len + 1] +
-                            prior_box_height / 2;
+    T prior_box_center_x = prior_box_data[col_idx * len] + prior_box_width / 2;
+    T prior_box_center_y =
+        prior_box_data[col_idx * len + 1] + prior_box_height / 2;
     T target_box_width, target_box_height;
     T target_box_center_x, target_box_center_y;
     if (prior_box_var_data) {
