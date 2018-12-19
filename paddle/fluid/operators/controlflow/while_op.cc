@@ -408,7 +408,7 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
       if (pg_ig_names[i] == framework::kEmptyVarName) {
         continue;
       }
-      auto dims = ctx->GetInputsElementDim(kX, i);
+      auto dims = ctx->GetInputsDim(kX)[i];
       if (var_types[i] == framework::proto::VarType::LOD_TENSOR) {
         names_to_set.push_back(pg_ig_names[i]);
         dims_to_set.push_back(dims);

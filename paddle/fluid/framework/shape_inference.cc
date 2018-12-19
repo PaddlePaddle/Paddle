@@ -22,20 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-DDim InferShapeContext::GetInputDim(const std::string &name) const {
-  const std::vector<std::string> &arg_names = Inputs(name);
-  PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                    "Input(%s) should hold one element, but now it holds %d",
-                    name, arg_names.size());
-  return this->GetDim(arg_names[0]);
-}
-
-std::vector<DDim> InferShapeContext::GetInputsDim(
-    const std::string &name) const {
-  const std::vector<std::string> &arg_names = Inputs(name);
-  return GetDims(arg_names);
-}
-
 std::vector<DDim> InferShapeContext::GetReaderDims(
     const std::string &name) const {
   const std::vector<std::string> &arg_names = Inputs(name);
@@ -44,12 +30,6 @@ std::vector<DDim> InferShapeContext::GetReaderDims(
       "Reader input '%s' should hold one element, but now it holds %d", name,
       arg_names.size());
   return this->GetRepeatedDims(arg_names[0]);
-}
-
-DDim InferShapeContext::GetInputsElementDim(const std::string &name,
-                                            int idx) const {
-  const std::vector<std::string> &names = Inputs(name);
-  return this->GetDim(names[idx]);
 }
 
 void InferShapeContext::SetOutputDim(const std::string &name, const DDim &dim) {
@@ -74,16 +54,6 @@ void InferShapeContext::SetReaderDims(const std::string &name,
       "Reader output '%s' should hold one element, but now it holds %d", name,
       arg_names.size());
   return this->SetRepeatedDims(arg_names[0], dims);
-}
-
-std::vector<DDim> InferShapeContext::GetDims(
-    const std::vector<std::string> &names) const {
-  std::vector<DDim> ret;
-  ret.reserve(names.size());
-  std::transform(
-      names.begin(), names.end(), std::back_inserter(ret),
-      [this](const std::string &name) { return this->GetDim(name); });
-  return ret;
 }
 
 void InferShapeContext::SetDims(const std::vector<std::string> &names,
