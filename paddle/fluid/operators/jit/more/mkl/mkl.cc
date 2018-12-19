@@ -74,39 +74,39 @@ void VExp<double>(const double* x, double* y, int n) {
 
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
-bool VMulKernel<float>::UseMe(int d) const {
+bool VMulKernel<float>::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
-bool VAddKernel<float>::UseMe(int d) const {
+bool VAddKernel<float>::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
-bool VScalKernel<float>::UseMe(int d) const {
+bool VScalKernel<float>::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
-bool VExpKernel<float>::UseMe(int d) const {
+bool VExpKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
 
 template <>
-bool VSigmoidKernel<float>::UseMe(int d) const {
+bool VSigmoidKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
 
 template <>
-bool VTanhKernel<float>::UseMe(int d) const {
+bool VTanhKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
 
-#define AWALYS_USE_ME_WITH_DOUBLE(func)           \
-  template <>                                     \
-  bool func##Kernel<double>::UseMe(int d) const { \
-    return true;                                  \
+#define AWALYS_USE_ME_WITH_DOUBLE(func)                  \
+  template <>                                            \
+  bool func##Kernel<double>::UseMe(const int& d) const { \
+    return true;                                         \
   }
 
 AWALYS_USE_ME_WITH_DOUBLE(VMul);

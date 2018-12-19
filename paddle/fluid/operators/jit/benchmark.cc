@@ -93,10 +93,11 @@ void BenchAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
   if (iter != pool.end()) {
     auto& impls = iter->second;
     for (auto& impl : impls) {
-      auto i = dynamic_cast<const jit::KernelImpl<KernelTuples>*>(impl.get());
+      auto i = dynamic_cast<const jit::KernelMore<KernelTuples>*>(impl.get());
       if (i && i->UseMe(attr)) {
         auto more = i->GetFunc();
-        infos.push_back(std::make_pair("More", benchmark(more, args...)));
+        infos.push_back(
+            std::make_pair(i->ImplType(), benchmark(more, args...)));
       }
     }
   }

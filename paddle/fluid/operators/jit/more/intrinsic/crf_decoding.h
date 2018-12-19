@@ -26,10 +26,12 @@ namespace intrinsic {
 void CRFDecoding(const int seq_len, const float* x, const float* w,
                  float* alpha, int* track, int tag_num);
 
-class CRFDecodingKernel : public KernelImpl<CRFDecodingTuples<float>> {
+class CRFDecodingKernel : public KernelMore<CRFDecodingTuples<float>> {
  public:
   CRFDecodingKernel() { this->func = CRFDecoding; }
-  bool UseMe(typename CRFDecodingTuples<float>::attr_type) const override;
+  bool UseMe(
+      const typename CRFDecodingTuples<float>::attr_type&) const override;
+  const char* ImplType() const override { return "Intrinsic"; }
 };
 
 }  // namespace intrinsic

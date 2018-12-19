@@ -228,10 +228,10 @@ void TestAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
   if (iter != pool.end()) {
     auto& impls = iter->second;
     for (auto& impl : impls) {
-      auto i = dynamic_cast<const jit::KernelImpl<KernelTuples>*>(impl.get());
+      auto i = dynamic_cast<const jit::KernelMore<KernelTuples>*>(impl.get());
       if (i && i->UseMe(attr)) {
         auto more = i->GetFunc();
-        VLOG(10) << "Test More Kernel ";
+        VLOG(10) << "Test More Kernel : " << i->ImplType();
         test(more, args...);
       }
     }
