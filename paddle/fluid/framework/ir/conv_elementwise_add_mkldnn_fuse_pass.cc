@@ -24,35 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// The function keeps the graph consistent by replacing
-// a node 'from' in the set of inputs nodes
-// of the visited node by a node 'to'.
-void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
-  for (auto& node : GraphTraits::DFS(*graph)) {
-    auto from_in_inputs =
-        std::find(std::begin(node.inputs), std::end(node.inputs), from);
-
-    if (from_in_inputs != std::end(node.inputs)) {
-      IR_NODE_LINK_TO(to, (&node));
-
-      auto inputs = node.Op()->Inputs();
-
-      using input_type = VariableNameMap::value_type;
-
-      std::for_each(std::begin(inputs), std::end(inputs),
-                    [from, to, &node](const input_type& i) -> void {
-                      auto param_names = i.second;
-                      auto pi = std::find(std::begin(param_names),
-                                          std::end(param_names), from->Name());
-
-                      if (pi != std::end(param_names)) {
-                        node.Op()->SetInput(i.first, {to->Name()});
-                      }
-                    });
-    }
-  }
-}
-
 bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
   auto find_node = [](ir::Graph* graph, const Node* node) -> Node* {
     for (auto n : graph->Nodes()) {
@@ -97,27 +68,6 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
     }
   }
   return false;
-}
-
-boost::optional<Node*> HasBias(const Node& op, const std::string& bias_name) {
-  auto bias_input_names = op.Op()->Inputs();
-  auto bias_it = bias_input_names.find(bias_name);
-
-  if (bias_it != std::end(bias_input_names)) {
-    bool has_bias = !bias_it->second.empty();
-
-    if (has_bias) {
-      auto bias_names = bias_it->second;
-      auto bias_names_it =
-          std::find_if(std::begin(op.inputs), std::end(op.inputs),
-                       [&bias_names](Node* n) -> bool {
-                         return n->Name() == bias_names[0];
-                       });
-      return *bias_names_it;
-    }
-  }
-
-  return boost::none;
 }
 
 template <typename T>
