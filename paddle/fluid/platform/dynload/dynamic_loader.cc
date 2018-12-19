@@ -201,6 +201,8 @@ void* GetCurandDsoHandle() {
 void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "warpctc.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
 #endif

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <iostream>
 #include <string>
+#include <typeindex>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -23,9 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/port.h"
-
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {
@@ -81,6 +81,11 @@ inline framework::proto::VarType::Type ToVarType(
     default:
       PADDLE_THROW("Not support type %d", type);
   }
+}
+
+template <template <typename> class T, typename Elem>
+std::string VectorElemName(const T<Elem>& arg) {
+  return typeid(Elem).name();
 }
 
 }  // namespace distributed

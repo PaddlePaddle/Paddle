@@ -137,6 +137,23 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 }
 
+RuntimeContext::RuntimeContext(const VariableNameMap& innames,
+                               const VariableNameMap& outnames,
+                               const Scope& scope) {
+  for (auto& var_name_item : innames) {
+    std::vector<Variable*>& input_vars = inputs[var_name_item.first];
+    for (auto& var_name : var_name_item.second) {
+      input_vars.push_back(scope.FindVar(var_name));
+    }
+  }
+  for (auto& var_name_item : outnames) {
+    std::vector<Variable*>& output_vars = outputs[var_name_item.first];
+    for (auto& var_name : var_name_item.second) {
+      output_vars.push_back(scope.FindVar(var_name));
+    }
+  }
+}
+
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
@@ -412,9 +429,46 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
   return var != nullptr;
 }
 
+const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) return nullptr;
+
+  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
+                    "Operator %s's input %s should contain only one variable.",
+                    op_.Type(), name);
+  return it->second.empty() ? nullptr : it->second[0];
+}
+
+const Variable* ExecutionContext::LegacyInputVar(
+    const std::string& name) const {
+  auto ipt = op_.Input(name);
+  return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+}
+
+Variable* ExecutionContext::OutputVar(const std::string& name) const {
+  auto it = ctx_.outputs.find(name);
+  if (it == ctx_.outputs.end()) return nullptr;
+
+  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
+                    "Operator %s's output %s should contain only one variable.",
+                    op_.Type(), name);
+  return it->second.empty() ? nullptr : it->second[0];
+}
+
+Variable* ExecutionContext::LegacyOutputVar(const std::string& name) const {
+  auto opt = op_.Output(name);
+  return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
+}
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   return Input<LoDTensor>(name);
+}
+
+template <>
+const Tensor* ExecutionContext::LegacyInput<Tensor>(
+    const std::string& name) const {
+  return LegacyInput<LoDTensor>(name);
 }
 
 template <>
@@ -439,6 +493,11 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   return Output<LoDTensor>(name);
+}
+
+template <>
+Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const {
+  return LegacyOutput<LoDTensor>(name);
 }
 
 template <>
@@ -477,23 +536,22 @@ bool OpSupportGPU(const std::string& op_type) {
 
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
+                           const RuntimeContext& ctx)
+      : op_(op), scope_(scope), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
-    const auto& ins = op_.Inputs();
+    const auto& ins = ctx_.inputs;
     auto it = ins.find(name);
     if (it == ins.end()) {
       return false;
     }
     const auto& in = it->second;
-    if (in.size() == 0 || in[0] == kEmptyVarName) {
-      return false;
-    }
+    if (in.size() == 0) return false;
     PADDLE_ENFORCE_EQ(in.size(), 1UL,
                       "Input %s should not have more than one inputs", name);
-    return scope_.FindVar(in[0]) != nullptr;
+    return in[0] != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
@@ -678,6 +736,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  private:
   const OperatorBase& op_;
   const Scope& scope_;
+  const RuntimeContext& ctx_;
 };
 
 static void CheckTensorNANOrInf(const std::string& name,
@@ -696,15 +755,15 @@ static void CheckTensorNANOrInf(const std::string& name,
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
-                                           const platform::Place& place) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+                                           const platform::Place& place,
+                                           const RuntimeContext& ctx) const {
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
   this->InferShape(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
-  this->InferShape(&infer_shape_ctx);
+  RuntimeContext ctx(Inputs(), Outputs(), scope);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -718,15 +777,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   OpKernelMap& kernels = kernels_iter->second;
 
-  // TODO(dzhwinter) : kernel fallback mechanism will be added when all the
-  // transform functions are ready.
-
-  // for (auto& candidate : kKernelPriority) {
-  //   Do selection
-  // }
-
-  auto expected_kernel_key =
-      this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
+  auto expected_kernel_key = this->GetExpectedKernelType(
+      ExecutionContext(*this, scope, *dev_ctx, ctx));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -748,7 +800,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   auto* transfer_scope =
-      TryTransferData(scope, expected_kernel_key, &transfered_inplace_vars);
+      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
 
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -758,7 +810,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
+  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
+  this->InferShape(&infer_shape_ctx);
+  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+  // not Scope. Imperative mode only pass inputs and get outputs.
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -782,6 +838,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
   }
 }
+
 void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {
@@ -797,13 +854,19 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   }
 }
 
-Scope* OperatorWithKernel::TryTransferData(
+Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
-    std::vector<std::string>* transfered_inplace_vars) const {
+    std::vector<std::string>* transfered_inplace_vars,
+    RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
   for (auto& var_name_item : Inputs()) {
-    for (auto& var_name : var_name_item.second) {
+    std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
+
+    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+      auto& var_name = var_name_item.second[i];
       auto* var = scope.FindVar(var_name);
+      input_vars[i] = var;
+
       // Only tensor can be tranfer to another device.
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
@@ -851,6 +914,7 @@ Scope* OperatorWithKernel::TryTransferData(
       }
 
       auto* trans_var = new_scope->Var(var_name);
+      input_vars[i] = trans_var;
 
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
