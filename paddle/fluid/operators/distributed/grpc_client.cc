@@ -293,8 +293,7 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
   const auto ch = GetChannel(ep);
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   const std::string method = "SendMonomerFetchBarrierRPC";
-  VarHandlePtr h(
-      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+  VarHandlePtr h(new VarHandle(ep, method, var_name, nullptr, nullptr));
   s->Prepare(h, time_out);
 
   VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
@@ -390,8 +389,7 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      // FIXME(gongwb): parse error_details?
-      LOG(ERROR) << c->GetVarHandlePtr()->String()
+      LOG(FATAL) << c->GetVarHandlePtr()->String()
                  << " meets grpc error, error_code:" << c->status_.error_code()
                  << " error_message:" << c->status_.error_message()
                  << " error_details:" << c->status_.error_details();

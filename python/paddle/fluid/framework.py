@@ -16,8 +16,10 @@ from __future__ import print_function
 
 import collections
 import contextlib
+import os
 import re
 import six
+import sys
 
 import numpy as np
 
@@ -26,11 +28,18 @@ from .proto import framework_pb2
 try:
     from . import core
 except ImportError as e:
-    raise ImportError(
-        """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-    if you encounters \"libmkldnn.so not found\" errors. If you have python
-    installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + cpt.get_exception_message(e))
+    if os.name == 'nt':
+        raise ImportError(
+            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
+        if you encounters \"mkldnn.dll not found\" errors. If you have python
+        installed in other directory, replace \"c:\python27\lib" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
+    else:
+        raise ImportError(
+            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+        if you encounters \"libmkldnn.so not found\" errors. If you have python
+        installed in other directory, replace \"/usr/local/lib\" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -48,6 +57,16 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+_imperative_tracer_ = None
+
+
+def _in_imperative_mode():
+    return _imperative_tracer_ is not None
+
+
+def _imperative_tracer():
+    return _imperative_tracer_
 
 
 class NameScope(object):
@@ -345,6 +364,21 @@ class Variable(object):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+        if _in_imperative_mode():
+            self._ivar = core.VarBase()
+            self._ivar.desc = self.desc
+
+    def _numpy(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
+        tensor = core.get_variable_tensor(scope, self.desc.name())
+        return np.array(tensor)
+
+    def _backward(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
+        self._ivar._run_backward(scope)
+
+    def _gradient(self):
+        return np.array(self._ivar._grad())
 
     def __str__(self):
         return self.to_string(True)
@@ -537,8 +571,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
+        'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -655,6 +689,23 @@ class Operator(object):
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+        if _in_imperative_mode():
+            self.iop = core.OpBase()
+            self.iop.desc = self.desc
+            self.inputs = []
+            if inputs is not None:
+                for inp in inputs.values():
+                    if isinstance(inp, Variable):
+                        self.inputs.append(inp)
+                    elif isinstance(inp, list) or isinstance(inp, tuple):
+                        self.inputs.extend(inp[:])
+            self.outputs = []
+            if outputs is not None:
+                for out in outputs.values():
+                    if isinstance(out, Variable):
+                        self.outputs.append(out)
+                    elif isinstance(out, list) or isinstance(out, tuple):
+                        self.outputs.extend(out[:])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1041,19 +1092,15 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
-    def _var_recursive(self, name):
+    def _find_var_recursive(self, name):
         """
         Get a Variable by name from this block recursively.
 
         Args:
             name(str): the Variable's name.
 
-        Raises:
-            ValueError: this block and this parent block doesn't
-                have a Variable with the giving name.
-
         Returns:
-            Variable: the Variable with the giving name.
+            Variable: the Variable with the giving name. Or None if not found.
         """
         frontier = list()
         visited = set()
@@ -1079,8 +1126,27 @@ class Block(object):
                 frontier.append(prog.block(cur.forward_block_idx))
 
             visited.add(id(cur))
+        return None
 
-        raise ValueError("Var {0} is not found recursively".format(name))
+    def _var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
+        var = self._find_var_recursive(name)
+        if var:
+            return var
+        else:
+            raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -1206,6 +1272,9 @@ class Block(object):
         """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
+                                       [v._ivar for v in op.outputs], self.desc)
         self.ops.append(op)
         return op
 
@@ -2210,3 +2279,12 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@contextlib.contextmanager
+def _imperative_guard(tracer):
+    global _imperative_tracer_
+    tmp_trace = _imperative_tracer_
+    _imperative_tracer_ = tracer
+    yield
+    _imperative_tracer_ = tmp_trace

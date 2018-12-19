@@ -1,6 +1,7 @@
 
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler)
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc async_executor_py.cc)
+set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler layer)
+set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc async_executor_py.cc imperative.cc)
+
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
@@ -18,10 +19,6 @@ if(WITH_PYTHON)
   endif(WITH_AMD_GPU)
 
   if(WIN32)
-    if(WITH_GPU AND NOT WITH_DSO)
-      get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
-      target_link_libraries(paddle_pybind ${cuda_modules})
-    endif(WITH_GPU AND NOT WITH_DSO)
     target_link_libraries(paddle_pybind shlwapi)
   endif(WIN32)
 

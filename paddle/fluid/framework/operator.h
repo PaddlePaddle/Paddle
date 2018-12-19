@@ -70,6 +70,15 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 class OperatorBase;
 class ExecutionContext;
 
+class RuntimeContext {
+ public:
+  RuntimeContext(const VariableNameMap& innames,
+                 const VariableNameMap& outnames, const Scope& scope);
+
+  VariableValueMap inputs;
+  VariableValueMap outputs;
+};
+
 /**
  * OperatorBase has the basic elements that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -129,7 +138,8 @@ class OperatorBase {
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
   virtual void RuntimeInferShape(const Scope& scope,
-                                 const platform::Place& place) const {}
+                                 const platform::Place& place,
+                                 const RuntimeContext& ctx) const {}
 
  protected:
   std::string type_;
@@ -156,8 +166,9 @@ class OperatorBase {
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
-      : op_(op), scope_(scope), device_context_(device_context) {}
+                   const platform::DeviceContext& device_context,
+                   const RuntimeContext& ctx)
+      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -180,15 +191,9 @@ class ExecutionContext {
     return op_.Outputs(name).size();
   }
 
-  const Variable* InputVar(const std::string& name) const {
-    auto ipt = op_.Input(name);
-    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-  }
+  const Variable* InputVar(const std::string& name) const;
 
-  Variable* OutputVar(const std::string& name) const {
-    auto opt = op_.Output(name);
-    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-  }
+  Variable* OutputVar(const std::string& name) const;
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
@@ -226,6 +231,22 @@ class ExecutionContext {
     auto var = OutputVar(name);
     return var == nullptr ? nullptr : var->GetMutable<T>();
   }
+
+  template <typename T>
+  const T* LegacyInput(const std::string& name) const {
+    auto* var = LegacyInputVar(name);
+    return var == nullptr ? nullptr : &var->Get<T>();
+  }
+
+  template <typename T>
+  T* LegacyOutput(const std::string& name) const {
+    auto var = LegacyOutputVar(name);
+    return var == nullptr ? nullptr : var->GetMutable<T>();
+  }
+
+  const Variable* LegacyInputVar(const std::string& name) const;
+
+  Variable* LegacyOutputVar(const std::string& name) const;
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
@@ -286,10 +307,15 @@ class ExecutionContext {
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
+  const RuntimeContext& ctx_;
 };
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
+
+template <>
+const Tensor* ExecutionContext::LegacyInput<Tensor>(
+    const std::string& name) const;
 
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
@@ -297,6 +323,9 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -350,8 +379,8 @@ class OperatorWithKernel : public OperatorBase {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
 
-  void RuntimeInferShape(const Scope& scope,
-                         const platform::Place& place) const override;
+  void RuntimeInferShape(const Scope& scope, const platform::Place& place,
+                         const RuntimeContext& ctx) const override;
 
  protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
@@ -371,9 +400,10 @@ class OperatorWithKernel : public OperatorBase {
    *
    * * transfered_inplace_vars is a output vector.
    */
-  Scope* TryTransferData(
-      const Scope& scope, const OpKernelType& expected_kernel_key,
-      std::vector<std::string>* transfered_inplace_vars) const;
+  Scope* PrepareData(const Scope& scope,
+                     const OpKernelType& expected_kernel_key,
+                     std::vector<std::string>* transfered_inplace_vars,
+                     RuntimeContext* ctx) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,

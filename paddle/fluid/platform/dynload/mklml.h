@@ -34,7 +34,7 @@ extern void* mklml_dso_handle;
 #define DYNAMIC_LOAD_MKLML_WRAP(__name)                                    \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
-    auto operator()(Args... args) -> decltype(__name(args...)) {           \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
       using mklmlFunc = decltype(&::__name);                               \
       std::call_once(mklml_dso_flag, []() {                                \
         mklml_dso_handle = paddle::platform::dynload::GetMKLMLDsoHandle(); \
@@ -82,6 +82,8 @@ extern void* mklml_dso_handle;
   __macro(vdSqr);                   \
   __macro(vsPowx);                  \
   __macro(vdPowx);                  \
+  __macro(vsInv);                   \
+  __macro(vdInv);                   \
   __macro(MKL_Set_Num_Threads)
 
 MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);
