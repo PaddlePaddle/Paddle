@@ -43,9 +43,12 @@ void CreateGradOp(const framework::OpDesc& op_desc,
 
 class Tracer {
  public:
-  explicit Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {
+  explicit Tracer(framework::BlockDesc* root_block,
+                  framework::BlockDesc* startup_block)
+      : root_block_(root_block), startup_block_(startup_block) {
     root_scope_ = new framework::Scope();
     scopes_[root_block_] = root_scope_;
+    scopes_[startup_block_] = root_scope_;
   }
 
   virtual ~Tracer() { delete root_scope_; }
@@ -80,6 +83,8 @@ class Tracer {
       } else {
         op->pre_ops_->push_back(nullptr);
       }
+      VLOG(3) << "input vname " << vname << " "
+              << var->Get<framework::LoDTensor>().dims().size();
     }
 
     *op->output_vars_ = outputs;
@@ -98,12 +103,19 @@ class Tracer {
       outputs[i]->pre_op_ = op;
       outputs[i]->pre_op_out_idx_ = i;
     }
+
+    VLOG(3) << "tracer running " << op_desc->Type();
     op_base->Run(*scope, platform::CPUPlace());
-    framework::OpDesc* grad_op_desc;
-    auto grad_to_var = new std::unordered_map<std::string, std::string>();
-    CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
-    op->grad_op_desc_ = grad_op_desc;
-    op->grad_to_var_ = grad_to_var;
+    if (block == startup_block_) {
+      op->grad_op_desc_ = nullptr;
+      op->grad_to_var_ = nullptr;
+    } else {
+      framework::OpDesc* grad_op_desc;
+      auto grad_to_var = new std::unordered_map<std::string, std::string>();
+      CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
+      op->grad_op_desc_ = grad_op_desc;
+      op->grad_to_var_ = grad_to_var;
+    }
     op->block_ = block;
   }
 
@@ -121,6 +133,7 @@ class Tracer {
  private:
   std::map<framework::BlockDesc*, framework::Scope*> scopes_;
   framework::BlockDesc* root_block_;
+  framework::BlockDesc* startup_block_;
   framework::Scope* root_scope_;
 };
 
