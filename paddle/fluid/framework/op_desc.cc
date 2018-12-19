@@ -134,12 +134,46 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return res;
   }
 
+  DDim GetInputDim(const std::string &name) const override {
+    const std::vector<std::string> &arg_names = Inputs(name);
+    PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
+                      "Input(%s) should hold one element, but now it holds %d",
+                      name, arg_names.size());
+    return this->GetDim(arg_names[0]);
+  }
+
+  std::vector<DDim> GetInputsDim(const std::string &name) const override {
+    const std::vector<std::string> &arg_names = Inputs(name);
+    return GetDims(arg_names);
+  }
+
   bool IsRuntime() const override;
 
  protected:
   proto::VarType::Type GetVarType(const std::string &name) const override;
 
-  DDim GetDim(const std::string &name) const override;
+  DDim GetDim(const std::string &name) const {
+    auto var = block_.FindVarRecursive(name);
+    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+    DDim res;
+    try {
+      auto shape = var->GetShape();
+      res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
+    } catch (...) {
+      VLOG(5) << "GetDim of variable " << name << " error";
+      std::rethrow_exception(std::current_exception());
+    }
+    return res;
+  }
+
+  std::vector<DDim> GetDims(const std::vector<std::string> &names) const {
+    std::vector<DDim> ret;
+    ret.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(ret),
+        [this](const std::string &name) { return this->GetDim(name); });
+    return ret;
+  }
 
   void SetDim(const std::string &name, const DDim &dim) override;
 
@@ -664,20 +698,6 @@ const std::vector<std::string> &CompileTimeInferShapeContext::Inputs(
 const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
     const std::string &name) const {
   return op_.Output(name);
-}
-
-DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
-  auto var = block_.FindVarRecursive(name);
-  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
-  DDim res;
-  try {
-    auto shape = var->GetShape();
-    res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
-  } catch (...) {
-    VLOG(5) << "GetDim of variable " << name << " error";
-    std::rethrow_exception(std::current_exception());
-  }
-  return res;
 }
 
 std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(

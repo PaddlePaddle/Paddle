@@ -709,9 +709,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return res;
   }
 
+  DDim GetInputDim(const std::string& name) const override {
+    const std::vector<Variable*>& vars = InputVars(name);
+    PADDLE_ENFORCE_EQ(vars.size(), 1UL,
+                      "Input(%s) should hold one element, but now it holds %d",
+                      name, vars.size());
+    return this->GetDim(vars[0]);
+  }
+
+  std::vector<DDim> GetInputsDim(const std::string& name) const override {
+    const std::vector<Variable*>& vars = InputVars(name);
+    return GetDims(vars);
+  }
+
  protected:
-  DDim GetDim(const std::string& name) const override {
-    Variable* var = scope_.FindVar(name);
+  DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
@@ -719,10 +731,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variable %s's "
+          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is %s.",
-          name, var->Type().name());
+          var->Type().name());
     }
+  }
+
+  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const {
+    std::vector<DDim> ret;
+    ret.reserve(vars.size());
+    std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
+                   [this](Variable* var) { return this->GetDim(var); });
+    return ret;
   }
 
   std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
