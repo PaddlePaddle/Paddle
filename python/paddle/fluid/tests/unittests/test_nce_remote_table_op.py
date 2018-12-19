@@ -221,8 +221,6 @@ class TestListenAndServOp(unittest.TestCase):
         port1 = self._get_pserver_port(p1.pid)
 
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
 
         for place in places:
             self._run_nce_op_two_pserver(place, port0, port1)
