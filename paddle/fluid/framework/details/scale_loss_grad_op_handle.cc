@@ -57,8 +57,8 @@ struct ScaleLossGradFunctor {
       OutT cast_coeff = static_cast<OutT>(coeff_);
       auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), out_data,
-                   platform::CPUPlace(), &cast_coeff,
-                   SizeOfType(ToTypeIndex(out_dtype_)), stream);
+                   platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_),
+                   stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";
 
 #endif
