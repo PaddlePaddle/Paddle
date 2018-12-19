@@ -32,20 +32,6 @@ std::vector<DDim> InferShapeContext::GetReaderDims(
   return this->GetRepeatedDims(arg_names[0]);
 }
 
-void InferShapeContext::SetOutputDim(const std::string &name, const DDim &dim) {
-  auto &arg_names = Outputs(name);
-  PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                    "Output(%s) should hold one element, but now it holds %d",
-                    name, arg_names.size());
-  SetDim(arg_names[0], dim);
-}
-
-void InferShapeContext::SetOutputsDim(const std::string &name,
-                                      const std::vector<DDim> &dims) {
-  auto &names = Outputs(name);
-  SetDims(names, dims);
-}
-
 void InferShapeContext::SetReaderDims(const std::string &name,
                                       const std::vector<DDim> &dims) {
   const std::vector<std::string> &arg_names = Outputs(name);
@@ -54,18 +40,6 @@ void InferShapeContext::SetReaderDims(const std::string &name,
       "Reader output '%s' should hold one element, but now it holds %d", name,
       arg_names.size());
   return this->SetRepeatedDims(arg_names[0], dims);
-}
-
-void InferShapeContext::SetDims(const std::vector<std::string> &names,
-                                const std::vector<DDim> &dims) {
-  size_t length = names.size();
-  PADDLE_ENFORCE_EQ(length, dims.size());
-  for (size_t i = 0; i < length; ++i) {
-    if (names[i] == framework::kEmptyVarName) {
-      continue;
-    }
-    SetDim(names[i], dims[i]);
-  }
 }
 
 }  // namespace framework

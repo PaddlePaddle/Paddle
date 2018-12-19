@@ -45,9 +45,9 @@ class InferShapeContext {
   virtual std::vector<DDim> GetInputsDim(const std::string &name) const = 0;
   virtual std::vector<DDim> GetReaderDims(const std::string &name) const;
 
-  virtual void SetOutputDim(const std::string &name, const DDim &dim);
+  virtual void SetOutputDim(const std::string &name, const DDim &dim) = 0;
   virtual void SetOutputsDim(const std::string &name,
-                             const std::vector<DDim> &dims);
+                             const std::vector<DDim> &dims) = 0;
   virtual void SetReaderDims(const std::string &name,
                              const std::vector<DDim> &dims);
 
@@ -73,12 +73,7 @@ class InferShapeContext {
   virtual std::vector<InferShapeVarPtr> GetOutputVarPtrs(
       const std::string &name) = 0;
 
-  // Note: In while op, we need this to be public
-  virtual void SetDims(const std::vector<std::string> &names,
-                       const std::vector<DDim> &dims);
-
  protected:
-  virtual void SetDim(const std::string &name, const DDim &dim) = 0;
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
   virtual void SetRepeatedDims(const std::string &name,
                                const std::vector<DDim> &dims) = 0;
