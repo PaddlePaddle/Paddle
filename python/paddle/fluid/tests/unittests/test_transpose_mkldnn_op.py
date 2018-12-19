@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,66 +15,58 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-from op_test import OpTest
+
+from test_transpose_op import TestTransposeOp
 
 
-class TestTransposeOp(OpTest):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
-        self.attrs = {
-            'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
-            'is_test': self.is_test,
-        }
-        self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float32"),
-            'Out': self.inputs['X'].transpose(self.axis)
-        }
-
+class TestTransposeMKLDNN(TestTransposeOp):
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
-        self.is_test = False
-
-    def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.use_mkldnn = True
+        self.is_test = True
+        return
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        return
 
-    def initTestCase(self):
-        self.shape = (3, 4)
-        self.axis = (1, 0)
+    def test_check_grad_no_input(self):
+        return
+
+    def test_check_grad_no_filter(self):
+        return
 
 
-class TestCase0(TestTransposeOp):
+class TestCase0MKLDNN(TestTransposeMKLDNN):
     def initTestCase(self):
         self.shape = (3, )
         self.axis = (0, )
 
 
-class TestCase1(TestTransposeOp):
+class TestCase1a(TestTransposeMKLDNN):
     def initTestCase(self):
         self.shape = (3, 4, 5)
         self.axis = (0, 2, 1)
 
 
-class TestCase2(TestTransposeOp):
+class TestCase1b(TestTransposeMKLDNN):
+    def initTestCase(self):
+        self.shape = (3, 4, 5)
+        self.axis = (2, 1, 0)
+
+
+class TestCase2(TestTransposeMKLDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
-class TestCase3(TestTransposeOp):
+class TestCase3(TestTransposeMKLDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
-class TestCase4(TestTransposeOp):
+class TestCase4(TestTransposeMKLDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
