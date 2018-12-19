@@ -30,15 +30,16 @@ namespace paddle {
 namespace platform {
 
 inline ncclDataType_t ToNCCLDataType(std::type_index type) {
-  if (type == typeid(float)) {  // NOLINT
+  if (type == std::type_index(typeid(float))) {  // NOLINT
     return ncclFloat;
-  } else if (type == typeid(double)) {  // NOLINT
+  } else if (type == std::type_index(typeid(double))) {  // NOLINT
     return ncclDouble;
-  } else if (type == typeid(int)) {  // NOLINT
+  } else if (type == std::type_index(typeid(int))) {  // NOLINT
     return ncclInt;
-  } else if (type == typeid(int64_t)) {  // NOLINT
+  } else if (type == std::type_index(typeid(int64_t))) {  // NOLINT
     return ncclInt64;
-  } else if (type == typeid(paddle::platform::float16)) {  // NOLINT
+  } else if (type ==
+             std::type_index(typeid(paddle::platform::float16))) {  // NOLINT
     return ncclFloat16;
   } else {
     PADDLE_THROW("Not supported");
