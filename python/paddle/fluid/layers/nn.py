@@ -176,6 +176,7 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'lstm',
     'psroi_pool',
+    'teacher_student_sigmoid_loss',
 ]
 
 kIgnoreIndex = -100
@@ -9182,6 +9183,47 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         outputs={'Loss': [loss]},
         attrs={'epsilon': epsilon})
     return loss
+
+
+def teacher_student_sigmoid_loss(input,
+                                 label,
+                                 soft_max_up_bound=15.0,
+                                 soft_max_lower_bound=-15.0):
+    """
+    **Teacher Student Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    teacher_student loss.
+
+    .. math::
+        loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        soft_max_up_bound (float):  if input > soft_max_up_bound, will be bound 
+        soft_max_lower_bound (float): if input < soft_max_lower_bound, will be bound
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the teacher_student_sigmoid_loss.
+
+    Examples:
+        .. code-block:: python
+          cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
+    """
+    helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='teacher_student_sigmoid_loss',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out]},
+        attrs={"soft_max_lower_bound": float(soft_max_lower_bound), \
+                "soft_max_up_bound": float(soft_max_up_bound)})
+    return out
 
 
 def add_position_encoding(input, alpha, beta, name=None):
