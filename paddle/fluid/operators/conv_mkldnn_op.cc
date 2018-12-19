@@ -70,13 +70,6 @@ inline mkldnn::memory::format GetWeightsFormat(mkldnn::memory::format format,
   }
 }
 
-static uint64_t calculate_hash(const void* buffer, size_t length) {
-  uint64_t seed = 0;
-  uint64_t h = XXH64(buffer, length, seed);
-
-  return h;
-}
-
 template <typename T>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
@@ -184,23 +177,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
 
-    //    auto input_hash =
-    //        calculate_hash(input->data<T>(), input->numel() * sizeof(T));
-
-    //    std::stringstream ss;
-    //    ss << "Input hash:  " << std::hex << input_hash << " ";
-
-    //    auto filter_hash =
-    //        calculate_hash(filter->data<T>(), filter->numel() * sizeof(T));
-
-    //    ss << "Filter hash: " << std::hex << filter_hash << " ";
-
     if (bias) {
-      //      auto bias_hash =
-      //          calculate_hash(bias->data<T>(), bias->numel() * sizeof(T));
-
-      //      ss << "Bias hash: " << std::hex << bias_hash << " ";
-
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
@@ -231,19 +208,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
 
-    // std::cout << "Residual connection fusion: " << std::boolalpha
-    //          << fuse_residual_conn << "\n";
-
     if (fuse_residual_conn) {
-      //      std::cout << "Fuse residual connection\n";
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       auto residual_param_data = residual_param->data<T>();
-
-      //      auto residual_hash = calculate_hash(residual_param_data,
-      //                                          residual_param->numel() *
-      //                                          sizeof(T));
-
-      //      ss << "Residual hash: " << std::hex << residual_hash << " ";
 
       PADDLE_ENFORCE(
           residual_param_data != nullptr,
@@ -252,11 +219,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "Output and elementwise parameter need to have the "
                         "same dimension sizes");
 
-      //      std::cout << "Formats: \n";
-      //      std::cout << "- residual_param: " << residual_param->format() <<
-      //      "\n";
-      //      std::cout << "- handler dst format: " << handler.GetDstFormat() <<
-      //      "\n";
       if (residual_param->format() != handler.GetDstFormat()) {
         auto output_data = output->mutable_data<T>(
             ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
@@ -311,14 +273,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
-
-    //    auto output_hash =
-    //        calculate_hash(output->data<T>(), output->numel() * sizeof(T));
-
-    //    ss << "Output hash: " << std::hex << output_hash << " ";
-    //    ss << std::endl;
-
-    //    std::cout << ss.str();
   }
 
  private:

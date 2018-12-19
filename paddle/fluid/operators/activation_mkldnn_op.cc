@@ -43,13 +43,6 @@ std::string gethash(const mkldnn::memory::dims &operand_dims,
 }
 }  // namespace
 
-static uint64_t calculate_hash(const void *buffer, size_t length) {
-  uint64_t seed = 0;
-  uint64_t h = XXH64(buffer, length, seed);
-
-  return h;
-}
-
 template <typename Functor>
 class MKLDNNActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -196,14 +189,6 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   pipeline.push_back(*p_fwd);
   stream(stream::kind::eager).submit(pipeline).wait();
 
-  /*
-    auto input_hash = calculate_hash(x->data<T>(), x->numel() * sizeof(T));
-    auto output_hash = calculate_hash(y->data<T>(), y->numel() * sizeof(T));
-
-    std::cout << "Relu: input hash: " << std::hex << input_hash << " " <<
-    std::hex
-              << output_hash << std::endl;
-  */
   y->set_layout(DataLayout::kMKLDNN);
   y->set_format(GetMKLDNNFormat(*dst_memory));
 }
