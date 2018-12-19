@@ -28,7 +28,8 @@ def enabled():
 def guard():
     train = framework.Program()
     startup = framework.Program()
-    tracer = core.Tracer(train.current_block().desc)
+    tracer = core.Tracer(train.current_block().desc,
+                         startup.current_block().desc)
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._imperative_guard(tracer):
