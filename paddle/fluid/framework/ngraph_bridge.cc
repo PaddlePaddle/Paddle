@@ -34,7 +34,8 @@ std::map<std::string,
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
         {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
-        {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>}};
+        {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
+        {"top_k", paddle::operators::ngraphs::BuildTopKNode}};
 
 void NgraphBridge::BuildNgNode(const std::shared_ptr<OperatorBase>& op) {
   auto& op_type = op->Type();
