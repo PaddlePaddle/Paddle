@@ -15,32 +15,46 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include <gtest/gtest.h>
 #include <cstdint>
+#include <unordered_set>
 
 namespace paddle {
 namespace framework {
 
 template <int kPos, int kEnd, bool kStop>
 struct TypeIndexChecker {
-  static void Check() {
+  template <typename SetType1, typename SetType2>
+  static void Check(SetType1 *var_id_set, SetType2 *type_index_set) {
     using Type =
         typename std::tuple_element<kPos, VarTypeRegistry::ArgTuple>::type;
+    static_assert(std::is_same<typename VarTypeTrait<Type>::Type, Type>::value,
+                  "Type must be the same");
+    constexpr auto kId = VarTypeTrait<Type>::kId;
     if (!std::is_same<Type, void>::value) {
-      EXPECT_TRUE(ToTypeIndex(VarTypeTrait<Type>::kId) == typeid(Type));
-      EXPECT_TRUE(std::string(ToTypeName(VarTypeTrait<Type>::kId)) ==
-                  typeid(Type).name());
+      std::type_index actual_type(typeid(Type));
+      EXPECT_EQ(std::string(ToTypeName(kId)), std::string(actual_type.name()));
+      EXPECT_EQ(ToTypeIndex(kId), actual_type);
+      EXPECT_TRUE(var_id_set->count(kId) == 0);              // NOLINT
+      EXPECT_TRUE(type_index_set->count(actual_type) == 0);  // NOLINT
+      var_id_set->insert(kId);
+      type_index_set->insert(std::type_index(typeid(Type)));
     }
-    TypeIndexChecker<kPos + 1, kEnd, kPos + 1 == kEnd>::Check();
+    TypeIndexChecker<kPos + 1, kEnd, kPos + 1 == kEnd>::Check(var_id_set,
+                                                              type_index_set);
   }
 };
 
 template <int kPos, int kEnd>
 struct TypeIndexChecker<kPos, kEnd, true> {
-  static void Check() {}
+  template <typename SetType1, typename SetType2>
+  static void Check(SetType1 *, SetType2 *) {}
 };
 
-TEST(var_type_traits, check_type_index) {
+TEST(var_type_traits, check_no_duplicate_registry) {
   constexpr size_t kRegisteredNum = VarTypeRegistry::kRegisteredTypeNum;
-  TypeIndexChecker<0, kRegisteredNum, kRegisteredNum == 0>::Check();
+  std::unordered_set<int> var_id_set;
+  std::unordered_set<std::type_index> type_index_set;
+  TypeIndexChecker<0, kRegisteredNum, kRegisteredNum == 0>::Check(
+      &var_id_set, &type_index_set);
 }
 
 template <typename T>
