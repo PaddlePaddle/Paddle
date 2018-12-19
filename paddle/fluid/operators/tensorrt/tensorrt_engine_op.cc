@@ -21,8 +21,6 @@
 
 namespace paddle {
 
-DEFINE_int32(tensorrt_engine_batch_size, 1, "the batch_size of TensorRT");
-
 namespace operators {
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -31,7 +29,6 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph.");
-    AddAttr<std::string>("engine_uniq_key", "unique key for the TRT engine.");
     AddAttr<int>("max_batch_size", "the maximum batch size.");
     AddAttr<int>("workspace_size", "the workspace size.");
     AddComment("TensorRT engine operator.");
@@ -50,6 +47,6 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(tensorrt_engine, ops::TensorRTEngineOp,
-                  ops::TensorRTEngineOpMaker, ops::TensorRTEngineOpMaker);
+                  ops::TensorRTEngineOpMaker);
 
 #endif  // PADDLE_WITH_CUDA

@@ -300,9 +300,11 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     }
     CudnnRNNCache *cudnn_rnn_cache = nullptr;
     if (cache_var->IsInitialized()) {
+      // const_cast is usually bad.
       cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
                             ->GetMutable<CudnnRNNCache>();
     } else {
+      // const_cast is usually bad.
       cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
                             ->GetMutable<CudnnRNNCache>();
       std::random_device rnd;
