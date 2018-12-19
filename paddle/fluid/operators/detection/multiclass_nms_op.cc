@@ -264,6 +264,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         SliceOneClass<T>(dev_ctx, bboxes, class_num, c, &bbox);
         NMSFast(bbox, score, score_threshold, nms_threshold, nms_eta, nms_top_k,
                 &((*indices)[c]), normalized);
+        std::stable_sort((*indices)[c].begin(), (*indices)[c].end());
         num_det += (*indices)[c].size();
       }
     }
@@ -304,10 +305,16 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         new_indices[label].push_back(idx);
       }
       if (scores_size == 2) {
-        for (size_t j = 0; j < score_index_pairs.size(); ++j) {
+        /*for (size_t j = 0; j < score_index_pairs.size(); ++j) {
           int label = score_index_pairs[j].second.first;
           std::stable_sort(new_indices[label].begin(),
                            new_indices[label].end());
+        }
+        */
+        for(const auto& it : new_indices) {
+          int label = it.first;
+          std::stable_sort(new_indices[label].begin(),
+                           new_indices[label].end());   
         }
       }
       new_indices.swap(*indices);
@@ -407,7 +414,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           ClipTiledBoxes<T>(dev_ctx, im_info_slice, &boxes_slice);
         }
         std::map<int, std::vector<int>> indices;
-        int num_nmsed_out = 0;
+        int num_nmsed_out = 0; 
         MultiClassNMS(ctx, scores_slice, boxes_slice, score_dims.size(),
                       &indices, &num_nmsed_out);
         all_indices.push_back(indices);

@@ -23,21 +23,19 @@ from op_test import OpTest
 
 def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
               box_normalized):
-    prior_box_x = (
-        (prior_box[:, 2] + prior_box[:, 0]) / 2).reshape(1, prior_box.shape[0])
-    prior_box_y = (
-        (prior_box[:, 3] + prior_box[:, 1]) / 2).reshape(1, prior_box.shape[0])
-    prior_box_width = (
-        (prior_box[:, 2] - prior_box[:, 0])).reshape(1, prior_box.shape[0])
-    prior_box_height = (
-        (prior_box[:, 3] - prior_box[:, 1])).reshape(1, prior_box.shape[0])
+    prior_box_width = prior_box[:, 2] - prior_box[:, 0] + \
+                      (box_normalized==False)
+    prior_box_height = prior_box[:, 3] - prior_box[:, 1] + \
+                      (box_normalized==False)
+    prior_box_x = prior_box_width * 0.5 + prior_box[:, 0]
+    prior_box_y = prior_box_height * 0.5 + prior_box[:, 1]
+    prior_box_width = prior_box_width.reshape(1, prior_box.shape[0])
+    prior_box_height = prior_box_height.reshape(1, prior_box.shape[0])
+    prior_box_x = prior_box_x.reshape(1, prior_box.shape[0])
+    prior_box_y = prior_box_y.reshape(1, prior_box.shape[0])
     if prior_box_var.ndim == 2:
         prior_box_var = prior_box_var.reshape(1, prior_box_var.shape[0],
                                               prior_box_var.shape[1])
-    if not box_normalized:
-        prior_box_height = prior_box_height + 1
-        prior_box_width = prior_box_width + 1
-
     if (code_type == "EncodeCenterSize"):
         target_box_x = ((target_box[:, 2] + target_box[:, 0]) / 2).reshape(
             target_box.shape[0], 1)
@@ -133,7 +131,7 @@ class TestBoxCoderOp(OpTest):
 
     def setUp(self):
         self.op_type = "box_coder"
-        lod = [[1, 1, 1, 1, 1]]
+        lod = [[1,1,1,1,1]]
         prior_box = np.random.random((10, 4)).astype('float32')
         prior_box_var = np.random.random((10, 4)).astype('float32')
         target_box = np.random.random((5, 10, 4)).astype('float32')
@@ -141,7 +139,6 @@ class TestBoxCoderOp(OpTest):
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
                                      lod[0], code_type, box_normalized)
-
         self.inputs = {
             'PriorBox': prior_box,
             'PriorBoxVar': prior_box_var,
@@ -161,9 +158,9 @@ class TestBoxCoderOpWithOneRankVar(OpTest):
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
-        prior_box = np.random.random((10, 4)).astype('float32')
+        prior_box = np.random.random((6, 4)).astype('float32')
         prior_box_var = np.random.random((4)).astype('float32')
-        target_box = np.random.random((5, 10, 4)).astype('float32')
+        target_box = np.random.random((3, 6, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
@@ -179,7 +176,6 @@ class TestBoxCoderOpWithOneRankVar(OpTest):
             'box_normalized': False
         }
         self.outputs = {'OutputBox': output_box}
-
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
     def test_check_output(self):
@@ -229,7 +225,6 @@ class TestBoxCoderOpWithLoD(OpTest):
         }
         self.attrs = {'code_type': 'encode_center_size', 'box_normalized': True}
         self.outputs = {'OutputBox': output_box}
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -296,6 +296,7 @@ def detection_output(loc,
         decoded_box = nn.transpose(decoded_box, perm=[1, 0, 2])
         new_shape = decoded_box.shape[1] * decoded_box.shape[2]
         decoded_box = nn.reshape(decoded_box, [-1, new_shape])
+        decoded_box = nn.lod_reset(decoded_box, prior_box)
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
     helper.append_op(

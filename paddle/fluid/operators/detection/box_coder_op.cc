@@ -32,7 +32,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
-                        "The rank of Input of PriorBoxVar must be 2");
+                        "The rank of Input of PriorBox must be 2");
       PADDLE_ENFORCE_EQ(prior_box_dims[1], 4,
                         "The shape of PriorBox is [N, 4]");
       if (ctx->HasInput("PriorBoxVar")) {

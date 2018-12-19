@@ -248,7 +248,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
 
     if (rois_num == 0) return;
-
+    auto& dev_ctx = ctx.template device_context<Place>();
     int output_size = out->numel();
     int blocks = NumBlocks(output_size);
     int threads = kNumCUDAThreads;
@@ -279,6 +279,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
         height, width, pooled_height, pooled_width, sampling_ratio,
         roi_batch_id_list_gpu.data<int>(),
         out->mutable_data<T>(ctx.GetPlace()));
+    dev_ctx.Wait();
   }
 };
 
@@ -305,6 +306,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     if (!in_grad) {
       return;
     }
+    auto& dev_ctx = ctx.template device_context<Place>();
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
     int* roi_batch_id_data =
@@ -336,6 +338,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
           sampling_ratio, roi_batch_id_list_gpu.data<int>(),
           in_grad->mutable_data<T>(ctx.GetPlace()));
     }
+    dev_ctx.Wait();
   }
 };
 
