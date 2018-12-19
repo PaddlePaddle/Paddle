@@ -146,7 +146,7 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
             'IS_SELF_CONTAINED_LR': '1',
             'SAVE_MODE': 'DIST',
             'OPTIMIZER': 'ADAM',
-            'SKIP_STEPS': str(np.random.randint(1, 10))
+            'SKIP_STEPS': str(np.random.randint(2, 6))
         }
         self.check_with_place(
             "dist_save_load.py",

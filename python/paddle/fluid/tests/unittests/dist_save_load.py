@@ -181,14 +181,14 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
             skip_steps = int(os.getenv("SKIP_STEPS"))
             loss = None
             if need_save:
-                for idx in six.moves.xrange(RUN_STEP):
+                for idx in six.moves.xrange(8):
                     loss, = exe.run(fetch_list=[avg_cost.name],
                                     feed=feeder.feed(get_data()))
                     if need_save and model_dir and idx == skip_steps and args.trainer_id == 0:
                         io.save_persistables(startup_exe, model_dir,
                                              trainer_prog)
             else:
-                for idx in six.moves.xrange(RUN_STEP):
+                for idx in six.moves.xrange(8):
                     data = get_data()
                     if idx <= skip_steps:
                         continue
