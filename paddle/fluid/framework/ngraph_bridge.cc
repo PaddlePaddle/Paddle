@@ -31,6 +31,7 @@ std::map<std::string,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
+        {"fill_constant", paddle::operators::ngraphs::BuildFillConstantNode},
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
         {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
