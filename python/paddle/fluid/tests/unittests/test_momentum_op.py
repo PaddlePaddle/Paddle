@@ -30,7 +30,7 @@ class TestMomentumOp1(OpTest):
         param = np.random.random((123, 321)).astype(self.dtype)
         grad = np.random.random((123, 321)).astype(self.dtype)
         velocity = np.zeros((123, 321)).astype(self.dtype)
-        learning_rate = np.array([0.001]).astype("float32")
+        learning_rate = np.array([0.001]).astype(self.dtype)
         mu = 0.0001
         use_nesterov = False
 
