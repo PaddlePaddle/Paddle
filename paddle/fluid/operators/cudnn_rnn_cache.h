@@ -74,7 +74,8 @@ struct CudnnRNNCache {
 
   void init(cudnnHandle_t handle, const platform::Place &place, size_t max_len,
             int batch_size, int input_size, int hidden_size, int num_layers,
-            float dropout_prob, bool is_bidirec, int seed, int weight_numel) {
+            float dropout_prob, bool is_bidirec, int seed, int weight_numel,
+            bool is_gru) {
     max_length_ = max_len;
     batch_size_ = batch_size;
     input_size_ = input_size;
@@ -178,13 +179,14 @@ struct CudnnRNNCache {
     CUDNN_ENFORCE(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
         CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_RNN_ALGO_STANDARD, CUDNN_DATA_FLOAT));
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL,
+        is_gru ? CUDNN_GRU : CUDNN_LSTM, CUDNN_RNN_ALGO_STANDARD,
+        CUDNN_DATA_FLOAT));
 #else
     CUDNN_ENFORCE(platform::dynload::cudnnSetRNNDescriptor(
         rnn_desc_, hidden_size_, num_layers_, dropout_desc_, CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_DATA_FLOAT));
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL,
+        is_gru ? CUDNN_GRU : CUDNN_LSTM, CUDNN_DATA_FLOAT));
 #endif
 
     CUDNN_ENFORCE(platform::dynload::cudnnCreateFilterDescriptor(&w_desc_));

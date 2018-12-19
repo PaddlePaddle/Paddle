@@ -84,7 +84,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       auto batch_size = x->dims()[1];
       cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
                             input_size, hidden_size, num_layers, dropout_prob,
-                            is_bidirec, seed, input_w_numel);
+                            is_bidirec, seed, input_w_numel, false);
     }
 
     auto run_seq_len = x->dims()[0];

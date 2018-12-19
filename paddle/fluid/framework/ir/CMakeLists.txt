@@ -51,6 +51,7 @@ pass_library(conv_elementwise_add2_act_fuse_pass inference)
 pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
+pass_library(fc_cudnn_gru_fuse_pass inference)
 
 # There may be many transpose-flatten structures in a model, and the output of
 # these structures will be used as inputs to the concat Op. This pattern will
